@@ -25,6 +25,19 @@ internal sealed class LegalDocumentPublication(
 {
     private static readonly ResourceManager NoticeResources = new(typeof(ConsentResource));
 
+    internal async Task<string?> SyncDocumentAsync(
+        Guid documentId, Guid? actorUserId, CancellationToken cancellationToken)
+    {
+        var document = await repository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+        {
+            logger.LogWarning("Document {DocumentId} not found", documentId);
+            return null;
+        }
+
+        return await SyncSingleDocumentAsync(document, actorUserId, cancellationToken);
+    }
+
     internal async Task<string?> SyncSingleDocumentAsync(
         LegalDocument document,
         Guid? actorUserId,
@@ -87,9 +100,16 @@ internal sealed class LegalDocumentPublication(
         if (string.Equals(document.CurrentCommitSha, commitSha, StringComparison.Ordinal))
         {
             logger.LogDebug("Document {Name} is up to date (SHA: {Sha})", document.Name, commitSha);
-            var touched = await repository.TouchLastSyncedAtAsync(document.Id, now, cancellationToken);
-            if (touched)
-                cache.InvalidateAll();
+            bool? touched = null;
+            try
+            {
+                touched = await repository.TouchLastSyncedAtAsync(document.Id, now, cancellationToken);
+            }
+            finally
+            {
+                if (touched != false)
+                    cache.InvalidateAll();
+            }
             return null;
         }
 
@@ -129,10 +149,19 @@ internal sealed class LegalDocumentPublication(
             ChangesSummary = commitMessage ?? (isNew ? "Initial version" : "Updated from GitHub")
         };
 
-        var persisted = await repository.AddVersionAsync(
-            document.Id, newVersion, commitSha, now, cancellationToken);
+        bool? persisted = null;
+        try
+        {
+            persisted = await repository.AddVersionAsync(
+                document.Id, newVersion, commitSha, now, cancellationToken);
+        }
+        finally
+        {
+            if (persisted != false)
+                cache.InvalidateAll();
+        }
 
-        if (!persisted)
+        if (persisted == false)
         {
             // The row vanished between read and write: no fan-out.
             logger.LogWarning(
@@ -140,8 +169,6 @@ internal sealed class LegalDocumentPublication(
                 document.Name, document.Id);
             return null;
         }
-
-        cache.InvalidateAll();
 
         document.Versions.Add(newVersion);
         document.CurrentCommitSha = commitSha;

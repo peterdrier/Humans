@@ -3,7 +3,7 @@ using Humans.Preapprovals.Contracts;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>Authorization is the controllers' job: every method trusts its actor.</summary>
+/// <summary>Authorization is the controllers' job: every method trusts its actor. Grant mutations validate the supplied program.</summary>
 internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite, IApplicationService
 {
     Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default);
@@ -31,19 +31,16 @@ internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWri
         Guid programId, IReadOnlyList<Guid> beneficiaryUserIds, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Approve an application. <paramref name="amount"/> may lower a per-grant request; ignored on fixed programs.</summary>
-    Task<PreapprovalMutationResult> ApproveAsync(Guid grantId, decimal? amount, Guid actorUserId, CancellationToken ct = default);
-    Task<PreapprovalMutationResult> DeclineAsync(Guid grantId, string? note, Guid actorUserId, CancellationToken ct = default);
+    Task<PreapprovalMutationResult> ApproveAsync(Guid programId, Guid grantId, decimal? amount, Guid actorUserId, CancellationToken ct = default);
+    Task<PreapprovalMutationResult> DeclineAsync(Guid programId, Guid grantId, string? note, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Open or Claimed → Revoked. The amount and any report id are kept.</summary>
-    Task<PreapprovalMutationResult> RevokeAsync(Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default);
+    Task<PreapprovalMutationResult> RevokeAsync(Guid programId, Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Open or Claimed only; ceiling-checked and audited with old and new.</summary>
-    Task<PreapprovalMutationResult> ChangeAmountAsync(Guid grantId, decimal amount, Guid actorUserId, CancellationToken ct = default);
+    Task<PreapprovalMutationResult> ChangeAmountAsync(Guid programId, Guid grantId, decimal amount, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>One application per person per program; a second submit edits the pending one.</summary>
     Task<PreapprovalMutationResult<Guid>> ApplyAsync(
         Guid programId, Guid applicantUserId, string? note, decimal? requestedAmount, CancellationToken ct = default);
-
-    /// <summary>The nightly pass: 14-day and 3-day reminders to Open grant holders, each recorded once per deadline.</summary>
-    Task SendDeadlineRemindersAsync(CancellationToken ct = default);
 }

@@ -55,8 +55,6 @@ public sealed record ProfileInfo(
     string? EmergencyContactName,
     string? EmergencyContactPhone,
     string? EmergencyContactRelationship,
-    // GDPR Art. 9: every render or serialize surface must gate this behind the MedicalDataViewer policy.
-    string? MedicalConditions,
     bool HasCustomPicture,
     string? ProfilePictureContentType,
     Instant CreatedAt,

@@ -154,7 +154,14 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
     private static string? Meta(Dictionary<string, string>? metadata, string key) =>
         metadata is not null && metadata.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : null;
 
-    private static string? Clip(string? s, int max) => s is { Length: var n } && n > max ? s[..max] : s;
+    internal static string? Clip(string? value, int max)
+    {
+        if (value is null || value.Length <= max) return value;
+        var length = max;
+        if (char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length]))
+            length--;
+        return value[..length];
+    }
 
     private static StripePayout ToPayout(string accountId, Payout p) => new()
     {

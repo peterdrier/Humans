@@ -99,6 +99,83 @@ namespace Humans.Holded.Data.Migrations
                     b.ToTable("holded_api_calls", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Holded.Domain.HoldedBankMovement", b =>
+                {
+                    b.Property<string>("TreasuryAccountId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(14,2)");
+
+                    b.Property<LocalDate>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<Instant>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("TreasuryAccountId", "Id");
+
+                    b.HasIndex("TreasuryAccountId", "Date");
+
+                    b.ToTable("holded_bank_movements", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Holded.Domain.HoldedContact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Iban")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SupplierAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TaxCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TradeName")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("holded_contacts", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Holded.Domain.HoldedLedgerLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -194,6 +271,9 @@ namespace Humans.Holded.Data.Migrations
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");
+
+                    b.Property<decimal?>("PaymentsPending")
+                        .HasColumnType("decimal(14,2)");
 
                     b.Property<decimal>("Subtotal")
                         .HasColumnType("decimal(14,2)");

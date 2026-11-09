@@ -113,11 +113,15 @@ Humans.Finance/
   Models/                      view models and the payout file's input records
   Views/Finance/               those pages
   Services/
-    Service.cs                 shapes A–G
+    Service.cs                 facade for shapes A–G
+    HoldedCreditorReader.cs     shape D: status, accounts and statements
+    FinancePersonalData.cs      financial export and retention declarations
     SepaBankBooking.cs         shape F and the sweep
     HoldedMatcher.cs           pure attribution, no dependencies
     HoldedDuplicateMatcher.cs  pure duplicate detection, no dependencies
+    HoldedDuplicateReview.cs   preview, fresh-sync confirmation and removal
     ExpenseRecon.cs            pure reconciliation report, no dependencies
+    SepaPayoutGeneration.cs    preview, plan and persisted payment-file generation
     SepaPaymentFileBuilder.cs  pure pain.001 XML from a batch, no dependencies
     SepaSchema.cs, SepaText.cs the schema and the character rules that builder obeys
     SepaPayoutEmails.cs, FinanceEmails.cs, FinanceEmailPreviews.cs  the payout emails and their preview
@@ -134,8 +138,8 @@ Humans.Finance/
 
 What the shapes say about the inside:
 
-- Shape **D**'s three methods share one balance derivation and one accessor for the cached Holded
-  contact list.
+- Shape **D**'s methods share one balance derivation and one accessor for the cached Holded
+  contact list in `HoldedCreditorReader`.
 - Shape **C**'s collision policy is one predicate with three call-site answers.
 - The member creditor block is one range, checked by one predicate wherever an account number is
   judged.
@@ -143,9 +147,9 @@ What the shapes say about the inside:
   calls, the clock and the rows.
 - The active budget year's category names are looked up once, by one helper, for every reader
   (provisioning plan, expense account options, category map, connector overview).
-- `Service.cs` keeps the shapes that share the repository, the clock and the contact cache; the
-  pure parts and the large self-contained flows (booking, the pull, the emails) are their own
-  internal classes it composes.
+- `Service.cs` composes the internal owners. Creditor reads own their shared contact map and
+  projection; payout, duplicate review and export reuse those helpers. Booking, provisioning and
+  emails retain their own owners.
 - Every job is internal and takes an internal interface: no public type exists only to feed one.
 - A view model exists per row shape, not per page.
 
@@ -177,25 +181,25 @@ What the shapes say about the inside:
 - A linked Holded contact is never updated from here — only a member with no contact gets one
   created (`src/Sections/Humans.Finance/Services/Service.cs:872`).
 - Every read that draws on Holded's contact list for creditor accounts, and the manual bind, are
-  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/Service.cs:530`,
+  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/HoldedCreditorReader.cs`,
   `src/Sections/Humans.Finance/Services/Service.cs:743`).
 - Balances keep Holded's sign (`Σdebit − Σcredit`) on every DTO; the creditor list and the statement
   flip it for display, and a ledger line's running balance is computed from the member's side
   (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:105`,
   `src/Sections/Humans.Finance/Models/CreditorStatementVm.cs:14`,
-  `src/Sections/Humans.Finance/Services/Service.cs:821`).
+  `src/Sections/Humans.Finance/Services/HoldedCreditorReader.cs`).
 - A Holded outage costs account names, never a page; anything that is not a vendor failure throws
   (`src/Sections/Humans.Finance/Services/Service.cs:657`).
 - A payout transfer pays only a singly-bound account, never more than is owed, never more than the
   posted cap, and only to the IBAN Holded holds for the contact the binding names
-  (`src/Sections/Humans.Finance/Services/Service.cs:1076`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1082`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1103`,
+  (`src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
+  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
+  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
   `src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:174`).
 - An account with an unbooked transfer in an earlier file, or with duplicate documents in Holded,
   or whose documents cannot be read, is not paid again
-  (`src/Sections/Humans.Finance/Services/Service.cs:1088`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1096`).
+  (`src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
+  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`).
 - A generated file validates against the schema before it is stored, and is stored as sent
   (`src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:123`,
   `src/Sections/Humans.Finance/Services/Service.cs:1160`).
@@ -220,8 +224,8 @@ What the shapes say about the inside:
   `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:346`).
 - A duplicate document is deleted only when its notes match the push exactly; a contact is deleted
   only once every document it held was deleted without a failure
-  (`src/Sections/Humans.Finance/Services/Service.cs:1347`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1467`).
+  (`src/Sections/Humans.Finance/Services/HoldedDuplicateReview.cs`,
+  `src/Sections/Humans.Finance/Services/HoldedDuplicateReview.cs`).
 - A raw IBAN lives in the payment-details row, the bank file, the transfer row and the contact
   create that hands it to Holded; audit entries, exports and cross-section rows carry it masked
   (`src/Sections/Humans.Finance/Services/Service.cs:1117`,

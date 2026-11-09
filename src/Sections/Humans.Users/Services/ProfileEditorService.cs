@@ -9,6 +9,7 @@ internal sealed class ProfileEditorService(
 {
     /// <summary>Refusal key for a CV payload with no entries and no "no prior experience" tick.</summary>
     internal const string BurnerCvRequiredErrorKey = "Users_Profile_BurnerCVRequired";
+    internal const string InvalidLocationErrorKey = "Users_Profile_InvalidLocation";
 
     // Serializes each user's save so picture metadata and file writes stay ordered.
     private static readonly TrackedLock[] UserLocks = CreateUserLocks(32);
@@ -56,6 +57,10 @@ internal sealed class ProfileEditorService(
     // Enforced server-side regardless of caller.
     private static string? ValidateSaveRequest(ProfileSaveRequest request)
     {
+        if (request.Latitude is { } latitude && latitude is not (>= -90d and <= 90d)
+            || request.Longitude is { } longitude && longitude is not (>= -180d and <= 180d))
+            return InvalidLocationErrorKey;
+
         // Entries or "no prior experience", checked only when a CV payload is present: name-only
         // saves leave history untouched and must not be blocked.
         if (request.VolunteerHistory is { Count: 0 } && !request.NoPriorBurnExperience)

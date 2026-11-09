@@ -1,11 +1,9 @@
 using Humans.Governance.Contracts;
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.GoogleIntegration.Contracts;
@@ -36,6 +34,8 @@ internal sealed class AssemblyVoteService(
     ILogger<AssemblyVoteService> logger)
     : IAssemblyVoteService, IUserDataContributor, IUserMerge
 {
+    private readonly AssemblyVoteRosterBuilder rosterBuilder = new(applications, roleAssignments, teams, users, clock);
+    private readonly AssemblyVoteResultReader resultReader = new(repository, users, clock);
     private readonly AssemblyVoteDataExport dataExport = new(repository, users);
     private readonly AssemblyVoteDrafts drafts = new(repository, translation, clock, logger);
 
@@ -54,18 +54,6 @@ internal sealed class AssemblyVoteService(
     // uncapped, but it is copied into bounded email and notification columns after an
     // irreversible transition, so it is bounded at the draft while the vote is still editable.
     internal const int MaxTitleLength = AssemblyVoteDrafts.MaxTitleLength;         // assembly_votes.Title, per culture
-    internal const int MaxCancelReasonLength = 4000; // assembly_votes.CancelReason
-
-    /// <summary>Whether a value fits the column that will store it. Blank always fits.</summary>
-    private static bool Fits(string? value, int max) => AssemblyVoteDrafts.Fits(value, max);
-
-    /// <summary>
-    /// How long a Closed vote with no stored tally is left alone before a read treats it as
-    /// interrupted and finishes it. Long enough that a close still running its own tail is
-    /// never mistaken for a dead one; short enough that a real interruption is repaired by
-    /// the next read or the next hourly sweep.
-    /// </summary>
-    private static readonly Duration InterruptedCloseGrace = Duration.FromMinutes(5);
 
     /// <summary>
     /// Enums as names so a stored result survives CLR reordering; NodaTime because
@@ -75,397 +63,37 @@ internal sealed class AssemblyVoteService(
         new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } }
             .ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 
-    public async Task<IReadOnlyList<AssemblyVoteListItem>> GetVotesForMemberAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var votes = await SettleAllAsync(ct);
-        var items = new List<AssemblyVoteListItem>(votes.Count);
+    private AssemblyVoteMemberWorkflow Participation => new(
+        repository, Settlement, users, audit, effects, notificationResolve, clock);
 
-        // Members never see a draft. Chain ids are resolved once for the whole list: a member
-        // with no roster row of their own is the common case, and exactly the one that has to ask.
-        var chainIds = (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+    public Task<IReadOnlyList<AssemblyVoteListItem>> GetVotesForMemberAsync(
+        Guid userId, CancellationToken ct = default) =>
+        Participation.GetVotesForMemberAsync(userId, ct);
 
-        foreach (var vote in votes.Where(v => v.Status != AssemblyVoteStatus.Draft))
-        {
-            var roster = await EffectiveRosterAsync(vote.Id, userId, ct, chainIds);
-            var ballot = roster is null
-                ? null
-                : await repository.GetBallotForRosterAsync(vote.Id, roster.Id, ct);
+    public Task<AssemblyVoteDetail?> GetVoteForMemberAsync(
+        Guid voteId, Guid userId, CancellationToken ct = default) =>
+        Participation.GetVoteForMemberAsync(voteId, userId, ct);
 
-            items.Add(new AssemblyVoteListItem(
-                vote.Id,
-                Resolve(vote.Title, vote.OfficialCulture),
-                vote.Status,
-                vote.Kind,
-                vote.ClosesAt,
-                vote.ClosedAt,
-                IsOnRoster: roster is not null,
-                IsOfficial: roster?.IsOfficial ?? false,
-                HasBallot: ballot is not null,
-                await repository.GetParticipationAsync(vote.Id, ct)));
-        }
+    public Task<BallotSubmissionOutcome> CastBallotAsync(
+        Guid voteId, Guid userId, AssemblyBallotChoice choice,
+        IReadOnlyList<string>? ranking, CancellationToken ct = default) =>
+        Participation.CastBallotAsync(voteId, userId, choice, ranking, ct);
 
-        return items;
-    }
+    private AssemblyVoteSettlement Settlement => new(
+        repository, audit, clock, effects, resultReader, ResultJsonOptions, LapseJobName);
 
-    public async Task<AssemblyVoteDetail?> GetVoteForMemberAsync(
-        Guid voteId, Guid userId, CancellationToken ct = default)
-    {
-        var vote = await SettleAsync(voteId, ct);
-        if (vote is null) return null;
-        // Same rule as the list: a draft's id is not a back door to its official text.
-        if (vote.Status == AssemblyVoteStatus.Draft) return null;
+    private Task<AssemblyVote?> SettleAsync(Guid voteId, CancellationToken ct) =>
+        Settlement.SettleAsync(voteId, ct);
 
-        var roster = await EffectiveRosterAsync(voteId, userId, ct);
-        var ballot = roster is null
-            ? null
-            : await repository.GetBallotForRosterAsync(voteId, roster.Id, ct);
+    private Task<IReadOnlyList<AssemblyVote>> SettleAllAsync(CancellationToken ct) =>
+        Settlement.SettleAllAsync(ct);
 
-        return await DetailAsync(vote, roster, ballot, ct);
-    }
+    private Task FinishInterruptedCloseAsync(AssemblyVote vote, CancellationToken ct) =>
+        Settlement.FinishInterruptedCloseAsync(vote, ct);
 
-    /// <summary>
-    /// Builds the page model shared by the vote page and the results page. Carries the
-    /// viewer's own ballot but never anyone else's, and never a tally.
-    /// </summary>
-    private async Task<AssemblyVoteDetail> DetailAsync(
-        AssemblyVote vote,
-        AssemblyVoteRoster? roster,
-        AssemblyBallot? ballot,
-        CancellationToken ct)
-    {
-        var culture = CultureInfo.CurrentUICulture.Name;
-        var now = clock.GetCurrentInstant();
-
-        return new AssemblyVoteDetail(
-            vote.Id,
-            Resolve(vote.Title, vote.OfficialCulture),
-            Resolve(vote.OfficialText, vote.OfficialCulture),
-            vote.OfficialCulture,
-            // Only when the viewer's culture was actually authored: Resolve falls back to the
-            // official text, and labelling the binding text "a translation" would be wrong.
-            IsTranslation: vote.OfficialText.HasCulture(culture)
-                           && !culture.Equals(vote.OfficialCulture, StringComparison.OrdinalIgnoreCase),
-            SafeInfoUrl(vote.InfoUrl),
-            vote.Kind,
-            vote.RequiredMajority,
-            vote.IndicativeAudience,
-            vote.BallotDisclosure,
-            vote.Status,
-            vote.ClosesAt,
-            vote.ClosedAt,
-            vote.AssemblyDate,
-            vote.CancelReason,
-            IsOnRoster: roster is not null,
-            IsOfficial: roster?.IsOfficial ?? false,
-            CanCastBallot: roster is not null && vote.AcceptsBallotsAt(now),
-            vote.Options
-                .Select(o => new AssemblyVoteOptionView(
-                    o.Key, Resolve(o.Label, vote.OfficialCulture), o.Order))
-                .ToList(),
-            ballot is null ? null : BallotView(ballot),
-            await repository.GetParticipationAsync(vote.Id, ct));
-    }
-
-    private static AssemblyBallotView BallotView(AssemblyBallot ballot) =>
-        new(ballot.Choice,
-            ballot.Ranking,
-            ballot.Revision,
-            ballot.CastAt,
-            ballot.UpdatedAt,
-            ballot.History
-                .OrderBy(h => h.Revision)
-                .Select(h => new AssemblyBallotRevisionView(
-                    h.Revision, h.Choice, h.Ranking, h.RecordedAt))
-                .ToList());
-
-    public async Task<BallotSubmissionOutcome> CastBallotAsync(
-        Guid voteId,
-        Guid userId,
-        AssemblyBallotChoice choice,
-        IReadOnlyList<string>? ranking,
-        CancellationToken ct = default)
-    {
-        var vote = await SettleAsync(voteId, ct);
-        if (vote is null) return BallotSubmissionOutcome.NotFound;
-
-        var now = clock.GetCurrentInstant();
-        if (!vote.AcceptsBallotsAt(now)) return BallotSubmissionOutcome.VoteNotOpen;
-
-        // Entitlement comes from the frozen roster, never from the member's tier today: a
-        // member who lost their term mid-vote keeps the ballot the roster granted them.
-        var roster = await EffectiveRosterAsync(voteId, userId, ct);
-        if (roster is null) return BallotSubmissionOutcome.NotOnRoster;
-
-        if (!TryNormalizeBallot(vote, choice, ranking, out var normalizedRanking))
-        {
-            return BallotSubmissionOutcome.InvalidBallot;
-        }
-
-        var ballot = await repository.UpsertBallotAsync(
-            voteId, roster.Id, choice, normalizedRanking, now, ct);
-
-        // The vote closed while this submission was in flight. Nothing was written, and the
-        // member is told so rather than being shown a "recorded" they would not find in the
-        // published result.
-        if (ballot is null) return BallotSubmissionOutcome.VoteNotOpen;
-
-        // First cast vs change comes from the revision the locked upsert assigned: two first
-        // ballots can both read none. Neither entry records the choice, and the entity is the vote,
-        // never the ballot — audit rows outlive erasure, so a ballot id would re-link the person.
-        await audit.LogAsync(
-            ballot.Revision == 1 ? GovernanceAuditActions.AssemblyBallotCast : GovernanceAuditActions.AssemblyBallotChanged,
-            AuditEntityTypes.AssemblyVote,
-            voteId,
-            ballot.Revision == 1
-                ? $"Cast a ballot on assembly vote {voteId} (revision {ballot.Revision})."
-                : $"Changed their ballot on assembly vote {voteId} (revision {ballot.Revision}).",
-            userId);
-
-        await effects.AfterTransitionAsync(
-            "resolving the voter's open-vote notification", voteId,
-            token => notificationResolve.ResolveBySourceAsync(
-                userId, GovernanceNotificationSources.AssemblyVoteOpened, token, sourceKey: voteId.ToString()));
-
-        return BallotSubmissionOutcome.Recorded;
-    }
-
-    /// <summary>
-    /// Validates a submitted ballot against the vote's kind and options, and reduces a
-    /// ranked ballot to the ordered key list the counting rules expect.
-    /// </summary>
-    /// <remarks>
-    /// Rejects a choice that does not belong to the vote's kind, an unknown option key, and
-    /// a duplicate key. A partial ranking is accepted — unranked options are simply never
-    /// preferred — and so is an Abstain on a ranked vote.
-    /// </remarks>
-    private static bool TryNormalizeBallot(
-        AssemblyVote vote,
-        AssemblyBallotChoice choice,
-        IReadOnlyList<string>? ranking,
-        out IReadOnlyList<string>? normalized)
-    {
-        normalized = null;
-
-        if (vote.Kind == AssemblyVoteKind.YesNo)
-        {
-            return choice is AssemblyBallotChoice.Yes
-                or AssemblyBallotChoice.No
-                or AssemblyBallotChoice.Abstain;
-        }
-
-        if (choice == AssemblyBallotChoice.Abstain) return true;
-        if (choice != AssemblyBallotChoice.Ranked) return false;
-        if (ranking is null || ranking.Count == 0) return false;
-
-        var keys = vote.Options.Select(o => o.Key).ToHashSet(StringComparer.Ordinal);
-        if (ranking.Any(k => !keys.Contains(k))) return false;
-        if (ranking.Distinct(StringComparer.Ordinal).Count() != ranking.Count) return false;
-
-        normalized = ranking;
-        return true;
-    }
-
-    private static string Resolve(GovernanceLocalizedText text, string officialCulture) =>
-        text.Resolve(CultureInfo.CurrentUICulture.Name, officialCulture);
-
-    /// <summary>
-    /// Loads a vote and closes it first if its deadline has passed, so no caller can ever
-    /// observe an Open vote that should be Closed.
-    /// </summary>
-    private async Task<AssemblyVote?> SettleAsync(Guid voteId, CancellationToken ct)
-    {
-        var vote = await repository.GetByIdAsync(voteId, ct);
-        if (vote is null) return null;
-
-        return await SettleOneAsync(vote, ct);
-    }
-
-    /// <summary>
-    /// Brings one already-loaded vote up to date: closes it if its deadline has passed, and
-    /// finishes a close that was interrupted after its status went down. Returns the vote as
-    /// it now stands — which is not always the one passed in, because a close that loses to
-    /// somebody else's transition leaves this object stamped Closed in memory only.
-    /// </summary>
-    private async Task<AssemblyVote> SettleOneAsync(AssemblyVote vote, CancellationToken ct)
-    {
-        var now = clock.GetCurrentInstant();
-        if (vote.Status != AssemblyVoteStatus.Open || now < vote.ClosesAt)
-        {
-            await FinishInterruptedCloseAsync(vote, ct);
-            return vote;
-        }
-
-        if (await CloseAsync(vote, closedByUserId: null, GovernanceAuditActions.AssemblyVoteClosed,
-                $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
-        {
-            return vote;
-        }
-
-        // Refused: an Extend moved the deadline or another close landed first. CloseAsync already
-        // stamped this object Closed, so the row, not this object, is the truth.
-        return await repository.GetByIdAsync(vote.Id, ct) ?? vote;
-    }
-
-    /// <summary>
-    /// Closure writes the status first and everything else second (see <see cref="CloseAsync"/>).
-    /// A process that died in between left a vote that is closed but has no result, no retired
-    /// notification and no audit entry; whoever looks next finishes all three. Who closed it is
-    /// already persisted, so the replay attributes it exactly as the original would have.
-    /// </summary>
-    private async Task FinishInterruptedCloseAsync(AssemblyVote vote, CancellationToken ct)
-    {
-        if (vote.Status != AssemblyVoteStatus.Closed || vote.ResultJson is not null) return;
-
-        // A close that committed its status seconds ago is still running its own tail; only one
-        // that has stood past the grace period is taken over, or the audit entry would duplicate.
-        var readAt = vote.UpdatedAt;
-        if (clock.GetCurrentInstant() < readAt + InterruptedCloseGrace) return;
-
-        // And two readers arriving after that are still two. Bumping UpdatedAt from the value
-        // each of them read is the claim: exactly one write lands, and the loser leaves the
-        // tail to the winner.
-        vote.UpdatedAt = clock.GetCurrentInstant();
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Closed, readAt, ct)) return;
-
-        await FinishCloseAsync(
-            vote,
-            vote.ClosedByUserId,
-            vote.ClosedByUserId is null ? GovernanceAuditActions.AssemblyVoteClosed : GovernanceAuditActions.AssemblyVoteStopped,
-            vote.ClosedByUserId is null
-                ? $"Assembly vote {vote.Id} closed automatically at its announced time."
-                : $"Stopped assembly vote {vote.Id} before its announced closing time.",
-            ct);
-    }
-
-    private async Task<IReadOnlyList<AssemblyVote>> SettleAllAsync(CancellationToken ct)
-    {
-        var votes = await repository.GetAllAsync(ct);
-
-        var settled = new List<AssemblyVote>(votes.Count);
-        foreach (var vote in votes)
-        {
-            settled.Add(await SettleOneAsync(vote, ct));
-        }
-
-        return settled;
-    }
-
-    /// <summary>
-    /// The single close path: computes the result once, stores it on the vote, resolves the
-    /// open-vote notification, and audits. Every way a vote can close funnels through here
-    /// so a closed vote always has exactly one stored result.
-    /// </summary>
-    private async Task<bool> CloseAsync(
-        AssemblyVote vote,
-        Guid? closedByUserId,
-        AuditActionDefinition action,
-        string description,
-        CancellationToken ct)
-    {
-        var now = clock.GetCurrentInstant();
-
-        vote.Status = AssemblyVoteStatus.Closed;
-        // A lapsed vote closed at its announced time, whenever it was noticed; the acta prints
-        // ClosedAt into the legal summary. An Admin Stop really does close it now.
-        vote.ClosedAt = closedByUserId is null ? vote.ClosesAt : now;
-        vote.ClosedByUserId = closedByUserId;
-        vote.UpdatedAt = now;
-
-        // The status is persisted *before* the ballots are read: from that commit on,
-        // UpsertBallotAsync refuses, so every accepted ballot is in the table when counting looks.
-        // Refused means another actor closed or extended first and owns the whole tail.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct: ct)) return false;
-
-        await FinishCloseAsync(vote, closedByUserId, action, description, ct);
-        return true;
-    }
-
-    /// <summary>
-    /// Everything a close owes after its status is down; <see cref="SettleAsync"/> replays it. The
-    /// stored result is written last because its absence is what the replay looks for: the worst a
-    /// crash costs is a duplicate close entry, never a missing one.
-    /// </summary>
-    private async Task FinishCloseAsync(
-        AssemblyVote vote,
-        Guid? closedByUserId,
-        AuditActionDefinition action,
-        string description,
-        CancellationToken ct)
-    {
-        await effects.ClearOpenNotificationAsync(vote, closedByUserId, ct);
-
-        if (closedByUserId is { } actor)
-        {
-            await audit.LogAsync(action, AuditEntityTypes.AssemblyVote, vote.Id, description, actor);
-        }
-        else
-        {
-            await audit.LogAsync(action, AuditEntityTypes.AssemblyVote, vote.Id, description, LapseJobName);
-        }
-
-        await StoreResultAsync(vote, ct);
-    }
-
-    /// <summary>Stores the tally on the already-closed vote; also the settle path's repair.</summary>
-    private async Task StoreResultAsync(AssemblyVote vote, CancellationToken ct)
-    {
-        var result = await ComputeResultAsync(vote, ct);
-        vote.ResultJson = JsonSerializer.Serialize(result, ResultJsonOptions);
-
-        // Closed is the state this write expects and the one it leaves: the tally lands on the
-        // row the close already stamped, and a vote cancelled out from under it gets nothing.
-        await repository.UpdateAsync(vote, AssemblyVoteStatus.Closed, ct: ct);
-    }
-
-    /// <summary>
-    /// Counts the vote's ballots into a storable result: the official audience always, the
-    /// indicative audience separately when the vote has one. The two are never merged.
-    /// </summary>
-    private async Task<AssemblyVoteResult> ComputeResultAsync(AssemblyVote vote, CancellationToken ct)
-    {
-        var roster = await repository.GetRosterAsync(vote.Id, ct);
-        var ballots = await repository.GetBallotsAsync(vote.Id, ct);
-        var byRoster = ballots.ToDictionary(b => b.RosterId);
-
-        var official = Tally(vote, roster.Where(r => r.IsOfficial).ToList(), byRoster);
-        var indicative = vote.IndicativeAudience == IndicativeAudience.None
-            ? null
-            : Tally(vote, roster.Where(r => !r.IsOfficial).ToList(), byRoster);
-
-        return new AssemblyVoteResult(
-            official,
-            indicative,
-            vote.Kind == AssemblyVoteKind.YesNo
-                ? AssemblyVoteMethod.YesNo
-                : AssemblyVoteMethod.InstantRunoff,
-            clock.GetCurrentInstant());
-    }
-
-    private static AssemblyVoteAudienceResult Tally(
-        AssemblyVote vote,
-        IReadOnlyList<AssemblyVoteRoster> audience,
-        Dictionary<Guid, AssemblyBallot> ballotsByRoster)
-    {
-        var cast = audience
-            .Select(r => ballotsByRoster.GetValueOrDefault(r.Id))
-            .OfType<AssemblyBallot>()
-            .Select(b => new AssemblyVoteCounting.CountableBallot(b.Choice, b.Ranking))
-            .ToList();
-
-        if (vote.Kind == AssemblyVoteKind.YesNo)
-        {
-            var (tally, verdict) = AssemblyVoteCounting.CountYesNo(cast, vote.RequiredMajority);
-            return new AssemblyVoteAudienceResult(
-                audience.Count, cast.Count, tally, null, null, verdict, []);
-        }
-
-        var (rounds, winner, rankedVerdict, notes) = AssemblyVoteCounting.CountInstantRunoff(
-            cast, vote.Options.ToList());
-
-        return new AssemblyVoteAudienceResult(
-            audience.Count, cast.Count, null, rounds, winner, rankedVerdict, notes);
-    }
+    private Task<bool> CloseAsync(
+        AssemblyVote vote, Guid? closedByUserId, AuditActionDefinition action, string description, CancellationToken ct) =>
+        Settlement.CloseAsync(vote, closedByUserId, action, description, ct);
 
     public async Task<AssemblyVoteResultsView?> GetResultsAsync(
         Guid voteId, Guid userId, bool viewerIsBoardOrAdmin, CancellationToken ct = default)
@@ -484,7 +112,7 @@ internal sealed class AssemblyVoteService(
             return null;
         }
 
-        var roster = await EffectiveRosterAsync(voteId, userId, ct);
+        var roster = await Participation.EffectiveRosterAsync(voteId, userId, ct);
         var ownBallot = roster is null
             ? null
             : await repository.GetBallotForRosterAsync(voteId, roster.Id, ct);
@@ -492,7 +120,7 @@ internal sealed class AssemblyVoteService(
         var disclose = viewerIsBoardOrAdmin
                        || (vote.BallotDisclosure == BallotDisclosure.RosterSeesNames && roster is not null);
 
-        var disclosed = disclose ? await DisclosureRowsAsync(voteId, ct) : null;
+        var disclosed = disclose ? await resultReader.DisclosureRowsAsync(voteId, ct) : null;
 
         if (viewerIsBoardOrAdmin)
         {
@@ -503,64 +131,11 @@ internal sealed class AssemblyVoteService(
         }
 
         return new AssemblyVoteResultsView(
-            await DetailAsync(vote, roster, ownBallot, ct),
+            await Participation.DetailAsync(vote, roster, ownBallot, ct),
             result,
-            await PeekViewsAsync(voteId, ct),
+            await resultReader.PeekViewsAsync(voteId, ct),
             disclosed,
-            AssemblyVotePresentation.BuildActa(vote, result, await ClosedByNameAsync(vote, ct)));
-    }
-
-    /// <summary>Every standing ballot with its voter's name, for a disclosed results view.</summary>
-    private async Task<IReadOnlyList<AssemblyBallotDisclosureRow>> DisclosureRowsAsync(
-        Guid voteId, CancellationToken ct)
-    {
-        var roster = await repository.GetRosterAsync(voteId, ct);
-        var ballots = await repository.GetBallotsAsync(voteId, ct);
-        var byRoster = ballots.ToDictionary(b => b.RosterId);
-
-        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
-        var infos = await users.GetUserInfosAsync(userIds, ct);
-
-        return roster
-            .Select(r => (Roster: r, Ballot: byRoster.GetValueOrDefault(r.Id)))
-            .Where(x => x.Ballot is not null)
-            .Select(x => new AssemblyBallotDisclosureRow(
-                x.Roster.UserId,
-                x.Roster.UserId is { } id && infos.TryGetValue(id, out var info)
-                    ? info.BurnerName
-                    // An erased roster row keeps its ballot but loses its name — the count
-                    // stays right and the person is gone, which is what Art. 17 asks for.
-                    : "—",
-                x.Roster.IsOfficial,
-                x.Ballot!.Choice,
-                x.Ballot.Ranking,
-                x.Ballot.Revision))
-            .ToList();
-    }
-
-    private async Task<IReadOnlyList<AssemblyVotePeekView>> PeekViewsAsync(
-        Guid voteId, CancellationToken ct)
-    {
-        var peeks = await repository.GetPeeksAsync(voteId, ct);
-        if (peeks.Count == 0) return [];
-
-        return peeks
-            .Select(p => new AssemblyVotePeekView(
-                p.AdminUserId,
-                p.PeekedAt))
-            .ToList();
-    }
-
-    /// <summary>
-    /// The name of the admin who stopped the vote, for the acta. Null when the vote lapsed
-    /// at its announced time (nobody closed it) or when the account no longer resolves —
-    /// the acta says "an administrator" then rather than inventing a name.
-    /// </summary>
-    private async Task<string?> ClosedByNameAsync(AssemblyVote vote, CancellationToken ct)
-    {
-        if (vote.ClosedByUserId is not { } closerId) return null;
-        var infos = await users.GetUserInfosAsync([closerId], ct);
-        return infos.TryGetValue(closerId, out var info) ? info.BurnerName : null;
+            AssemblyVotePresentation.BuildActa(vote, result, await resultReader.ClosedByNameAsync(vote, ct)));
     }
 
     public async Task<IReadOnlyList<AssemblyVoteListItem>> GetAllForAdminAsync(
@@ -575,7 +150,7 @@ internal sealed class AssemblyVoteService(
         {
             items.Add(new AssemblyVoteListItem(
                 vote.Id,
-                Resolve(vote.Title, vote.OfficialCulture),
+                AssemblyVoteMemberWorkflow.Resolve(vote.Title, vote.OfficialCulture),
                 vote.Status,
                 vote.Kind,
                 vote.ClosesAt,
@@ -606,234 +181,24 @@ internal sealed class AssemblyVoteService(
     public Task<AssemblyVoteActionResult> DeleteDraftAsync(Guid voteId, Guid actorUserId, CancellationToken ct = default) =>
         drafts.DeleteDraftAsync(voteId, actorUserId, ct);
 
-    private static string? SafeInfoUrl(string? url) => AssemblyVoteDrafts.SafeInfoUrl(url);
+    private AssemblyVoteAdministration Administration => new(
+        repository, rosterBuilder, Settlement, effects, audit, clock);
 
-    public async Task<AssemblyVoteActionResult> OpenAsync(
-        Guid voteId, Guid adminUserId, CancellationToken ct = default)
-    {
-        var vote = await repository.GetByIdAsync(voteId, ct);
-        if (vote is null) return AssemblyVoteActionResult.NotFound;
-        if (vote.Status != AssemblyVoteStatus.Draft) return AssemblyVoteActionResult.WrongState;
+    public Task<AssemblyVoteActionResult> OpenAsync(
+        Guid voteId, Guid adminUserId, CancellationToken ct = default) =>
+        Administration.OpenAsync(voteId, adminUserId, ct);
 
-        var now = clock.GetCurrentInstant();
-        if (vote.ClosesAt <= now) return AssemblyVoteActionResult.Invalid;
+    public Task<AssemblyVoteActionResult> StopAsync(
+        Guid voteId, Guid adminUserId, CancellationToken ct = default) =>
+        Administration.StopAsync(voteId, adminUserId, ct);
 
-        var roster = await BuildRosterAsync(vote, ct);
-        if (roster.Count == 0) return AssemblyVoteActionResult.Invalid;
+    public Task<AssemblyVoteActionResult> ExtendAsync(
+        Guid voteId, Instant newClosesAt, Guid adminUserId, CancellationToken ct = default) =>
+        Administration.ExtendAsync(voteId, newClosesAt, adminUserId, ct);
 
-        // Building the roster reads three other sections, so the announced deadline can pass
-        // while it runs. A vote that opens already lapsed is open for no time at all: the next
-        // sweep closes it, having given its electorate no chance to vote.
-        now = clock.GetCurrentInstant();
-        if (vote.ClosesAt <= now) return AssemblyVoteActionResult.Invalid;
-
-        vote.Status = AssemblyVoteStatus.Open;
-        vote.OpenedAt = now;
-        vote.OpenedByUserId = adminUserId;
-        // UpdatedAt is deliberately left as read: the repository compares it against the
-        // persisted row to tell a draft edit that landed while this roster was being built
-        // from this open, and stamps it once the open is accepted.
-
-        // Refused means somebody else opened this vote while its roster was being built.
-        // Theirs is the roster that counts, and nothing below should run a second time.
-        if (!await repository.OpenWithRosterAsync(vote, roster, ct))
-            return AssemblyVoteActionResult.WrongState;
-
-        var officialCount = roster.Count(r => r.IsOfficial);
-        await effects.AfterTransitionAsync(
-            "auditing the vote opening", vote.Id,
-            _ => audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
-                $"Opened assembly vote {vote.Id}: {officialCount} official and "
-                + $"{roster.Count - officialCount} indicative roster members.",
-                adminUserId));
-
-        await effects.AfterTransitionAsync(
-            "notifying the roster that the vote opened", vote.Id,
-            token => effects.NotifyRosterOpenedAsync(vote, roster, token));
-        return AssemblyVoteActionResult.Ok;
-    }
-
-    /// <summary>
-    /// Snapshots who may vote, at this instant, from Governance's own data: active Approved
-    /// Asociado terms and the active Board role holders as official, plus the configured
-    /// indicative audience.
-    /// </summary>
-    /// <remarks>
-    /// Board members are de facto Asociados and sit on the official roster whatever their
-    /// profile tier says. A person reachable through more than one source gets exactly one
-    /// row, official if any source made them official.
-    /// </remarks>
-    private async Task<List<AssemblyVoteRoster>> BuildRosterAsync(
-        AssemblyVote vote, CancellationToken ct)
-    {
-        var today = clock.GetCurrentInstant().InUtc().Date;
-
-        var asociados = await applications.GetActiveApprovedTierUserIdsAsync(
-            MembershipTier.Asociado, today, ct);
-        var board = await roleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
-
-        var tiers = new Dictionary<Guid, MembershipTier>();
-        var official = new HashSet<Guid>();
-        var indicative = new HashSet<Guid>();
-        var boardMembers = board.ToHashSet();
-
-        foreach (var id in asociados)
-        {
-            official.Add(id);
-            tiers[id] = MembershipTier.Asociado;
-        }
-
-        foreach (var id in boardMembers)
-        {
-            official.Add(id);
-            tiers.TryAdd(id, MembershipTier.Asociado);
-        }
-
-        if (vote.IndicativeAudience is IndicativeAudience.Colaboradores or IndicativeAudience.AllMembers)
-        {
-            var colaboradores = await applications.GetActiveApprovedTierUserIdsAsync(
-                MembershipTier.Colaborador, today, ct);
-            foreach (var id in colaboradores.Where(id => !official.Contains(id)))
-            {
-                indicative.Add(id);
-                tiers.TryAdd(id, MembershipTier.Colaborador);
-            }
-        }
-
-        if (vote.IndicativeAudience == IndicativeAudience.AllMembers)
-        {
-            var volunteers = await teams.GetTeamAsync(SystemTeamIds.Volunteers, ct);
-            foreach (var member in volunteers?.Members ?? [])
-            {
-                if (official.Contains(member.UserId) || indicative.Contains(member.UserId)) continue;
-                indicative.Add(member.UserId);
-                tiers.TryAdd(member.UserId, MembershipTier.Volunteer);
-            }
-        }
-
-        // A suspended or deleted account keeps no entitlement: the roster is who could vote
-        // when it was frozen, and an inactive account could not.
-        var candidates = official.Concat(indicative).ToList();
-        var infos = await users.GetUserInfosAsync(candidates, ct);
-
-        return candidates
-            .Where(id => infos.TryGetValue(id, out var info) && info.State == UserState.Active)
-            .Select(id => new AssemblyVoteRoster
-            {
-                Id = Guid.NewGuid(),
-                VoteId = vote.Id,
-                UserId = id,
-                Tier = tiers.GetValueOrDefault(id, MembershipTier.Volunteer),
-                IsBoardMember = boardMembers.Contains(id),
-                IsOfficial = official.Contains(id)
-            })
-            .ToList();
-    }
-
-    public async Task<AssemblyVoteActionResult> StopAsync(
-        Guid voteId, Guid adminUserId, CancellationToken ct = default)
-    {
-        // Settle first: past ClosesAt the vote is already closed, and stopping it then would
-        // attribute a lapse to the admin who happened to click.
-        var vote = await SettleAsync(voteId, ct);
-        if (vote is null) return AssemblyVoteActionResult.NotFound;
-        if (vote.Status != AssemblyVoteStatus.Open) return AssemblyVoteActionResult.WrongState;
-
-        // Refused means the vote reached a terminal state first — its own lapse, or another
-        // admin's stop. The vote is closed either way, but not by this request.
-        if (!await CloseAsync(vote, adminUserId, GovernanceAuditActions.AssemblyVoteStopped,
-                $"Stopped assembly vote {vote.Id} before its announced closing time.", ct))
-        {
-            return AssemblyVoteActionResult.WrongState;
-        }
-
-        return AssemblyVoteActionResult.Ok;
-    }
-
-    public async Task<AssemblyVoteActionResult> ExtendAsync(
-        Guid voteId, Instant newClosesAt, Guid adminUserId, CancellationToken ct = default)
-    {
-        var vote = await SettleAsync(voteId, ct);
-        if (vote is null) return AssemblyVoteActionResult.NotFound;
-        if (vote.Status != AssemblyVoteStatus.Open) return AssemblyVoteActionResult.WrongState;
-
-        // Only later. Shortening a vote the electorate has already been given a deadline for
-        // is what Stop is for, and Stop is explicit about being a stop.
-        if (newClosesAt <= vote.ClosesAt) return AssemblyVoteActionResult.Invalid;
-
-        var previous = vote.ClosesAt;
-        // The revision this extension was built from: two concurrent Extends must not let the
-        // shorter commit second and move the electorate's deadline backwards.
-        var readAt = vote.UpdatedAt;
-        var extendedAt = clock.GetCurrentInstant();
-        vote.ClosesAt = newClosesAt;
-        vote.UpdatedAt = extendedAt;
-
-        // The vote closed, or was extended by somebody else, between the read above and this
-        // write. Nothing was extended, and "only an open vote can be extended" is the honest
-        // answer: the admin re-reads the new deadline and extends from that.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, readAt, ct))
-            return AssemblyVoteActionResult.WrongState;
-
-        await effects.AfterTransitionAsync(
-            "auditing the extension", vote.Id,
-            _ => audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
-                $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
-                adminUserId));
-
-        // Re-arm the T-24h reminder: stamps up to now mean "told about the old deadline"; later
-        // stamps come from a sweep already announcing the new one. Post-transition, not on the
-        // request token: there is no replay for an extension.
-        await effects.AfterTransitionAsync(
-            "re-arming the reminder after the extension", vote.Id,
-            token => repository.ClearReminderStampsAsync(vote.Id, extendedAt, token));
-
-        return AssemblyVoteActionResult.Ok;
-    }
-
-    public async Task<AssemblyVoteActionResult> CancelAsync(
-        Guid voteId, string reason, Guid adminUserId, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(reason)) return AssemblyVoteActionResult.Invalid;
-        // Its own column is varchar(4000); over that the update dies on the insert, which is
-        // a 500 where "that cancellation was rejected" is the honest answer.
-        if (!Fits(reason, MaxCancelReasonLength)) return AssemblyVoteActionResult.Invalid;
-
-        // Settle first: a vote whose deadline has passed is Closed with its result stored,
-        // and cancelling it then would erase that result and the decision it recorded.
-        var vote = await SettleAsync(voteId, ct);
-        if (vote is null) return AssemblyVoteActionResult.NotFound;
-        if (vote.Status != AssemblyVoteStatus.Open) return AssemblyVoteActionResult.WrongState;
-
-        var now = clock.GetCurrentInstant();
-        vote.Status = AssemblyVoteStatus.Cancelled;
-        vote.ClosedAt = now;
-        vote.ClosedByUserId = adminUserId;
-        vote.CancelReason = reason;
-        vote.UpdatedAt = now;
-
-        // No result is computed: a cancelled vote decided nothing, and the ballots stay only
-        // as a record that it was attempted. A refused write means the vote closed first,
-        // and a closed vote is never cancelled out of its result.
-        if (!await repository.UpdateAsync(vote, AssemblyVoteStatus.Open, ct: ct))
-            return AssemblyVoteActionResult.WrongState;
-
-        await effects.ClearOpenNotificationAsync(vote, adminUserId, ct);
-
-        await effects.AfterTransitionAsync(
-            "auditing the vote cancellation", vote.Id,
-            _ => audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
-                $"Cancelled assembly vote {vote.Id}: {reason}",
-                adminUserId));
-
-        await effects.AfterTransitionAsync(
-            "notifying the roster that the vote was cancelled", vote.Id,
-            token => effects.NotifyRosterCancelledAsync(vote, token));
-        return AssemblyVoteActionResult.Ok;
-    }
+    public Task<AssemblyVoteActionResult> CancelAsync(
+        Guid voteId, string reason, Guid adminUserId, CancellationToken ct = default) =>
+        Administration.CancelAsync(voteId, reason, adminUserId, ct);
 
     public async Task<(AssemblyVoteResult? Result, bool Recorded)> PeekAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default)
@@ -877,7 +242,7 @@ internal sealed class AssemblyVoteService(
             GovernanceAuditActions.AssemblyVotePeeked, AuditEntityTypes.AssemblyVote, vote.Id,
             $"Peeked at the live tally of open assembly vote {vote.Id}.", adminUserId);
 
-        return (await ComputeResultAsync(vote, ct), true);
+        return (await resultReader.ComputeResultAsync(vote, ct), true);
     }
 
     public async Task<IReadOnlyList<AssemblyBallotDisclosureRow>?> GetBallotsForBoardAsync(
@@ -894,43 +259,7 @@ internal sealed class AssemblyVoteService(
             GovernanceAuditActions.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
             $"Listed the individual ballots of assembly vote {voteId}.", actorUserId);
 
-        return await DisclosureRowsAsync(voteId, ct);
-    }
-
-    /// <summary>
-    /// The roster row entitling this human: their own, or one left on an account merged into
-    /// theirs. A row already carrying a ballot wins, so a human enrolled twice amends their ballot
-    /// rather than casting a second; two ballot-bearing rows resolve to the first by id.
-    /// </summary>
-    private async Task<AssemblyVoteRoster?> EffectiveRosterAsync(
-        Guid voteId, Guid userId, CancellationToken ct, IReadOnlyList<Guid>? chainIds = null)
-    {
-        // Every id the human has held: the resolved record's own id first and the archived
-        // ids after it in id order, not set enumeration order, which comes out of a cache
-        // and is not stable, and which row a member is shown must not vary between reads.
-        chainIds ??= (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-        if (chainIds.Count == 1) return await repository.GetRosterRowAsync(voteId, chainIds[0], ct);
-
-        var candidates = new List<AssemblyVoteRoster>(chainIds.Count);
-        foreach (var id in chainIds)
-        {
-            if (await repository.GetRosterRowAsync(voteId, id, ct) is { } row)
-            {
-                candidates.Add(row);
-            }
-        }
-
-        if (candidates.Count <= 1) return candidates.FirstOrDefault();
-
-        foreach (var candidate in candidates)
-        {
-            if (await repository.GetBallotForRosterAsync(voteId, candidate.Id, ct) is not null)
-            {
-                return candidate;
-            }
-        }
-
-        return candidates[0];
+        return await resultReader.DisclosureRowsAsync(voteId, ct);
     }
 
     public async Task<int> RunLapseAndReminderSweepAsync(CancellationToken ct = default)
@@ -939,7 +268,19 @@ internal sealed class AssemblyVoteService(
 
         // Reminders first: closing a lapsed vote makes its roster ineligible for one.
         var failures = new List<Exception>();
-        await effects.SendRemindersAsync(now, failures, ct);
+        try
+        {
+            await effects.SendRemindersAsync(now, failures, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            failures.Add(ex);
+            logger.LogError(ex, "Assembly reminder discovery failed; continuing vote closure and recovery.");
+        }
 
         var lapsed = await repository.GetLapsedOpenVotesAsync(now, ct);
         var closed = 0;
@@ -966,7 +307,19 @@ internal sealed class AssemblyVoteService(
         foreach (var vote in await repository.GetAllAsync(ct))
         {
             await FinishInterruptedCloseAsync(vote, ct);
-            await effects.RetryOpenedEmailsAsync(vote, failures, ct);
+            try
+            {
+                await effects.RetryOpenedEmailsAsync(vote, failures, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                failures.Add(ex);
+                logger.LogError(ex, "Assembly vote {VoteId}: opening-email retry preparation failed.", vote.Id);
+            }
         }
 
         if (failures.Count > 0)

@@ -96,7 +96,7 @@
             var personalTable = TableModel.For(Model.Personal.Events)
                 .Column(Localizer["Events_ColEventName"].Value, r => r.Title)
                 .Column(Localizer["Events_ColCategory"].Value, r => r.CategoryName)
-                .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime())
+                .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime(), c => c.Css("text-nowrap"))
                 .Template(SharedLocalizer["Common_Status"].Value, personalStatusCell)
                 .Template(Localizer["Events_ColActions"].Value, personalActionsCell, c => c.NoSort())
                 .Build();
@@ -175,7 +175,7 @@
                 var barrioTable = TableModel.For(barrio.Events)
                     .Column(Localizer["Events_ColEventName"].Value, r => r.Title)
                     .Column(Localizer["Events_ColCategory"].Value, r => r.CategoryName)
-                    .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime())
+                    .Column(Localizer["Events_ColDateTime"].Value, r => r.StartAt.ToMonthDayTime(), c => c.Css("text-nowrap"))
                     .Column(Localizer["Events_ColPriority"].Value, r => r.PriorityRank)
                     .Template(SharedLocalizer["Common_Status"].Value, barrioStatusCell)
                     .Template(Localizer["Events_ColActions"].Value, barrioActionsCell, c => c.NoSort())

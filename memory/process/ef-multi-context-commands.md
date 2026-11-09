@@ -39,7 +39,7 @@ dotnet ef migrations has-pending-model-changes --context <C> \
 
 - Never run a bare `dotnet ef migrations add` / `remove` / `database update` — pick the context
   first. Which context owns the table is the section boundary question; see the table ownership map in
-  `docs/architecture/design-rules.md` §8.
+  `docs/architecture/design-rules.md`, *Service ownership*.
 - `--startup-project src/Humans.Web` never changes. `--project` is the project that *contains
   the context*: `src/Sections/Humans.<Section>` for a section, `src/Humans.Web` for the
   platform context. The runtime and design-time `MigrationsAssembly` both derive from the context's own

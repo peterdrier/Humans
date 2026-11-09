@@ -74,8 +74,8 @@ public sealed record SepaPayoutTransferRow(
         }
     }
 
-    /// <summary>An attempt posted payments and stopped before booking. Holded drops the tag on a purchase payment, so a
-    /// retry would post over them; the transfer is settled in Holded by hand instead.</summary>
+    /// <summary>An attempt posted payments and stopped before booking. Holded drops the tag on a purchase payment, so the
+    /// retry reads these ids back off the member's documents and posts only the rest.</summary>
     public bool PostedButNotBooked => !IsBooked && HoldedPaymentRefs is { Length: > 0 };
 
     /// <summary>The <c>CandidateBankMovement*</c> fields describe the found line so the treasurer can recognise it before

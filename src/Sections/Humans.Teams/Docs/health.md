@@ -17,7 +17,8 @@ roster.
 
 Every membership change made one at a time is audit-logged, mirrored to the team's Google
 resources, and reflected in the Coordinators system team when a management role is involved.
-Deactivating a team closes its memberships in bulk and does none of the three (§4).
+Deactivating a team closes its memberships in bulk, audits each closure and reconciles its department
+coordinators’ system-team membership. Google resources stay active until reconciliation revokes access.
 
 ## 2. The shapes
 
@@ -92,8 +93,8 @@ The shapes imply:
   audited.
 - Every membership add/remove made one at a time is audit-logged and mirrored to Google (add
   inline, remove via the nightly reconciliation); the outbox append commits with the team write.
-  Deactivating a team is the exception: `DeleteTeamAsync` closes its live memberships in bulk
-  and logs only, leaving the Board no audit record — ledgered in `Docs/debt.yml`.
+  `DeleteTeamAsync` closes live memberships in bulk, audits every closure before downstream
+  reconciliation and refreshes affected department coordinators’ system-team membership.
 - Slugs are unique across `Slug` and `CustomSlug`; both resolve.
 - Erasure ends live memberships and hard-deletes join requests and EE grants; membership
   rows themselves are retained by legal basis.

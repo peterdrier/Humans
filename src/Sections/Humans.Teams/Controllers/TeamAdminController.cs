@@ -2,7 +2,6 @@ using Humans.GoogleIntegration.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Teams.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Tickets.Contracts;
 using Humans.Base.Extensions;
@@ -28,6 +27,7 @@ internal sealed class TeamAdminController(
     ITicketService tickets)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
+    private readonly TeamMembersPageBuilder membersPageBuilder = new(teamService, teamResourceService, userService);
     private readonly ITeamManagementService _teamService = teamService;
     private readonly IUserService _userService = userService;
     private readonly ITicketService _tickets = tickets;
@@ -106,120 +106,17 @@ internal sealed class TeamAdminController(
     public async Task<IActionResult> Members(string slug, int page = 1)
     {
         if (page < 1) page = 1;
-        var pageSize = 20;
         var (teamError, user, team, canManage) = await ResolveTeamViewAsync(slug, HttpContext.RequestAborted);
         if (teamError is not null)
         {
             return teamError;
         }
 
-        var allMembers = team.Members
-            .OrderBy(m => m.Role)
-            .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var totalCount = allMembers.Count;
-
-        var pagedMembers = allMembers
-            .Skip((int)Math.Min(((long)page - 1) * pageSize, totalCount))
-            .Take(pageSize)
-            .ToList();
-
-        var pagedMemberInfos = await _userService.GetUserInfosAsync(pagedMembers.Select(m => m.UserId).ToList(), HttpContext.RequestAborted);
-
-        var members = pagedMembers
-            .Select(m =>
-            {
-                var nobodiesEmail = pagedMemberInfos.TryGetValue(m.UserId, out var info)
-                    ? info.UserEmails.FirstOrDefault(e => e.IsVerified
-                        && e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))?.Email
-                    : null;
-
-                return new TeamMemberViewModel
-                {
-                    UserId = m.UserId,
-                    Email = m.Email ?? "",
-                    Role = m.Role,
-                    JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                    IsCoordinator = m.Role == TeamMemberRole.Coordinator,
-                    NobodiesTeamEmail = nobodiesEmail,
-                    LiveUserId = info?.Id ?? m.UserId
-                };
-            }).ToList();
-
-        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id, HttpContext.RequestAborted);
-        var pendingRequestViewModels = pendingRequests
-            .Select(r => new TeamJoinRequestViewModel
-            {
-                Id = r.Id,
-                UserId = r.UserId,
-                Message = r.Message,
-                RequestedAt = r.RequestedAt.ToDateTimeUtc()
-            }).ToList();
-
-        var allTeamResources = await teamResourceService.GetTeamResourcesAsync(team.Id, HttpContext.RequestAborted);
-        var teamResources = allTeamResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
-
-        var parentDepartmentResources = new List<GoogleResourceSnapshot>();
-        string? parentDepartmentName = null;
-        if (team.ParentTeamId is { } parentTeamId &&
-            await _teamService.GetTeamAsync(parentTeamId, HttpContext.RequestAborted) is { } parentTeam)
-        {
-            parentDepartmentName = parentTeam.Name;
-            var allParentResources = await teamResourceService.GetTeamResourcesAsync(parentTeam.Id, HttpContext.RequestAborted);
-            parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
-        }
-
-        var viewModel = new TeamMembersViewModel
-        {
-            TeamId = team.Id,
-            TeamName = team.Name,
-            TeamSlug = team.Slug,
-            IsSystemTeam = team.IsSystemTeam,
-            CanManage = canManage,
-            CanManageRoles = canManage && !team.IsSystemTeam,
-            CanProvisionEmails = canManage,
-            Members = members,
-            AllMemberUserIds = allMembers.Select(m => m.UserId).ToList(),
-            PendingRequests = pendingRequestViewModels,
-            TotalCount = totalCount,
-            PageNumber = page,
-            PageSize = pageSize,
-            TeamResources = teamResources.Select(MapResourceAccess).ToList(),
-            ParentDepartmentResources = parentDepartmentResources.Select(MapResourceAccess).ToList(),
-            ParentDepartmentName = parentDepartmentName,
-            IsSensitive = team.IsSensitive,
-            ActorUserId = user.Id
-        };
+        var viewModel = await membersPageBuilder.BuildAsync(
+            team, user.Id, canManage, page, HttpContext.RequestAborted);
 
         return View(viewModel);
     }
-
-    private static ResourceAccessViewModel MapResourceAccess(GoogleResourceSnapshot r) => new()
-    {
-        Name = r.Name,
-        ResourceType = r.ResourceType switch
-        {
-            GoogleResourceType.DriveFolder => "Drive Folder",
-            GoogleResourceType.SharedDrive => "Shared Drive",
-            GoogleResourceType.DriveFile => "Drive File",
-            GoogleResourceType.Group => "Google Group",
-            _ => r.ResourceType.ToString()
-        },
-        PermissionLevel = r.ResourceType == GoogleResourceType.Group
-            ? null
-            : r.DrivePermissionLevel != DrivePermissionLevel.None
-                ? r.DrivePermissionLevel.ToString()
-                : null,
-        Url = r.Url,
-        IconClass = r.ResourceType switch
-        {
-            GoogleResourceType.DriveFolder => "fa-solid fa-folder",
-            GoogleResourceType.SharedDrive => "fa-solid fa-hard-drive",
-            GoogleResourceType.DriveFile => "fa-solid fa-file",
-            GoogleResourceType.Group => "fa-solid fa-users",
-            _ => "fa-solid fa-link"
-        }
-    };
 
     /// <summary>
     /// The policy narrows <see cref="HumansTeamControllerBase.ResolveTeamViewAsync"/>, which also passes
@@ -595,16 +492,14 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        var result = await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
+            logger.LogWarning("Role assignment refused for member {MemberUserId}, role {RoleId}, team {TeamId} by user {UserId}: {Reason}", model.UserId, roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Member assigned to role.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(Roles), new { slug });
     }
@@ -619,16 +514,14 @@ internal sealed class TeamAdminController(
             return teamError;
         }
 
-        try
+        var result = await _teamService.UnassignFromRoleAsync(roleId, memberId, user.Id);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.UnassignFromRoleAsync(roleId, memberId, user.Id);
+            logger.LogWarning("Role unassignment refused for member {MemberId}, role {RoleId}, team {TeamId} by user {UserId}: {Reason}", memberId, roleId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Member unassigned from role.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(Roles), new { slug });
     }
@@ -739,17 +632,15 @@ internal sealed class TeamAdminController(
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
-        try
+        var result = await _teamService.AddEarlyEntryGrantAsync(
+            team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.AddEarlyEntryGrantAsync(
-                team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+            logger.LogWarning("Early entry grant refused for team {TeamId} by user {UserId}: {Reason}", team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Early entry granted.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to grant early entry for team {TeamId} by user {UserId}", team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -779,17 +670,15 @@ internal sealed class TeamAdminController(
             return View(nameof(EarlyEntry), await BuildEarlyEntryPageAsync(team, ct));
         }
 
-        try
+        var result = await _teamService.EditEarlyEntryGrantAsync(
+            team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+        if (result.Refusal is { } refusal)
         {
-            await _teamService.EditEarlyEntryGrantAsync(
-                team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+            logger.LogWarning("Early entry update refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", input.GrantId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
             SetSuccess("Early entry updated.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to update early entry grant {GrantId} for team {TeamId} by user {UserId}", input.GrantId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -809,16 +698,8 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
-        try
-        {
-            await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
-            SetSuccess("Early entry revoked.");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
-        {
-            logger.LogWarning(ex, "Failed to revoke early entry grant {GrantId} for team {TeamId} by user {UserId}", grantId, team.Id, user.Id);
-            SetError(ex.Message);
-        }
+        await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
+        SetSuccess("Early entry revoked.");
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }

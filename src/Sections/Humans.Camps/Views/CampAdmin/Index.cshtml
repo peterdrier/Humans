@@ -4,8 +4,6 @@
 @{
     ViewData["Title"] = Localizer["Camps_AdminTitle"];
 
-    Func<CampSummaryRowViewModel, IHtmlContent> campNameCell =
-        @<text><a asp-controller="Camp" asp-action="Details" asp-route-slug="@item.Slug">@item.Name</a></text>;
     Func<CampSummaryRowViewModel, IHtmlContent> eeSlotsCell = @<text>
         @if (item.SeasonId.HasValue)
         {
@@ -39,7 +37,7 @@
         }
     </text>;
     var summaryTable = TableModel.For(Model.AllCampSummaries)
-        .Template("Camp Name", campNameCell, sortBy: c => c.Name)
+        .Link("Camp Name", c => c.Name, c => Url.Action("Details", "Camp", new { slug = c.Slug }))
         .Column("Accepting", c => c.AcceptingMembers)
         .Column("Humans", c => c.MemberCount, o => o.Number().End())
         .Column("Joined", c => c.JoinedMemberCount, o => o.Number().End())

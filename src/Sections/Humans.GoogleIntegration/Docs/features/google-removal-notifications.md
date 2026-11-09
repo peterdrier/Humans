@@ -16,7 +16,7 @@
 
 ## Business Context
 
-When Google Workspace sync removes a user's email address from a Google Group or revokes a Google Drive permission, Google itself sends nothing. Most removals are routine secondary-email cleanup (a Human has multiple `UserEmail` rows; the user or admin flips `IsGoogle` from address A to address B; sync removes A from groups/folders while B keeps full access). A smaller fraction are genuine loss-of-access (role change, team change, account deletion). Both look identical from the recipient's mailbox: silence.
+When Google Workspace sync removes a user's email address from a Google Group or revokes a Google Drive permission, Google itself sends nothing. Most removals are routine secondary-email cleanup (a Human has multiple `UserEmail` rows; the user or admin moves the Google Workspace identity from address A to address B; sync removes A from groups/folders while B keeps full access). A smaller fraction are genuine loss-of-access (role change, team change, account deletion). Both look identical from the recipient's mailbox: silence.
 
 This silence drives support load — *"why am I no longer in the team mailing list?"* — and hides mistakes: when sync removes someone in error, neither the user nor a coordinator finds out until access is missed.
 

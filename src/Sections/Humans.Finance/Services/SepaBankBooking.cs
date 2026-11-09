@@ -11,14 +11,14 @@ using Humans.Users.Contracts;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using System.Globalization;
-using System.Text.RegularExpressions;
 using static Humans.Finance.Services.SepaText;
+using static Humans.Finance.Services.SepaBankMatching;
 
 namespace Humans.Finance.Services;
 
 internal sealed class SepaBankBooking(
     IHoldedRepository repo,
-    IHoldedClient client,
+    IHoldedService holded,
     IHoldedWrite holdedWrite,
     IClock clock,
     TrackedCache<string, Dictionary<string, int>> bookingState,
@@ -26,6 +26,8 @@ internal sealed class SepaBankBooking(
     IOptions<SepaOptions> sepa,
     ILogger logger) : IApplicationService
 {
+    private readonly SepaBankMatching matching = new(clock, MadridZone, FeedWindowDays, GenerationSlackDays);
+
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     // Persisted audit entity type, shared with payout generation: never rename.
@@ -52,36 +54,40 @@ internal sealed class SepaBankBooking(
     /// that is about six hours before one stuck line stops blocking the whole feed.</summary>
     private const int StuckLineSkipAfterRuns = 3;
 
-    /// <summary>The slack on either end of the tagged-lines window (the file's generation day to today): this flow
-    /// dates postings the bank line, but older runs dated them the click.</summary>
-    private const int TagWindowDays = 7;
-
     /// <summary>How far back a file may have been generated and still match. The feed is read
     /// <see cref="GenerationSlackDays"/> further back (<see cref="FeedFrom"/>).</summary>
     private const int FeedWindowDays = 90;
 
-    private const string ReconciledStatus = "reconciled";
-
-    private const string PendingStatus = "pending";
-
     /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
     private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
 
-    /// <summary>Matched anywhere in the line, not anchored: bank feeds prepend their own wording.</summary>
-    private static readonly Regex RemittanceAccount = new(
-        @"(?<acct>\d{8})\s*-\s*NCA\s*-", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-        TimeSpan.FromSeconds(1));
-
-    /// <summary>Without the live bank-feed read, which only serves <c>/Finance/Sepa</c>'s own "book this" button.</summary>
+    /// <summary>Without the bank-feed read, which only serves <c>/Finance/Sepa</c>'s own "book this" button.</summary>
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
         GetSepaTransfersAsync(CancellationToken ct = default) => await GetSepaPayoutRowsWithReasonsAsync(ct);
 
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
-        IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
+        IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError, Instant? BankFeedSyncedAt)>
         GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
             CancellationToken ct = default)
     {
         var tolerance = ClampTolerance(toleranceDays);
+        var mirror = await holded.GetBankMovementsAsync(
+            sepa.Value.TreasuryAccountId, FeedFrom(tolerance), Today(), ct);
+        var (rows, unavailable, unmatched, error) = await PairAsync(
+            tolerance,
+            () => mirror.LastSyncAt is null
+                ? throw new HoldedTransientException("Holded's bank feed has not been synced yet.")
+                : Task.FromResult(mirror.Movements),
+            ct);
+        return (rows, unavailable, unmatched, error, mirror.LastSyncAt);
+    }
+
+    /// <summary>The page's pairing over <paramref name="feed"/>: the page passes the mirror as it stands, a booking
+    /// a freshly synced read. A feed that cannot be read costs the candidates and the panel, not the rows.</summary>
+    private async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
+        IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
+        PairAsync(int tolerance, Func<Task<IReadOnlyList<HoldedBankMovementDto>>> feed, CancellationToken ct)
+    {
         var (withReasons, unavailable) = await GetSepaPayoutRowsWithReasonsAsync(ct);
         if (withReasons.Count == 0 || unavailable is not null) return (withReasons, unavailable, [], null);
         // A withdrawn transfer renders on its row and nowhere else: no line can be its payment.
@@ -90,7 +96,7 @@ internal sealed class SepaBankBooking(
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
         {
-            movements = await ReadBankFeedAsync(FeedFrom(tolerance), ct);
+            movements = await feed();
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
@@ -116,9 +122,9 @@ internal sealed class SepaBankBooking(
                 // page pairs is one the booking accepts. A textless line matches on amount and date alone, and never
                 // while it could also be a whole file's debit.
                 return (Movement: m, Account: account, Matches:
-                    account is null && TextlessLineFitsAFile(live, m, tolerance)
+                    account is null && matching.TextlessLineFitsAFile(live, m, tolerance)
                         ? []
-                        : UnbookedMatches(live, account, Math.Abs(m.Amount), m.Date, tolerance));
+                        : matching.UnbookedMatches(live, account, Math.Abs(m.Amount), m.Date, tolerance));
             })
             .ToList();
 
@@ -133,7 +139,7 @@ internal sealed class SepaBankBooking(
         // on its booked rows and must stay processable.
         var batchLines = movements
             .Where(NeedsAMatch)
-            .Select(m => (Movement: m, Files: BatchFiles(live, m, movements, tolerance)))
+            .Select(m => (Movement: m, Files: matching.BatchFiles(live, m, movements, tolerance)))
             .ToList();
         // Every line a file fits counts against it, ambiguous or not — as Process's rival check does.
         var batchClaimants = batchLines
@@ -159,7 +165,7 @@ internal sealed class SepaBankBooking(
             // Equal amounts in one file, as many textless lines: paired one to one. One unbookable member keeps the
             // whole set on the panel, so Book file never books half.
             if (account is null && matches.Count > 1
-                && TextlessSetPairs(live, movements, m, tolerance) is { Count: > 0 } set
+                && matching.TextlessSetPairs(live, movements, m, tolerance) is { Count: > 0 } set
                 && set.All(p => p.Row.NotBookableReason is null))
             {
                 candidateByTransfer[set.Single(p => string.Equals(p.Line.Id, m.Id, StringComparison.Ordinal)).Row.TransferId]
@@ -179,7 +185,7 @@ internal sealed class SepaBankBooking(
                     ? $"{files.Count} payout files total {Euros(Math.Abs(m.Amount))} — settle it in Holded by hand"
                     : files.Count == 1
                         ? "another bank line matches that file's total too — settle it in Holded by hand"
-                        : account is null && TextlessLineFitsAFile(live, m, tolerance)
+                        : account is null && matching.TextlessLineFitsAFile(live, m, tolerance)
                             ? "its text names no creditor account, and it could be one transfer's line or "
                               + "a whole file's — settle it in Holded by hand"
                             : matches.Count == 0
@@ -223,7 +229,7 @@ internal sealed class SepaBankBooking(
                 .FirstOrDefault());
     }
 
-    /// <summary>The pre-feed half of <see cref="GetSepaPayoutsAsync"/>, so <see cref="GetSepaTransfersAsync"/> can
+    /// <summary>The pre-feed half of <see cref="PairAsync"/>, so <see cref="GetSepaTransfersAsync"/> can
     /// reuse it without the bank-feed call.</summary>
     private async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason)>
         GetSepaPayoutRowsWithReasonsAsync(CancellationToken ct)
@@ -247,14 +253,13 @@ internal sealed class SepaBankBooking(
     {
         if (row.IsBooked) return null;
         if (row.IsWithdrawn) return null;   // renders as withdrawn; nothing books it
-        // Payments landed and the run stopped before booking. Holded keeps no tag on a purchase
-        // payment, so a retry cannot see them and would post the amount again as a journal entry.
-        if (row.PostedButNotBooked)
+        // A payment Holded took without an id cannot be read back, so the resume cannot count it.
+        if (row.PostedButNotBooked && HasUnconfirmedRef(row.HoldedPaymentRefs))
             return "an earlier attempt posted Holded payment(s) " + row.HoldedPaymentRefs
-                   + " and then stopped — Humans cannot see them again; settle it in Holded by hand";
+                   + " and could not identify one of them — settle it in Holded by hand";
         // Nothing in Humans can still book this one: the line that paid it, if any, has dropped
         // off the feed. Say so rather than leaving it in "waiting for the Sabadell line" forever.
-        if (IsStale(row))
+        if (matching.IsStale(row))
             return $"generated more than {FeedWindowDays} days ago — no bank line on the feed can "
                    + "book it now; settle it in Holded by hand";
         if (!bindingByUser.TryGetValue(row.UserId, out var binding)
@@ -272,7 +277,7 @@ internal sealed class SepaBankBooking(
 
     public async Task RunAsync(CancellationToken ct = default)
     {
-        if (BookingUnavailableReason() is not null || !client.IsConfigured) return;
+        if (BookingUnavailableReason() is not null || !holded.IsConfigured) return;
 
         var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var pending = rows.Where(r => r.ReconcilePending).ToList();
@@ -283,9 +288,9 @@ internal sealed class SepaBankBooking(
         // own first payable day with no floor, or a row aging out would never see a later reconcile. Both bounds key off
         // GeneratedAt, never BookedAt: a booking can land days after the line it waits on.
         var floor = FeedFrom(GenerationSlackDays);
-        var matchFrom = unbooked.Select(FirstPayableDate).DefaultIfEmpty(floor).Min();
+        var matchFrom = unbooked.Select(matching.FirstPayableDate).DefaultIfEmpty(floor).Min();
         if (matchFrom < floor) matchFrom = floor;
-        var pendingFrom = pending.Select(FirstPayableDate).DefaultIfEmpty(matchFrom).Min();
+        var pendingFrom = pending.Select(matching.FirstPayableDate).DefaultIfEmpty(matchFrom).Min();
         var from = pendingFrom < matchFrom ? pendingFrom : matchFrom;
 
         IReadOnlyList<HoldedBankMovementDto> movements;
@@ -343,7 +348,7 @@ internal sealed class SepaBankBooking(
             var account = RemittanceAccountNum(m.Description);
             if (account is null) continue;
 
-            var matches = UnbookedMatches(unbooked, account.Value, Math.Abs(m.Amount), m.Date, GenerationSlackDays);
+            var matches = matching.UnbookedMatches(unbooked, account.Value, Math.Abs(m.Amount), m.Date, GenerationSlackDays);
             if (matches.Count != 1)
             {
                 // Surfaced on the page's panel; the sweep only logs it once per run.
@@ -448,7 +453,8 @@ internal sealed class SepaBankBooking(
     /// Each row then re-validates its own line; the first refusal stops the run and booked rows stay booked.</summary>
     private async Task<SepaBookingResult> BookFileMatchesAsync(Guid fileId, Guid actorUserId, int tolerance)
     {
-        var (rows, unavailable, _, feedError) = await GetSepaPayoutsAsync(tolerance, CancellationToken.None);
+        var (rows, unavailable, _, feedError) = await PairAsync(
+            tolerance, () => ReadBankFeedAsync(FeedFrom(tolerance), CancellationToken.None), CancellationToken.None);
         if (unavailable is not null) return new SepaBookingResult(false, unavailable);
         if (feedError is not null) return new SepaBookingResult(false, feedError + " Nothing was posted.");
 
@@ -484,6 +490,98 @@ internal sealed class SepaBankBooking(
             + "their Sabadell lines.");
     }
 
+    /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no
+    /// Holded posting can be withdrawn.</summary>
+    internal Task<SepaBookingResult> WithdrawSepaTransferAsync(
+        Guid transferId, Guid actorUserId, SepaPayoutEmails payoutEmails, CancellationToken ct = default) =>
+        UnderBookingGateAsync(() => WithdrawSepaTransferGatedAsync(transferId, actorUserId, payoutEmails, ct));
+
+    private async Task<SepaBookingResult> WithdrawSepaTransferGatedAsync(
+        Guid transferId, Guid actorUserId, SepaPayoutEmails payoutEmails, CancellationToken ct)
+    {
+        var transfer = await repo.GetSepaTransferAsync(transferId, ct);
+        if (transfer is null)
+            return new SepaBookingResult(false, "That transfer no longer exists — reload the page.");
+        if (WithdrawRefusal(transfer) is { } refusal)
+            return new SepaBookingResult(false, refusal);
+
+        var row = (await repo.GetSepaPayoutTransferRowsAsync(ct)).First(r => r.TransferId == transferId);
+        var now = clock.GetCurrentInstant();
+        await repo.SaveSepaTransfersWithdrawnAsync([transferId], now, actorUserId, ct);
+
+        await audit.LogAsync(
+            FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
+            $"WITHDRAWN the SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
+            + $"{transfer.SupplierAccountNum} (file {row.FileName}): cancelled at the bank before execution.",
+            actorUserId, transfer.UserId, AuditSubjectTypes.User);
+
+        await payoutEmails.SendWithdrawnEmailAsync(transfer, matching.FileDate(row));
+
+        return new SepaBookingResult(true,
+            $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
+            + "the member has been told and the account is payable again.");
+    }
+
+    /// <summary>For a file the bank rejected whole: withdraws every transfer still live in it, in one save, so it is
+    /// cancelled. All or nothing: refused if any live transfer could not be withdrawn on its own. No member email,
+    /// unlike a single withdrawal: the file is usually reissued at once, and that sends the payout email again.</summary>
+    internal Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default) =>
+        UnderBookingGateAsync(() => CancelSepaFileGatedAsync(fileId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> CancelSepaFileGatedAsync(Guid fileId, Guid actorUserId, CancellationToken ct)
+    {
+        var rows = (await repo.GetSepaPayoutTransferRowsAsync(ct)).Where(r => r.FileId == fileId).ToList();
+        if (rows.Count == 0)
+            return new SepaBookingResult(false, "That file no longer exists — reload the page.");
+        if (CancelFileRefusal(rows) is { } refusal)
+            return new SepaBookingResult(false, refusal);
+
+        var live = rows.Where(r => !r.IsWithdrawn).ToList();
+        var fileName = rows[0].FileName;
+        await repo.SaveSepaTransfersWithdrawnAsync(live.Select(r => r.TransferId).ToList(),
+            clock.GetCurrentInstant(), actorUserId, ct);
+
+        foreach (var r in live)
+            await audit.LogAsync(
+                FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, r.TransferId,
+                $"WITHDRAWN the SEPA payout {Euros(r.Amount)} to {r.IbanMasked} on creditor account "
+                + $"{r.SupplierAccountNum}: file {fileName} was cancelled whole, the bank never executed it.",
+                actorUserId, r.UserId, AuditSubjectTypes.User);
+
+        return new SepaBookingResult(true,
+            $"Cancelled {fileName}: {live.Count} transfers, {Euros(live.Sum(r => r.Amount))}. "
+            + "Their accounts are payable again; no member was emailed.");
+    }
+
+    /// <summary>The same rule decides whether <c>/Finance/Sepa</c> offers Cancel file.</summary>
+    internal static string? CancelFileRefusal(IReadOnlyCollection<SepaPayoutTransferRow> fileRows)
+    {
+        var live = fileRows.Where(r => !r.IsWithdrawn).ToList();
+        if (live.Count == 0) return "This file is already cancelled.";
+        return live.Select(r => WithdrawRefusal(r)).FirstOrDefault(r => r is not null) is { } refusal
+            ? $"Cannot cancel the file: {refusal}"
+            : null;
+    }
+
+    /// <summary>The same rule shows the reason on <c>/Finance/Sepa</c> in place of the button.</summary>
+    internal static string? WithdrawRefusal(SepaPayoutTransferRow row) =>
+        WithdrawRefusal(row.IsWithdrawn, row.IsBooked, row.HoldedBankMovementId, row.HoldedPaymentRefs, row.IbanMasked);
+
+    private static string? WithdrawRefusal(SepaPayoutTransfer t) =>
+        WithdrawRefusal(t.WithdrawnAt is not null, t.BookedAt is not null, t.HoldedBankMovementId, t.HoldedPaymentRefs, t.IbanMasked);
+
+    private static string? WithdrawRefusal(
+        bool withdrawn, bool booked, string? bankMovementId, string? paymentRefs, string ibanMasked)
+    {
+        if (withdrawn) return $"Transfer to {ibanMasked} is already withdrawn.";
+        if (booked) return $"Transfer to {ibanMasked} is booked in Holded — the money moved, so it cannot be withdrawn.";
+        if (bankMovementId is { Length: > 0 })
+            return $"Transfer to {ibanMasked} is tied to Sabadell line {bankMovementId} — it cannot be withdrawn.";
+        if (paymentRefs is { Length: > 0 })
+            return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — the money moved, so it cannot be withdrawn; book it to finish.";
+        return null;
+    }
+
     private async Task<SepaBookingResult> RunBookingAsync(Func<Task<SepaBookingResult>> booking)
     {
         if (BookingUnavailableReason() is { } unavailable)
@@ -496,7 +594,7 @@ internal sealed class SepaBankBooking(
 
     /// <summary>For a write that must not interleave with a booking, such as a withdrawal: otherwise a row checked as
     /// unbooked could be withdrawn while a booking posts its payments, and end up booked and withdrawn at once.</summary>
-    internal async Task<T> UnderBookingGateAsync<T>(Func<Task<T>> work)
+    private async Task<T> UnderBookingGateAsync<T>(Func<Task<T>> work)
     {
         await BookingGate.WaitAsync(CancellationToken.None);
         try
@@ -554,15 +652,15 @@ internal sealed class SepaBankBooking(
                 + "reload /Finance/Sepa.");
 
         // The pairing, re-validated: the posted ids are never trusted.
-        if (BatchLineRefusal(file, movement, rows, feed, tolerance) is { } refusal)
+        if (matching.BatchLineRefusal(file, movement, rows, feed, tolerance) is { } refusal)
             return new SepaBookingResult(false, refusal);
-        var files = BatchFiles(rows, movement, feed, tolerance);
+        var files = matching.BatchFiles(rows, movement, feed, tolerance);
         if (files.Count > 1)
             return new SepaBookingResult(false,
                 $"{files.Count} payout files total {Euros(Math.Abs(movement.Amount))} — Humans cannot tell "
                 + "which one that Sabadell line paid; settle it in Holded by hand. Nothing was posted.");
         var rivals = feed.Count(x => !string.Equals(x.Id, movement.Id, StringComparison.Ordinal)
-                                     && NeedsAMatch(x) && BatchLineRefusal(file, x, rows, feed, tolerance) is null);
+                                     && NeedsAMatch(x) && matching.BatchLineRefusal(file, x, rows, feed, tolerance) is null);
         if (rivals > 0)
             return new SepaBookingResult(false,
                 $"{rivals + 1} Sabadell lines could each be this file's debit — Humans cannot tell which "
@@ -636,12 +734,14 @@ internal sealed class SepaBankBooking(
                 $"Transfer to {transfer.IbanMasked} was withdrawn — nothing was posted to Holded.");
 
         // An earlier run posted payments and stopped. Holded drops the description on a purchase payment, so the tag
-        // sum cannot see them and a retry would post again. Refuse until a human settles it.
-        if (transfer.HoldedPaymentRefs is { Length: > 0 })
+        // sum cannot see them: the resume reads each saved id back off the member's documents instead. An id-less
+        // payment cannot be read back.
+        var priorRefs = SplitRefs(transfer.HoldedPaymentRefs);
+        if (HasUnconfirmedRef(transfer.HoldedPaymentRefs))
             return new SepaBookingResult(false,
                 $"An earlier attempt posted Holded payment(s) {transfer.HoldedPaymentRefs} for this "
-                + "transfer and then stopped — Humans cannot see them again, so a retry would post "
-                + "the money twice. Settle it in Holded by hand; nothing was posted.");
+                + "transfer and could not identify one of them, so Humans cannot tell what is still "
+                + "owed. Settle it in Holded by hand; nothing was posted.");
 
         var binding = await repo.GetCreditorContactByUserAsync(transfer.UserId, ct);
         if (binding is null || string.IsNullOrEmpty(binding.HoldedContactId))
@@ -698,40 +798,37 @@ internal sealed class SepaBankBooking(
         // On every posting, so a Holded line traces back to one transfer and a retry can sum what was posted.
         var tag = "SEPA payout E" + transfer.Id.ToString("N");
 
-        // Steps 3 and 4: the live creditor balance, and what this transfer already posted.
+        // Steps 3 and 4: the creditor balance, and what this transfer already posted, from the account's ledger
+        // synced just now. Never the unsynced mirror: a stale sum here re-posts money that already left.
         decimal owedNow;
         decimal posted;
+        var priorPaid = 0m;
+        var refsSaved = true;
         try
         {
-            // The live chart total, not the nightly mirror: the audit entry names what was owed now.
-            owedNow = (await client.ListAccountingAccountsAsync(ct))
-                .Where(a => a.Number == transfer.SupplierAccountNum)
-                .Select(a => -a.Balance)
-                .DefaultIfEmpty(0m)
-                .First();
-
-            // The entries feed, not the chart: the chart can omit an entry, and for this sum omission is the dangerous
-            // direction. The window starts at the earlier of the bank line and the file date: older runs dated
-            // postings the click, and missing one would re-post money that already left.
-            var generatedOn = allRows.FirstOrDefault(r => r.TransferId == transfer.Id)?.GeneratedAt
-                .InZone(MadridZone).Date ?? movement.Date;
-            var tagFrom = (generatedOn < movement.Date ? generatedOn : movement.Date)
-                .PlusDays(-TagWindowDays);
-            var tagTo = Today().PlusDays(TagWindowDays);
-            posted = (await client.ListLedgerEntriesAsync(
-                    tagFrom, tagTo, transfer.SupplierAccountNum, ct))
-                // The account filter is the server's; asserting it here too keeps a dropped query
-                // parameter from netting our own two-sided entry to zero and re-posting everything.
+            if (!await holded.SyncAccountLedgerAsync(transfer.SupplierAccountNum, ct))
+                return new SepaBookingResult(false,
+                    "A Holded ledger sync is running, so this account cannot be checked — try again in a minute. "
+                    + "Nothing was posted.");
+            var lines = (await holded.GetLedgerLinesAsync(transfer.SupplierAccountNum, ct))
                 .Where(l => l.AccountNum == transfer.SupplierAccountNum)
+                .ToList();
+            owedNow = lines.Sum(l => l.Credit - l.Debit);
+            posted = lines
                 .Where(l => (l.Description ?? "").Contains(tag, StringComparison.Ordinal))
                 .Sum(l => l.Debit - l.Credit);   // paying a creditor DEBITS 400xxxxx
             if (posted < 0m) posted = 0m;        // a tagged credit is not "already paid"
+
+            // Every booking, not only a resume: a run that died before saving its ids left payments nothing points at.
+            if (PriorPaymentsRefusal(lines, movement.Date, transfer.SupplierAccountNum) is { } refusal)
+                return new SepaBookingResult(false, refusal + " Nothing was posted.");
+            posted += priorPaid;
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogError(ex, "Could not read Holded's creditor balance to book SEPA transfer {TransferId}.", transferId);
+            logger.LogError(ex, "Could not sync Holded's creditor ledger to book SEPA transfer {TransferId}.", transferId);
             return new SepaBookingResult(false,
-                "Holded's creditor balance could not be read — nothing was posted.");
+                "Holded's creditor ledger could not be synced — nothing was posted.");
         }
 
         // Step 5: the whole transfer less what is posted, never capped by what the account owes now: the money left,
@@ -751,8 +848,14 @@ internal sealed class SepaBankBooking(
             IReadOnlyList<HoldedPurchaseDocListItemDto> open;
             try
             {
-                open = OpenDocs(await client.ListPurchaseDocumentsAsync(ct))
-                    .Where(d => string.Equals(d.ContactId, binding.HoldedContactId, StringComparison.Ordinal))
+                // Synced just now: PaymentsPending is what keeps a paid document from being paid again.
+                if (!await holded.SyncPurchaseDocumentsAsync(ct))
+                    return new SepaBookingResult(false,
+                        "A Holded purchase-document sync is running — try again in a minute. Nothing was posted.");
+                open = OpenDocs((await holded.GetPurchaseDocumentsAsync(ct)).Docs
+                        .Where(d => string.Equals(d.ContactId, binding.HoldedContactId, StringComparison.Ordinal))
+                        .Select(HoldedCreditorReader.ToListItem)
+                        .ToList())
                     // Oldest first: the money the member has been owed longest clears first.
                     .OrderBy(d => d.Date)
                     .ThenBy(d => d.Id, StringComparer.Ordinal)
@@ -760,8 +863,8 @@ internal sealed class SepaBankBooking(
             }
             catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
             {
-                logger.LogError(ex, "Could not read Holded purchase documents to book SEPA transfer {TransferId}.", transferId);
-                return new SepaBookingResult(false, "Holded's purchase documents could not be read — nothing was posted.");
+                logger.LogError(ex, "Could not sync Holded purchase documents to book SEPA transfer {TransferId}.", transferId);
+                return new SepaBookingResult(false, "Holded's purchase documents could not be synced — nothing was posted.");
             }
 
             // Step 6: FIFO document payments dated the bank line. PaymentsPending is read live, so a document already paid
@@ -775,7 +878,7 @@ internal sealed class SepaBankBooking(
 
                 try
                 {
-                    paidDocs.Add((doc.Id, amount, await client.PayPurchaseDocumentAsync(
+                    paidDocs.Add((doc.Id, amount, await holdedWrite.PayPurchaseDocumentAsync(
                         doc.Id, amount, sepa.Value.TreasuryAccountId, movement.Date, tag, ct)));
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
@@ -811,7 +914,7 @@ internal sealed class SepaBankBooking(
         var now = clock.GetCurrentInstant();
         // The journal remainder rides along as an `entry:<amount>` token: not a Holded id, never
         // sent in a reconcile, but what lets the row say how much of the line a human has to match.
-        var refTokens = paidDocs.Select(p => p.Ref).ToList();
+        var refTokens = priorRefs.Concat(paidDocs.Select(p => p.Ref)).ToList();
         if (entry is not null)
             refTokens.Add(SepaPayoutTransferRow.JournalEntryRefPrefix
                           + entryAmount.ToString("F2", CultureInfo.InvariantCulture));
@@ -841,7 +944,7 @@ internal sealed class SepaBankBooking(
         // Name the PAYMENTS, never the documents: a purchase ref makes Holded mint a new payment for the whole line.
         // An unconfirmed payment or a journal entry cannot be named, so Holded may read the line `partial`.
         var docs = PaymentRefs(refs);
-        var incomplete = docs.Count < paidDocs.Count || entry is not null || resumed;
+        var incomplete = docs.Count < priorRefs.Count + paidDocs.Count || entry is not null || resumed;
 
         var summary = PostingSummary();
         var resumedPart = resumed ? $"; resumed ({Euros(posted)} already posted)" : "";
@@ -939,28 +1042,51 @@ internal sealed class SepaBankBooking(
             return new SepaBookingResult(false, $"Holded refused the {what} — nothing was posted.");
         }
 
-        // A journal entry keeps its tag, so the tag sum resumes from it; a document payment does not, so the retry
-        // refuses.
-        string NextStep() => paidDocs.Count == 0
-            ? "the next attempt posts only what is still missing"
-            : "settle it in Holded by hand — a retry refuses, since Holded keeps no tag on a payment";
+        // A journal entry keeps its tag and a saved payment id is read back, so a retry resumes from both. A payment
+        // with no id cannot be read back.
+        // Without the saved ids the retry cannot see the payments and would post them again.
+        string NextStep() => !refsSaved
+            ? "settle it in Holded by hand — the payment ids could not be saved, so a retry would pay again"
+            : paidDocs.Any(p => HasUnconfirmedRef(p.Ref))
+                ? "settle it in Holded by hand — Holded took a payment Humans could not identify"
+                : "book it again to finish — the retry posts only what is still missing";
 
-        // Written to the row so the next attempt refuses (the tag sum cannot see a purchase payment) and the page says
-        // why.
+        // Written to the row, after any an earlier run saved, so the next attempt can read them back: the tag sum
+        // cannot see a purchase payment.
         async Task RememberLandedPaymentsAsync()
         {
             if (paidDocs.Count == 0) return;
             try
             {
                 await repo.SaveSepaTransferPaymentRefsAsync(
-                    transfer.Id, string.Join(",", paidDocs.Select(p => p.Ref)), ct);
+                    transfer.Id, string.Join(",", priorRefs.Concat(paidDocs.Select(p => p.Ref))), ct);
             }
             catch (Exception ex)
             {
+                refsSaved = false;
                 logger.LogError(ex,
                     "The payment ids Holded accepted for SEPA transfer {TransferId} could not be saved; the "
                     + "audit entry is the only record of them.", transferId);
             }
+        }
+
+        // Holded keeps no tag on a document payment, so the synced ledger's payment lines on the creditor account
+        // dated this line are the only record of what earlier runs paid. A count that differs from the ids Humans
+        // saved (a POST that failed after Holded saved it, a run that died before saving its ids, an id gone) means
+        // the amount still owed is unknown, so the booking stops.
+        string? PriorPaymentsRefusal(IReadOnlyList<HoldedLedgerLineInfo> lines, LocalDate lineDate, int account)
+        {
+            var onDay = lines
+                .Where(l => string.Equals(l.Type, "payment", StringComparison.Ordinal)
+                            && l.Date.InZone(MadridZone).Date == lineDate)
+                .ToList();
+            if (onDay.Count != priorRefs.Count)
+                return $"Holded's ledger shows {onDay.Count} document payment(s) on creditor account {account} dated "
+                       + $"{lineDate.ToInvariantDate()} ({Euros(onDay.Sum(l => l.Debit - l.Credit))}), but Humans "
+                       + $"recorded {priorRefs.Count} — settle it in Holded by hand.";
+
+            priorPaid = onDay.Sum(l => l.Debit - l.Credit);
+            return null;
         }
 
         string? PairingRefusal(
@@ -983,7 +1109,7 @@ internal sealed class SepaBankBooking(
             if (account is not null && account.Value != transfer.SupplierAccountNum)
                 return $"That Sabadell line's text names creditor account {account.Value}, not "
                        + $"{transfer.SupplierAccountNum} — nothing was posted.";
-            if (account is null && TextlessLineFitsAFile(all, m, tolerance))
+            if (account is null && matching.TextlessLineFitsAFile(all, m, tolerance))
                 return "That Sabadell line names no creditor account and could be a whole file's debit "
                        + "as well as this transfer's — settle it in Holded by hand. Nothing was posted.";
 
@@ -991,12 +1117,12 @@ internal sealed class SepaBankBooking(
                              && string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
                 return "That Sabadell line already booked another transfer — nothing was posted.";
 
-            var matches = UnbookedMatches(all, account, transfer.Amount, m.Date, tolerance);
+            var matches = matching.UnbookedMatches(all, account, transfer.Amount, m.Date, tolerance);
             if (matches.Count > 1)
             {
                 // The page's set pairing, re-run: its own rival check stands in for the one below.
                 var own = account is null
-                    ? TextlessSetPairs(all, lines, m, tolerance)
+                    ? matching.TextlessSetPairs(all, lines, m, tolerance)
                         .FirstOrDefault(p => string.Equals(p.Line.Id, m.Id, StringComparison.Ordinal)).Row
                     : null;
                 if (own is null)
@@ -1018,7 +1144,7 @@ internal sealed class SepaBankBooking(
                 && RemittanceAccountNum(x.Description) is var xAccount
                 && (xAccount is null || xAccount == transfer.SupplierAccountNum)
                 && !all.Any(r => string.Equals(r.HoldedBankMovementId, x.Id, StringComparison.Ordinal))
-                && UnbookedMatches(all, xAccount, transfer.Amount, x.Date, tolerance)
+                && matching.UnbookedMatches(all, xAccount, transfer.Amount, x.Date, tolerance)
                     .Any(r => r.TransferId == transfer.Id));
             return rivals == 0
                 ? null
@@ -1039,7 +1165,7 @@ internal sealed class SepaBankBooking(
         var chunked = false;
         try
         {
-            await client.ReconcileBankMovementAsync(sepa.Value.TreasuryAccountId, movementId, docs, ct);
+            await holdedWrite.ReconcileBankMovementAsync(sepa.Value.TreasuryAccountId, movementId, docs, ct);
         }
         catch (HoldedPermanentException ex) when (docs.Count > ReconcileChunkSize)
         {
@@ -1065,7 +1191,7 @@ internal sealed class SepaBankBooking(
                 number++;
                 try
                 {
-                    await client.ReconcileBankMovementAsync(sepa.Value.TreasuryAccountId, movementId, chunk, ct);
+                    await holdedWrite.ReconcileBankMovementAsync(sepa.Value.TreasuryAccountId, movementId, chunk, ct);
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {
@@ -1091,6 +1217,12 @@ internal sealed class SepaBankBooking(
             : clock.GetCurrentInstant();
     }
 
+    private static List<string> SplitRefs(string? joined) =>
+        (joined ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private static bool HasUnconfirmedRef(string? joined) =>
+        SplitRefs(joined).Any(r => r.StartsWith("unconfirmed:", StringComparison.Ordinal));
+
     /// <summary>Leaves out <c>unconfirmed:</c> sentinels (never replaced by the document id) and the <c>entry:</c>
     /// token: Holded cannot link a ledger entry to a bank line.</summary>
     private static List<HoldedReconcileDocumentRef> PaymentRefs(string? joined) =>
@@ -1111,8 +1243,7 @@ internal sealed class SepaBankBooking(
         HoldedBankMovementDto? line;
         try
         {
-            var after = await client.ListBankMovementsAsync(
-                sepa.Value.TreasuryAccountId, movementDate, movementDate, ct, SkippedStuckLineIds());
+            var after = await ReadFeedAsync(movementDate, movementDate, SkippedStuckLineIds(), ct);
             line = after.FirstOrDefault(m => string.Equals(m.Id, movementId, StringComparison.Ordinal));
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
@@ -1143,16 +1274,24 @@ internal sealed class SepaBankBooking(
     private LocalDate Today() => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
     /// <summary>The oldest non-stale file's first payable day under <paramref name="tolerance"/>, so every line
-    /// <see cref="UnbookedMatches"/> could accept is read.</summary>
+    /// <see cref="SepaBankMatching.UnbookedMatches"/> could accept is read.</summary>
     private LocalDate FeedFrom(int tolerance) => Today().PlusDays(-FeedWindowDays - tolerance);
 
     /// <summary>Skips the lines the sweep has given up on, unless the caller (the sweep's own counting read) names the
     /// set itself.</summary>
     private Task<IReadOnlyList<HoldedBankMovementDto>> ReadBankFeedAsync(
         LocalDate from, CancellationToken ct, IReadOnlySet<string>? skipUnreadableDateIds = null) =>
-        client.ListBankMovementsAsync(
-            sepa.Value.TreasuryAccountId, from, Today(), ct,
-            skipUnreadableDateIds ?? SkippedStuckLineIds());
+        ReadFeedAsync(from, Today(), skipUnreadableDateIds ?? SkippedStuckLineIds(), ct);
+
+    /// <summary>Syncs the window, then reads it from the mirror: never the mirror alone, since every caller decides
+    /// whether money moves on what it reads. A sync already running throws as transient, like any unreadable feed.</summary>
+    private async Task<IReadOnlyList<HoldedBankMovementDto>> ReadFeedAsync(
+        LocalDate from, LocalDate to, IReadOnlySet<string> skipUnreadableDateIds, CancellationToken ct)
+    {
+        if (!await holded.SyncBankMovementsAsync(sepa.Value.TreasuryAccountId, from, to, skipUnreadableDateIds, ct))
+            throw new HoldedTransientException("A Holded bank-feed sync is already running; try again in a minute.");
+        return (await holded.GetBankMovementsAsync(sepa.Value.TreasuryAccountId, from, to, ct)).Movements;
+    }
 
     /// <summary>Every read of the feed skips these, or the booking the sweep just unblocked would fail on the same
     /// line.</summary>
@@ -1162,169 +1301,8 @@ internal sealed class SepaBankBooking(
                 .ToHashSet(StringComparer.Ordinal)
             : [];
 
-    /// <summary><c>partial</c> counts as started: part of that line is settled by hand, so posting the whole transfer
-    /// would pay those documents twice.</summary>
-    private static bool NeedsAMatch(HoldedBankMovementDto m) => m.Amount < 0m && IsUntouched(m);
 
-    /// <summary>Holded reports <c>pending</c>, <c>partial</c> or <c>reconciled</c>; only the first has nothing tied
-    /// to it.</summary>
-    private static bool IsUntouched(HoldedBankMovementDto m) =>
-        string.Equals(m.Status, PendingStatus, StringComparison.Ordinal);
-
-    private static bool IsReconciled(HoldedBankMovementDto m) =>
-        string.Equals(m.Status, ReconciledStatus, StringComparison.Ordinal);
-
-    /// <summary>Null when the line is not one of ours.</summary>
-    private static int? RemittanceAccountNum(string? description)
-    {
-        var match = RemittanceAccount.Match(description ?? "");
-        return match.Success
-            && int.TryParse(match.Groups["acct"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var num)
-            ? num
-            : null;
-    }
-
-    /// <summary>A withdrawn transfer was cancelled at the bank, so no line pays it and no file total includes it. Every
-    /// pairing path reads through this.</summary>
-    private static List<SepaPayoutTransferRow> Live(IEnumerable<SepaPayoutTransferRow> rows) =>
-        rows.Where(r => !r.IsWithdrawn).ToList();
-
-    /// <summary>Any account when the line names none (Sabadell drops the remittance text). More than one is ambiguous.
-    /// Only files inside the feed window count, or an old row would make every later same-amount transfer ambiguous
-    /// forever; a line dated before its file is some older payment.</summary>
-    private List<SepaPayoutTransferRow> UnbookedMatches(
-        IReadOnlyList<SepaPayoutTransferRow> rows, int? account, decimal amount, LocalDate lineDate,
-        int tolerance) =>
-        rows.Where(r => r.BookedAt is null && !r.IsWithdrawn && (account is null || r.SupplierAccountNum == account)
-                        && r.Amount == amount && !IsStale(r)
-                        && InWindow(r, lineDate, tolerance, bounded: account is null))
-            .ToList();
-
-    /// <summary>No more than <paramref name="tolerance"/> days before the file date, and for a line only the date ties
-    /// (<paramref name="bounded"/>, textless) no more than that after. A line naming the account may be later.</summary>
-    private bool InWindow(SepaPayoutTransferRow row, LocalDate lineDate, int tolerance, bool bounded)
-    {
-        var fileDate = FileDate(row);
-        return lineDate >= fileDate.PlusDays(-tolerance)
-               && (!bounded || lineDate <= fileDate.PlusDays(tolerance));
-    }
-
-    /// <summary>A textless line that is also a multi-transfer file's total inside its window: one transfer's debit
-    /// cannot be told from a whole file's, so neither path takes it.</summary>
-    private bool TextlessLineFitsAFile(
-        IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m, int tolerance) =>
-        rows.Where(r => !r.IsWithdrawn).GroupBy(r => r.FileId).Any(f =>
-            f.Count() >= 2 && f.Sum(r => r.Amount) == Math.Abs(m.Amount)
-            && f.Any(r => !r.IsBooked) && !IsStale(f.First())
-            // A row booked against some other line means the bank did not debit this file as
-            // one — the same rule BatchLineRefusal applies.
-            && !f.Any(r => r.IsBooked && !string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal))
-            && InWindow(f.First(), m.Date, tolerance, bounded: true));
-
-    /// <summary>
-    /// Pairs a textless set (two or more same-amount transfers of one file) one to one with exactly as many textless
-    /// lines, when no other line could pay any of them. Which line paid which is unknowable and accounting-neutral, so
-    /// lines go by id against transfers by account. Empty when the set does not pair.
-    /// </summary>
-    private List<(HoldedBankMovementDto Line, SepaPayoutTransferRow Row)> TextlessSetPairs(
-        IReadOnlyList<SepaPayoutTransferRow> rows, IReadOnlyList<HoldedBankMovementDto> feed,
-        HoldedBankMovementDto m, int tolerance)
-    {
-        var set = UnbookedMatches(rows, null, Math.Abs(m.Amount), m.Date, tolerance);
-        if (set.Count < 2 || set.Select(r => r.FileId).Distinct().Count() > 1) return [];
-        var ids = set.Select(r => r.TransferId).ToHashSet();
-        var claimants = feed
-            .Where(x => NeedsAMatch(x)
-                        && !rows.Any(r => string.Equals(r.HoldedBankMovementId, x.Id, StringComparison.Ordinal)))
-            .Select(x => (Line: x, Account: RemittanceAccountNum(x.Description)))
-            .Select(x => (x.Line, x.Account, Matches:
-                UnbookedMatches(rows, x.Account, Math.Abs(x.Line.Amount), x.Line.Date, tolerance)
-                    .Select(r => r.TransferId).ToHashSet()))
-            .Where(x => x.Matches.Overlaps(ids))
-            .ToList();
-        if (claimants.Count != set.Count
-            || claimants.Any(x => x.Account is not null || !x.Matches.SetEquals(ids)
-                                  || TextlessLineFitsAFile(rows, x.Line, tolerance)))
-            return [];
-        return claimants
-            .OrderBy(x => x.Line.Id, StringComparer.Ordinal)
-            .Zip(set.OrderBy(r => r.SupplierAccountNum), (x, r) => (x.Line, r))
-            .ToList();
-    }
-
-    /// <summary>More than one is ambiguous and waits for a human.</summary>
-    private List<Guid> BatchFiles(
-        IReadOnlyList<SepaPayoutTransferRow> rows, HoldedBankMovementDto m,
-        IReadOnlyList<HoldedBankMovementDto> feed, int tolerance) =>
-        rows.Where(r => !r.IsWithdrawn).GroupBy(r => r.FileId)
-            .Where(g => BatchLineRefusal(g.ToList(), m, rows, feed, tolerance) is null)
-            .Select(g => g.Key)
-            .ToList();
-
-    /// <summary>Judged on this line and file alone; other files and lines are the caller's ambiguity check. The amount
-    /// must be the file's total, exactly: nothing is split by guesswork.</summary>
-    private string? BatchLineRefusal(
-        IReadOnlyList<SepaPayoutTransferRow> file, HoldedBankMovementDto m,
-        IReadOnlyList<SepaPayoutTransferRow> rows, IReadOnlyList<HoldedBankMovementDto> feed,
-        int tolerance)
-    {
-        var total = file.Sum(r => r.Amount);
-        if (file.Count < 2)
-            return "That file holds one transfer — book it on its own row. Nothing was posted.";
-        if (m.Amount >= 0m || Math.Abs(m.Amount) != total)
-            return $"That Sabadell line is {Euros(m.Amount)}, not the {Euros(total)} this file totals — "
-                   + "nothing was posted.";
-        if (!IsUntouched(m))
-            return $"That Sabadell line is already {m.Status} in Holded — settle it there by hand. "
-                   + "Nothing was posted.";
-        if (IsStale(file[0]))
-            return $"That file was generated more than {FeedWindowDays} days ago — settle it in Holded "
-                   + "by hand. Nothing was posted.";
-        if (!InWindow(file[0], m.Date, tolerance, bounded: true))
-            return $"That Sabadell line is dated more than {tolerance} day(s) from when this file was "
-                   + "generated — widen the tolerance if it is this file's. Nothing was posted.";
-        if (file.All(r => r.IsBooked))
-            return "Every transfer in that file is already booked — nothing was posted.";
-        // A transfer booked against a line of its own means the bank did not debit this file as one.
-        if (file.Any(r => r.IsBooked
-                          && !string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
-            return "Part of that file was already booked against its own Sabadell lines — settle the "
-                   + "rest in Holded by hand. Nothing was posted.";
-        if (rows.Any(r => r.FileId != file[0].FileId
-                          && string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
-            return "That Sabadell line already booked a transfer from another file — nothing was posted.";
-        // A line whose text names one transfer's account and amount is that transfer's own line.
-        if (RemittanceAccountNum(m.Description) is { } account)
-        {
-            if (UnbookedMatches(rows, account, Math.Abs(m.Amount), m.Date, tolerance).Count > 0)
-                return "That Sabadell line names a single transfer — book it on that transfer's row. "
-                       + "Nothing was posted.";
-        }
-        // A textless one that is also some single transfer's amount could be either.
-        else if (UnbookedMatches(rows, null, Math.Abs(m.Amount), m.Date, tolerance).Count > 0)
-            return "That Sabadell line names no creditor account and could be a single transfer's "
-                   + "debit as well as this file's — settle it in Holded by hand. Nothing was posted.";
-        // And the mirror: a transfer of this file with a line of its own was not debited as part of
-        // one total, so a total-sized line is some other payment.
-        if (feed.Any(x => NeedsAMatch(x)
-                          && !rows.Any(r => string.Equals(r.HoldedBankMovementId, x.Id, StringComparison.Ordinal))
-                          && RemittanceAccountNum(x.Description) is { } own
-                          && UnbookedMatches(file, own, Math.Abs(x.Amount), x.Date, tolerance).Count > 0))
-            return "A transfer in that file has a Sabadell line of its own — book the transfers on their "
-                   + "rows. Nothing was posted.";
-        return null;
-    }
-
-    /// <summary>The file's generation day, less <see cref="GenerationSlackDays"/>.</summary>
-    private LocalDate FirstPayableDate(SepaPayoutTransferRow row) =>
-        FileDate(row).PlusDays(-GenerationSlackDays);
-
-    /// <summary>In the organisation's zone: what a bank line's date is measured against.</summary>
-    internal LocalDate FileDate(SepaPayoutTransferRow row) => row.GeneratedAt.InZone(MadridZone).Date;
-
-    /// <summary>Generated before the feed's window, so no line can book it: a human's job in Holded.</summary>
-    internal bool IsStale(SepaPayoutTransferRow row) =>
-        row.GeneratedAt.InZone(MadridZone).Date < Today().PlusDays(-FeedWindowDays);
+    internal bool IsStale(SepaPayoutTransferRow row) => matching.IsStale(row);
 
     /// <summary>The SEPA identity generated the transfers; the treasury account, or Holded pays from its default; its
     /// ledger account, because the remainder entry must credit the same bank.</summary>

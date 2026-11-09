@@ -39,7 +39,7 @@
         {
             switch (column)
             {
-                case "When": builder.Template(Model.Header("When"), whenCell); break;
+                case "When": builder.Template(Model.Header("When"), whenCell, c => c.Css("text-nowrap")); break;
                 case "Actor": builder.Template(Model.Header("Actor"), actorCell); break;
                 case "Action": builder.Template(Model.Header("Action"), actionCell); break;
                 case "Subject": builder.Template(Model.Header("Subject"), subjectCell); break;

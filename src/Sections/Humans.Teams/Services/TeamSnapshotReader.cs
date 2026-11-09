@@ -1,3 +1,5 @@
+using Humans.Auth.Contracts;
+using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
 using Humans.GoogleIntegration.Contracts;
 using Humans.Teams.Contracts;
@@ -15,58 +17,34 @@ internal sealed class TeamSnapshotReader(
     IServiceProvider serviceProvider,
     IShiftService shiftManagementService) : IApplicationService
 {
+    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+
     // Lazy: Users depends on Teams during service resolution.
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
 
     private ITeamResourceService TeamResourceService => serviceProvider.GetRequiredService<ITeamResourceService>();
 
-    public async Task<AdminTeamListResult> GetAdminTeamListAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default)
+    internal const string UnavailableMembershipTargetMessage = "Cannot add a missing, deleted or merged account to a team.";
+
+    internal async Task<Guid?> ResolveMembershipTargetAsync(Guid userId, CancellationToken ct)
     {
-        var (items, totalCount) = await repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
-
-        var pendingShiftCounts = await shiftManagementService
-            .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
-
-        var teamIds = items.Select(t => t.Id).ToList();
-        var resourceSummaries = await TeamResourceService
-            .GetTeamResourceSummariesAsync(teamIds, cancellationToken);
-
-        return new AdminTeamListResult(
-            BuildAdminTeamSummaries(items, pendingShiftCounts, resourceSummaries),
-            totalCount);
+        var user = await UserService.GetUserInfoAsync(userId, ct);
+        return user is null || user.IsTombstone ? null : user.Id;
     }
 
-    private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(
-        IReadOnlyList<Team> teams,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
-        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
+    public async Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default)
     {
-        var ordered = new List<AdminTeamSummary>(teams.Count);
+        var teams = await repo.GetAllForAdminAsync(cancellationToken);
+        var pendingShiftCounts = await shiftManagementService
+            .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
+        var resourceSummaries = await TeamResourceService
+            .GetTeamResourceSummariesAsync(teams.Select(t => t.Id).ToList(), cancellationToken);
 
-        foreach (var team in teams)
-        {
-            if (team.ParentTeamId.HasValue)
-                continue;
-
-            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false, pendingShiftCounts, resourceSummaries));
-
-            var children = teams
-                .Where(child => child.ParentTeamId == team.Id)
-                .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase);
-
-            ordered.AddRange(children.Select(child =>
-                CreateAdminTeamSummary(child, isChildTeam: true, pendingShiftCounts, resourceSummaries)));
-        }
-
-        return ordered;
+        return teams.Select(team => CreateAdminTeamSummary(team, pendingShiftCounts, resourceSummaries)).ToList();
     }
 
     private static AdminTeamSummary CreateAdminTeamSummary(
         Team team,
-        bool isChildTeam,
         IReadOnlyDictionary<Guid, int> pendingShiftCounts,
         IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
     {
@@ -92,7 +70,7 @@ internal sealed class TeamSnapshotReader(
             resourceSummary.DriveResourceCount,
             team.RoleDefinitions.Sum(role => role.SlotCount),
             team.CreatedAt,
-            isChildTeam,
+            team.ParentTeamId,
             pendingShiftCounts.GetValueOrDefault(team.Id),
             team.IsHidden);
     }
@@ -197,4 +175,124 @@ internal sealed class TeamSnapshotReader(
                     assignment.SlotIndex,
                     assignment.TeamMember?.UserId))
                 .ToList());
+    internal async Task<bool> CanUserApproveRequestsForTeamAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
+        if (isAdmin) return true;
+
+        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+        if (isTeamsAdmin) return true;
+
+        return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
+    }
+
+    internal async Task<bool> IsUserCoordinatorOfTeamAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, teamId, userId);
+    }
+
+    internal async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default) =>
+        await ResolveTeamMembersAsync(await GetTeamSnapshotsAsync(ct), ct);
+
+    internal async Task<Team> GetRoleDefinitionTeamAsync(TeamRoleDefinition definition, CancellationToken ct)
+    {
+        var teamsById = await repo.GetByIdsWithParentsAsync([definition.TeamId], ct);
+        return teamsById.TryGetValue(definition.TeamId, out var team)
+            ? team
+            : throw new InvalidOperationException($"Team {definition.TeamId} not found");
+    }
+
+
+    internal async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
+        Guid teamId, CancellationToken cancellationToken = default)
+    {
+        var definitions = await repo.GetRoleDefinitionsAsync(teamId, cancellationToken);
+        return definitions.Select(definition => TeamSnapshotReader.ToRoleDefinitionSnapshot(definition)).ToList();
+    }
+
+    internal async Task<TeamInfo?> GetTeamAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return teamsById.GetValueOrDefault(teamId);
+    }
+
+    internal async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default)
+    {
+        var requests = await repo.GetPendingForTeamAsync(teamId, cancellationToken);
+        var usersById = requests.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(
+                requests.Select(request => request.UserId)
+                    .Distinct()
+                    .ToList(),
+                cancellationToken);
+        return requests
+            .Select(request => ToJoinRequestSnapshot(request, usersById))
+            .ToList();
+    }
+
+    internal async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var requests = await repo.GetAllJoinRequestsForUserAsync(userId, cancellationToken);
+        return requests.Where(request => request.Status == TeamJoinRequestStatus.Pending)
+            .Select(ToJoinRequestSnapshot).ToList();
+    }
+
+    internal async Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var request = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
+        return request is null ? null : ToJoinRequestSnapshot(request);
+    }
+
+    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
+        request.Id,
+        request.TeamId,
+        request.Team?.Name,
+        request.UserId,
+        UserDisplayName: null,
+        UserProfilePictureUrl: null,
+        request.Status,
+        request.Message,
+        request.RequestedAt,
+        request.ResolvedAt,
+        request.ReviewNotes,
+        request.Team?.Slug);
+
+    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(
+        TeamJoinRequest request,
+        IReadOnlyDictionary<Guid, UserInfo> usersById)
+    {
+        usersById.TryGetValue(request.UserId, out var user);
+        return ToJoinRequestSnapshot(request) with
+        {
+            UserDisplayName = user?.BurnerName,
+            UserProfilePictureUrl = user?.ProfilePictureUrl
+        };
+    }
+
+    internal async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
+        return memberships
+            .Select(m => new UserTeamMembershipInfo(
+                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt))
+            .ToList();
+    }
+
 }

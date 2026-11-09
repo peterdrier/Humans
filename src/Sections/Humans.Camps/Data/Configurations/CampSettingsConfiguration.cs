@@ -1,6 +1,4 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Camps.Data.Configurations;
@@ -11,23 +9,13 @@ internal sealed class CampSettingsConfiguration : IEntityTypeConfiguration<CampS
     {
         builder.ToTable("camp_settings");
 
-        builder.Property(s => s.OpenSeasons).HasColumnType("jsonb")
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                v => JsonSerializer.Deserialize<List<int>>(v, (JsonSerializerOptions?)null) ?? new(),
-                new ValueComparer<List<int>>(
-                    (a, b) => a != null && b != null && a.SequenceEqual(b),
-                    v => v.Aggregate(0, HashCode.Combine),
-                    v => v.ToList()));
-
         builder.Property(s => s.EeStartDate);
 
         // Reserved GUID block: 0010. See docs/guid-reservations.md.
         builder.HasData(new CampSettings
         {
             Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
-            PublicYear = 2026,
-            OpenSeasons = [2026]
+            PublicYear = 2026
         });
     }
 }

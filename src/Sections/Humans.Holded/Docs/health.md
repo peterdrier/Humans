@@ -60,9 +60,10 @@ Written fresh from the shapes, not from today's folders.
 
 ```
 Contracts/                    what other sections may hold
-  IHoldedClient + its DTOs      shapes 5–13 — the telephone
+  Holded DTOs                   the shapes the service and writes carry
   IHoldedService                shapes 1–2 — the mirror's cross-section read
   HoldedApiException            the connector's transient-vs-permanent failure classification
+Services/IHoldedClient          shapes 5–13 — the telephone; internal, only this section dials it
 Services/HoldedClient           the existing typed-client contract facade; composes the operation clients
 Services/Holded*Client          purchases, sales, contacts, accounting and treasury: payloads and parsing
 Services/HoldedTransport        one shared retry, auth, timing, metering and cursor-pagination pipeline
@@ -82,8 +83,8 @@ Views/Holded/                   all read-only, all admin
 Structural facts the layout should make obvious and currently does not:
 
 - **`IHoldedClient` is a leaf, not a section service.** It has no repository, no invariant of the
-  mirror's, and never touches `HoldedDbContext`. It lives in `Contracts` because Expenses, Finance,
-  Store and Workgroups call it directly.
+  mirror's, and never touches `HoldedDbContext`. It is internal: every other section reads the mirrors
+  through `IHoldedService` and writes through `IHoldedWrite`.
 - **`Models/HoldedAdminModels.cs` must stay internal.** The moment one type escapes, the admin
   screen becomes a cross-section contract.
 

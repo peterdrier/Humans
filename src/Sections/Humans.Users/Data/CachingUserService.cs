@@ -294,11 +294,11 @@ internal sealed class CachingUserService(
     /// <summary>
     /// Bulk-loads each contributing table once. An empty system is a legitimate warm state.
     /// </summary>
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, UserInfo> publish, CancellationToken ct)
     {
         var users = await WithInnerAsync(inner => inner.GetAllUserInfosAsync(ct));
         foreach (var user in users)
-            Set(user.Id, user);
+            publish(user.Id, user);
     }
 
     /// <inheritdoc cref="IUserInfoSliceRefresher.RefreshAsync" />
@@ -431,207 +431,262 @@ internal sealed class CachingUserService(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetExternalLoginsByUserIdsAsync(userIds, ct));
 
-    public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));
-        await RefreshEntryAsync(userId);
-    }
+    public Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));
+            await RefreshEntryAsync(userId);
+        });
 
     public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
     {
-        await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
-        await RefreshEntryAsync(userId);
+        try
+        {
+            await MutateAsync(async () =>
+            {
+                await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
+                await RefreshEntryAsync(userId);
+            });
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not finish login tracking for user {UserId}; sign-in continues", userId);
+        }
     }
 
-    public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)
-    {
-        await WithInnerAsync(inner => inner.MarkFakeAsync(userId, actorUserId, reason, ct));
-        await RefreshEntryAsync(userId);
-    }
+    public Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerAsync(inner => inner.MarkFakeAsync(userId, actorUserId, reason, ct));
+            await RefreshEntryAsync(userId);
+        });
 
-    public async Task<bool> SetDeletionPendingAsync(
+    public Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
-        CancellationToken ct = default)
-    {
-        var updated = await WithInnerAsync(inner =>
-            inner.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, eligibleAfter, ct));
-        if (updated) await RefreshEntryAsync(userId);
-        return updated;
-    }
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var updated = await WithInnerAsync(inner =>
+                inner.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, eligibleAfter, ct));
+            if (updated) await RefreshEntryAsync(userId);
+            return updated;
+        });
 
-    public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
-    {
-        var updated = await WithInnerAsync(inner => inner.ClearDeletionAsync(userId, ct));
-        if (updated) await RefreshEntryAsync(userId);
-        return updated;
-    }
+    public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var updated = await WithInnerAsync(inner => inner.ClearDeletionAsync(userId, ct));
+            if (updated) await RefreshEntryAsync(userId);
+            return updated;
+        });
 
-    public async Task<bool> EnsureStubProfileAsync(
+    public Task<bool> EnsureStubProfileAsync(
         Guid userId,
         string? burnerName = null,
         string? firstName = null,
         string? lastName = null,
         CancellationToken ct = default,
-        Guid? actorUserId = null)
-    {
-        var created = await WithInnerAsync(inner =>
-            inner.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct, actorUserId));
-        if (created) await RefreshEntryAsync(userId);
-        return created;
-    }
+        Guid? actorUserId = null) =>
+        MutateAsync(async () =>
+        {
+            var created = await WithInnerAsync(inner =>
+                inner.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct, actorUserId));
+            if (created) await RefreshEntryAsync(userId);
+            return created;
+        });
 
-    public async Task<OnboardingResult> SetSuspensionAsync(
-        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.SetSuspensionAsync(userId, suspended, adminSuspension, ct));
-        if (result.Success) await RefreshEntryAsync(userId);
-        return result;
-    }
+    public Task<OnboardingResult> SetSuspensionAsync(
+        Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerAsync(inner =>
+                inner.SetSuspensionAsync(userId, suspended, adminSuspension, ct));
+            if (result.Success) await RefreshEntryAsync(userId);
+            return result;
+        });
 
-    public async Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner => inner.SetRejectedAsync(userId, ct));
-        if (result.Success) await RefreshEntryAsync(userId);
-        return result;
-    }
+    public Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerAsync(inner => inner.SetRejectedAsync(userId, ct));
+            if (result.Success) await RefreshEntryAsync(userId);
+            return result;
+        });
 
-    public async Task<UserProfileSaveResult> SaveProfileAsync(
+    public Task<UserProfileSaveResult> SaveProfileAsync(
         Guid userId,
         UserProfileSaveCommand command,
         byte[]? profilePictureData = null,
         CancellationToken ct = default,
-        IReadOnlyList<CVEntry>? volunteerHistory = null)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.SaveProfileAsync(userId, command, profilePictureData, ct, volunteerHistory));
-        await RefreshEntryAsync(userId);
-        return result;
-    }
+        IReadOnlyList<CVEntry>? volunteerHistory = null) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerAsync(inner =>
+                inner.SaveProfileAsync(userId, command, profilePictureData, ct, volunteerHistory));
+            await RefreshEntryAsync(userId);
+            return result;
+        });
 
-    public async Task SaveMedicalConditionsAsync(
+    public Task SaveMedicalConditionsAsync(
         Guid userId,
         string? medicalConditions,
-        CancellationToken ct = default)
-    {
-        await WithInnerAsync(async inner =>
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
         {
-            await inner.SaveMedicalConditionsAsync(userId, medicalConditions, ct);
-            return true;
+            await WithInnerAsync(async inner =>
+            {
+                await inner.SaveMedicalConditionsAsync(userId, medicalConditions, ct);
+                return true;
+            });
+            await RefreshEntryAsync(userId);
         });
-        await RefreshEntryAsync(userId);
-    }
 
-    public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
+    public Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
         Guid profileId,
         IReadOnlyList<ProfileLanguageInfo> languages,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.SaveProfileLanguagesAsync(profileId, languages, ct));
-        if (result.UserId is { } userId)
-            await RefreshEntryAsync(userId);
-        return result;
-    }
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerAsync(inner =>
+                inner.SaveProfileLanguagesAsync(profileId, languages, ct));
+            if (result.UserId is { } userId)
+                await RefreshEntryAsync(userId);
+            return result;
+        });
 
-    public async Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
+    public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default)
-    {
-        var mutated = await WithInnerAsync(inner =>
-            inner.SuspendProfilesForMissingConsentAsync(userIds, ct));
-        foreach (var userId in mutated)
-            await RefreshEntryAsync(userId);
-        return mutated;
-    }
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var mutated = await WithInnerAsync(inner =>
+                inner.SuspendProfilesForMissingConsentAsync(userIds, ct));
+            foreach (var userId in mutated)
+                await RefreshEntryAsync(userId);
+            return mutated;
+        });
 
-    public async Task<UserEmailAddResult> AddUserEmailAsync(
+    public Task<UserEmailAddResult> AddUserEmailAsync(
         Guid userId,
         UserEmailAddCommand command,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner => inner.AddUserEmailAsync(userId, command, ct));
-        // The email row committed; finish refresh so cancellation cannot skip the caller's audit/notice.
-        if (result.Added) await RefreshUserEmailsAsync(userId, CancellationToken.None);
-        return result;
-    }
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerAsync(inner => inner.AddUserEmailAsync(userId, command, ct));
+            // The email row committed; finish refresh so cancellation cannot skip the caller's audit/notice.
+            if (result.Added) await RefreshUserEmailsAsync(userId, CancellationToken.None);
+            return result;
+        });
 
-    public async Task<UpdateEmailResult> UpdateUserEmailAsync(
+    public Task<UpdateEmailResult> UpdateUserEmailAsync(
         Guid userId,
         Guid emailId,
         UserEmailUpdateCommand command,
-        CancellationToken ct = default)
-    {
-        var updated = await WithInnerAsync(inner => inner.UpdateUserEmailAsync(userId, emailId, command, ct));
-        // The flag change committed; finish the read-through refresh before returning to its caller.
-        if (updated.Succeeded) await RefreshUserEmailsAsync(userId, CancellationToken.None);
-        return updated;
-    }
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var updated = await WithInnerAsync(inner => inner.UpdateUserEmailAsync(userId, emailId, command, ct));
+            // The flag change committed; finish the read-through refresh before returning to its caller.
+            if (updated.Succeeded) await RefreshUserEmailsAsync(userId, CancellationToken.None);
+            return updated;
+        });
 
-    public async Task<bool> RemoveUserEmailAsync(
+    public Task<bool> RemoveUserEmailAsync(
         Guid userId,
         Guid emailId,
         UserEmailRemoveCommand command,
-        CancellationToken ct = default)
-    {
-        var removed = await WithInnerAsync(inner => inner.RemoveUserEmailAsync(userId, emailId, command, ct));
-        // The removal committed; do not leave a stale address cached or skip the caller's audit.
-        if (removed) await RefreshUserEmailsAsync(userId, CancellationToken.None);
-        return removed;
-    }
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var removed = await WithInnerAsync(inner => inner.RemoveUserEmailAsync(userId, emailId, command, ct));
+            // The removal committed; do not leave a stale address cached or skip the caller's audit.
+            if (removed) await RefreshUserEmailsAsync(userId, CancellationToken.None);
+            return removed;
+        });
 
-    public async Task<UserEmailReconcilePlanResult> ApplyUserEmailReconcilePlanAsync(
+    public Task<UserEmailReconcilePlanResult> ApplyUserEmailReconcilePlanAsync(
         Guid userId,
         UserEmailReconcilePlanCommand command,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner => inner.ApplyUserEmailReconcilePlanAsync(userId, command, ct));
-        foreach (var mutatedUserId in result.MutatedUserIds)
-            await RefreshUserEmailsAsync(mutatedUserId, ct);
-        return result;
-    }
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerAsync(inner => inner.ApplyUserEmailReconcilePlanAsync(userId, command, ct));
+            foreach (var mutatedUserId in result.MutatedUserIds)
+                await RefreshUserEmailsAsync(mutatedUserId, ct);
+            return result;
+        });
 
-    public async Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner => inner.ApplyExpiredDeletionAnonymizationAsync(userId, ct));
-        if (result is not null) await RefreshEntryAsync(userId);
-        return result;
-    }
+    public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
+        Guid userId, CancellationToken ct = default) =>
+        MutateAsync(async () =>
+        {
+            var result = await WithInnerAsync(inner => inner.ApplyExpiredDeletionAnonymizationAsync(userId, ct));
+            if (result is not null) await RefreshEntryAsync(userId);
+            return result;
+        });
 
-    public async Task<bool> AnonymizeForMergeAsync(
+    public Task<bool> AnonymizeForMergeAsync(
         Guid sourceUserId, Guid targetUserId, Instant now,
-        CancellationToken ct = default)
-    {
-        var result = await WithInnerAsync(inner =>
-            inner.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct));
-        if (result)
+        CancellationToken ct = default) =>
+        MutateAsync(async () =>
         {
-            await RefreshEntryAsync(sourceUserId);
-            await RefreshEntryAsync(targetUserId);
-        }
-        return result;
-    }
+            var result = await WithInnerAsync(inner =>
+                inner.AnonymizeForMergeAsync(sourceUserId, targetUserId, now, ct));
+            if (result)
+            {
+                await RefreshEntryAsync(sourceUserId);
+                await RefreshEntryAsync(targetUserId);
+            }
+            return result;
+        });
 
-    public async Task<int> DeleteUsersAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        var deleted = await WithInnerAsync(inner => inner.DeleteUsersAsync(userIds, ct));
-        foreach (var userId in userIds)
+    public Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        MutateAsync(async () =>
         {
-            DeleteKey(userId);
-        }
-        return deleted;
-    }
+            var deleted = await WithInnerAsync(inner => inner.DeleteUsersAsync(userIds, ct));
+            foreach (var userId in userIds)
+            {
+                DeleteKey(userId);
+            }
+            return deleted;
+        });
 
-    public async Task ReassignAsync(
+    public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
-        CancellationToken ct)
+        CancellationToken ct) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerAsync(inner =>
+                inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
+            await RefreshEntryAsync(mergedFromUserId);
+            await RefreshEntryAsync(mergedToUserId);
+        });
+
+    // A write or its follow-up refresh can fail after committing. Some mutations only return their affected
+    // ids on success, so an unknown outcome drops the whole snapshot before propagating the original failure.
+    private async Task<T> MutateAsync<T>(Func<Task<T>> mutation)
     {
-        await WithInnerAsync(inner =>
-            inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
-        await RefreshEntryAsync(mergedFromUserId);
-        await RefreshEntryAsync(mergedToUserId);
+        try
+        {
+            return await mutation();
+        }
+        catch
+        {
+            Clear();
+            throw;
+        }
     }
+
+    private Task MutateAsync(Func<Task> mutation) =>
+        MutateAsync(async () =>
+        {
+            await mutation();
+            return true;
+        });
 
 }

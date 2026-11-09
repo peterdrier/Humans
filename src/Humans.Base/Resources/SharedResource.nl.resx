@@ -927,9 +927,6 @@
   <data name="Nav_City" xml:space="preserve">
     <value>Stad</value>
   </data>
-  <data name="Nav_Rideshare" xml:space="preserve">
-    <value>Carpoolen</value>
-  </data>
   <data name="Nav_Budget" xml:space="preserve">
     <value>Budget</value>
   </data>
@@ -959,17 +956,8 @@
   <data name="Search_Title" xml:space="preserve">
     <value>Humans zoeken</value>
   </data>
-  <data name="Search_Placeholder" xml:space="preserve">
-    <value>Zoek op naam, stad, interesses, bio...</value>
-  </data>
-  <data name="Search_NoResults" xml:space="preserve">
-    <value>Geen humans gevonden die aan je zoekopdracht voldoen.</value>
-  </data>
   <data name="Search_MatchedIn" xml:space="preserve">
     <value>Gevonden in</value>
-  </data>
-  <data name="Search_MinChars" xml:space="preserve">
-    <value>Voer minstens 2 tekens in om te zoeken.</value>
   </data>
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barrios</value>
@@ -1161,9 +1149,6 @@
   </data>
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Diensten beheren</value>
-  </data>
-  <data name="Medical_Badge" xml:space="preserve">
-    <value>Medisch</value>
   </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans beheert het lidmaatschap van Nobodies Collective en verwerkt persoonsgegevens in overeenstemming met de AVG en de Spaanse wet op de gegevensbescherming (LOPDGDD).</value>

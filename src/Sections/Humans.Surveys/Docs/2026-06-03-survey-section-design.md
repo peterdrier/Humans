@@ -20,7 +20,7 @@ A survey author must be able to:
 - **Chase non-responders** — an automatic reminder email a week later to people who were invited but haven't completed it.
 - **Read the results** — per-question aggregates + (for identified responses) per-respondent detail.
 
-This is a new **vertical section** (`Survey`), born compliant with current architecture (design-rules §15), owning its own tables and namespace.
+This is a new **vertical section** (`Survey`), born compliant with current architecture (design-rules.md, *Section caching pattern*), owning its own tables and namespace.
 
 ## 2. Decisions taken in the design dialogue
 
@@ -39,7 +39,7 @@ This is a new **vertical section** (`Survey`), born compliant with current archi
 
 ## 3. Data model
 
-All cross-domain references are **bare `Guid` FK columns** — **no navigation property and no cross-section EF FK constraint** (design-rules §6c, taken literally; the clean `FeedbackReport.AgentConversationId` precedent, *not* the `[Obsolete]`-nav grandfathered debt). A new section is not born with `[Obsolete]` anything. The service resolves cross-section data via `IUserServiceRead`/`ITeamServiceRead` into DTOs/view models — never onto entities. Aggregate-local navs (Survey↔Question↔Option, Response↔Answer) are kept and `.Include()`-able.
+All cross-domain references are **bare `Guid` FK columns** — **no navigation property and no cross-section EF FK constraint** (design-rules.md, *No cross-domain joins*, taken literally; the clean `FeedbackReport.AgentConversationId` precedent, *not* the `[Obsolete]`-nav grandfathered debt). A new section is not born with `[Obsolete]` anything. The service resolves cross-section data via `IUserServiceRead`/`ITeamServiceRead` into DTOs/view models — never onto entities. Aggregate-local navs (Survey↔Question↔Option, Response↔Answer) are kept and `.Include()`-able.
 
 ### `Survey` (table `surveys`)
 
@@ -292,7 +292,7 @@ Both honour the existing outbox pause flag. Survey invites are **operational, ne
 - **Deletion / anonymisation:** on user deletion, `SurveyInvitation.UserId` and `Identified` `SurveyResponse.UserId` follow the section's standard FK-SetNull/anonymise path; the response content for already-anonymous tiers is untouched (no PII).
 - **Consent framing:** survey invites are operational membership communication, not marketing; the privacy choice + clear intro copy is the lawful-basis surface for storing identified answers.
 
-## 12. Architecture (per design-rules §15)
+## 12. Architecture (per design-rules.md, *Section caching pattern*)
 
 - **Owning service:** `SurveyService` (`Humans.Application.Services.Survey`). Application-layer; never imports `Microsoft.EntityFrameworkCore`. Calls its own repo + other sections' **service interfaces** only.
 - **Repository:** `ISurveyRepository` (`Humans.Infrastructure/Repositories/Survey/SurveyRepository.cs`). Owns the SQL surface; `IDbContextFactory<HumansDbContext>` per call.

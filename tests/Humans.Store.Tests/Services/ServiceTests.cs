@@ -47,7 +47,8 @@ public class ServiceTests
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripeService = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
-    private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
+    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly StoreSectionOptions _storeOptions = new();
     private readonly Service _service;
 
@@ -58,7 +59,7 @@ public class ServiceTests
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, _holded, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
     }
 
     [HumansFact]
@@ -315,17 +316,21 @@ public class ServiceTests
         result.Lines[0].ProductName.Should().Be("Tent");
     }
 
-    [HumansFact]
-    public async Task GetOrderAsync_open_order_line_reflects_current_catalog_price()
+    [HumansTheory]
+    [InlineData(2026)]
+    [InlineData(2025)]
+    [InlineData(0)]
+    public async Task GetOrderAsync_open_order_line_reflects_its_year_catalog_price(int orderYear)
     {
         // Line was added at €50/21%; the catalog price has since dropped to €40/10%.
-        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);
+        var catalogYear = orderYear == 0 ? 2026 : orderYear;
+        var product = MakeProduct(name: "Tent", price: 50m, vat: 21m, year: catalogYear);
         var orderId = Guid.NewGuid();
         var order = new Order
         {
             Id = orderId,
             CampSeasonId = Guid.NewGuid(),
-            Year = 2026,
+            Year = orderYear,
             State = OrderState.Open,
             Lines = new List<OrderLine>
             {
@@ -336,9 +341,9 @@ public class ServiceTests
         _repo.GetOrderWithLinesAndPaymentsAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product> { product });
-        var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m);
+        var repriced = MakeProduct(name: "Tent", price: 40m, vat: 10m, year: catalogYear);
         repriced.Id = product.Id;
-        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _repo.GetAllProductsForYearAsync(catalogYear, Arg.Any<CancellationToken>())
             .Returns(new List<Product> { repriced });
 
         var result = await _service.GetOrderAsync(orderId, TestContext.Current.CancellationToken);
@@ -607,7 +612,7 @@ public class ServiceTests
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(string.Equals(missing, "product", StringComparison.Ordinal) ? null : product);
         var logger = Substitute.For<ILogger<Service>>();
         var service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService,
-            _holded, Options.Create(_storeOptions), logger);
+            _holded, _holdedWrite, Options.Create(_storeOptions), logger);
 
         var result = await service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -714,7 +719,7 @@ public class ServiceTests
         _repo.UpdateOrderAsync(order, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var logger = Substitute.For<ILogger<Service>>();
         var service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService,
-            _holded, Options.Create(_storeOptions), logger);
+            _holded, _holdedWrite, Options.Create(_storeOptions), logger);
         var ct = TestContext.Current.CancellationToken;
         bool succeeded;
         string? error;
@@ -1988,8 +1993,8 @@ public class ServiceTests
     }
 
     [HumansTheory]
-    [InlineData(nameof(PaymentMethod.DepositReturn), 150.00, 150.00)]
-    [InlineData(nameof(PaymentMethod.Refund), 80.00, -80.00)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "150.00", "150.00")]
+    [InlineData(nameof(PaymentMethod.Refund), "80.00", "-80.00")]
     public async Task RecordAdminPaymentAsync_stores_deposit_return_positive_and_refund_negative(
         string methodName, decimal entered, decimal stored)
     {
@@ -2127,6 +2132,38 @@ public class ServiceTests
         await _audit.Received(2).LogAsync(
             StoreAuditActions.StorePaymentMethodBackfilled, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
             actor, Arg.Any<Guid?>(), Arg.Any<string>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Historical_order_mutations_use_its_year_live_prices(bool depositReturn)
+    {
+        var product = MakeProduct(year: 2025, price: 10m, vat: 0m, deposit: 20m);
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2025,
+            State = OrderState.Open,
+            Lines = { new OrderLine
+            {
+                Id = Guid.NewGuid(), ProductId = product.Id, Qty = 1,
+                UnitPriceSnapshot = 0m, VatRateSnapshot = 0m,
+                DepositAmountSnapshot = depositReturn ? 100m : 0m,
+            } },
+        };
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetAllProductsForYearAsync(2025, Arg.Any<CancellationToken>()).Returns([product]);
+
+        var result = depositReturn
+            ? await _service.RecordAdminPaymentAsync(order.Id, PaymentMethod.DepositReturn, 50m, null, null,
+                Guid.NewGuid(), TestContext.Current.CancellationToken)
+            : await _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _repo.DidNotReceive().DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -2457,7 +2494,7 @@ public class ServiceTests
         intercepted.UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>())
             .Returns(call => real.UpdatePaymentStatusAsync(call.ArgAt<Guid>(0), call.ArgAt<PaymentStatus>(1), ct));
         Service NewService() => new(intercepted, _audit, _campService, _teams, _clock, _shifts,
-            _stripeService, _holded, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+            _stripeService, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
         var orderId = Guid.NewGuid();
         db.Orders.Add(new Order
         {

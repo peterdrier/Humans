@@ -88,7 +88,7 @@ Output every Phase 0 plan with an explicit **Follow-up /section-align targets** 
 
 - Canonical name collides with an existing controller/service/folder in another section.
 - Cross-section DB fix would bump another section's budget by more than 1–2 methods.
-- Owning section of an entity is genuinely ambiguous (affects `design-rules.md §8`).
+- Owning section of an entity is genuinely ambiguous (affects the section doc's owned-tables footer).
 - Invariant doc is missing more than half the `SECTION-TEMPLATE.md` shape.
 - PR branch has uncommitted work or open conflicts.
 - **Outbound API gap on a consumer-side fix** — we'd need a new public service method on another section to clean up our cross-domain read/write, and that section hasn't exposed one. Document, don't invent.
@@ -178,7 +178,7 @@ For each hit: apply the **boundary-fix protocol (producer side)**. Do we expose 
 git grep -nE 'public\s+<SectionEntity>\??\s+\w+\s*\{' $OTHER_ENTITIES
 ```
 
-A nav from another section's entity to ours = a cross-domain coupling that breaks §6 if anyone `Include`s it.
+A nav from another section's entity to ours = a cross-domain coupling that breaks the no-cross-domain-joins rule if anyone `Include`s it.
 
 **A1.11 OUTBOUND cross-section access (this section reaches OUT).** Grep this section's repository for reads of other sections' DbSets or `.Include` across into other-section navs:
 
@@ -189,7 +189,7 @@ git grep -nE '\.Include\([^)]+\)' $(exist $REPOS)
 
 For each hit: apply the **boundary-fix protocol (consumer side)**. Does the other section expose a public service method that gives us what we need? If yes, switch (Phase 2). If no, document the API gap on their side, leave the current code in place, and flag their section as a follow-up /section-align target. **Do not add a method to their repo or service in this PR.**
 
-**A1.12 Controller → DbContext.** Any controller injecting a `DbContext` — or an `IDbContextFactory<>` of one — violates §2a, whichever context it is. Don't grep for `HumansDbContext`; it was deleted in nobodies-collective/Humans#858, so that spelling matches nothing while the violation still happens with a section context. Hard violation; always Phase 2 fix.
+**A1.12 Controller → DbContext.** Any controller injecting a `DbContext` — or an `IDbContextFactory<>` of one — violates the service-ownership rule (controllers never touch a DbContext), whichever context it is. Don't grep for `HumansDbContext`; it was deleted in nobodies-collective/Humans#858, so that spelling matches nothing while the violation still happens with a section context. Hard violation; always Phase 2 fix.
 
 **A1.13 Migrations.** Hand-edited body or snapshot violates `architecture_no_hand_edited_migrations`. Intentional `migrationBuilder.Sql(...)` for triggers/seeds is allowed when named in the section doc.
 
@@ -218,7 +218,7 @@ Hits in `using` statements, ctor params, or method bodies = violation. Doc comme
 git grep -nE '(IMemoryCache|MemoryCache|IDistributedCache|_cache\b)' $(exist $SERVICES $REPOS $CONTROLLERS src/Humans.Web/ViewComponents/<Section>*.cs)
 ```
 
-Caching belongs in the service layer **only** per §15 — either via a `Caching<Section>Service` decorator (Singleton, dict-backed) or service-internal `IMemoryCache` for short-TTL request acceleration. Never in repositories. Never in controllers. ViewComponents per `feedback_viewcomponent_no_cache`.
+Caching belongs in the service layer **only** per the caching pattern (`design-rules.md`, *Section caching pattern*) — either via a `Caching<Section>Service` decorator (Singleton, dict-backed) or service-internal `IMemoryCache` for short-TTL request acceleration. Never in repositories. Never in controllers. ViewComponents per `feedback_viewcomponent_no_cache`.
 
 **A2.3 DI lifetimes.** Read the section's DI registration — `src/Sections/Humans.<Section>/Section.cs` (`ISection.Register`). Verify:
 - Repository: Singleton, depends on `IDbContextFactory<TContext>` where `TContext` is **the section's own context** — never `HumansDbContext`, which doesn't exist
@@ -229,10 +229,10 @@ Caching belongs in the service layer **only** per §15 — either via a `Caching
 **A2.4 Repository pattern.** The section's repository:
 - `internal sealed`
 - uses `IDbContextFactory<TContext>` for the section's own context — resolve `TContext` from the section's `Data/` folder (`<Context>Factory.cs` names it); **do not assume `<Section>DbContext`**, since e.g. `Humans.Consent` is `LegalDbContext` and `Humans.Events` is `EventGuideDbContext`. A repository taking its own section context is correct and must not be flagged.
-- has no Update/Delete if entity is append-only (§12)
+- has no Update/Delete if entity is append-only (*Append-only entities*)
 - lives at `src/Sections/Humans.<Section>/Data/`
 
-A handful of repositories inject the context directly rather than a factory (e.g. `AgentRepository(AgentDbContext db, IClock clock)`). Note it, but it is not a §2a violation on its own.
+A handful of repositories inject the context directly rather than a factory (e.g. `AgentRepository(AgentDbContext db, IClock clock)`). Note it, but it is not a service-ownership violation on its own.
 
 **A2.5 Shared visual components — inventory by type, ViewComponent preferred.** Cross-page UI for this section's data can live as one of three things; this skill is opinionated about which:
 
@@ -646,7 +646,7 @@ Push at end of phase. Bot-review sub-loop until clean.
 Opus.
 
 - **Invariant doc** — verify all `SECTION-TEMPLATE.md` sections. Correct any false claims surfaced in Phase 0 (e.g., "only repo writes the table" claims that turned out false until Phase 2 fixed them — restore once truly true).
-- **Cross-Section Dependencies** — record any §6 violations still pending an upstream API (consumer-side gaps not fixable in this PR), naming the supplier section as the follow-up target.
+- **Cross-Section Dependencies** — record any cross-domain-join violations still pending an upstream API (consumer-side gaps not fixable in this PR), naming the supplier section as the follow-up target.
 - **`docs/architecture/dependency-graph.md`** — update the section's inbound/outbound edges to reflect actual state after Phase 2. Add new dependencies introduced; remove ones eliminated by the cross-section fixes. The dependency graph is the at-a-glance map reviewers consult; if it's stale, alignment work is invisible.
 - **Feature specs** (the section's own `Docs/features/*.md`, or `docs/features/global/*.md` when cross-section) — match implementation; rename if section name changed.
 - **`maintenance-log.md`** — if a recurring task ran. Always update this section's **Section Refactor History** row: Last Lane (date + PR) and Post-Lane Score (the section's built `reforge surface-score` after the final commit).
@@ -687,7 +687,7 @@ Plan files are durable, committed artifacts under `docs/plans/` — one per run,
 - `feedback_codex_thread_replies` · `feedback_pr_review_both_repos` · `feedback_done_means_codex_clean`
 - `feedback_simplify_scope_to_section_size` · `feedback_dotnet_verbosity` · `feedback_always_use_worktree`
 - `feedback_no_direct_to_main` · `feedback_no_schedule_offers`
-- Design Rule §2a (no controller→DbContext) · §2c (no cross-service table access) · §6 (no cross-domain `.Include`) · §8 (table ownership) · §11 (auth) · §12 (append-only) · §15 (caching pattern) — `docs/architecture/design-rules.md`
+- Design rules — `docs/architecture/design-rules.md`: *Service ownership* (no controller→DbContext, no cross-service table access, table ownership) · *No cross-domain joins* · *Authorization* · *Append-only entities* · *Section caching pattern*
 - `docs/sections/SECTION-TEMPLATE.md`
 - `docs/testing/mutation-testing.md` (Stryker.NET setup, test-attribute gate)
 - `scripts/analyze-test-utility.ps1` (Stryker → high-confidence test-debt queue)

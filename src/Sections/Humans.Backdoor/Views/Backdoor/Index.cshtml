@@ -8,7 +8,6 @@
         ? "never"
         : at.Value.ToDateTime(madrid);
 
-    Func<BackdoorKeyListItem, IHtmlContent> ownerCell = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
     Func<BackdoorKeyListItem, IHtmlContent> keyCell = @<text><code>@item.DisplayPrefix…</code></text>;
     Func<BackdoorKeyListItem, IHtmlContent> createdCell = @<text>@Stamp(item.CreatedAt)</text>;
     Func<BackdoorKeyListItem, IHtmlContent> lastUsedCell = @<text>@Stamp(item.LastUsedAt)</text>;
@@ -41,10 +40,10 @@
         }
     </text>;
     var keysTable = TableModel.For(Model.Keys)
-        .Template("Owner", ownerCell)
+        .Human("Owner", k => k.UserId, HumanLink.None)
         .Column("Label", k => k.Label)
         .Template("Key", keyCell)
-        .Template("Created", createdCell, sortBy: k => k.CreatedAt)
+        .Template("Created", createdCell, c => c.Css("text-nowrap"), sortBy: k => k.CreatedAt)
         .Template("Last used", lastUsedCell, sortBy: k => k.LastUsedAt)
         .Template("Status", statusCell)
         .Template("Actions", actionsCell, o => o.NoSort().Css("text-end").HeaderCss("text-end"))

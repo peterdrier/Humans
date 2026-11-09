@@ -42,7 +42,7 @@
             .Column("Source", e => e.Source.ToString())
             .Template("Result", resultCell, c => c.NoSort())
             .Template("Actor", actorCell, c => c.NoSort())
-            .Template("When", whenCell)
+            .Template("When", whenCell, c => c.Css("text-nowrap"))
             .RowCss(e => e.Success ? null : "table-danger")
             .Build();
     }

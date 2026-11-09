@@ -14,7 +14,8 @@ internal sealed class ExpenseReportBackgroundProcessor(
     IExpenseRepository repo,
     IFileStorage fileStorage,
     IUserService userService,
-    IHoldedClient holdedClient,
+    IHoldedService holded,
+    IHoldedWrite holdedWrite,
     IFinanceService finance,
     IFinanceWrite financeWrite,
     IAuditLogService auditLogService,
@@ -22,7 +23,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
     ILogger<ExpenseReportBackgroundProcessor> logger) : IExpenseReportBackgroundProcessor, IApplicationService
 {
     private readonly ExpenseHoldedPublisher holdedPublisher = new(
-        repo, fileStorage, userService, holdedClient, finance, financeWrite, auditLogService, logger);
+        repo, fileStorage, userService, holded, holdedWrite, finance, financeWrite, auditLogService, logger);
 
     /// <summary>
     /// With the 2^n-minute backoff, ten attempts span roughly 17 hours: long enough to ride out a Holded outage, short
@@ -52,7 +53,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
         {
             // No API key (PR previews, local dev): don't drain, or every 401 would write off a queued event. The
             // same flag makes /Expenses/{id} show NotConfigured instead of Queued.
-            if (!holdedClient.IsConfigured)
+            if (!holded.IsConfigured)
             {
                 logger.LogDebug(
                     "HOLDED_API_KEY_V2 not configured — skipping Holded expense outbox drain.");
@@ -110,8 +111,25 @@ internal sealed class ExpenseReportBackgroundProcessor(
                                 $"Unknown outbox event type '{outboxEvent.EventType}'.");
                     }
                 }
-                catch (HoldedTransientException ex)
+                catch (HoldedPermanentException ex)
                 {
+                    logger.LogError(
+                        ex,
+                        "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
+                        outboxEvent.Id, ex.StatusCode);
+                    await WriteOffOutboxEventAsync(outboxEvent, ex.Message, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    // A lost completion acknowledgement or a failed follow-up must not reclassify a committed push.
+                    if (ex is not HoldedTransientException
+                        && await repo.GetLatestOutboxForReportAsync(outboxEvent.ExpenseReportId, ct) is { } current
+                        && current.Id == outboxEvent.Id && current.ProcessedAt is not null)
+                    {
+                        logger.LogError(ex, "Holded outbox event {OutboxEventId} completed before a follow-up failed", outboxEvent.Id);
+                        continue;
+                    }
+
                     var attempts = outboxEvent.RetryCount + 1;
                     if (attempts >= MaxOutboxRetries)
                     {
@@ -130,22 +148,16 @@ internal sealed class ExpenseReportBackgroundProcessor(
                         // than a few minutes is survived instead of being re-hit every 60 seconds.
                         var nextRetryAt = clock.GetCurrentInstant()
                             + Duration.FromMinutes((long)Math.Pow(2, attempts));
-                        logger.LogWarning(
+                        logger.Log(
+                            ex is HoldedTransientException ? LogLevel.Warning : LogLevel.Error,
                             ex,
-                            "Transient error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
+                            "Error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
                             outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
                         await repo.IncrementOutboxRetryAsync(
                             outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, ct);
                     }
                 }
-                catch (HoldedPermanentException ex)
-                {
-                    logger.LogError(
-                        ex,
-                        "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
-                        outboxEvent.Id, ex.StatusCode);
-                    await WriteOffOutboxEventAsync(outboxEvent, ex.Message, ct);
-                }
+
             }
         }
         finally

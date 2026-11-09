@@ -3,7 +3,6 @@ using System.Resources;
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;
 using NodaTime;
-using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Auth.Domain;
@@ -16,9 +15,6 @@ using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Services;
 
-[DontFix(
-    reason: "Auth (crosscut) references vertical sections — IUserService for assignee/creator display stitching, ISystemTeamSync for system-team membership. Permanent exception pending Peter-led inversion.",
-    since: "2026-05-25")]
 internal sealed class RoleAssignmentService(
     IRoleAssignmentRepository repository,
     IUserService userService,
@@ -31,6 +27,9 @@ internal sealed class RoleAssignmentService(
     ILogger<RoleAssignmentService> logger) : IRoleAssignmentManagement, IUserDataContributor, IUserMerge
 {
     internal const string RoleAssignments = "RoleAssignments";
+
+    // role_assignments.Notes is varchar(2000).
+    internal const int MaxNotesLength = 2000;
 
     private static readonly ResourceManager NoticeResources = new(typeof(AuthResource));
 
@@ -104,6 +103,11 @@ internal sealed class RoleAssignmentService(
             return new RoleAssignmentResult(false, "UnknownRole");
         }
 
+        if (notes?.Length > MaxNotesLength)
+        {
+            return new RoleAssignmentResult(false, "NotesTooLong");
+        }
+
         var now = clock.GetCurrentInstant();
 
         var hasOverlap = await repository.HasOverlappingAssignmentAsync(
@@ -162,13 +166,16 @@ internal sealed class RoleAssignmentService(
             return new RoleAssignmentResult(false, "RoleNotActive");
         }
 
-        roleAssignment.ValidTo = now;
-        if (!string.IsNullOrWhiteSpace(notes))
+        var endedNotes = string.IsNullOrWhiteSpace(notes) ? roleAssignment.Notes
+            : string.IsNullOrEmpty(roleAssignment.Notes) ? $"Ended: {notes}"
+            : $"{roleAssignment.Notes} | Ended: {notes}";
+        if (endedNotes?.Length > MaxNotesLength)
         {
-            roleAssignment.Notes = string.IsNullOrEmpty(roleAssignment.Notes)
-                ? $"Ended: {notes}"
-                : $"{roleAssignment.Notes} | Ended: {notes}";
+            return new RoleAssignmentResult(false, "NotesTooLong");
         }
+
+        roleAssignment.ValidTo = now;
+        roleAssignment.Notes = endedNotes;
 
         await repository.UpdateAsync(roleAssignment, ct);
         // Evict before anything below reads roles back (the Board team sync).

@@ -71,8 +71,10 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         index.CanAdminister.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound_EvenWithMalformedInput(bool malformed)
     {
         var manager = SeedUser("Manager");
         var a = await SeedProgramAsync(name: "A", managers: manager);
@@ -80,6 +82,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         var applicationOnB = await SeedGrantAsync(b, status: GrantStatus.Applied);
         var openOnB = await SeedGrantAsync(b);
         var controller = BuildAdmin(manager);
+        if (malformed) controller.ModelState.AddModelError("amount", "Not a number");
 
         (await controller.Approve(a.Id, applicationOnB.Id, null, Ct)).Should().BeOfType<NotFoundResult>();
         (await controller.Decline(a.Id, applicationOnB.Id, null, Ct)).Should().BeOfType<NotFoundResult>();
@@ -87,6 +90,41 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         (await controller.Amount(a.Id, openOnB.Id, 1m, Ct)).Should().BeOfType<NotFoundResult>();
         (await ReadGrantAsync(applicationOnB.Id)).Status.Should().Be(GrantStatus.Applied);
         (await ReadGrantAsync(openOnB.Id)).Status.Should().Be(GrantStatus.Open);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("decline")]
+    [Xunit.InlineData("revoke")]
+    [Xunit.InlineData("amount")]
+    public async Task GrantMutation_ServiceReportsMissingGrant_ReturnsNotFound(string operation)
+    {
+        var manager = SeedUser("Manager");
+        var program = await SeedProgramAsync(managers: manager);
+        var grant = await SeedGrantAsync(program);
+        var management = Substitute.For<IPreapprovalManagement>();
+        management.GetProgramAsync(program.Id, Ct).Returns(await NewService().GetProgramAsync(program.Id, Ct));
+        var missing = new PreapprovalMutationResult(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
+        management.ApproveAsync(program.Id, grant.Id, null, manager, Ct).Returns(missing);
+        management.DeclineAsync(program.Id, grant.Id, null, manager, Ct).Returns(missing);
+        management.RevokeAsync(program.Id, grant.Id, null, manager, Ct).Returns(missing);
+        management.ChangeAmountAsync(program.Id, grant.Id, 1m, manager, Ct).Returns(missing);
+        var (provider, http) = Host(manager, []);
+        await using var services = provider;
+        var controller = new PreapprovalsAdminController(management, Users, Finance, _localizer,
+            services.GetRequiredService<IAuthorizationService>(), Clock, Substitute.For<ILogger<PreapprovalsAdminController>>());
+        Wire(controller, http);
+
+        var result = operation switch
+        {
+            "approve" => await controller.Approve(program.Id, grant.Id, null, Ct),
+            "decline" => await controller.Decline(program.Id, grant.Id, null, Ct),
+            "revoke" => await controller.Revoke(program.Id, grant.Id, null, Ct),
+            "amount" => await controller.Amount(program.Id, grant.Id, 1m, Ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]
@@ -151,13 +189,14 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     public async Task Board_reads_every_program_and_changes_nothing()
     {
         var program = await SeedProgramAsync(name: "A");
+        var other = await SeedProgramAsync(name: "B");
         var application = await SeedGrantAsync(program, status: GrantStatus.Applied);
         var controller = BuildAdmin(SeedUser("Board member"), RoleNames.Board);
 
         var index = (await controller.Index(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
         var page = (await controller.Program(program.Id, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminProgramViewModel>().Subject;
 
-        index.Programs.Select(p => p.Id).Should().Equal(program.Id);
+        index.Programs.Select(p => p.Id).Should().Equal(program.Id, other.Id);
         index.CanAdminister.Should().BeFalse();
         page.CanManage.Should().BeFalse();
         page.CanAdminister.Should().BeFalse();
@@ -165,6 +204,22 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         (await controller.Issue(program.Id, SeedUser(), null, null, Ct)).Should().BeOfType<ForbidResult>();
         (await controller.Edit(program.Id, Ct)).Should().BeOfType<ForbidResult>();
         (await ReadGrantAsync(application.Id)).Status.Should().Be(GrantStatus.Applied);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(FinanceRoles.FinanceAdmin)]
+    [Xunit.InlineData(RoleNames.Admin)]
+    public async Task Index_AdministratorsSeeEveryProgram_WithoutManagerAssignments(string role)
+    {
+        var first = await SeedProgramAsync(name: "A");
+        var second = await SeedProgramAsync(name: "B");
+        var controller = BuildAdmin(SeedUser("Role holder"), role);
+
+        var result = await controller.Index(Ct);
+
+        var index = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminIndexViewModel>().Subject;
+        index.Programs.Select(p => p.Id).Should().Equal(first.Id, second.Id);
+        index.CanAdminister.Should().BeTrue();
     }
 
     [HumansTheory]
@@ -355,8 +410,6 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         services.AddAuthorization(options =>
         {
             ((ISectionPolicies)new Section()).AddPolicies(options);
-            options.AddPolicy(FinancePolicies.Read,
-                policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Board, RoleNames.Admin));
             options.AddPolicy(FinancePolicies.Manage,
                 policy => policy.RequireRole(FinanceRoles.FinanceAdmin, RoleNames.Admin));
         });

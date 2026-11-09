@@ -100,7 +100,7 @@ Each finding: severity (BLOCK / IMPORTANT / NIT), location, what's wrong, propos
 7. **CLAUDE.md bloat.** Target ~80 lines (per `memory/META.md`). Over by >20% → IMPORTANT. Candidates to atomize: bulleted rules under "Critical:"/"Important:"/"Rule:" headings, detailed concept sections for narrow tasks. Keep: architecture overview, build commands, terminology, git workflow basics.
 8. **Stale stub.** `docs/architecture/coding-rules.md` should be a redirect-only stub to `memory/INDEX.md`. Any crept-in content → IMPORTANT.
 9. **Stale cross-references.** Grep for `coding-rules.md` references pointing at it for substantive content → IMPORTANT.
-10. **Atom size.** Atoms >80 lines likely belong in `design-rules.md` → NIT.
+10. **Atom size.** Atoms >80 lines are narrative, not a rule: split them, or move section facts to the owning `Docs/<Section>.md` → NIT.
 11. **Section invariants alignment.** Each `docs/sections/*.md` — dead citations to atoms or design-rules sections → IMPORTANT.
 
 ### Outputs

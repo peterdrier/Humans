@@ -117,7 +117,7 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 | RecurrenceRule | string(500)? | RFC 5545 RRULE; null for a one-off. Validated with Calendar's `CalendarRecurrence.IsValidRule` |
 | RecurrenceTimezone | string(100)? | IANA zone the rule repeats in, so 19:00 stays 19:00 across DST; set exactly when the rule is |
 | Description | string(4000)? | What the meeting is for, written beforehand; shown on the group page and as the calendar entry's description (falls back to the deliverable) |
-| Location / LocationUrl | string(500)? / string(2000)? | |
+| Location / LocationUrl | string(500)? / string(2000)? | The URL links the location on the group page and calendar views, and leads the feed entry's description |
 | IsPublic | bool | Adds the meeting to the community calendar; register visibility stays AppAccess |
 | Minutes | text? | Legacy single minutes box: no longer editable, still shown on the meeting's first occurrence. New notes are MeetingNotes log entries |
 | CreatedByUserId | Guid? | Bare reference; nulled on erasure |
@@ -127,8 +127,8 @@ Unique filtered `(WorkgroupId, UserId)` where `LeftAt IS NULL`.
 Indexes `(WorkgroupId, StartUtc)` and `CreatedByUserId` filtered non-null — the erasure
 predicate reads that column.
 
-Meeting URLs accept up to 2000 characters. The service validates the limit for creates
-and edits; form failures preserve the entered values and show a localized error.
+Meeting URLs accept up to 2000 characters and only absolute http(s). The service validates both for creates
+and edits, and the register read drops a stored URL that isn't http(s); form failures preserve the entered values and show a localized error.
 Meetings are created and edited through Calendar's shared form (`_CalendarEventForm`,
 `ICalendarEventForm`): date and time inputs plus a time zone chooser that defaults to the
 organisation zone (`ISettingsService.GetTimeZoneIdAsync`, Settings' `Event:TimeZoneId`). Times
@@ -172,7 +172,7 @@ member may also post them from the plain log form with no meeting. Any number of
 attach to one occurrence. Bodies are Markdown, written in the shared Markdown editor and
 rendered with `SanitizedMarkdown`.
 
-Not §12 append-only by design: the log is a working record; the audit trail is the
+Not append-only by design: the log is a working record; the audit trail is the
 immutable one. Member entries are editable and hard-deletable by any member (audited).
 System entries never change.
 
@@ -313,6 +313,7 @@ Settings and Register an existing group on first setup or after clearing the que
 - Membership requests, admission, leaving and changing coordinators keep preparation and persistence cancellable. Admission, departure, coordinator selection and handover persist their member rows and required system log entries together; a failed log write leaves the roster unchanged. After commit, handover/coordinator audits, notices and Drive sync requests finish independently of browser cancellation. Document publishing, comment-window changes, delivery and Board disposition save document fields and their required system log together; a failed log write leaves the document unchanged. These saves remain cancellable, then notices and audits finish independently. Comment replies save their comment rows before notifying authors. Registration, referral, refusal, withdrawal, reactivation, member/Secretary endings and scope edits persist the group fields and system log together. Withdrawal and endings close pending membership requests in that same save. Audits, notices and account activation changes follow commit independently of browser cancellation. Recorded status requests finish their coordinator notice after saving.
 
 - Member and admin action and form refusals preserve typed drafts and remain visible at Warning without exception stacks; action and resource-key context, redirects and localized form feedback are preserved. Only typed section refusals carrying untranslated resource keys and arguments become validation feedback; unexpected dependency lookup or access failures propagate to the application error handler instead of becoming workgroup 404/403 responses.
+- Log-entry create/edit forms require an explicit occurrence date and entry kind; document create/edit forms require an explicit document kind. Missing values redisplay the typed form after authorization and ownership checks, before any write, rather than storing the default year-0001 date or silently choosing Update/Deliverable. Explicit Deliverable (the zero-valued document kind) remains valid.
 - Redirecting member actions reject malformed bound input after authorization and resource ownership checks, before any write. Invalid coordinator selections cannot save a valid subset, and invalid completion reasons cannot default to delivered; refusals return 400 and log a warning. Completion reasons, individual/category comment-response dispositions and Board dispositions must be posted explicitly; omitted choices cannot become delivered, pending or accepted. Explicit zero-valued choices remain valid. Admin binding refusals also log a Warning after actor resolution.
 
 
@@ -491,10 +492,10 @@ should end is the Board's decision, taken on the register in front of them.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
-- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; transitions, rhythm timing and Drive synchronization remain in `WorkgroupService`. Member notifications
+- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; group lifecycle transitions remain in `WorkgroupService`; Drive provisioning and sync requests belong to `WorkgroupDriveFolders`; document/comment transitions belong to `WorkgroupDocumentWorkflow`, and rhythm timing belongs to `WorkgroupRhythm`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
   A merged-member alias carries both the resolved live id and its language into grouping,
-  with one delivery per live recipient even when multiple requested ids resolve to them.
+  with one delivery per live recipient even when multiple requested ids resolve to them. Lifecycle and Board emails apply the same resolved-ID deduplication: outbox ownership uses the live recipient ID from the same snapshot as address, name and language, so merged aliases cannot queue duplicate copies or assign new mail to an archived account.
 - **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.
 - **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
@@ -521,7 +522,7 @@ should end is the Board's decision, taken on the register in front of them.
 
 ## Architecture
 
-The internal `WorkgroupRegisterReader` owns register, slug, ID and member reads and their complete group/document projections. Mutation guards reuse those projections and the same safe Discord-link policy. `WorkgroupService` keeps the existing entry points and all writes; cached graphs, deleted-meeting filtering, member selection and workflow authorization remain unchanged. No public contract or DI registration is added.
+The internal `WorkgroupRegisterReader` owns register, slug, ID and member reads and their complete group/document projections. Mutation guards reuse those projections and the same safe Discord-link policy. `WorkgroupService` keeps the existing entry points; cached graphs, deleted-meeting filtering, member selection and workflow authorization remain unchanged. No public contract or DI registration is added.
 
 The internal `WorkgroupDataExport` owns all six GDPR export slices, including register-name lookup and author/responder/moderator attribution. `WorkgroupService` retains the existing entry point, erasure with coordinator-loss notification and account merge; export keys, shapes, ordering and cancellation are unchanged. No public contract or DI registration is added.
 
@@ -583,3 +584,15 @@ picker labels and roster profile badges load a member dictionary.
   lifecycle change or preventing its subsequent Drive access sync. Individual sends
   remain independent; cancellation of recipient lookups still propagates.
 - **Architecture test** — `tests/Humans.Workgroups.Tests` carries no `Architecture/` folder.
+
+Internal `WorkgroupRhythm` owns the daily update-due/overdue-registration pass and its audit helper. `WorkgroupService` retains its job entry point and supplies the existing notices, repository, audit, clock and logger. Snapshot projection reuses `WorkgroupRegisterReader`; timing windows, per-group failure isolation, recipients, audit actor, ordering and cancellation are unchanged. No public contract, job signature or DI registration is added.
+
+Internal `WorkgroupDocumentWorkflow` owns document creation/editing/publication/delivery, comment windows, comment submission/responses and moderation. Shared group-existence, active-state and membership-manager guards live in `WorkgroupAccess`; shared audit attribution, system-entry construction and optional-text normalization live in `WorkgroupJournal`. Other mutations reuse those owners, and projections reuse `WorkgroupRegisterReader`. The facade retains its existing entry points. Sensitive-group checks, frozen/delivered states, comment matching and limits, write/audit/notice order, cancellation and the Board's ended-group disposition exception are unchanged. No public contract or DI registration is added.
+
+Internal `WorkgroupActivity` owns meeting creation/update/soft deletion, member-log creation/update/deletion and survey linking. Its meeting and log paths share live-meeting lookup, recurrence validation and meeting-note link resolution; unchanged links still survive a meeting's deletion. It reuses `WorkgroupAccess` and `WorkgroupJournal`. Active-group checks, system-entry protection, safe-link and text validation, survey authorship checks, audit attribution and cancellation are unchanged. Group-ending/status transitions retain their lifecycle owner. Existing service entry points remain; no public contract or DI registration is added.
+
+Internal `WorkgroupBudgets` owns budget updates, expense-account choices, amount validation, account resolution/activation and budget log/audit text. Existing-group registration and lifecycle transitions reuse it at their existing call points; shared status refusal lives with the other guards in `WorkgroupAccess`. Finance-first ordering, retained bindings when clearing, combined budget/system-log persistence, cancellation boundaries, best-effort activation and logger category are unchanged. Group registration/ending remain separate. Existing facade entry points remain; no public contract or DI registration is added.
+
+Internal `WorkgroupDriveFolders` owns root-folder read/save, folder-ID normalization, registration subfolder creation and best-effort access-sync requests. Membership and lifecycle callers reuse it at their existing call points. Legacy Settings fallback, reachability preflight, root-setting audit, detached folder creation, sync failure logging and logger category are unchanged. Access claims remain in `WorkgroupDriveAccessSource`; no public contract, permission change or DI registration is added.
+
+Internal `WorkgroupMembership` owns join, approve/decline/add, leave and coordinator replacement, including admission, name lookup and shared member construction. Application and existing-group registration reuse its member construction; canonical target resolution lives in `WorkgroupAccess`. The workflow reuses the existing journal, notices and Drive-folder owner. Pending-request handling, alias resolution, coordinator replacement/admin exceptions, combined member/log writes, GDPR audit attribution and post-commit notice/sync order are unchanged. Existing facade entry points and cancellation boundaries remain; no public contract, permission change or DI registration is added.

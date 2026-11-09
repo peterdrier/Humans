@@ -64,7 +64,7 @@ else
                 .Column("Deposit", r => r.DepositAmountEur, c => c.Currency().End())
                 .Column("Revenue acct", r => r.HoldedRevenueAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "—")
                 .Column("Internal acct", r => r.InternalRechargeAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "—")
-                .Column("Orderable until", r => r.OrderableUntil.ToDate())
+                .Column("Orderable until", r => r.OrderableUntil.ToDate(), c => c.Css("text-nowrap"))
                 .Template("Status", catalogAdminStatusCell)
                 .Template("Actions", catalogAdminActionsCell, c => c.NoSort().End())
                 .RowCss(p => p.IsActive ? null : "text-muted")

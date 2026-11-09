@@ -7,6 +7,10 @@ namespace Humans.Holded.Services;
 
 internal sealed class HoldedAccountReader(IHoldedMirrorRepository repo) : IApplicationService
 {
+    public async Task<IReadOnlyDictionary<int, decimal>> GetAccountBalancesAsync(
+        CancellationToken ct = default) =>
+        (await repo.GetAccountTotalsAsync(ct)).ToDictionary(t => t.AccountNum, t => t.Balance);
+
     public async Task<HoldedAccountsPage> GetAccountsPageAsync(
         HoldedAccountsFilter filter, CancellationToken ct = default)
     {

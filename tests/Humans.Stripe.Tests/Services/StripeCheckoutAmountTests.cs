@@ -12,11 +12,11 @@ public class StripeCheckoutAmountTests
     [HumansTheory]
     [InlineData(0, 0L)]
     [InlineData(1, 100L)]
-    [InlineData(0.01, 1L)]
-    [InlineData(19.99, 1999L)]
-    [InlineData(19.995, 2000L)]
-    [InlineData(19.994, 1999L)]
-    [InlineData(123456.78, 12345678L)]
+    [InlineData("0.01", 1L)]
+    [InlineData("19.99", 1999L)]
+    [InlineData("19.995", 2000L)]
+    [InlineData("19.994", 1999L)]
+    [InlineData("123456.78", 12345678L)]
     public void Converts_eur_to_stripe_minor_units(decimal eur, long expectedMinorUnits)
     {
         StripeService.ToStripeMinorUnits(eur).Should().Be(expectedMinorUnits);
@@ -30,10 +30,10 @@ public class StripeCheckoutAmountTests
     /// </summary>
     [HumansTheory]
     [InlineData(0L, 0)]
-    [InlineData(1L, 0.01)]
-    [InlineData(1999L, 19.99)]
-    [InlineData(-250L, -2.50)]
-    [InlineData(12345678L, 123456.78)]
+    [InlineData(1L, "0.01")]
+    [InlineData(1999L, "19.99")]
+    [InlineData(-250L, "-2.50")]
+    [InlineData(12345678L, "123456.78")]
     public void Converts_stripe_minor_units_back_to_eur(long minorUnits, decimal expectedEur)
     {
         StripeService.FromStripeMinorUnits(minorUnits).Should().Be(expectedEur);
@@ -41,9 +41,9 @@ public class StripeCheckoutAmountTests
 
     [HumansTheory]
     [InlineData(0)]
-    [InlineData(0.01)]
-    [InlineData(19.99)]
-    [InlineData(123456.78)]
+    [InlineData("0.01")]
+    [InlineData("19.99")]
+    [InlineData("123456.78")]
     public void Round_trips_a_representable_amount_without_loss(decimal eur)
     {
         StripeService.FromStripeMinorUnits(StripeService.ToStripeMinorUnits(eur)).Should().Be(eur);

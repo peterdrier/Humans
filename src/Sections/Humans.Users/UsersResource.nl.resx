@@ -785,4 +785,46 @@
   <data name="Users_Medical_RevealsTitle" xml:space="preserve"><value>Wie heeft dit bekeken</value></data>
   <data name="Users_Medical_RevealsEmpty" xml:space="preserve"><value>Niemand heeft je medische gegevens bekeken.</value></data>
   <data name="Users_Medical_RevealedBy" xml:space="preserve"><value>Bekeken door</value></data>
+  <data name="Users_Birthdays_Title" xml:space="preserve">
+    <value>Verjaardagskalender</value>
+  </data>
+  <data name="Users_Birthdays_Count" xml:space="preserve">
+    <value>{0} verjaardagen in {1}</value>
+  </data>
+  <data name="Users_Birthdays_Count_One" xml:space="preserve">
+    <value>{0} verjaardag in {1}</value>
+  </data>
+  <data name="Users_Birthdays_None" xml:space="preserve">
+    <value>Geen verjaardagen in {0}.</value>
+  </data>
+  <data name="Users_Birthdays_Privacy" xml:space="preserve">
+    <value>Alleen humans die hun verjaardag hebben ingevuld worden getoond.</value>
+  </data>
+  <data name="Users_Map_Title" xml:space="preserve">
+    <value>Humans-kaart</value>
+  </data>
+  <data name="Users_Map_Count" xml:space="preserve">
+    <value>{0} humans met locatie</value>
+  </data>
+  <data name="Users_Map_None" xml:space="preserve">
+    <value>Nog geen enkele human heeft een locatie ingesteld.</value>
+  </data>
+  <data name="Users_Map_Privacy" xml:space="preserve">
+    <value>Alleen humans die hun locatie hebben ingevuld worden getoond. De locatie is bij benadering en gebaseerd op de stad.</value>
+  </data>
+  <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Zie wie er deze maand jarig is.</value></data>
+  <data name="Users_Map_CardDescription" xml:space="preserve"><value>Zie waar de humans op de wereld zijn.</value></data>
+  <data name="Users_Profile_Participation" xml:space="preserve">
+    <value>Deelname</value>
+  </data>
+  <data name="Users_Profile_Settings" xml:space="preserve">
+    <value>Instellingen</value>
+  </data>
+  <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
+    <value>Voorbeeld van een nieuwe indeling. De huidige pagina:</value>
+  </data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Geen medische gegevens bekend.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Kan de medische gegevens niet laden.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Medische gegevens tonen (elke inzage wordt vastgelegd in het auditlog)</value></data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Selecteer een geldige locatie.</value></data>
 </root>

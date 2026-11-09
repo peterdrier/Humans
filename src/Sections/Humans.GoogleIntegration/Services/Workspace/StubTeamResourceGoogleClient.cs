@@ -33,13 +33,13 @@ internal sealed class StubTeamResourceGoogleClient(ILogger<StubTeamResourceGoogl
 
         // Echo the email back as numeric id so the service's dedup-by-(id,email)
         // logic still works in dev.
-        var emailLocal = groupEmail.Split('@')[0];
+        var emailParts = groupEmail.Split('@', 2);
         return Task.FromResult(new GroupLookupResult(
             new ResolvedGroup(
                 NumericId: groupEmail,
                 NormalizedEmail: groupEmail,
                 DisplayName: groupEmail,
-                DisplayUrl: $"https://groups.google.com/a/nobodies.team/g/{emailLocal}"),
+                DisplayUrl: $"https://groups.google.com/a/{emailParts[1]}/g/{emailParts[0]}"),
             Error: null));
     }
 

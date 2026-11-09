@@ -46,6 +46,33 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class ApplicationDecisionServiceTests : IDisposable
 {
+
+    [HumansTheory]
+    [InlineData(ApplicationMutation.Approve)]
+    [InlineData(ApplicationMutation.Reject)]
+    public async Task CanonicalNoticeRecipients_ApplicationDecision(ApplicationMutation decision)
+    {
+        var source = Guid.NewGuid();
+        var live = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = live, BurnerName = "Live", PreferredLanguage = "es" },
+            [new UserEmail { UserId = live, Email = "live@example.org", IsVerified = true, IsPrimary = true }], [], null));
+        var notices = new ApplicationDecisionNotices(users, _emailService, _emailMessages, _notificationService,
+            NullLogger<ApplicationDecisionService>.Instance);
+        var application = new MemberApplication { Id = Guid.NewGuid(), UserId = source, MembershipTier = MembershipTier.Colaborador };
+
+        if (decision == ApplicationMutation.Approve)
+            await notices.SendApprovalAsync(application, TestContext.Current.CancellationToken);
+        else
+            await notices.SendRejectionAsync(application, "Reason", TestContext.Current.CancellationToken);
+
+        var recipients = _notificationService.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();
+        recipients.Should().Equal(live);
+        _emailService.ReceivedCalls().Should().ContainSingle().Which.GetArguments()[0]
+            .Should().BeOfType<EmailMessage>().Which.UserId.Should().Be(live);
+    }
+
     public enum ApplicationMutation
     {
         Create,

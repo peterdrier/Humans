@@ -22,7 +22,7 @@ public class TeamEarlyEntryProjectionTests
             },
         };
 
-        var result = TeamEarlyEntryProjection.Project(grants);
+        var result = TeamEarlyEntry.Project(grants);
 
         result.Should().ContainSingle();
         result[0].UserId.Should().Be(u1);
@@ -32,5 +32,5 @@ public class TeamEarlyEntryProjectionTests
 
     [HumansFact]
     public void Project_empty_input_returns_empty()
-        => TeamEarlyEntryProjection.Project([]).Should().BeEmpty();
+        => TeamEarlyEntry.Project([]).Should().BeEmpty();
 }

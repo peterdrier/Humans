@@ -114,7 +114,7 @@ internal sealed class TermRenewalReminderJob(
                             NotificationClass.Actionable,
                             NotificationPriority.Normal,
                             string.Format(culture, NoticeResources.GetString("Governance_Notification_TermRenewalReminder", culture)!, application.MembershipTier, expiryDate),
-                            [application.UserId],
+                            [applicant.Id],
                             body: NoticeResources.GetString("Governance_Notification_TermRenewalReminderBody", culture),
                             actionUrl: "/Governance/Applications",
                             actionLabel: NoticeResources.GetString("Governance_Notification_Renew", culture),

@@ -1,0 +1,30 @@
+@using Humans.Governance.Contracts
+@model Humans.Users.Models.ProfileViewModel
+
+@if (Model.IsOwnProfile && Model.HasPendingConsents)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>@Localizer["Users_Profile_ActionRequired"]</strong> @string.Format(Localizer["Users_Profile_PendingConsents"].Value, Model.PendingConsentCount)
+        <a asp-controller="Consent" asp-action="Index" class="alert-link">@Localizer["Users_Profile_ReviewNow"]</a>
+    </div>
+}
+
+@if (Model.IsOwnProfile && Model.TierApplicationStatus != null)
+{
+    var alertClass = Model.TierApplicationStatus switch
+    {
+        ApplicationStatus.Approved => "alert-success",
+        ApplicationStatus.Rejected => "alert-danger",
+        _ => "alert-info"
+    };
+    <div class="alert @alertClass" role="alert">
+        <div class="d-flex justify-content-between align-items-center">
+            <span>
+                @string.Format(Localizer["Users_Profile_TierApplicationStatus"].Value, Model.TierApplicationTier)
+                <span class="badge @Model.TierApplicationBadgeClass ms-1">@SharedLocalizer["ApplicationStatus_" + Model.TierApplicationStatus.ToString()]</span>
+            </span>
+            <a asp-controller="Governance" asp-action="Index" class="alert-link">@Localizer["Users_Profile_TierApplicationDetails"]</a>
+        </div>
+    </div>
+}
+

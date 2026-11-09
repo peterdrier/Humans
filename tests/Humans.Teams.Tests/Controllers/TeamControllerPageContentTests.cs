@@ -59,6 +59,38 @@ public class TeamControllerPageContentTests
     }
 
     [HumansFact]
+    public async Task Summary_OrdersAllParentsAndChildren_AndInheritsParentBuckets()
+    {
+        var teams = Substitute.For<ITeamManagementService>();
+        AdminTeamSummary Row(string name, Guid? parentId = null, bool hidden = false, bool system = false) =>
+            new(Guid.NewGuid(), name, name, true, false, system,
+                system ? nameof(SystemTeamType.Volunteers) : null, 0, 0, false, null, 0, 0,
+                Instant.FromUtc(2026, 1, 1, 0, 0), parentId, 0, hidden);
+        var alpha = Row("Alpha");
+        var zulu = Row("Zulu");
+        var hidden = Row("Hidden", hidden: true);
+        var system = Row("Volunteers", system: true);
+        var childAlpha = Row("alpha child", zulu.Id);
+        var childZulu = Row("Zulu child", zulu.Id);
+        var hiddenChild = Row("Visible child", hidden.Id);
+        teams.GetAdminTeamListAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { childZulu, hiddenChild, zulu, system, childAlpha, hidden, alpha });
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
+            NullLogger<TeamController>.Instance);
+
+        var result = await controller.Summary(TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AdminTeamListViewModel>().Which;
+        model.Departments.Select(t => t.Name).Should().Equal("Alpha", "Zulu", "alpha child", "Zulu child");
+        model.Hidden.Select(t => t.Name).Should().Equal("Hidden", "Visible child");
+        model.System.Should().ContainSingle().Which.Name.Should().Be("Volunteers");
+        model.Departments.Skip(2).Should().OnlyContain(t => t.IsChildTeam);
+    }
+
+    [HumansFact]
     public async Task Roster_OrdersUnsortedOwnerDataByPriorityTeamRoleAndSlot()
     {
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -82,9 +114,8 @@ public class TeamControllerPageContentTests
             .ToDictionary(team => team.Id));
         var controller = new TeamController(
             teams, pages, Substitute.For<IUserService>(),
-            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
-            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -167,9 +198,8 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
-            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(), SystemClock.Instance, auth, logger)
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), auth, logger)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -311,9 +341,8 @@ public class TeamControllerPageContentTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, cookieId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, pages, users, Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
+            teams, pages, users, Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
-            new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -380,9 +409,8 @@ public class TeamControllerPageContentTests
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var controller = new TeamController(
-            teams, pages, users, Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(),
+            teams, pages, users, Substitute.For<ITeamResourceService>(),
             Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<IStringLocalizer<SharedResource>>(),
-            new ConfigurationBuilder().Build(), new ConfigurationRegistry(), SystemClock.Instance,
             Substitute.For<IAuthorizationService>(), NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -403,7 +431,6 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [InlineData("birthdays", "viewer")]
     [InlineData("my", "viewer")]
     [InlineData("my", "requests")]
     [InlineData("join", "viewer")]
@@ -464,9 +491,8 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, pages, users,
-            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
-            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -475,7 +501,6 @@ public class TeamControllerPageContentTests
         };
         Task<IActionResult> ReadAsync() => action switch
         {
-            "birthdays" => controller.Birthdays(1, request.Token),
             "my" => controller.MyTeams(request.Token),
             _ => controller.Join(team.Slug)
         };
@@ -548,9 +573,8 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
-            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -629,9 +653,8 @@ public class TeamControllerPageContentTests
             };
             var controller = new TeamController(
                 teams, Substitute.For<ITeamPageService>(), users,
-                Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
-                services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-                new ConfigurationRegistry(), Substitute.For<IClock>(), Substitute.For<IAuthorizationService>(),
+                Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+                services.GetRequiredService<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
                 NullLogger<TeamController>.Instance)
             {
                 ControllerContext = new ControllerContext { HttpContext = http },
@@ -689,9 +712,8 @@ public class TeamControllerPageContentTests
         };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), users,
-            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
-            services.GetRequiredService<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -752,7 +774,7 @@ public class TeamControllerPageContentTests
     }
 
     [HumansFact]
-    public async Task Details_OrdersMembersByRoleThenNameBeforeMapping()
+    public async Task Details_OrdersMembersAndChildLinksBeforeMapping()
     {
         var team = new TeamPageTeamSummary(
             Guid.NewGuid(), "Test", "Test", null, "test", true, false, false,
@@ -761,16 +783,21 @@ public class TeamControllerPageContentTests
         var coordinator = new TeamPageMemberSummary(Guid.NewGuid(), "Coordinator", null, null, TeamMemberRole.Coordinator, null);
         var zeta = new TeamPageMemberSummary(Guid.NewGuid(), "zeta", null, null, TeamMemberRole.Member, null);
         var alpha = new TeamPageMemberSummary(Guid.NewGuid(), "Alpha", null, null, TeamMemberRole.Member, null);
+        var children = new[]
+        {
+            new TeamPageTeamLink(Guid.NewGuid(), "zeta", "zeta"),
+            new TeamPageTeamLink(Guid.NewGuid(), "alpha", "alpha"),
+            new TeamPageTeamLink(Guid.NewGuid(), "Alpha", "alpha-upper")
+        };
         var page = new TeamPageDetailResult(
-            team, [coordinator, zeta, alpha], [], [], [], false, false, false, false, false, false, false,
+            team, [coordinator, zeta, alpha], children, [], [], false, false, false, false, false, false, false,
             null, 0, null, [], []);
         var pages = Substitute.For<ITeamPageService>();
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -781,6 +808,7 @@ public class TeamControllerPageContentTests
         var model = result.Should().BeOfType<ViewResult>().Subject.Model
             .Should().BeOfType<TeamDetailViewModel>().Subject;
         model.Members.Select(m => m.UserId).Should().Equal(alpha.UserId, zeta.UserId, coordinator.UserId);
+        model.ChildTeams.Select(child => child.Name).Should().Equal("Alpha", "alpha", "zeta");
     }
 
     [HumansFact]
@@ -804,9 +832,8 @@ public class TeamControllerPageContentTests
         pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
-            Substitute.For<IConsentService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<IStringLocalizer<SharedResource>>(), new ConfigurationBuilder().Build(),
-            new ConfigurationRegistry(), SystemClock.Instance, Substitute.For<IAuthorizationService>(),
+            Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
+            Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<IAuthorizationService>(),
             NullLogger<TeamController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }

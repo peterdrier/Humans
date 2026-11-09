@@ -1,7 +1,13 @@
+using NodaTime;
+
 namespace Humans.Holded.Contracts;
 
+/// <summary>The contact mirror and when it last synced successfully (null when never), so a caller can judge its
+/// age against now. A failed sync leaves the last good list.</summary>
+public sealed record HoldedContactMirror(Instant? LastSyncAt, IReadOnlyList<HoldedContactDto> Contacts);
+
 /// <summary>Create payload for a Holded contact (creditor/supplier/client). There is no update payload; see
-/// <see cref="IHoldedClient.CreateContactAsync"/>.</summary>
+/// <see cref="IHoldedWrite.CreateContactAsync"/>.</summary>
 public sealed record HoldedContactInput
 {
     /// <summary>Legal name — the official identity (accountant / SEPA / tax). Never the burner.</summary>

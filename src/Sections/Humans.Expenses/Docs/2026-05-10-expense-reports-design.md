@@ -327,7 +327,7 @@ Budget, Teams, Users, and Holded never call into Expenses.
 **Owning services:** `ExpenseReportService`, `ExpenseAttachmentStorageService`, `SepaPaymentFileBuilder`, `HoldedExpenseOutboxProcessor`
 **Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`
 **Owned column on existing table:** `profiles.iban`
-**Status:** (A) New section — born under design-rules §15h(1).
+**Status:** (A) New section — born under design-rules.md, *Section caching pattern*.
 
 - Services live in `Humans.Application.Services.Expenses/` and never import `Microsoft.EntityFrameworkCore`.
 - `IExpenseRepository` (impl `Humans.Infrastructure/Repositories/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Expense tables via `DbContext`. Atomic per-method operations; multi-entity mutations (e.g., approve + outbox-insert) are single repository methods inside one short-lived `DbContext`.
@@ -341,7 +341,7 @@ Budget, Teams, Users, and Holded never call into Expenses.
 - **Cross-domain navs:** none. `BudgetCategoryId`, `SubmitterUserId`, `*ByUserId` are FK-only with no navigation properties.
 - **Cross-section calls** route through `IBudgetManagement` (read-only), `ITeamService` (read-only), `IUserService` (read-only), `IHoldedClient` (read + write — sibling section), and `IAuditLogService` (write-only).
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/ExpensesArchitectureTests.cs` pins the shape: no EF Core import in service, no cross-section repositories injected, no direct foreign-table access.
-- **Authorization** — resource-based (design-rules §11): `ExpenseReportAuthorizationHandler` + `ExpenseReportOperationRequirement` gate every per-report action against the report (submitter? coordinator of the report's category? FinanceAdmin? Admin?). The IBAN read/write is its own narrow handler (`IbanAccessHandler`) covering self / FinanceAdmin-in-report-context / Admin-on-admin-page.
+- **Authorization** — resource-based (design-rules.md, *Authorization*): `ExpenseReportAuthorizationHandler` + `ExpenseReportOperationRequirement` gate every per-report action against the report (submitter? coordinator of the report's category? FinanceAdmin? Admin?). The IBAN read/write is its own narrow handler (`IbanAccessHandler`) covering self / FinanceAdmin-in-report-context / Admin-on-admin-page.
 - **GDPR** — `ExpenseService.ContributeForUserAsync` registered as `IUserDataContributor`. Returns the user's reports, lines, attachment metadata (filename, size, content-type — bytes referenced via attachment URLs, not inlined), `Profile.Iban`, and audit-log entries where they're the actor or subject. Chain-follows merge tombstones.
 
 ### Holded outbox flow

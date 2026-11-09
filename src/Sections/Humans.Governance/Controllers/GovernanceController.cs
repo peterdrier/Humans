@@ -20,10 +20,13 @@ internal sealed class GovernanceController(
         if (user is null)
             return NotFound();
 
-        var data = await governanceIndexService.GetIndexDataAsync(user.Id, HttpContext.RequestAborted);
+        var ct = HttpContext.RequestAborted;
+        var data = await governanceIndexService.GetIndexDataAsync(user.Id, ct);
+        var boardInfos = await UserService.GetUserInfosAsync(data.BoardMemberIds, ct);
 
         var viewModel = new GovernanceIndexViewModel
         {
+            UserId = user.Id,
             StatutesContent = data.StatutesContent,
             HasApplication = data.HasApplication,
             ApplicationStatus = data.ApplicationStatus,
@@ -35,7 +38,12 @@ internal sealed class GovernanceController(
             CanApply = data.CanApply,
             IsApprovedColaborador = data.IsApprovedColaborador,
             ColaboradorCount = data.ColaboradorCount,
-            AsociadoCount = data.AsociadoCount
+            AsociadoCount = data.AsociadoCount,
+            BoardMemberIds = data.BoardMemberIds
+                .OrderBy(id => boardInfos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            OpenVotes = data.OpenVotes.OrderBy(v => v.ClosesAt).ToList(),
+            UnvotedApplicationCount = data.UnvotedApplicationCount
         };
 
         return View(viewModel);

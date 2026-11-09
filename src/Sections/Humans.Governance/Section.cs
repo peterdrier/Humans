@@ -43,7 +43,6 @@ public sealed class Section :
     ISectionHelp,
     ISectionJobs,
     ISectionMemberDashboard,
-    ISectionNav,
     ISectionThingsToDo
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -228,12 +227,6 @@ public sealed class Section :
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(MemberTermStatusViewComponent), Weight: 10),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(AssemblyVotesCardViewComponent), Weight: 15),
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(GovernanceApplicationsTileViewComponent), Weight: 40),
-    ];
-
-    IEnumerable<MemberNavItem> ISectionNav.Items() =>
-    [
-        new("Nav_Votes", Controller: "GovernanceVotes", Action: "Index",
-            Policy: PolicyNames.AppAccess, Weight: 45)
     ];
 
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(

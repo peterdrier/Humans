@@ -84,6 +84,26 @@ public sealed class PleoClientTests
             .Should().Be("test-key:");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(298, "😀")]
+    [Xunit.InlineData(299, "")]
+    public async Task Permanent_error_body_preview_preserves_unicode(int prefixLength, string suffix)
+    {
+        var prefix = new string('e', prefixLength);
+        var client = Make(_ => new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = new StringContent(prefix + "😀tail", Encoding.UTF8),
+        });
+
+        var act = () => client.GetBalanceAsync(Xunit.TestContext.Current.CancellationToken);
+        var failure = (await act.Should().ThrowAsync<PleoPermanentException>()).Which;
+
+        failure.StatusCode.Should().Be(403);
+        var encode = () => new UTF8Encoding(false, true).GetBytes(failure.Message);
+        encode.Should().NotThrow();
+        failure.Message.Should().EndWith(prefix + suffix);
+    }
+
     [HumansFact]
     public async Task A_403_is_permanent_and_a_503_transient()
     {

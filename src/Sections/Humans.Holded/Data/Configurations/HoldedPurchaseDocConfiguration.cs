@@ -17,5 +17,6 @@ internal sealed class HoldedPurchaseDocConfiguration : IEntityTypeConfiguration<
         b.Property(x => x.Subtotal).HasColumnType("decimal(14,2)");
         b.Property(x => x.Tax).HasColumnType("decimal(14,2)");
         b.Property(x => x.Total).HasColumnType("decimal(14,2)");
+        b.Property(x => x.PaymentsPending).HasColumnType("decimal(14,2)");
     }
 }

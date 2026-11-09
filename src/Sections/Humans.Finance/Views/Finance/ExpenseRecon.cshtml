@@ -8,14 +8,12 @@
     var members = Model.Members.OrderByDescending(m => m.IsWarning)
         .ThenBy(m => m.MemberName, StringComparer.OrdinalIgnoreCase).ToList();
 
-    Func<ExpenseReconOrphan, IHtmlContent> orphanAccountCell =
-        @<text><a asp-action="CreditorStatement" asp-route-accountNum="@item.AccountNum">@item.AccountNum</a></text>;
     Func<ExpenseReconOrphan, IHtmlContent> orphanAmountCell = @<text>@item.Amount.ToEuro()</text>;
     Func<ExpenseReconOrphan, IHtmlContent> orphanKindCell =
         @<text><span class="badge bg-danger">@(item.Kind == ExpenseReconOrphanKind.UnboundContact ? "Unbound contact" : "No matching line")</span></text>;
     var orphansTable = TableModel.For(Model.Orphans.OrderByDescending(o => o.Date).ToList())
         .Column("Date", o => o.Date.ToInvariantDate(), o => o.Css("text-nowrap"))
-        .Template("Account", orphanAccountCell, sortBy: o => o.AccountNum)
+        .Link("Account", o => o.AccountNum, o => Url.Action("CreditorStatement", new { accountNum = o.AccountNum }))
         .Column("Entry", o => o.EntryNumber.ToString(System.Globalization.CultureInfo.InvariantCulture))
         .Column("Description", o => o.Description)
         .Template("Amount", orphanAmountCell, o => o.End().Css("text-nowrap"), sortBy: o => o.Amount)
@@ -23,7 +21,6 @@
         .Css("align-middle")
         .Build();
 
-    Func<ExpenseReconMember, IHtmlContent> memberCell = @<text><vc:human user-id="@item.UserId" link="None" /></text>;
     Func<ExpenseReconMember, IHtmlContent> memberAccountCell = @<text>
         @if (item.SupplierAccountNum is { } account)
         {
@@ -68,7 +65,7 @@
         }
     </text>;
     var membersTable = TableModel.For(members)
-        .Template("Member", memberCell)
+        .Human("Member", r => r.UserId, HumanLink.None)
         .Template("Account", memberAccountCell, sortBy: m => m.SupplierAccountNum)
         .Template("Expenses", expensesCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.ExpensePurchases)
         .Template("SEPA paid", sepaPaidCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.SepaPaid)

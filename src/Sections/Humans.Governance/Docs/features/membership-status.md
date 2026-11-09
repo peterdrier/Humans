@@ -15,30 +15,28 @@
 
 ## Overview
 
-Every human in the system falls into exactly one of 6 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()`. [Shared Logic](#shared-logic) lists who consumes it and who computes their own buckets instead.
+Every human in the system falls into exactly one of 5 mutually exclusive status categories. These categories are computed by `IMembershipCalculator.PartitionUsersAsync()`. [Shared Logic](#shared-logic) lists who consumes it and who computes their own buckets instead.
 
-These are reporting buckets for consent-review and language statistics, not admission or access states. “Pending Approval” means the review annotation is outstanding; it does not block Volunteer admission. `GetMembershipSnapshotAsync` instead classifies from stored account state, active affiliations and elapsed consent deadlines, independently of review.
+These are reporting buckets for consent-review and language statistics, not admission or access states. The Consent Coordinator's clear/flag review does not place anyone in a bucket; only an explicit rejection does. `GetMembershipSnapshotAsync` instead classifies from stored account state, active affiliations and elapsed consent deadlines, independently of review.
 
-## The 6 Buckets
+## The 5 Buckets
 
 | Status | Criteria | Badge Color |
 |--------|----------|-------------|
-| **Active** | Approved, not suspended, all required consents signed | Green |
-| **Pending Approval** | Profile exists, not yet approved by Consent Coordinator | Yellow |
-| **Missing Consents** | Approved but missing one or more required legal consents | Blue/Info |
+| **Active** | Profile exists, not rejected, not suspended, all required consents signed | Green |
+| **Missing Consents** | Profile exists, not rejected, but missing one or more required legal consents | Blue/Info |
 | **Incomplete Signup** | Signed in via Google but no Profile created — or the signup was rejected (Consent's review `IsRejected`) | Gray |
 | **Suspended** | Manually suspended by admin or auto-suspended for expired consents | Red |
 | **Pending Deletion** | Requested account deletion (30-day window) | Dark |
 
-**Invariant:** All 6 bucket counts sum to total humans. No human appears in more than one bucket.
+**Invariant:** All 5 bucket counts sum to total humans. No human appears in more than one bucket.
 
-**Priority order:** PendingDeletion > IncompleteSignup (no profile) > Suspended > PendingApproval > MissingConsents/Active. Rejected signups (Consent's review `RejectedAt` set) fall out at the PendingApproval step and land in IncompleteSignup.
+**Priority order:** PendingDeletion > Suspended > IncompleteSignup (no profile, or rejected — Consent's review `RejectedAt` set) > MissingConsents/Active.
 
 ## Reporting Bucket Transitions
 
 ```
-Incomplete Signup → (completes profile) → Pending Approval
-Pending Approval → (Consent Coordinator clears) → Active
+Incomplete Signup → (completes profile) → Missing Consents or Active
 Active → (consent lapses) → Missing Consents
 Missing Consents → (re-signs) → Active
 Missing Consents → (grace period expires) → Suspended

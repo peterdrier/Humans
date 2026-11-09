@@ -11,9 +11,12 @@
 </style>
 
 <page-header title="SEPA Transfers">
-    <a asp-action="Creditors" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
-    </a>
+    <div class="d-flex align-items-center gap-3">
+        <span class="small text-muted">Holded bank feed synced @(Model.BankFeedSyncedAt?.ToDateTime() ?? "never")</span>
+        <a asp-action="Creditors" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+        </a>
+    </div>
 </page-header>
 
 <p class="text-muted">
@@ -42,6 +45,23 @@
     <span class="text-muted small">Default @Humans.Finance.Services.IFinanceAdminService.DefaultSepaMatchToleranceDays. Widen it when the bank executed a file late; every booking from this view uses the same window.</span>
 </form>
 
+@if (Model.Run is { IsRunning: true } running)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-spinner fa-spin me-1"></i>@running.What, started
+        @running.StartedAt.ToDateTime(madrid). This page refreshes itself; leaving it
+        does not stop the booking.
+    </div>
+    <script>setTimeout(function () { location.reload(); }, 3000);</script>
+}
+else if (Model.Run is { Result: { } last } finished)
+{
+    <div class="alert @(last.Succeeded ? "alert-success" : "alert-danger")">
+        <strong>Last booking</strong> (@finished.What.ToLowerInvariant(),
+        @finished.StartedAt.ToDateTime(madrid)): @last.Message
+    </div>
+}
+
 @if (Model.UnavailableReason is { } unavailable)
 {
     <div class="alert alert-warning">
@@ -61,17 +81,14 @@
     <div class="card mb-4">
         <div class="card-header">Bank lines needing a human</div>
         @{
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell0 = @<text>@item.Date.ToInvariantDate()</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell1 = @<text>@item.Amount.ToEuro()</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell2 = @<text>@(item.Description ?? "—")</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell3 = @<text>@(item.ParsedAccountNum?.ToString() ?? "—")</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell4 = @<text>@item.Reason</text>;
+            Func<SepaBankMovementVm, IHtmlContent> dateCell = @<text>@item.Date.ToInvariantDate()</text>;
+            Func<SepaBankMovementVm, IHtmlContent> unmatchedAmountCell = @<text>@item.Amount.ToEuro()</text>;
             var unmatchedTable = TableModel.For(Model.UnmatchedMovements)
-                .Template("Date", unmatchedCell0, sortBy: m => m.Date)
-                .Template("Amount", unmatchedCell1, o => o.End(), sortBy: m => m.Amount)
-                .Template("Description", unmatchedCell2, o => o.Css("text-muted small"))
-                .Template("Account", unmatchedCell3)
-                .Template("Why", unmatchedCell4, o => o.Css("text-muted small"))
+                .Template("Date", dateCell, c => c.Css("text-nowrap"), sortBy: m => m.Date)
+                .Template("Amount", unmatchedAmountCell, o => o.Css("text-nowrap").End(), sortBy: m => m.Amount)
+                .Column("Description", r => r.Description ?? "—", o => o.Css("text-muted small"))
+                .Column("Account", r => r.ParsedAccountNum?.ToString() ?? "—")
+                .Column("Why", r => r.Reason, o => o.Css("text-muted small"))
                 .Css("align-middle")
                 .Build();
         }
@@ -102,7 +119,7 @@
             var summaryTotal = summarised.Sum(t => t.Row.Amount).ToEuro();
             var collapseId = $"sepa-file-{file.FileId:N}";
             var expanded = unbooked.Count > 0;
-            var canCancel = Humans.Finance.Services.Service.CancelFileRefusal(file.Transfers.Select(t => t.Row).ToList()) is null;
+            var canCancel = Humans.Finance.Services.SepaBankBooking.CancelFileRefusal(file.Transfers.Select(t => t.Row).ToList()) is null;
         }
         <div class="card-header d-flex justify-content-between align-items-center gap-3">
             <button type="button" class="btn btn-link text-reset text-decoration-none p-0 text-start @(expanded ? "" : "collapsed")"
@@ -208,11 +225,9 @@
             </div>
         }
         @{
-            Func<SepaTransferVm, IHtmlContent> transferCell0 = @<text><a asp-action="CreditorStatement" asp-route-accountNum="@item.Row.SupplierAccountNum">@item.Row.SupplierAccountNum</a></text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell1 = @<text><vc:human user-id="@item.Row.UserId" link="None" /><div class="text-muted small">@item.Row.CreditorName</div></text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell2 = @<text>@item.Row.IbanMasked</text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell3 = @<text>@item.Row.Amount.ToEuro()</text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell4 = @<text>
+            Func<SepaTransferVm, IHtmlContent> memberCell = @<text><vc:human user-id="@item.Row.UserId" link="None" /><div class="text-muted small">@item.Row.CreditorName</div></text>;
+            Func<SepaTransferVm, IHtmlContent> amountCell = @<text>@item.Row.Amount.ToEuro()</text>;
+            Func<SepaTransferVm, IHtmlContent> statusCell = @<text>
                 @if (item.Row.WithdrawnAt is { } withdrawnAt)
                 {
                     <span class="badge text-bg-dark">Withdrawn</span>
@@ -246,7 +261,7 @@
                 }
 
             </text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell5 = @<text>
+            Func<SepaTransferVm, IHtmlContent> bookCell = @<text>
                 @if (item.Row.IsWithdrawn)
                 {
                     <span class="text-muted small">cancelled at the bank — nothing to book</span>
@@ -301,8 +316,8 @@
                 }
 
             </text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell6 = @<text>
-                @if (Humans.Finance.Services.Service.WithdrawRefusal(item.Row) is { } cannotWithdraw)
+            Func<SepaTransferVm, IHtmlContent> withdrawCell = @<text>
+                @if (Humans.Finance.Services.SepaBankBooking.WithdrawRefusal(item.Row) is { } cannotWithdraw)
                 {
                     @if (!item.Row.IsWithdrawn)
                     {
@@ -324,13 +339,13 @@
 
             </text>;
             var transfersTable = TableModel.For(file.Transfers)
-                .Template("Account", transferCell0, sortBy: t => t.Row.SupplierAccountNum)
-                .Template("Member", transferCell1)
-                .Template("IBAN", transferCell2, o => o.Css("font-monospace small"))
-                .Template("Amount", transferCell3, o => o.End(), sortBy: t => t.Row.Amount)
-                .Template("Status", transferCell4, sortBy: t => t.Row.IsWithdrawn ? 2 : t.Row.IsBooked ? 1 : 0)
-                .Template("Book", transferCell5, o => o.NoSort())
-                .Template("Withdraw", transferCell6, o => o.NoSort())
+                .Link("Account", r => r.Row.SupplierAccountNum, r => Url.Action("CreditorStatement", new { accountNum = r.Row.SupplierAccountNum }))
+                .Template("Member", memberCell)
+                .Column("IBAN", r => r.Row.IbanMasked, o => o.Css("font-monospace small"))
+                .Template("Amount", amountCell, o => o.Css("text-nowrap").End(), sortBy: t => t.Row.Amount)
+                .Template("Status", statusCell, sortBy: t => t.Row.IsWithdrawn ? 2 : t.Row.IsBooked ? 1 : 0)
+                .Template("Book", bookCell, o => o.NoSort())
+                .Template("Withdraw", withdrawCell, o => o.NoSort())
                 .Css("align-middle")
                 .Build();
         }

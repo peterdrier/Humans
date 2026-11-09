@@ -168,7 +168,6 @@ internal sealed class ShiftSignupPersonalData(
             ReviewedAt = ss.ReviewedAt.ToIso8601()
         }).ToList());
 
-        // Dietary and medical are exported by Profiles; this slice is shift-matching data only.
         var vepSlice = new UserDataSlice(VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
         {
             vep.Skills,

@@ -29,7 +29,7 @@ internal sealed class GrantsEmails(
             var program = request.ProgramName;
             var programHtml = Encode(request.ProgramName);
             var entitles = Encode(request.Entitles);
-            var url = $"{_settings.BaseUrl.TrimEnd('/')}/{request.Url.TrimStart('/')}";
+            var url = $"{_settings.BaseUrl.TrimEnd('/')}/{GrantNotices.ProfileUrl.TrimStart('/')}";
             var expiry = request.ExpiresOn is { } expires ? Lf("Grants_Email_ExpiresLine", expires.ToDate()) : "";
             var reason = string.IsNullOrEmpty(request.Reason) ? "" : Lf("Grants_Email_ReasonLine", Encode(request.Reason));
 

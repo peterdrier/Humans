@@ -86,6 +86,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - The notifications JSON projection orders unread rows newest first and visible meters by priority descending. Notifications supplies the role-filtered data and priority metadata; the JSON meter fields remain label, count and link.
 - The Holded-sync JSON projection orders unmatched documents by document date descending, matching Finance's unmatched queue. Finance supplies date metadata without imposing list order; the JSON document fields remain unchanged.
 
+- Direct IBAN masking strips presentation separators, including no-break spaces, tabs and wrapped lines, before retaining the visible prefix and suffix.
 - Finance response text redaction recognizes valid human-formatted IBANs even when whitespace or hyphens split the country code and check digits.
 
 - The operator key list renders owner identity through `Human` without profile links. Picker labels and eligibility remain separate from key-row attribution; key status and actions use the stored owner ID.
@@ -165,7 +166,7 @@ None. No other section consumes Backdoor; its whole surface is HTTP, and its ser
 |---|---:|---|
 | — | — | Not cross-section-consumed |
 
-- `BackdoorApiKeyService` never imports `Microsoft.EntityFrameworkCore`; `IBackdoorApiKeyRepository` (Singleton + `IDbContextFactory`, §15b) is the only path to the table.
+- `BackdoorApiKeyService` never imports `Microsoft.EntityFrameworkCore`; `IBackdoorApiKeyRepository` (Singleton + `IDbContextFactory`, per *Repository rules* in `design-rules.md`) is the only path to the table.
 - Rotation changes the old row's revocation fields and inserts its replacement in one repository `SaveChangesAsync` call. A concurrent or already-revoked old key writes neither row, so a failed rotation never strands its owner without a credential.
 - **Decorator decision** — no caching decorator. Key lookups are one indexed hash probe per API request at a handful of requests per minute, and a cache would have to be invalidated on every revoke to stay correct about the thing that matters most.
 - **Display stitching** — `IUserService.GetUserInfosAsync`.

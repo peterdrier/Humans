@@ -12,7 +12,7 @@ Authorization in Humans is **policy-based, end to end** — controllers, views, 
 - **View element visibility:** `authorize-policy="X"` tag helper attribute, e.g. `<li authorize-policy="AppAccess">`; a section policy is spelled `authorize-policy="@Humans.Teams.Contracts.TeamsPolicies.Manage"`. On a page Board can read, put `Manage` on each write form, create/edit link and export link.
 - **View conditional logic that needs more than visibility** (computing a flag, branching markup): `@inject IAuthorizationService AuthService` + `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded`. See [`auth-in-views-self-resolving`](auth-in-views-self-resolving.md).
 - **No inline `User.IsInRole(...)` chains anywhere** for access decisions — they're the legacy form of the same check the policy already encodes.
-- **Resource-scoped auth** (Can this user edit *this* budget category?): `IAuthorizationService.AuthorizeAsync(User, resource, requirement)` with a registered `*OperationRequirement` + `*AuthorizationHandler` pair. See [`design-rules.md §11`](../../docs/architecture/design-rules.md#11-authorization-pattern) for the full handler inventory.
+- **Resource-scoped auth** (Can this user edit *this* budget category?): `IAuthorizationService.AuthorizeAsync(User, resource, requirement)` with a registered `*OperationRequirement` + `*AuthorizationHandler` pair. See [`design-rules.md`, *Authorization*](../../docs/architecture/design-rules.md#authorization) for the pattern; each section's `Docs/<Section>.md` lists its handlers.
 
 **Where policies live:**
 
@@ -25,6 +25,6 @@ Authorization in Humans is **policy-based, end to end** — controllers, views, 
 
 **Exception — full-Admin destructive deletes** may use `IAdminAuthorizationService.RequireCurrentUserIsAdminAsync` as belt-and-suspenders inside the service. The route still needs `[Authorize(Policy = PolicyNames.AdminOnly)]`. This exception is not for resource-scoped auth or ordinary edits.
 
-**Why no Roles-attribute / no in-service auth:** see the Tombstone in [`design-rules.md §11`](../../docs/architecture/design-rules.md#11-authorization-pattern) — service-layer auth has produced two startup-cycle crashes (PR #210 / `225ac14`, `1626098`/`bbbe508`); raw `Roles = "..."` scattered auth vocabulary across three dialects (role strings, `ViewPolicies`, `RoleChecks`). The Phase-1 mechanical migration completed in 2026-05-27 (PR #808).
+**Why no Roles-attribute / no in-service auth:** see the closing paragraph of [`design-rules.md`, *Authorization*](../../docs/architecture/design-rules.md#authorization) — service-layer auth has produced two startup-cycle crashes (PR #210 / `225ac14`, `1626098`/`bbbe508`); raw `Roles = "..."` scattered auth vocabulary across three dialects (role strings, `ViewPolicies`, `RoleChecks`). The Phase-1 mechanical migration completed in 2026-05-27 (PR #808).
 
 **Related:** [`admin-role-superset`](admin-role-superset.md), [`auth-in-views-self-resolving`](auth-in-views-self-resolving.md).

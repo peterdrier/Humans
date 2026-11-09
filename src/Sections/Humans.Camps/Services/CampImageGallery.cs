@@ -99,29 +99,35 @@ internal sealed class CampImageGallery(
             return CampUpdateResult.Failure("Camps_Flash_ImageWrongCamp");
         }
 
-        var result = await repo.DeleteImageAsync(imageId, cancellationToken);
-        if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
-
-        await auditLog.LogAsync(
-            CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
-            $"Deleted image {imageId}",
-            actorUserId,
-            relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
-
-        // Metadata has committed and audit was attempted; cleanup must finish independently of the request.
+        string? deletedPath = null;
         try
         {
-            await fileStorage.DeleteAsync(result.Value.StoragePath, CancellationToken.None);
+            var result = await repo.DeleteImageAsync(imageId, cancellationToken);
+            if (result is null) return CampUpdateResult.Failure("Camps_Flash_ImageNotFound");
+            deletedPath = result.Value.StoragePath;
+
+            await auditLog.LogAsync(
+                CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
+                $"Deleted image {imageId}",
+                actorUserId,
+                relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
+
+            return CampUpdateResult.Success();
         }
-        catch (Exception ex)
+        finally
         {
-            logger.LogError(ex,
-                "Failed to delete camp image file at {StoragePath} for image {ImageId}; DB row already removed",
-                result.Value.StoragePath, imageId);
+            try
+            {
+                if (await repo.GetImageForMutationAsync(imageId, CancellationToken.None) is null)
+                    await fileStorage.DeleteAsync(deletedPath ?? image.StoragePath, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to verify or clean up camp image {ImageId} at {StoragePath}",
+                    imageId, deletedPath ?? image.StoragePath);
+            }
         }
-
-        return CampUpdateResult.Success();
-
     }
 
     public async Task ReorderImagesAsync(

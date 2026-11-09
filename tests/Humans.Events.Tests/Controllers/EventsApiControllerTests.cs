@@ -269,10 +269,8 @@ public class EventsApiControllerTests
         return list.Should().ContainSingle().Subject;
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AddFavourite_ReturnsClientErrorForInvalidTargets(bool invalidDay)
+    [HumansFact]
+    public async Task AddFavourite_ReturnsOutcomeResponse()
     {
         var controller = BuildController();
         var userId = Guid.NewGuid();
@@ -281,13 +279,50 @@ public class EventsApiControllerTests
         var eventId = Guid.NewGuid();
         controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
-        _guide.AddFavouriteAsync(userId, eventId, 999, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(invalidDay
-                ? new ArgumentOutOfRangeException(nameof(invalidDay)) : new KeyNotFoundException()));
+        var responses = new Dictionary<AddFavouriteOutcome, Type>
+        {
+            [AddFavouriteOutcome.EventUnavailable] = typeof(NotFoundResult),
+            [AddFavouriteOutcome.InvalidDay] = typeof(BadRequestResult),
+            [AddFavouriteOutcome.AlreadyExists] = typeof(ConflictObjectResult),
+            [AddFavouriteOutcome.Added] = typeof(OkObjectResult),
+        };
+        foreach (var (outcome, responseType) in responses)
+        {
+            _guide.AddFavouriteAsync(userId, eventId, 999, Arg.Any<CancellationToken>()).Returns(outcome);
 
-        var result = await controller.AddFavourite(eventId, 999);
+            var result = await controller.AddFavourite(eventId, 999);
 
-        result.Should().BeOfType(invalidDay ? typeof(BadRequestResult) : typeof(NotFoundResult));
+            result.Should().BeOfType(responseType);
+        }
+    }
+
+    public enum DependencyFailure
+    {
+        MissingKey,
+        InvalidArgument
+    }
+
+    [HumansTheory]
+    [InlineData(DependencyFailure.MissingKey)]
+    [InlineData(DependencyFailure.InvalidArgument)]
+    public async Task AddFavourite_PropagatesDependencyFailures(DependencyFailure failureKind)
+    {
+        var controller = BuildController();
+        var userId = Guid.NewGuid();
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
+        var eventId = Guid.NewGuid();
+        Exception failure = failureKind == DependencyFailure.MissingKey
+            ? new KeyNotFoundException("Dependency failure")
+            : new ArgumentOutOfRangeException(nameof(failureKind));
+        _guide.AddFavouriteAsync(userId, eventId, null, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AddFavouriteOutcome>(failure));
+
+        var act = () => controller.AddFavourite(eventId, null);
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(failure);
     }
 
     [HumansFact]
@@ -346,7 +381,7 @@ public class EventsApiControllerTests
         _guide.GetFavouritesWithEventsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
         _guide.GetApprovedEventsAsync(Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
             Arg.Any<string?>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns([]);
-        _guide.AddFavouriteAsync(Arg.Any<Guid>(), eventId, null, Arg.Any<CancellationToken>()).Returns(true);
+        _guide.AddFavouriteAsync(Arg.Any<Guid>(), eventId, null, Arg.Any<CancellationToken>()).Returns(AddFavouriteOutcome.Added);
         _guide.RemoveFavouriteAsync(Arg.Any<Guid>(), eventId, null, Arg.Any<CancellationToken>()).Returns(true);
         _guide.GetApprovedEventsForExportAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new byte[] { 1 });
         var export = new EventsExportController(_guide, _camps, _users)

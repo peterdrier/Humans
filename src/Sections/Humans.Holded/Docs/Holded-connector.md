@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Services/IHoldedClient.cs
   src/Sections/Humans.Holded/Contracts/Holded*.cs
   src/Sections/Humans.Holded/Services/Holded*Client.cs
   src/Sections/Humans.Holded/Services/HoldedTransport.cs
@@ -84,7 +84,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   is never returned. `ListLedgerEntriesAsync` requests `end_date = to + 1 day` so its own `to`
   parameter stays inclusive for callers; without this, same-day entries never reach the ledger
   mirror even though account balances already include them.
-- Bank movements (`GET /treasury/accounts/{id}/bank-movements`, read live, never mirrored) carry
+- Bank movements (`GET /treasury/accounts/{id}/bank-movements`, read only by the bank-feed mirror sync) carry
   no `date` key: a line's date is `booking_date` (what Holded stamps on the payment leg and ledger
   entry at reconciliation), falling back to `value_date`. Both are ISO 8601 with an offset and the
   date part is taken as given, never shifted to Europe/Madrid. A line with neither date is skipped
@@ -109,25 +109,24 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 ## Cross-Section Dependencies
 
-Inbound: the consumers listed under Architecture, plus this section's own mirror
-(ledger, accounts, usage). Outbound: none — the connector owns no tables and no UI.
+Inbound: this section only: its mirror syncs (ledger, accounts, documents, contacts, bank movements,
+usage) and `HoldedWrite`. Outbound: none — the connector owns no tables and no UI.
 
 ## Architecture
 
-**Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
-are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); the impl `HoldedClient` and the `IHoldedCallLog`
-singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
+**Owning surface:** `IHoldedClient`, its impl `HoldedClient` and the `IHoldedCallLog` singleton are
+`internal` in `Humans.Holded/Services/`, so the compiler stops any other section from calling Holded. Its DTOs,
+typed exceptions and `HoldedClientOptions` stay public in `Humans.Holded/Contracts/`, because
+`IHoldedService` and `IHoldedWrite` carry them. All of it is registered by this
 section's `Section.cs`.
 
 `HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over
 one `HoldedTransport`. Operation clients own their wire payloads, parsing and endpoint-specific
 failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
-options. They add no interfaces or DI registrations, and the public contract stays unchanged.
+options. They add no interfaces or DI registrations, and the client contract stays unchanged.
 
-**Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
-`CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
-`ExpenseReportBackgroundProcessor` for the push), Finance (`Service`, `SepaBankBooking`) and Store
-(`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder, as does this section's own mirror sync.
+**Consumers outside the section:** none, and none can compile: every other section calls only
+`IHoldedService` and `IHoldedWrite`.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,

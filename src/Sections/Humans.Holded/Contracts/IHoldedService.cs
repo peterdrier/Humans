@@ -48,6 +48,14 @@ public interface IHoldedService : IApplicationService
     /// <summary>The whole chart from the mirror, archived accounts included. Consumers choose display order.</summary>
     Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default);
 
+    /// <summary>When the chart mirror last refreshed, by <see cref="SyncChartAsync"/> or a ledger sweep; null when
+    /// never.</summary>
+    Task<Instant?> GetChartSyncedAtAsync(CancellationToken ct = default);
+
+    /// <summary>Refreshes the chart mirror from Holded: one list call. For a caller about to choose accounts by
+    /// number or name.</summary>
+    Task SyncChartAsync(CancellationToken ct = default);
+
     /// <summary>False when a sweep was already running and this one was skipped. <paramref name="full"/> false:
     /// trailing window anchored on now; true or a cold cache: inception to today. Both refresh the accounts cache,
     /// reconcile totals with targeted re-pulls, and drain the API call log.</summary>
@@ -64,4 +72,30 @@ public interface IHoldedService : IApplicationService
     /// <summary>Replaces the purchase-document mirror with Holded's whole list and reads the notes of a capped number of
     /// documents that lack them, newest first. False when a sync was already running and this one was skipped.</summary>
     Task<bool> SyncPurchaseDocumentsAsync(CancellationToken ct = default);
+
+    /// <summary>Re-reads the notes of the documents named, one GET each, into the mirror: the list sync never
+    /// re-reads notes it already holds, so a caller about to act on them refreshes first. Throws when one cannot be
+    /// read.</summary>
+    Task SyncPurchaseDocumentNotesAsync(IReadOnlyCollection<string> documentIds, CancellationToken ct = default);
+
+    /// <summary>Every mirrored contact, with when the mirror last synced.</summary>
+    Task<HoldedContactMirror> GetContactsAsync(CancellationToken ct = default);
+
+    /// <summary>Replaces the contact mirror with Holded's whole list: one paged list call. Callers that just minted or
+    /// bound a contact run it so the mirror carries it before the next nightly sync. False when a sync was already
+    /// running and this one was skipped.</summary>
+    Task<bool> SyncContactsAsync(CancellationToken ct = default);
+
+    /// <summary>The mirrored bank feed of one treasury account dated inside [<paramref name="from"/>,
+    /// <paramref name="to"/>], as fresh as <see cref="HoldedBankMovementMirror.LastSyncAt"/>. Order not guaranteed.</summary>
+    Task<HoldedBankMovementMirror> GetBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default);
+
+    /// <summary>Replaces the mirrored lines of one treasury account inside the window with Holded's. Throws what the
+    /// feed read throws, mirror untouched: a pending outgoing line with no readable date fails it
+    /// (<c>HoldedPermanentException.BankMovementId</c> names it) unless its id is in
+    /// <paramref name="skipUnreadableDateIds"/>. False when a sync was already running and this one was skipped.</summary>
+    Task<bool> SyncBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlySet<string>? skipUnreadableDateIds = null,
+        CancellationToken ct = default);
 }

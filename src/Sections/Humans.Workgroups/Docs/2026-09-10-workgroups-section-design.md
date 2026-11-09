@@ -357,7 +357,7 @@ Admin (`/Workgroups/Admin/*`, `BoardOrAdmin`, localization-exempt):
 | POST | `/Workgroups/Admin/Documents/{id}/Disposition` | The Board's reply |
 | GET/POST | `/Workgroups/Admin/Settings` | Root Drive folder |
 
-Authorization per design-rules §11: `WorkgroupAuthorizationHandler` + `WorkgroupOperationRequirement` (Read, Member, Administer), member resolved from `workgroup_members`, Dormant denying every Member operation.
+Authorization per design-rules.md, *Authorization*: `WorkgroupAuthorizationHandler` + `WorkgroupOperationRequirement` (Read, Member, Administer), member resolved from `workgroup_members`, Dormant denying every Member operation.
 
 ## 16. Navigation and dashboards
 

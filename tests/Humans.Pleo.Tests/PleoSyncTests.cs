@@ -1,9 +1,17 @@
 using System.Text.Json;
+using System.Security.Claims;
+using Humans.Base.Constants;
+using Humans.Pleo.Controllers;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Pleo.Data;
 using Humans.Pleo.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -81,6 +89,88 @@ public sealed class PleoSyncTests
         var mirrored = await _repo.GetEntriesAsync(ct);
         mirrored.Select(e => e.Id).Should().BeEquivalentTo(["a", "c"]);
         mirrored.Single(e => string.Equals(e.Id, "a", StringComparison.Ordinal)).AmountEur.Should().Be(-25.00m);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_entry_notes_preserve_unicode_and_the_original_raw_payload(bool pairFits)
+    {
+        var prefix = new string('n', pairFits ? 1998 : 1999);
+        var note = prefix + "😀tail";
+        var wire = System.Text.Json.Nodes.JsonNode.Parse(Entry("unicode").GetRawText())!;
+        wire["note"] = note;
+        _entries = [Parse(wire.ToJsonString())];
+
+        await SyncAsync();
+
+        var entry = (await _repo.GetEntriesAsync(Xunit.TestContext.Current.CancellationToken)).Single();
+        entry.Note.Should().Be(prefix + (pairFits ? "😀" : ""));
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(entry.Note!);
+        encode.Should().NotThrow();
+        Parse(entry.Raw).GetProperty("note").GetString().Should().Be(note);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_sync_errors_preserve_unicode_and_the_original_failure(bool pairFits)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("existing")];
+        await SyncAsync();
+        var prefix = new string('e', pairFits ? 1998 : 1999);
+        var failure = new IOException(prefix + "😀tail");
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<JsonElement>>(failure));
+
+        var action = () => SyncAsync();
+        (await action.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        var state = (await _repo.GetSyncStateAsync(ct))!;
+        state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        state.LastError.Should().Be(prefix + (pairFits ? "😀" : ""));
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(state.LastError!);
+        encode.Should().NotThrow();
+        (await _repo.GetEntriesAsync(ct)).Should().ContainSingle().Which.Id.Should().Be("existing");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Error_state_save_failure_preserves_the_sync_failure_and_releases_the_gate(bool requestAborted)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        Exception failure = requestAborted
+            ? new OperationCanceledException(cancellation.Token)
+            : new PleoTransientException("Pleo unavailable");
+        var saveFailure = new IOException("Cannot save sync diagnostic");
+        var repository = Substitute.For<IPleoRepository>();
+        repository.GetSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new Domain.PleoSyncState());
+        repository.SaveSyncStateAsync(Arg.Any<Domain.PleoSyncState>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (call.Arg<Domain.PleoSyncState>().SyncStatus == Domain.PleoSyncStatus.Error)
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                throw saveFailure;
+            }
+            return Task.CompletedTask;
+        });
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(async Task<IReadOnlyList<JsonElement>> (_) =>
+        {
+            if (requestAborted) await cancellation.CancelAsync();
+            throw failure;
+        });
+        var logger = new CapturingLogger<Service>();
+        var service = new Service(repository, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit, logger);
+
+        var observed = await Xunit.Record.ExceptionAsync(() => service.SyncAsync(cancellation.Token));
+
+        observed.Should().BeSameAs(failure);
+        logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, saveFailure));
+        await repository.DidNotReceiveWithAnyArgs().ReplaceMirrorAsync(default!, default);
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(_ => _entries);
+        (await service.SyncAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(PleoSyncOutcome.Synced);
     }
 
     [HumansFact]
@@ -193,6 +283,31 @@ public sealed class PleoSyncTests
         summary.ByAccount.Single().Spend.Should().Be(1_000.00m);
         summary.Unmapped.Spend.Should().Be(72.00m);
         summary.UnlinkedCategoryCount.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task Linking_missing_category_id_returns_refusal_without_changing_the_mapping()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"))
+        };
+        var controller = new PleoController(
+            Substitute.For<IUserService>(), _service, NullLogger<PleoController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.Link(null!, LaCantinaRow, ct);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(PleoController.Categories));
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be("That is not a Pleo category id.");
+        controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+        (await _repo.GetCategoriesAsync(ct)).Single(c => c.Id == LaCantinaRow).PleoCategoryId.Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

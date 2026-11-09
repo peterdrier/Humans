@@ -2,12 +2,14 @@ using Humans.Base.Interfaces;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
+using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Services;
 
 internal sealed class SurveyDefinitionReader(
     ISurveyRepository repo,
-    ISurveyInviteTokenProvider tokenProvider) : IApplicationService
+    ISurveyInviteTokenProvider tokenProvider,
+    IUserService userService) : IApplicationService
 {
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
@@ -22,6 +24,48 @@ internal sealed class SurveyDefinitionReader(
             invited.GetValueOrDefault(s.Id),
             responses.GetValueOrDefault(s.Id),
             s.CreatedByUserId)).ToList();
+    }
+
+    internal async Task<IReadOnlyList<SurveyAdminSummary>> GetAdminSummariesAsync(SurveyViewer viewer, CancellationToken ct = default)
+    {
+        var surveys = await repo.GetAllSummariesAsync(ct);
+        var scoped = viewer.SeesEverySurvey
+            ? surveys
+            : surveys.Where(s => s.CreatedByUserId == viewer.UserId).ToList();
+        if (scoped.Count == 0) return [];
+
+        var invited = await repo.GetInvitedCountsBySurveyAsync(ct);
+        var responses = await repo.GetResponseCountsBySurveyAsync(ct);
+
+        return scoped.Select(s => new SurveyAdminSummary(
+            s.Id,
+            s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
+            s.Status,
+            invited.GetValueOrDefault(s.Id),
+            responses.GetValueOrDefault(s.Id),
+            s.CreatedByUserId,
+            s.SubmittedAt,
+            s.RejectionNote)).ToList();
+    }
+
+    internal async Task<IReadOnlyList<SurveyPendingApprovalItem>> GetPendingApprovalQueueAsync(CancellationToken ct = default)
+    {
+        var pending = (await repo.GetAllSummariesAsync(ct))
+            .Where(s => s.Status == SurveyStatus.PendingApproval)
+            .ToList();
+        if (pending.Count == 0) return [];
+
+        var authorIds = pending.Select(s => s.CreatedByUserId).Distinct().ToList();
+        var authors = await userService.GetUserInfosAsync(authorIds, ct);
+
+        return pending
+            .Select(s => new SurveyPendingApprovalItem(
+                s.Id,
+                s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
+                s.CreatedByUserId,
+                authors.TryGetValue(s.CreatedByUserId, out var author) ? author.BurnerName : s.CreatedByUserId.ToString(),
+                s.SubmittedAt))
+            .ToList();
     }
 
     public async Task<SurveyOfficialLink?> GetOfficialLinkAsync(

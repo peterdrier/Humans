@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Base.Models;
 using Humans.Base.Models.Tables;
+using Humans.Base.ViewComponents;
 using Microsoft.AspNetCore.Html;
 
 namespace Humans.Web.Tests.Models.Tables;
@@ -26,7 +27,7 @@ public class TableModelBuilderTests
 
         table.Columns.Select(c => c.Header).Should().Equal("Name", "Amount", "Actions");
         table.Columns[1].Format.Should().Be(CellFormat.Currency);
-        table.Columns[1].CellCssClass.Should().Be("text-end");
+        table.Columns[1].CellCssClass.Should().Be("text-end text-nowrap");
         table.Columns[2].Format.Should().Be(CellFormat.Template);
         table.RowCount.Should().Be(2);
         table.Mode.Should().Be(TableMode.Client);
@@ -44,6 +45,23 @@ public class TableModelBuilderTests
         using var writer = new StringWriter();
         table.RowData(Rows[0]).WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
         writer.ToString().Should().Be(" data-state=\"x&quot;y\"");
+    }
+
+    [HumansFact]
+    public void Link_and_Human_columns_render_their_cells()
+    {
+        var id = Guid.NewGuid();
+        var table = TableModel.For(Rows)
+            .Link("Name", r => r.Name, r => $"/x?n={r.Name}&y", c => c.Code())
+            .Human("Who", r => string.Equals(r.Name, "a", StringComparison.Ordinal) ? id : null, HumanLink.Admin)
+            .Build();
+
+        using var writer = new StringWriter();
+        table.Columns[0].Cell(Rows[0]).WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+        writer.ToString().Should().Be("<a href=\"/x?n=a&amp;y\"><code>a</code></a>");
+        table.Columns[1].Human(Rows[0]).Should().Be(new HumanCell(id, HumanLayout.Text, HumanLink.Admin));
+        table.Columns[1].Human(Rows[1]).Should().BeNull();
+        table.Columns[0].Human(Rows[0]).Should().BeNull();
     }
 
     [HumansFact]

@@ -94,7 +94,18 @@ internal sealed class UserService(
 
     public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
     {
-        await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
+        try
+        {
+            await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to record login for user {UserId}; sign-in continues", userId);
+        }
     }
 
     public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)
@@ -262,11 +273,17 @@ internal sealed class UserService(
     {
         _ = actorUserId;
         await repo.ReassignLoginsToUserAsync(mergedFromUserId, mergedToUserId, ct);
-        var previousPicture = await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
-        if (previousPicture is { } picture &&
-            ProfilePictureKeys.Resolve(picture.ProfileId, picture.ContentType, picture.StorageKey) is { } key)
+        var sourceProfile = await repo.GetByUserIdReadOnlyAsync(mergedFromUserId, ct);
+        var previousKey = sourceProfile is null ? null : ProfilePictureKeys.Resolve(
+            sourceProfile.Id, sourceProfile.ProfilePictureContentType, sourceProfile.ProfilePictureStorageKey);
+        try
         {
-            await profileMutations.DeleteSupersededPictureAsync(picture.ProfileId, key);
+            await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+        }
+        finally
+        {
+            if (sourceProfile is not null && previousKey is not null)
+                await profileMutations.DeleteSupersededPictureAsync(sourceProfile.Id, previousKey);
         }
     }
 

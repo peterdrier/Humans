@@ -106,10 +106,17 @@ internal sealed class StripeMirrorService(
 
     private async Task RecordErrorAsync(StripeSyncState state, string message)
     {
-        state.SyncStatus = StripeSyncStatus.Error;
-        state.StatusChangedAt = clock.GetCurrentInstant();
-        state.LastError = message.Length <= 2000 ? message : message[..2000];
-        await repo.SaveSyncStateAsync(state, CancellationToken.None);
+        try
+        {
+            state.SyncStatus = StripeSyncStatus.Error;
+            state.StatusChangedAt = clock.GetCurrentInstant();
+            state.LastError = StripeMirrorClient.Clip(message, 2000);
+            await repo.SaveSyncStateAsync(state, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist Stripe sync error state for account {AccountId}", state.AccountId);
+        }
     }
 
     /// <summary>A refund or dispute names no buyer; it takes one from a row on the same PaymentIntent, so searching a

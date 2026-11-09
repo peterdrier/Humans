@@ -1,0 +1,10 @@
+{
+  "name": "look-audit",
+  "private": true,
+  "type": "module",
+  "description": "Look-and-feel capture harness for the Humans web app (QA).",
+  "scripts": { "capture": "node capture.mjs", "xlsx": "node build-xlsx.mjs" },
+  "dependencies": { "axe-core": "^4.10.0", "exceljs": "^4.4.0", "pngjs": "^7.0.0" },
+  "peerDependencies": { "playwright": "*" },
+  "peerDependenciesMeta": { "playwright": { "optional": true } }
+}

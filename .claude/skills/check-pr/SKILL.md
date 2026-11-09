@@ -16,7 +16,7 @@ Checks compliance with atomic project rules (`memory/code/`, `memory/architectur
 
 - `memory/INDEX.md` — scan, then read each relevant atom under `memory/code/` and `memory/architecture/`
 - `docs/architecture/code-review-rules.md` — hard reject rules
-- `docs/architecture/design-rules.md` — reference when an atom cites a §-section
+- `docs/architecture/design-rules.md` — reference when an atom cites one of its rules by heading
 
 ### 2. Fetch the PR
 

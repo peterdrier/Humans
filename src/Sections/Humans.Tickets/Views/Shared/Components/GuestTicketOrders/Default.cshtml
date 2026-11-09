@@ -16,10 +16,10 @@
                     Func<UserTicketOrderSummary, IHtmlContent> amountCell =
                         r => new HtmlString($"{Html.Encode(r.TotalAmount.ToString("N2", CultureInfo.CurrentUICulture))} {Html.Encode(r.Currency)}");
                     var ticketsTable = TableModel.For(Model)
-                        .Column(SharedLocalizer["Guest_TicketsHeader_Purchased"].Value, r => r.PurchasedAt.ToDateTimeUtc().ToDate())
+                        .Column(SharedLocalizer["Guest_TicketsHeader_Purchased"].Value, r => r.PurchasedAt.ToDateTimeUtc().ToDate(), c => c.Css("text-nowrap"))
                         .Column(SharedLocalizer["Guest_TicketsHeader_Buyer"].Value, r => r.BuyerName)
                         .Column(SharedLocalizer["Guest_TicketsHeader_Tickets"].Value, r => r.AttendeeCount, c => c.Number())
-                        .Template(SharedLocalizer["Guest_TicketsHeader_Amount"].Value, amountCell, c => c.End())
+                        .Template(SharedLocalizer["Guest_TicketsHeader_Amount"].Value, amountCell, c => c.Css("text-nowrap").End())
                         .Build();
                     <partial name="_Table" model="ticketsTable" />
                 }

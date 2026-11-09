@@ -229,6 +229,28 @@ public class ICalFeedServiceTests
     }
 
     [HumansFact]
+    public async Task GetFeedIcsAsync_LocationUrl_IsAGoogleConferenceLeadsTheDescriptionAndFillsAnEmptyLocation()
+    {
+        var userId = Guid.NewGuid();
+        var token = Guid.NewGuid();
+        StubUser(userId, icalToken: token);
+        const string url = "https://meet.example.org/abc";
+        var start = Instant.FromUtc(2026, 6, 2, 17, 0);
+        var service = CreateService(new FakeContributor(
+            MakeItem("a@x", "Workgroups", start) with { Description = "Agenda", Location = "Room 1", LocationUrl = url },
+            MakeItem("b@x", "Workgroups", start.Plus(Duration.FromHours(2))) with { Description = null, Location = null, LocationUrl = url }));
+
+        var ics = await service.GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
+
+        ics.Should().Contain($"X-GOOGLE-CONFERENCE:{url}");
+        var events = Ical.Net.Calendar.Load(ics!)!.Events;
+        events[0]!.Description.Should().Be($"{url}\n\nAgenda");
+        events[0]!.Location.Should().Be("Room 1");
+        events[1]!.Description.Should().Be(url);
+        events[1]!.Location.Should().Be(url);
+    }
+
+    [HumansFact]
     public async Task GetFeedIcsAsync_NoItems_StillValidCalendar()
     {
         var userId = Guid.NewGuid();

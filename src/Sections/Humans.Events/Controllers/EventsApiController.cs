@@ -243,21 +243,21 @@ internal sealed class EventsApiController(
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
-        try
+        var outcome = await guide.AddFavouriteAsync(user.Id, eventId, day);
+        switch (outcome)
         {
-            var added = await guide.AddFavouriteAsync(user.Id, eventId, day);
-            if (!added) return Conflict(new { error = "Already favourited" });
-            return Ok(new { favourited = true });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogWarning("Rejected favourite for user {UserId} event {EventId}: {Reason}", user.Id, eventId, ex.Message);
-            return NotFound();
-        }
-        catch (ArgumentOutOfRangeException ex)
-        {
-            logger.LogWarning("Rejected favourite for user {UserId} event {EventId} day {Day}: {Reason}", user.Id, eventId, day, ex.Message);
-            return BadRequest();
+            case AddFavouriteOutcome.Added:
+                return Ok(new { favourited = true });
+            case AddFavouriteOutcome.AlreadyExists:
+                return Conflict(new { error = "Already favourited" });
+            case AddFavouriteOutcome.EventUnavailable:
+                logger.LogWarning("Rejected favourite for user {UserId}: event {EventId} is unavailable", user.Id, eventId);
+                return NotFound();
+            case AddFavouriteOutcome.InvalidDay:
+                logger.LogWarning("Rejected favourite for user {UserId} event {EventId}: day {Day} is not an occurrence", user.Id, eventId, day);
+                return BadRequest();
+            default:
+                throw new InvalidOperationException($"Unexpected favourite outcome {outcome}.");
         }
     }
 

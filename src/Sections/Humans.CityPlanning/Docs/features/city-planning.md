@@ -252,9 +252,9 @@ Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampsAdmin`, **or** m
 | Route | Description |
 |-------|-------------|
 | `GET /api/city-planning/state` | Map state: settings + all polygons + unmapped seasons |
-| `PUT /api/city-planning/camp-polygons/{campSeasonId}` | Save or update a polygon |
+| `PUT /api/city-planning/camp-polygons/{campSeasonId}` | Save or update a polygon for an existing camp season; missing season returns 400 |
 | `GET /api/city-planning/camp-polygons/{campSeasonId}/history` | Version history for a polygon |
-| `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore a historical version |
+| `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore a historical version; matching history with a missing camp season returns 400 |
 | `GET /api/city-planning/export.geojson?year={year}` | Export all barrio polygons as GeoJSON |
 | `GET /api/city-planning/containers/{year}` | All containers for year with `canEdit` flag |
 | `PUT /api/city-planning/containers/{id}/placement/{year}` | Set container location GeoJSON |

@@ -33,7 +33,8 @@ internal sealed class ProfileController(
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
-    IMembershipCalculator membershipCalculator) : HumansControllerBase(userService)
+    IMembershipCalculator membershipCalculator,
+    MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
 
@@ -62,9 +63,24 @@ internal sealed class ProfileController(
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
+        var viewModel = await BuildOwnProfileAsync(ct);
+        return viewModel is null ? NotFound() : View("Index", viewModel);
+    }
+
+    // Side-by-side trial of the identity-column layout; /Profile/Me stays the live page until Peter picks.
+    [HttpGet("~/Users/Me")]
+    [AllowBeforeActiveMembership]
+    public async Task<IActionResult> UsersMe(CancellationToken ct)
+    {
+        var viewModel = await BuildOwnProfileAsync(ct);
+        return viewModel is null ? NotFound() : View("Me", viewModel);
+    }
+
+    private async Task<ProfileViewModel?> BuildOwnProfileAsync(CancellationToken ct)
+    {
         var info = await GetCurrentUserInfoAsync(ct);
         if (info is null)
-            return NotFound();
+            return null;
 
         var profile = info.Profile;
         var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(info.Id, ct);
@@ -89,7 +105,7 @@ internal sealed class ProfileController(
             viewModel.TierApplicationBadgeClass = EnumBadgeMap.For(latestApplication.Status);
         }
 
-        return View("Index", viewModel);
+        return viewModel;
     }
 
     [HttpGet("Me/Edit")]
@@ -313,7 +329,7 @@ internal sealed class ProfileController(
         return (true, result.Value.Data, result.Value.ContentType);
     }
 
-    // GDPR Art. 9 data: owner-only here, and shown elsewhere only behind MedicalDataViewer.
+    // GDPR Art. 9 data: owner-only here; anyone else goes through ProfileViewController.RevealMedical.
     [HttpGet("Me/Medical")]
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical(CancellationToken ct)
@@ -322,7 +338,11 @@ internal sealed class ProfileController(
         if (user is null)
             return NotFound();
 
-        return View(new MedicalViewModel { MedicalConditions = user.Profile?.MedicalConditions, UserId = user.Id });
+        return View(new MedicalViewModel
+        {
+            MedicalConditions = await medicalConditions.GetOwnAsync(user.Id, ct),
+            UserId = user.Id,
+        });
     }
 
     [HttpPost("Me/Medical")]

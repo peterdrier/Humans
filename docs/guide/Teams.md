@@ -21,7 +21,6 @@ A few teams are **system teams** (Volunteers, Coordinators, Board, Asociados, Co
 - **Team detail** (`/Teams/{slug}`) — description, members, coordinators, sub-teams, join/leave.
 - **Team tree** (`/Teams/Tree`) — public page showing each department with its sub-teams nested underneath, with descriptions and member counts. Anonymous visitors see only departments with a public page (and their sub-teams); hidden, system and inactive teams never appear.
 - **My teams** (`/Teams/My`) — your teams with Leave / Manage buttons.
-- **Birthdays** (`/Teams/Birthdays`) — teammate birthday calendar (month + day).
 - **Roster** (`/Teams/Roster`) — cross-team view of named role slots.
 - **Team roster** (`/Teams/{slug}/Roster`) — Board/Admin-only legal-name roster for one team.
 - **Members admin** (`/Teams/{slug}/Members`) — members, join requests, role assignments.

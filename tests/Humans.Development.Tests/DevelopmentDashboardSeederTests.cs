@@ -14,8 +14,10 @@ namespace Humans.Development.Tests;
 
 public class DevelopmentDashboardSeederTests
 {
-    [HumansFact]
-    public async Task Seed_CreatesNamedProfilesBeforeSelfSignups()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Seed_CreatesNamedProfilesBeforeSelfSignups_AndPropagatesCoordinatorFailures(bool membershipFails)
     {
         var now = Instant.FromUtc(2026, 9, 16, 12, 0);
         var shifts = Substitute.For<IShiftSeeding>();
@@ -31,6 +33,18 @@ public class DevelopmentDashboardSeederTests
                 Guid.NewGuid(), call.ArgAt<string>(0), null, Guid.NewGuid().ToString(),
                 true, false, SystemTeamType.None, true, false, false, false, now, [],
                 ParentTeamId: call.ArgAt<Guid?>(3)));
+
+        var memberships = new HashSet<(Guid TeamId, Guid UserId)>();
+        var failure = new InvalidOperationException("Membership dependency failed");
+        teams.AddSeededMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<TeamMemberRole>(),
+                Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (membershipFails) throw failure;
+                memberships.Add((call.ArgAt<Guid>(0), call.ArgAt<Guid>(1))).Should().BeTrue(
+                    "duplicate coordinator picks must be removed before writing membership");
+                return Task.CompletedTask;
+            });
 
         var provisioning = Substitute.For<IAccountProvisioningService>();
         var created = new List<Guid>();
@@ -73,8 +87,18 @@ public class DevelopmentDashboardSeederTests
             Substitute.For<IUserWrite>(), profileEditor, provisioning, new FakeClock(now),
             NullLogger<DevelopmentDashboardSeeder>.Instance);
 
+        if (membershipFails)
+        {
+            var seed = () => sut.SeedAsync(Xunit.TestContext.Current.CancellationToken);
+            (await seed.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+            profiles.Should().BeEmpty();
+            selfSignupUsers.Should().BeEmpty();
+            return;
+        }
+
         var result = await sut.SeedAsync(Xunit.TestContext.Current.CancellationToken);
 
+        memberships.Should().NotBeEmpty();
         selfSignupUsers.Should().NotBeEmpty();
         profiles.Should().HaveCount(result.UsersCreated);
         profiles.Keys.Should().BeEquivalentTo(created);

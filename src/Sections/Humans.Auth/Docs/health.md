@@ -191,8 +191,8 @@ Settled decisions that read as smells. Stop re-litigating these.
   must not consume the user's cooldown. The login cooldown is the in-memory reservation alone;
   it closes the overlapping-request race and is deliberately not persisted.
 - **Auth is a horizontal that references vertical *leaves*.** Legal since Peter's Base-floor
-  decision of 2026-08-14. The `[DontFix]` on `RoleAssignmentService` records the remaining
-  inversion as a Peter-led item, not a bug to fix in passing.
+  decision of 2026-08-14. Inverting `RoleAssignmentService`'s reads of Users and Teams remains a
+  Peter-led item, not a refactor to do in passing; ordinary fixes in the class are fine.
 
 ## Run history
 

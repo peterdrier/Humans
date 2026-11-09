@@ -77,7 +77,7 @@ is left to repair the page says so and nothing else in the section depends on it
 - **Controllers split by audience.** `StoreController` is the counterparty's surface (and hosts
   the per-order admin money actions, gated per order), `StoreAdminController` the admin's,
   `StoreStripeWebhookController` the payment processor's.
-- **Vendor systems through their own sections' contracts** — `IStripeService`, `IHoldedClient`.
+- **Vendor systems through their own sections' contracts** — `IStripeService`, `IHoldedService` / `IHoldedWrite`.
 - **Public surface is the accounting read and nothing else** — `IStoreAccountingRead`, its two
   row DTOs and the two enums they carry, plus `Section` and `StoreResource`. The admin summary's
   DTO graph stays `internal`.

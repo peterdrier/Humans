@@ -30,7 +30,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
 **Hard invariants:**
 
 - **Emergency-contact data is never searchable.** Regardless of bit-flag combination. `Profile.EmergencyContactName` / `EmergencyContactPhone` are skipped by every branch of `PersonSearchMatcher`.
-- **Auth boundary is the controller, not the service.** Services are auth-free per design-rules §6. A non-admin endpoint passing `Admin` is a programmer error caught in code review, not a runtime check. The bit-flag is auditable at a glance — every call site reads `PersonSearchFields.X` literally.
+- **Auth boundary is the controller, not the service.** Services are auth-free per design-rules.md, *Authorization*. A non-admin endpoint passing `Admin` is a programmer error caught in code review, not a runtime check. The bit-flag is auditable at a glance — every call site reads `PersonSearchFields.X` literally.
 - **Service returns matches in unspecified order.** Display ordering happens at the controller / view per [`display-sort-in-controllers.md`](display-sort-in-controllers.md). Don't push a `sortBy` parameter into the service.
 - **Limit is a safety cap, not a presentation choice.** It protects against fan-out under broad queries. Controllers may further `.Take(N)` after their own `OrderBy`.
 
@@ -39,7 +39,7 @@ Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
 | Pattern | Component | When |
 |---|---|---|
 | Inline picker / autocomplete | `<vc:human-search>` (`HumanSearchViewComponent`) | Pick a single person inside a form. Sets a hidden `userId` field on selection. Backed by `/api/profiles/search`. Typed params: `field-name`, `instance-key`, `placeholder`, `scope`, `exclude-user-ids`, `selected-user-id` (optional prefill), `allow-email`. |
-| Page-style search results | `<vc:user-search-result>` (`UserSearchResultViewComponent`) | Browse / find-then-act. Owned by `Humans.Users`, keyed by user id — the caller holds ids, wraps the rows in a `.list-group` and owns its own empty state. Typed params: `user-id`, `match-field`, `match-snippet`, `matched-email`. Used by `/Profile/Search` (`PublicAll`) and `/Search`'s Humans bucket. `/Users/Admin` is a paged admin directory, not a search result, and renders its own rows (nobodies-collective/Humans#1062). |
+| Page-style search results | `<vc:user-search-result>` (`UserSearchResultViewComponent`) | Browse / find-then-act. Owned by `Humans.Users`, keyed by user id — the caller holds ids, wraps the rows in a `.list-group` and owns its own empty state. Typed params: `user-id`, `match-field`, `match-snippet`, `matched-email`. Used by `/Search`'s Humans bucket (`PublicAll`). `/Users/Admin` is a paged admin directory, not a search result, and renders its own rows (nobodies-collective/Humans#1062). |
 
 Don't roll a third. If you need a new search surface, route it through one of these.
 

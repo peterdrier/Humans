@@ -2905,34 +2905,78 @@ body.city-map-fullscreen main {
     }
 }
 
-/* ── Budget/Finance figure strips (peterdrier/Humans, /Finance year page) ────
-   The accordion header lives inside an <h2>, so the display serif leaked into
-   the numbers and <small> shrank them to ~13px — unreadable for a money
-   figure. These keep the figures in the body face at full size, with the
-   label as a quiet caption above-the-line rather than another sentence. */
-.budget-figures {
+/* ── Budget year page (/Budget/Admin) ─────────────────────────────────────
+   Group headers, the column-label row and category headers share one grid, so
+   the figures line up as columns and each label is printed once per group.
+   The accordion header lives inside an <h2>; the body face keeps the display
+   serif out of the numbers. */
+.budget-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(4, 8.5rem);
+    column-gap: 0.75rem;
+    align-items: center;
+    width: 100%;
     font-family: var(--h-font-body);
     font-variant-numeric: tabular-nums;
-    font-size: 0.95rem;
 }
 
-.budget-figure + .budget-figure {
-    margin-left: 0.9rem;
-    padding-left: 0.9rem;
-    border-left: 1px solid var(--h-border-light);
+@media (max-width: 767.98px) {
+    .budget-row {
+        grid-template-columns: minmax(0, 1fr) repeat(4, 5.5rem);
+        column-gap: 0.4rem;
+        font-size: 0.8rem;
+    }
 }
 
-.budget-figure-label {
+.budget-num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Clears the accordion chevron (1.25rem wide) plus its button's 1.25rem
+   padding and the row's me-3, so labels sit over the figures. */
+.budget-colhead {
+    width: auto;
+    padding: 0.35rem 3.5rem 0.35rem 1.5rem;
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--h-sepia);
+    background: var(--h-vellum);
+    border-bottom: 1px solid var(--h-border);
 }
 
-.budget-figure-value {
-    font-weight: 600;
-    color: var(--h-aged-ink);
+.budget-capex {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--h-blue-muted);
+    border: 1px solid var(--h-blue-muted);
+    border-radius: 3px;
+    padding: 0 0.25rem;
+}
+
+.budget-detail {
+    background: var(--h-parchment-light);
+    border-bottom: 1px solid var(--h-border);
+}
+
+.budget-note {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--h-sepia);
+}
+
+.budget-doc-desc {
+    display: block;
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    color: var(--h-sepia);
 }
 
 /* Holded actuals are a different kind of number from the budget's own — they
@@ -2944,12 +2988,11 @@ body.city-map-fullscreen main {
 
 .budget-subhead {
     font-family: var(--h-font-body);
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--h-sepia);
-    background: var(--h-vellum);
 }
 
 .budget-table {
@@ -3024,4 +3067,37 @@ body.city-map-fullscreen main {
 
 @media (max-width: 767.98px) {
     .stats { grid-template-columns: 1fr; }
+}
+
+/* /Users/Me: section-contributed cards laid out as equal tiles. */
+.profile-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.profile-tiles > .card { margin-bottom: 0 !important; }
+.profile-facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: .4rem 1rem;
+}
+.profile-facts dt { color: var(--h-text-secondary); font-weight: 600; }
+.profile-facts dd { margin: 0; }
+.profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "identity" "main" "settings";
+    gap: 0 1.5rem;
+    align-items: start;
+}
+.profile-layout-identity { grid-area: identity; }
+.profile-layout-main { grid-area: main; }
+.profile-layout-settings { grid-area: settings; }
+@media (min-width: 992px) {
+    .profile-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        grid-template-rows: auto 1fr;
+        grid-template-areas: "identity main" "settings main";
+    }
 }

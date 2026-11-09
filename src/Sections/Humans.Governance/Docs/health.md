@@ -139,11 +139,11 @@ Each cites the line that enforces it.
   tallied separately and never merged (`Services/AssemblyVoteService.cs:558`).
 - A ballot is accepted only while the vote is Open and its deadline has not passed, and only
   from the roster row that entitles the submitter. Checked once before the write
-  (`Services/AssemblyVoteService.cs:233`, `:238`) and again under the vote row's lock
+  (`AssemblyVoteMemberWorkflow.CastBallotAsync`) and again under the vote row's lock
   (`Data/AssemblyVoteRepository.cs:357`), so a ballot accepted after the count began is
   impossible rather than unlikely.
 - A ballot's audit entry names the actor and the vote, never the choice, and never the ballot
-  row (`Services/AssemblyVoteService.cs:263`).
+  row (`AssemblyVoteMemberWorkflow.CastBallotAsync`).
 - The embargo: the only reads that return anything derived from ballot content are the stored
   result after close, the audited peek, and the audited post-close ballot list
   (`Services/AssemblyVoteService.cs:609`, `:1316`, `:1349`; the contract is stated at
