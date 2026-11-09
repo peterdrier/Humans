@@ -1,5 +1,11 @@
 @model Humans.Tickets.ViewComponents.TicketHoldingsViewModel
 
+@if (Model.ChipOnly)
+{
+    <vc:onsite-chip user-id="@Model.UserId" view-mode="@Model.ViewMode" in-holdings="true" />
+    return;
+}
+
 <div class="card mb-3">
     <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <h3 class="h6 mb-0">@Localizer["Tickets_TicketHoldings_Title"]</h3>
