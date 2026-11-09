@@ -118,6 +118,7 @@ Humans.Finance/
     SepaBankBooking.cs         shape F and the sweep
     HoldedMatcher.cs           pure attribution, no dependencies
     HoldedDuplicateMatcher.cs  pure duplicate detection, no dependencies
+    HoldedDuplicateReview.cs   preview, fresh-sync confirmation and removal
     ExpenseRecon.cs            pure reconciliation report, no dependencies
     SepaPaymentFileBuilder.cs  pure pain.001 XML from a batch, no dependencies
     SepaSchema.cs, SepaText.cs the schema and the character rules that builder obeys
@@ -221,8 +222,8 @@ What the shapes say about the inside:
   `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:346`).
 - A duplicate document is deleted only when its notes match the push exactly; a contact is deleted
   only once every document it held was deleted without a failure
-  (`src/Sections/Humans.Finance/Services/Service.cs:1347`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1467`).
+  (`src/Sections/Humans.Finance/Services/HoldedDuplicateReview.cs`,
+  `src/Sections/Humans.Finance/Services/HoldedDuplicateReview.cs`).
 - A raw IBAN lives in the payment-details row, the bank file, the transfer row and the contact
   create that hands it to Holded; audit entries, exports and cross-section rows carry it masked
   (`src/Sections/Humans.Finance/Services/Service.cs:1117`,
