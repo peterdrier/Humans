@@ -144,7 +144,9 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 - Domain-group reads impose no display order. The All Groups view orders linked groups first, then email ignoring case; batch settings remediation explicitly uses that same sequence.
 
-- Internal `WorkspaceAccountRecovery` owns password reset, backup-code rotation and the combined recovery workflow, including the live 2SV gate and delivery after audit failure. `GoogleAdminService` delegates its existing recovery methods and retains account listing, provisioning, suspension, linking and rename detection. The helper uses the existing dependencies and log category; no contract or DI registration changes.
+- Internal `WorkspaceAccountRecovery` owns password reset, backup-code rotation and the combined recovery workflow, including the live 2SV gate and delivery after audit failure. `GoogleAdminService` delegates its existing recovery methods and retains provisioning, suspension, reactivation, account/group linking and the team picker. The helper uses the existing dependencies and log category; no contract or DI registration changes.
+
+- Internal `WorkspaceAccountDiagnostics` owns account-list enrichment, counts and email-rename diagnostics. `GoogleAdminService` delegates its existing read methods; canonical email matching, per-account failure isolation, request cancellation, result shapes and log category stay unchanged. The vendor proxy remains focused on Workspace calls, and no contract or DI registration changes.
 
 - Password-reset and backup-code audits resolve the linked member through the same `UserEmailMatchOwner.ByEmail` picker as account listings and syncs, including Gmail-alias identity and verified/newest/stable-id precedence. Unlinked addresses retain an empty audit entity id.
 
