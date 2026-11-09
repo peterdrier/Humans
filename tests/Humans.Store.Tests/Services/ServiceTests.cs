@@ -1993,8 +1993,8 @@ public class ServiceTests
     }
 
     [HumansTheory]
-    [InlineData(nameof(PaymentMethod.DepositReturn), 150.00, 150.00)]
-    [InlineData(nameof(PaymentMethod.Refund), 80.00, -80.00)]
+    [InlineData(nameof(PaymentMethod.DepositReturn), "150.00", "150.00")]
+    [InlineData(nameof(PaymentMethod.Refund), "80.00", "-80.00")]
     public async Task RecordAdminPaymentAsync_stores_deposit_return_positive_and_refund_negative(
         string methodName, decimal entered, decimal stored)
     {

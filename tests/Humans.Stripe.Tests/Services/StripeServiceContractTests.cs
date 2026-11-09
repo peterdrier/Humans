@@ -262,7 +262,7 @@ public class StripeServiceContractTests
 
     [HumansTheory]
     [InlineData(0)]
-    [InlineData(-0.01)]
+    [InlineData("-0.01")]
     [InlineData(-100)]
     public async Task CreateCheckoutSession_rejects_a_non_positive_amount(decimal amountEur)
     {
