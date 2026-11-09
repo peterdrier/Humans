@@ -80,24 +80,6 @@ internal sealed class Service(
         bool activeOnly, CancellationToken ct = default) =>
         categoryAccounts.ListExpenseAccountsAsync(activeOnly, ct);
 
-    /// <summary>The purchase-document mirror with each document's category attribution: account match over tag
-    /// match, a managed account matches with no category. Computed on read, so a mapping fixed in Holded or added
-    /// here applies on the next page load.</summary>
-    private async Task<(HoldedPurchaseDocMirror Mirror, IReadOnlyList<AttributedDoc> Docs)> AttributedDocsAsync(
-        CancellationToken ct)
-    {
-        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
-        var entries = (await repo.GetCategoryMapAsync(ct))
-            .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
-            .ToArray();
-        var managedIds = (await repo.GetManagedAccountsAsync(ct))
-            .Select(m => m.HoldedAccountId)
-            .ToHashSet(StringComparer.Ordinal);
-        return (mirror, mirror.Docs
-            .Select(d => new AttributedDoc(d, HoldedMatcher.Match(d.BookedAccountId, d.Tags, entries, managedIds)))
-            .ToList());
-    }
-
     /// <summary>The expense lines against the ledger mirror, with SEPA rows. The one non-mirror read is the cached
     /// contact list, which says which account each bound contact is on. Unreadable, or missing a bound contact, the report is unavailable: the
     /// binding's stored number may be wrong, and judging against it is worse than not judging. The document mirror is
@@ -140,42 +122,12 @@ internal sealed class Service(
             id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
     }
 
-    public async Task<IReadOnlyList<CategoryActualRow>> GetActualsForYearAsync(
-        int calendarYear, CancellationToken ct = default)
-    {
-        // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive while a 629
-        // balance is net, and the ledger carries drafts Holded has not approved.
-        var (_, docs) = await AttributedDocsAsync(ct);
-        return docs
-            .Where(d => d.Doc.IsApproved && d.Doc.Date.Year == calendarYear && d.Match.CategoryId is not null)
-            .GroupBy(d => d.Match.CategoryId!.Value)
-            .Select(g => new CategoryActualRow(
-                g.Key,
-                g.Sum(d => d.Doc.Total),
-                g.Select(d => new CategoryActualDoc(
-                        d.Doc.Id, d.Doc.DocNumber, d.Doc.ContactName, d.Doc.Description, d.Doc.Date, d.Doc.Total,
-                        d.Doc.HoldedUrl))
-                    .ToList()))
-            .Where(r => r.Actual != 0m)
-            .ToList();
-    }
+    public Task<IReadOnlyList<CategoryActualRow>> GetActualsForYearAsync(
+        int calendarYear, CancellationToken ct = default) =>
+        categoryAccounts.GetActualsForYearAsync(calendarYear, ct);
 
-    public async Task<IReadOnlyList<UnmatchedDocRow>> GetUnmatchedAsync(CancellationToken ct = default)
-    {
-        var (_, docs) = await AttributedDocsAsync(ct);
-        return docs
-            .Where(d => d.IsUnmatched)
-            .Select(d => new UnmatchedDocRow(
-                d.Doc.Id,
-                d.Doc.DocNumber,
-                d.Doc.ContactName,
-                d.Doc.Description,
-                d.Doc.Total,
-                ReasonFor(d.Doc),
-                d.Doc.HoldedUrl)
-            { Date = d.Doc.Date })
-            .ToList();
-    }
+    public Task<IReadOnlyList<UnmatchedDocRow>> GetUnmatchedAsync(CancellationToken ct = default) =>
+        categoryAccounts.GetUnmatchedAsync(ct);
 
     public Task<string?> GetHoldedAccountIdForCategoryAsync(Guid budgetCategoryId, CancellationToken ct = default) =>
         categoryAccounts.GetHoldedAccountIdForCategoryAsync(budgetCategoryId, ct);
@@ -183,24 +135,8 @@ internal sealed class Service(
     public Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default) =>
         categoryAccounts.GetCategoryMapAsync(ct);
 
-    public async Task<IReadOnlyList<HoldedManagedAccountVm>> GetManagedAccountsAsync(CancellationToken ct = default) =>
-        (await repo.GetManagedAccountsAsync(ct))
-            .Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
-            .ToList();
-
-    private static string ReasonFor(HoldedPurchaseDocInfo d)
-    {
-        var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
-        var hasTags = d.Tags.Count > 0;
-
-        if (!hasAccount && !hasTags)
-            return "No account, no tag";
-        if (hasAccount && hasTags)
-            return "Account and tags not mapped";
-        if (hasAccount)
-            return "Account not mapped";
-        return "Tags not matched";
-    }
+    public Task<IReadOnlyList<HoldedManagedAccountVm>> GetManagedAccountsAsync(CancellationToken ct = default) =>
+        categoryAccounts.GetManagedAccountsAsync(ct);
 
     // A new expense-only contact gets type "creditor", which Holded numbers in the 410 series rather than the
     // 400-series proveedor accounts older members carry, so the block spans both. Bindings, not the range, tell a

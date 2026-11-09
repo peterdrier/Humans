@@ -346,4 +346,78 @@ internal sealed class HoldedCategoryAccounts(
             suffix = categorySuffix + attempt.ToString(CultureInfo.InvariantCulture);
         }
     }
+    /// <summary>The purchase-document mirror with each document's category attribution: account match over tag
+    /// match, a managed account matches with no category. Computed on read, so a mapping fixed in Holded or added
+    /// here applies on the next page load.</summary>
+    private async Task<(HoldedPurchaseDocMirror Mirror, IReadOnlyList<AttributedDoc> Docs)> AttributedDocsAsync(
+        CancellationToken ct)
+    {
+        var mirror = await holded.GetPurchaseDocumentsAsync(ct);
+        var entries = (await repo.GetCategoryMapAsync(ct))
+            .Select(m => new HoldedMatchEntry(m.BudgetCategoryId, m.HoldedAccountId, m.Tag))
+            .ToArray();
+        var managedIds = (await repo.GetManagedAccountsAsync(ct))
+            .Select(m => m.HoldedAccountId)
+            .ToHashSet(StringComparer.Ordinal);
+        return (mirror, mirror.Docs
+            .Select(d => new AttributedDoc(d, HoldedMatcher.Match(d.BookedAccountId, d.Tags, entries, managedIds)))
+            .ToList());
+    }
+
+    public async Task<IReadOnlyList<CategoryActualRow>> GetActualsForYearAsync(
+        int calendarYear, CancellationToken ct = default)
+    {
+        // Doc-derived, not ledger balances: the budget pages are gross/IVA-inclusive while a 629
+        // balance is net, and the ledger carries drafts Holded has not approved.
+        var (_, docs) = await AttributedDocsAsync(ct);
+        return docs
+            .Where(d => d.Doc.IsApproved && d.Doc.Date.Year == calendarYear && d.Match.CategoryId is not null)
+            .GroupBy(d => d.Match.CategoryId!.Value)
+            .Select(g => new CategoryActualRow(
+                g.Key,
+                g.Sum(d => d.Doc.Total),
+                g.Select(d => new CategoryActualDoc(
+                        d.Doc.Id, d.Doc.DocNumber, d.Doc.ContactName, d.Doc.Description, d.Doc.Date, d.Doc.Total,
+                        d.Doc.HoldedUrl))
+                    .ToList()))
+            .Where(r => r.Actual != 0m)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<UnmatchedDocRow>> GetUnmatchedAsync(CancellationToken ct = default)
+    {
+        var (_, docs) = await AttributedDocsAsync(ct);
+        return docs
+            .Where(d => d.IsUnmatched)
+            .Select(d => new UnmatchedDocRow(
+                d.Doc.Id,
+                d.Doc.DocNumber,
+                d.Doc.ContactName,
+                d.Doc.Description,
+                d.Doc.Total,
+                ReasonFor(d.Doc),
+                d.Doc.HoldedUrl)
+            { Date = d.Doc.Date })
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<HoldedManagedAccountVm>> GetManagedAccountsAsync(CancellationToken ct = default) =>
+        (await repo.GetManagedAccountsAsync(ct))
+            .Select(m => new HoldedManagedAccountVm(m.HoldedAccountNumber, m.HoldedAccountId, m.Label, m.IsActive, m.CreatedAt))
+            .ToList();
+
+    private static string ReasonFor(HoldedPurchaseDocInfo d)
+    {
+        var hasAccount = !string.IsNullOrEmpty(d.BookedAccountId);
+        var hasTags = d.Tags.Count > 0;
+
+        if (!hasAccount && !hasTags)
+            return "No account, no tag";
+        if (hasAccount && hasTags)
+            return "Account and tags not mapped";
+        if (hasAccount)
+            return "Account not mapped";
+        return "Tags not matched";
+    }
+
 }
