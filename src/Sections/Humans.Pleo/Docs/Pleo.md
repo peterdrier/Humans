@@ -73,6 +73,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 ## Invariants
 
+- A category-link POST with a missing or blank Pleo id returns the existing invalid-id refusal before any mapping save or audit, then redirects to Categories with error feedback.
+
 - The internal `PleoTextBounds` bounds imported entry notes and saved sync errors to 2,000 UTF-16 units and permanent HTTP-error body previews to 300, without splitting surrogate pairs. The preview must remain valid UTF-8 before it becomes part of a stored sync error. The raw vendor entry remains intact, and recording an error preserves the original exception and existing mirror.
 
 - A sweep fetches entries, chart, cardholders and balance (three to five calls) before writing anything, then
