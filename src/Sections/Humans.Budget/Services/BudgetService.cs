@@ -301,6 +301,14 @@ internal sealed class BudgetService(
             : null;
     }
 
+    private static string? ValidateFeePercentage(decimal percentage)
+    {
+        const decimal maxPercentage = 99_999_999_999_999.9999m;
+        return percentage < -maxPercentage || percentage > maxPercentage || decimal.Round(percentage, 4) != percentage
+            ? "Fee percentages must fit within 14 whole digits and four decimal places."
+            : null;
+    }
+
     private static string? VatRateRefusal(int vatRate) =>
         vatRate is < 0 or > 21 ? "VAT rate must be between 0 and 21." : null;
 
@@ -324,6 +332,13 @@ internal sealed class BudgetService(
     {
         if (VatRateRefusal(vatRate) is { } vatRefusal)
             return new(Refusal: vatRefusal);
+
+        if ((ValidateMoneyAmount(dailySalesRate)
+             ?? ValidateMoneyAmount(averageTicketPrice)
+             ?? ValidateMoneyAmount(stripeFeeFixed)
+             ?? ValidateFeePercentage(stripeFeePercent)
+             ?? ValidateFeePercentage(ticketTailorFeePercent)) is { } decimalRefusal)
+            return new(Refusal: decimalRefusal);
 
         var now = clock.GetCurrentInstant();
 
