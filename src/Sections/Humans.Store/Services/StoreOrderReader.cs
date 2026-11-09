@@ -26,7 +26,7 @@ internal sealed class StoreOrderReader(
         if (o is null) return null;
         var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
         var productNames = await LoadProductNamesAsync(productIds, ct);
-        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var currentPrices = await LoadCurrentPricesAsync(o.Year, ct);
         return await MapOrderAsync(o, productNames, currentPrices, ct);
     }
 
@@ -128,13 +128,13 @@ internal sealed class StoreOrderReader(
     }
 
     /// <summary>
-    /// Includes deactivated products. The org runs one event year, so the active year's catalog drives repricing rather
-    /// than each order's <c>Year</c>; that's also why legacy <c>Year = 0</c> rows reprice correctly.
+    /// Includes deactivated products from the order's year. Legacy <c>Year = 0</c> rows retain the active-year
+    /// catalog until their year is repaired by an authorized mutation.
     /// </summary>
     public async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
-        CancellationToken ct)
+        int orderYear, CancellationToken ct)
     {
-        var catalogYear = await GetCurrentEventYearAsync(ct);
+        var catalogYear = orderYear > 0 ? orderYear : await GetCurrentEventYearAsync(ct);
         return ToPrices(await repo.GetAllProductsForYearAsync(catalogYear, ct));
     }
 

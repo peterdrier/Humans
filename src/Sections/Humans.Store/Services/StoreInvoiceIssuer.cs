@@ -53,7 +53,7 @@ internal sealed class StoreInvoiceIssuer(
                 "Holded is not configured in this environment, so no invoice can be issued.");
 
         // Freeze seam: rewrite each snapshot from the live catalog so the document and the order agree forever after.
-        var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(ct));
+        var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(order.Year, ct));
         var balanceRefusal = totals.BalanceEur == 0m ? null
             : $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).";
         var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);

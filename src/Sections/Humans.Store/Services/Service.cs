@@ -216,7 +216,7 @@ internal sealed class Service(
             return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
 
-        var currentPrices = await LoadCurrentPricesAsync(ct);
+        var currentPrices = await LoadCurrentPricesAsync(order.Year, ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;
         if (balance != 0m)
             return RefuseAdminMutation(orderId, actorUserId,
@@ -440,7 +440,7 @@ internal sealed class Service(
 
         if (method == PaymentMethod.DepositReturn)
         {
-            var depositTotal = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(ct)).DepositTotalEur;
+            var depositTotal = BalanceCalculator.Compute(order, await LoadCurrentPricesAsync(order.Year, ct)).DepositTotalEur;
             var alreadyReturned = order.Payments
                 .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
                 .Sum(p => p.AmountEur);
@@ -530,5 +530,5 @@ internal sealed class Service(
         orderReader.GetStoreSummaryAsync(year, ct);
 
     private Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
-        CancellationToken ct) => orderReader.LoadCurrentPricesAsync(ct);
+        int orderYear, CancellationToken ct) => orderReader.LoadCurrentPricesAsync(orderYear, ct);
 }
