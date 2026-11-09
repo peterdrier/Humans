@@ -23,6 +23,13 @@ single-member `ISurveyReminderSender`, which the section's own
 machine API reads. Everything else — authoring, sending, the wizard, submission —
 has no caller outside Surveys.
 
+### SurveyAuthoring (internal — constructed by SurveyService, not DI-registered)
+
+Uses the shared `ISurveyRepository` for definition reads and create/update writes.
+Coordinates the existing `SurveyDefinitionValidation`, `SurveyImageUploads` and
+`SurveyChangeDescription` helpers, with `IFileStorage`, audit and clock. The parent
+retains translation and ranked-availability orchestration. No direct DbContext or cache.
+
 ### SurveyService (Scoped — `ISurveyService`, `IUserDataContributor`, `IUserMerge`)
 
 `ISurveyService` also carries `ISurveyAnalysisRead` — Backdoor's read-only

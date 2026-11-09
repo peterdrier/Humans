@@ -19,6 +19,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Anonymity tiers** (`ResponseAnonymity`): **Identified** (linked to the invitee, resumable, the only personal-data tier), **CompletionTracked** (participation counted, answers unlinkable), **Anonymous** (no trace). See Invariants.
 - The **public-slug path** (`/Survey/{slug}`) has no emailed token. Logged-out visitors are always Anonymous. Logged-in Humans choose Identified, CompletionTracked, or Anonymous; tracked tiers use the existing per-survey/user participation ledger and all responses retain `InputMethod=Slug`.
 
+- Internal `SurveyAuthoring` owns create/update validation, question/image preparation, failed-upload cleanup, persistence and authoring audit. `SurveyService` keeps its entry points, translation orchestration and ranked-availability authorization, forwarding the existing special update mode to the same core. Author/manager gates, frozen vote definitions, upload retention, refusal precedence and cancellation are unchanged; no public contract or DI registration is added.
+
 ## Data Model
 
 ### Survey
