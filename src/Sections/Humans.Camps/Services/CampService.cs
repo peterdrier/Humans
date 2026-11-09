@@ -24,21 +24,20 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     private readonly ICampRepository _repo;
     private readonly IAuditLogService _auditLog;
-    private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
     private readonly CampImageGallery _imageGallery;
     private readonly CampReadProjection _readProjection;
     private readonly CampDataLifecycle _dataLifecycle;
     private readonly CampMembershipTransitions _memberships;
     private readonly CampSeasonLifecycle _seasons;
+    private readonly CampRegistration _registration;
     // Lazy: CityPlanningService injects ICampService, closing the cycle.
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
     private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
 
-    private const int MaxHistoricalNameLength = 256;
-    private const int MaxCampSlugLength = 256;
+    private const int MaxHistoricalNameLength = CampRegistration.MaxHistoricalNameLength;
 
     public CampService(
         ICampRepository repo,
@@ -58,11 +57,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         _readProjection = new CampReadProjection(repo, settingsService, clock);
         _dataLifecycle = new CampDataLifecycle(repo, userService, systemTeamSync);
         _auditLog = auditLog;
-        _systemTeamSync = systemTeamSync;
         _fileStorage = fileStorage;
         _imageGallery = new CampImageGallery(repo, fileStorage, clock, auditLog, logger);
         var membershipNotices = new CampMembershipNotices(repo, userService, notificationEmitter, logger);
         _seasons = new CampSeasonLifecycle(repo, auditLog, settingsService, membershipNotices, clock);
+        _registration = new CampRegistration(repo, auditLog, systemTeamSync, _seasons, clock, logger);
         _memberships = new CampMembershipTransitions(repo, auditLog, userService, settingsService, tickets,
             campRoleService, membershipNotices, clock);
         _cityPlanningService = cityPlanningService;
@@ -71,115 +70,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         _logger = logger;
     }
 
-    public async Task<CampWriteResult<Camp>> CreateCampAsync(
+    public Task<CampWriteResult<Camp>> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
         CampSeasonData seasonData, List<string>? historicalNames, Guid eventSettingsId,
-        CancellationToken cancellationToken = default)
-    {
-        var targetEvent = (await GetRegistrationByEventAsync(cancellationToken))
-            .FirstOrDefault(r => r.EventSettingsId == eventSettingsId);
-        if (targetEvent is null)
-            return new(null, "Camps_Flash_SeasonNotOpen");
-        if (historicalNames?.Any(string.IsNullOrWhiteSpace) == true)
-            return new(null, "Camps_Flash_NameRequired");
-        if (historicalNames?.Any(n => n.Trim().Length > MaxHistoricalNameLength) == true)
-            return new(null, "Camps_Validation_HistoricalNameLength");
-
-        var slug = SlugHelper.GenerateSlug(name);
-        if (slug.Length == 0)
-            slug = "camp";
-        if (SlugHelper.IsReservedCampSlug(slug))
-        {
-            return new(null, "Camps_Flash_ReservedName");
-        }
-
-        var baseSlug = slug;
-        var suffix = 2;
-        while (await _repo.SlugExistsAsync(slug, cancellationToken))
-        {
-            var suffixText = "-" + suffix.ToString(CultureInfo.InvariantCulture);
-            var prefixLength = Math.Min(baseSlug.Length, MaxCampSlugLength - suffixText.Length);
-            slug = baseSlug[..prefixLength].TrimEnd('-') + suffixText;
-            suffix++;
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var camp = new Camp
-        {
-            Id = Guid.NewGuid(),
-            Slug = slug,
-            ContactEmail = contactEmail,
-            ContactPhone = contactPhone,
-            WebOrSocialUrl = links is { Count: > 0 } ? null : webOrSocialUrl,
-            Links = links,
-            IsSwissCamp = isSwissCamp,
-            TimesAtNowhere = timesAtNowhere,
-            CreatedByUserId = createdByUserId,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        var season = CampSeasonLifecycle.CreateSeasonFromData(camp.Id, targetEvent.Year, name, seasonData, now);
-        season.EventSettingsId = eventSettingsId;
-
-        var member = new CampMember
-        {
-            Id = Guid.NewGuid(),
-            CampSeasonId = season.Id,
-            UserId = createdByUserId,
-            Status = CampMemberStatus.Active,
-            RequestedAt = now,
-            ConfirmedAt = now,
-            ConfirmedByUserId = createdByUserId,
-        };
-
-        var leadDef = await _repo.GetSpecialDefinitionAsync(CampSpecialRole.Lead, cancellationToken);
-        CampRoleAssignment? leadAssignment = null;
-        if (leadDef is not null)
-        {
-            leadAssignment = new CampRoleAssignment
-            {
-                Id = Guid.NewGuid(),
-                CampSeasonId = season.Id,
-                CampRoleDefinitionId = leadDef.Id,
-                CampMemberId = member.Id,
-                AssignedAt = now,
-                AssignedByUserId = createdByUserId,
-            };
-        }
-        else
-        {
-            _logger.LogWarning(
-                "Camp Lead role definition missing while creating camp {CampId}; creator added as Active member without a lead assignment. Run 'Seed system roles'.",
-                camp.Id);
-        }
-
-        List<CampHistoricalName>? historicalNameEntities = null;
-        if (historicalNames is { Count: > 0 })
-        {
-            historicalNameEntities = historicalNames.Select(oldName => new CampHistoricalName
-            {
-                Id = Guid.NewGuid(),
-                CampId = camp.Id,
-                Name = oldName.Trim(),
-                Source = CampNameSource.Manual,
-                CreatedAt = now
-            }).ToList();
-        }
-
-        await _repo.CreateCampAsync(camp, season, member, leadAssignment, historicalNameEntities, cancellationToken);
-
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampCreated, nameof(Camp), camp.Id,
-            $"Registered camp '{name}' for {targetEvent.EventName}",
-            createdByUserId);
-
-        await _systemTeamSync.SyncMembershipForUserAsync(
-            createdByUserId, SystemTeamType.BarrioLeads, cancellationToken);
-
-        return new(camp);
-    }
+        CancellationToken cancellationToken = default) =>
+        _registration.CreateCampAsync(
+            createdByUserId, name, contactEmail, contactPhone, webOrSocialUrl, links, isSwissCamp, timesAtNowhere,
+            seasonData, historicalNames, eventSettingsId, cancellationToken);
 
     public Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
         _readProjection.GetCampBySlugAsync(slug, cancellationToken);
