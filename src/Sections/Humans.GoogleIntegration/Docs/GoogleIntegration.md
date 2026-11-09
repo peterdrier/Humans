@@ -265,6 +265,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Architecture
 
+Internal `TeamResourceReader` owns resource-row snapshots, team summaries, active counts, folder lists and resource-name/id reads. `TeamResourceService` retains its existing entry points, management authorization and resource mutations. Query order, active/inactive lookup behavior, empty-input handling, summary counts, projection fields and cancellation are unchanged; no public contract or DI registration is added.
+
 The internal `GoogleTeamGroupLinking` owns team-prefix group linking and its cross-team URL-conflict lookup. `GoogleWorkspaceSyncService` delegates the existing `EnsureTeamGroupAsync` entry point. Missing-team handling, oldest-resource selection, prefix-clearing deactivation, reactivation confirmation, reconciliation flags, save/audit order, audit source labels, options and cancellation are unchanged. Manual resource linking and group-settings remediation retain their existing owners; no public contract or DI registration is added.
 
 The internal `GoogleDriveFolderMaintenance` owns stored folder-path refresh and inherited-access restriction enforcement, including the shared Drive setter. `GoogleWorkspaceSyncService` forwards its existing entry points. Active-team filtering, complete-path requirements, per-resource failure isolation, correction audits and cancellation remain unchanged. Folder creation, membership reconciliation and permission planning keep their existing owners; no contract or DI registration is added.

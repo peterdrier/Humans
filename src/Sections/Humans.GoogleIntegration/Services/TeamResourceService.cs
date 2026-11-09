@@ -21,57 +21,27 @@ internal sealed partial class TeamResourceService(
     IClock clock,
     ILogger<TeamResourceService> logger) : ITeamResourceManagement
 {
+    private readonly TeamResourceReader reader = new(repository);
+
     // Lazy resolution: eagerly injecting IRoleAssignmentService creates a
     // ctor cycle TeamResourceService → IRoleAssignmentService → ISystemTeamSync
     // → IGoogleGroupSync → ITeamResourceManagement. Only one method uses it.
     private IRoleAssignmentService RoleAssignmentService
         => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
-    public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
-    {
-        var resources = await repository.GetActiveByTeamIdAsync(teamId, ct);
-        return resources.Select(ToSnapshot).ToList();
-    }
+    public Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default) =>
+        reader.GetTeamResourcesAsync(teamId, ct);
 
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>> GetResourcesByTeamIdsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken ct = default)
-    {
-        var resourcesByTeam = await repository.GetActiveByTeamIdsAsync(teamIds, ct);
-        return resourcesByTeam.ToDictionary(
-            kvp => kvp.Key,
-            kvp => (IReadOnlyList<GoogleResourceSnapshot>)kvp.Value.Select(ToSnapshot).ToList());
-    }
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>> GetResourcesByTeamIdsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default) =>
+        reader.GetResourcesByTeamIdsAsync(teamIds, ct);
 
-    public async Task<IReadOnlyDictionary<Guid, TeamResourceSummary>> GetTeamResourceSummariesAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0)
-        {
-            return new Dictionary<Guid, TeamResourceSummary>();
-        }
+    public Task<IReadOnlyDictionary<Guid, TeamResourceSummary>> GetTeamResourceSummariesAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default) =>
+        reader.GetTeamResourceSummariesAsync(teamIds, ct);
 
-        var rowsByTeam = await repository.GetActiveByTeamIdsAsync(teamIds, ct);
-
-        var result = new Dictionary<Guid, TeamResourceSummary>(teamIds.Count);
-        foreach (var teamId in teamIds)
-        {
-            var rows = rowsByTeam[teamId];
-            if (rows.Count == 0)
-            {
-                result[teamId] = TeamResourceSummary.Empty;
-                continue;
-            }
-            var hasMailGroup = rows.Any(r => r.ResourceType == GoogleResourceType.Group);
-            var driveCount = rows.Count(r => r.ResourceType != GoogleResourceType.Group);
-            result[teamId] = new TeamResourceSummary(hasMailGroup, driveCount);
-        }
-        return result;
-    }
-
-    public Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default)
-        => repository.GetActiveResourceCountsByTeamAsync(ct);
+    public Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default) =>
+        reader.GetActiveResourceCountsByTeamAsync(ct);
 
     public Task MarkResourceSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default)
         => repository.MarkSyncedAsync(resourceId, now, ct);
@@ -79,40 +49,18 @@ internal sealed partial class TeamResourceService(
     public Task RecordResourceErrorAsync(Guid resourceId, string errorMessage, CancellationToken ct = default)
         => repository.SetErrorMessageManyAsync([resourceId], errorMessage, ct);
 
-    public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
-    {
-        var resources = await repository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct);
-        return resources.Select(ToSnapshot).ToList();
-    }
+    public Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default) =>
+        reader.GetActiveDriveFoldersAsync(ct);
 
-    public Task<int> GetResourceCountAsync(CancellationToken ct = default)
-        => repository.GetCountAsync(ct);
+    public Task<int> GetResourceCountAsync(CancellationToken ct = default) =>
+        reader.GetResourceCountAsync(ct);
 
     public Task<IReadOnlyDictionary<Guid, string>> GetResourceNamesByIdsAsync(
-        IReadOnlyCollection<Guid> resourceIds,
-        CancellationToken ct = default)
-        => repository.GetNamesByIdsAsync(resourceIds, ct);
+        IReadOnlyCollection<Guid> resourceIds, CancellationToken ct = default) =>
+        reader.GetResourceNamesByIdsAsync(resourceIds, ct);
 
-    public async Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
-    {
-        var resource = await repository.GetByIdAsync(resourceId, ct);
-        return resource is null ? null : ToSnapshot(resource);
-    }
-
-    private static GoogleResourceSnapshot ToSnapshot(GoogleResource resource) =>
-        new(
-            resource.Id,
-            resource.TeamId,
-            resource.GoogleId,
-            resource.Name,
-            resource.ResourceType,
-            resource.Url,
-            resource.ProvisionedAt,
-            resource.LastSyncedAt,
-            resource.IsActive,
-            resource.ErrorMessage,
-            resource.DrivePermissionLevel,
-            resource.RestrictInheritedAccess);
+    public Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default) =>
+        reader.GetResourceByIdAsync(resourceId, ct);
 
     private async Task<LinkResourceResult> LinkDriveFolderAsync(
         Guid teamId,
