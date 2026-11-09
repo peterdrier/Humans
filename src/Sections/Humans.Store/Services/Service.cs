@@ -433,16 +433,9 @@ internal sealed class Service(
 
     /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     [ExternalWrite]
-    public async Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
-    {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
-        if (order is null)
-            return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
-        if (order.TeamId is not null)
-            return RefuseAdminMutation(orderId, actorUserId, "Team orders are non-billable.");
-        return await new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
-            .IssueAsync(order, actorUserId, ct);
-    }
+    public Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
+        new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
+            .IssueAsync(orderId, actorUserId, ct);
 
     private AdminMutationResult RefuseAdminMutation(Guid orderId, Guid actorUserId, string reason)
     {

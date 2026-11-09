@@ -39,17 +39,23 @@ internal sealed class StoreInvoiceIssuer(
     /// </para>
     /// </remarks>
     [ExternalWrite]
-    public async Task<AdminMutationResult> IssueAsync(Order order, Guid actorUserId, CancellationToken ct = default)
+    public async Task<AdminMutationResult> IssueAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null)
+            return Refuse(orderId, actorUserId, "Order not found.");
+        if (order.TeamId is not null)
+            return Refuse(orderId, actorUserId, "Team orders are non-billable.");
+
         // Before any Holded call, so a double-submit can't create a second document.
         if (order.IssuedInvoiceId is not null || order.State != OrderState.Open)
-            return Refuse(order, actorUserId, "This order has already been invoiced.");
+            return Refuse(order.Id, actorUserId, "This order has already been invoiced.");
 
         if (order.Lines.Count == 0)
-            return Refuse(order, actorUserId, "Cannot invoice an order with no lines.");
+            return Refuse(order.Id, actorUserId, "Cannot invoice an order with no lines.");
 
         if (!holded.IsConfigured)
-            return Refuse(order, actorUserId,
+            return Refuse(order.Id, actorUserId,
                 "Holded is not configured in this environment, so no invoice can be issued.");
 
         // Freeze seam: rewrite each snapshot from the live catalog so the document and the order agree forever after.
@@ -75,10 +81,10 @@ internal sealed class StoreInvoiceIssuer(
             // is a human's problem, not something to reconcile silently.
             if ((GetDocumentTotalsRefusal(order, adoptedDoc, totals)
                  ?? GetRecoveredLinesRefusal(order, adoptedDoc, totals)) is { } recoveryRefusal)
-                return Refuse(order, actorUserId, recoveryRefusal);
+                return Refuse(order.Id, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
-                if (balanceRefusal is not null) return Refuse(order, actorUserId, balanceRefusal);
+                if (balanceRefusal is not null) return Refuse(order.Id, actorUserId, balanceRefusal);
 
                 // Created but not approved. A draft books no revenue and carries no number, so freezing against it
                 // leaves the order invoiced with no legal invoice: finish the issuance instead.
@@ -95,18 +101,18 @@ internal sealed class StoreInvoiceIssuer(
                 ct);
         }
 
-        if (balanceRefusal is not null) return Refuse(order, actorUserId, balanceRefusal);
+        if (balanceRefusal is not null) return Refuse(order.Id, actorUserId, balanceRefusal);
 
         var totalDue = totals.TotalDueEur;
         if (totalDue <= 0m)
-            return Refuse(order, actorUserId, "Cannot invoice an order with a zero total.");
+            return Refuse(order.Id, actorUserId, "Cannot invoice an order with a zero total.");
 
         var products = (await repo.GetProductsByIdsAsync(
                 order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct))
             .ToDictionary(p => p.Id);
 
         var (documentLines, lineRefusal) = await BuildInvoiceLinesAsync(order, totalsByLine, products, ct);
-        if (lineRefusal is not null) return Refuse(order, actorUserId, lineRefusal);
+        if (lineRefusal is not null) return Refuse(order.Id, actorUserId, lineRefusal);
 
         // A receipt carries no counterparty, so it's only lawful below the simplified-invoice threshold.
         var counterparty = ResolveInvoiceCounterparty(order);
@@ -114,7 +120,7 @@ internal sealed class StoreInvoiceIssuer(
             ? HoldedSalesDocumentKind.SalesReceipt
             : HoldedSalesDocumentKind.Invoice;
         if (counterparty is null && totalDue > options.Value.SimplifiedInvoiceThresholdEur)
-            return Refuse(order, actorUserId,
+            return Refuse(order.Id, actorUserId,
                 $"An order of EUR {totalDue:0.00} needs a full factura: fill in the counterparty's "
                 + "name, address and tax id (or passport number) first.");
 
@@ -160,10 +166,10 @@ internal sealed class StoreInvoiceIssuer(
             ct);
     }
 
-    private AdminMutationResult Refuse(Order order, Guid actorUserId, string reason)
+    private AdminMutationResult Refuse(Guid orderId, Guid actorUserId, string reason)
     {
         logger.LogWarning("Store invoice rejected for order {OrderId}, actor {ActorUserId}: {Reason}",
-            order.Id, actorUserId, reason);
+            orderId, actorUserId, reason);
         return AdminMutationResult.Refused(reason);
     }
 
@@ -274,9 +280,9 @@ internal sealed class StoreInvoiceIssuer(
         CancellationToken ct)
     {
         if (GetDocumentTotalsRefusal(order, document, totals) is { } totalsRefusal)
-            return Refuse(order, actorUserId, totalsRefusal);
+            return Refuse(order.Id, actorUserId, totalsRefusal);
         if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
-            return Refuse(order, actorUserId,
+            return Refuse(order.Id, actorUserId,
                 $"Holded document {document.Id} is still a draft or has no issued document number. "
                 + "The order remains open. Retry after Holded confirms issuance; the existing document will be recovered.");
 
