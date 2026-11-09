@@ -20,6 +20,16 @@ internal sealed class StoreOrderReader(
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
+    public async Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default)
+    {
+        var o = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (o is null) return null;
+        var productIds = o.Lines.Select(l => l.ProductId).Distinct().ToList();
+        var productNames = await LoadProductNamesAsync(productIds, ct);
+        var currentPrices = await LoadCurrentPricesAsync(ct);
+        return await MapOrderAsync(o, productNames, currentPrices, ct);
+    }
+
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         BuildIndexDataAsync(userId, allCounterparties: false, ct);
 
