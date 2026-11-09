@@ -73,8 +73,8 @@ ViewComponents/, Views/    two profile cards and three admin pages
   `src/Sections/Humans.Grants/Services/GrantService.Grants.cs:64`.
 - State is computed, never stored; revoked wins over expired:
   `src/Sections/Humans.Grants/Services/Dtos.cs:54`.
-- A grant route outside its routed program is 404:
-  `src/Sections/Humans.Grants/Controllers/GrantsAdminController.cs:160`.
+- Manual revoke/resend services refuse a grant outside the supplied program before side effects;
+  the controller maps that missing result to 404 (`GrantService.Grants.cs`, `GrantsAdminController.ManageAsync`).
 - Board never changes anything: `ProgramAuthorizationHandler` admits Board only for `View`
   (`src/Sections/Humans.Grants/Authorization/ProgramOperationRequirement.cs:35`); pinned by
   `GrantsAdminAuthorizationTests`.

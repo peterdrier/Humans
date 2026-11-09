@@ -202,8 +202,10 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
         model.CanAdminister.Should().Be(canAdminister);
     }
 
-    [HumansFact]
-    public async Task ManagerOfA_ActingOnBsGrantThroughAsRoute_IsNotFound_AndChangesNothing()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ManagerOfA_ActingOnMissingOrForeignGrant_IsNotFound_AndChangesNothing(bool missingGrant)
     {
         var manager = SeedUser("Manager");
         var a = await SeedProgramAsync(name: "A", managers: manager);
@@ -220,8 +222,9 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = Principal(manager) } }
         };
 
-        (await controller.Revoke(a.Id, grantOfB.Id, "no", Ct)).Should().BeOfType<NotFoundResult>();
-        (await controller.Resend(a.Id, grantOfB.Id, Ct)).Should().BeOfType<NotFoundResult>();
+        var targetId = missingGrant ? Guid.NewGuid() : grantOfB.Id;
+        (await controller.Revoke(a.Id, targetId, "no", Ct)).Should().BeOfType<NotFoundResult>();
+        (await controller.Resend(a.Id, targetId, Ct)).Should().BeOfType<NotFoundResult>();
         (await service.GetGrantsForUserAsync(grantOfB.UserId, Ct)).Single().RevokedAt.Should().BeNull();
     }
 

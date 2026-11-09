@@ -30,9 +30,9 @@ internal interface IGrantManagement : IGrantWrite, IApplicationService
         Guid programId, IReadOnlyList<Guid> userIds, LocalDate? expiresOn, Guid actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>The optional reason is shown to the person.</summary>
-    Task<GrantMutationResult> RevokeGrantAsync(Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>The optional reason is shown to the person. Missing grants or grants outside the program return NotFound.</summary>
+    Task<GrantMutationResult> RevokeGrantAsync(Guid programId, Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Live grants only.</summary>
-    Task<GrantMutationResult> ResendNoticeAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Live grants only. Missing grants or grants outside the program return NotFound.</summary>
+    Task<GrantMutationResult> ResendNoticeAsync(Guid programId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
 }

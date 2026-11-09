@@ -1,8 +1,4 @@
 # Section debt ledger for Humans.Grants. Shape: memory/process/debt-ledger-additions.md.
 version: 1
 next_id: 4
-inbox:
-  - added: 2026-11-07
-    id: GRANTS-3
-    what: "The rule that a grant route outside its routed program is 404 lives only in GrantsAdminController.ManageAsync; IGrantManagement.RevokeGrantAsync and ResendNoticeAsync take only a grant id, so any other caller could act across programs. Moving the check into the service changes those two internal signatures. Found by the 2026-11-07 section-doctor run."
-    review: panel
+inbox: []

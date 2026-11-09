@@ -46,10 +46,10 @@ internal sealed partial class GrantService
     }
 
     public async Task<GrantMutationResult> RevokeGrantAsync(
-        Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default)
+        Guid programId, Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
-        if (grant is null) return new("Grant not found.");
+        if (grant is null || grant.ProgramId != programId) return new("Grant not found.", NotFound: true);
         if (grant.RevokedAt is not null) return new("The grant is already revoked.");
         if ((reason?.Length ?? 0) > ReasonMax) return new("The reason is too long.");
 
@@ -57,10 +57,10 @@ internal sealed partial class GrantService
         return GrantMutationResult.Ok;
     }
 
-    public async Task<GrantMutationResult> ResendNoticeAsync(Guid grantId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<GrantMutationResult> ResendNoticeAsync(Guid programId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
-        if (grant is null) return new("Grant not found.");
+        if (grant is null || grant.ProgramId != programId) return new("Grant not found.", NotFound: true);
         if (grant.RevokedAt is not null) return new("A revoked grant has no notice to resend.");
 
         var year = await YearOfAsync(grant.Program, ct);
