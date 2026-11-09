@@ -155,4 +155,8 @@ internal sealed class ExpenseReportAccess(
             return ExpenseMutationResult.OperatorFailure("Actor is not a coordinator of the category's team.");
         return null;
     }
+    /// <summary>Submitted, not yet approved: has a payee snapshot and a booked year, but is not final.</summary>
+    internal static bool IsPendingApproval(ExpenseReportStatus status) =>
+        status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
+
 }

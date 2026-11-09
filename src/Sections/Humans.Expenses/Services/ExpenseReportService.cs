@@ -45,6 +45,8 @@ internal sealed class ExpenseReportService(
     internal const string ExpenseReports = ExpenseReportExport.ExpenseReports;
     internal const string ExpenseAuditLog = ExpenseReportExport.ExpenseAuditLog;
 
+    private readonly ExpenseReportAudit reportAudit = new(userService, auditLogService, logger);
+    private ExpensePayeeIban PayeeIban => new(repo, userService, financeWrite, auditLogService, clock, logger, reportAudit);
     private readonly ExpenseReportAccess reportAccess = new(repo, userService, budgetService, teamService, preapprovals);
     private readonly ExpenseHoldedTimelineReader holdedTimeline = new(repo, finance, userService, holded);
     private readonly ExpenseAttachments attachments = new(repo, fileStorage, auditLogService, clock, logger);
@@ -141,7 +143,7 @@ internal sealed class ExpenseReportService(
                 await auditLogService.LogAsync(
                     ExpensesAuditActions.ExpenseCreatedOnBehalf,
                     AuditEntityTypes.Report, report.Id,
-                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, CancellationToken.None)}."
+                    $"Created expense report on behalf of {await reportAudit.DescribeMemberAsync(submitterUserId, CancellationToken.None)}."
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
                     relatedEntityId: submitterUserId,
@@ -188,43 +190,6 @@ internal sealed class ExpenseReportService(
         return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);
     }
 
-    /// <summary>Best-effort display name for an audit of an already committed edit.</summary>
-    private async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct)
-    {
-        try
-        {
-            return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            logger.LogWarning("Audit display-name lookup cancelled for member {UserId}; using member ID", userId);
-        }
-        catch (Exception ex)
-        {
-            // Name enrichment must not skip the audit or fail an edit that already committed.
-            logger.LogError(ex, "Could not resolve audit display name for member {UserId}; using member ID", userId);
-        }
-        return userId.ToString();
-    }
-
-    /// <summary>
-    /// An edit to somebody else's report owes them a trail naming both; a member editing their own leaves none.
-    /// <paramref name="whatChanged"/> is the sentence opener, e.g. "Added line 'Fuel'".
-    /// </summary>
-    private async Task AuditOnBehalfEditAsync(
-        ExpenseReportDto report, Guid actorUserId, string whatChanged, CancellationToken ct)
-    {
-        if (actorUserId == report.SubmitterUserId) return;
-
-        await auditLogService.LogAsync(
-            ExpensesAuditActions.ExpenseEditedOnBehalf,
-            AuditEntityTypes.Report, report.Id,
-            $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
-            actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditSubjectTypes.User);
-    }
-
     private static string DescribeNote(string? note) =>
         string.IsNullOrWhiteSpace(note) ? "cleared" : $"\"{note}\"";
 
@@ -266,7 +231,7 @@ internal sealed class ExpenseReportService(
             {
                 // A draft resolves through the active year. A submitted report already belongs to a year;
                 // re-resolving it would silently move last year's accounting into this year's books.
-                var pinnedYearId = IsPendingApproval(report.Status) ? report.BudgetYearId : null;
+                var pinnedYearId = ExpenseReportAccess.IsPendingApproval(report.Status) ? report.BudgetYearId : null;
                 var (resolved, bookingRefusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId, ct);
                 if (bookingRefusal is not null) return bookingRefusal;
                 booking = resolved!;
@@ -314,7 +279,7 @@ internal sealed class ExpenseReportService(
                 await repo.UpdateDraftAsync(updated, ct);
             }
 
-            await AuditOnBehalfEditAsync(report, actorUserId,
+            await reportAudit.AuditOnBehalfEditAsync(report, actorUserId,
                 $"Updated header (account {booking.HoldedAccountNumber}, subject {DescribeNote(note)})"
                 + (preapprovalGrantId != report.PreapprovalGrantId
                     ? $" and pre-approval ({report.PreapprovalGrantId?.ToString() ?? "none"} → {preapprovalGrantId?.ToString() ?? "none"})"
@@ -403,7 +368,7 @@ internal sealed class ExpenseReportService(
                     attachmentRefusal = await attachments.StoreAttachmentAsync(
                         reportAccess, reportId, actorUserId, actorIsFinanceAdmin, lineId, file.FileName, file.ContentType, file.Content, ct);
                 if (attachmentRefusal is null)
-                    await AuditOnBehalfEditAsync(report!, actorUserId,
+                    await reportAudit.AuditOnBehalfEditAsync(report!, actorUserId,
                         $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", CancellationToken.None);
             }
             catch
@@ -474,7 +439,7 @@ internal sealed class ExpenseReportService(
         var (added, report) = await AddLineWithoutAuditAsync(
             reportId, actorUserId, false, description, amount, lineType, null, ct);
         if (added.Error is not null) return new(false, added.Error);
-        await AuditOnBehalfEditAsync(report!, actorUserId, $"Added line \"{description}\" €{amount}", ct);
+        await reportAudit.AuditOnBehalfEditAsync(report!, actorUserId, $"Added line \"{description}\" €{amount}", ct);
         return ExpenseMutationResult.Success;
     }
 
@@ -543,7 +508,7 @@ internal sealed class ExpenseReportService(
             var ok = await repo.UpdateLineAsync(reportId, line, ct);
             if (!ok) throw new InvalidOperationException("Failed to update line.");
 
-            await AuditOnBehalfEditAsync(report, actorUserId,
+            await reportAudit.AuditOnBehalfEditAsync(report, actorUserId,
                 $"Updated line \"{existing.Description}\" €{existing.Amount} to \"{description}\" €{amount}", ct);
 
             return ExpenseMutationResult.Success;
@@ -570,7 +535,7 @@ internal sealed class ExpenseReportService(
                 removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
                     ?? throw new InvalidOperationException("Failed to remove line.");
 
-                await AuditOnBehalfEditAsync(report, actorUserId,
+                await reportAudit.AuditOnBehalfEditAsync(report, actorUserId,
                     removed is null
                         ? $"Removed line {lineId}"
                         : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
@@ -679,7 +644,7 @@ internal sealed class ExpenseReportService(
                 AuditEntityTypes.Report, reportId,
                 (report.SubmitterUserId == actorUserId
                     ? "Submitted expense report."
-                    : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.")
+                    : $"Submitted expense report on behalf of {await reportAudit.DescribeMemberAsync(report.SubmitterUserId, ct)}.")
                 + DescribeGrant(report.PreapprovalGrantId),
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
@@ -725,7 +690,7 @@ internal sealed class ExpenseReportService(
 
             // Approval queues the Holded push, so only a report still pending approval can be
             // withdrawn; the repository refuses anything else too.
-            if (!IsPendingApproval(report.Status))
+            if (!ExpenseReportAccess.IsPendingApproval(report.Status))
                 return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
 
             var now = clock.GetCurrentInstant();
@@ -774,119 +739,9 @@ internal sealed class ExpenseReportService(
 
         }, "Error withdrawing expense report {ReportId}", reportId);
 
-    public async Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
-        Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default)
-    {
-        var report = await repo.GetByIdAsync(reportId, ct);
-        if (report is null)
-            return IbanFailure("Expenses_Iban_ReportNotFound", isValidationError: false);
-        var submitterUserId = report.SubmitterUserId;
-
-        var ibanValue = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
-
-        if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
-            return IbanFailure("Expenses_Iban_InvalidFormat", isValidationError: true);
-
-        var normalized = ibanValue is null ? null : IbanValidator.Normalize(ibanValue);
-
-        // A pending report's payee snapshot is corrected through this page, so clearing is refused there: the snapshot
-        // and profile would disagree on who gets paid. A draft has no snapshot yet; an approved report's is history.
-        var snapshotIsLive = IsPendingApproval(report.Status);
-        if (normalized is null && snapshotIsLive)
-            return IbanFailure(
-                "Expenses_Iban_RequiredForPendingReport",
-                isValidationError: true);
-
-        try
-        {
-            submitterUserId = (await userService.GetUserInfoAsync(submitterUserId, ct))?.Id ?? submitterUserId;
-            var saved = await financeWrite.SetIbanAsync(submitterUserId, normalized, ct);
-            if (!saved)
-                return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
-
-            if (snapshotIsLive)
-                await RefreshPayeeIbanSnapshotAsync(report, actorUserId, normalized!, ct);
-
-            var isClearing = normalized is null;
-            // Entity type is Profile and the actor may be somebody else, so without the related id the member's GDPR
-            // export would miss the row carrying their raw IBAN.
-            await auditLogService.LogAsync(
-                isClearing ? ExpensesAuditActions.IbanRemove : ExpensesAuditActions.IbanSet,
-                AuditEntityTypes.Profile,
-                submitterUserId,
-                await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
-                actorUserId,
-                relatedEntityId: submitterUserId,
-                relatedEntityType: AuditSubjectTypes.User);
-
-            logger.LogInformation(
-                "IBAN {Action} for user {UserId}",
-                isClearing ? "removed" : "set",
-                submitterUserId);
-
-            return new ExpenseIbanSaveResult(
-                Succeeded: true,
-                IsValidationError: false,
-                MessageKey: normalized is null ? "Expenses_Iban_Removed" : "Expenses_Iban_Saved");
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error setting IBAN for user {UserId}", submitterUserId);
-            return IbanFailure("Expenses_Iban_SaveFailed", isValidationError: false);
-        }
-    }
-
-    private static ExpenseIbanSaveResult IbanFailure(string messageKey, bool isValidationError) =>
-        new(Succeeded: false, IsValidationError: isValidationError, MessageKey: messageKey);
-
-    /// <summary>Submitted, not yet approved: has a payee snapshot and a booked year, but is not final.</summary>
-    private static bool IsPendingApproval(ExpenseReportStatus status) =>
-        status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
-
-    private async Task RefreshPayeeIbanSnapshotAsync(
-        ExpenseReportDto report, Guid actorUserId, string normalizedIban, CancellationToken ct)
-    {
-        if (string.Equals(report.PayeeIban, normalizedIban, StringComparison.Ordinal)) return;
-
-        var updated = await repo.UpdatePayeeIbanAsync(
-            report.Id, normalizedIban, clock.GetCurrentInstant(), ct);
-        if (!updated) return;
-
-        // On the report so it lands in the history the correcting admin is looking at. Unmasked when set for another
-        // member, as above.
-        var description = actorUserId == report.SubmitterUserId
-            ? "Payee IBAN updated"
-            : $"Payee IBAN updated for {await DescribeMemberAsync(report.SubmitterUserId, ct)} to {normalizedIban}";
-
-        await auditLogService.LogAsync(
-            ExpensesAuditActions.ExpensePayeeIbanUpdated,
-            AuditEntityTypes.Report, report.Id,
-            $"{description}.",
-            actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditSubjectTypes.User);
-    }
-
-    /// <summary>
-    /// A member's own change stays "IBAN set" / "IBAN removed". When somebody else makes it, the entry names the member
-    /// and carries the IBAN <b>unmasked</b>: audit may hold its subject's PII, and only what was typed can trace a
-    /// wrong IBAN to its typist. The one exception to masking IBANs.
-    /// </summary>
-    private async Task<string> DescribeIbanChangeAsync(
-        Guid submitterUserId, Guid actorUserId, string? normalizedIban, CancellationToken ct)
-    {
-        if (actorUserId == submitterUserId)
-            return normalizedIban is null ? "IBAN removed" : "IBAN set";
-
-        var member = await DescribeMemberAsync(submitterUserId, ct);
-        return normalizedIban is null
-            ? $"IBAN removed for {member}"
-            : $"IBAN set for {member} to {normalizedIban}";
-    }
+    public Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
+        Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default) =>
+        PayeeIban.SaveSubmitterIbanWithResultAsync(reportId, actorUserId, iban, ct);
 
     private async Task<ExpenseMutationResult> RunMutationAsync(
         CancellationToken ct,
