@@ -887,10 +887,10 @@ internal sealed class TeamService(
         if (team.IsSystemTeam)
             return new(Refusal: "Cannot add members to system teams manually");
 
-        var target = await UserService.GetUserInfoAsync(targetUserId, cancellationToken);
-        if (target is null || target.IsTombstone)
-            return new(Refusal: "Cannot add a missing, deleted or merged account to a team.");
-        targetUserId = target.Id;
+        var resolvedUserId = await snapshotReader.ResolveMembershipTargetAsync(targetUserId, cancellationToken);
+        if (resolvedUserId is null)
+            return new(Refusal: TeamSnapshotReader.UnavailableMembershipTargetMessage);
+        targetUserId = resolvedUserId.Value;
         var isExisting = await repo.IsActiveMemberAsync(teamId, targetUserId, cancellationToken);
         if (isExisting)
             return new(Refusal: "User is already a member of this team");
