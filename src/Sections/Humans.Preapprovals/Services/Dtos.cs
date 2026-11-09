@@ -64,7 +64,6 @@ internal sealed record GrantInfo(
     public bool IsTerminal =>
         Status is GrantStatus.Consumed or GrantStatus.Declined or GrantStatus.Revoked;
 
-    /// <summary>The only state a member can file against.</summary>
     public bool IsClaimable(LocalDate today) => Status == GrantStatus.Open && today <= ClaimBy;
 
     public bool DeadlinePassed(LocalDate today) => Status == GrantStatus.Open && today > ClaimBy;
