@@ -24,7 +24,7 @@ internal sealed partial class PreapprovalService(
     ILogger<PreapprovalService> logger) : IPreapprovalManagement
 {
     private readonly PreapprovalJournal journal = new(auditLog);
-    private readonly PreapprovalReader reader = new(repository, users, clock);
+    private readonly PreapprovalReader reader = new(repository, users, clock, logger);
 
     private LocalDate Today => reader.Today;
 
@@ -69,21 +69,12 @@ internal sealed partial class PreapprovalService(
         Action<Func<CancellationToken, Task>>? afterCommit = null) =>
         Claims.ConsumeAsync(grantId, expenseReportId, actorUserId, ct, afterCommit);
 
-    private async Task<UserInfo?> ResolveAvailablePersonAsync(Guid userId, CancellationToken ct)
-    {
-        var person = await users.GetUserInfoAsync(userId, ct);
-        if (person is not null && !person.IsTombstone) return person;
-        logger.LogWarning("Preapproval write refused for unavailable person {UserId}", userId);
-        return null;
-    }
+    private Task<UserInfo?> ResolveAvailablePersonAsync(Guid userId, CancellationToken ct) =>
+        reader.ResolveAvailablePersonAsync(userId, ct);
 
-    private const decimal MaxStoredAmount = 9_999_999_999_999_999.99m;
+    private static PreapprovalRefusal? MoneyRefusal(decimal amount) => PreapprovalInput.MoneyRefusal(amount);
 
-    private static PreapprovalRefusal? MoneyRefusal(decimal amount) =>
-        amount <= 0 ? new(PreapprovalErrorKeys.AmountPositive)
-        : amount > MaxStoredAmount ? new(PreapprovalErrorKeys.AmountTooLarge)
-        : decimal.Round(amount, 2) != amount ? new(PreapprovalErrorKeys.AmountPrecision)
-        : null;
+    private static string? Trimmed(string? text) => PreapprovalInput.Trimmed(text);
 
     internal static string Euros(decimal amount) => PreapprovalJournal.Euros(amount);
 
@@ -92,11 +83,5 @@ internal sealed partial class PreapprovalService(
         Guid? expenseReportId = null) =>
         journal.AuditGrantAsync(action, grant, description, actorUserId, expenseReportId);
 
-    private Task AuditProgramAsync(
-        AuditActionDefinition action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
-        Guid? relatedUserId = null) =>
-        auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
-            relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
 
 }

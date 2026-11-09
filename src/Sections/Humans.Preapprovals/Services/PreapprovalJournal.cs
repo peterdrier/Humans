@@ -14,4 +14,11 @@ internal sealed class PreapprovalJournal(IAuditLogService auditLog) : IApplicati
             relatedEntityId: expenseReportId ?? grant.ProgramId,
             relatedEntityType: expenseReportId is null ? AuditEntityTypes.Program : AuditEntityTypes.ExpenseReport);
 
+    internal Task AuditProgramAsync(
+        AuditActionDefinition action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
+        Guid? relatedUserId = null) =>
+        auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
+            relatedEntityId: relatedUserId,
+            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
+
 }

@@ -10,7 +10,8 @@ namespace Humans.Preapprovals.Services;
 internal sealed class PreapprovalReader(
     IPreapprovalRepository repository,
     IUserService users,
-    IClock clock) : IApplicationService
+    IClock clock,
+    ILogger<PreapprovalService> logger) : IApplicationService
 {
     internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
@@ -79,6 +80,14 @@ internal sealed class PreapprovalReader(
     {
         var info = await users.GetUserInfoAsync(userId, ct);
         return info is null ? [userId] : info.AllUserIds;
+    }
+
+    internal async Task<UserInfo?> ResolveAvailablePersonAsync(Guid userId, CancellationToken ct)
+    {
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is not null && !person.IsTombstone) return person;
+        logger.LogWarning("Preapproval write refused for unavailable person {UserId}", userId);
+        return null;
     }
 
 }
