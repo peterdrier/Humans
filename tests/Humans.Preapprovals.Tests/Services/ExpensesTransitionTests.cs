@@ -241,7 +241,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var manager = SeedUser("Manager");
         var grant = await SeedGrantAsync(program, status: GrantStatus.Claimed, expenseReportId: Report);
         var service = NewService();
-        (await service.RevokeAsync(grant.Id, "budget cut", manager, Ct)).Refusal.Should().BeNull();
+        (await service.RevokeAsync(program.Id, grant.Id, "budget cut", manager, Ct)).Refusal.Should().BeNull();
 
         (await service.ClaimAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");
         (await service.ConsumeAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");

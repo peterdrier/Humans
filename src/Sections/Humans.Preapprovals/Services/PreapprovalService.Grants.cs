@@ -153,10 +153,10 @@ internal sealed partial class PreapprovalService
     }
 
     public async Task<PreapprovalMutationResult> ApproveAsync(
-        Guid grantId, decimal? amount, Guid actorUserId, CancellationToken ct = default)
+        Guid programId, Guid grantId, decimal? amount, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
-        if (grant is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
+        if (grant is null || grant.ProgramId != programId) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if (grant.Status != GrantStatus.Applied) return new(new PreapprovalRefusal(PreapprovalErrorKeys.WrongStatus));
         var program = await repository.GetProgramAsync(grant.ProgramId, ct)
             ?? throw new InvalidOperationException($"Program {grant.ProgramId} of grant {grantId} is missing.");
@@ -186,10 +186,10 @@ internal sealed partial class PreapprovalService
     }
 
     public async Task<PreapprovalMutationResult> DeclineAsync(
-        Guid grantId, string? note, Guid actorUserId, CancellationToken ct = default)
+        Guid programId, Guid grantId, string? note, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
-        if (grant is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
+        if (grant is null || grant.ProgramId != programId) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if (grant.Status != GrantStatus.Applied) return new(new PreapprovalRefusal(PreapprovalErrorKeys.WrongStatus));
         if ((note?.Length ?? 0) > NoteMax) return new(new PreapprovalRefusal(PreapprovalErrorKeys.TextTooLong));
 
@@ -213,10 +213,10 @@ internal sealed partial class PreapprovalService
     }
 
     public async Task<PreapprovalMutationResult> RevokeAsync(
-        Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default)
+        Guid programId, Guid grantId, string? reason, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
-        if (grant is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
+        if (grant is null || grant.ProgramId != programId) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if (grant.Status is not (GrantStatus.Open or GrantStatus.Claimed))
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.WrongStatus));
         if ((reason?.Length ?? 0) > NoteMax) return new(new PreapprovalRefusal(PreapprovalErrorKeys.TextTooLong));
@@ -242,10 +242,10 @@ internal sealed partial class PreapprovalService
     }
 
     public async Task<PreapprovalMutationResult> ChangeAmountAsync(
-        Guid grantId, decimal amount, Guid actorUserId, CancellationToken ct = default)
+        Guid programId, Guid grantId, decimal amount, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
-        if (grant is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
+        if (grant is null || grant.ProgramId != programId) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if (grant.Status is not (GrantStatus.Open or GrantStatus.Claimed))
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.WrongStatus));
         if (MoneyRefusal(amount) is { } amountRefusal) return new(amountRefusal);

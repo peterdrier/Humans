@@ -71,8 +71,10 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         index.CanAdminister.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound_EvenWithMalformedInput(bool malformed)
     {
         var manager = SeedUser("Manager");
         var a = await SeedProgramAsync(name: "A", managers: manager);
@@ -80,6 +82,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         var applicationOnB = await SeedGrantAsync(b, status: GrantStatus.Applied);
         var openOnB = await SeedGrantAsync(b);
         var controller = BuildAdmin(manager);
+        if (malformed) controller.ModelState.AddModelError("amount", "Not a number");
 
         (await controller.Approve(a.Id, applicationOnB.Id, null, Ct)).Should().BeOfType<NotFoundResult>();
         (await controller.Decline(a.Id, applicationOnB.Id, null, Ct)).Should().BeOfType<NotFoundResult>();
@@ -87,6 +90,41 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         (await controller.Amount(a.Id, openOnB.Id, 1m, Ct)).Should().BeOfType<NotFoundResult>();
         (await ReadGrantAsync(applicationOnB.Id)).Status.Should().Be(GrantStatus.Applied);
         (await ReadGrantAsync(openOnB.Id)).Status.Should().Be(GrantStatus.Open);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("approve")]
+    [Xunit.InlineData("decline")]
+    [Xunit.InlineData("revoke")]
+    [Xunit.InlineData("amount")]
+    public async Task GrantMutation_ServiceReportsMissingGrant_ReturnsNotFound(string operation)
+    {
+        var manager = SeedUser("Manager");
+        var program = await SeedProgramAsync(managers: manager);
+        var grant = await SeedGrantAsync(program);
+        var management = Substitute.For<IPreapprovalManagement>();
+        management.GetProgramAsync(program.Id, Ct).Returns(await NewService().GetProgramAsync(program.Id, Ct));
+        var missing = new PreapprovalMutationResult(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
+        management.ApproveAsync(program.Id, grant.Id, null, manager, Ct).Returns(missing);
+        management.DeclineAsync(program.Id, grant.Id, null, manager, Ct).Returns(missing);
+        management.RevokeAsync(program.Id, grant.Id, null, manager, Ct).Returns(missing);
+        management.ChangeAmountAsync(program.Id, grant.Id, 1m, manager, Ct).Returns(missing);
+        var (provider, http) = Host(manager, []);
+        await using var services = provider;
+        var controller = new PreapprovalsAdminController(management, Users, Finance, _localizer,
+            services.GetRequiredService<IAuthorizationService>(), Clock, Substitute.For<ILogger<PreapprovalsAdminController>>());
+        Wire(controller, http);
+
+        var result = operation switch
+        {
+            "approve" => await controller.Approve(program.Id, grant.Id, null, Ct),
+            "decline" => await controller.Decline(program.Id, grant.Id, null, Ct),
+            "revoke" => await controller.Revoke(program.Id, grant.Id, null, Ct),
+            "amount" => await controller.Amount(program.Id, grant.Id, 1m, Ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]

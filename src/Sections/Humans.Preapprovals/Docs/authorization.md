@@ -10,7 +10,7 @@
 | `PreapprovalsAdminController.New` (GET/POST) | Action | Admin, FinanceAdmin | `FinancePolicies.Manage` |
 | `PreapprovalsAdminController.Program` (GET) | In-method | `ProgramOperationRequirement.View`; `Manage` and `Administer` drive `CanManage` and `CanAdminister`, so Board sees no forms | Resource-based |
 | `PreapprovalsAdminController.Edit` (GET/POST) | In-method | `AuthorizeAsync(User, program, ProgramOperationRequirement.Administer)` via `AuthorizedAsync` | Resource-based |
-| `PreapprovalsAdminController.Issue` / `IssueMany` / `Approve` / `Decline` / `Revoke` / `Amount` | In-method | `AuthorizeAsync(User, program, ProgramOperationRequirement.Manage)` via `ManageAsync`; a grant route whose grant is not in that program returns 404, so a manager of one program never acts on another's grants | Resource-based |
+| `PreapprovalsAdminController.Issue` / `IssueMany` / `Approve` / `Decline` / `Revoke` / `Amount` | In-method | `AuthorizeAsync(User, program, ProgramOperationRequirement.Manage)` via `ManageAsync`; the controller checks grant ownership before form validation, and services require the same program ID before mutation; missing or foreign grants return 404 | Resource-based |
 
 Both policy names live in this section (`Authorization/PreapprovalsPolicies.cs`), not in Base's
 `PolicyNames` — nothing outside the section gates on them. They are registered in this section's

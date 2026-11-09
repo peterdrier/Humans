@@ -139,22 +139,22 @@ internal sealed class PreapprovalsAdminController(
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Approve")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Approve(Guid programId, Guid grantId, decimal? amount, CancellationToken ct) =>
-        ManageAsync(programId, actor => preapprovals.ApproveAsync(grantId, amount, actor, ct), "Application approved", ct, grantId);
+        ManageAsync(programId, actor => preapprovals.ApproveAsync(programId, grantId, amount, actor, ct), "Application approved", ct, grantId);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Decline")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Decline(Guid programId, Guid grantId, string? note, CancellationToken ct) =>
-        ManageAsync(programId, actor => preapprovals.DeclineAsync(grantId, note, actor, ct), "Application declined", ct, grantId);
+        ManageAsync(programId, actor => preapprovals.DeclineAsync(programId, grantId, note, actor, ct), "Application declined", ct, grantId);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Revoke")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Revoke(Guid programId, Guid grantId, string? reason, CancellationToken ct) =>
-        ManageAsync(programId, actor => preapprovals.RevokeAsync(grantId, reason, actor, ct), "Pre-approval revoked", ct, grantId);
+        ManageAsync(programId, actor => preapprovals.RevokeAsync(programId, grantId, reason, actor, ct), "Pre-approval revoked", ct, grantId);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Amount")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Amount(Guid programId, Guid grantId, decimal amount, CancellationToken ct) =>
-        ManageAsync(programId, actor => preapprovals.ChangeAmountAsync(grantId, amount, actor, ct), "Amount changed", ct, grantId);
+        ManageAsync(programId, actor => preapprovals.ChangeAmountAsync(programId, grantId, amount, actor, ct), "Amount changed", ct, grantId);
 
     /// <summary>Loads the program and checks the operation against it; 404 and 403 as results.</summary>
     private async Task<(ProgramInfo? Program, IActionResult? Error)> AuthorizedAsync(
@@ -183,6 +183,7 @@ internal sealed class PreapprovalsAdminController(
         }
 
         var result = await act(user.Id);
+        if (result.Refusal is { Key: PreapprovalErrorKeys.NotFound }) return NotFound();
         if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Preapprovals admin action on {ProgramId}: rule {Rule}", programId, refusal.Key);
