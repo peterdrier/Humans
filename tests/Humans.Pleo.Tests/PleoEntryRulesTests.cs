@@ -7,11 +7,11 @@ namespace Humans.Pleo.Tests;
 public sealed class PleoEntryRulesTests
 {
     [HumansTheory]
-    [InlineData("WALLET", "LOAD", 3000000, 30000.00)]
-    [InlineData("CARD_PURCHASE", "IN_STORE", 1250, -12.50)]
-    [InlineData("CARD_PURCHASE", "ONLINE", 1250, -12.50)]
-    [InlineData("PLEO_INVOICE", "PLEO_INVOICE", 7200, -72.00)]
-    [InlineData("OUT_OF_POCKET", null, 5698, -56.98)]
+    [InlineData("WALLET", "LOAD", 3000000, "30000.00")]
+    [InlineData("CARD_PURCHASE", "IN_STORE", 1250, "-12.50")]
+    [InlineData("CARD_PURCHASE", "ONLINE", 1250, "-12.50")]
+    [InlineData("PLEO_INVOICE", "PLEO_INVOICE", 7200, "-72.00")]
+    [InlineData("OUT_OF_POCKET", null, 5698, "-56.98")]
     public void Without_a_bill_value_the_family_gives_the_sign(
         string family, string? subFamily, long minors, decimal expected) =>
         PleoEntryRules.SignedEur(family, subFamily, "EUR", minors, null, null).Should().Be(expected);
