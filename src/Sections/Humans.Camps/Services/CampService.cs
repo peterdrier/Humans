@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Transactions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
 using Humans.CityPlanning.Contracts;
@@ -23,8 +22,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     internal const string CampMemberships = CampDataLifecycle.CampMemberships;
 
     private readonly ICampRepository _repo;
-    private readonly IAuditLogService _auditLog;
-    private readonly IFileStorage _fileStorage;
     private readonly CampImageGallery _imageGallery;
     private readonly CampReadProjection _readProjection;
     private readonly CampDataLifecycle _dataLifecycle;
@@ -32,11 +29,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private readonly CampSeasonLifecycle _seasons;
     private readonly CampRegistration _registration;
     private readonly CampDetails _details;
-    // Lazy: CityPlanningService injects ICampService, closing the cycle.
-    private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
+    private readonly CampDeletion _deletion;
     private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
-    private readonly ILogger<CampService> _logger;
 
     public CampService(
         ICampRepository repo,
@@ -55,19 +50,16 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         _repo = repo;
         _readProjection = new CampReadProjection(repo, settingsService, clock);
         _dataLifecycle = new CampDataLifecycle(repo, userService, systemTeamSync);
-        _auditLog = auditLog;
-        _fileStorage = fileStorage;
         _imageGallery = new CampImageGallery(repo, fileStorage, clock, auditLog, logger);
         var membershipNotices = new CampMembershipNotices(repo, userService, notificationEmitter, logger);
         _seasons = new CampSeasonLifecycle(repo, auditLog, settingsService, membershipNotices, clock);
         _registration = new CampRegistration(repo, auditLog, systemTeamSync, _seasons, clock, logger);
         _details = new CampDetails(repo, auditLog, _seasons, clock);
+        _deletion = new CampDeletion(repo, auditLog, fileStorage, cityPlanningService, logger);
         _memberships = new CampMembershipTransitions(repo, auditLog, userService, settingsService, tickets,
             campRoleService, membershipNotices, clock);
-        _cityPlanningService = cityPlanningService;
         _settingsService = settingsService;
         _clock = clock;
-        _logger = logger;
     }
 
     public Task<CampWriteResult<Camp>> CreateCampAsync(
@@ -226,87 +218,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         _details.UpdateCampAsync(input, actorUserId, cancellationToken);
 
-    public async Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetByIdAsync(campId, cancellationToken);
-        if (camp is null) return new(false, "Camp not found.");
-
-        // CityPlanning keys polygon history on CampSeasonId; clear it through its service before deleting. Both writes
-        // share one ambient transaction so a failure in either can't leave a live camp with its polygon history gone.
-        // A SaveCampPolygonAsync landing between cleanup and commit still orphans a row: an accepted trade.
-        var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
-        IReadOnlyList<string>? deletedImagePaths = null;
-        var attempted = false;
-        try
-        {
-            using (var scope = new TransactionScope(
-                TransactionScopeOption.Required,
-                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                TransactionScopeAsyncFlowOption.Enabled))
-            {
-                if (seasonIds.Count > 0)
-                {
-                    var removed = await _cityPlanningService.Value
-                        .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
-                    if (removed > 0)
-                    {
-                        _logger.LogInformation(
-                            "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
-                            removed, seasonIds.Count, campId);
-                    }
-                }
-
-                attempted = true;
-                deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
-                if (deletedImagePaths is null)
-                {
-                    return new(false, "Camp not found.");
-                }
-
-                scope.Complete();
-            }
-
-            await _auditLog.LogAsync(
-                CampsAuditActions.CampDeleted, nameof(Camp), campId,
-                $"Camp {campId} permanently deleted",
-                actorUserId);
-
-            return new(true);
-        }
-        finally
-        {
-            if (attempted)
-            {
-                var deleted = false;
-                try
-                {
-                    // Verify after the transaction scope exits; a failed save may have committed or rolled back.
-                    deleted = await _repo.GetByIdAsync(campId, CancellationToken.None) is null;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Could not verify camp {CampId} deletion before image cleanup", campId);
-                }
-
-                if (deleted)
-                {
-                    foreach (var path in deletedImagePaths ?? camp.Images.Select(image => image.StoragePath).ToList())
-                    {
-                        try
-                        {
-                            await _fileStorage.DeleteAsync(path, CancellationToken.None);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex,
-                                "Failed to delete camp image file at {StoragePath} during camp delete for {CampId}; DB row already removed",
-                                path, campId);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    public Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _deletion.DeleteCampAsync(campId, actorUserId, cancellationToken);
 
     public Task<CampUpdateResult> AddHistoricalNameAsync(
         Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default) =>
