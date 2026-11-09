@@ -37,7 +37,7 @@ public class HoldedFinanceServiceTests
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 5, 1, 12, 0);
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
-    private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
+    private readonly IHoldedFeed _client = Substitute.For<IHoldedFeed>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
@@ -69,18 +69,6 @@ public class HoldedFinanceServiceTests
             .Returns(true);
         _repo.TryInsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        // The sync's per-document notes read; an unstubbed record is null.
-        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => new HoldedPurchaseDocumentDto
-            {
-                Id = ci.Arg<string>(),
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-            });
         // The document mirror synced and holds nothing.
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedPurchaseDocMirror(FixedNow, "Idle", null, 0, FixedNow, []));
@@ -820,7 +808,7 @@ public class HoldedFinanceServiceTests
             userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-A");
-        await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!);
+        await _write.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!);
         await _audit.DidNotReceive().LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1313,7 +1301,6 @@ public class HoldedFinanceServiceTests
         rows.Single(r => r.SupplierAccountNum == 40000006).OpenDocumentCount.Should().BeNull("a collision is unpayable");
         rows.Single(r => r.SupplierAccountNum == 40000007).OpenDocumentCount.Should().BeNull("unbound");
         await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
-        await _client.DidNotReceiveWithAnyArgs().ListContactsAsync();
 
         static HoldedPurchaseDocListItemDto OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new()
         {
@@ -1366,7 +1353,6 @@ public class HoldedFinanceServiceTests
         result.ErrorMessage.Should().Contain("already bound to a different member");
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().ListContactsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1906,7 +1892,6 @@ public class HoldedFinanceServiceTests
         result.ErrorMessage.Should().Contain("outside the member creditor block");
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _client.DidNotReceiveWithAnyArgs().ListContactsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -3645,6 +3630,5 @@ public class HoldedFinanceServiceTests
             (62900151, "Workgroups / ALM 2026", false, false),
         ]);
         active.Select(o => o.AccountNum).Should().BeEquivalentTo([62900100, 62900150]);
-        await _client.DidNotReceive().ListExpenseAccountsAsync(Arg.Any<CancellationToken>());
     }
 }

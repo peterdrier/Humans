@@ -26,7 +26,7 @@ namespace Humans.Finance.Tests;
 
 /// <summary>
 /// One test per acceptance criterion of bank-line-driven SEPA booking, over the fake
-/// <see cref="IHoldedClient"/> the rest of this project already uses.
+/// <see cref="IHoldedFeed"/> the rest of this project already uses.
 /// </summary>
 public class SepaBankBookingTests
 {
@@ -45,7 +45,7 @@ public class SepaBankBookingTests
     private const int Account = 40000004;
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
-    private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
+    private readonly IHoldedFeed _client = Substitute.For<IHoldedFeed>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();

@@ -17,7 +17,8 @@ the app needs, and caches vendor responses as necessary** — GoogleIntegration 
 - Consumer sections talk to the connector's interface; swap-ability is the design goal.
 - **A connector does not get absorbed into the domain section that uses it.** `IHoldedClient`,
   `HoldedClient`, `HoldedClientOptions` and the Holded DTOs live in `Humans.Holded` — the
-  interface and DTOs public on `Humans.Holded.Contracts`, the client `internal` in the section.
+  DTOs public on `Humans.Holded.Contracts`, the client and its interface `internal` in the section;
+  consumers use `IHoldedService` / `IHoldedWrite`.
   Stripe is the same shape: **`src/Sections/Humans.Stripe`** — `IStripeService` under its
   `Contracts/` folder, the SDK and both hosted services `internal` behind it, consumed
   by Store and Tickets through a direct project reference.

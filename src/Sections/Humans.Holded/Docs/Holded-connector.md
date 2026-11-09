@@ -1,5 +1,5 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Services/IHoldedClient.cs
   src/Sections/Humans.Holded/Contracts/Holded*.cs
   src/Sections/Humans.Holded/Services/Holded*Client.cs
   src/Sections/Humans.Holded/Services/HoldedTransport.cs
@@ -114,9 +114,9 @@ Inbound: the consumers listed under Architecture, plus this section's own mirror
 
 ## Architecture
 
-**Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
-are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); the impl `HoldedClient` and the `IHoldedCallLog`
-singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
+**Owning surface:** the connector's DTOs, its typed exceptions and `HoldedClientOptions`
+are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); `IHoldedClient`, the impl `HoldedClient` and the `IHoldedCallLog`
+singleton are `internal` in `Humans.Holded/Services/`. Other sections reach Holded through `IHoldedService` and `IHoldedWrite`, never the connector. All of it is registered by this
 section's `Section.cs`.
 
 `HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over

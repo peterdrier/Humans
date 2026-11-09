@@ -4,12 +4,30 @@ using NSubstitute;
 
 namespace Humans.Finance.Tests;
 
-/// <summary>Stands in for Holded's sync-then-mirror reads by answering them from the <see cref="IHoldedClient"/>
-/// fake, so a test seeds Holded's data once, in the client's shape. A sync reads the client (and throws what it
+/// <summary>Holded's data as a test seeds it, in the shape Holded's connector reads it. The connector is internal to
+/// Holded, so this is a stand-in for what Holded's syncs would read.</summary>
+public interface IHoldedFeed
+{
+    bool IsConfigured { get; }
+
+    Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default,
+        IReadOnlySet<string>? skipUnreadableDateIds = null);
+
+    Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(
+        LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedAccountDto>> ListAccountingAccountsAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(CancellationToken ct = default);
+}
+
+/// <summary>Stands in for Holded's sync-then-mirror reads by answering them from the <see cref="IHoldedFeed"/>
+/// fake, so a test seeds Holded's data once. A sync reads the feed (and throws what it
 /// throws); the mirror then serves what the last sync read.</summary>
 internal static class TestHoldedSync
 {
-    public static void Wire(IHoldedService holded, IHoldedClient client)
+    public static void Wire(IHoldedService holded, IHoldedFeed client)
     {
         holded.IsConfigured.Returns(_ => client.IsConfigured);
 

@@ -7,7 +7,7 @@ namespace Humans.Holded.Contracts;
 public sealed record HoldedContactMirror(Instant? LastSyncAt, IReadOnlyList<HoldedContactDto> Contacts);
 
 /// <summary>Create payload for a Holded contact (creditor/supplier/client). There is no update payload; see
-/// <see cref="IHoldedClient.CreateContactAsync"/>.</summary>
+/// <see cref="Services.IHoldedClient.CreateContactAsync"/>.</summary>
 public sealed record HoldedContactInput
 {
     /// <summary>Legal name — the official identity (accountant / SEPA / tax). Never the burner.</summary>
