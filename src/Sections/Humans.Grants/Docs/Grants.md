@@ -125,6 +125,8 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 ## Architecture
 
+Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`: selected IDs are unique, removable hidden inputs; batch submit is enabled only for a nonempty list. The views initialize it in the layout's Scripts section after the shared helpers load.
+
 The internal `GrantNotices` (not registered in DI) owns recipient lookup, the profile link and the complete issued/revoked email and in-app job, reused for resend. `GrantService` owns persistence, audit ordering and `NotifiedAt`.
 
 **Owning services:** `GrantService`
