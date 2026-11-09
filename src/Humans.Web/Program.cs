@@ -449,6 +449,7 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 
         // datetime-local inputs post without seconds; NodaTime's LocalDateTime TypeConverter requires them.
         options.ModelBinderProviders.Insert(0, new LocalDateTimeModelBinderProvider());
+        options.ModelMetadataDetailsProviders.Add(new LocalDateEditFormatProvider());
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization(options =>
