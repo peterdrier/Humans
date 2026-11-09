@@ -33,8 +33,8 @@ English-only manager side under the section's own URL space. A policy handler ga
 controllers; a resource handler gates each program. The public face is the two interfaces
 Expenses calls plus the four records they carry; everything else is internal.
 
-That is what is built. Shape mismatches found this run: three view-model members nothing reads, and
-a GDPR export that re-reads every program to name programs its rows already carry.
+That is what is built. One rule still sits in a controller: that a grant action names a grant of
+the route's program (`PREAPPROVALS-2`).
 
 ## 4. Invariants
 
@@ -47,7 +47,7 @@ a GDPR export that re-reads every program to name programs its rows already carr
   `PreapprovalService.Grants.cs:220`, `PreapprovalService.cs:94`, `PreapprovalService.cs:171`).
 - Money is committed only on an open program before its deadline
   (`PreapprovalService.Grants.cs:277`); a member applies only while the program is open, accepting
-  and before the deadline (`Dtos.cs:47`).
+  and before the deadline (`Dtos.cs:42`).
 - A fixed-per-person program refuses an explicit amount on issue and approve
   (`PreapprovalService.Grants.cs:286`) and ignores one on apply (`PreapprovalService.Grants.cs:111`).
 - A grant's kind cannot change once the program has a grant (`PreapprovalService.Programs.cs:166`).
@@ -86,10 +86,13 @@ a GDPR export that re-reads every program to name programs its rows already carr
   on a grant save.
 - **Completion effects ignore browser cancellation.** Once a grant commits, its audit and notices
   run with `CancellationToken.None` so a closed tab cannot drop them.
+- **The program form drops a per-person amount for a per-grant kind before it posts.** The field is
+  only hidden when the kind changes, so it keeps its value; `ProgramFormViewModel.ToSave` clears
+  it rather than letting the service refuse a value the admin can no longer see.
 - **Madrid dates.** "Today" is the Europe/Madrid date, the zone the association books in.
 
 ## History
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-09 | First doctoring | pending |
+| 1 | 2026-11-09 | First doctoring: the amount-changed email preview shows the old amount; admin visibility asks the program handler; the invariant doc states rules, not review rounds | pending |

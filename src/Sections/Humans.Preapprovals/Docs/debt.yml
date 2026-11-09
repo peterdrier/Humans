@@ -1,4 +1,12 @@
 # Section debt ledger for Humans.Preapprovals. Shape: memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 2
-inbox: []
+next_id: 4
+inbox:
+  - added: 2026-11-09
+    id: PREAPPROVALS-2
+    what: "The rule that a grant action acts only on a grant of the route's program lives only in PreapprovalsAdminController.ManageAsync; ApproveAsync, DeclineAsync, RevokeAsync and ChangeAmountAsync take a grant id alone, so the service cannot enforce it. Passing the program id into those internal methods would put the guard where the rule lives. Found by the 2026-11-09 section-doctor run."
+    review: panel
+  - added: 2026-11-09
+    id: PREAPPROVALS-3
+    what: "IPreapprovalWrite's ClaimAsync, ReleaseAsync and ConsumeAsync take an optional afterCommit callback; every Expenses caller passes one and only Preapprovals' own tests rely on the null default, which runs completion inline. Making it required removes a branch no production path takes and changes the public contract, so it needs Peter. Found by the 2026-11-09 section-doctor run."
+    review: panel
