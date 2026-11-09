@@ -490,6 +490,98 @@ internal sealed class SepaBankBooking(
             + "their Sabadell lines.");
     }
 
+    /// <summary>The row is kept and flagged; nothing pairs, books or counts it again. Only an unbooked row with no
+    /// Holded posting can be withdrawn.</summary>
+    internal Task<SepaBookingResult> WithdrawSepaTransferAsync(
+        Guid transferId, Guid actorUserId, SepaPayoutEmails payoutEmails, CancellationToken ct = default) =>
+        UnderBookingGateAsync(() => WithdrawSepaTransferGatedAsync(transferId, actorUserId, payoutEmails, ct));
+
+    private async Task<SepaBookingResult> WithdrawSepaTransferGatedAsync(
+        Guid transferId, Guid actorUserId, SepaPayoutEmails payoutEmails, CancellationToken ct)
+    {
+        var transfer = await repo.GetSepaTransferAsync(transferId, ct);
+        if (transfer is null)
+            return new SepaBookingResult(false, "That transfer no longer exists — reload the page.");
+        if (WithdrawRefusal(transfer) is { } refusal)
+            return new SepaBookingResult(false, refusal);
+
+        var row = (await repo.GetSepaPayoutTransferRowsAsync(ct)).First(r => r.TransferId == transferId);
+        var now = clock.GetCurrentInstant();
+        await repo.SaveSepaTransfersWithdrawnAsync([transferId], now, actorUserId, ct);
+
+        await audit.LogAsync(
+            FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
+            $"WITHDRAWN the SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
+            + $"{transfer.SupplierAccountNum} (file {row.FileName}): cancelled at the bank before execution.",
+            actorUserId, transfer.UserId, AuditSubjectTypes.User);
+
+        await payoutEmails.SendWithdrawnEmailAsync(transfer, matching.FileDate(row));
+
+        return new SepaBookingResult(true,
+            $"Withdrew the {Euros(transfer.Amount)} transfer to {transfer.IbanMasked} from {row.FileName}; "
+            + "the member has been told and the account is payable again.");
+    }
+
+    /// <summary>For a file the bank rejected whole: withdraws every transfer still live in it, in one save, so it is
+    /// cancelled. All or nothing: refused if any live transfer could not be withdrawn on its own. No member email,
+    /// unlike a single withdrawal: the file is usually reissued at once, and that sends the payout email again.</summary>
+    internal Task<SepaBookingResult> CancelSepaFileAsync(Guid fileId, Guid actorUserId, CancellationToken ct = default) =>
+        UnderBookingGateAsync(() => CancelSepaFileGatedAsync(fileId, actorUserId, ct));
+
+    private async Task<SepaBookingResult> CancelSepaFileGatedAsync(Guid fileId, Guid actorUserId, CancellationToken ct)
+    {
+        var rows = (await repo.GetSepaPayoutTransferRowsAsync(ct)).Where(r => r.FileId == fileId).ToList();
+        if (rows.Count == 0)
+            return new SepaBookingResult(false, "That file no longer exists — reload the page.");
+        if (CancelFileRefusal(rows) is { } refusal)
+            return new SepaBookingResult(false, refusal);
+
+        var live = rows.Where(r => !r.IsWithdrawn).ToList();
+        var fileName = rows[0].FileName;
+        await repo.SaveSepaTransfersWithdrawnAsync(live.Select(r => r.TransferId).ToList(),
+            clock.GetCurrentInstant(), actorUserId, ct);
+
+        foreach (var r in live)
+            await audit.LogAsync(
+                FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, r.TransferId,
+                $"WITHDRAWN the SEPA payout {Euros(r.Amount)} to {r.IbanMasked} on creditor account "
+                + $"{r.SupplierAccountNum}: file {fileName} was cancelled whole, the bank never executed it.",
+                actorUserId, r.UserId, AuditSubjectTypes.User);
+
+        return new SepaBookingResult(true,
+            $"Cancelled {fileName}: {live.Count} transfers, {Euros(live.Sum(r => r.Amount))}. "
+            + "Their accounts are payable again; no member was emailed.");
+    }
+
+    /// <summary>The same rule decides whether <c>/Finance/Sepa</c> offers Cancel file.</summary>
+    internal static string? CancelFileRefusal(IReadOnlyCollection<SepaPayoutTransferRow> fileRows)
+    {
+        var live = fileRows.Where(r => !r.IsWithdrawn).ToList();
+        if (live.Count == 0) return "This file is already cancelled.";
+        return live.Select(r => WithdrawRefusal(r)).FirstOrDefault(r => r is not null) is { } refusal
+            ? $"Cannot cancel the file: {refusal}"
+            : null;
+    }
+
+    /// <summary>The same rule shows the reason on <c>/Finance/Sepa</c> in place of the button.</summary>
+    internal static string? WithdrawRefusal(SepaPayoutTransferRow row) =>
+        WithdrawRefusal(row.IsWithdrawn, row.IsBooked, row.HoldedBankMovementId, row.HoldedPaymentRefs, row.IbanMasked);
+
+    private static string? WithdrawRefusal(SepaPayoutTransfer t) =>
+        WithdrawRefusal(t.WithdrawnAt is not null, t.BookedAt is not null, t.HoldedBankMovementId, t.HoldedPaymentRefs, t.IbanMasked);
+
+    private static string? WithdrawRefusal(
+        bool withdrawn, bool booked, string? bankMovementId, string? paymentRefs, string ibanMasked)
+    {
+        if (withdrawn) return $"Transfer to {ibanMasked} is already withdrawn.";
+        if (booked) return $"Transfer to {ibanMasked} is booked in Holded — the money moved, so it cannot be withdrawn.";
+        if (bankMovementId is { Length: > 0 })
+            return $"Transfer to {ibanMasked} is tied to Sabadell line {bankMovementId} — it cannot be withdrawn.";
+        if (paymentRefs is { Length: > 0 })
+            return $"Transfer to {ibanMasked} already posted Holded payment(s) {paymentRefs} — the money moved, so it cannot be withdrawn; book it to finish.";
+        return null;
+    }
+
     private async Task<SepaBookingResult> RunBookingAsync(Func<Task<SepaBookingResult>> booking)
     {
         if (BookingUnavailableReason() is { } unavailable)
@@ -502,7 +594,7 @@ internal sealed class SepaBankBooking(
 
     /// <summary>For a write that must not interleave with a booking, such as a withdrawal: otherwise a row checked as
     /// unbooked could be withdrawn while a booking posts its payments, and end up booked and withdrawn at once.</summary>
-    internal async Task<T> UnderBookingGateAsync<T>(Func<Task<T>> work)
+    private async Task<T> UnderBookingGateAsync<T>(Func<Task<T>> work)
     {
         await BookingGate.WaitAsync(CancellationToken.None);
         try
@@ -1209,7 +1301,6 @@ internal sealed class SepaBankBooking(
                 .ToHashSet(StringComparer.Ordinal)
             : [];
 
-    internal LocalDate FileDate(SepaPayoutTransferRow row) => matching.FileDate(row);
 
     internal bool IsStale(SepaPayoutTransferRow row) => matching.IsStale(row);
 
