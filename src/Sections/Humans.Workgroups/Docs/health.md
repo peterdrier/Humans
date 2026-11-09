@@ -79,13 +79,13 @@ loader and must not be gated. The group-loading methods take the check from the 
   (`Services/WorkgroupAccess.cs`). A member-facing write that skips it is a
   violation.
 - **Letting people in is the coordinators' call.** Joining only files a pending request
-  (`Services/WorkgroupService.cs:138`); approving, declining and adding refuse anyone who is not
+  (`Services/WorkgroupMembership.cs`); approving, declining and adding refuse anyone who is not
   a current coordinator unless the caller acts as Board or Admin
   (`Services/WorkgroupAccess.cs`).
 - **One or two coordinators, never zero by accident.** Setting coordinators refuses a count
-  outside one-to-two (`Services/WorkgroupService.cs:394`) and any id that is not a current,
-  non-pending member (`Services/WorkgroupService.cs:398`); the last coordinator leaving must name
-  a replacement unless the caller acts as admin (`Services/WorkgroupService.cs:283`).
+  outside one-to-two (`Services/WorkgroupMembership.cs`) and any id that is not a current,
+  non-pending member (`Services/WorkgroupMembership.cs`); the last coordinator leaving must name
+  a replacement unless the caller acts as admin (`Services/WorkgroupMembership.cs`).
 - **The Secretary's refusals are written down.** Refuse, Withdraw and Close call `RequireReasons`
   before anything else (`Services/WorkgroupService.Lifecycle.cs:81`,
   `Services/WorkgroupService.Lifecycle.cs:105`, `Services/WorkgroupService.Lifecycle.cs:135`),

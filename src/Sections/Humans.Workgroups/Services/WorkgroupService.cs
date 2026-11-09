@@ -34,10 +34,11 @@ internal sealed partial class WorkgroupService(
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
+    private WorkgroupMembership Membership => new(repository, access, journal, notices, DriveFolders, users, auditLog, clock);
     private WorkgroupDriveFolders DriveFolders => new(repository, settings, googleSync, googleSyncWrite, auditLog, logger);
     private WorkgroupBudgets Budgets => new(repository, access, journal, finance, holded, clock, logger);
     private WorkgroupActivity Activity => new(repository, access, journal, surveys, clock);
-    private readonly WorkgroupAccess access = new(repository);
+    private readonly WorkgroupAccess access = new(repository, users);
     private readonly WorkgroupJournal journal = new(auditLog);
     private WorkgroupDocumentWorkflow DocumentWorkflow => new(repository, access, journal, notices, clock);
     private readonly WorkgroupDataExport dataExport = new(repository);
@@ -90,9 +91,9 @@ internal sealed partial class WorkgroupService(
             application.DeliverableKind, application.Audience, application.TargetDate,
             application.DiscordChannelUrl, application.IsSensitive);
 
-        workgroup.Members.Add(NewMember(workgroup.Id, actorUserId, WorkgroupMemberRole.Coordinator, now));
+        workgroup.Members.Add(WorkgroupMembership.NewMember(workgroup.Id, actorUserId, WorkgroupMemberRole.Coordinator, now));
         if (application.SecondCoordinatorUserId is { } second && second != actorUserId)
-            workgroup.Members.Add(NewMember(workgroup.Id, second, WorkgroupMemberRole.Coordinator, now));
+            workgroup.Members.Add(WorkgroupMembership.NewMember(workgroup.Id, second, WorkgroupMemberRole.Coordinator, now));
 
         workgroup.LogEntries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.Applied, now,
             body: null));
@@ -108,177 +109,28 @@ internal sealed partial class WorkgroupService(
         return new(workgroup.Id);
     }
 
-    public async Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default)
-    {
-        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
+    public Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default) =>
+        Membership.JoinAsync(workgroupId, userId, ct);
 
-        var existing = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
-        if (existing is not null)
-            return new(Refusal: new(existing.IsPending == true ? WorkgroupErrorKeys.MembershipPending : WorkgroupErrorKeys.AlreadyAMember));
+    public Task<WorkgroupMutationResult> ApproveMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
+        Membership.ApproveMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct);
 
-        var now = clock.GetCurrentInstant();
-        await repository.AddMemberAsync(
-            NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, now, isPending: true), ct);
-        // Committed: the notice must survive a closed tab. It names nobody: the requester's name lives only on the
-        // pending row, which erasure deletes, never in an inbox it can't reach.
-        ct = CancellationToken.None;
-        var info = ToInfo(workgroup);
-        await notices.NotifyAsync(info.CoordinatorUserIds(), WorkgroupsNotificationSources.WorkgroupMembershipRequested,
-            "Workgroups_Notice_MembershipRequested", info, body: null, ct);
-        return new();
-    }
+    public Task<WorkgroupMutationResult> DeclineMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
+        Membership.DeclineMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct);
 
-    public async Task<WorkgroupMutationResult> ApproveMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
-    {
-        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
+    public Task<WorkgroupMutationResult> AddMemberAsync(
+        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
+        Membership.AddMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct);
 
-        var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
-        if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
-
-        return await AdmitAsync(workgroup, pending, actorUserId, WorkgroupsAuditActions.WorkgroupMembershipApproved,
-            "Workgroups_Notice_MembershipApproved", ct);
-    }
-
-    public async Task<WorkgroupMutationResult> DeclineMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
-    {
-        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
-
-        var pending = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null && m.IsPending == true);
-        if (pending is null) return new(Refusal: new(WorkgroupErrorKeys.NoPendingRequest));
-
-        var name = await NameOfAsync(userId, ct);
-        pending.LeftAt = clock.GetCurrentInstant();
-        await repository.UpdateMembersAsync([pending], ct);
-        ct = CancellationToken.None;
-        await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupMembershipDeclined, AuditEntityTypes.Workgroup, workgroup.Id,
-            $"Declined the join request of {name}", actorUserId,
-            relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
-        await notices.NotifyAsync([userId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
-            "Workgroups_Notice_MembershipDeclined", ToInfo(workgroup), body: null, ct);
-        return new();
-    }
-
-    public async Task<WorkgroupMutationResult> AddMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
-    {
-        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
-        var target = await ResolveMemberTargetAsync(userId, ct);
-        if (target is null)
-            return new(Refusal: new(WorkgroupErrorKeys.NotFound));
-        userId = target.Value;
-
-        var existing = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
-        if (existing is { IsPending: not true })
-            return new(Refusal: new(WorkgroupErrorKeys.AlreadyAMember));
-
-        // A pending request from the same person is approved by the add.
-        var member = existing ?? NewMember(workgroup.Id, userId, WorkgroupMemberRole.Member, clock.GetCurrentInstant(), isPending: true);
-        return await AdmitAsync(workgroup, member, actorUserId, WorkgroupsAuditActions.WorkgroupMemberAdded,
-            "Workgroups_Notice_MemberAdded", ct, isNew: existing is null);
-    }
-
-    /// <summary>The one place a person becomes a member.</summary>
-    private async Task<WorkgroupMutationResult> AdmitAsync(
-        Workgroup workgroup, WorkgroupMember member, Guid actorUserId, AuditActionDefinition auditAction,
-        string noticeKey, CancellationToken ct, bool isNew = false)
-    {
-        var name = await NameOfAsync(member.UserId, ct);
-        var now = clock.GetCurrentInstant();
-        member.IsPending = null;
-        member.JoinedAt = now;
-        var entries = new[] { SystemEntry(workgroup.Id, WorkgroupLogKind.MemberJoined, now, name) };
-        if (isNew) await repository.AddMemberAsync(member, ct, entries);
-        else await repository.UpdateMembersAsync([member], ct, entries);
-        ct = CancellationToken.None;
-        // Related entity is the person admitted: their GDPR export selects audit rows by that column.
-        await auditLog.LogAsync(auditAction, AuditEntityTypes.Workgroup, workgroup.Id,
-            $"{name} admitted to the group", actorUserId,
-            relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
-        await notices.NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
-            noticeKey, ToInfo(workgroup), body: null, ct);
-        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
-        return new();
-    }
-
-    public async Task<WorkgroupMutationResult> LeaveAsync(
+    public Task<WorkgroupMutationResult> LeaveAsync(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
         bool asAdmin = false,
-        CancellationToken ct = default)
-    {
-        var workgroupResult = await access.RequireAsync(workgroupId, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
-        if (!asAdmin && RequireAcceptsMemberWork(workgroup) is { } stateRefusal)
-            return new(Refusal: stateRefusal);
-
-        var leaving = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
-        if (leaving is null) return new(Refusal: new(WorkgroupErrorKeys.NotAMember));
-
-        var now = clock.GetCurrentInstant();
-        var changed = new List<WorkgroupMember> { leaving };
-        leaving.LeftAt = now;
-
-        if (leaving.IsPending == true)
-        {
-            await repository.UpdateMembersAsync(changed, ct);
-            return new();
-        }
-
-        var remainingCoordinators = workgroup.Members
-            .Where(m => m.LeftAt is null && m.Id != leaving.Id && m.Role == WorkgroupMemberRole.Coordinator)
-            .ToList();
-
-        WorkgroupMember? promoted = null;
-        if (leaving.Role == WorkgroupMemberRole.Coordinator && remainingCoordinators.Count == 0)
-        {
-            // The last coordinator names a successor. An admin may override, leaving the group coordinatorless on
-            // purpose so the Secretary can appoint someone.
-            if (replacementCoordinatorUserId is { } replacementId)
-            {
-                promoted = workgroup.Members
-                    .FirstOrDefault(m => m.UserId == replacementId && m.LeftAt is null && m.IsPending != true && m.Id != leaving.Id);
-                if (promoted is null) return new(Refusal: new(WorkgroupErrorKeys.CoordinatorsMustBeMembers));
-                promoted.Role = WorkgroupMemberRole.Coordinator;
-                changed.Add(promoted);
-            }
-            else if (!asAdmin)
-            {
-                return new(Refusal: new(WorkgroupErrorKeys.LastCoordinatorNeedsReplacement));
-            }
-        }
-
-        var leavingName = await NameOfAsync(userId, ct);
-        var promotedName = promoted is null ? null : await NameOfAsync(promoted.UserId, ct);
-        var entries = new List<WorkgroupLogEntry>
-        {
-            SystemEntry(workgroup.Id, WorkgroupLogKind.MemberLeft, now, leavingName)
-        };
-        if (promoted is not null)
-            entries.Add(SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now, promotedName));
-        await repository.UpdateMembersAsync(changed, ct, entries);
-        ct = CancellationToken.None;
-        if (promoted is not null)
-        {
-            await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
-                $"Coordination handed to {promotedName} when the last coordinator left",
-                userId);
-        }
-
-        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
-        return new();
-    }
+        CancellationToken ct = default) =>
+        Membership.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, asAdmin, ct);
 
     public async Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default)
@@ -342,61 +194,13 @@ internal sealed partial class WorkgroupService(
         return new();
     }
 
-    public async Task<WorkgroupMutationResult> SetCoordinatorsAsync(
+    public Task<WorkgroupMutationResult> SetCoordinatorsAsync(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
         bool asAdmin = false,
-        CancellationToken ct = default)
-    {
-        ArgumentNullException.ThrowIfNull(coordinatorUserIds);
-        var workgroupResult = await access.RequireAsync(workgroupId, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
-        if (!asAdmin && RequireAcceptsMemberWork(workgroup) is { } stateRefusal)
-            return new(Refusal: stateRefusal);
-
-        var wanted = coordinatorUserIds.Distinct().ToList();
-        if (wanted.Count is < 1 or > 2)
-            return new(Refusal: new(WorkgroupErrorKeys.CoordinatorCount));
-
-        var current = workgroup.Members.Where(m => m.LeftAt is null && m.IsPending != true).ToList();
-        if (wanted.Exists(id => current.TrueForAll(m => m.UserId != id)))
-            return new(Refusal: new(WorkgroupErrorKeys.CoordinatorsMustBeMembers));
-
-        var now = clock.GetCurrentInstant();
-        var changed = new List<WorkgroupMember>();
-        foreach (var member in current)
-        {
-            var role = wanted.Contains(member.UserId)
-                ? WorkgroupMemberRole.Coordinator
-                : WorkgroupMemberRole.Member;
-            if (member.Role == role)
-                continue;
-
-            member.Role = role;
-            changed.Add(member);
-        }
-
-        if (changed.Count == 0)
-            return new();
-
-        var names = await NamesOfAsync(wanted, ct);
-        await repository.UpdateMembersAsync(changed, ct,
-            [SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now,
-                string.Join(", ", names), authorUserId: asAdmin ? null : actorUserId)]);
-        ct = CancellationToken.None;
-        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
-            $"Coordinators set to {string.Join(", ", names)}", actorUserId);
-
-        var info = ToInfo(workgroup);
-        var affected = changed.Select(m => m.UserId).Distinct().ToList();
-        await notices.NotifyAsync(affected, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
-            "Enum_WorkgroupLogKind_CoordinatorChanged", info, string.Join(", ", names), ct);
-        await notices.EmailAsync(affected, WorkgroupNoticeKind.CoordinatorsChanged, info,
-            string.Join(", ", names), ct);
-        return new();
-    }
+        CancellationToken ct = default) =>
+        Membership.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, asAdmin, ct);
 
     public Task<WorkgroupMutationResult<Guid>> CreateMeetingAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default) =>

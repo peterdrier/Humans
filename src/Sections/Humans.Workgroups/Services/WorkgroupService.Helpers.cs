@@ -31,16 +31,10 @@ internal sealed partial class WorkgroupService
             return new(Refusal: refusal);
         if (application.SecondCoordinatorUserId is not { } second)
             return new(application);
-        var coordinator = await ResolveMemberTargetAsync(second, ct);
+        var coordinator = await access.ResolveMemberTargetAsync(second, ct);
         return coordinator is null
             ? new(Refusal: new(WorkgroupErrorKeys.NotFound))
             : new(application with { SecondCoordinatorUserId = coordinator.Value });
-    }
-
-    private async Task<Guid?> ResolveMemberTargetAsync(Guid userId, CancellationToken ct)
-    {
-        var user = await users.GetUserInfoAsync(userId, ct);
-        return user is null || user.IsTombstone ? null : user.Id;
     }
 
     private static WorkgroupRefusal? ValidateRegisterFields(string name, string purpose, string deliverable, string? discordChannelUrl)
@@ -77,17 +71,6 @@ internal sealed partial class WorkgroupService
         w.IsSensitive = isSensitive ? true : null;
     }
 
-    private static WorkgroupMember NewMember(
-        Guid workgroupId, Guid userId, WorkgroupMemberRole role, Instant now, bool isPending = false) => new()
-        {
-            Id = Guid.NewGuid(),
-            WorkgroupId = workgroupId,
-            UserId = userId,
-            Role = role,
-            JoinedAt = now,
-            IsPending = isPending ? true : null
-        };
-
     /// <summary>
     /// Suffixed until free. Reserved route segments count as taken, so a group called "Apply" gets <c>apply-2</c>
     /// rather than shadowing the form.
@@ -120,20 +103,6 @@ internal sealed partial class WorkgroupService
     }
 
     private const int SlugBudget = 96;
-
-    private async Task<string> NameOfAsync(Guid userId, CancellationToken ct)
-    {
-        var info = await users.GetUserInfoAsync(userId, ct);
-        return info?.BurnerName ?? "A member";
-    }
-
-    private async Task<IReadOnlyList<string>> NamesOfAsync(IReadOnlyList<Guid> userIds, CancellationToken ct)
-    {
-        var infos = await users.GetUserInfosAsync(userIds, ct);
-        return userIds
-            .Select(id => infos.TryGetValue(id, out var info) ? info.BurnerName : "A member")
-            .ToList();
-    }
 
     /// <summary>A group that stops being Active has nobody left to decide its join requests. Nothing is logged.</summary>
     private static IReadOnlyList<WorkgroupMember> ClosePendingRequests(Workgroup w, Instant now)

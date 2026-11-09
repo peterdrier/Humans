@@ -166,7 +166,7 @@ internal sealed partial class WorkgroupService
         var validation = await ValidateApplicationAsync(bootstrap.Application, ct);
         if (validation.Refusal is { } applicationRefusal) return new(Refusal: applicationRefusal);
         var application = validation.Value!;
-        if (await ResolveMemberTargetAsync(bootstrap.CoordinatorUserId, ct) is not { } coordinatorId)
+        if (await access.ResolveMemberTargetAsync(bootstrap.CoordinatorUserId, ct) is not { } coordinatorId)
             return new(Refusal: new(WorkgroupErrorKeys.NotFound));
 
         var now = clock.GetCurrentInstant();
@@ -189,11 +189,11 @@ internal sealed partial class WorkgroupService
             application.DeliverableKind, application.Audience, application.TargetDate,
             application.DiscordChannelUrl, application.IsSensitive);
 
-        workgroup.Members.Add(NewMember(workgroup.Id, coordinatorId,
+        workgroup.Members.Add(WorkgroupMembership.NewMember(workgroup.Id, coordinatorId,
             WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));
         if (application.SecondCoordinatorUserId is { } second && second != coordinatorId)
         {
-            workgroup.Members.Add(NewMember(workgroup.Id, second,
+            workgroup.Members.Add(WorkgroupMembership.NewMember(workgroup.Id, second,
                 WorkgroupMemberRole.Coordinator, bootstrap.RegisteredAt));
         }
 
