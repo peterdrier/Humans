@@ -31,13 +31,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private readonly CampMembershipTransitions _memberships;
     private readonly CampSeasonLifecycle _seasons;
     private readonly CampRegistration _registration;
+    private readonly CampDetails _details;
     // Lazy: CityPlanningService injects ICampService, closing the cycle.
     private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
     private readonly ISettingsService _settingsService;
     private readonly IClock _clock;
     private readonly ILogger<CampService> _logger;
-
-    private const int MaxHistoricalNameLength = CampRegistration.MaxHistoricalNameLength;
 
     public CampService(
         ICampRepository repo,
@@ -62,6 +61,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var membershipNotices = new CampMembershipNotices(repo, userService, notificationEmitter, logger);
         _seasons = new CampSeasonLifecycle(repo, auditLog, settingsService, membershipNotices, clock);
         _registration = new CampRegistration(repo, auditLog, systemTeamSync, _seasons, clock, logger);
+        _details = new CampDetails(repo, auditLog, _seasons, clock);
         _memberships = new CampMembershipTransitions(repo, auditLog, userService, settingsService, tickets,
             campRoleService, membershipNotices, clock);
         _cityPlanningService = cityPlanningService;
@@ -221,65 +221,10 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     public Task<CampAdminMutationResult> ReactivateSeasonAsync(Guid seasonId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         _seasons.ReactivateSeasonAsync(seasonId, actorUserId, cancellationToken);
 
-    public async Task<CampUpdateResult> UpdateCampAsync(
+    public Task<CampUpdateResult> UpdateCampAsync(
         CampUpdateInput input,
-        Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        // Prove the season belongs to the camp before the first write: the scoped check
-        // inside UpdateSeasonAsync fires only after the camp-level fields have committed,
-        // which would leave a partial update behind an uninvalidated cache on failure.
-        var scopedSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
-        if (scopedSeason is null)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
-        }
-
-        if (scopedSeason.CampId != input.CampId)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_SeasonWrongCamp");
-        }
-
-        var updated = await _repo.UpdateCampFieldsAsync(
-            input.CampId,
-            input.ContactEmail,
-            input.ContactPhone,
-            input.WebOrSocialUrl,
-            input.Links,
-            input.IsSwissCamp,
-            input.TimesAtNowhere,
-            input.HideHistoricalNames,
-            _clock.GetCurrentInstant(),
-            cancellationToken);
-
-        if (!updated)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
-        }
-
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampUpdated, nameof(Camp), input.CampId,
-            $"Updated camp {input.CampId}",
-            actorUserId);
-
-        var seasonUpdate = await UpdateSeasonAsync(input.CampId, input.SeasonId, input.SeasonData, actorUserId, cancellationToken);
-        if (!seasonUpdate.Succeeded) return seasonUpdate;
-
-        var currentSeason = await _repo.GetSeasonByIdAsync(input.SeasonId, cancellationToken);
-        if (currentSeason is null) return CampUpdateResult.Failure("Camps_Flash_RoleSeasonNotFound");
-
-        if (!string.Equals(currentSeason.Name, input.SeasonName, StringComparison.Ordinal))
-        {
-            var today = _clock.GetCurrentInstant().InUtc().Date;
-            var nameLocked = currentSeason.NameLockDate.HasValue && today >= currentSeason.NameLockDate.Value;
-            if (!nameLocked)
-            {
-                var nameUpdate = await ChangeSeasonNameAsync(input.CampId, currentSeason.Id, input.SeasonName, actorUserId, cancellationToken);
-                if (!nameUpdate.Succeeded) return nameUpdate;
-            }
-        }
-
-        return CampUpdateResult.Success();
-    }
+        Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _details.UpdateCampAsync(input, actorUserId, cancellationToken);
 
     public async Task<CampAdminMutationResult> DeleteCampAsync(Guid campId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
@@ -363,55 +308,13 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
     }
 
-    public async Task<CampUpdateResult> AddHistoricalNameAsync(
-        Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return CampUpdateResult.Failure("Camps_Flash_NameRequired");
-        name = name.Trim();
-        if (name.Length > MaxHistoricalNameLength)
-            return CampUpdateResult.Failure("Camps_Validation_HistoricalNameLength");
+    public Task<CampUpdateResult> AddHistoricalNameAsync(
+        Guid campId, string name, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _details.AddHistoricalNameAsync(campId, name, actorUserId, cancellationToken);
 
-        var entry = new CampHistoricalName
-        {
-            Id = Guid.NewGuid(),
-            CampId = campId,
-            Name = name,
-            Source = CampNameSource.Manual,
-            CreatedAt = _clock.GetCurrentInstant()
-        };
-
-        await _repo.AddHistoricalNameAsync(entry, cancellationToken);
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampHistoricalNameAdded, nameof(CampHistoricalName), entry.Id,
-            $"Added historical name '{name}'", actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
-        return CampUpdateResult.Success();
-    }
-
-    public async Task<CampUpdateResult> RemoveHistoricalNameAsync(
-        Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default)
-    {
-        var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
-        if (camp is null) return CampUpdateResult.Failure("Camps_Flash_CampNotFound");
-        var entry = camp.HistoricalNames.FirstOrDefault(n => n.Id == historicalNameId);
-        if (entry is null)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_HistoricalNameWrongCamp");
-        }
-
-        var removed = await _repo.RemoveHistoricalNameAsync(historicalNameId, cancellationToken);
-        if (!removed)
-        {
-            return CampUpdateResult.Failure("Camps_Flash_HistoricalNameNotFound");
-        }
-        await _auditLog.LogAsync(
-            CampsAuditActions.CampHistoricalNameRemoved, nameof(CampHistoricalName), historicalNameId,
-            $"Removed historical name '{entry.Name}'", actorUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
-        return CampUpdateResult.Success();
-
-    }
+    public Task<CampUpdateResult> RemoveHistoricalNameAsync(
+        Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        _details.RemoveHistoricalNameAsync(scopedCampId, historicalNameId, actorUserId, cancellationToken);
 
     public Task<CampSeasonInfo?> GetCampSeasonByIdAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default) =>
