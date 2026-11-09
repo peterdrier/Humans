@@ -492,7 +492,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
-- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; transitions, rhythm timing and Drive synchronization remain in `WorkgroupService`. Member notifications
+- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; transitions and Drive synchronization remain in `WorkgroupService`; rhythm timing belongs to `WorkgroupRhythm`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them. Lifecycle and Board emails apply the same resolved-ID deduplication: outbox ownership uses the live recipient ID from the same snapshot as address, name and language, so merged aliases cannot queue duplicate copies or assign new mail to an archived account.
@@ -584,3 +584,5 @@ picker labels and roster profile badges load a member dictionary.
   lifecycle change or preventing its subsequent Drive access sync. Individual sends
   remain independent; cancellation of recipient lookups still propagates.
 - **Architecture test** — `tests/Humans.Workgroups.Tests` carries no `Architecture/` folder.
+
+Internal `WorkgroupRhythm` owns the daily update-due/overdue-registration pass and its audit helper. `WorkgroupService` retains its job entry point and supplies the existing notices, repository, audit, clock and logger. Snapshot projection reuses `WorkgroupRegisterReader`; timing windows, per-group failure isolation, recipients, audit actor, ordering and cancellation are unchanged. No public contract, job signature or DI registration is added.

@@ -39,6 +39,9 @@ internal sealed partial class WorkgroupService(
 
     private readonly WorkgroupNotices notices = new(users, roles, notifications, email, emailFactory, logger);
 
+    public Task RunDailyRhythmAsync(CancellationToken ct = default) =>
+        new WorkgroupRhythm(repository, notices, auditLog, clock, logger).RunDailyRhythmAsync(ct);
+
     private static readonly string[] ReservedSlugs = ["apply", "admin"];
 
     public Task<IReadOnlyList<WorkgroupInfo>> GetRegisterAsync(CancellationToken ct = default) =>

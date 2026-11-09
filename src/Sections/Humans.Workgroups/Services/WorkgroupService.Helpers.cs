@@ -294,14 +294,6 @@ internal sealed partial class WorkgroupService
             relatedEntityType: id == w.Id ? null : AuditEntityTypes.Workgroup);
     }
 
-    private async Task AuditJobAsync(AuditActionDefinition action, Workgroup w, string description)
-    {
-        await auditLog.LogAsync(action, AuditEntityTypes.Workgroup, w.Id, description,
-            WorkgroupRhythmJobName);
-    }
-
-    internal const string WorkgroupRhythmJobName = "WorkgroupRhythmJob";
-
     /// <summary>Failures are logged, never surfaced: the daily reconciliation covers the drift.</summary>
     private async Task RequestDriveSyncAsync(Workgroup w, CancellationToken ct)
     {

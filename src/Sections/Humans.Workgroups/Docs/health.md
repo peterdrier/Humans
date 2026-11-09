@@ -101,7 +101,7 @@ loader and must not be gated. The group-loading methods take the check from the 
   clear in one write (`Services/WorkgroupService.Lifecycle.cs:158`).
 - **The daily pass never changes a group's status, and never persists a judgement about
   silence.** It reads `SilenceFor(now)` to decide whether a thirty-day multiple has come round
-  (`Services/WorkgroupService.Rhythm.cs:50`) and then only notifies and audits. A status
+  (`Services/WorkgroupRhythm.cs`) and then only notifies and audits. A status
   assignment in that file is a violation, and so is a column, log entry or flag recording that a
   group has gone quiet.
 - **A promised comment window is never cut short.** Delivering refuses while the window is still
@@ -176,7 +176,7 @@ loader and must not be gated. The group-loading methods take the check from the 
 - **`ct = CancellationToken.None` mid-method is deliberate.** It marks the commit boundary in
   each mutation (above, under Invariants); the parameter is kept so every signature matches.
 - **The nudge fires on exact multiples of the thirty-day window**
-  (`Services/WorkgroupService.Rhythm.cs:56`). A pass that misses the day skips that nudge; the
+  (`Services/WorkgroupRhythm.cs`). A pass that misses the day skips that nudge; the
   register badge is the durable signal, the notification is not.
 - **A member may write a `StatusRequested` log entry directly.** `RequireMemberKind` admits it,
   while the dedicated `/RequestStatus` route also notifies the coordinators. Two ways in; nothing
