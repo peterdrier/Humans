@@ -120,6 +120,7 @@ Humans.Finance/
     HoldedDuplicateMatcher.cs  pure duplicate detection, no dependencies
     HoldedDuplicateReview.cs   preview, fresh-sync confirmation and removal
     ExpenseRecon.cs            pure reconciliation report, no dependencies
+    SepaPayoutGeneration.cs    preview, plan and persisted payment-file generation
     SepaPaymentFileBuilder.cs  pure pain.001 XML from a batch, no dependencies
     SepaSchema.cs, SepaText.cs the schema and the character rules that builder obeys
     SepaPayoutEmails.cs, FinanceEmails.cs, FinanceEmailPreviews.cs  the payout emails and their preview
@@ -190,14 +191,14 @@ What the shapes say about the inside:
   (`src/Sections/Humans.Finance/Services/Service.cs:657`).
 - A payout transfer pays only a singly-bound account, never more than is owed, never more than the
   posted cap, and only to the IBAN Holded holds for the contact the binding names
-  (`src/Sections/Humans.Finance/Services/Service.cs:1076`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1082`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1103`,
+  (`src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
+  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
+  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
   `src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:174`).
 - An account with an unbooked transfer in an earlier file, or with duplicate documents in Holded,
   or whose documents cannot be read, is not paid again
-  (`src/Sections/Humans.Finance/Services/Service.cs:1088`,
-  `src/Sections/Humans.Finance/Services/Service.cs:1096`).
+  (`src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
+  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`).
 - A generated file validates against the schema before it is stored, and is stored as sent
   (`src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:123`,
   `src/Sections/Humans.Finance/Services/Service.cs:1160`).
