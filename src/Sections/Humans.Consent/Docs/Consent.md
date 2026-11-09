@@ -336,3 +336,5 @@ the old string, so the queue keeps its name (and `/Debug/Sections` lists it as a
 unmatched annotation, which is the rename showing rather than hiding).
 
 Re-consent reminders select active-assignment users with unsigned required consents whose grace deadlines fall within `ConsentReminderDaysBeforeSuspension`, including overdue deadlines. The configured lead time controls eligibility as well as email wording. The reminder cooldown and successful-send timestamp remain unchanged; suspension still uses only expired deadlines.
+
+Internal `LegalDocumentAdministration` owns GitHub-folder normalization, create-with-initial-sync, edit/archive and version-summary updates. `LegalDocumentSyncService` retains its entry points; single-document lookup belongs to the existing publication owner and is shared by direct and initial sync. Team guards, option snapshot, regex behavior, refusals, audit/fan-out order, cache invalidation after uncertain writes and cancellation are unchanged. Bulk publication and document reads retain their owners. No public contract or DI registration is added.
