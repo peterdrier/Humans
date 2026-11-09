@@ -217,4 +217,72 @@ internal sealed class TeamSnapshotReader(
         return definitions.Select(definition => TeamSnapshotReader.ToRoleDefinitionSnapshot(definition)).ToList();
     }
 
+    internal async Task<TeamInfo?> GetTeamAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return teamsById.GetValueOrDefault(teamId);
+    }
+
+    internal async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default)
+    {
+        var requests = await repo.GetPendingForTeamAsync(teamId, cancellationToken);
+        var usersById = requests.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(
+                requests.Select(request => request.UserId)
+                    .Distinct()
+                    .ToList(),
+                cancellationToken);
+        return requests
+            .Select(request => ToJoinRequestSnapshot(request, usersById))
+            .ToList();
+    }
+
+    internal async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var requests = await repo.GetAllJoinRequestsForUserAsync(userId, cancellationToken);
+        return requests.Where(request => request.Status == TeamJoinRequestStatus.Pending)
+            .Select(ToJoinRequestSnapshot).ToList();
+    }
+
+    internal async Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
+        Guid teamId,
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var request = await repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
+        return request is null ? null : ToJoinRequestSnapshot(request);
+    }
+
+    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
+        request.Id,
+        request.TeamId,
+        request.Team?.Name,
+        request.UserId,
+        UserDisplayName: null,
+        UserProfilePictureUrl: null,
+        request.Status,
+        request.Message,
+        request.RequestedAt,
+        request.ResolvedAt,
+        request.ReviewNotes,
+        request.Team?.Slug);
+
+    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(
+        TeamJoinRequest request,
+        IReadOnlyDictionary<Guid, UserInfo> usersById)
+    {
+        usersById.TryGetValue(request.UserId, out var user);
+        return ToJoinRequestSnapshot(request) with
+        {
+            UserDisplayName = user?.BurnerName,
+            UserProfilePictureUrl = user?.ProfilePictureUrl
+        };
+    }
+
 }
