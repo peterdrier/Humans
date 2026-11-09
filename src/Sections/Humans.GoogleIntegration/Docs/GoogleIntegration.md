@@ -154,6 +154,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 - The internal `StoredGoogleText` helper bounds persisted resource errors to 2000 UTF-16 units and outbox errors and sync-log text (including the job prefix) to 4000. All three persistence paths reuse its surrogate-safe boundary so long vendor failures cannot prevent failure-state or audit-row persistence.
 
+- Drive grant-failure diagnostics mask email local parts to at most two UTF-16 units without splitting surrogate pairs, retaining any `+tag` and domain. Failure classification and identity rejection remain unchanged.
+
 - Outbox error previews preserve whole UTF-16 surrogate pairs within their existing 120-unit limit; tooltips retain the complete stored error, and retry behavior is unchanged.
 
 - Domain-group listing and its team picker use browser cancellation. Aborted per-group settings fetches propagate through the listing instead of becoming group errors; caller cancellation logs warnings without exception stacks. Dependency failures retain their existing error feedback.

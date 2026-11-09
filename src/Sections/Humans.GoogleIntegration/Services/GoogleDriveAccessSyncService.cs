@@ -477,14 +477,15 @@ internal sealed class GoogleDriveAccessSyncService(
         return (result, retried);
     }
 
-    /// <summary>Keeps two characters of the local part and any <c>+tag</c>, like the log pipeline's email redaction.</summary>
+    /// <summary>Keeps up to two UTF-16 units without splitting a surrogate pair, plus any <c>+tag</c> and domain.</summary>
     private static string MaskEmail(string email)
     {
         var at = email.IndexOf('@', StringComparison.Ordinal);
         if (at <= 0) return "***";
         var plus = email.IndexOf('+', 0, at);
         var end = plus > 0 ? plus : at;
-        return $"{email[..Math.Min(2, end)]}***{email[end..]}";
+        var prefix = StoredGoogleText.Bound(email, Math.Min(2, end));
+        return $"{prefix}***{email[end..]}";
     }
 
     private async Task<List<string>> ApplyExtraAsync(FolderClaim claim, DrivePlan plan, GoogleSyncSource syncSource, CancellationToken ct)
