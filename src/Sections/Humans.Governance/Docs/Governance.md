@@ -405,7 +405,7 @@ The Board-voting dashboard controller orders member columns by display name with
 
 ## Architecture
 
-The internal `AssemblyVoteDrafts` owns draft read/create/update/delete, blank-only translation filling, validation and option construction. `AssemblyVoteService` forwards the existing authoring methods and reuses the same text bounds and safe-URL policy. Draft-state/revision guards, official-culture rules, ranked-option validation and cancellation remain unchanged. Opening, electorate construction, voting, publication decisions, peeks, closing effects and GDPR retain their existing owners; no public contract or DI registration is added.
+The internal `AssemblyVoteDrafts` owns draft read/create/update/delete, blank-only translation filling, validation and option construction. `AssemblyVoteService` forwards the existing authoring methods and reuses the same text bounds and safe-URL policy. Draft-state/revision guards, official-culture rules, ranked-option validation and cancellation remain unchanged. Opening, voting, publication decisions, peeks, closing effects and GDPR retain their existing owners; no public contract or DI registration is added.
 
 The internal `ApplicationReader` owns member application history/detail, filtered admin lists/detail, pending snapshots, Board dashboard/detail and summary counts, including shared history/vote projections. `ApplicationDecisionService` forwards the existing reads and retains voting-badge caching, decisions, tier changes, reminder workflows, GDPR and expiry repair. Ownership checks, filter/paging behavior, applicant fallbacks, vote/history ordering and cancellation are unchanged. No public contract or DI registration is added.
 
@@ -419,6 +419,8 @@ The internal `ApplicationReader` owns member application history/detail, filtere
 |---|---:|---|
 | `IGovernanceService` | 8 | Read contract: `GetUserApplicationsAsync`, `GetUserIdsWithPendingApplicationAsync`, `GetSubmittedApplicationForUserAsync`, `GetUnvotedApplicationCountAsync` (admin nav badge, Notifications meter), the two active-tier lookups `SystemTeamSyncJob` uses, and the tier reads `GetMembershipTierAsync` / `GetMembershipTiersAsync`. DTOs only. |
 | `IMembershipCalculator` | 9 | Membership and consent-completeness reads. |
+
+The internal `AssemblyVoteRosterBuilder` owns the opening-time electorate snapshot: active approved terms from Governance, Board roles from Auth, the indicative Volunteers audience from Teams, and active-account filtering through Users. Official precedence, deduplication, tier attribution, clock reads and cancellation are unchanged. The builder performs no writes; `AssemblyVoteService.OpenAsync` retains both deadline checks, the atomic draft-to-open roster save, and post-save audit and notices. No public contract or DI registration is added.
 
 The internal `AssemblyVoteResultReader` owns roster/ballot snapshot assembly, official and indicative tally projections, disclosed-ballot rows, published peek rows and closer-name lookup. It reuses the repository, Users contract and clock without a DI registration. The facade retains embargo/disclosure decisions, peek audits, close/repair ordering, result serialization and storage; counting algorithms remain in `AssemblyVoteCounting`. Read order, attribution, timestamps and cancellation are unchanged, and no ballot-derived contract entry point is added.
 
