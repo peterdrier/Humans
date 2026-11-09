@@ -21,7 +21,7 @@ internal sealed partial class WorkgroupService
         // The folder comes first: a failure here leaves the row as it was, so the Secretary can retry.
         if (workgroup.DriveFolderId is null)
         {
-            var folderResult = await CreateGroupFolderAsync(workgroup, ct);
+            var folderResult = await DriveFolders.CreateGroupFolderAsync(workgroup, ct);
             if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
             workgroup.DriveFolderId = folderResult.Value!;
         }
@@ -37,7 +37,7 @@ internal sealed partial class WorkgroupService
         await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupRegistered, workgroup,
             $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
-        await RequestDriveSyncAsync(workgroup, ct);
+        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
         return new();
     }
 
@@ -114,7 +114,7 @@ internal sealed partial class WorkgroupService
             $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
         // Withdrawn isn't Active, so the source stops claiming write access.
-        await RequestDriveSyncAsync(workgroup, ct);
+        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
         await Budgets.SetAccountActiveAsync(workgroup, isActive: false, ct);
         return new();
     }
@@ -153,7 +153,7 @@ internal sealed partial class WorkgroupService
         await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
-        await RequestDriveSyncAsync(workgroup, ct);
+        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
         await Budgets.SetAccountActiveAsync(workgroup, isActive: true, ct);
         return new();
     }
@@ -217,7 +217,7 @@ internal sealed partial class WorkgroupService
                 WorkgroupBudgets.BudgetLogBody(workgroup), actorUserId));
         }
 
-        var folderResult = await CreateGroupFolderAsync(workgroup, ct);
+        var folderResult = await DriveFolders.CreateGroupFolderAsync(workgroup, ct);
         if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
         workgroup.DriveFolderId = folderResult.Value!;
         await repository.AddWorkgroupAsync(workgroup, ct);
@@ -227,7 +227,7 @@ internal sealed partial class WorkgroupService
                 + $"{bootstrap.RegisteredAt.InUtc().Date.ToInvariantDate()}",
             actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
-        await RequestDriveSyncAsync(workgroup, ct);
+        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
         if (budget is not null)
             await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, WorkgroupBudgets.BudgetAuditSummary(workgroup), actorUserId);
 
@@ -271,25 +271,6 @@ internal sealed partial class WorkgroupService
         await notices.EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
             $"{disposition}: {note.Trim()}", ct);
         return new();
-    }
-
-    /// <summary>Neither failure (unset root, Google error) leaves the group half-registered.</summary>
-    private async Task<WorkgroupMutationResult<string>> CreateGroupFolderAsync(Workgroup workgroup, CancellationToken ct)
-    {
-        var root = await GetRootDriveFolderIdAsync(ct);
-        if (string.IsNullOrWhiteSpace(root))
-            return new(Refusal: new(WorkgroupErrorKeys.RootFolderNotConfigured));
-
-        try
-        {
-            return new(await googleSyncWrite.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to create the Drive subfolder for workgroup {WorkgroupId}",
-                workgroup.Id);
-            return new(Refusal: new(WorkgroupErrorKeys.DriveFolderCreationFailed));
-        }
     }
 
     private async Task AnnounceDecisionAsync(

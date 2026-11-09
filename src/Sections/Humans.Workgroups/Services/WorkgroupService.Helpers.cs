@@ -135,22 +135,6 @@ internal sealed partial class WorkgroupService
             .ToList();
     }
 
-    /// <summary>Failures are logged, never surfaced: the daily reconciliation covers the drift.</summary>
-    private async Task RequestDriveSyncAsync(Workgroup w, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(w.DriveFolderId))
-            return;
-
-        try
-        {
-            await googleSyncWrite.RequestSyncAsync(w.DriveFolderId, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to request a Drive access sync for workgroup {WorkgroupId}", w.Id);
-        }
-    }
-
     /// <summary>A group that stops being Active has nobody left to decide its join requests. Nothing is logged.</summary>
     private static IReadOnlyList<WorkgroupMember> ClosePendingRequests(Workgroup w, Instant now)
     {
@@ -188,7 +172,7 @@ internal sealed partial class WorkgroupService
         await notices.EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
 
         // Dormant: the access source now returns Viewer.
-        await RequestDriveSyncAsync(w, ct);
+        await DriveFolders.RequestDriveSyncAsync(w, ct);
         await Budgets.SetAccountActiveAsync(w, isActive: false, ct);
     }
 }

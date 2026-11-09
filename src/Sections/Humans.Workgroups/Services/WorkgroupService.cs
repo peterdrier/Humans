@@ -1,6 +1,5 @@
 using static Humans.Workgroups.Services.WorkgroupAccess;
 using static Humans.Workgroups.Services.WorkgroupJournal;
-using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
@@ -35,6 +34,7 @@ internal sealed partial class WorkgroupService(
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
+    private WorkgroupDriveFolders DriveFolders => new(repository, settings, googleSync, googleSyncWrite, auditLog, logger);
     private WorkgroupBudgets Budgets => new(repository, access, journal, finance, holded, clock, logger);
     private WorkgroupActivity Activity => new(repository, access, journal, surveys, clock);
     private readonly WorkgroupAccess access = new(repository);
@@ -206,7 +206,7 @@ internal sealed partial class WorkgroupService(
             relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
         await notices.NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
-        await RequestDriveSyncAsync(workgroup, ct);
+        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
         return new();
     }
 
@@ -276,7 +276,7 @@ internal sealed partial class WorkgroupService(
                 userId);
         }
 
-        await RequestDriveSyncAsync(workgroup, ct);
+        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
         return new();
     }
 
@@ -451,35 +451,9 @@ internal sealed partial class WorkgroupService(
     public Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
         Budgets.ListExpenseAccountsAsync(ct);
 
-    public async Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default)
-    {
-        var stored = await repository.GetRootDriveFolderIdAsync(ct)
-            // Legacy Settings value, used until an admin saves a local one.
-            ?? await settings.GetValueAsync(SettingKeys.WorkgroupsRootDriveFolderId, ct);
-        // Values saved before the setter normalized may still hold the pasted URL.
-        return stored is null ? null : NormalizeFolderId(stored);
-    }
+    public Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
+        DriveFolders.GetRootDriveFolderIdAsync(ct);
 
-    public async Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(folderId))
-            return new(Refusal: new(WorkgroupErrorKeys.RootFolderNotConfigured));
-
-        var id = NormalizeFolderId(folderId);
-        // A missing root folder blocks every registration, so refuse it now rather than then.
-        if (!await googleSync.IsFolderReachableAsync(id, ct))
-            return new(Refusal: new(WorkgroupErrorKeys.RootFolderUnreachable));
-
-        await repository.SetRootDriveFolderIdAsync(id, ct);
-        await auditLog.LogAsync(WorkgroupsAuditActions.WorkgroupsRootFolderUpdated,
-            AuditEntityTypes.WorkgroupsSettings, Guid.Empty,
-            $"Root Drive folder set to {id}", actorUserId);
-        return new();
-    }
-
-    /// <summary>Secretaries paste the folder's browser URL as often as its id; only the id is kept.</summary>
-    private static string NormalizeFolderId(string value) =>
-        DriveFolderUrlId.Match(value) is { Success: true } m ? m.Groups["id"].Value : value.Trim();
-
-    private static readonly Regex DriveFolderUrlId = new(@"(?:/folders/|[?&]id=)(?<id>[A-Za-z0-9_-]+)", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
+    public Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default) =>
+        DriveFolders.SetRootDriveFolderIdAsync(folderId, actorUserId, ct);
 }
