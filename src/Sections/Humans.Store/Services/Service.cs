@@ -30,6 +30,7 @@ internal sealed class Service(
 {
     private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
     private readonly StoreStripePayments stripePayments = new(repo, audit, stripeService, clock, logger);
+    private readonly StoreMetadataRepair metadataRepair = new(repo, audit, campService, clock, logger);
     private readonly StoreCatalog productCatalog = new(repo, audit, clock, logger);
 
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
@@ -89,93 +90,17 @@ internal sealed class Service(
     public Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default) =>
         orderReader.GetOrderAsync(orderId, ct);
 
-    public async Task<OrderYearRepairReport> GetOrderYearRepairReportAsync(CancellationToken ct = default)
-    {
-        var orders = await repo.GetOrdersWithMissingYearAsync(ct);
-        var rows = new List<OrderYearRepairRow>(orders.Count);
-        foreach (var order in orders)
-        {
-            var season = order.CampSeasonId is { } seasonId
-                ? await campService.GetCampSeasonByIdAsync(seasonId, ct)
-                : null;
-            rows.Add(new OrderYearRepairRow(
-                order.Id,
-                order.CampSeasonId,
-                season?.Name,
-                season?.Year));
-        }
+    public Task<OrderYearRepairReport> GetOrderYearRepairReportAsync(CancellationToken ct = default) =>
+        metadataRepair.GetOrderYearRepairReportAsync(ct);
 
-        return new OrderYearRepairReport(rows);
-    }
+    public Task<int> RepairOrderYearsAsync(Guid actorUserId, CancellationToken ct = default) =>
+        metadataRepair.RepairOrderYearsAsync(actorUserId, ct);
 
-    public async Task<int> RepairOrderYearsAsync(Guid actorUserId, CancellationToken ct = default)
-    {
-        var orders = await repo.GetOrdersWithMissingYearAsync(ct);
-        var repaired = 0;
-        foreach (var order in orders)
-        {
-            if (await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(RepairOrderYearsAsync), ct))
-                repaired++;
-        }
+    public Task<IReadOnlyList<PaymentMethodRepairRow>> GetPaymentMethodRepairRowsAsync(CancellationToken ct = default) =>
+        metadataRepair.GetPaymentMethodRepairRowsAsync(ct);
 
-        return repaired;
-    }
-
-    public async Task<IReadOnlyList<PaymentMethodRepairRow>> GetPaymentMethodRepairRowsAsync(CancellationToken ct = default)
-    {
-        var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
-        return payments
-            .Select(p => new PaymentMethodRepairRow(p.Id, p.OrderId, p.Method, p.AmountEur, p.ReceivedAt))
-            .ToList();
-    }
-
-    /// <summary>Copies each legacy payment's int <see cref="Payment.Method"/> into <see cref="Payment.MethodName"/>, one audit entry per row.</summary>
-    public async Task<int> RepairPaymentMethodNamesAsync(Guid actorUserId, CancellationToken ct = default)
-    {
-        var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
-        foreach (var payment in payments)
-        {
-            await repo.SetPaymentMethodNameAsync(payment.Id, payment.Method, ct);
-            await audit.LogAsync(
-                StoreAuditActions.StorePaymentMethodBackfilled, AuditEntityTypes.Payment, payment.Id,
-                $"Copied payment method {payment.Method} into the string column",
-                actorUserId, payment.OrderId, AuditEntityTypes.Order);
-        }
-
-        return payments.Count;
-    }
-
-    private async Task<bool> ResolveLegacyOrderYearAsync(
-        Order order,
-        Guid actorUserId,
-        string source,
-        CancellationToken ct)
-    {
-        if (order.Year != 0 || order.CampSeasonId is not { } seasonId)
-            return false;
-
-        var season = await campService.GetCampSeasonByIdAsync(seasonId, ct);
-        if (season is null)
-            return false;
-
-        order.Year = season.Year;
-        order.UpdatedAt = clock.GetCurrentInstant();
-        await repo.UpdateOrderAsync(order, ct);
-        var description = $"Resolved legacy store order year as {season.Year} from camp season {seasonId}";
-        await audit.LogAsync(
-            StoreAuditActions.StoreOrderYearBackfilled,
-            AuditEntityTypes.Order,
-            order.Id,
-            description,
-            actorUserId);
-        logger.LogInformation(
-            "Resolved legacy Store order {OrderId} year as {Year} from camp season {CampSeasonId} via {Source}",
-            order.Id,
-            season.Year,
-            seasonId,
-            source);
-        return true;
-    }
+    public Task<int> RepairPaymentMethodNamesAsync(Guid actorUserId, CancellationToken ct = default) =>
+        metadataRepair.RepairPaymentMethodNamesAsync(actorUserId, ct);
 
     public async Task<MutationResult> CreateOrderAsync(Guid campSeasonId, Guid actorUserId, CancellationToken ct = default)
     {
@@ -287,7 +212,7 @@ internal sealed class Service(
         if (order.State != OrderState.Open)
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId);
 
-        await ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
+        await metadataRepair.ResolveLegacyOrderYearAsync(order, actorUserId, nameof(AddLineAsync), ct);
         if (order.Year == 0)
             return RefuseMutation("Store_OrderYearUnresolved", orderId, actorUserId);
 

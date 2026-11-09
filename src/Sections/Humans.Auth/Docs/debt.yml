@@ -1,4 +1,15 @@
 # Section debt ledger for Humans.Auth. Shape: memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 3
-inbox: []
+next_id: 4
+inbox:
+  - added: 2026-11-09
+    id: AUTH-3
+    what: >-
+      RoleAssignmentService.AssignRoleAsync and EndRoleAsync write unbounded notes
+      into role_assignments.Notes (varchar(2000)). The AddRole form accepts 2001
+      ASCII characters, and ending an assignment can append beyond the same limit;
+      neither path returns an explicit refusal for this storage limit. Validate the resulting
+      stored note before mutation and map the refusal in the controller. Found by
+      tracing the form, service composition and EF configuration. The owning
+      service is a protected DontFix class under debt-ladder.md.
+    review: light
