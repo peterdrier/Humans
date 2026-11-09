@@ -1,4 +1,8 @@
 using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
+using Humans.Teams.Contracts;
+using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
@@ -7,12 +11,83 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>Reads range candidates; the signup service holds the enrollment lock and owns every write.</summary>
-internal sealed class ShiftRangeSelection(
+/// <summary>Reads enrollment candidates; the signup service holds the enrollment lock and owns every write.</summary>
+internal sealed class ShiftSignupSelection(
     IShiftManagementRepository repo,
     EventCalendarResolver calendarResolver,
-    IStringLocalizer<ShiftsResource> localizer)
+    IStringLocalizer<ShiftsResource> localizer,
+    IServiceProvider serviceProvider) : IApplicationService
 {
+    // Lazy, to break the DI cycle with TeamService.
+    private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
+
+    internal async Task<IReadOnlyList<ShiftSignup>> GetActiveUserSignupsAsync(Guid userId)
+    {
+        var signups = await repo.GetForUsersAsync([userId]);
+        return signups
+            .Where(signup => signup.Status is SignupStatus.Pending or SignupStatus.Confirmed)
+            .ToList();
+    }
+
+    internal async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, BurnSettingsInfo es)
+    {
+        var targetStart = targetShift.GetAbsoluteStart(es);
+        var targetEnd = targetShift.GetAbsoluteEnd(es);
+
+        var userSignups = await GetActiveUserSignupsAsync(userId);
+
+        IReadOnlyDictionary<Guid, string>? teamNames = null;
+
+        foreach (var existing in userSignups)
+        {
+            if (existing.ShiftId == targetShift.Id) continue;
+            if (existing.Status != SignupStatus.Confirmed) continue;
+
+            var existingEs = await calendarResolver.GetAsync(existing.Shift.Rota.EventSettingsId);
+            if (existingEs is null) continue;
+            var existingStart = existing.Shift.GetAbsoluteStart(existingEs);
+            var existingEnd = existing.Shift.GetAbsoluteEnd(existingEs);
+
+            if (targetStart < existingEnd && targetEnd > existingStart)
+            {
+                var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
+                var dateStr = existingStart.InZone(tz).ToDateTimeUnspecified().ToMonthDayTime();
+
+                if (teamNames is null)
+                {
+                    var teamsById = await TeamService.GetTeamsAsync();
+                    teamNames = userSignups
+                        .Select(s => s.Shift.Rota.TeamId)
+                        .Distinct()
+                        .Where(teamsById.ContainsKey)
+                        .ToDictionary(id => id, id => teamsById[id].Name);
+                }
+                var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, localizer["Shifts_Signup_UnknownTeam"]);
+
+                return localizer["Shifts_Signup_TimeConflict", existing.Shift.Rota.Name, teamName, dateStr];
+            }
+        }
+
+        return null;
+    }
+
+    internal async Task<string?> CheckEeCapAsync(BurnSettingsInfo es, int dayOffset)
+    {
+        var availableSlots = EarlyEntryCapacityCalculator.GetAvailableEeSlots(es, dayOffset);
+        if (availableSlots <= 0)
+            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", ShiftSignupSelection.FormatRangeDayList(es, [dayOffset])];
+
+        var currentEeCount = (await repo
+            .GetUserIdsForDayAsync(es.Id, dayOffset, ShiftDayUserStatusScope.ConfirmedOnly))
+            .Count;
+
+        if (currentEeCount >= availableSlots)
+            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", ShiftSignupSelection.FormatRangeDayList(es, [dayOffset])];
+
+        return null;
+    }
+
+
     internal RangeSignupCandidateSelection PruneDuplicateRangeShifts(
         List<Shift> shiftsInRange,
         IReadOnlyCollection<ShiftSignup> existingSignups,
