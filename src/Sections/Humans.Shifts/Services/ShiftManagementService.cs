@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;
@@ -35,6 +34,7 @@ internal sealed class ShiftManagementService(
     ILogger<ShiftManagementService> logger) : IShiftManagement, IUserMerge
 {
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
+    private readonly ShiftEventSettings shiftSettings = new(repo, auditLogService, clock);
     private readonly ShiftScheduling scheduling = new(repo, calendarResolver, viewInvalidator, clock);
     private readonly ShiftDeletion deletion = new(repo, auditLogService, viewInvalidator, logger);
     private readonly ShiftVolunteerProfiles volunteerProfiles = new(repo, viewInvalidator, clock, logger);
@@ -63,13 +63,8 @@ internal sealed class ShiftManagementService(
     public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
         browseReader.GetCoordinatorTeamIdsAsync(userId, ct);
 
-    public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default)
-    {
-        var entity = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
-        return entity is null
-            ? null
-            : new ShiftEventKnobs(entity.IsShiftBrowsingOpen, entity.GlobalVolunteerCap, entity.ReminderLeadTimeHours);
-    }
+    public Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default) =>
+        shiftSettings.GetKnobsAsync(eventSettingsId, ct);
 
     public async Task SaveKnobsAsync(
         Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
@@ -77,20 +72,8 @@ internal sealed class ShiftManagementService(
     {
         try
         {
-            var entity = await EnsureKnobsRowAsync(eventSettingsId);
-            entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
-            entity.GlobalVolunteerCap = globalVolunteerCap;
-            entity.ReminderLeadTimeHours = reminderLeadTimeHours;
-            SetSubPeriods(entity, subPeriods);
-            entity.UpdatedAt = clock.GetCurrentInstant();
-            await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
-            await auditLogService.LogAsync(
-                ShiftsAuditActions.ShiftSettingsUpdated, nameof(EventSettings), eventSettingsId,
-                $"Shift settings saved: browsing {(isShiftBrowsingOpen ? "open" : "closed")}, "
-                + $"volunteer cap {globalVolunteerCap?.ToString(CultureInfo.InvariantCulture) ?? "none"}, reminder {reminderLeadTimeHours}h, "
-                + $"build sub-periods start first crew {subPeriods.FirstCrew}, set-up week {subPeriods.SetupWeek}, "
-                + $"pre-event week {subPeriods.PreEventWeek}, finishing weekend {subPeriods.FinishingWeekend}.",
-                actorUserId);
+            await shiftSettings.SaveKnobsAsync(eventSettingsId, isShiftBrowsingOpen, globalVolunteerCap,
+                reminderLeadTimeHours, subPeriods, actorUserId);
         }
         finally
         {
@@ -99,38 +82,11 @@ internal sealed class ShiftManagementService(
         }
     }
 
-    private static void SetSubPeriods(EventSettings entity, BuildSubPeriodStarts starts)
-    {
-        entity.SubPeriodFirstCrewStart = starts.FirstCrew;
-        entity.SubPeriodSetupWeekStart = starts.SetupWeek;
-        entity.SubPeriodPreEventWeekStart = starts.PreEventWeek;
-        entity.SubPeriodFinishingWeekendStart = starts.FinishingWeekend;
-    }
-
-    /// <summary>
-    /// Creates the knobs row on demand: "active event" is Settings' concept, and a Shifts row exists only once a
-    /// rota or knob edit needs it. Callers that mutate the row save it themselves.
-    /// </summary>
-    private async Task<EventSettings> EnsureKnobsRowAsync(Guid eventSettingsId)
-    {
-        var existing = await repo.GetEventSettingsByIdAsync(eventSettingsId);
-        if (existing is not null) return existing;
-
-        var now = clock.GetCurrentInstant();
-        var created = new EventSettings { Id = eventSettingsId, CreatedAt = now, UpdatedAt = now };
-        SetSubPeriods(created, BuildSubPeriodStarts.Default);
-        await repo.SaveEventSettingsAsync(created, EntityMutationMode.Add);
-        return created;
-    }
-
     public async Task SetShiftBrowsingOpenAsync(Guid eventSettingsId, bool isOpen)
     {
         try
         {
-            var entity = await EnsureKnobsRowAsync(eventSettingsId);
-            entity.IsShiftBrowsingOpen = isOpen;
-            entity.UpdatedAt = clock.GetCurrentInstant();
-            await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
+            await shiftSettings.SetShiftBrowsingOpenAsync(eventSettingsId, isOpen);
         }
         finally
         {
@@ -185,7 +141,7 @@ internal sealed class ShiftManagementService(
         if (await calendarResolver.GetAsync(rota.EventSettingsId) is null)
             throw new InvalidOperationException("Event not found.");
 
-        await EnsureKnobsRowAsync(rota.EventSettingsId);
+        await shiftSettings.EnsureKnobsRowAsync(rota.EventSettingsId);
 
         rota.UpdatedAt = clock.GetCurrentInstant();
         try
