@@ -72,7 +72,7 @@ internal sealed class UserProfileMutations(
         await repo.AddAsync(profile, ct);
         if (actorUserId.HasValue)
             await audit.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
-                "Created missing profile through admin backfill.", actorUserId.Value);
+                "Created missing profile.", actorUserId.Value);
         return true;
     }
 

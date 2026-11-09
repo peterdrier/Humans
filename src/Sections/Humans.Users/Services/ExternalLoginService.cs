@@ -53,6 +53,7 @@ internal sealed class ExternalLoginService(
         if (existingUser is not null)
         {
             await userService.RecordLoginAsync(existingUser.Id, ct);
+            await TryEnsureStubProfileAsync(existingUser.Id, ct);
             await TryReconcileAsync(existingUser.Id, attempt, ct);
         }
 
@@ -83,6 +84,7 @@ internal sealed class ExternalLoginService(
         if (addLinkResult.Succeeded)
         {
             await userService.RecordLoginAsync(currentUser.Id, ct);
+            await TryEnsureStubProfileAsync(currentUser.Id, ct);
 
             if (!string.IsNullOrEmpty(attempt.Email))
                 await TryReconcileAsync(currentUser.Id, attempt, ct);
@@ -157,6 +159,7 @@ internal sealed class ExternalLoginService(
             }
 
             await userService.RecordLoginAsync(activeTarget.Id, ct);
+            await TryEnsureStubProfileAsync(activeTarget.Id, ct);
             await TryReconcileAsync(activeTarget.Id, attempt, ct);
 
             logger.LogInformation(
@@ -165,6 +168,10 @@ internal sealed class ExternalLoginService(
                 lockedSource.Id,
                 activeTarget.Id);
             return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, activeTarget.Id);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -201,6 +208,7 @@ internal sealed class ExternalLoginService(
             if (linkResult.Succeeded)
             {
                 await userService.RecordLoginAsync(existingByEmail.Id, ct);
+                await TryEnsureStubProfileAsync(existingByEmail.Id, ct);
                 await TryReconcileAsync(existingByEmail.Id, attempt, ct);
 
                 logger.LogInformation(
@@ -215,6 +223,10 @@ internal sealed class ExternalLoginService(
                 attempt.Login.LoginProvider,
                 existingByEmail.Id,
                 string.Join(", ", linkResult.Errors.Select(e => e.Description)));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -255,7 +267,7 @@ internal sealed class ExternalLoginService(
         if (reconcileFailure is not null)
             return reconcileFailure;
 
-        await userService.EnsureStubProfileAsync(user.Id, ct: ct);
+        await TryEnsureStubProfileAsync(user.Id, ct);
 
         logger.LogInformation("User created an account using {Provider}", attempt.Login.LoginProvider);
         return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, user.Id);
@@ -316,6 +328,24 @@ internal sealed class ExternalLoginService(
         var userEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
             .FirstOrDefault();
         return userEmail is null ? null : await userManager.FindByIdAsync(userEmail.UserId.ToString());
+    }
+
+    private async Task TryEnsureStubProfileAsync(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            await userService.EnsureStubProfileAsync(userId, ct: ct, actorUserId: userId);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Could not ensure profile for user {UserId}; sign-in continues and a later OAuth login will retry",
+                userId);
+        }
     }
 
     // Reconcile wrapper for OAuth-success paths - sign-in never blocks on failure (swallow + log).
