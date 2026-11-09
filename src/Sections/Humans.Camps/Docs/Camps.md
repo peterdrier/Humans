@@ -369,3 +369,5 @@ discovers the declaration through DI and holds no list of sections; dropping the
 sends this section's stored issues to the Admin-only queue.
 
 - Global text search selects the highest-scoring matches before applying its result limit, with ordinal case-insensitive name and ID tie-breakers. Existing visibility and event-scope rules still apply; GUID queries retain direct lookup.
+
+The internal `CampDirectoryPageBuilder` composes the public directory from the configured active event, including public filters, lead-first ordering, private lead camps, role-position pills and the pending count. `CampController` retains malformed-query handling and current-user resolution. Query order, public/private season selection, role-summary opt-in, image selection and ordering are unchanged; the admin directory and camp-detail visibility keep their existing owners. No public contract or DI registration is added.
