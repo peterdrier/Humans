@@ -1265,9 +1265,14 @@ public sealed class BudgetServiceTests
         var saved = await db.TicketingProjections.SingleAsync(TestContext.Current.CancellationToken);
         saved.Should().BeEquivalentTo(new
         {
-            StartDate = (LocalDate?)null, EventDate = (LocalDate?)null, InitialSalesCount = 0,
-            DailySalesRate = 0m, AverageTicketPrice = 0m, StripeFeePercent = 0m,
-            StripeFeeFixed = 0m, TicketTailorFeePercent = 0m,
+            StartDate = (LocalDate?)null,
+            EventDate = (LocalDate?)null,
+            InitialSalesCount = 0,
+            DailySalesRate = 0m,
+            AverageTicketPrice = 0m,
+            StripeFeePercent = 0m,
+            StripeFeeFixed = 0m,
+            TicketTailorFeePercent = 0m,
         });
         (await db.BudgetLineItems.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);

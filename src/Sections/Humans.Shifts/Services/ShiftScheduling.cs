@@ -132,7 +132,7 @@ internal sealed class ShiftScheduling(
                     IsAllDay = false,
                     DayOffset = day,
                     StartTime = slot.StartTime,
-                    Duration = Duration.FromHours(slot.DurationHours),
+                    Duration = ToShiftDuration(slot.DurationHours),
                     MinVolunteers = input.MinVolunteers,
                     MaxVolunteers = input.MaxVolunteers,
                     CreatedAt = now,
@@ -184,7 +184,7 @@ internal sealed class ShiftScheduling(
             Description = input.Description,
             DayOffset = input.DayOffset,
             StartTime = input.StartTime,
-            Duration = Duration.FromHours(input.DurationHours),
+            Duration = ToShiftDuration(input.DurationHours),
             MinVolunteers = input.MinVolunteers,
             MaxVolunteers = input.MaxVolunteers,
             AdminOnly = input.AdminOnly,
@@ -222,7 +222,7 @@ internal sealed class ShiftScheduling(
         Duration duration;
         try
         {
-            duration = Duration.FromHours(hours);
+            duration = ToShiftDuration(hours);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -233,11 +233,15 @@ internal sealed class ShiftScheduling(
         {
             if (duration < Duration.FromSeconds(1))
                 return "Shift duration must be at least one second.";
-            if (duration != Duration.FromSeconds((long)duration.TotalSeconds))
+            // Hours arrive as doubles, so 2.3h is 8279.99999… seconds; tolerate that float noise.
+            var seconds = hours * 3600;
+            if (Math.Abs(seconds - Math.Round(seconds)) > 1e-6)
                 return "Shift duration must contain a whole number of seconds.";
         }
         return null;
     }
+
+    private static Duration ToShiftDuration(double hours) => Duration.FromSeconds(Math.Round(hours * 3600));
 
     private static string? GetShiftScheduleRefusal(
         int dayOffset, LocalTime startTime, Duration duration, bool isAllDay, IEventSettingsInfo settings)
@@ -285,7 +289,7 @@ internal sealed class ShiftScheduling(
                 input.DurationHours, shift.IsAllDay) is { } refusal)
             return ShiftMutationResult.Failure(refusal);
 
-        var duration = Duration.FromHours(input.DurationHours);
+        var duration = ToShiftDuration(input.DurationHours);
         if (GetShiftScheduleRefusal(input.DayOffset, input.StartTime, duration, shift.IsAllDay, es) is { } scheduleRefusal)
             return ShiftMutationResult.Failure(scheduleRefusal);
 

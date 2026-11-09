@@ -155,7 +155,4 @@ internal sealed class PleoMirrorSync(
         ExternalId = a.ExternalId,
         Archived = a.Archived,
     };
-
-    // ── Reads ────────────────────────────────────────────────────────────────
-
 }

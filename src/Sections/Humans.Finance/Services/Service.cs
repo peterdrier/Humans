@@ -45,7 +45,6 @@ internal sealed class Service(
         paymentDetails.SetIbanAsync(userId, iban, ct);
 
     internal const string HoldedCreditorAccount = FinancePersonalData.HoldedCreditorAccount;
-    internal const string AdditionalHoldedCreditorAccounts = FinancePersonalData.AdditionalHoldedCreditorAccounts;
     internal const string SepaPayouts = FinancePersonalData.SepaPayouts;
     internal const string CreditorLedger = FinancePersonalData.CreditorLedger;
     internal const string HoldedCreditorContacts = FinancePersonalData.HoldedCreditorContacts;

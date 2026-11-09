@@ -2142,7 +2142,10 @@ public class ServiceTests
         var product = MakeProduct(year: 2025, price: 10m, vat: 0m, deposit: 20m);
         var order = new Order
         {
-            Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), Year = 2025, State = OrderState.Open,
+            Id = Guid.NewGuid(),
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2025,
+            State = OrderState.Open,
             Lines = { new OrderLine
             {
                 Id = Guid.NewGuid(), ProductId = product.Id, Qty = 1,

@@ -179,7 +179,9 @@ public class AccountControllerOAuthReconcileTests
 
         retry.Should().BeOfType<RedirectResult>();
         profileAttempts.Should().Be(2);
-        await _userService.Received(2).EnsureStubProfileAsync(created!.Id, null, null, null,
+        await _userService.Received(1).EnsureStubProfileAsync(created!.Id, null, null, null,
+            Arg.Any<CancellationToken>(), null);
+        await _userService.Received(1).EnsureStubProfileAsync(created.Id, null, null, null,
             Arg.Any<CancellationToken>(), created.Id);
     }
 

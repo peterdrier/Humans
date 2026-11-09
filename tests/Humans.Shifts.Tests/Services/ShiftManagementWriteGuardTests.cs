@@ -910,7 +910,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         {
             "create" => (await _service.CreateShiftAsync(NewShiftInput(rota, 0) with { DurationHours = hours })).Succeeded,
             "update" => (await _service.UpdateShiftAsync(NewUpdateInput(original!, rota.TeamId, 0) with
-                { DurationHours = hours, Description = "Changed schedule" })).Succeeded,
+            { DurationHours = hours, Description = "Changed schedule" })).Succeeded,
             _ => (await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(rota.Id, rota.TeamId, 0, 0,
                 [new ShiftTimeSlotInput(new LocalTime(8, 0), 4), new ShiftTimeSlotInput(new LocalTime(8, 0), hours)], 1, 2))).Succeeded
         };
@@ -955,7 +955,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
         var result = update
             ? await _service.UpdateShiftAsync(NewUpdateInput(shift!, rota.TeamId, -3) with
-                { DurationHours = hours, Description = "Attempted invalid edit" })
+            { DurationHours = hours, Description = "Attempted invalid edit" })
             : await _service.CreateShiftAsync(NewShiftInput(rota, -3) with { IsAllDay = true, DurationHours = hours });
 
         result.Succeeded.Should().BeFalse();
@@ -991,6 +991,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(0.25d, 900)]
     [InlineData(1d / 3600, 1)]
+    [InlineData(2.3d, 8280)]
+    [InlineData(1.15d, 4140)]
     public async Task CreateShiftAsync_AcceptsZeroMinimumAndWholeSecondDurations(double hours, int seconds)
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);

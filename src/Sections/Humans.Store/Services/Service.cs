@@ -339,10 +339,6 @@ internal sealed class Service(
         new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
             .IssueAsync(orderId, actorUserId, ct);
 
-
     public Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default) =>
         orderReader.GetStoreSummaryAsync(year, ct);
-
-    private Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
-        int orderYear, CancellationToken ct) => orderReader.LoadCurrentPricesAsync(orderYear, ct);
 }

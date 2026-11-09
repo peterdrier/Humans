@@ -53,7 +53,7 @@ internal sealed class ExternalLoginService(
         if (existingUser is not null)
         {
             await userService.RecordLoginAsync(existingUser.Id, ct);
-            await TryEnsureStubProfileAsync(existingUser.Id, ct);
+            await TryEnsureStubProfileAsync(existingUser.Id, actorUserId: existingUser.Id, ct);
             await TryReconcileAsync(existingUser.Id, attempt, ct);
         }
 
@@ -84,7 +84,7 @@ internal sealed class ExternalLoginService(
         if (addLinkResult.Succeeded)
         {
             await userService.RecordLoginAsync(currentUser.Id, ct);
-            await TryEnsureStubProfileAsync(currentUser.Id, ct);
+            await TryEnsureStubProfileAsync(currentUser.Id, actorUserId: currentUser.Id, ct);
 
             if (!string.IsNullOrEmpty(attempt.Email))
                 await TryReconcileAsync(currentUser.Id, attempt, ct);
@@ -159,7 +159,7 @@ internal sealed class ExternalLoginService(
             }
 
             await userService.RecordLoginAsync(activeTarget.Id, ct);
-            await TryEnsureStubProfileAsync(activeTarget.Id, ct);
+            await TryEnsureStubProfileAsync(activeTarget.Id, actorUserId: activeTarget.Id, ct);
             await TryReconcileAsync(activeTarget.Id, attempt, ct);
 
             logger.LogInformation(
@@ -208,7 +208,7 @@ internal sealed class ExternalLoginService(
             if (linkResult.Succeeded)
             {
                 await userService.RecordLoginAsync(existingByEmail.Id, ct);
-                await TryEnsureStubProfileAsync(existingByEmail.Id, ct);
+                await TryEnsureStubProfileAsync(existingByEmail.Id, actorUserId: existingByEmail.Id, ct);
                 await TryReconcileAsync(existingByEmail.Id, attempt, ct);
 
                 logger.LogInformation(
@@ -267,7 +267,7 @@ internal sealed class ExternalLoginService(
         if (reconcileFailure is not null)
             return reconcileFailure;
 
-        await TryEnsureStubProfileAsync(user.Id, ct);
+        await TryEnsureStubProfileAsync(user.Id, actorUserId: null, ct);
 
         logger.LogInformation("User created an account using {Provider}", attempt.Login.LoginProvider);
         return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, user.Id);
@@ -330,11 +330,12 @@ internal sealed class ExternalLoginService(
         return userEmail is null ? null : await userManager.FindByIdAsync(userEmail.UserId.ToString());
     }
 
-    private async Task TryEnsureStubProfileAsync(Guid userId, CancellationToken ct)
+    // A null actor marks account creation, which is not a repair and records no StubProfileBackfilled.
+    private async Task TryEnsureStubProfileAsync(Guid userId, Guid? actorUserId, CancellationToken ct)
     {
         try
         {
-            await userService.EnsureStubProfileAsync(userId, ct: ct, actorUserId: userId);
+            await userService.EnsureStubProfileAsync(userId, ct: ct, actorUserId: actorUserId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

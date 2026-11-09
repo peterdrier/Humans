@@ -29,9 +29,6 @@ internal sealed class IssuesService(
     IssueSectionRouting routing,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
-    internal const string Issues = IssueDataLifecycle.Issues;
-    internal const string IssueComments = IssueDataLifecycle.IssueComments;
-
     private readonly IssueReader reader = new(repo, users, auditViewer, fileStorage, routing);
 
     private readonly IssueDataLifecycle lifecycle = new(repo, clock, fileStorage, logger);
