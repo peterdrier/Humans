@@ -44,6 +44,84 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
 
     [HumansTheory]
+    [InlineData(false, false, "OccurredOn")]
+    [InlineData(false, true, "OccurredOn")]
+    [InlineData(false, false, "Kind")]
+    [InlineData(false, true, "Kind")]
+    [InlineData(true, false, "Kind")]
+    [InlineData(true, true, "Kind")]
+    [InlineData(false, false, null)]
+    [InlineData(false, true, null)]
+    [InlineData(true, false, null)]
+    [InlineData(true, true, null)]
+    public async Task LogAndDocumentForms_RequireExplicitDateAndKindBeforeWriting(
+        bool document, bool editing, string? missingField)
+    {
+        var group = await SeedWorkgroupAsync();
+        var actor = group.Members.Single().UserId;
+        var entry = await AddLogEntryAsync(group.Id, WorkgroupLogKind.Note);
+        var draft = await AddDocumentAsync(group.Id);
+        var service = Substitute.For<IWorkgroupService>();
+        service.GetBySlugAsync(group.Slug, Ct).Returns(await NewService().GetBySlugAsync(group.Slug, Ct));
+        service.AddLogEntryAsync(group.Id, actor, Arg.Any<WorkgroupLogEntrySave>(), Ct)
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        service.UpdateLogEntryAsync(entry.Id, actor, Arg.Any<WorkgroupLogEntrySave>(), Ct)
+            .Returns(new WorkgroupMutationResult());
+        service.CreateDocumentAsync(group.Id, actor, Arg.Any<WorkgroupDocumentSave>(), Ct)
+            .Returns(new WorkgroupMutationResult<Guid>(Guid.NewGuid()));
+        service.UpdateDocumentAsync(draft.Id, actor, Arg.Any<WorkgroupDocumentSave>(), Ct)
+            .Returns(new WorkgroupMutationResult());
+        var controller = BuildController(actor, isBoard: false, service);
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["Slug"] = group.Slug,
+            ["Title"] = "Progress",
+            ["Body"] = "A real update",
+            ["Kind"] = document ? "0" : nameof(WorkgroupLogKind.Update),
+            ["OccurredOn"] = "2026-06-02"
+        };
+        if (editing) fields["Id"] = (document ? draft.Id : entry.Id).ToString();
+        if (missingField is not null) fields.Remove(missingField);
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(
+            document ? typeof(DocumentFormViewModel) : typeof(LogEntryFormViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = document
+            ? await controller.SaveDocument(group.Slug, (DocumentFormViewModel)model, Ct)
+            : await controller.SaveLogEntry(group.Slug, (LogEntryFormViewModel)model, Ct);
+
+        if (missingField is not null)
+        {
+            controller.ModelState[missingField]!.Errors.Should().NotBeEmpty();
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            await service.DidNotReceiveWithAnyArgs().AddLogEntryAsync(default, default, default!);
+            await service.DidNotReceiveWithAnyArgs().UpdateLogEntryAsync(default, default, default!);
+            await service.DidNotReceiveWithAnyArgs().CreateDocumentAsync(default, default, default!);
+            await service.DidNotReceiveWithAnyArgs().UpdateDocumentAsync(default, default, default!);
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (document)
+                ((DocumentFormViewModel)model).Kind.Should().Be(WorkgroupDocumentKind.Deliverable);
+            else
+            {
+                ((LogEntryFormViewModel)model).OccurredOn.Should().Be(new LocalDate(2026, 6, 2));
+                ((LogEntryFormViewModel)model).Kind.Should().Be(WorkgroupLogKind.Update);
+            }
+        }
+    }
+
+    [HumansTheory]
     [InlineData("IsRecurring")]
     [InlineData("IsPublic")]
     [InlineData(null)]
