@@ -1,6 +1,5 @@
 using static Humans.Workgroups.Services.WorkgroupJournal;
 using Humans.AuditLog.Contracts;
-using Humans.Calendar.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Helpers;
@@ -16,41 +15,10 @@ internal sealed partial class WorkgroupService
 {
     private static WorkgroupInfo ToInfo(Workgroup w) => WorkgroupRegisterReader.ToInfo(w);
 
-    private async Task<WorkgroupMutationResult<WorkgroupMeeting>> RequireLiveMeetingAsync(Guid meetingId, CancellationToken ct)
-    {
-        var meeting = await repository.GetMeetingAsync(meetingId, ct);
-        return meeting is { DeletedAt: null }
-            ? new(meeting)
-            : new(Refusal: new(WorkgroupErrorKeys.NotFound));
-    }
-
-    /// <summary>
-    /// The meeting id the entry keeps, or a refusal. Only meeting notes keep a link, and a new link must name one of
-    /// the group's live meetings; an unchanged link survives its meeting's deletion, so old notes stay editable.
-    /// </summary>
-    private async Task<WorkgroupMutationResult<Guid?>> ResolveMeetingLinkAsync(
-        Guid workgroupId, WorkgroupLogEntrySave save, CancellationToken ct, Guid? currentMeetingId = null)
-    {
-        if (save.Kind != WorkgroupLogKind.MeetingNotes || save.MeetingId is not { } meetingId) return new();
-        if (meetingId == currentMeetingId) return new(meetingId);
-        var meeting = await RequireLiveMeetingAsync(meetingId, ct);
-        return meeting.Value?.WorkgroupId == workgroupId ? new(meetingId) : new(Refusal: new(WorkgroupErrorKeys.NotFound));
-    }
-
     private static WorkgroupRefusal? RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
     {
         if (!allowed.Contains(w.Status))
             return new(WorkgroupErrorKeys.WrongStatus);
-        return null;
-    }
-
-    private static WorkgroupRefusal? RequireMemberKind(WorkgroupLogKind kind)
-    {
-        if (kind is not (WorkgroupLogKind.Update or WorkgroupLogKind.Disclosure
-            or WorkgroupLogKind.StatusRequested or WorkgroupLogKind.Note or WorkgroupLogKind.MeetingNotes))
-        {
-            return new(WorkgroupErrorKeys.SystemLogEntry);
-        }
         return null;
     }
 
@@ -95,27 +63,6 @@ internal sealed partial class WorkgroupService
         return null;
     }
 
-    private static WorkgroupRefusal? ValidateMeeting(WorkgroupMeetingSave save)
-    {
-        if (string.IsNullOrWhiteSpace(save.Title))
-            return new(WorkgroupErrorKeys.NameRequired);
-        if (save.EndUtc <= save.StartUtc)
-            return new(WorkgroupErrorKeys.WindowInvalid);
-        if (save.LocationUrl?.Trim().Length > 2000)
-            return new(WorkgroupErrorKeys.TextTooLong, 2000);
-        if (!string.IsNullOrWhiteSpace(save.LocationUrl) && WorkgroupRegisterReader.SafeHttpLink(save.LocationUrl) is null)
-            return new(WorkgroupErrorKeys.LocationUrlInvalid);
-        if (save.Description?.Trim().Length > 4000)
-            return new(WorkgroupErrorKeys.TextTooLong, 4000);
-        // The rule and its zone travel together: a rule without a zone can't say which 19:00 it repeats.
-        var hasRule = !string.IsNullOrWhiteSpace(save.RecurrenceRule);
-        if (hasRule != !string.IsNullOrWhiteSpace(save.RecurrenceTimezone)
-            || !CalendarRecurrence.IsValidRule(save.RecurrenceRule)
-            || (hasRule && (CalendarEventForm.TryResolveZone(save.RecurrenceTimezone) is null || RepeatsWithinADay(save.RecurrenceRule!))))
-            return new(WorkgroupErrorKeys.RecurrenceInvalid);
-        return null;
-    }
-
     private static void ApplyFields(
         Workgroup w,
         string name,
@@ -135,30 +82,6 @@ internal sealed partial class WorkgroupService
         w.TargetDate = targetDate;
         w.DiscordChannelUrl = Trimmed(discordChannelUrl);
         w.IsSensitive = isSensitive ? true : null;
-    }
-
-    // The group page and the daily job expand a series from its start, so a sub-daily rule would
-    // build an occurrence per second or minute; nobody meets that often.
-    private static bool RepeatsWithinADay(string rule) =>
-        rule.Split(';').Any(part =>
-        {
-            var equals = part.IndexOf('=');
-            return equals >= 0
-                && string.Equals(part[..equals].Trim(), "FREQ", StringComparison.OrdinalIgnoreCase)
-                && part[(equals + 1)..].Trim().ToUpperInvariant() is "SECONDLY" or "MINUTELY" or "HOURLY";
-        });
-
-    private static void ApplyMeetingFields(WorkgroupMeeting meeting, WorkgroupMeetingSave save)
-    {
-        meeting.Title = save.Title.Trim();
-        meeting.StartUtc = save.StartUtc;
-        meeting.EndUtc = save.EndUtc;
-        meeting.Description = Trimmed(save.Description);
-        meeting.Location = Trimmed(save.Location);
-        meeting.LocationUrl = Trimmed(save.LocationUrl);
-        meeting.IsPublic = save.IsPublic;
-        meeting.RecurrenceRule = Trimmed(save.RecurrenceRule);
-        meeting.RecurrenceTimezone = meeting.RecurrenceRule is null ? null : save.RecurrenceTimezone!.Trim();
     }
 
     private static WorkgroupMember NewMember(

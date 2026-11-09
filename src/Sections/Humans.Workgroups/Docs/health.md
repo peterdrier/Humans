@@ -127,8 +127,8 @@ loader and must not be gated. The group-loading methods take the check from the 
 - **A bulk answer never overwrites an individual one.** The per-category response touches only
   still-Pending, non-hidden comments (`Services/WorkgroupDocumentWorkflow.cs`).
 - **System log entries never change.** Editing or deleting checks the stored kind as well as the
-  posted one (`Services/WorkgroupService.cs:544`, `Services/WorkgroupService.cs:573`) against
-  the four kinds a human may write (`Services/WorkgroupService.Helpers.cs:153`).
+  posted one (`Services/WorkgroupActivity.cs`, `Services/WorkgroupActivity.cs`) against
+  the four kinds a human may write (`Services/WorkgroupActivity.cs`).
 - **A slug never shadows a route.** The reserve loop skips the reserved segments and any slug
   already taken (`Services/WorkgroupService.Helpers.cs:290`), after trimming to the column's
   budget (`Services/WorkgroupService.Helpers.cs:285`).
@@ -145,7 +145,7 @@ loader and must not be gated. The group-loading methods take the check from the 
 ## 5. Seams
 
 - **`WorkgroupLogKind.SurveySent` is declared and never written.** Only `SurveySubmitted` is
-  (`Services/WorkgroupService.cs:603`). The send half of the survey lane is reserved, not built.
+  (`Services/WorkgroupActivity.cs`). The send half of the survey lane is reserved, not built.
 - **`WorkgroupOperationRequirement.Read` has no production caller.** The handler answers it and
   only the tests ask; the register is gated by `PolicyNames.AppAccess` at the controller.
 
