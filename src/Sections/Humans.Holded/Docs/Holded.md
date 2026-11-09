@@ -271,3 +271,5 @@ Connector DTOs expose consumed fields only; usage reads contain the API period a
 the 2026-10-30 Holded section-flow record (phase 1 built the reads and
 pages; phase 2 moved every outside caller off `IHoldedClient`). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
+
+Internal `HoldedMirrorSync` owns chart/ledger/account/document/note/contact/bank mirror synchronization, shared gates, reconciliation, call-log persistence and failure reporting. `Service` retains its read APIs and forwards sync entry points; the existing `HoldedAccountReader` owns the balance query shared with reconciliation. Sync budgets, window conversion, request order, gates, replacement semantics, timestamps, cancellation, error preservation and logger category are unchanged. Summary reads reuse call-log draining and the same Madrid timezone; no public contract, job signature or DI registration is added.
