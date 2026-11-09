@@ -26,9 +26,9 @@ internal sealed class TeamResourceGoogleClient(
     {
         using var timer = logger.TimeOperation();
         _ = expectFolder; // Ignored: the real connector uses the MIME type returned by Drive.
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var request = drive.Files.Get(itemId);
             request.Fields = "id, name, webViewLink, mimeType, parents, driveId";
             request.SupportsAllDrives = true;
@@ -58,14 +58,19 @@ internal sealed class TeamResourceGoogleClient(
                 Item: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error looking up Drive item {ItemId}", itemId);
+            return new DriveLookupResult(Item: null, Error: new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GroupLookupResult> LookupGroupAsync(string groupEmail, CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
         try
         {
-            var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var lookupRequest = cloudIdentity.Groups.Lookup();
             lookupRequest.GroupKeyId = groupEmail;
             var lookupResponse = await lookupRequest.ExecuteAsync(ct);
@@ -99,6 +104,11 @@ internal sealed class TeamResourceGoogleClient(
             return new GroupLookupResult(
                 Group: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning(ex, "Transport error looking up Group {GroupEmail}", groupEmail);
+            return new GroupLookupResult(Group: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 
