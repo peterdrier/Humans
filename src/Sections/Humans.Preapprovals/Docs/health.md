@@ -95,4 +95,4 @@ the route's program (`PREAPPROVALS-2`).
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-09 | First doctoring: the amount-changed email preview shows the old amount; admin visibility asks the program handler; the invariant doc states rules, not review rounds | pending |
+| 1 | 2026-11-09 | First doctoring: the amount-changed email preview shows the old amount; admin visibility asks the program handler; the invariant doc states rules, not review rounds | peterdrier/Humans#2350 |
