@@ -461,7 +461,7 @@ internal sealed class ShiftManagementService(
         {
             foreach (var slot in input.TimeSlots)
             {
-                toInsert.Add(new Shift
+                var shift = new Shift
                 {
                     Id = Guid.NewGuid(),
                     RotaId = input.RotaId,
@@ -473,7 +473,10 @@ internal sealed class ShiftManagementService(
                     MaxVolunteers = input.MaxVolunteers,
                     CreatedAt = now,
                     UpdatedAt = now
-                });
+                };
+                if (GetShiftScheduleRefusal(shift.DayOffset, shift.StartTime, shift.Duration, shift.IsAllDay, es) is { } refusal)
+                    return ShiftGenerationResult.Failure(refusal);
+                toInsert.Add(shift);
             }
         }
 
@@ -526,6 +529,9 @@ internal sealed class ShiftManagementService(
             UpdatedAt = now
         };
 
+        if (GetShiftScheduleRefusal(shift.DayOffset, shift.StartTime, shift.Duration, shift.IsAllDay, es) is { } scheduleRefusal)
+            return ShiftMutationResult.Failure(scheduleRefusal);
+
         try
         {
             await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
@@ -569,6 +575,26 @@ internal sealed class ShiftManagementService(
         return null;
     }
 
+    private static string? GetShiftScheduleRefusal(
+        int dayOffset, LocalTime startTime, Duration duration, bool isAllDay, IEventSettingsInfo settings)
+    {
+        const string refusal = "Shift start and end must fit within years 0001–9999 in UTC and the event timezone.";
+        try
+        {
+            var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
+            var start = Shift.ResolveAbsoluteStart(dayOffset, startTime, isAllDay, settings);
+            var end = Shift.ResolveAbsoluteEnd(dayOffset, startTime, duration, isAllDay, settings);
+            return start.InUtc().Year < 1 || start.InZone(zone).Year < 1
+                || end.InUtc().Year < 1 || end.InZone(zone).Year < 1
+                ? refusal
+                : null;
+        }
+        catch (Exception ex) when (ex is OverflowException or ArgumentOutOfRangeException)
+        {
+            return refusal;
+        }
+    }
+
     private static (int Start, int End) GetRotaDayOffsetBounds(RotaPeriod period, BurnSettingsInfo es) =>
         period switch
         {
@@ -595,10 +621,14 @@ internal sealed class ShiftManagementService(
                 input.DurationHours, shift.IsAllDay) is { } refusal)
             return ShiftMutationResult.Failure(refusal);
 
+        var duration = Duration.FromHours(input.DurationHours);
+        if (GetShiftScheduleRefusal(input.DayOffset, input.StartTime, duration, shift.IsAllDay, es) is { } scheduleRefusal)
+            return ShiftMutationResult.Failure(scheduleRefusal);
+
         shift.Description = input.Description;
         shift.DayOffset = input.DayOffset;
         shift.StartTime = input.StartTime;
-        shift.Duration = Duration.FromHours(input.DurationHours);
+        shift.Duration = duration;
         shift.MinVolunteers = input.MinVolunteers;
         shift.MaxVolunteers = input.MaxVolunteers;
         shift.AdminOnly = input.AdminOnly;

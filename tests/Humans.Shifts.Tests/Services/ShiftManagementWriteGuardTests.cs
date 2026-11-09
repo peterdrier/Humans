@@ -880,6 +880,65 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansTheory]
+    [InlineData("create", false, 100_000_000d, false)]
+    [InlineData("update", false, 100_000_000d, false)]
+    [InlineData("event", false, 100_000_000d, false)]
+    [InlineData("create", false, 72d, true)]
+    [InlineData("update", false, 72d, true)]
+    [InlineData("event", false, 72d, true)]
+    [InlineData("create", true, 40d, false)]
+    [InlineData("update", true, 40d, false)]
+    [InlineData("event", true, 40d, false)]
+    [InlineData("create", true, 39d, true)]
+    [InlineData("update", true, 39d, true)]
+    [InlineData("event", true, 39d, true)]
+    public async Task ShiftWrites_KeepAbsoluteAndLocalEndsWithinTheCalendar(
+        string action, bool nearCalendarEnd, double hours, bool expectedSuccess)
+    {
+        var (calendar, rota, _) = SeedRotaScenario(RotaPeriod.Event);
+        if (nearCalendarEnd)
+        {
+            calendar.GateOpeningDate = new LocalDate(9999, 12, 30);
+            calendar.EventEndOffset = 0;
+            calendar.StrikeEndOffset = 0;
+        }
+        var original = string.Equals(action, "update", StringComparison.Ordinal) ? SeedShift(rota, 0) : null;
+        var originalDescription = original?.Description;
+        await SaveAllAsync(Ct);
+
+        var succeeded = action switch
+        {
+            "create" => (await _service.CreateShiftAsync(NewShiftInput(rota, 0) with { DurationHours = hours })).Succeeded,
+            "update" => (await _service.UpdateShiftAsync(NewUpdateInput(original!, rota.TeamId, 0) with
+                { DurationHours = hours, Description = "Changed schedule" })).Succeeded,
+            _ => (await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(rota.Id, rota.TeamId, 0, 0,
+                [new ShiftTimeSlotInput(new LocalTime(8, 0), 4), new ShiftTimeSlotInput(new LocalTime(8, 0), hours)], 1, 2))).Succeeded
+        };
+
+        succeeded.Should().Be(expectedSuccess);
+        ShiftsDb.ChangeTracker.Clear();
+        var rows = await ShiftsDb.Shifts.ToListAsync(Ct);
+        if (expectedSuccess)
+        {
+            rows.Should().Contain(row => row.Duration == Duration.FromHours(hours));
+            var resolvedCalendar = await NewCalendarResolver().GetAsync(calendar.Id, Ct);
+            foreach (var row in rows)
+            {
+                var end = row.GetAbsoluteEnd(resolvedCalendar!);
+                end.InUtc().Year.Should().BeInRange(1, 9999);
+                end.InZone(DateTimeZoneProviders.Tzdb[calendar.TimeZoneId]).Year.Should().BeInRange(1, 9999);
+            }
+        }
+        else if (original is null) rows.Should().BeEmpty();
+        else
+        {
+            var unchanged = rows.Should().ContainSingle().Subject;
+            unchanged.Duration.Should().Be(Duration.FromHours(4));
+            unchanged.Description.Should().Be(originalDescription);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(false, double.NaN)]
     [InlineData(true, double.NaN)]
     [InlineData(false, double.PositiveInfinity)]
