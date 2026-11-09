@@ -19,6 +19,6 @@ description: "`[DontFix]` marks a permanent, Peter-only analyzer exception — a
 
 **Analyzer authors:** emit nothing for a class carrying `[DontFix]` with the matching `RuleId` (`RuleId` is optional — a permanent exception may pre-date its analyzer).
 
-**Current holders:** `AuditLogService` and `RoleAssignmentService` — crosscut→vertical reads pending the audit/auth orchestrator inversion (see [[crosscut-purity]]).
+**Current holders:** `AuditLogService` — crosscut→vertical reads pending the audit orchestrator inversion (see [[crosscut-purity]]).
 
 Lives at `src/Humans.Application/Architecture/DontFixAttribute.cs`.

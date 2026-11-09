@@ -85,7 +85,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 | RoleName | string (max 256) | Role name (see constants below) |
 | ValidFrom | Instant | When the role became active |
 | ValidTo | Instant? | When the role ended (null for currently active) |
-| Notes | string? (max 2000) | Free-text reason recorded at assign / end time (end notes are appended as `Ended: …`) |
+| Notes | string? (max 2000) | Free-text reason recorded at assign / end time (end notes are appended as `Ended: …`); an assign or end whose resulting notes exceed 2000 characters is refused (`NotesTooLong`) before any write |
 | CreatedAt | Instant | When the row was written |
 
 **Constraints / indexes:** `CK_role_assignments_valid_window` (`ValidTo IS NULL OR ValidTo > ValidFrom`); indexes on `UserId`, `RoleName`, `(UserId, RoleName, ValidFrom)`, plus a partial index on `(UserId, RoleName)` filtered to `ValidTo IS NULL` for active-row lookups.

@@ -202,6 +202,43 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     }
 
     [HumansFact]
+    public async Task AssignRoleAsync_NotesOverColumnLimit_RefusedWithoutWriting()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target");
+
+        var refused = await _service.AssignRoleAsync(
+            userId, RoleNames.Board, Guid.NewGuid(), new string('x', 2001), ct);
+        var accepted = await _service.AssignRoleAsync(
+            userId, RoleNames.Admin, Guid.NewGuid(), new string('x', 2000), ct);
+
+        refused.ErrorKey.Should().Be("NotesTooLong");
+        accepted.Success.Should().BeTrue();
+        (await AuthDb.RoleAssignments.AsNoTracking().Where(r => r.UserId == userId)
+            .Select(r => r.RoleName).ToListAsync(ct)).Should().Equal(RoleNames.Admin);
+    }
+
+    [HumansFact]
+    public async Task EndRoleAsync_AppendedNotesOverColumnLimit_RefusedAndRoleStaysActive()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target");
+        var existingNotes = new string('x', 1990);
+        var assignment = await AddAssignmentAsync(
+            userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null,
+            notes: existingNotes);
+
+        var result = await _service.EndRoleAsync(assignment.Id, Guid.NewGuid(), "stepping down", ct);
+
+        result.ErrorKey.Should().Be("NotesTooLong");
+        var row = await AuthDb.RoleAssignments.AsNoTracking().SingleAsync(r => r.Id == assignment.Id, ct);
+        row.ValidTo.Should().BeNull();
+        row.Notes.Should().Be(existingNotes);
+    }
+
+    [HumansFact]
     public async Task EndRoleAsync_AlreadyEnded_ReturnsRoleNotActive()
     {
         var userId = Guid.NewGuid();
@@ -656,7 +693,8 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     }
 
     private async Task<RoleAssignment> AddAssignmentAsync(
-        Guid userId, string roleName, Instant validFrom, Instant? validTo, Guid? createdByUserId = null)
+        Guid userId, string roleName, Instant validFrom, Instant? validTo, Guid? createdByUserId = null,
+        string? notes = null)
     {
         var assignment = new RoleAssignment
         {
@@ -666,7 +704,8 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             ValidFrom = validFrom,
             ValidTo = validTo,
             CreatedAt = validFrom,
-            CreatedByUserId = createdByUserId ?? Guid.NewGuid()
+            CreatedByUserId = createdByUserId ?? Guid.NewGuid(),
+            Notes = notes
         };
 
         AuthDb.RoleAssignments.Add(assignment);
