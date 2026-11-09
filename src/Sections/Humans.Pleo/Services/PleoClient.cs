@@ -206,7 +206,7 @@ internal sealed class PleoClient : IPleoClient
             if (status >= 500 || resp.StatusCode == HttpStatusCode.TooManyRequests)
                 throw new PleoTransientException(label);
             var body = await resp.Content.ReadAsStringAsync(ct);
-            throw new PleoPermanentException($"{label}: {body[..Math.Min(body.Length, 300)]}", status);
+            throw new PleoPermanentException($"{label}: {PleoTextBounds.Bound(body, 300)}", status);
         }
     }
 }

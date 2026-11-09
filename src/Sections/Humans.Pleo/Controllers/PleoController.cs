@@ -104,8 +104,8 @@ internal sealed class PleoController(
     [HttpPost("Categories/Link")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Link(string pleoCategoryId, Guid categoryId, CancellationToken ct) =>
-        CategoryActionAsync((userId, c) => pleo.LinkCategoryAsync(pleoCategoryId, categoryId, userId, c),
+    public Task<IActionResult> Link(string? pleoCategoryId, Guid categoryId, CancellationToken ct) =>
+        CategoryActionAsync((userId, c) => pleo.LinkCategoryAsync(pleoCategoryId ?? "", categoryId, userId, c),
             "Category linked.", ct);
 
     [HttpPost("Categories/Unlink")]

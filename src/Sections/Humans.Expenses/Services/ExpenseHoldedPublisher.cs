@@ -268,7 +268,7 @@ internal sealed class ExpenseHoldedPublisher(
         if (line.Attachment.HoldedUploadedAt is not null) return;
 
         var bytes = await fileStorage.TryReadAsync(
-            ExpenseReportService.AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
+            ExpenseAttachments.AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
         if (bytes is null)
             throw new InvalidOperationException(
                 $"Attachment file for {line.Attachment.Id}{line.Attachment.Extension} could not be read from storage.");

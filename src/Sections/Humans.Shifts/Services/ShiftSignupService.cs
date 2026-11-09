@@ -35,7 +35,7 @@ internal sealed class ShiftSignupService(
 {
     private readonly ShiftSignupNotices notices = new(notificationService, calendarResolver, users, serviceProvider, logger);
     private readonly ShiftSignupPersonalData personalData = new(repo, trackingRepo, calendarResolver, users, serviceProvider, localizer);
-    private readonly ShiftRangeSelection rangeSelection = new(repo, calendarResolver, localizer);
+    private readonly ShiftSignupSelection signupSelection = new(repo, calendarResolver, localizer, serviceProvider);
     // Released after the enrollment save, before audit and notices; refusals and failures release via using.
     private static readonly TrackedLock EnrollmentLock = new("Shifts.Enrollment");
 
@@ -45,9 +45,6 @@ internal sealed class ShiftSignupService(
     internal const string GeneralAvailability = ShiftSignupPersonalData.GeneralAvailability;
     internal const string VolunteerBuildStatuses = ShiftSignupPersonalData.VolunteerBuildStatuses;
     internal const string ShiftTagPreferences = ShiftSignupPersonalData.ShiftTagPreferences;
-
-    // Lazy, to break the DI cycle with TeamService.
-    private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
 
     public async Task<SignupResult> SignUpAsync(
         Guid userId,
@@ -85,7 +82,7 @@ internal sealed class ShiftSignupService(
         if (shift.IsEarlyEntry && calendar.IsEarlyEntryClosed(now) && !isPrivileged)
             return SignupResult.Fail(localizer["Shifts_Signup_EarlyEntryClosed"]);
 
-        var overlapWarning = await CheckOverlapAsync(userId, shift, calendar);
+        var overlapWarning = await signupSelection.CheckOverlapAsync(userId, shift, calendar);
         if (overlapWarning is not null)
             return SignupResult.Fail(overlapWarning);
 
@@ -96,7 +93,7 @@ internal sealed class ShiftSignupService(
 
         if (shift.IsEarlyEntry)
         {
-            var eeWarning = await CheckEeCapAsync(calendar, shift.DayOffset);
+            var eeWarning = await signupSelection.CheckEeCapAsync(calendar, shift.DayOffset);
             if (eeWarning is not null)
                 warning = warning is null ? eeWarning : $"{warning} {eeWarning}";
         }
@@ -147,7 +144,7 @@ internal sealed class ShiftSignupService(
         var calendar = await calendarResolver.GetAsync(signup.Shift.Rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
 
-        var overlapWarning = await CheckOverlapAsync(signup.UserId, signup.Shift, calendar);
+        var overlapWarning = await signupSelection.CheckOverlapAsync(signup.UserId, signup.Shift, calendar);
         string? warning = null;
         if (overlapWarning is not null)
             warning = $"Warning: {overlapWarning}";
@@ -158,7 +155,7 @@ internal sealed class ShiftSignupService(
 
         if (signup.Shift.IsEarlyEntry)
         {
-            var eeWarning = await CheckEeCapAsync(calendar, signup.Shift.DayOffset);
+            var eeWarning = await signupSelection.CheckEeCapAsync(calendar, signup.Shift.DayOffset);
             if (eeWarning is not null)
                 warning = warning is null ? $"Warning: {eeWarning}" : $"{warning} {eeWarning}";
         }
@@ -309,7 +306,7 @@ internal sealed class ShiftSignupService(
         if (confirmedCount >= shift.MaxVolunteers)
             return SignupResult.Fail(localizer["Shifts_Signup_AtCapacity"]);
 
-        var overlapWarning = await CheckOverlapAsync(userId, shift, calendar);
+        var overlapWarning = await signupSelection.CheckOverlapAsync(userId, shift, calendar);
         if (overlapWarning is not null)
             return SignupResult.Fail(overlapWarning);
 
@@ -356,7 +353,7 @@ internal sealed class ShiftSignupService(
         var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.Shifts);
         if (rota is null) return SignupResult.Fail(localizer["Shifts_Signup_RotaNotFound"]);
 
-        var shiftsInRange = ShiftRangeSelection.SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
+        var shiftsInRange = ShiftSignupSelection.SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
         if (shiftsInRange.Count == 0)
             return SignupResult.Fail(localizer["Shifts_Signup_RangeEmpty"]);
@@ -373,8 +370,8 @@ internal sealed class ShiftSignupService(
 
         var calendar = await calendarResolver.GetAsync(rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
-        var existingSignups = await GetActiveUserSignupsAsync(userId);
-        var conflictingDays = await rangeSelection.GetConflictingRangeDaysAsync(shiftsToAssign, existingSignups, calendar);
+        var existingSignups = await signupSelection.GetActiveUserSignupsAsync(userId);
+        var conflictingDays = await signupSelection.GetConflictingRangeDaysAsync(shiftsToAssign, existingSignups, calendar);
         var assignable = shiftsToAssign.Where(s => !conflictingDays.Contains(s.DayOffset)).ToList();
         var skippedOverlaps = shiftsToAssign.Count - assignable.Count;
 
@@ -562,18 +559,18 @@ internal sealed class ShiftSignupService(
             return SignupResult.Fail(localizer["Shifts_Signup_EarlyEntryClosed"]);
         }
 
-        var shiftsInRange = ShiftRangeSelection.SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
+        var shiftsInRange = ShiftSignupSelection.SelectAllDayRangeShifts(rota, startDayOffset, endDayOffset);
 
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
             return SignupResult.Fail(localizer["Shifts_Signup_RangeRestricted"]);
 
-        var existingSignups = await GetActiveUserSignupsAsync(userId);
+        var existingSignups = await signupSelection.GetActiveUserSignupsAsync(userId);
 
-        var duplicateSelection = rangeSelection.PruneDuplicateRangeShifts(shiftsInRange, existingSignups, calendar, skipConflicts);
+        var duplicateSelection = signupSelection.PruneDuplicateRangeShifts(shiftsInRange, existingSignups, calendar, skipConflicts);
         if (duplicateSelection.Failure is not null)
             return duplicateSelection.Failure;
 
-        var conflictSelection = await rangeSelection.PruneConflictingRangeShiftsAsync(
+        var conflictSelection = await signupSelection.PruneConflictingRangeShiftsAsync(
             duplicateSelection.Shifts,
             existingSignups,
             calendar,
@@ -588,7 +585,7 @@ internal sealed class ShiftSignupService(
                 ? SignupResult.Fail(string.Join(" ", conflictSelection.Warnings) + " " + localizer["Shifts_Signup_RangeNothingToAdd"].Value)
                 : SignupResult.Fail(localizer["Shifts_Signup_RangeEmpty"]);
 
-        var capacitySelection = await rangeSelection.SelectCapacityAvailableRangeShiftsAsync(shiftsInRange);
+        var capacitySelection = await signupSelection.SelectCapacityAvailableRangeShiftsAsync(shiftsInRange);
         if (capacitySelection.AvailableShifts.Count == 0)
             return SignupResult.Fail(localizer["Shifts_Signup_RangeAtCapacity"]);
 
@@ -597,7 +594,7 @@ internal sealed class ShiftSignupService(
             : null;
         if (capacitySelection.FullDayOffsets.Count > 0)
         {
-            var dayList = ShiftRangeSelection.FormatRangeDayList(calendar, capacitySelection.FullDayOffsets);
+            var dayList = ShiftSignupSelection.FormatRangeDayList(calendar, capacitySelection.FullDayOffsets);
             warning = AppendRangeWarning(warning, localizer["Shifts_Signup_RangeCapacityDays", dayList].Value);
         }
 
@@ -659,7 +656,7 @@ internal sealed class ShiftSignupService(
                      .Distinct()
                      .OrderBy(day => day))
         {
-            var eeWarning = await CheckEeCapAsync(eventSettings, dayOffset);
+            var eeWarning = await signupSelection.CheckEeCapAsync(eventSettings, dayOffset);
             if (eeWarning is not null)
                 fullEeDays.Add(dayOffset);
         }
@@ -667,7 +664,7 @@ internal sealed class ShiftSignupService(
         if (fullEeDays.Count == 0)
             return warning;
 
-        var eeDayList = ShiftRangeSelection.FormatRangeDayList(eventSettings, fullEeDays);
+        var eeDayList = ShiftSignupSelection.FormatRangeDayList(eventSettings, fullEeDays);
         return AppendRangeWarning(warning, localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", eeDayList].Value);
     }
 
@@ -756,11 +753,11 @@ internal sealed class ShiftSignupService(
         var calendar = await calendarResolver.GetAsync(signups[0].Shift.Rota.EventSettingsId);
         if (calendar is null) return SignupResult.Fail(localizer["Shifts_EventCalendarNotConfigured"]);
 
-        var existingSignups = await GetActiveUserSignupsAsync(signups[0].UserId);
-        var conflictingDays = await rangeSelection.GetConflictingRangeDaysAsync(
+        var existingSignups = await signupSelection.GetActiveUserSignupsAsync(signups[0].UserId);
+        var conflictingDays = await signupSelection.GetConflictingRangeDaysAsync(
             signups.Select(s => s.Shift).ToList(), existingSignups, calendar);
         if (conflictingDays.Count > 0)
-            warnings.Add(localizer["Shifts_Signup_RangeConflictDays", ShiftRangeSelection.FormatRangeDayList(calendar, conflictingDays)].Value);
+            warnings.Add(localizer["Shifts_Signup_RangeConflictDays", ShiftSignupSelection.FormatRangeDayList(calendar, conflictingDays)].Value);
 
         foreach (var signup in signups)
         {
@@ -773,7 +770,7 @@ internal sealed class ShiftSignupService(
 
             if (signup.Shift.IsEarlyEntry)
             {
-                var eeWarning = await CheckEeCapAsync(calendar, signup.Shift.DayOffset);
+                var eeWarning = await signupSelection.CheckEeCapAsync(calendar, signup.Shift.DayOffset);
                 if (eeWarning is not null)
                     warnings.Add(eeWarning);
             }
@@ -955,72 +952,6 @@ internal sealed class ShiftSignupService(
 
     public Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default) =>
         personalData.GetNoShowHistoryAsync(userId, ct);
-
-    private async Task<IReadOnlyList<ShiftSignup>> GetActiveUserSignupsAsync(Guid userId)
-    {
-        var signups = await repo.GetForUsersAsync([userId]);
-        return signups
-            .Where(signup => signup.Status is SignupStatus.Pending or SignupStatus.Confirmed)
-            .ToList();
-    }
-
-    private async Task<string?> CheckOverlapAsync(Guid userId, Shift targetShift, BurnSettingsInfo es)
-    {
-        var targetStart = targetShift.GetAbsoluteStart(es);
-        var targetEnd = targetShift.GetAbsoluteEnd(es);
-
-        var userSignups = await GetActiveUserSignupsAsync(userId);
-
-        IReadOnlyDictionary<Guid, string>? teamNames = null;
-
-        foreach (var existing in userSignups)
-        {
-            if (existing.ShiftId == targetShift.Id) continue;
-            if (existing.Status != SignupStatus.Confirmed) continue;
-
-            var existingEs = await calendarResolver.GetAsync(existing.Shift.Rota.EventSettingsId);
-            if (existingEs is null) continue;
-            var existingStart = existing.Shift.GetAbsoluteStart(existingEs);
-            var existingEnd = existing.Shift.GetAbsoluteEnd(existingEs);
-
-            if (targetStart < existingEnd && targetEnd > existingStart)
-            {
-                var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
-                var dateStr = existingStart.InZone(tz).ToDateTimeUnspecified().ToMonthDayTime();
-
-                if (teamNames is null)
-                {
-                    var teamsById = await TeamService.GetTeamsAsync();
-                    teamNames = userSignups
-                        .Select(s => s.Shift.Rota.TeamId)
-                        .Distinct()
-                        .Where(teamsById.ContainsKey)
-                        .ToDictionary(id => id, id => teamsById[id].Name);
-                }
-                var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, localizer["Shifts_Signup_UnknownTeam"]);
-
-                return localizer["Shifts_Signup_TimeConflict", existing.Shift.Rota.Name, teamName, dateStr];
-            }
-        }
-
-        return null;
-    }
-
-    private async Task<string?> CheckEeCapAsync(BurnSettingsInfo es, int dayOffset)
-    {
-        var availableSlots = EarlyEntryCapacityCalculator.GetAvailableEeSlots(es, dayOffset);
-        if (availableSlots <= 0)
-            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", ShiftRangeSelection.FormatRangeDayList(es, [dayOffset])];
-
-        var currentEeCount = (await repo
-            .GetUserIdsForDayAsync(es.Id, dayOffset, ShiftDayUserStatusScope.ConfirmedOnly))
-            .Count;
-
-        if (currentEeCount >= availableSlots)
-            return localizer["Shifts_Signup_RangeEarlyEntryCapacityDays", ShiftRangeSelection.FormatRangeDayList(es, [dayOffset])];
-
-        return null;
-    }
 
     private async Task<Guid?> ResolveVoluntellTargetAsync(Guid userId)
     {

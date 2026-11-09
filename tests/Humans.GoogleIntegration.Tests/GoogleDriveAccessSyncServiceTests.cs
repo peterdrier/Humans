@@ -474,26 +474,35 @@ public sealed class GoogleDriveAccessSyncServiceTests
             ct: Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ReconcileOneAsync_RefusedPlusAndBaseAddress_ReportsTheOriginalFailure()
+    [HumansTheory]
+    [Xunit.InlineData("alice", "al")]
+    [Xunit.InlineData("a😀lice", "a")]
+    [Xunit.InlineData("😀lice", "😀")]
+    [Xunit.InlineData("a", "a")]
+    public async Task ReconcileOneAsync_RefusedPlusAndBaseAddress_ReportsTheOriginalFailure(string localPart, string retainedPrefix)
     {
         var alice = Guid.NewGuid();
+        var email = $"{localPart}+burn@example.org";
+        var baseEmail = $"{localPart}@example.org";
         var service = CreateService(new StaticSource("folder-1", (alice, DrivePermissionLevel.Contributor)));
-        StubUsers((alice, "Alice", "alice+burn@example.org"));
+        StubUsers((alice, "Alice", email));
         StubFolder("folder-1");
-        _drivePermissions.CreatePermissionAsync("folder-1", "alice+burn@example.org", "writer", Arg.Any<CancellationToken>())
+        _drivePermissions.CreatePermissionAsync("folder-1", email, "writer", Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.Failed, new GoogleClientError(400, "The recipient has no Google account")));
-        _drivePermissions.CreatePermissionAsync("folder-1", "alice@example.org", "writer", Arg.Any<CancellationToken>())
+        _drivePermissions.CreatePermissionAsync("folder-1", baseEmail, "writer", Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(
                 DrivePermissionCreateOutcome.Failed, new GoogleClientError(400, "The recipient has no Google account")));
 
         var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
-        diff.ErrorMessage.Should().Contain("al***+burn@example.org");
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(diff.ErrorMessage!);
+        encode.Should().NotThrow();
+        diff.ErrorMessage.Should().Contain($"{retainedPrefix}***+burn@example.org");
+        diff.ErrorMessage.Should().NotContain(email);
         await _identities.DidNotReceiveWithAnyArgs().SetDriveEmailFromSyncAsync(default, default!, default!, default);
         await _identities.Received(1).SetStatusFromSyncAsync(
-            alice, "alice+burn@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
+            alice, email, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

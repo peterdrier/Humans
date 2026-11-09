@@ -92,7 +92,7 @@
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <vc:human user-id="@id" link="None" />
                             <input type="hidden" name="ManagerUserIds" value="@id" />
-                            <button type="button" class="btn btn-sm btn-outline-secondary grants-remove">✕</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary human-selection-remove">✕</button>
                         </li>
                     }
                 </ul>
@@ -107,6 +107,7 @@
     </div>
 </div>
 
+@section Scripts {
 <script>
 (function () {
     var issuer = document.getElementById('grants-issuer');
@@ -115,34 +116,10 @@
     issuer.addEventListener('change', toggle);
     toggle();
 
-    var list = document.getElementById('grants-managers');
-    list.querySelectorAll('.grants-remove').forEach(function (b) {
-        b.addEventListener('click', function () { b.closest('li').remove(); });
-    });
-    document.getElementById('grants-add-manager').addEventListener('click', function () {
-        var hidden = document.getElementById('human-search-hidden-manager');
-        var text = document.getElementById('human-search-manager');
-        var id = hidden.value;
-        if (!id || list.querySelector('input[value="' + id + '"]')) return;
-        var item = document.createElement('li');
-        item.className = 'list-group-item d-flex justify-content-between align-items-center';
-        var label = document.createElement('span');
-        label.textContent = text.value;
-        var input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'ManagerUserIds';
-        input.value = id;
-        var remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'btn btn-sm btn-outline-secondary';
-        remove.textContent = '✕';
-        remove.addEventListener('click', function () { item.remove(); });
-        item.appendChild(label);
-        item.appendChild(input);
-        item.appendChild(remove);
-        list.appendChild(item);
-        hidden.value = '';
-        text.value = '';
+    Humans.initHumanSelectionList({
+        addId: 'grants-add-manager', listId: 'grants-managers',
+        instanceKey: 'manager', fieldName: 'ManagerUserIds'
     });
 })();
 </script>
+}

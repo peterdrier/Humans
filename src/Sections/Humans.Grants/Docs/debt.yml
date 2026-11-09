@@ -1,16 +1,4 @@
 # Section debt ledger for Humans.Grants. Shape: memory/process/debt-ledger-additions.md.
 version: 1
 next_id: 4
-inbox:
-  - added: 2026-11-07
-    id: GRANTS-1
-    what: "GrantsAdminController.Index restates the program-manager visibility rule (user.AllUserIds.Any(p.IsManager)) beside a GrantsPolicies.Read check instead of asking ProgramAuthorizationHandler with ProgramOperationRequirement.View, as UserGrantsViewComponent already does; the rule lives in two places. Switching leaves GrantsPolicies.Read without a caller, so the fix also decides whether the Read/Manage policy pair stays (Preapprovals has the same shape, PREAPPROVALS-1). Found by the 2026-11-07 section-doctor run."
-    review: panel
-  - added: 2026-11-07
-    id: GRANTS-2
-    what: "Views/GrantsAdmin/Form.cshtml and Views/GrantsAdmin/Program.cshtml each carry a near-identical inline script that moves a human-search pick into a list of hidden inputs; one script, parameterised by field name, would serve both. Found by the 2026-11-07 section-doctor run."
-    review: light
-  - added: 2026-11-07
-    id: GRANTS-3
-    what: "The rule that a grant route outside its routed program is 404 lives only in GrantsAdminController.ManageAsync; IGrantManagement.RevokeGrantAsync and ResendNoticeAsync take only a grant id, so any other caller could act across programs. Moving the check into the service changes those two internal signatures. Found by the 2026-11-07 section-doctor run."
-    review: panel
+inbox: []

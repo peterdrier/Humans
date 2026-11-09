@@ -1,3 +1,4 @@
+using System.Globalization;
 using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Settings.Contracts;
@@ -33,7 +34,14 @@ internal sealed class UserParticipationBackfillService(
 
         if (!apply)
         {
-            var previewCsv = "UserId,Status\n" + string.Join("\n", entries.Select(e => $"{e.UserId},{e.Status}"));
+            using var preview = new StringWriter(CultureInfo.InvariantCulture);
+            using (var csv = CsvWriter.Create(preview, HumansCsv.WriteConfig(), leaveOpen: true))
+            {
+                csv.WriteRow("UserId", "Status");
+                foreach (var entry in entries)
+                    csv.WriteRow(entry.UserId, entry.Status);
+            }
+            var previewCsv = preview.ToString();
             return new ParticipationBackfillResult(true,
                 $"Review {entries.Count} valid participation row(s) for {year} before importing.", entries.Count, previewCsv);
         }
@@ -53,7 +61,6 @@ internal sealed class UserParticipationBackfillService(
         {
             if (csv.FieldCount < 2) continue;
             var first = csv.GetString(0);
-            if (string.Equals(first, "UserId", StringComparison.OrdinalIgnoreCase)) continue;
             if (!Guid.TryParse(first, out var userId)) continue;
             if (!Enum.TryParse<ParticipationStatus>(csv.GetString(1), ignoreCase: true, out var status) ||
                 !Enum.IsDefined(status)) continue;

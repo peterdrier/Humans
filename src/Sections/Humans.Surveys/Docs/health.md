@@ -87,15 +87,14 @@ the line that enforces it.
 
 - **Identity is written onto a response only for the Identified tier**; the other two tiers leave
   no link, and nothing downstream — results, export, API, drill-down — can re-attach one:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1189` writes it, `:1210` and `:1238`
-  refuse to, and the read paths honour the tier at `:1641` and `:1686`.
+  `SurveyResponseWorkflow.PersistResponseAsync` writes the identity only for Identified responses;
+  `SurveyResultsReader` and `SurveyDataExport` honour the tier on reads.
 - **No completion timestamp for a tracked-but-unlinked answer, and no `UpdatedAt` on the ledger**
   — a time is a join key: `src/Sections/Humans.Surveys/Domain/SurveyInvitation.cs:15`, with the
   shared epoch that keeps a public start uncorrelated at
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1016`.
+  `SurveyResponseWorkflow.NonCorrelatablePublicParticipationCreatedAt`.
 - **Branching is decided on the server at submit**; a hidden question's answer never lands:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:1151`, over the effective-state pass at
-  `:2194`.
+  `SurveyResponseWorkflow.PrepareSubmissionAsync`, over its `VisibleAnswers` effective-state pass.
 - **Sending is additive and idempotent** — the same audience resolved twice invites nobody twice,
   and never revokes: `src/Sections/Humans.Surveys/Services/SurveyService.cs:716`, with the
   re-queue-not-re-create branch at `:739`.
@@ -104,8 +103,8 @@ the line that enforces it.
   `:250` stamps them.
 - **Individual submissions are never audit-logged; survey lifecycle, sends and availability
   recounts always are**: the lifecycle writes sit at
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:544`, `:559`, `:787` and `:882`, and the
-  submit path at `:1180`–`:1237` has no `auditLog` call at all.
+  `src/Sections/Humans.Surveys/Services/SurveyService.cs:544`, `:559`, `:787` and `:882`, and
+  `SurveyResponseWorkflow` has no audit dependency or individual-submission audit call.
 - **Preview writes nothing to this section's tables** — no invitation, response, draft, reminder
   or funnel event. The rendering previews build view models and call no writing service method:
   `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs:242` through
@@ -135,7 +134,7 @@ the line that enforces it.
   `src/Sections/Humans.Surveys/Authorization/SurveyAuthorizationHandler.cs:30`.
 - **An Asociado vote is CompletionTracked only, targets the Asociados audience only, and checks
   eligibility at entry, on every page, and again at submit** — current status, not status at send:
-  `src/Sections/Humans.Surveys/Services/SurveyService.cs:972`, `:1270` and `:1132`.
+  `SurveyResponseWorkflow.ResolveAnswerContextAsync`, `AdvanceWizardAsync` and `PrepareSubmissionAsync`.
 - **Eligibility requires the stored id to be the live one.** A merged-away id resolves to an
   eligible survivor, and answering under it would give one Asociado two ballots:
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:958`.

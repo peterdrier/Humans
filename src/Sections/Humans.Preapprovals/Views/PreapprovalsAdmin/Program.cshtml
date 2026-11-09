@@ -209,6 +209,7 @@ else
     <partial name="_Table" model="grantsTable" />
 }
 
+@section Scripts {
 <script>
 (function () {
     var filter = document.getElementById('pre-status-filter');
@@ -221,43 +222,11 @@ else
         });
     }
 
-    // Issue-to-many: the picker fills the hidden input; "Add" moves it to the pending list.
-    var add = document.getElementById('pre-add-many');
-    if (!add) return;
-    var text = document.getElementById('human-search-many');
-    var hidden = document.getElementById('human-search-hidden-many');
-    var list = document.getElementById('pre-many-list');
-    var submit = document.getElementById('pre-many-submit');
-    var count = document.getElementById('pre-many-count');
-    function refresh() {
-        var n = list.children.length;
-        count.textContent = n;
-        submit.disabled = n === 0;
-    }
-    add.addEventListener('click', function () {
-        var id = hidden.value;
-        var name = text.value;
-        if (!id || list.querySelector('input[value="' + id + '"]')) return;
-        var item = document.createElement('li');
-        item.className = 'list-group-item d-flex justify-content-between align-items-center';
-        var label = document.createElement('span');
-        label.textContent = name;
-        var input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'userIds';
-        input.value = id;
-        var remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'btn btn-sm btn-outline-secondary';
-        remove.textContent = '✕';
-        remove.addEventListener('click', function () { item.remove(); refresh(); });
-        item.appendChild(label);
-        item.appendChild(input);
-        item.appendChild(remove);
-        list.appendChild(item);
-        hidden.value = '';
-        text.value = '';
-        refresh();
+    Humans.initHumanSelectionList({
+        addId: 'pre-add-many', listId: 'pre-many-list',
+        instanceKey: 'many', fieldName: 'userIds',
+        submitId: 'pre-many-submit', countId: 'pre-many-count'
     });
 })();
 </script>
+}

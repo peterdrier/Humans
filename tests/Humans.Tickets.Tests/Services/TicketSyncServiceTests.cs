@@ -8,6 +8,7 @@ using Humans.Tickets.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -73,6 +74,50 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             VendorEventId = string.Empty
         });
         SaveAll();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task FatalSyncFailure_DiagnosticSaveFailureRetainsOriginalException(bool requestAborted)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        Exception failure = requestAborted
+            ? new OperationCanceledException(cancellation.Token)
+            : new HttpRequestException("Vendor refused the sync", null, System.Net.HttpStatusCode.Forbidden);
+        var diagnosticFailure = new IOException("Cannot persist sync diagnostic");
+        var cursor = Clock.GetCurrentInstant() - Duration.FromDays(1);
+        var state = new TicketSyncState { Id = 1, LastSyncAt = cursor };
+        var repository = Substitute.For<ITicketRepository>();
+        repository.GetSyncStateAsync(Arg.Any<CancellationToken>()).Returns(state);
+        repository.PersistSyncStateAsync(Arg.Any<TicketSyncState>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (call.Arg<TicketSyncState>().SyncStatus == TicketSyncStatus.Error)
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                throw diagnosticFailure;
+            }
+            return Task.CompletedTask;
+        });
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async Task<IReadOnlyList<VendorOrderDto>> (_) =>
+            {
+                if (requestAborted) await cancellation.CancelAsync();
+                throw failure;
+            });
+        var logger = new CapturingLogger<TicketSyncService>();
+        var service = new TicketSyncService(repository, new TicketTransferRepository(TicketsDbFactory),
+            _vendorService, _stripeService, Clock, Options.Create(new TicketVendorSettings
+            { EventId = "ev_test_123", ApiKey = "test_key" }), logger,
+            _userService, _participations, _campaignService, _shiftManagementService);
+
+        var observed = await Xunit.Record.ExceptionAsync(() => service.SyncOrdersAndAttendeesAsync(cancellation.Token));
+
+        observed.Should().BeSameAs(failure);
+        logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, diagnosticFailure));
+        state.LastSyncAt.Should().Be(cursor);
+        state.LastError.Should().Be(failure.Message);
+        await repository.DidNotReceiveWithAnyArgs().UpsertOrdersAsync(default!);
     }
 
     [HumansTheory]

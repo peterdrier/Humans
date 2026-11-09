@@ -164,7 +164,7 @@ public class ServiceIssueInvoiceTests
             });
         }
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
-        _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetAllProductsForYearAsync(product.Year, Arg.Any<CancellationToken>())
             .Returns(new List<Product> { product });
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product> { product });
@@ -202,11 +202,16 @@ public class ServiceIssueInvoiceTests
             HoldedSalesDocumentKind.Invoice, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task Writes_the_invoice_row_with_both_payloads_and_freezes_the_order()
+    [HumansTheory]
+    [InlineData(2026)]
+    [InlineData(2025)]
+    public async Task Writes_the_invoice_row_with_both_payloads_and_freezes_the_order(int year)
     {
         var order = CampOrder();
-        Arrange(order, IceProduct());
+        order.Year = year;
+        var product = IceProduct();
+        product.Year = year;
+        Arrange(order, product);
         Invoice? savedInvoice = null;
         Order? savedOrder = null;
         await _repo.SaveIssuedInvoiceAsync(

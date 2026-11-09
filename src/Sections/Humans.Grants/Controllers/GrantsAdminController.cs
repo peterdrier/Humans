@@ -27,12 +27,15 @@ internal sealed class GrantsAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        var (error, _) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var programs = await grants.GetProgramsAsync(ct);
-        if (!(await authorization.AuthorizeAsync(User, GrantsPolicies.Read)).Succeeded)
-            programs = programs.Where(p => user.AllUserIds.Any(p.IsManager)).ToList();
+        var programs = new List<ProgramInfo>();
+        foreach (var program in await grants.GetProgramsAsync(ct))
+        {
+            if ((await authorization.AuthorizeAsync(User, program, ProgramOperationRequirement.View)).Succeeded)
+                programs.Add(program);
+        }
         return View(new AdminIndexViewModel
         {
             Today = grants.Today,
@@ -129,14 +132,14 @@ internal sealed class GrantsAdminController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Revoke(Guid programId, Guid grantId, string? reason, CancellationToken ct) =>
         ManageAsync(programId, async actor =>
-            ((GrantMutationResult)await grants.RevokeGrantAsync(grantId, reason, actor, ct), "Grant revoked"), ct, grantId);
+            ((GrantMutationResult)await grants.RevokeGrantAsync(programId, grantId, reason, actor, ct), "Grant revoked"), ct);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Resend")]
     [Authorize(Policy = GrantProgramsPolicy.Name)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Resend(Guid programId, Guid grantId, CancellationToken ct) =>
         ManageAsync(programId, async actor =>
-            ((GrantMutationResult)await grants.ResendNoticeAsync(grantId, actor, ct), "Notice sent again"), ct, grantId);
+            ((GrantMutationResult)await grants.ResendNoticeAsync(programId, grantId, actor, ct), "Notice sent again"), ct);
 
     /// <summary>Loads the program and checks the operation against it; 404 and 403 as results.</summary>
     private async Task<(ProgramInfo? Program, IActionResult? Error)> AuthorizedAsync(
@@ -150,14 +153,12 @@ internal sealed class GrantsAdminController(
 
     /// <summary>A grant of another program is 404, so a manager of A never acts on B's grants.</summary>
     private async Task<IActionResult> ManageAsync(
-        Guid programId, Func<Guid, Task<(GrantMutationResult Result, string Success)>> act, CancellationToken ct,
-        Guid? grantId = null)
+        Guid programId, Func<Guid, Task<(GrantMutationResult Result, string Success)>> act, CancellationToken ct)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
-        var (program, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.Manage, ct);
+        var (_, forbidden) = await AuthorizedAsync(programId, ProgramOperationRequirement.Manage, ct);
         if (forbidden is not null) return forbidden;
-        if (grantId is { } id && program!.Grants.All(g => g.Id != id)) return NotFound();
         if (!ModelState.IsValid)
         {
             logger.LogWarning("Rejected malformed grant action on {ProgramId} by {UserId}", programId, user.Id);
@@ -165,6 +166,7 @@ internal sealed class GrantsAdminController(
         }
 
         var (result, success) = await act(user.Id);
+        if (result.NotFound) return NotFound();
         if (result.Refusal is { } refusal)
             SetError(refusal);
         else

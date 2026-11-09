@@ -152,9 +152,9 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 ## Architecture
 
-`CampaignService` owns campaign configuration, lifecycle, code imports, tracking and personal-data coordination. Its internal `CampaignWaveDelivery` owns the complete preview/send/resend job: team targeting, per-grant persistence and audit, email enqueueing and localized in-app notices. The existing management interface delegates to that owner; it adds no public contract or DI registration.
+`CampaignService` owns campaign configuration, lifecycle and personal-data coordination. Its internal `CampaignCodeInventory` owns manual code import and vendor generation through Tickets, reusing the campaign reader. Draft checks, input validation, case-insensitive duplicate detection, Unicode length limits, import order, persistence/audit order and cancellation are unchanged. Its internal `CampaignReader` owns grant summaries, campaign edit/list/detail snapshots, send-page composition and code tracking. The send page calls the existing wave-preview owner directly; read order, active-team filtering, grant counts, identity enrichment and cancellation are unchanged. Its internal `CampaignWaveDelivery` owns the complete preview/send/resend job: team targeting, per-grant persistence and audit, email enqueueing and localized in-app notices. The existing management interface delegates to that owner; it adds no public contract or DI registration.
 
-**Owning services:** `CampaignService`, internal `CampaignWaveDelivery`
+**Owning services:** `CampaignService`, internal `CampaignWaveDelivery`, `CampaignReader` and `CampaignCodeInventory`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
 **Status:** (A) Own project. Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`).
 

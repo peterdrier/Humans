@@ -73,7 +73,7 @@ Weigh integrity first, cost second — cost alone never makes a call
 **Guard irreversible multi-step writes inside the service too.** Where step 1
 commits something at the vendor and step 2 must follow, detach locally at that
 seam (`var commitCt = CancellationToken.None;`) instead of trusting every future
-caller — `TicketTransferService.WriteToVendorAsync` does this once the
+caller — `TicketTransferVendorExchange.WriteToVendorAsync` does this once the
 TicketTailor void has committed. This is not "threading a second token": the
 signature is unchanged and the detach is a one-line local at the commit point.
 

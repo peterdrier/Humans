@@ -438,12 +438,25 @@ internal sealed class CachingUserService(
             await RefreshEntryAsync(userId);
         });
 
-    public Task RecordLoginAsync(Guid userId, CancellationToken ct = default) =>
-        MutateAsync(async () =>
+    public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
+    {
+        try
         {
-            await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
-            await RefreshEntryAsync(userId);
-        });
+            await MutateAsync(async () =>
+            {
+                await WithInnerAsync(inner => inner.RecordLoginAsync(userId, ct));
+                await RefreshEntryAsync(userId);
+            });
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not finish login tracking for user {UserId}; sign-in continues", userId);
+        }
+    }
 
     public Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default) =>
         MutateAsync(async () =>

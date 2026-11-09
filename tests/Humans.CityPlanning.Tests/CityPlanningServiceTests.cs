@@ -89,6 +89,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, areaSqm, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
@@ -108,6 +109,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         const string geoJson1 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
         const string geoJson2 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[2,0],[2,2],[0,0]]]}}""";
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -176,7 +178,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [InlineData("""{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[0,0],[1,0],[1,1],[0,0]]]]}}""")]
     public async Task SaveCampPolygonAsync_ValidAreaGeometry_RoundTrips(string geoJson)
     {
-        var saved = await _sut.SaveCampPolygonAsync(Guid.NewGuid(), geoJson, 100, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
+        var campSeasonId = Guid.NewGuid();
+        SetupExistingCampSeason(campSeasonId, 2026);
+        var saved = await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
         saved.GeoJson.Should().Be(geoJson);
         (await CityPlanningDb.CampPolygons.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
         (await CityPlanningDb.CampPolygonHistories.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
@@ -339,6 +343,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         const string originalGeoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, originalGeoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         var originalHistory = await CityPlanningDb.CampPolygonHistories.AsNoTracking()
             .SingleAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
@@ -901,6 +906,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var camp2026Id = Guid.NewGuid();
         var userId = NewUserId();
 
+        SetupExistingCampSeason(season2026Id, 2026);
+        SetupExistingCampSeason(season2027Id, 2027);
         await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: TestContext.Current.CancellationToken);
         await _sut.SaveCampPolygonAsync(season2027Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200, userId, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -926,6 +933,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var seasonWithoutId = Guid.NewGuid();
         var userId = NewUserId();
 
+        SetupExistingCampSeason(seasonWithId, 2026);
         await _sut.SaveCampPolygonAsync(seasonWithId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -950,6 +958,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -988,6 +997,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 }));
 
         Clock.Advance(Duration.FromSeconds(1));
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
@@ -1012,6 +1022,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, TestContext.Current.CancellationToken);
@@ -1027,6 +1038,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -1047,6 +1059,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -1147,6 +1160,10 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken))
             .Should().Be("Open-season blurb");
     }
+
+    private void SetupExistingCampSeason(Guid seasonId, int year) =>
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(MakeCampSeasonInfo(seasonId, Guid.NewGuid(), year, "Camp"));
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>
         new(id, campId, string.Empty, year, null, name, string.Empty, string.Empty,

@@ -88,6 +88,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - At most one program per source key is open at a time (refused on create and edit), so `IGrantWrite` callers pass only their key and Grants resolves the program. Source issue/revoke return `GrantIssueResult` / `GrantRevokeResult`: no open program and overlong source references/reasons are typed refusals before mutation, audit or notices. Issuing to a holder returns the existing grant id; revoking with no live grant succeeds with `Revoked = false`. Dependency failures propagate.
 - A program's issuer and status must be defined enum values; anything else is refused on create and edit.
 - Expiry is computed at read time from `ExpiresOn ?? program.GrantsExpireOn` against today in Europe/Madrid; no job flips state. The admin program view model orders grants by computed state, then newest issuance; service projections impose no grant display order.
+- Manual revoke and resend require both program and grant IDs. The service refuses a missing grant or a grant outside that program before mutation, audit or notices; controllers translate that refusal to 404.
 - Revoking keeps the row (who, when, why); a revoked grant cannot be resent or revoked again.
 - Manual and source issuance share one persist/audit/notice pipeline. Persistence honours caller cancellation; after commit, audit and notices run with no cancellation. Batch and source issues write different audit descriptions.
 - Every issue, revoke, resend and program change writes an audit entry (`GrantIssued`, `GrantRevoked`, `GrantNoticeResent`, `GrantProgram*`). Program edits persist fields and manager additions/removals together in one save; a failed manager write leaves the program unchanged and emits no success audit.
@@ -109,7 +110,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - When a grant is issued (by hand or source) or its notice resent: an email (`grant_issued` template, System category) in the person's language and an Informational `GrantReceived` notice linking to `/Profile/Me`; `NotifiedAt` is stamped.
 - When a grant is revoked: an email (`grant_revoked`) with the reason if given, and an Informational `GrantRevoked` notice.
 - When two accounts merge: grants and manager rows move to the surviving account; a duplicate live grant in the same program is revoked ("Duplicate after account merge") and audited. Duplicate revocation is saved before re-keying to respect the one-live-grant index, with both saves in one transaction: a failed re-key rolls back the revocation and emits no success audit.
-- A sign-in cookie issued before a merge still carries the archived id; every authorization check and the "My grants" card resolve it through Users to the surviving account, so the person keeps their access and card. The program index matches manager rows against every id the viewer has held, so programs authorized through an archived manager id remain discoverable.
+- A sign-in cookie issued before a merge still carries the archived id; every authorization check and the "My grants" card resolve it through Users to the surviving account, so the person keeps their access and card. The program index and program page use the same `ProgramOperationRequirement.View` resource check, matching manager rows against every id the viewer has held, so programs authorized through an archived manager id remain discoverable.
 - When a person is erased: their grants and manager rows are deleted; their id stays on programs created and grants issued or revoked (`GrantDecisions` slice).
 
 ## Cross-Section Dependencies
@@ -124,6 +125,8 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - Email and Tickets do not know Grants exists; delivery of the thing (e.g. a vendor code) is a later, separate concern.
 
 ## Architecture
+
+Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`: selected IDs are unique, removable hidden inputs; batch submit is enabled only for a nonempty list. The views initialize it in the layout's Scripts section after the shared helpers load.
 
 The internal `GrantNotices` (not registered in DI) owns recipient lookup, the profile link and the complete issued/revoked email and in-app job, reused for resend. `GrantService` owns persistence, audit ordering and `NotifiedAt`.
 
@@ -141,3 +144,9 @@ The internal `GrantNotices` (not registered in DI) owns recipient lookup, the pr
 - `GrantService` lives in `Services/` and never imports `Microsoft.EntityFrameworkCore`; `GrantRepository` (Singleton over `IDbContextFactory<GrantsDbContext>`) is the only path to the tables.
 - No caching decorator: a handful of programs, read on a few admin pages and one profile card.
 - Display stitching through `<vc:human>`.
+
+Internal `GrantReader` owns program/member grant reads, manager visibility, event enrichment and merged-account id lookup. Holding checks, mutation audit year resolution and GDPR export reuse its helpers. Settings lookup order, current-event-year fallback, archived-id handling, DTO fields and ordering are unchanged. The façade retains its entry points, Madrid-date rule, mutations, notice/audit ordering and retention. No public contract or DI registration is added.
+
+Internal `GrantProgramAdministration` owns complete program creation/update, validation, event/source selection and manager reconciliation. `GrantReader` shares live-person checks and the open-source predicate with grant issuance; `GrantJournal` owns the existing audit metadata and optional-text normalization. Refusal order, manager canonicalization, source uniqueness, event-change descriptions, timestamps and persistence/audit order are unchanged. Grant issuance, revocation and notices retain their workflow; no public contract or DI registration is added.
+
+Internal `GrantPersonalData` owns both personal-data slices, their retention declarations, erasure and merge handling. It reuses the existing reader for merged ids and current event-year projection. Slice keys, export shape/order, empty-decision behavior, retention wording, per-user erasure scope and merge side-effect order are unchanged. The existing façade remains the registered contributor and merge entry point; no public contract or DI registration is added.

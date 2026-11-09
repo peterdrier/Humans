@@ -71,7 +71,6 @@ public class CachingUserServiceTests
 
     [HumansTheory]
     [InlineData("SetPreferredLanguage")]
-    [InlineData("RecordLogin")]
     [InlineData("MarkFake")]
     [InlineData("SetDeletionPending")]
     [InlineData("ClearDeletion")]
@@ -107,7 +106,6 @@ public class CachingUserServiceTests
         Task InvokeAsync(IUserManagement service) => operation switch
         {
             "SetPreferredLanguage" => service.SetPreferredLanguageAsync(userId, "es", ct),
-            "RecordLogin" => service.RecordLoginAsync(userId, ct),
             "MarkFake" => service.MarkFakeAsync(userId, otherId, "test", ct),
             "SetDeletionPending" => service.SetDeletionPendingAsync(userId, default, default, null, ct),
             "ClearDeletion" => service.ClearDeletionAsync(userId, ct),
@@ -139,6 +137,50 @@ public class CachingUserServiceTests
 
         (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("After");
         (await sut.GetUserInfoAsync(otherId, ct))!.BurnerName.Should().Be("Other after");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecordLogin_TrackingFailure_DoesNotBlockSignIn_AndEvictsUncertainSnapshot(bool refreshFailure)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var before = SampleUserInfo(userId, "Before");
+        var after = SampleUserInfo(userId, "After");
+        var committed = false;
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyCollection<UserInfo>)[committed ? after : before]);
+        var sut = CreateSut();
+        (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Before");
+        var failure = new IOException("Login tracking unavailable");
+        _inner.RecordLoginAsync(userId, ct).Returns(_ =>
+        {
+            committed = true;
+            return refreshFailure ? Task.CompletedTask : Task.FromException(failure);
+        });
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<UserInfo?>(failure));
+
+        var record = () => sut.RecordLoginAsync(userId, ct);
+
+        await record.Should().NotThrowAsync();
+        (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("After");
+    }
+
+    [HumansFact]
+    public async Task RecordLogin_CallerCancellation_Propagates()
+    {
+        var userId = Guid.NewGuid();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        _inner.RecordLoginAsync(userId, cancelled.Token)
+            .Returns(Task.FromCanceled(cancelled.Token));
+        var sut = CreateSut();
+
+        var record = () => sut.RecordLoginAsync(userId, cancelled.Token);
+
+        await record.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansFact]

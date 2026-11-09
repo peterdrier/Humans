@@ -30,7 +30,8 @@ internal sealed class RideshareService(
 
     private readonly RideshareRouting _routing = new(routeProvider, logger);
 
-    private readonly RideshareNotices _notices = new(users, notifications, logger);
+    private readonly RideshareInterestMutations _interests = new(
+        repository, new RideshareNotices(users, notifications, logger), clock, logger, InterestMutationLock);
     private static readonly TrackedLock InterestMutationLock = new("Rideshare.Interest");
 
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
@@ -118,7 +119,7 @@ internal sealed class RideshareService(
             return new(Refusal: new("Rideshare_Error_CancelledRideEdit"));
 
         if (ValidateTrip(save) is { } tripRefusal) return new(Refusal: tripRefusal);
-        var accepted = AcceptedSeats(trip);
+        var accepted = RideshareInterestMutations.AcceptedSeats(trip);
         if (save.SeatsOffered < accepted)
             return new(Refusal: new("Rideshare_Error_SeatsBelowAccepted", accepted));
 
@@ -233,118 +234,18 @@ internal sealed class RideshareService(
         return new();
     }
 
-    public async Task<RideshareMutationResult> ExpressInterestAsync(
-        Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default)
-    {
-        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var trip = await repository.GetTripAsync(tripId, ct);
-        if (trip is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
-        if (trip.Status != TripStatus.Active)
-            return new(Refusal: new("Rideshare_Error_RideUnavailable"));
+    public Task<RideshareMutationResult> ExpressInterestAsync(
+        Guid fromUserId, Guid tripId, Guid? requestId, int seats, string? message, CancellationToken ct = default) =>
+        _interests.ExpressInterestAsync(fromUserId, tripId, requestId, seats, message, ct);
 
-        RideshareRequest? request = null;
-        if (requestId is { } rid)
-        {
-            // Driver answering a pin: the seat comes from the driver's own trip.
-            request = await repository.GetRequestAsync(rid, ct);
-            if (request is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
-            if (trip.UserId != fromUserId)
-                return new(AccessFailure: RideshareAccessFailure.Forbidden);
-            if (request.UserId == fromUserId)
-                return new(Refusal: new("Rideshare_Error_OwnRequest"));
-            if (CheckAnswerable(trip, request) is { } answerRefusal) return new(Refusal: answerRefusal);
-            if (seats == 0)
-                seats = request.PartySize;
-        }
-        else if (trip.UserId == fromUserId)
-        {
-            return new(Refusal: new("Rideshare_Error_OwnRide"));
-        }
+    public Task<RideshareMutationResult> AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+        _interests.AcceptInterestAsync(interestId, actorUserId, ct);
 
-        if (seats < 1)
-            return new(Refusal: new("Rideshare_Error_SeatsMinimum"));
-        if (SeatsRemaining(trip) < seats)
-            return new(Refusal: new("Rideshare_Error_NotEnoughSeats"));
-        if (trip.Interests.Any(i => i.FromUserId == fromUserId && i.RequestId == requestId && i.Status == InterestStatus.Pending))
-            return new(Refusal: new("Rideshare_Error_AlreadyInterested"));
+    public Task<RideshareMutationResult> DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+        _interests.DeclineInterestAsync(interestId, actorUserId, ct);
 
-        var cleanedMessage = Clean(message);
-        if (cleanedMessage is { Length: > 1000 })
-            return new(Refusal: new("Rideshare_Error_MessageTooLong", 1000));
-
-        var interest = new RideshareInterest
-        {
-            Id = Guid.NewGuid(),
-            FromUserId = fromUserId,
-            TripId = trip.Id,
-            RequestId = request?.Id,
-            Seats = seats,
-            Message = cleanedMessage,
-            Status = InterestStatus.Pending,
-            CreatedAt = clock.GetCurrentInstant(),
-        };
-        await repository.AddInterestAsync(interest, ct);
-        mutation.Dispose();
-
-        await _notices.InterestReceivedAsync(interest, trip, request);
-        return new(interest.Id);
-    }
-
-    public async Task<RideshareMutationResult> AcceptInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
-    {
-        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var (interest, accessFailure) = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
-        if (interest is null) return new(AccessFailure: accessFailure);
-        if (interest.Status != InterestStatus.Pending)
-            return new(Refusal: new("Rideshare_Error_InterestNotPending"));
-        if (interest.Trip.Status != TripStatus.Active)
-            return new(Refusal: new("Rideshare_Error_RideUnavailable"));
-        if (interest.Request is { } request && CheckAnswerable(interest.Trip, request) is { } answerRefusal)
-            return new(Refusal: answerRefusal);
-        if (SeatsRemaining(interest.Trip) < interest.Seats)
-            return new(Refusal: new("Rideshare_Error_NotEnoughSeats"));
-
-        interest.Status = InterestStatus.Accepted;
-        interest.RespondedAt = clock.GetCurrentInstant();
-        await repository.UpdateInterestAsync(interest, ct);
-        mutation.Dispose();
-
-        await _notices.InterestAcceptedAsync(interest, actorUserId);
-        return new();
-    }
-
-    public async Task<RideshareMutationResult> DeclineInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
-    {
-        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var (interest, accessFailure) = await LoadInterestForOwnerAsync(interestId, actorUserId, ct);
-        if (interest is null) return new(AccessFailure: accessFailure);
-        if (interest.Status != InterestStatus.Pending)
-            return new(Refusal: new("Rideshare_Error_InterestNotPending"));
-
-        interest.Status = InterestStatus.Declined;
-        interest.RespondedAt = clock.GetCurrentInstant();
-        await repository.UpdateInterestAsync(interest, ct);
-        mutation.Dispose();
-
-        await _notices.InterestDeclinedAsync(interest, actorUserId);
-        return new();
-    }
-
-    public async Task<RideshareMutationResult> WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default)
-    {
-        using var mutation = await InterestMutationLock.AcquireAsync(logger, ct);
-        var interest = await repository.GetInterestAsync(interestId, ct);
-        if (interest is null) return new(AccessFailure: RideshareAccessFailure.NotFound);
-        if (interest.FromUserId != actorUserId && PostingOwner(interest) != actorUserId)
-            return new(AccessFailure: RideshareAccessFailure.Forbidden);
-        if (interest.Status is not (InterestStatus.Pending or InterestStatus.Accepted))
-            return new(Refusal: new("Rideshare_Error_InterestNotWithdrawable"));
-
-        interest.Status = InterestStatus.Withdrawn;
-        await repository.UpdateInterestAsync(interest, ct);
-        mutation.Dispose();
-        return new();
-    }
+    public Task<RideshareMutationResult> WithdrawInterestAsync(Guid interestId, Guid actorUserId, CancellationToken ct = default) =>
+        _interests.WithdrawInterestAsync(interestId, actorUserId, ct);
 
     public async Task<RideshareMutationResult> SaveSettingsAsync(
         Guid? eventSettingsId, SettingsSave save, Guid actorUserId, CancellationToken ct = default)
@@ -471,21 +372,6 @@ internal sealed class RideshareService(
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
 
-    /// <summary>
-    /// A trip may answer a pin only while the pin is open and the trip still goes that way on that day.
-    /// Checked when the driver answers and again when the rider accepts, since either side may have edited in between.
-    /// </summary>
-    private static RideshareRefusal? CheckAnswerable(RideshareTrip trip, RideshareRequest request)
-    {
-        if (request.Status != RequestStatus.Active)
-            return new("Rideshare_Error_RequestClosed");
-        if (trip.EventSettingsId is null || trip.EventSettingsId != request.EventSettingsId)
-            return new("Rideshare_Error_RideUnavailable");
-        if (trip.Direction != request.Direction || !RideshareTrip.CoversDate(trip.DepartureDate, trip.ExpectedDurationDays, request.DesiredDate))
-            return new("Rideshare_Error_RideNotOnRequestDate");
-        return null;
-    }
-
     private static RideshareRefusal? ValidateTrip(TripSave save, LocalDate? departure = null)
     {
         if (save.ExpectedDurationDays < 1)
@@ -552,25 +438,6 @@ internal sealed class RideshareService(
         request.Notes = Clean(save.Notes);
     }
 
-    private async Task<(RideshareInterest? Interest, RideshareAccessFailure? Failure)> LoadInterestForOwnerAsync(
-        Guid interestId, Guid actorUserId, CancellationToken ct)
-    {
-        var interest = await repository.GetInterestAsync(interestId, ct);
-        if (interest is null) return (null, RideshareAccessFailure.NotFound);
-        return PostingOwner(interest) == actorUserId
-            ? (interest, null)
-            : (null, RideshareAccessFailure.Forbidden);
-    }
-
-    /// <summary>Who answers: the rider when the interest answered their request, else the driver.</summary>
-    private static Guid PostingOwner(RideshareInterest interest) =>
-        interest.Request?.UserId ?? interest.Trip.UserId;
-
-    private static int AcceptedSeats(RideshareTrip trip) =>
-        trip.Interests.Where(i => i.Status == InterestStatus.Accepted).Sum(i => i.Seats);
-
-    private static int SeatsRemaining(RideshareTrip trip) => trip.SeatsOffered - AcceptedSeats(trip);
-
     private static RideshareDirection Flip(RideshareDirection direction) =>
         direction == RideshareDirection.Inbound ? RideshareDirection.Outbound : RideshareDirection.Inbound;
 
@@ -585,7 +452,7 @@ internal sealed class RideshareService(
     private static TripView ToView(RideshareTrip t) => new(
         t.Id, t.UserId, t.Direction, t.MemberPlaceLabel, t.MemberLatitude, t.MemberLongitude,
         ParseWaypoints(t.WaypointsJson), t.RouteGeoJson, t.DepartureDate, t.ExpectedDurationDays, t.OvernightPlan,
-        t.VehicleType, t.SeatsOffered, SeatsRemaining(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
+        t.VehicleType, t.SeatsOffered, RideshareInterestMutations.SeatsRemaining(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
         t.WillingToDetour, t.CostSharing, t.CostNote, t.LinkedTripId, t.Status, t.CreatedAt);
 
     // Matched only by a ride that fits the request: same direction, travelling on its date.

@@ -1,7 +1,6 @@
 using Humans.Auth.Contracts;
 using System.Globalization;
 using NodaTime;
-using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
@@ -30,8 +29,9 @@ internal sealed class IssuesService(
     IssueSectionRouting routing,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
-    internal const string Issues = "Issues";
-    internal const string IssueComments = "IssueComments";
+    private readonly IssueReader reader = new(repo, users, auditViewer, fileStorage, routing);
+
+    private readonly IssueDataLifecycle lifecycle = new(repo, clock, fileStorage, logger);
 
     private readonly IssueNotices notices = new(
         users, roles, email, emailMessages, notifications, notificationInbox, routing, logger);
@@ -46,9 +46,6 @@ internal sealed class IssuesService(
 
     /// <summary>The <c>issues.section</c> column width.</summary>
     private const int MaxSectionLength = 64;
-
-    /// <summary>Six months after a terminal state, in days so the cutoff is a simple <see cref="Duration"/>.</summary>
-    private static readonly Duration RetentionPeriod = Duration.FromDays(180);
 
     /// <summary>
     /// Both write paths go through this. Checked against the declared queues, not the section catalog: two queue keys
@@ -200,189 +197,19 @@ internal sealed class IssuesService(
         return result[..length];
     }
 
-    public async Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
-    {
-        var issue = await repo.GetByIdAsync(id, ct);
-        return issue is null || !await CanSeeAsync(issue, viewer, ct) ? null : MapDetail(issue);
-    }
+    public Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default) =>
+        reader.GetIssueByIdAsync(id, viewer, ct);
 
-    public async Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
-    {
-        var issue = await repo.GetByIdAsync(id, ct);
-        if (issue is null || !await CanSeeAsync(issue, viewer, ct) || issue.ScreenshotStoragePath is not { } key)
-            return null;
+    public Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default) =>
+        reader.GetScreenshotAsync(id, viewer, ct);
 
-        var content = await fileStorage.TryReadAsync(key, ct);
-        return content is null ? null : new IssueScreenshot(content, issue.ScreenshotContentType ?? "application/octet-stream");
-    }
+    public Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
+        IssueListFilter filter, IssueViewer viewer, CancellationToken ct = default) =>
+        reader.GetIssueListAsync(filter, viewer, ct);
 
-    private bool CanHandle(Issue issue, IssueViewer viewer) =>
-        routing.CanHandle(issue.Section, viewer.Roles);
-
-    /// <summary>The same test the queue applies row by row: a handler, or the reporter.</summary>
-    private async Task<bool> CanSeeAsync(Issue issue, IssueViewer viewer, CancellationToken ct) =>
-        CanHandle(issue, viewer) || await IsReporterAsync(issue.ReporterUserId, viewer.UserId, ct);
-
-    private async Task<IReadOnlyList<Guid>> UserIdsAsync(Guid userId, CancellationToken ct) =>
-        (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-
-    private async Task<bool> IsReporterAsync(Guid reporterId, Guid userId, CancellationToken ct) =>
-        reporterId == userId || (await UserIdsAsync(userId, ct)).Contains(reporterId);
-
-    /// <summary>
-    /// Out of reach and gone are the same answer, so an id cannot probe for issues the caller's queue would never list.
-    /// </summary>
-    private async Task<Issue?> FindHandleableAsync(Guid issueId, IssueViewer viewer, CancellationToken ct)
-    {
-        var issue = await repo.GetByIdAsync(issueId, ct);
-        return issue is not null && CanHandle(issue, viewer)
-            ? issue
-            : null;
-    }
-
-    private static IssueDetail MapDetail(Issue issue) => new(
-        issue.Id,
-        issue.Status,
-        issue.Category,
-        issue.Section,
-        issue.Title,
-        issue.Description,
-        issue.PageUrl,
-        issue.UserAgent,
-        issue.AdditionalContext,
-        issue.ScreenshotStoragePath,
-        issue.ReporterUserId,
-        issue.AssigneeUserId,
-        issue.ResolvedByUserId,
-        issue.GitHubIssueNumber,
-        issue.DueDate,
-        issue.CreatedAt,
-        issue.UpdatedAt,
-        issue.ResolvedAt,
-        issue.Comments.Count);
-
-    public async Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
-        IssueListFilter filter,
-        IssueViewer viewer,
-        CancellationToken ct = default)
-    {
-        IReadOnlySet<string>? sectionFilter = null;
-        IReadOnlyCollection<Guid>? reporterFallback = null;
-
-        if (!viewer.IsAdmin)
-        {
-            sectionFilter = routing.SectionsForRoles(viewer.Roles);
-            reporterFallback = await UserIdsAsync(viewer.UserId, ct);
-        }
-
-        var reporterFilter = filter.ReporterUserId is { } reporterId
-            ? await UserIdsAsync(reporterId, ct) : null;
-        var assigneeFilter = filter.AssigneeUserId is { } assigneeId
-            ? await UserIdsAsync(assigneeId, ct) : null;
-        var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, reporterFilter, assigneeFilter, ct);
-        return await BuildListSnapshotsAsync(issues, ct);
-    }
-
-    private async Task<IReadOnlyList<IssueListSnapshot>> BuildListSnapshotsAsync(
-        IReadOnlyList<Issue> issues, CancellationToken ct)
-    {
-        if (issues.Count == 0) return [];
-
-        var userIds = new HashSet<Guid>();
-        foreach (var issue in issues)
-        {
-            userIds.Add(issue.ReporterUserId);
-            if (issue.AssigneeUserId.HasValue)
-                userIds.Add(issue.AssigneeUserId.Value);
-        }
-
-        var users1 = await users.GetUserInfosAsync(userIds.ToList(), ct);
-        return issues.Select(issue => new IssueListSnapshot(
-            issue.Id,
-            issue.Status,
-            issue.Category,
-            issue.Section,
-            issue.Title,
-            issue.Description,
-            issue.PageUrl,
-            issue.UserAgent,
-            issue.AdditionalContext,
-            issue.ReporterUserId,
-            users1.TryGetValue(issue.ReporterUserId, out var reporter) ? reporter.BurnerName : null,
-            reporter?.Email,
-            reporter?.PreferredLanguage,
-            issue.CreatedAt,
-            issue.UpdatedAt,
-            issue.ResolvedAt,
-            issue.DueDate,
-            issue.ScreenshotStoragePath,
-            issue.Comments.Count,
-            issue.AssigneeUserId,
-            issue.AssigneeUserId.HasValue && users1.TryGetValue(issue.AssigneeUserId.Value, out var assignee)
-                ? assignee.BurnerName
-                : null,
-            issue.GitHubIssueNumber)).ToList();
-    }
-
-    public async Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
-        Guid issueId, IssueViewer viewer, CancellationToken ct = default)
-    {
-        var issue = await repo.GetByIdAsync(issueId, ct);
-        if (issue is null || !await CanSeeAsync(issue, viewer, ct))
-            throw new InvalidOperationException($"Issue {issueId} not found");
-
-        // IssueCreated is written only by the machine path, where filer and reporter can differ, so it is the one
-        // place the thread can say who actually filed it.
-        var auditEntries = await auditViewer.GetFilteredAsync(
-            entityType: AuditEntityTypes.Issue,
-            entityId: issueId,
-            userId: null,
-            actions:
-            [
-                IssuesAuditActions.IssueCreated.Name,
-                IssuesAuditActions.IssueStatusChanged.Name,
-                IssuesAuditActions.IssueAssigneeChanged.Name,
-                IssuesAuditActions.IssueSectionChanged.Name,
-                IssuesAuditActions.IssueGitHubLinked.Name
-            ],
-            limit: int.MaxValue,
-            ct: ct);
-
-        var actorIds = auditEntries
-            .Where(a => a.ActorUserId.HasValue)
-            .Select(a => a.ActorUserId!.Value)
-            .Concat(issue.Comments.Where(c => c.SenderUserId.HasValue).Select(c => c.SenderUserId!.Value))
-            .Distinct()
-            .ToList();
-        IReadOnlyDictionary<Guid, UserInfo> actorUsers = actorIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await users.GetUserInfosAsync(actorIds, ct);
-
-        var reporterIds = await UserIdsAsync(issue.ReporterUserId, ct);
-        var commentEvents = issue.Comments.Select(c => (IssueThreadEvent)new IssueCommentEvent(
-            c.Id,
-            c.CreatedAt,
-            c.SenderUserId,
-            c.SenderUserId.HasValue && actorUsers.TryGetValue(c.SenderUserId.Value, out var sender)
-                ? sender.BurnerName
-                : null,
-            ActorIsReporter: c.SenderUserId is { } senderId && reporterIds.Contains(senderId),
-            c.Content));
-
-        var auditEvents = auditEntries.Select(a => (IssueThreadEvent)new IssueAuditEvent(
-            a.OccurredAt,
-            a.ActorUserId,
-            a.ActorUserId.HasValue && actorUsers.TryGetValue(a.ActorUserId.Value, out var u)
-                ? u.BurnerName
-                : null,
-            a.Action.Name,
-            a.Description));
-
-        return commentEvents
-            .Concat(auditEvents)
-            .OrderBy(e => e.At)
-            .ToList();
-    }
+    public Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
+        Guid issueId, IssueViewer viewer, CancellationToken ct = default) =>
+        reader.GetThreadAsync(issueId, viewer, ct);
 
     public async Task<IssueCommentResult> PostCommentAsync(
         Guid issueId,
@@ -393,7 +220,7 @@ internal sealed class IssuesService(
         CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(issueId, ct);
-        if (issue is null || !await CanSeeAsync(issue, viewer, ct))
+        if (issue is null || !await reader.CanSeeAsync(issue, viewer, ct))
         {
             logger.LogWarning("Issue {IssueId} not found during PostComment", issueId);
             return new IssueCommentResult(null, NotFound: true);
@@ -401,10 +228,10 @@ internal sealed class IssuesService(
 
         // A reporter may comment on their own issue but not resolve it; resolving is a
         // handler's move, so the flag is dropped rather than refused.
-        var viewerCanHandle = CanHandle(issue, viewer);
+        var viewerCanHandle = reader.CanHandle(issue, viewer);
 
         var senderIsReporter = senderUserId is { } senderId
-            && await IsReporterAsync(issue.ReporterUserId, senderId, ct);
+            && await reader.IsReporterAsync(issue.ReporterUserId, senderId, ct);
 
         var now = clock.GetCurrentInstant();
         var comment = new IssueComment
@@ -667,7 +494,7 @@ internal sealed class IssuesService(
     {
         try
         {
-            var issue = await FindHandleableAsync(issueId, viewer, ct);
+            var issue = await reader.FindHandleableAsync(issueId, viewer, ct);
             if (issue is null)
             {
                 logger.LogWarning("Issue {IssueId} not found during {Operation:l}", issueId, operation);
@@ -683,132 +510,22 @@ internal sealed class IssuesService(
         }
     }
 
-    public async Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default) =>
-        viewer.IsAdmin
-            ? await repo.CountActionableAsync(null, null, ct)
-            : await repo.CountActionableAsync(routing.SectionsForRoles(viewer.Roles), await UserIdsAsync(viewer.UserId, ct), ct);
+    public Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default) =>
+        reader.GetActionableCountForViewerAsync(viewer, ct);
 
-    public async Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(
-        CancellationToken ct = default)
-    {
-        var rows = await repo.GetReporterCountsAsync(ct);
-        if (rows.Count == 0) return [];
+    public Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(CancellationToken ct = default) =>
+        reader.GetDistinctReportersAsync(ct);
 
-        var users1 = await users.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
-        return rows
-            .Select(r => new DistinctReporterRow(
-                r.UserId,
-                users1.TryGetValue(r.UserId, out var u) ? u.BurnerName : r.UserId.ToString(),
-                r.Count))
-            .ToList();
-    }
+    public Task<int> PurgeExpiredAsync(CancellationToken ct = default) =>
+        lifecycle.PurgeExpiredAsync(ct);
 
-    public async Task<int> PurgeExpiredAsync(CancellationToken ct = default)
-    {
-        var cutoff = clock.GetCurrentInstant() - RetentionPeriod;
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        await lifecycle.ContributeForUserAsync(await reader.UserIdsAsync(userId, ct), ct);
 
-        var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
-        if (expired.Count == 0) return 0;
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => IssueDataLifecycle.ErasureDeclaration;
 
-        try
-        {
-            var deleted = await repo.DeleteByIdsAsync(expired.Select(issue => issue.Id).ToList(), ct);
-            logger.LogInformation(
-                "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
-                deleted, cutoff, RetentionPeriod.Days);
-            return deleted;
-        }
-        finally
-        {
-            await DeleteScreenshotsAsync(expired);
-        }
-    }
-
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var userIds = (await UserIdsAsync(userId, ct)).ToHashSet();
-        var issues = new List<Issue>();
-        foreach (var id in userIds)
-            issues.AddRange(await repo.GetForUserExportAsync(id, ct));
-        var distinctIssues = issues.DistinctBy(i => i.Id).ToList();
-        var shaped = distinctIssues.Where(i => userIds.Contains(i.ReporterUserId)).Select(i => new
-        {
-            i.Title,
-            i.Description,
-            i.Category,
-            i.Section,
-            i.Status,
-            i.PageUrl,
-            i.UserAgent,
-            i.AdditionalContext,
-            CreatedAt = i.CreatedAt.ToIso8601(),
-            ResolvedAt = i.ResolvedAt.ToIso8601(),
-            Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
-            {
-                c.Content,
-                IsFromUser = c.SenderUserId is { } senderId && userIds.Contains(senderId),
-                CreatedAt = c.CreatedAt.ToIso8601()
-            })
-        }).ToList();
-
-        var comments = distinctIssues
-            .Where(i => !userIds.Contains(i.ReporterUserId))
-            .SelectMany(i => i.Comments)
-            .Where(c => c.SenderUserId is { } senderId && userIds.Contains(senderId))
-            .OrderBy(c => c.CreatedAt)
-            .Select(c => new
-            {
-                c.IssueId,
-                c.Content,
-                CreatedAt = c.CreatedAt.ToIso8601()
-            }).ToList();
-
-        return [new UserDataSlice(Issues, shaped), new UserDataSlice(IssueComments, comments)];
-    }
-
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
-        new Dictionary<string, string?>(StringComparer.Ordinal)
-        {
-            [Issues] = null, // Own issues, comments and screenshots are deleted outright.
-            [IssueComments] =
-                "Partially retained: comments on other people's issues remain as that issue's content, " +
-                "with authorship detached (SenderUserId nulled), per GDPR Art. 17(3)(b)."
-        };
-
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
-
-    /// <summary>Reported issues and their free text are hard-deleted; triage links elsewhere are detached.</summary>
-    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
-    {
-        var ownIssues = await repo.GetForUserExportAsync(userId, ct);
-        var screenshotKeys = ownIssues.Where(i => i.ReporterUserId == userId)
-            .Select(i => i.ScreenshotStoragePath).OfType<string>().Distinct(StringComparer.Ordinal);
-        ct = CancellationToken.None;
-        foreach (var key in screenshotKeys)
-            await fileStorage.DeleteAsync(key, ct);
-
-        await repo.EraseForUserAsync(userId, ct);
-    }
-
-    /// <summary>
-    /// Best-effort cleanup of pre-read screenshots whose issue rows are confirmed deleted.
-    /// </summary>
-    private async Task DeleteScreenshotsAsync(IReadOnlyList<Issue> issues)
-    {
-        foreach (var issue in issues)
-        {
-            if (issue.ScreenshotStoragePath is not { } key) continue;
-            try
-            {
-                if (await repo.GetByIdAsync(issue.Id, CancellationToken.None) is not null) continue;
-                await fileStorage.DeleteAsync(key, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to verify or delete issue screenshot {Key}", key);
-            }
-        }
-    }
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        lifecycle.EraseForUserAsync(userId, ct);
 
     private async Task LogAuditAsync(
         AuditActionDefinition action, Guid issueId, Guid? actorUserId, string description)
