@@ -54,6 +54,12 @@ else if (Model.QueryIsTooShort)
         @Localizer["Search_MinChars"]
     </div>
 }
+else if (Model.SearchFailed)
+{
+    <div class="alert alert-warning" role="alert">
+        @Localizer["Search_Unavailable"]
+    </div>
+}
 else
 {
     <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="@Localizer["Search_FilterAriaLabel"]">
