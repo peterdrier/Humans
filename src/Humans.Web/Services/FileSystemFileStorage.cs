@@ -65,11 +65,6 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
     public async Task<byte[]?> TryReadAsync(string key, CancellationToken ct = default)
     {
         var fullPath = ResolveAbsolute(key);
-        if (!File.Exists(fullPath))
-        {
-            return null;
-        }
-
         try
         {
             return await File.ReadAllBytesAsync(fullPath, ct);
@@ -78,10 +73,10 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         {
             return null;
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             logger.LogError(ex, "Failed to read file at {Path}", fullPath);
-            return null;
+            throw;
         }
     }
 

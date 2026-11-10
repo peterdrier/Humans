@@ -746,8 +746,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [HumansFact]
     public async Task CreateIncomingDoc_AttachmentBytesMissing_BacksOffAndDoesNotMarkProcessed()
     {
-        // IFileStorage.TryReadAsync returns null for both missing files and IO errors.
-        // Either case must keep the outbox event unprocessed with backoff —
+        // Missing attachment bytes must keep the outbox event unprocessed with backoff —
         // silently skipping would permanently lose the receipt upload to Holded.
         var attachment = new ExpenseAttachmentDto
         {

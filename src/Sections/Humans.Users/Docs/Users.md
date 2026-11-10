@@ -615,6 +615,8 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 ## Invariants
 
+- Profile-picture reads keep the metadata/GDPR gate and return no picture for an absent file. Storage I/O or access failures propagate rather than being reported as a missing picture.
+
 - Self and admin notification-target changes share one controller pipeline for the service call, localized feedback and success audit. Each route retains its authorization preflight, actor attribution and redirect; service calls retain the caller's token.
 
 - Profile summaries and duplicate-account cards derive active/pending status from the account state, never consent-review approval. The member profile does not present Board approval as a prerequisite for Volunteer access.

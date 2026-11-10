@@ -121,6 +121,8 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- An authorized screenshot read returns no image for an absent file; storage I/O or access failures propagate rather than becoming a missing screenshot.
+
 - Submission, comment and triage actions forward request cancellation through account and issue-visibility reads before mutation. The shared triage guard applies this to status, assignee, section and GitHub-link actions. Mutation calls keep their existing non-cancellable boundaries.
 
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.

@@ -30,6 +30,7 @@ public interface IFileStorage
     /// Read the bytes at <paramref name="key"/>. Returns <c>null</c> when
     /// no file is present. Implementations must not throw for missing files —
     /// a miss is a normal outcome.
+    /// Other I/O or access failures propagate rather than being reported as missing files.
     /// </summary>
     Task<byte[]?> TryReadAsync(string key, CancellationToken ct = default);
 
