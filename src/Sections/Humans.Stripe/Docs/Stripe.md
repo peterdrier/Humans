@@ -147,6 +147,10 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   an integer minor-unit value and a nonblank currency. Missing buckets or incomplete amounts fail the fetch before
   account replacement instead of erasing a bucket or manufacturing zero. Explicit empty buckets, zero and signed
   amounts remain valid; values aggregate by normalized currency. Optional reserve/instant-payout buckets are not mirrored.
+- Buyer attribution skips blank source fields: charge names prefer billing then metadata; emails prefer billing,
+  receipt, metadata `email_address`, then metadata `email`. Missing name/email fields independently inherit the
+  first nonblank value on the same nonblank PaymentIntent, preserving each row's populated values. Blank intent
+  IDs never associate unrelated rows. These attributed fields support buyer search and verified-email data exports.
 - Bounded mirror text (transaction descriptions, buyer names/emails, payout failures and saved sync errors) preserves complete UTF-16 surrogate pairs, so truncation cannot turn valid vendor text into invalid Unicode.
 - The mirror is read-only: list and retrieve calls only, whatever the key's scopes.
 - Payout link: Stripe links transactions only to automatic payouts, so `PayoutId` is null on a

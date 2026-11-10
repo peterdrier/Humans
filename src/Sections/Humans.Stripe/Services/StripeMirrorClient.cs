@@ -115,8 +115,8 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         var (paymentIntentId, name, email, metadata) = t.Source switch
         {
             Charge c => (c.PaymentIntentId,
-                c.BillingDetails?.Name ?? Meta(c.Metadata, "name"),
-                c.BillingDetails?.Email ?? c.ReceiptEmail ?? Meta(c.Metadata, "email_address") ?? Meta(c.Metadata, "email"),
+                NonBlank(c.BillingDetails?.Name) ?? Meta(c.Metadata, "name"),
+                NonBlank(c.BillingDetails?.Email) ?? NonBlank(c.ReceiptEmail) ?? Meta(c.Metadata, "email_address") ?? Meta(c.Metadata, "email"),
                 c.Metadata),
             Refund r => (r.PaymentIntentId, null, null, r.Metadata),
             Dispute d => (d.PaymentIntentId, null, null, d.Metadata),
@@ -156,8 +156,10 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         return raw.ToJsonString();
     }
 
+    private static string? NonBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
     private static string? Meta(Dictionary<string, string>? metadata, string key) =>
-        metadata is not null && metadata.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : null;
+        metadata is not null && metadata.TryGetValue(key, out var v) ? NonBlank(v) : null;
 
     internal static string? Clip(string? value, int max)
     {

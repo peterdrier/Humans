@@ -89,6 +89,29 @@ public sealed class StripeMirrorClientTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("", "receipt@example.org", "metadata@example.org", "receipt@example.org")]
+    [Xunit.InlineData("  ", " ", "metadata@example.org", "metadata@example.org")]
+    [Xunit.InlineData("", "", " ", "legacy@example.org")]
+    public async Task Blank_billing_values_do_not_hide_receipt_or_metadata_buyer_details(
+        string blank, string receipt, string metadataAddress, string expectedEmail)
+    {
+        static string Encode(string value) => System.Text.Json.JsonSerializer.Serialize(value);
+        Respond(r => Route(r)
+            .Replace("\"name\":null", "\"name\":" + Encode(blank), StringComparison.Ordinal)
+            .Replace("\"buyer@example.org\"", Encode(blank), StringComparison.Ordinal)
+            .Replace("\"receipt_email\":null", "\"receipt_email\":" + Encode(receipt), StringComparison.Ordinal)
+            .Replace("\"name\":\"Ana Buyer\"", "\"name\":\"Ana Buyer\",\"email_address\":" + Encode(metadataAddress)
+                + ",\"email\":\"legacy@example.org\"", StringComparison.Ordinal));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = await new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        var charge = fetch.Transactions.Single(t => string.Equals(t.Id, "txn_c", StringComparison.Ordinal));
+        charge.CustomerName.Should().Be("Ana Buyer");
+        charge.CustomerEmail.Should().Be(expectedEmail);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task Bounded_mirror_fields_preserve_complete_unicode_characters(bool pairFits)
