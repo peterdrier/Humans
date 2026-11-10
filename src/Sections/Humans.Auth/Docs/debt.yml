@@ -1,4 +1,8 @@
 # Section debt ledger for Humans.Auth. Shape: memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 4
-inbox: []
+next_id: 5
+inbox:
+  - added: 2026-11-10
+    id: AUTH-4
+    what: "Auth.md (Phase 2 paragraph) says Admin, TeamsAdmin and Board pass TeamAuthorizationHandler on any team; the handler denies Board (src/Sections/Humans.Teams/Authorization/TeamAuthorizationHandler.cs). Found by section-doctor on Teams."
+    review: light
