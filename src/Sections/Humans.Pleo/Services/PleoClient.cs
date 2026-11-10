@@ -55,8 +55,9 @@ internal sealed class PleoClient : IPleoClient
 
     public async Task<IReadOnlyList<PleoEmployeeWire>> ListEmployeesAsync(CancellationToken ct = default)
     {
+        // Historical entries still reference deleted cardholders; an active-only sweep would erase their names.
         var items = await GetAllPagesAsync("employees", after =>
-            new HttpRequestMessage(HttpMethod.Get, $"/v2/employees?companyId={Company}&limit={PageLimit}{After(after)}"), ct);
+            new HttpRequestMessage(HttpMethod.Get, $"/v2/employees?companyId={Company}&includeDeleted=true&limit={PageLimit}{After(after)}"), ct);
         return items.Select(Read<PleoEmployeeWire>).ToList();
     }
 

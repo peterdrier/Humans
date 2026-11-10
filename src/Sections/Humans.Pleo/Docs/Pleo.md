@@ -88,6 +88,9 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 - Entries without an id or family are skipped and counted on the sync row. A provided `transactionValue` or `totalBillValue` must contain both a nonblank currency and a minor-unit value; incomplete money objects fail the sweep before mirror replacement and record a sync error. Optional money objects may be absent, and explicit zero amounts remain valid. List/detail views omit the original-currency figure when no currency was supplied.
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and
   told so. No key (`PLEO_API_KEY`, `PLEO_COMPANY_ID`): the job logs and skips, Sync now is disabled.
+- Employee sweeps request `includeDeleted=true` on every page, retaining former cardholders and their deleted
+  flag so historical entries and spend summaries keep their names after someone leaves Pleo. Contact fields
+  remain outside the mirror.
 - The connector is read-only: GETs and the `:search` POSTs. The key holds write scopes; nothing here uses them.
 <!-- wheat: docs/superpowers/specs/2026-08-10-pleo-connector-design.md §Pleo API facts -->
 - The mirror polls: Pleo's webhooks cover only export jobs and vendors, nothing per entry. Cardholders come from

@@ -3,6 +3,7 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.Pleo.Services;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Humans.Pleo.Tests;
 
@@ -44,6 +45,29 @@ public sealed class PleoClientTests
         urls[0].Should().Be("/v1/accounting-entries:search?company_id=company-1&limit=100");
         urls[1].Should().EndWith("&after=c1%3D");
         urls[2].Should().EndWith("&after=c2");
+    }
+
+    [HumansFact]
+    public async Task Employee_history_includes_deleted_cardholders_across_pages()
+    {
+        const string active = """{"id":"active","firstName":"Ana","lastName":"Active","isDeleted":false}""";
+        const string deleted = """{"id":"deleted","firstName":"Dee","lastName":"Departed","isDeleted":true}""";
+        var client = Make(req =>
+        {
+            var query = QueryHelpers.ParseQuery(req.RequestUri!.Query);
+            if (!string.Equals(query["includeDeleted"], "true", StringComparison.Ordinal))
+                return Json(Page(active, false, null));
+            return query.ContainsKey("after")
+                ? Json(Page(deleted, false, null))
+                : Json(Page(active, true, "next"));
+        });
+
+        var employees = await client.ListEmployeesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        employees.Select(e => e.Id).Should().Equal("active", "deleted");
+        var former = employees.Single(e => e.IsDeleted);
+        former.FirstName.Should().Be("Dee");
+        former.LastName.Should().Be("Departed");
     }
 
     [HumansFact]

@@ -12,6 +12,7 @@ internal interface IPleoClient
     Task<IReadOnlyList<JsonElement>> SearchEntriesAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<PleoAccountWire>> SearchAccountsAsync(CancellationToken ct = default);
+    /// <summary>Active and deleted cardholders, so historical entries retain their names.</summary>
     Task<IReadOnlyList<PleoEmployeeWire>> ListEmployeesAsync(CancellationToken ct = default);
     Task<PleoBalanceWire> GetBalanceAsync(CancellationToken ct = default);
 
