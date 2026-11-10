@@ -310,8 +310,8 @@ internal sealed record InformationImageInput(
 
 internal sealed record SurveyImageUpload(Stream Content, string ContentType, string FileName, long Length);
 
-/// <summary>Invitation totals and enqueue failures, or an expected refusal before any invitation write.</summary>
-internal sealed record SendResult(int InvitationsCreated, int EmailsQueued, int Failed, string? Refusal = null)
+/// <summary>Processed invitations (new or reused), queued emails and failures, or a refusal before writes.</summary>
+internal sealed record SendResult(int InvitationsProcessed, int EmailsQueued, int Failed, string? Refusal = null)
 {
     public bool Succeeded => Refusal is null;
 }

@@ -284,7 +284,7 @@ public class SurveyServiceTests
         attempts[0].DeliveryId.Should().NotBe(invitation.Id);
         deliveries.Should().ContainSingle();
         invitation.SentAt.Should().NotBeNull();
-        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).InvitationsCreated.Should().Be(0);
+        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).InvitationsProcessed.Should().Be(0);
         attempts.Should().HaveCount(2);
 
         invitation.SentAt = _clock.GetCurrentInstant() - Duration.FromDays(8);
@@ -1655,7 +1655,7 @@ public class SurveyServiceTests
 
         var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        result.InvitationsCreated.Should().Be(1);
+        result.InvitationsProcessed.Should().Be(1);
         result.EmailsQueued.Should().Be(1);
         await _repo.Received(1).AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == recent), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Is<SurveyInvitation>(i => i.UserId == stale), Arg.Any<CancellationToken>());
@@ -1689,7 +1689,7 @@ public class SurveyServiceTests
 
         var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        result.InvitationsCreated.Should().Be(2);
+        result.InvitationsProcessed.Should().Be(2);
         result.EmailsQueued.Should().Be(2);
         result.Failed.Should().Be(0);
         await _repo.Received(2).AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
@@ -1727,7 +1727,7 @@ public class SurveyServiceTests
         var result = await CreateService().SendInvitesAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        result.InvitationsCreated.Should().Be(1);
+        result.InvitationsProcessed.Should().Be(1);
         await _repo.Received(1).UpdateInvitationStatusAsync(
             participation.Id, EmailOutboxStatus.Queued, _clock.GetCurrentInstant(),
             Arg.Any<CancellationToken>());
@@ -1774,7 +1774,7 @@ public class SurveyServiceTests
         var result = await service.SendInvitesAsync(
             survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        result.InvitationsCreated.Should().Be(0);
+        result.InvitationsProcessed.Should().Be(0);
         result.EmailsQueued.Should().Be(0);
         await _repo.DidNotReceive().AddInvitationAndSaveAsync(Arg.Any<SurveyInvitation>(), Arg.Any<CancellationToken>());
         participation.SentAt.Should().BeNull();
@@ -1933,7 +1933,7 @@ public class SurveyServiceTests
         sent.Id.Should().Be(unsent.Id);
         sent.SentAt.Should().Be(_clock.GetCurrentInstant());
         sent.LatestEmailStatus.Should().Be(EmailOutboxStatus.Queued);
-        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).InvitationsCreated.Should().Be(0);
+        (await service.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).InvitationsProcessed.Should().Be(0);
     }
 
     [HumansTheory]
@@ -1960,13 +1960,14 @@ public class SurveyServiceTests
 
         var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
-        result.InvitationsCreated.Should().Be(2);
+        result.InvitationsProcessed.Should().Be(2);
         result.EmailsQueued.Should().Be(1);
         result.Failed.Should().Be(1);
         await _repo.Received(1).UpdateInvitationStatusAsync(
             Arg.Any<Guid>(), EmailOutboxStatus.Failed, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            SurveysAuditActions.SurveyInvitesSent, "Survey", survey.Id, Arg.Any<string>(), Arg.Any<Guid>());
+            SurveysAuditActions.SurveyInvitesSent, "Survey", survey.Id,
+            "Processed 2 invitation(s); 1 email(s) queued, 1 failed.", Arg.Any<Guid>());
     }
 
     [HumansTheory]
@@ -2008,7 +2009,7 @@ public class SurveyServiceTests
 
         var result = await CreateService().SendInvitesAsync(survey.Id, Guid.NewGuid(), request.Token);
 
-        result.InvitationsCreated.Should().Be(2);
+        result.InvitationsProcessed.Should().Be(2);
         result.EmailsQueued.Should().Be(2);
         result.Failed.Should().Be(0);
         await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == "first@example.org"), CancellationToken.None);
@@ -5652,7 +5653,7 @@ public class SurveyServiceTests
             survey.Id, new SurveyViewer(boardUserId, SeesEverySurvey: true, ManagesEverySurvey: true), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        result.Send!.InvitationsCreated.Should().Be(1);
+        result.Send!.InvitationsProcessed.Should().Be(1);
         result.Send!.EmailsQueued.Should().Be(1);
         await _repo.Received(1).ApproveAsync(survey.Id, _clock.GetCurrentInstant(), Arg.Any<CancellationToken>());
         await _repo.Received(1).AddInvitationAndSaveAsync(
