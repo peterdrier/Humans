@@ -273,6 +273,24 @@ public class GuideSegmenterTests
             + "anonymous included — GuideFilter can only drop segments that carry a role");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("<!--", "-->", "Example")]
+    [Xunit.InlineData("<!--", "-->", "As a Volunteer")]
+    [Xunit.InlineData("<pre>", "</pre>", "Example")]
+    [Xunit.InlineData("<pre>", "</pre>", "As a Volunteer")]
+    public void Segment_HeadingTextInsideHtmlBlock_DoesNotExposeRestrictedTail(string open, string close, string sample)
+    {
+        var input = $"## As a Board member / Admin\n\nRestricted intro.\n\n{open}\n## {sample}\n{close}\n\nRestricted tail.\n\n## Related\n\nPublic tail.";
+        Markdig.Markdown.ToHtml(input).Should().NotContain($"<h2>{sample}</h2>").And.Contain("<h2>Related</h2>");
+
+        var document = GuideTestRoles.Segmenter.Segment(input);
+        var filtered = GuideFilter.Apply(document, GuideRoleContext.Anonymous);
+
+        filtered.Should().Contain("Public tail.").And.NotContain("Restricted intro.").And.NotContain("Restricted tail.");
+        document.Segments.Should().HaveCount(2);
+        document.Segments[0].Markdown.Should().Contain($"{open}\n## {sample}\n{close}");
+    }
+
     [HumansFact]
     public void Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock()
     {

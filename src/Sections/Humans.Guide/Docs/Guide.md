@@ -22,12 +22,7 @@
   `GuideFilter` before the markdown reaches Markdig. No role metadata
   survives into the rendered HTML.
 - Heading boundaries follow CommonMark: up to three leading spaces, then `##` and a space/tab or end of line. Four-space code examples and non-breaking spaces after the hashes do not create boundaries. The original markdown is retained in each segment.
-- A `##` line **inside a fenced code block** is sample text, not a heading: it neither opens a
-  role-scoped block nor closes the one it sits in. `GuideSegmenter` tracks fence state for that
-  reason — an untracked fenced `##` ends the block around it and serves its remainder to
-  everyone. The rule cuts both ways: a backtick fence's info string may not itself contain a
-  backtick, so `` ```md`x `` opens no fence, and treating it as one would swallow a real heading
-  below it and leave the block *that* opens unscoped.
+- Only H2 lines identified by the renderer's shared Markdig pipeline can open or close role segments, using the existing `##` heading grammar. Sample headings inside code, HTML comments or raw HTML blocks never change the surrounding audience. Original markdown remains intact; the segmenter does not maintain a separate fence parser.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
   role sees that block. Every parenthetical must be a role title in Auth's
