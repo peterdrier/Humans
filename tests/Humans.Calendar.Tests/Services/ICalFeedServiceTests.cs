@@ -228,6 +228,47 @@ public class ICalFeedServiceTests
         Ical.Net.Calendar.Load(ics)!.Events.Should().ContainSingle();
     }
 
+    [HumansTheory]
+    [InlineData("20260731T235959", "20260731T215959Z")]
+    [InlineData("20261130T235959", "20261130T225959Z")]
+    [InlineData(" 20261130t235959 ", "20261130T225959Z")]
+    [InlineData("20261130T235959Z", "20261130T235959Z")]
+    [InlineData("20261130", "20261129T230000Z")]
+    [InlineData(" 20261130 ", "20261129T230000Z")]
+    [InlineData("20260329T023000", "20260329T013000Z")]
+    [InlineData("20261025T023000", "20261025T003000Z")]
+    public async Task GetFeedIcsAsync_FiniteZonedSeries_EmitsUtcUntil(string cutoff, string expected)
+    {
+        var userId = Guid.NewGuid();
+        var token = Guid.NewGuid();
+        StubUser(userId, token);
+        var rule = $"FREQ=DAILY;UNTIL={cutoff}";
+        var item = MakeItem("finite@humans.nobodies.team", "Workgroups", Instant.FromUtc(2026, 3, 1, 17, 0))
+            with { RecurrenceRule = rule, RecurrenceTimezone = "Europe/Madrid" };
+
+        var ics = await CreateService(new FakeContributor(item)).GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
+
+        ics.Should().Contain($"RRULE:FREQ=DAILY;UNTIL={expected}");
+        ics.Should().Contain("DTSTART;TZID=Europe/Madrid:20260301T180000");
+        item.RecurrenceRule.Should().Be(rule);
+    }
+
+    [HumansFact]
+    public void TimedDateCutoff_RetainsItsExistingMidnightBoundary()
+    {
+        var start = new Ical.Net.DataTypes.CalDateTime(new DateTime(2026, 11, 28, 18, 0, 0), "Europe/Madrid", hasTime: true);
+        var original = new Ical.Net.CalendarComponents.CalendarEvent
+        {
+            DtStart = start,
+            DtEnd = start.AddHours(1),
+            RecurrenceRule = CalendarRecurrenceRules.ParseRecurrenceRule("FREQ=DAILY;UNTIL=20261130"),
+        };
+
+        original.GetOccurrences(start, new Ical.Net.Evaluation.EvaluationOptions()).Take(4)
+            .Select(o => o.Period.StartTime.Value).Should().Equal(
+                new DateTime(2026, 11, 28, 18, 0, 0), new DateTime(2026, 11, 29, 18, 0, 0));
+    }
+
     [HumansFact]
     public async Task GetFeedIcsAsync_LocationUrl_IsAGoogleConferenceLeadsTheDescriptionAndFillsAnEmptyLocation()
     {
