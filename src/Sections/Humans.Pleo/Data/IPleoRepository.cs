@@ -7,7 +7,8 @@ namespace Humans.Pleo.Data;
 internal interface IPleoRepository : IRepository
 {
     /// <summary>The sweep is the truth: entries, employees and accounts it did not return are deleted, and the balance
-    /// row is replaced. One save, so a page never sees half a sweep. <c>pleo_categories</c> is not touched.</summary>
+    /// row is replaced. <c>pleo_categories</c> is not a cache: only the snapshot's changed rows are inserted or updated. One
+    /// save, so a page never sees half a sweep.</summary>
     Task ReplaceMirrorAsync(PleoMirrorSnapshot snapshot, Instant now, CancellationToken ct = default);
 
     Task<IReadOnlyList<PleoEntry>> GetEntriesAsync(CancellationToken ct = default);
@@ -29,4 +30,5 @@ internal sealed record PleoMirrorSnapshot(
     IReadOnlyList<PleoEntry> Entries,
     IReadOnlyList<PleoEmployee> Employees,
     IReadOnlyList<PleoAccount> Accounts,
-    PleoBalance Balance);
+    PleoBalance Balance,
+    IReadOnlyList<PleoCategory> ChangedCategories);

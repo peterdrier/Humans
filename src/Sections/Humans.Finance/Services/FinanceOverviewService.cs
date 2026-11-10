@@ -30,19 +30,18 @@ internal sealed class FinanceOverviewService(
 
         var syncedAt = await holded.GetLedgerSyncedAtAsync(ct);
         FinanceLedgerCardsVm? ledger = null;
-        decimal? pleoInHolded = null;
         if (syncedAt is not null)
         {
             var balances = await holded.GetAccountBalancesAsync(ct);
-            pleoInHolded = balances.GetValueOrDefault(PleoBooking.PleoTreasury);
             var chart = await holded.GetChartAsync(ct);
             var filings = await TaxFilingsAsync(chart, today, ct);
-            ledger = BuildLedgerCards(chart, balances, filings);
+            ledger = BuildLedgerCards(chart, balances, filings, (await pleo.GetWalletBalanceAsync(ct))?.CurrentEur);
         }
 
         var (creditors, _, creditorsUnavailable) = await finance.ListCreditorAccountsAsync(ct);
         var recon = await finance.GetExpenseReconAsync(null, ct);
         var queue = await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
+        var (transfers, _) = await finance.GetSepaTransfersAsync(ct);
 
         var year = await budget.GetActiveYearAsync(ct);
         FinanceBudgetVm? budgetVm = null;
@@ -66,7 +65,7 @@ internal sealed class FinanceOverviewService(
             budgetVm,
             runway,
             income,
-            new FinancePleoVm((await pleo.GetWalletBalanceAsync(ct))?.CurrentEur, pleoInHolded));
+            BuildSepaInProgress(transfers));
     }
 
     private static bool Under(int accountNum, string prefix) =>
@@ -80,18 +79,21 @@ internal sealed class FinanceOverviewService(
     ];
 
     /// <summary>Banks are 570/572, Stripe 441 until it moves. An archived account shows only while it holds money.
-    /// Receivables are summed per group: 430 has one sub-account per customer.</summary>
+    /// Receivables are summed per group: 430 has one sub-account per customer. The Pleo account carries the wallet's
+    /// own balance beside Holded's, unknown (null) before Pleo's first sweep.</summary>
     internal static FinanceLedgerCardsVm BuildLedgerCards(
         IReadOnlyList<HoldedChartAccountInfo> chart,
         IReadOnlyDictionary<int, decimal> balances,
-        IReadOnlyList<FinanceTaxFilingVm> filings)
+        IReadOnlyList<FinanceTaxFilingVm> filings,
+        decimal? pleoWallet = null)
     {
         decimal Balance(int num) => balances.GetValueOrDefault(num);
 
         List<FinanceAccountLineVm> Accounts(Func<int, bool> match) => chart
             .Where(a => match(a.Number) && (!a.Archived || Balance(a.Number) != 0m))
             .OrderBy(a => a.Number)
-            .Select(a => new FinanceAccountLineVm(a.Number, a.Name, Balance(a.Number)))
+            .Select(a => new FinanceAccountLineVm(a.Number, a.Name, Balance(a.Number),
+                a.Number == PleoBooking.PleoTreasury ? new FinanceAccountSourceVm(pleoWallet, "Pleo") : null))
             .ToList();
 
         var receivables = ReceivableGroups
@@ -198,6 +200,14 @@ internal sealed class FinanceOverviewService(
             suppliers.Sum(r => r.OwedToMember),
             taxesOwed);
     }
+
+    /// <summary>Sent to the bank, not booked and not withdrawn, oldest first.</summary>
+    internal static IReadOnlyList<FinanceSepaTransferVm> BuildSepaInProgress(
+        IReadOnlyList<SepaPayoutTransferRow> transfers) => transfers
+        .Where(t => !t.IsBooked && !t.IsWithdrawn)
+        .OrderBy(t => t.GeneratedAt)
+        .Select(t => new FinanceSepaTransferVm(t.UserId, t.FileName, t.GeneratedAt, t.Amount))
+        .ToList();
 
     /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning.</summary>
     internal static FinanceWorkVm BuildWork(

@@ -82,7 +82,7 @@ internal sealed class TeamDetailViewModel
     public bool CanCurrentUserEditTeam { get; set; }
 
     /// <summary>
-    /// Early entry is enabled and the viewer can manage it: a coordinator, EETeamAdmin, or TeamsAdmin/Board/Admin.
+    /// Early entry is enabled and the viewer passes ManageEarlyEntry: a coordinator, EarlyEntryAdmin, TeamsAdmin or Admin.
     /// </summary>
     public bool CanManageEarlyEntry { get; set; }
     public Guid? CurrentUserPendingRequestId { get; set; }

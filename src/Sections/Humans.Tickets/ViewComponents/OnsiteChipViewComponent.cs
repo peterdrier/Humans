@@ -7,14 +7,20 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Tickets.ViewComponents;
 
-/// <summary>Only for the member on their own profile or a viewer passing <see cref="TicketsPolicies.Read"/>.</summary>
+/// <summary>
+/// Only for the member on their own profile or a viewer passing <see cref="TicketsPolicies.Read"/>. On the member's own
+/// profile it renders only inside the ticket holdings card, not as its own profile part.
+/// </summary>
 public sealed class OnsiteChipViewComponent(
     ITicketService tickets,
     ISettingsService settingsService,
     IAuthorizationService authorization) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode, bool inHoldings = false)
     {
+        if (viewMode == ProfileCardViewMode.Self && !inHoldings)
+            return Content(string.Empty);
+
         if (viewMode != ProfileCardViewMode.Self
             && !(await authorization.AuthorizeAsync(UserClaimsPrincipal, TicketsPolicies.Read)).Succeeded)
             return Content(string.Empty);

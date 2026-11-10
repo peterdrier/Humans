@@ -17,10 +17,9 @@ Teams are how Nobodies Collective organises humans around shared interests and r
 ### What Happens Automatically
 
 - When you join a team that has a **Google Group**, you are automatically added to that group
-- When you leave a team, you are automatically removed from the linked Google Group
+- When you leave a team, the nightly reconciliation removes you from the linked Google Group and Drive
 - When you join a team that has a **Shared Drive**, you are granted access automatically
-- Team changes sync to Google resources hourly via the background sync job
 
 ### Searching for Humans
 
-Use the **Search** button to find humans across all teams by name or email. The **Roster** view shows all active humans in a flat list.
+Use the **Search** button to find humans by name. The **Roster** view shows every team's role slots and which are still open.

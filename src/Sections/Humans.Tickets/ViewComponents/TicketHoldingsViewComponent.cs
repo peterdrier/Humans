@@ -22,7 +22,12 @@ public sealed class TicketHoldingsViewComponent(
         var holdings = await queryService.GetUserTicketHoldingsAsync(userId, HttpContext.RequestAborted);
 
         if (!showEmpty && holdings.OrderCount == 0 && holdings.Tickets.Count == 0)
-            return Content(string.Empty);
+        {
+            // No card, but a member checked in on a ticket they no longer hold still sees their own onsite chip.
+            return viewMode == ProfileCardViewMode.Self
+                ? View(new TicketHoldingsViewModel(userId, viewMode, 0, [], ChipOnly: true))
+                : Content(string.Empty);
+        }
 
         var earlyEntry = await earlyEntryService.GetForUserAsync(userId, HttpContext.RequestAborted);
 
@@ -30,8 +35,9 @@ public sealed class TicketHoldingsViewComponent(
             .Select(t => TicketStubInfo.From(t, earlyEntry?.EarliestEntryDate))
             .ToList();
 
-        return View(new TicketHoldingsViewModel(holdings.OrderCount, stubs));
+        return View(new TicketHoldingsViewModel(userId, viewMode, holdings.OrderCount, stubs));
     }
 }
 
-internal sealed record TicketHoldingsViewModel(int OrderCount, IReadOnlyList<TicketStubInfo> Tickets);
+internal sealed record TicketHoldingsViewModel(
+    Guid UserId, ProfileCardViewMode ViewMode, int OrderCount, IReadOnlyList<TicketStubInfo> Tickets, bool ChipOnly = false);

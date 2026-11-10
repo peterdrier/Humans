@@ -126,7 +126,6 @@ internal sealed class CachingTeamService(
                 : [];
         }
 
-        // Name match: active and non-hidden, case-insensitive contains.
         var trimmed = query.Trim();
         return teamsById.Values
             .Where(t => t.IsActive && !t.IsHidden
@@ -409,7 +408,6 @@ internal sealed class CachingTeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Non-system teams where the user is an active Coordinator or holds an active management role.
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         var result = new HashSet<Guid>();
         foreach (var team in teamsById.Values)
@@ -523,8 +521,6 @@ internal sealed class CachingTeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Departments (no parent, no system-team filter) where the user is Coordinator or holds a management role,
-        // plus their active children.
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         var departments = new HashSet<Guid>();
         foreach (var team in teamsById.Values)

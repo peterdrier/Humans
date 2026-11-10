@@ -812,6 +812,9 @@
   <data name="Users_Profile_Settings" xml:space="preserve">
     <value>Impostazioni</value>
   </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Mostra tutte ({0})</value>
+  </data>
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Anteprima di un nuovo layout. La pagina attuale:</value>
   </data>

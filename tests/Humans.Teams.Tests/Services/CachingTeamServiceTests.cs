@@ -362,7 +362,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // Warm the cache + inverse index.
         var before = await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken);
         before.Should().HaveCount(1);
 
@@ -414,7 +413,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        // First call drives warmup (which uses repository, not inner service).
         await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken);
 
         // The inner ITeamManagementService is an unconfigured NSubstitute mock; if the
@@ -631,7 +629,6 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
         var ct = TestContext.Current.CancellationToken;
 
-        // Warm the cache so we can observe invalidation by counter.
         await _service.GetTeamAsync(team.Id, ct);
         var before = _service.BulkInvalidations;
 

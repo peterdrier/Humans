@@ -19,7 +19,7 @@
                 </text>;
             var grantsTable = TableModel.For(Model.OrderByDescending(g => g.AssignedAt).ToList())
                 .Column(Localizer["Campaigns_MyCodes_Campaign"].Value, g => g.CampaignTitle)
-                .Column(Localizer["Campaigns_MyCodes_Code"].Value, g => g.Code)
+                .Column(Localizer["Campaigns_MyCodes_Code"].Value, g => g.Code, c => c.Css("text-nowrap"))
                 .Column(Localizer["Campaigns_MyCodes_Assigned"].Value, g => g.AssignedAt, c => c.Date())
                 .Template(Localizer["Campaigns_MyCodes_Redeemed"].Value, redeemedCell)
                 .Build();
