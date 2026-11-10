@@ -102,7 +102,6 @@ public sealed class Section :
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
-        // The policies this handler backs stay in Shell's AuthorizationPolicyExtensions.
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
         services.AddSingleton<TeamsMetricsService>();
