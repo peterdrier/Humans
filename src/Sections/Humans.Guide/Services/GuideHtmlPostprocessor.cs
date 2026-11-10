@@ -11,11 +11,11 @@ namespace Humans.Guide.Services;
 internal sealed class GuideHtmlPostprocessor
 {
     // Matches <code>/route/path</code> spans where the content is a concrete app path:
-    // starts with "/", contains no "{" and no "*" (so route templates like /Profile/{id}
+    // starts with one "/", contains no "{" and no "*" (so route templates like /Profile/{id}
     // and wildcards like /api/backdoor/* are left alone — both would 404 if linked), no
     // whitespace, no "#" or "?". These spans get wrapped in an <a href>.
     private static readonly Regex AppPathCodePattern = new(
-        """<code>(?<path>/[^\s<>{}#?*]+)</code>""",
+        """<code>(?<path>/(?!/)[^\s<>{}#?*]+)</code>""",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(500));
 
@@ -97,7 +97,8 @@ internal sealed class GuideHtmlPostprocessor
         string guideFolder)
     {
         if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("//", StringComparison.Ordinal))
         {
             return (url, true);
         }
@@ -112,29 +113,25 @@ internal sealed class GuideHtmlPostprocessor
             return (url, false);
         }
 
-        if (url.StartsWith("../", StringComparison.Ordinal))
-        {
-            var resolved = ResolveParentRelative(url, guideFolder);
-            return ($"{githubRepoBlobBase}{resolved}", true);
-        }
+        var (path, suffix) = SplitUrlSuffix(url);
+        while (path.StartsWith("./", StringComparison.Ordinal))
+            path = path[2..];
 
-        var (path, fragment) = SplitFragment(url);
+        if (path.StartsWith("../", StringComparison.Ordinal))
+        {
+            var resolved = ResolveParentRelative(path, guideFolder);
+            return ($"{githubRepoBlobBase}{resolved}{suffix}", true);
+        }
 
         if (path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
         {
             var stem = path[..^3];
             if (GuideFiles.TryCanonical(stem, out var known))
             {
-                var href = fragment is null ? $"/Guide/{known}" : $"/Guide/{known}#{fragment}";
-                return (href, false);
+                return ($"/Guide/{known}{suffix}", false);
             }
 
-            var blobUrl = $"{githubRepoBlobBase}{guideFolder}{path}";
-            if (fragment is not null)
-            {
-                blobUrl = $"{blobUrl}#{fragment}";
-            }
-            return (blobUrl, true);
+            return ($"{githubRepoBlobBase}{guideFolder}{path}{suffix}", true);
         }
 
         return (url, false);
@@ -143,7 +140,8 @@ internal sealed class GuideHtmlPostprocessor
     private static string RewriteImgSrc(string url, string rawBase, string guideFolder)
     {
         if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("//", StringComparison.Ordinal))
         {
             return url;
         }
@@ -175,13 +173,9 @@ internal sealed class GuideHtmlPostprocessor
         return string.Join('/', segments);
     }
 
-    private static (string Path, string? Fragment) SplitFragment(string url)
+    private static (string Path, string Suffix) SplitUrlSuffix(string url)
     {
-        var hashIndex = url.IndexOf('#');
-        if (hashIndex < 0)
-        {
-            return (url, null);
-        }
-        return (url[..hashIndex], url[(hashIndex + 1)..]);
+        var suffixIndex = url.IndexOfAny(['?', '#']);
+        return suffixIndex < 0 ? (url, string.Empty) : (url[..suffixIndex], url[suffixIndex..]);
     }
 }
