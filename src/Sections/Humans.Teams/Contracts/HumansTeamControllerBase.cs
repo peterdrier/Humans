@@ -1,3 +1,4 @@
+using Humans.Teams.Services;
 using Humans.Base.Enums;
 using Humans.Base.Controllers;
 using Humans.Teams.Authorization;
@@ -85,11 +86,7 @@ public abstract class HumansTeamControllerBase(
             return (errorResult, null!, null!);
         }
 
-        var normalizedSlug = slug.ToLowerInvariant();
-        var teamsById = await teamService.GetTeamsAsync(ct);
-        var team = teamsById.Values.FirstOrDefault(
-            t => string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
-                 || string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));
+        var team = TeamSlugResolver.Find(await teamService.GetTeamsAsync(ct), slug);
         if (team is null || !teamFilter(team))
         {
             return (NotFound(), user, null!);
