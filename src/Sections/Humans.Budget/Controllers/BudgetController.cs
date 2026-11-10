@@ -75,7 +75,7 @@ internal sealed class BudgetController(
                 return View("NoActiveBudget");
             }
 
-            var visibleGroups = activeYear.Groups.ToList();
+            var visibleGroups = activeYear.Groups.OrderBy(group => group.SortOrder).ToList();
             var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
 
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);

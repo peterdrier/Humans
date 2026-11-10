@@ -642,7 +642,7 @@ internal sealed class BudgetAdminController(
 
     private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears, CancellationToken ct)
     {
-        var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
+        var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups.OrderBy(group => group.SortOrder).ToList());
 
         var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
         if (ticketingGroup is not null)
