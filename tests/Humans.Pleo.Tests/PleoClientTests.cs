@@ -116,6 +116,28 @@ public sealed class PleoClientTests
         calls.Should().Be(2);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("entries", "null")]
+    [Xunit.InlineData("accounts", "[]")]
+    [Xunit.InlineData("employees", "42")]
+    [Xunit.InlineData("balance", "true")]
+    [Xunit.InlineData("receipts", "\"unavailable\"")]
+    public async Task Non_object_responses_use_the_typed_provider_error_path(string consumer, string body)
+    {
+        var client = Make(_ => Json(body));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> action = () => consumer switch
+        {
+            "accounts" => client.SearchAccountsAsync(ct),
+            "employees" => client.ListEmployeesAsync(ct),
+            "balance" => client.GetBalanceAsync(ct),
+            "receipts" => client.ListReceiptsAsync("entry", ct),
+            _ => client.SearchEntriesAsync(ct),
+        };
+
+        await action.Should().ThrowAsync<PleoPermanentException>().WithMessage("*expected a JSON object*");
+    }
+
     [HumansFact]
     public async Task Sends_basic_auth_with_the_key_and_an_empty_password()
     {

@@ -176,6 +176,8 @@ internal sealed class PleoClient : IPleoClient
         try
         {
             using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                throw new PleoPermanentException($"Pleo {endpoint}: expected a JSON object.");
             return doc.RootElement.Clone();
         }
         catch (JsonException ex)

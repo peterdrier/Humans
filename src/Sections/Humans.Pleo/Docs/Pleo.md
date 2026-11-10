@@ -81,6 +81,9 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   replaces the four cache tables in one save: rows the sweep did not return are deleted. A failed call leaves the
   mirror as it was and records the error on the sync row. If that diagnostic save also fails, the secondary failure
   is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
+- JSON API responses must have an object root. A null, array or scalar response fails as a typed
+  `PleoPermanentException`, so live receipt reads use their existing failure feedback instead of leaking a
+  JSON object-access exception. This check also covers all sweep reads before mirror replacement.
 - The shared entries/accounts/employees/receipts pager requires an explicit boolean `pagination.hasNextPage`
   on every page; only `false` completes the dataset. Missing, null or mistyped metadata fails instead of
   returning a prefix. A body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
