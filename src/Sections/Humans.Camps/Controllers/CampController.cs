@@ -395,7 +395,7 @@ internal sealed class CampController(
         string campSlug, CampSeasonInfo season, bool canManage, CancellationToken ct)
     {
         var panelData = await campRoleService.BuildPanelAsync(season.Id, ct);
-        var activeMemberRows = season.ActiveMembers;
+        var activeMemberRows = season.ActiveMembers.OrderBy(m => m.RequestedAt).ToList();
         var activeMemberUserIds = activeMemberRows
             .Select(m => m.UserId)
             .ToList();
@@ -421,6 +421,7 @@ internal sealed class CampController(
                 SlotCount = r.Definition.SlotCount,
                 MinimumRequired = r.Definition.MinimumRequired,
                 FilledSlots = r.FilledSlots
+                .OrderBy(s => s.AssignedAt)
                 .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
                 .ToList(),
                 EmptySlotCount = r.EmptySlotCount,
@@ -447,9 +448,11 @@ internal sealed class CampController(
         }
 
         viewModel.PendingMembers = season.PendingMembers
+            .OrderBy(m => m.RequestedAt)
             .Select(MapCampMemberRow)
             .ToList();
         viewModel.ActiveMembers = season.ActiveMembers
+            .OrderBy(m => m.RequestedAt)
             .Select(MapCampMemberRow)
             .ToList();
         viewModel.EeSlotCount = season.EeSlotCount;
@@ -1223,6 +1226,7 @@ internal sealed class CampController(
         if (vm.CanSeeFullCamp)
         {
             vm.Roster = activeMembers
+                .OrderBy(m => m.RequestedAt)
                 .Select(MapCampMemberRow)
                 .ToList();
         }

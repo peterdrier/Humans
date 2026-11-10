@@ -1096,12 +1096,13 @@ public class CampControllerTests
         var zeroShiftMemberId = Guid.NewGuid();
         var oneShiftMemberId = Guid.NewGuid();
         var fivePlusShiftMemberId = Guid.NewGuid();
+        var earliest = Instant.FromUtc(2026, 1, 1, 0, 0);
 
         var members = new[]
         {
-            MakeSeasonMember(zeroShiftMemberId),
-            MakeSeasonMember(oneShiftMemberId),
-            MakeSeasonMember(fivePlusShiftMemberId),
+            MakeSeasonMember(zeroShiftMemberId) with { RequestedAt = earliest.Plus(Duration.FromDays(2)) },
+            MakeSeasonMember(oneShiftMemberId) with { RequestedAt = earliest },
+            MakeSeasonMember(fivePlusShiftMemberId) with { RequestedAt = earliest.Plus(Duration.FromDays(1)) },
         };
         var camp = MakeCamp("garden-of-joy", "Garden of Joy", CampSeasonStatus.Active, leadUserId, members: members);
         var season = camp.Seasons.Single();
@@ -1122,7 +1123,12 @@ public class CampControllerTests
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
             .Returns(new CampRolesPanelData(season.Id, [
-                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [], 1, false, 0),
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [
+                    new CampRolesPanelSlot(Guid.NewGuid(), members[0].Id, zeroShiftMemberId)
+                    { AssignedAt = earliest.Plus(Duration.FromDays(1)) },
+                    new CampRolesPanelSlot(Guid.NewGuid(), members[1].Id, oneShiftMemberId)
+                    { AssignedAt = earliest },
+                ], 0, false, 2),
                 new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Alpha", SortOrder = 1 }, [], 1, false, 0),
                 new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Priority", SortOrder = -1 }, [], 1, false, 0),
             ]));
@@ -1149,6 +1155,10 @@ public class CampControllerTests
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampEditViewModel>().Subject;
         vm.RolesPanel!.Rows.Select(row => row.Name).Should().Equal("Priority", "Alpha", "Zebra");
+        vm.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
+        vm.RolesPanel.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
+        vm.RolesPanel.Rows.Single(row => string.Equals(row.Name, "Zebra", StringComparison.Ordinal)).FilledSlots.Select(s => s.UserId)
+            .Should().Equal(oneShiftMemberId, zeroShiftMemberId);
         vm.ActiveMembers.Single(m => m.UserId == zeroShiftMemberId).EventShiftSignupCount.Should().Be(0);
         vm.ActiveMembers.Single(m => m.UserId == oneShiftMemberId).EventShiftSignupCount.Should().Be(1);
         vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupCount.Should().Be(5);
