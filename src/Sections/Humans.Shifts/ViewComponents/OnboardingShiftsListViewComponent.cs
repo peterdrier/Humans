@@ -21,6 +21,7 @@ public sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnS
             return Content(string.Empty);
 
         var rotaGroups = shifts
+            .OrderByDescending(u => u.UrgencyScore)
             .GroupBy(u => u.Shift.RotaId)
             .Select(rg => ShiftBrowseMapper.BuildRotaGroup(
                 rg,

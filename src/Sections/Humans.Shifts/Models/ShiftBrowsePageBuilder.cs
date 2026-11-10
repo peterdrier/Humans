@@ -203,6 +203,7 @@ internal sealed class ShiftBrowsePageBuilder(
         var teamsById = await teamService.GetTeamsAsync(ct);
 
         return shifts
+            .OrderByDescending(u => u.UrgencyScore)
             .GroupBy(u => u.Rota.TeamId)
             .Select(deptGroup =>
             {
