@@ -1790,6 +1790,25 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task ApproveJoinRequestAsync_RequestAlreadyRejected_ReturnsRefusalAndAddsNoMember()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id, TeamJoinRequestStatus.Rejected);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, "late", TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*pending*");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        (await _service.GetUserTeamMembershipsAsync(requester.Id, TestContext.Current.CancellationToken))
+            .Should().NotContain(m => m.TeamId == team.Id);
+    }
+
+    [HumansFact]
     public async Task RejectJoinRequestAsync_HappyPath_RecordsRejectionWithReason()
     {
         var coordinator = SeedUser(displayName: "Coordinator");
