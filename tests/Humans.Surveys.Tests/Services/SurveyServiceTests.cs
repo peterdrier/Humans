@@ -2630,6 +2630,66 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task IdentifiedStarts_share_one_draft_when_their_initial_lookups_overlap(
+        bool firstPublic, bool secondPublic)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var surveyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var participation = InvitationFor(surveyId, userId);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        SurveyResponse? stored = null;
+        var lookups = 0;
+        _repo.GetOrCreateParticipationAsync(surveyId, userId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(participation);
+        _repo.GetDraftResponseAsync(surveyId, userId, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            var found = stored;
+            if (Interlocked.Increment(ref lookups) == 1)
+            {
+                entered.TrySetResult();
+                await resume.Task.WaitAsync(ct);
+            }
+            return found;
+        });
+        _repo.When(r => r.AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>()))
+            .Do(call => stored = call.Arg<SurveyResponse>());
+
+        async Task<Guid?> StartAsync(bool publicStart)
+        {
+            var service = CreateService();
+            return publicStart
+                ? (await service.StartPublicTrackedResponseAsync(
+                    surveyId, userId, ResponseAnonymity.Identified, "en", ct))?.DraftResponseId
+                : await service.StartIdentifiedDraftAsync(
+                    surveyId, participation.Id, userId, SurveyInputMethod.UserSpecificLink, "en", ct);
+        }
+
+        var first = StartAsync(firstPublic);
+        Task<Guid?> second;
+        try
+        {
+            await Task.WhenAny(first, entered.Task).WaitAsync(TimeSpan.FromSeconds(10), ct);
+            if (first.IsCompleted) await first;
+            entered.Task.IsCompleted.Should().BeTrue();
+            second = StartAsync(secondPublic);
+        }
+        finally
+        {
+            resume.TrySetResult();
+        }
+        var ids = await Task.WhenAll(first, second);
+
+        ids.Should().OnlyContain(id => id == stored!.Id);
+        await _repo.Received(1).AddResponseAsync(Arg.Any<SurveyResponse>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task StartIdentifiedDraftAsync_creates_identified_draft_when_none_exists()
     {
