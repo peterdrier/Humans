@@ -57,6 +57,7 @@ cached in-memory from GitHub. No migrations, no new tables.
 4. `GuideFilter` drops the segments the user can't see and joins what remains.
 5. `GuideRenderer` renders that markdown through Markdig and rewrites its
    links; the HTML goes inside `_GuideLayout.cshtml` with the sidebar. Concrete app paths in inline code become links only when outside an existing link or code block; explicit link destinations are preserved.
+   Browser network URLs with slash/backslash authority prefixes retain external-link/image behavior; backslashes in code examples do not become app links.
 
 ### Refreshing from GitHub (Admin)
 

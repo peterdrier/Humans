@@ -41,6 +41,9 @@ public class GuideHtmlPostprocessorTests
     [InlineData("NonExistent.md?print=1#details", "https://github.com/nobodies-collective/Humans/blob/main/docs/guide/NonExistent.md?print=1#details")]
     [InlineData("./../sections/Teams.md?print=1#details", "https://github.com/nobodies-collective/Humans/blob/main/docs/sections/Teams.md?print=1#details")]
     [InlineData("//example.com/help", "//example.com/help")]
+    [InlineData(@"/\example.com/help", @"/\example.com/help")]
+    [InlineData(@"\/example.com/help", @"\/example.com/help")]
+    [InlineData(@"\\example.com/help", @"\\example.com/help")]
     public void Rewrite_ExternalHref_GetsNewTabAttrs(string href, string expectedHrefSubstring)
     {
         var html = $"""<a href="{href}">x</a>""";
@@ -131,6 +134,9 @@ public class GuideHtmlPostprocessorTests
     [HumansTheory]
     [InlineData("https://cdn.example.com/x.png")]
     [InlineData("//cdn.example.com/x.png")]
+    [InlineData(@"/\cdn.example.com/x.png")]
+    [InlineData(@"\/cdn.example.com/x.png")]
+    [InlineData(@"\\cdn.example.com/x.png")]
     public void Rewrite_ImageAbsoluteUrl_LeftAsIs(string url)
     {
         var html = $"""<img src="{url}" alt="x" />""";
@@ -178,6 +184,8 @@ public class GuideHtmlPostprocessorTests
     [HumansTheory]
     [InlineData("Guide:Owner")]
     [InlineData("//example.com/help")]
+    [InlineData(@"/\example.com/help")]
+    [InlineData(@"/Camps\sample")]
     public void Rewrite_InlineCodeNonPath_LeftAsIs(string text)
     {
         var html = $"""<p>Value: <code>{text}</code>.</p>""";

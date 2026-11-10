@@ -13,7 +13,7 @@ internal sealed class GuideHtmlPostprocessor
     // Validate decoded text: attributes do not change a path, and entity escaping must not
     // turn placeholders or whitespace into navigation. Templates and wildcards would 404.
     private static readonly Regex AppPathCodePattern = new(
-        @"\A/(?!/)[^\s<>{}#?*]+\z",
+        @"\A/(?!/)[^\\\s<>{}#?*]+\z",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(500));
 
@@ -97,9 +97,7 @@ internal sealed class GuideHtmlPostprocessor
         string githubRepoBlobBase,
         string guideFolder)
     {
-        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("//", StringComparison.Ordinal))
+        if (IsHttpOrNetworkUrl(url))
         {
             return (url, true);
         }
@@ -140,9 +138,7 @@ internal sealed class GuideHtmlPostprocessor
 
     private static string RewriteImgSrc(string url, string rawBase, string guideFolder)
     {
-        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("//", StringComparison.Ordinal))
+        if (IsHttpOrNetworkUrl(url))
         {
             return url;
         }
@@ -155,6 +151,12 @@ internal sealed class GuideHtmlPostprocessor
 
         return rawBase + trimmed;
     }
+
+    // Browsers normalize backslashes in HTTP(S) URLs, including both authority-prefix separators.
+    private static bool IsHttpOrNetworkUrl(string url) =>
+        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+        || (url.Length >= 2 && (url[0] is '/' or '\\') && (url[1] is '/' or '\\'));
 
     private static string ResolveParentRelative(string url, string guideFolder)
     {
