@@ -224,7 +224,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
@@ -256,7 +256,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, editable.Event!.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -528,7 +528,7 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
@@ -560,7 +560,7 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);

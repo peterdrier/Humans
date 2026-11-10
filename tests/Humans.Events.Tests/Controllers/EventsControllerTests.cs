@@ -1206,6 +1206,73 @@ public class EventsControllerTests
         controller.TempData.Should().NotContainKey("SuccessMessage");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ExistingEventEdits_UseTheRecordsCalendarAndTimezone(bool campEvent, bool post)
+    {
+        var userId = Guid.NewGuid();
+        StubEditableGuideSettings();
+        var original = MakeBurnSettings() with
+        {
+            Year = 2025, GateOpeningDate = new LocalDate(2025, 8, 1), EventEndOffset = 6,
+            TimeZoneId = "America/New_York"
+        };
+        var localStart = original.GateOpeningDate.At(new LocalTime(10, 30));
+        var start = localStart.InZoneLeniently(DateTimeZoneProviders.Tzdb[original.TimeZoneId]).ToInstant();
+        var campId = campEvent ? Guid.NewGuid() : (Guid?)null;
+        var entry = MakeEvent(campId, userId, EventStatus.ResubmitRequested) with
+        {
+            EventSettingsId = original.Id, StartAt = start, IsRecurring = true, RecurrenceDays = "0,6"
+        };
+        _guide.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+        _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
+        if (campId is { } id)
+        {
+            var camp = new CampInfo(id, "camp", "camp@example.org", "", false, 0, []);
+            _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+            _guide.GetCampEventAsync(entry.Id, id, Arg.Any<CancellationToken>()).Returns(entry);
+            _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+                .Returns(AuthorizationResult.Success());
+        }
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        if (!post)
+        {
+            var result = campEvent
+                ? await controller.BarrioEdit("camp", entry.Id)
+                : await controller.Edit(entry.Id);
+            var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeAssignableTo<EventProposalFormViewModel>().Subject;
+            model.StartDate.Should().Be(new DateOnly(2025, 8, 1));
+            model.StartTime.Should().Be(new TimeOnly(10, 30));
+            model.TimeZoneId.Should().Be(original.TimeZoneId);
+            model.EventDays.Should().HaveCount(7);
+        }
+        else
+        {
+            EventProposalFormViewModel model = campEvent
+                ? new CampEventFormViewModel { DurationMinutes = 60 }
+                : new IndividualEventFormViewModel { DurationMinutes = 60 };
+            model.Title = "Edited";
+            model.Description = "Description";
+            model.StartDate = new DateOnly(2025, 8, 1);
+            model.StartTime = new TimeOnly(10, 30);
+            model.IsRecurring = true;
+            model.RecurrenceDays = "0,6";
+            model.CategoryId = entry.CategoryId;
+            if (model is IndividualEventFormViewModel individual) individual.VenueId = entry.GuideSharedVenueId!.Value;
+            var result = campEvent
+                ? await controller.BarrioUpdate("camp", entry.Id, (CampEventFormViewModel)model)
+                : await controller.Update(entry.Id, (IndividualEventFormViewModel)model);
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _guide.Received(1).UpdateAndResubmitAsync(entry.Id,
+                Arg.Is<EventEdit>(edit => edit.StartAt == start && string.Equals(edit.RecurrenceDays, "0,6", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
+        }
+    }
+
     private void StubEditableGuideSettings()
     {
         _guide.SubmitEventAsync(Arg.Any<Event>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(new EventSaveResult());

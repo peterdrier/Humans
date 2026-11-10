@@ -1259,6 +1259,41 @@ public sealed class EventServiceTests
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExistingEventSaves_ValidateRecurrenceAgainstTheRecordsEvent(bool moderator)
+    {
+        var current = BurnFixtures.Burn(eventEndOffset: 2);
+        var original = BurnFixtures.Burn(year: 2025, eventEndOffset: 6);
+        _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = current.Id };
+        _burnSettings.GetEventSettingsByIdAsync(current.Id, Arg.Any<CancellationToken>()).Returns(current);
+        _burnSettings.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+        var category = new EventCategory { Id = Guid.NewGuid(), IsActive = true };
+        var venue = new EventVenue { Id = Guid.NewGuid(), IsActive = true };
+        _repo.Categories.Add(category);
+        _repo.Venues.Add(venue);
+        var entry = new Event
+        {
+            Id = Guid.NewGuid(), EventSettingsId = original.Id, CategoryId = category.Id,
+            GuideSharedVenueId = venue.Id, SubmitterUserId = Guid.NewGuid(), Status = EventStatus.Pending,
+            Title = "Original", Description = "Description", DurationMinutes = 60,
+            StartAt = Instant.FromUtc(2025, 8, 1, 14, 30), IsRecurring = true, RecurrenceDays = "0,6"
+        };
+        _repo.Events.Add(entry);
+        var edit = EditOf(entry) with { Title = "Edited" };
+
+        if (moderator)
+            await _service.AdminUpdateAsync(entry.Id, edit, Guid.NewGuid(), "Historic correction", TestContext.Current.CancellationToken);
+        else
+            (await _service.UpdateAndResubmitAsync(entry.Id, edit, TestContext.Current.CancellationToken)).ErrorKey.Should().BeNull();
+
+        entry.Title.Should().Be("Edited");
+        entry.EventSettingsId.Should().Be(original.Id);
+        (await _service.GetEventForModerationAsync(entry.Id, TestContext.Current.CancellationToken))!
+            .EventSettingsId.Should().Be(original.Id);
+    }
+
     private static EventEdit EditOf(Event e) => new(
         e.CategoryId, e.GuideSharedVenueId, e.Title, e.Description, e.StartAt, e.DurationMinutes,
         e.LocationNote, e.Host, e.IsRecurring, e.RecurrenceDays, e.PriorityRank);

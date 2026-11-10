@@ -25,6 +25,8 @@ Two types of events exist: **camp events** (submitted by a team Lead, anchored t
 
 Both kinds of submission are managed from a single page — **My Event Submissions** (`/Events/MySubmissions`). It shows the human's own individual events in one block, plus one block per barrio they lead or manage workshops for in the guide's configured event. Camp selection and labels use that event's season, even when multiple events share a year; an unconfigured guide shows no barrio blocks. There is no separate per-barrio events page.
 
+Existing submissions keep their original event calendar and timezone when edited by a submitter or moderator, including recurrence choices, camp labels and feedback links. Switching the guide to another event does not reinterpret older records. New submissions and bulk imports still use the configured guide event; legacy unassigned records retain that fallback.
+
 ## User Stories
 
 ### US-26.1: Moderator Configures the Guide

@@ -74,6 +74,8 @@ internal sealed record EventInfo(
     Instant LastUpdatedAt,
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
+    public Guid? EventSettingsId { get; init; }
+
     // Project defensively: Category may be null and EventVenue / moderation history unloaded.
     internal static EventInfo FromEvent(Event e) => new(
         Id: e.Id,
@@ -99,7 +101,7 @@ internal sealed record EventInfo(
         LastUpdatedAt: e.LastUpdatedAt,
         ModerationHistory: e.EventModerationActions
             .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
-            .ToList());
+            .ToList()) { EventSettingsId = e.EventSettingsId };
 
     public bool CanEdit => Event.IsEditableBySubmitter(Status, CampId is not null);
 
