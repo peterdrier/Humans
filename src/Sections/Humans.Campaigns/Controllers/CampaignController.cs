@@ -317,6 +317,8 @@ internal sealed class CampaignController(
             SetError("Waves can only be sent while the campaign is Active.");
         else if (string.Equals(result.ErrorKey, "NotEnoughCodes", StringComparison.Ordinal))
             SetError($"Not enough codes available: need {result.CodesNeeded}, have {result.CodesAvailable}.");
+        else if (result.EnqueueFailedCount > 0)
+            SetError($"Codes assigned to {result.SentCount} humans; email could not be queued for {result.EnqueueFailedCount} of them. Review the email outbox and use Resend for affected grants.");
         else
             SetSuccess($"Wave sent to {result.SentCount} humans.");
 

@@ -1025,6 +1025,7 @@ public sealed class CampaignServiceTests
 
         // The wave survives the throw: both grants exist and the second send still ran.
         result.SentCount.Should().Be(2);
+        result.EnqueueFailedCount.Should().Be(1);
         sendCalls.Should().Be(2);
         var grants = await CampaignsDb.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
@@ -1035,6 +1036,42 @@ public sealed class CampaignServiceTests
         notice[5].Should().Be("Your campaign code is available under My Codes in your profile.");
         notice[6].Should().Be("/Profile/Me");
         notice[7].Should().Be("My Codes");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task SendWavePost_ReportsEnqueueFailuresWithoutLosingGrants(int failures)
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["POST-1", "POST-2"]);
+        var team = SeedTeam("Post outcome");
+        SeedTeamMember(team.Id, SeedUser(displayName: "First").Id);
+        SeedTeamMember(team.Id, SeedUser(displayName: "Second").Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var sendCalls = 0;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++sendCalls <= failures
+                ? Task.FromException(new InvalidOperationException("enqueue boom"))
+                : Task.CompletedTask);
+        var controller = CreateImportController();
+
+        var response = (await controller.SendWave(campaign.Id, team.Id)).Should().BeOfType<RedirectToActionResult>().Which;
+
+        response.ActionName.Should().Be(nameof(CampaignController.Detail));
+        sendCalls.Should().Be(2);
+        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        if (failures == 0)
+        {
+            controller.TempData[TempDataKeys.SuccessMessage].Should().NotBeNull();
+            controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+        }
+        else
+        {
+            controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage]!.ToString().Should()
+                .Contain($"email could not be queued for {failures}").And.Contain("Resend");
+        }
     }
 
     [HumansFact]
