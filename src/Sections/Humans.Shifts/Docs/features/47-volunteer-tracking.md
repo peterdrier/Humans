@@ -127,6 +127,8 @@ All write paths route through `IVolunteerTrackingManagement` → `IVolunteerTrac
 
 An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator download the tracking data as `.xlsx`, filtered by department, period (Build/Event/Strike, with a Build sub-period breakdown), or an explicit date range. `VolunteerTrackingController.ExportXlsx` resolves the requested range and hands it to `IVolunteerTrackingExportService` → `VolunteerTrackingXlsxBuilder`.
 
+The workbook's on-site totals include each exported human on their displayed arrival day (the day before their first confirmed shift) and each day they work. Empty days do not contribute.
+
 Custom dates must form a complete, valid pair with representable timezone-converted bounds. Invalid queries return HTTP 400 before building the workbook. A selected period overrides date text; omitted dates use the whole event, and reversed valid dates are normalized.
 
 ### Profile embed — single-volunteer strip
