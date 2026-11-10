@@ -21,6 +21,7 @@
   its parenthetical's privilege tokens, and dropped at request time by
   `GuideFilter` before the markdown reaches Markdig. No role metadata
   survives into the rendered HTML.
+- Heading boundaries follow CommonMark: up to three leading spaces, then `##` and a space/tab or end of line. Four-space code examples and non-breaking spaces after the hashes do not create boundaries. The original markdown is retained in each segment.
 - A `##` line **inside a fenced code block** is sample text, not a heading: it neither opens a
   role-scoped block nor closes the one it sits in. `GuideSegmenter` tracks fence state for that
   reason — an untracked fenced `##` ends the block around it and serves its remainder to

@@ -11,12 +11,12 @@ internal sealed class GuideSegmenter(GuideRolePrivilegeMap privileges)
     // Internal so the guard test can hold guide content to the exact heading grammar the
     // segmenter uses, rather than a second copy that can drift from it.
     internal static readonly Regex RoleHeading = new(
-        @"^##\s+As\s+an?\s+(?:\[)?(?<head>Volunteer|Coordinator|Board)[^\n]*?(?:\((?<paren>[^)]+)\))?\s*$",
+        @"^ {0,3}##[ \t]+As\s+an?\s+(?:\[)?(?<head>Volunteer|Coordinator|Board)[^\n]*?(?:\((?<paren>[^)]+)\))?\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(250));
 
     private static readonly Regex AnyH2 = new(
-        @"^##\s+",
+        @"^ {0,3}##(?:[ \t]+|$)",
         RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(100));
 
