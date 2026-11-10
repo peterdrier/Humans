@@ -6,7 +6,7 @@
 @section Crumbs {
     <a asp-action="Index">@SharedLocalizer["Camp_Plural"]</a>
     <a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a>
-    <a asp-action="Edit" asp-route-slug="@Model.Slug">@SharedLocalizer["Common_Edit"]</a>
+    <a asp-action="Edit" asp-route-slug="@Model.Slug" asp-route-eventSettingsId="@Model.EventSettingsId">@SharedLocalizer["Common_Edit"]</a>
     <span>@Localizer["Camps_Members_Members"]</span>
 }
 

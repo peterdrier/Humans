@@ -523,7 +523,11 @@ internal sealed class CampController(
         }
 
         SetSuccess(campsLocalizer["Camps_Flash_Updated"].Value);
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Edit), new
+        {
+            slug,
+            eventSettingsId = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId)?.EventSettingsId
+        });
     }
 
     [Authorize]
@@ -576,7 +580,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_SeasonWithdrawn"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, camp.Seasons.FirstOrDefault(s => s.Id == seasonId));
     }
 
     [Authorize]
@@ -601,7 +605,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_SeasonFull"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, camp.Seasons.FirstOrDefault(s => s.Id == seasonId));
     }
 
     [Authorize]
@@ -779,7 +783,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_RequestWithdrawn"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, FindMemberSeason(camp, campMemberId));
     }
 
     [Authorize]
@@ -803,7 +807,7 @@ internal sealed class CampController(
             SetError(campsLocalizer[result.ErrorMessage ?? "Camps_Flash_MembershipLeaveFailed"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, FindMemberSeason(camp, campMemberId));
     }
 
     [Authorize]
@@ -826,7 +830,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_MembershipApproved"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
 
     [Authorize]
@@ -848,7 +852,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_RequestRejected"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
 
     [Authorize]
@@ -870,7 +874,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_MemberRemoved"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
 
     [Authorize]
@@ -901,8 +905,19 @@ internal sealed class CampController(
         else if (outcome == SetEarlyEntryOutcome.MemberAlreadyEntered)
             SetError(campsLocalizer["Camps_Flash_EarlyEntryAlreadyEntered"].Value);
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
+
+    private static CampSeasonInfo? FindMemberSeason(CampInfo camp, Guid campMemberId) =>
+        camp.Seasons.FirstOrDefault(season => season.Members.Any(member => member.Id == campMemberId));
+
+    private IActionResult RedirectToMemberSeason(string slug, CampInfo camp, Guid campMemberId) =>
+        RedirectToAction(nameof(Members), new { slug, eventSettingsId = FindMemberSeason(camp, campMemberId)?.EventSettingsId });
+
+    private IActionResult RedirectToSeasonDetails(string slug, CampSeasonInfo? season) =>
+        season?.EventSettingsId is { } eventSettingsId
+            ? RedirectToAction(nameof(SeasonDetails), new { slug, eventSettingsId })
+            : RedirectToAction(nameof(Details), new { slug });
 
     [Authorize]
     [HttpPost("{slug}/Members/Add")]
@@ -1054,7 +1069,11 @@ internal sealed class CampController(
             SetError(campsLocalizer["Camps_Flash_AssignmentNotFound"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToAction(nameof(Members), new
+        {
+            slug,
+            eventSettingsId = camp.Seasons.First(s => s.Id == assignment.CampSeasonId).EventSettingsId
+        });
     }
 
     private async Task PopulateCityPlanningViewBagAsync(UserInfo? currentUser, CancellationToken cancellationToken)

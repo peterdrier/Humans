@@ -1226,6 +1226,86 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData(nameof(CampController.Edit), true)]
+    [InlineData(nameof(CampController.Withdraw), true)]
+    [InlineData(nameof(CampController.MarkFull), true)]
+    [InlineData(nameof(CampController.WithdrawMembershipRequest), true)]
+    [InlineData(nameof(CampController.LeaveMembership), true)]
+    [InlineData(nameof(CampController.ApproveMembership), true)]
+    [InlineData(nameof(CampController.ApproveMembership), false)]
+    [InlineData(nameof(CampController.RejectMembership), true)]
+    [InlineData(nameof(CampController.RemoveMembership), true)]
+    [InlineData(nameof(CampController.SetMemberEarlyEntry), true)]
+    [InlineData(nameof(CampController.SetMemberEarlyEntry), false)]
+    [InlineData(nameof(CampController.UnassignRole), true)]
+    [InlineData(nameof(CampController.UnassignRole), false)]
+    public async Task SeasonWrites_ReturnToTheAffectedEvent(string action, bool succeeded)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var member = MakeSeasonMember(actorId);
+        var camp = MakeCamp("garden", "Default event", CampSeasonStatus.Active, actorId);
+        var selected = camp.Seasons.Single() with
+        {
+            Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Name = "Selected event", Members = [member]
+        };
+        camp = camp with { Seasons = [camp.Seasons.Single(), selected] };
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId).Returns(CampUpdateResult.Success());
+        _camps.WithdrawSeasonAsync(camp.Id, selected.Id, actorId).Returns(CampUpdateResult.Success());
+        _camps.MarkSeasonFullAsync(camp.Id, selected.Id, actorId).Returns(CampUpdateResult.Success());
+        var membershipResult = succeeded ? CampMembershipMutationResult.Success()
+            : CampMembershipMutationResult.Failure("Camps_Flash_CampNotFound");
+        _camps.WithdrawCampMembershipRequestAsync(member.Id, actorId).Returns(membershipResult);
+        _camps.LeaveCampAsync(member.Id, actorId).Returns(membershipResult);
+        _camps.ApproveCampMemberAsync(camp.Id, member.Id, actorId).Returns(membershipResult);
+        _camps.RejectCampMemberAsync(camp.Id, member.Id, actorId).Returns(membershipResult);
+        _camps.RemoveCampMemberAsync(camp.Id, member.Id, actorId).Returns(membershipResult);
+        _camps.SetEarlyEntryAsync(camp.Id, member.Id, true, actorId, ct)
+            .Returns(succeeded ? SetEarlyEntryOutcome.Success : SetEarlyEntryOutcome.SlotCapExceeded);
+        var assignmentId = Guid.NewGuid();
+        _roles.GetAssignmentByIdAsync(assignmentId, ct)
+            .Returns(new CampRoleAssignmentInfo(assignmentId, selected.Id, Guid.NewGuid(), member.Id));
+        _roles.UnassignAsync(assignmentId, actorId, ct).Returns(succeeded);
+        var controller = BuildController(actorId);
+
+        var result = action switch
+        {
+            nameof(CampController.Edit) => await controller.Edit(camp.Slug, new CampEditViewModel
+            {
+                SeasonId = selected.Id, EventSettingsId = Guid.NewGuid(), Name = selected.Name,
+                ContactEmail = camp.ContactEmail
+            }),
+            nameof(CampController.Withdraw) => await controller.Withdraw(camp.Slug, selected.Id),
+            nameof(CampController.MarkFull) => await controller.MarkFull(camp.Slug, selected.Id),
+            nameof(CampController.WithdrawMembershipRequest) => await controller.WithdrawMembershipRequest(camp.Slug, member.Id),
+            nameof(CampController.LeaveMembership) => await controller.LeaveMembership(camp.Slug, member.Id),
+            nameof(CampController.ApproveMembership) => await controller.ApproveMembership(camp.Slug, member.Id),
+            nameof(CampController.RejectMembership) => await controller.RejectMembership(camp.Slug, member.Id),
+            nameof(CampController.RemoveMembership) => await controller.RemoveMembership(camp.Slug, member.Id),
+            nameof(CampController.SetMemberEarlyEntry) => await controller.SetMemberEarlyEntry(camp.Slug, member.Id, true, ct),
+            nameof(CampController.UnassignRole) => await controller.UnassignRole(camp.Slug, assignmentId, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(action switch
+        {
+            nameof(CampController.Edit) => nameof(CampController.Edit),
+            nameof(CampController.Withdraw) or nameof(CampController.MarkFull)
+                or nameof(CampController.WithdrawMembershipRequest) or nameof(CampController.LeaveMembership)
+                => nameof(CampController.SeasonDetails),
+            _ => nameof(CampController.Members)
+        });
+        redirect.RouteValues!["slug"].Should().Be(camp.Slug);
+        redirect.RouteValues["eventSettingsId"].Should().Be(selected.EventSettingsId);
+    }
+
+    [HumansTheory]
     [InlineData(CampSeasonStatus.Active)]
     [InlineData(CampSeasonStatus.Full)]
     [InlineData(CampSeasonStatus.Pending)]
