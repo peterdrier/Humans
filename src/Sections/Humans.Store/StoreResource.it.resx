@@ -125,4 +125,5 @@
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(sconosciuto)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Ordine del campo</value></data>
   <data name="Store_PaymentPrecision" xml:space="preserve"><value>Inserisci un importo con al massimo due cifre decimali.</value></data>
+  <data name="Store_PaymentAboveCheckoutLimit" xml:space="preserve"><value>L’importo del pagamento non può superare {0:0.00} EUR per operazione. Paga il saldo rimanente con un’altra operazione.</value></data>
 </root>

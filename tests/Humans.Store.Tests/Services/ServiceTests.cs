@@ -1693,13 +1693,39 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData("1000000")]
+    [InlineData("9999999999.99")]
+    [InlineData("79228162514264337593543950335")]
+    public async Task CheckoutMoney_rejects_amounts_above_Stripes_EUR_limit_before_calling_it(string text)
+    {
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var order = MakeOrderDto(balanceEur: amount);
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order { Id = order.Id });
+        _stripeService.CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(OpenSession("cs_oversized", "https://stripe.test/oversized"));
+
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, amount,
+            "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("Store_PaymentAboveCheckoutLimit");
+        result.MaximumAmount.Should().Be(999_999.99m);
+        result.SessionUrl.Should().BeNull();
+        await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
+            default!, default!, default, default!);
+        await _repo.DidNotReceiveWithAnyArgs().GetOrderByIdAsync(default);
+    }
+
+    [HumansTheory]
     [InlineData("0.50")]
     [InlineData("1.2300")]
     [InlineData("10.00")]
+    [InlineData("999999.99")]
     public async Task CheckoutMoney_passes_exact_cent_amounts_to_Stripe(string text)
     {
         var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
-        var order = MakeOrderDto(balanceEur: 10m);
+        var order = MakeOrderDto(balanceEur: Math.Max(10m, amount));
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order { Id = order.Id });
         _stripeService.CreateCheckoutSessionAsync(order.Id, amount, Arg.Any<string>(), Arg.Any<string>(),
