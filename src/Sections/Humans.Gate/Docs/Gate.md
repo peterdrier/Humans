@@ -256,8 +256,9 @@ nobodies-collective/Humans#933.)
   volunteers as one-tap picks; the `/Gate/Search` name search remains for anyone not on the
   roster (burner-name matching only — never email; each result shows a masked org-public email
   as a disambiguator, peterdrier/Humans#1073). Unset → search only (no behaviour change). Only
-  volunteers whose gate **shift starts within ±2 hours of now** (event-local time, from
-  `EventSettings.TimeZoneId`) are shown, so the list tracks shift change rather than the whole
+  volunteers whose gate **shift starts within ±2 hours of now** are shown. Gate uses Shifts'
+  resolved `AbsoluteStart`, including the standard 08:00 local start for all-day shifts rather
+  than their ignored stored start time, so the list tracks shift change rather than the whole
   event roster. De-dupes one pick per human; excludes refused/bailed/cancelled/no-show signups.
 
 ## Architecture
