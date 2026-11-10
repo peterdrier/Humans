@@ -23,7 +23,7 @@ Elsewhere publishes a digital event guide (currently a standalone PWA) listing a
 
 Two types of events exist: **camp events** (submitted by a team Lead, anchored to a GuideCamp) and **individual events** (submitted by any registered human, anchored to a communal GuideSharedVenue such as "The Middle of Elsewhere").
 
-Both kinds of submission are managed from a single page — **My Event Submissions** (`/Events/MySubmissions`). It shows the human's own individual events in one block, plus one block per barrio they lead for managing that barrio's events. There is no separate per-barrio events page.
+Both kinds of submission are managed from a single page — **My Event Submissions** (`/Events/MySubmissions`). It shows the human's own individual events in one block, plus one block per barrio they lead or manage workshops for in the guide's configured event. Camp selection and labels use that event's season, even when multiple events share a year; an unconfigured guide shows no barrio blocks. There is no separate per-barrio events page.
 
 ## User Stories
 

@@ -48,8 +48,7 @@ internal sealed class EventsController(
         var individualEvents = await guide.GetUserSubmissionsAsync(user.Id, ct);
 
         // Camps the user leads or runs workshops for.
-        var campSettings = await CampService.GetSettingsAsync(ct);
-        var managedCamps = (await CampService.GetCampsForYearAsync(campSettings.PublicYear, ct))
+        var managedCamps = (await LoadCampsByIdAsync(CampService, guideSettings?.EventSettingsId, ct)).Values
             .Where(camp => camp.IsEventManager(user.Id))
             .ToList();
 

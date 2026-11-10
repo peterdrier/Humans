@@ -535,7 +535,6 @@ public class EventsControllerTests
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Guide")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Burn")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Submissions")]
-    [Xunit.InlineData(nameof(EventsController.MySubmissions), "CampSettings")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Camps")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "CampSummary")]
     [Xunit.InlineData(nameof(EventsController.Submit), "Guide")]
@@ -661,10 +660,6 @@ public class EventsControllerTests
             ReadAsync<EventInfo?>(guideEvent, "Event", call.Arg<CancellationToken>()));
         _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<EventInfo>>([], "Submissions", call.Arg<CancellationToken>()));
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync(new CampSettingsInfo(2026, [2026]), "CampSettings", call.Arg<CancellationToken>()));
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
         _camps.GetCampsForEventAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
         _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>()).Returns(call =>
@@ -886,8 +881,8 @@ public class EventsControllerTests
         var future = season with { Id = Guid.NewGuid(), Year = 2027, Name = "Future Camp", EventSettingsId = Guid.NewGuid() };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0,
             hasSeason ? [future, season] : [future]);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
+        _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(hasSeason ? [camp with { Seasons = [season] }] : []);
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -918,22 +913,80 @@ public class EventsControllerTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    public async Task MySubmissions_UsesOnlyTheGuidesEventForCampManagement(bool workshopLead, bool missingGuide)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        StubEditableGuideSettings();
+        var settings = (await _guide.GetGuideSettingsAsync())! with
+        {
+            SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0)
+        };
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(missingGuide ? null : settings);
+        _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(MakeBurnSettings() with { Id = settings.EventSettingsId });
+        var campId = Guid.NewGuid();
+        var selected = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "selected", 2026, null, "Selected camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        {
+            EventSettingsId = settings.EventSettingsId,
+            LeadUserIds = workshopLead ? [] : [userId],
+            WorkshopLeadUserIds = workshopLead ? [userId] : []
+        };
+        var selectedCamp = new CampInfo(campId, "selected", "camp@example.org", "", false, 0, [selected]);
+        var otherCampId = Guid.NewGuid();
+        var unowned = selected with { Id = Guid.NewGuid(), CampId = otherCampId, LeadUserIds = [], WorkshopLeadUserIds = [] };
+        var otherEvent = unowned with { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), LeadUserIds = [userId] };
+        var otherCamp = selectedCamp with { Id = otherCampId, Slug = "other", Seasons = [otherEvent, unowned] };
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([selectedCamp, otherCamp]);
+        _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns([selectedCamp, otherCamp with { Seasons = [unowned] }]);
+        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetCampSubmissionsSummaryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampSubmissionsSummary(0, 0, 0, []));
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+
+        var result = await controller.MySubmissions();
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<MySubmissionsViewModel>().Subject;
+        if (missingGuide)
+        {
+            model.Barrios.Should().BeEmpty();
+            _camps.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            model.Barrios.Should().ContainSingle().Which.CampId.Should().Be(campId);
+            model.Barrios[0].CampName.Should().Be("Selected camp");
+            await _camps.Received(1).GetCampsForEventAsync(settings.EventSettingsId, request.Token);
+            await _guide.DidNotReceive().GetCampSubmissionsSummaryAsync(otherCampId, Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task MySubmissions_OrdersCampEventsMostRecentlySubmittedFirst()
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
+        StubEditableGuideSettings();
+        var settings = (await _guide.GetGuideSettingsAsync())!;
         var season = new CampSeasonInfo(
             Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         {
-            LeadUserIds = [userId]
+            LeadUserIds = [userId], EventSettingsId = settings.EventSettingsId
         };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
-        StubEditableGuideSettings();
-        var settings = await _guide.GetGuideSettingsAsync();
+        _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns([camp]);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings! with
         {
             SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
