@@ -271,6 +271,18 @@ public class FileSystemFileStorageTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ListAsync_FileAtPrefix_PropagatesFailureInsteadOfAnEmptyInventory()
+    {
+        const string prefix = "uploads";
+        Directory.CreateDirectory(_wwwroot);
+        await File.WriteAllBytesAsync(Path.Combine(_wwwroot, prefix), [1], Xunit.TestContext.Current.CancellationToken);
+
+        var list = async () => await _store.ListAsync(prefix, Xunit.TestContext.Current.CancellationToken);
+
+        await list.Should().ThrowAsync<IOException>();
+    }
+
+    [HumansFact]
     public async Task ListAsync_ReturnsSlashKeysSizesAndWriteTimes_SkipsTempFiles_AndEmptyForMissingPrefix()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

@@ -47,6 +47,7 @@ public interface IFileStorage
     /// Every stored file whose key starts with the directory <paramref name="prefix"/>, with its
     /// size and last write time. A missing directory yields an empty list. In-flight temp files
     /// from <see cref="SaveAsync(string, Stream, CancellationToken)"/> are not listed.
+    /// Other listing failures propagate rather than returning an empty or partial inventory.
     /// </summary>
     Task<IReadOnlyList<StoredFileInfo>> ListAsync(string prefix, CancellationToken ct = default);
 }
