@@ -90,7 +90,7 @@ All routes are `AdminOnly`.
 - Successful subscriber erasure (including a remote 404) removes the address from the cached subscriber list and recomputes account status totals from the remaining snapshot. A failed remote deletion retains both.
 - Group reads require nonblank IDs and names. Group creation also requires the returned name to match the requested name exactly before appending to the cached snapshot; incomplete or mismatched response data fails without poisoning the existing group list or selecting another audience for writes.
 - Subscriber status must be a nonblank string. An incomplete status fails decoding rather than becoming eligible for audience assignment or an import opt-out decision.
-- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages.
+- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages. Subscriber metadata must explicitly include `next_cursor`, including a terminal null; an omitted cursor cannot complete a refresh. Subscriber/group page decoding reports `HttpRequestException` with the original parse failure retained, so admin API-error handling applies without replacing the last successful snapshot.
 
 ## Negative Access Rules
 
