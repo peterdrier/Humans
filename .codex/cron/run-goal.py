@@ -301,12 +301,13 @@ def run(prompt_file, report_file, deadline, repair=False):
                     raise RuntimeError(stop_reason)
                 if final_message.strip():
                     last_report = final_message
-                if quota_enabled and goal_status == "complete":
+                if goal_status == "complete":
                     if not final_message.strip():
                         raise RuntimeError("Completed round lacks cumulative report")
                     if subprocess.check_output(["git", "status", "--porcelain"],
                                                cwd=os.environ["WORK_DIR"], text=True).strip():
                         raise RuntimeError("Completed round left uncommitted changes")
+                if quota_enabled and goal_status == "complete":
                     quota_request = next_request_id
                     next_request_id += 1
                     quota_phase = "round"

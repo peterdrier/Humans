@@ -109,7 +109,7 @@ class GoalFailureTests(unittest.TestCase):
                 self.event("turn/completed", turn={"status": "failed", "error": {
                     "message": message, "codexErrorInfo": code}})]
 
-    def run_events(self, events, deadline=1001000, repair=True, quota=False):
+    def run_events(self, events, deadline=1001000, repair=True, quota=False, tree_status=""):
         initial = [{"id": 1, "result": {}},
                    {"id": 2, "result": {"thread": {"id": "same-thread"}}},
                    {"id": 3, "result": {"goal": {"status": "active"}}}]
@@ -124,12 +124,32 @@ class GoalFailureTests(unittest.TestCase):
             with patch.object(run_goal.subprocess, "Popen", return_value=proc), \
                  patch.object(run_goal.time, "sleep") as sleep, \
                  patch.object(run_goal.time, "time", return_value=1000000), \
-                 patch.object(run_goal.subprocess, "check_output", return_value=""), \
+                 patch.object(run_goal.subprocess, "check_output", return_value=tree_status), \
                  patch.dict(os.environ, WORK_DIR=directory, IGNORE_QUOTA_CUTOFF="0" if quota else "1"), \
                  patch("builtins.print"):
                 result = run_goal.run(prompt, report, deadline, repair)
             requests = [json.loads(call.args[0]) for call in proc.stdin.write.call_args_list]
             return result, report.read_text() if report.exists() else "", requests, sleep.call_args_list
+
+    def test_completed_round_requires_a_clean_tree_in_every_mode(self):
+        for repair, quota in ((False, False), (True, False), (False, True)):
+            with self.subTest(repair=repair, quota=quota):
+                events = [self.event("thread/goal/updated", goal={"status": "complete"}),
+                          self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                                             "text": "Cumulative report"}),
+                          self.event("turn/completed", turn={"status": "completed"})]
+
+                with self.assertRaisesRegex(RuntimeError, "Completed round left uncommitted changes"):
+                    self.run_events(events, repair=repair, quota=quota, tree_status=" M production.cs\n")
+
+    def test_completed_round_requires_a_report_even_with_quota_disabled(self):
+        for repair in (False, True):
+            with self.subTest(repair=repair):
+                events = [self.event("thread/goal/updated", goal={"status": "complete"}),
+                          self.event("turn/completed", turn={"status": "completed"})]
+
+                with self.assertRaisesRegex(RuntimeError, "Completed round lacks cumulative report"):
+                    self.run_events(events, repair=repair)
 
     def test_capacity_failure_retries_same_goal_and_recovers(self):
         events = self.failure() + [
@@ -515,6 +535,7 @@ for line in sys.stdin:
             emit("turn/started", {"turn": {"id": "resumed"}})
             if scenario == "early-repeated" and started == 2:
                 emit("thread/goal/updated", {"goal": {"status": "complete"}})
+                emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: 2"}})
                 emit("turn/completed", {"turn": {"status": "completed"}})
                 continue
             deadline = int((root / "clock").read_text()) + 3

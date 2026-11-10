@@ -59,7 +59,9 @@ Missing, invalid, stale or failed quota reads stop new work. Another exhausted
 returned window also stops work. No earned reset credits are consumed.
 
 Each round completes the native goal and supplies a cumulative report after one
-coherent batch. The wrapper checks fresh quota, then reactivates the same goal
+coherent batch. Every completed round requires a nonempty report and a clean
+working tree, including quota-override runs and gate repairs. The wrapper checks
+fresh quota, then reactivates the same goal
 and thread when time and quota allow another round. It does not interrupt a batch
 or kill a process at a quota threshold. A quota stop before any work is a quiet
 `skip-quota`; after committed fixes, normal validation and publication still run.
