@@ -22,7 +22,7 @@ internal sealed class StoreStripePayments(
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
-    private static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
+    internal static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
 
     [ExternalWrite]
     public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(

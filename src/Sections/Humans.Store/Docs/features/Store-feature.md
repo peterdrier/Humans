@@ -210,5 +210,6 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - Invoice issuance distinguishes typed operator refusals from dependency faults; an external InvalidOperationException cannot be surfaced as an expected refusal.
 
 - Manual payment and deletion feedback distinguishes typed operator refusals from persistence faults; expected refusals do not write money records or audits.
+- An unresolved Stripe checkout prevents order deletion even when the order has become zero-balance. The service and delete affordance enforce this; deletion shares checkout/webhook coordination so an in-flight session cannot lose its order. Existing completion/expiry handling resolves the attempt, and recorded payment rows continue to prevent deletion.
 
 Catalog validation and missing-product refusals are typed operator outcomes. Actual deactivation persistence/audit faults propagate; the catalog save form keeps generic failure feedback and private Error diagnostics.

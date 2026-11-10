@@ -180,7 +180,7 @@ internal sealed class StoreOrderReader(
             payments,
             balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
             balance.PaymentsTotalEur, balance.BalanceEur,
-            o.CreatedAt);
+            o.CreatedAt) { HasCheckoutAttempt = o.HasCheckoutAttempt };
     }
 
     public async Task<string> ResolveCounterpartyDisplayNameAsync(Order o, CancellationToken ct)

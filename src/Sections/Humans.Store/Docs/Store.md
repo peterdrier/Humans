@@ -172,7 +172,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 - `/Store/Order/Create/{campSeasonId}` — POST: creates the camp season's order (authorized as `Create` against the season; refusals redirect to `/Store` with localized feedback).
 - `/Store/Team/{teamId}/Create` — POST: department coordinator creates their team's order for the active event year.
 - `/Store/Order/{id}/Pay` — POST: opens (or reuses) the order's Stripe Checkout session and redirects to Stripe. Checkout refuses fractional-cent amounts with feedback in all supported cultures before calling Stripe; trailing zeroes remain valid and accepted amounts pass through exactly.
-- `/Store/Order/{id}/Delete` — POST: deletes an order (`Delete` requirement) while Open, at zero balance and with no payment rows; redirects to `/Store`.
+- `/Store/Order/{id}/Delete` — POST: deletes an order (`Delete` requirement) while Open, at zero balance, with no payment rows or retained Stripe checkout attempt; redirects to `/Store`. The service and deletion affordance share that state rule. Deletion uses the existing Stripe-payment lock so an in-flight checkout or webhook finishes before the guard reads its state. Completion/expiry webhooks release the matching attempt; recorded payments still prevent deletion.
 - `/Store/Order/{id}/AddLine` — POST: adds a product line (`productId`, `qty`); authorized against an `OrderLineContext` carrying the product's deadline.
 - `/Store/Order/{id}/RemoveLine` — POST: removes a line (`lineId`); gated like AddLine.
 - `/Store/Order/{id}/UpdateCounterparty` — POST: edits the billing details (`EditCounterparty` requirement).

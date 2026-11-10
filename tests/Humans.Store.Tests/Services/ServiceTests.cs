@@ -1803,6 +1803,91 @@ public class ServiceTests
     }
 
     [HumansFact]
+    public async Task Checkout_attempt_blocks_order_deletion_until_expiry_in_service_and_projection()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var order = new Order
+        {
+            Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), Year = 2026,
+            CheckoutAttemptId = Guid.NewGuid(), CheckoutSessionId = "cs_pending", CheckoutAmountEur = 20m
+        };
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        var before = (await _service.GetOrderAsync(order.Id, ct))!;
+        var refusal = await _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), ct);
+
+        refusal.Succeeded.Should().BeFalse();
+        before.IsDeletable.Should().BeFalse();
+        await _repo.DidNotReceive().DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_expired", StoreCheckoutEventKind.CheckoutSessionExpired,
+            new StoreCheckoutSessionData("cs_pending", order.Id, null, 20m, Status: "expired")), ct);
+
+        (await _service.GetOrderAsync(order.Id, ct))!.IsDeletable.Should().BeTrue();
+        (await _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), ct)).Succeeded.Should().BeTrue();
+        await _repo.Received(1).DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Order_deletion_waits_for_checkout_creation_before_checking_attempt_state()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var product = MakeProduct(price: 20m, vat: 0m);
+        var order = new Order { Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), Year = 2026 };
+        order.Lines.Add(new OrderLine
+        {
+            Id = Guid.NewGuid(), OrderId = order.Id, ProductId = product.Id, Qty = 1,
+            UnitPriceSnapshot = 20m, VatRateSnapshot = 0m
+        });
+        var deleted = false;
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => deleted ? null : order);
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => deleted ? null : order);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([product]);
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([product]);
+        _repo.DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            deleted = true;
+            return Task.CompletedTask;
+        });
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(async _ =>
+            {
+                entered.TrySetResult();
+                await release.Task.WaitAsync(ct);
+                return OpenSession("cs_new", "https://stripe.test/session");
+            });
+        var quote = (await _service.GetOrderAsync(order.Id, ct))!;
+        quote.BalanceEur.Should().Be(20m);
+        var opening = _service.CreateStripeCheckoutSessionAsync(quote, 20m, "https://humans.test/order", ct);
+        await entered.Task.WaitAsync(ct);
+        order.Lines.Clear();
+        var deleting = _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), ct);
+        try
+        {
+            deleting.IsCompleted.Should().BeFalse();
+        }
+        finally
+        {
+            release.TrySetResult();
+            await opening;
+        }
+
+        (await deleting).Succeeded.Should().BeFalse();
+        deleted.Should().BeFalse();
+        order.CheckoutSessionId.Should().Be("cs_new");
+        await _repo.DidNotReceive().DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Completed_checkout_webhook_clears_the_orders_open_attempt()
     {
         var orderId = Guid.NewGuid();
