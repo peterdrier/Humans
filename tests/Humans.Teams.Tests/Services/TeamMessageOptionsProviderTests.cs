@@ -27,7 +27,7 @@ public class TeamMessageOptionsProviderTests
     }
 
     // The profile page's TeamMessageButtonsViewComponent injects the provider, so a missing
-    // registration 500s every profile render — which only an integration test caught.
+    // registration 500s every profile render.
     [HumansFact]
     public void Section_RegistersTheProvider()
     {

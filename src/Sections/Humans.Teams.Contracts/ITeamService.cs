@@ -41,16 +41,6 @@ public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
     string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
 
-public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
-
-public record SystemTeamMembershipSnapshot(
-    Guid Id,
-    string Name,
-    string Slug,
-    bool IsHidden,
-    SystemTeamType SystemTeamType,
-    IReadOnlyList<Guid> ActiveMemberUserIds);
-
 /// <summary>One active membership, with the team's identity stitched in.</summary>
 public sealed record UserTeamMembershipInfo(
     Guid TeamMemberId,

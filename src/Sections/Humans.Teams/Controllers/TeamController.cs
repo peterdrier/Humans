@@ -706,8 +706,8 @@ internal sealed class TeamController(
         var allTeams = await teamService.GetTeamsAsync(cancellationToken);
         return allTeams.Values
             .Where(t => t.IsActive && !t.IsSystemTeam
-                && t.ParentTeamId is null  // Can't nest >1 level
-                && t.Id != excludeTeamId)  // Can't be own parent
+                && t.ParentTeamId is null
+                && t.Id != excludeTeamId)
             .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(t.Name, t.Id.ToString()))
             .ToList();
