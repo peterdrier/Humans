@@ -18,6 +18,15 @@ internal sealed class Repository(IDbContextFactory<PleoDbContext> factory) : IPl
         Replace(ctx.PleoBalances, await ctx.PleoBalances.ToListAsync(ct), [snapshot.Balance], b => b.Id,
             b => b.SyncedAt = now);
 
+        var categories = await ctx.PleoCategories.ToDictionaryAsync(c => c.Id, ct);
+        foreach (var category in snapshot.ChangedCategories)
+        {
+            if (categories.TryGetValue(category.Id, out var cur))
+                ctx.Entry(cur).CurrentValues.SetValues(category);
+            else
+                ctx.PleoCategories.Add(category);
+        }
+
         await ctx.SaveChangesAsync(ct);
     }
 
