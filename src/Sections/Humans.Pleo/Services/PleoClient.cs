@@ -147,9 +147,12 @@ internal sealed class PleoClient : IPleoClient
                 throw new PleoTransientException($"Pleo {endpoint}: a 200 without a data array.");
             items.AddRange(data.EnumerateArray());
 
-            var hasNext = root.TryGetProperty("pagination", out var pagination)
-                && pagination.TryGetProperty("hasNextPage", out var next) && next.ValueKind == JsonValueKind.True;
-            if (!hasNext) return items;
+            if (!root.TryGetProperty("pagination", out var pagination)
+                || pagination.ValueKind != JsonValueKind.Object
+                || !pagination.TryGetProperty("hasNextPage", out var next)
+                || next.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new PleoTransientException($"Pleo {endpoint}: a page without a boolean hasNextPage.");
+            if (next.ValueKind == JsonValueKind.False) return items;
 
             after = pagination.TryGetProperty("endCursor", out var end) && end.ValueKind == JsonValueKind.String
                 ? end.GetString()

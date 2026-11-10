@@ -66,6 +66,32 @@ public sealed class PleoClientTests
         await act.Should().ThrowAsync<PleoTransientException>().WithMessage("*without a data array*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("entries", null)]
+    [Xunit.InlineData("accounts", "{}")]
+    [Xunit.InlineData("employees", "null")]
+    [Xunit.InlineData("receipts", """{"hasNextPage":null}""")]
+    [Xunit.InlineData("entries", """{"hasNextPage":"false"}""")]
+    public async Task Pager_rejects_unknown_completion_instead_of_returning_a_partial_dataset(string consumer, string? pagination)
+    {
+        var calls = 0;
+        var client = Make(_ => ++calls == 1
+            ? Json(Page("""{"id":"a"}""", true, "next"))
+            : Json(pagination is null ? """{"data":[]}""" : $$"""{"data":[],"pagination":{{pagination}}}"""));
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> action = () => consumer switch
+        {
+            "accounts" => client.SearchAccountsAsync(ct),
+            "employees" => client.ListEmployeesAsync(ct),
+            "receipts" => client.ListReceiptsAsync("entry", ct),
+            _ => client.SearchEntriesAsync(ct),
+        };
+
+        await action.Should().ThrowAsync<PleoTransientException>().WithMessage("*hasNextPage*");
+        calls.Should().Be(2);
+    }
+
     [HumansFact]
     public async Task Sends_basic_auth_with_the_key_and_an_empty_password()
     {
