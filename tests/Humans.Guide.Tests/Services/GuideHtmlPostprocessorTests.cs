@@ -187,4 +187,29 @@ public class GuideHtmlPostprocessorTests
         result.Should().NotContain("<a href=");
         result.Should().Contain($"<code>{text}</code>");
     }
+
+    [HumansFact]
+    public void Rewrite_StyledAppPath_PreservesCodeAttributes()
+    {
+        const string html = """<code class="route" title="Profile route">/Profile/Me</code>""";
+
+        using var document = new HtmlParser().ParseDocument(Processor.Rewrite(html, Settings));
+
+        var anchor = document.QuerySelector("a")!;
+        anchor.Should().NotBeNull();
+        anchor.GetAttribute("href").Should().Be("/Profile/Me");
+        var code = anchor.QuerySelector("code")!;
+        code.GetAttribute("class").Should().Be("route");
+        code.GetAttribute("title").Should().Be("Profile route");
+        code.TextContent.Should().Be("/Profile/Me");
+    }
+
+    [HumansTheory]
+    [InlineData("<code>/Users/Admin/&lt;id&gt;</code>")]
+    [InlineData("<code>/Profile&nbsp;Me</code>")]
+    [InlineData("<code>/Profile/Me\n</code>")]
+    public void Rewrite_DecodedNonPathCode_IsNotLinked(string html)
+    {
+        Processor.Rewrite(html, Settings).Should().NotContain("<a href=");
+    }
 }

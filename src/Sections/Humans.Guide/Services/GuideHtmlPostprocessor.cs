@@ -10,12 +10,10 @@ namespace Humans.Guide.Services;
 /// </summary>
 internal sealed class GuideHtmlPostprocessor
 {
-    // Matches <code>/route/path</code> spans where the content is a concrete app path:
-    // starts with one "/", contains no "{" and no "*" (so route templates like /Profile/{id}
-    // and wildcards like /api/backdoor/* are left alone — both would 404 if linked), no
-    // whitespace, no "#" or "?". These spans get wrapped in an <a href>.
+    // Validate decoded text: attributes do not change a path, and entity escaping must not
+    // turn placeholders or whitespace into navigation. Templates and wildcards would 404.
     private static readonly Regex AppPathCodePattern = new(
-        """<code>(?<path>/(?!/)[^\s<>{}#?*]+)</code>""",
+        @"\A/(?!/)[^\s<>{}#?*]+\z",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(500));
 
@@ -77,11 +75,14 @@ internal sealed class GuideHtmlPostprocessor
         foreach (var code in body.QuerySelectorAll("code"))
         {
             // Existing links own their destination; block examples are not navigation.
-            if (code.Closest("a, pre") is not null || !AppPathCodePattern.IsMatch(code.OuterHtml))
+            if (code.Closest("a, pre") is not null)
+                continue;
+            var path = code.TextContent;
+            if (!AppPathCodePattern.IsMatch(path))
                 continue;
 
             var anchor = document.CreateElement("a");
-            anchor.SetAttribute("href", code.TextContent);
+            anchor.SetAttribute("href", path);
             anchor.ClassName = "guide-app-path";
             code.Parent?.ReplaceChild(anchor, code);
             anchor.AppendChild(code);
