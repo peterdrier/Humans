@@ -29,6 +29,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 
 **Acceptance Criteria:**
 - Background job runs hourly via Hangfire
+- Job cancellation stops resource scanning and propagates without advancing the last-run marker; the next run re-reads the interrupted window.
 - Checks Google Drive Activity API for permission changes on all active Drive folder resources
 - Identifies changes NOT initiated by the system's service account
 - Logs each anomalous change to the audit log with `AnomalousPermissionDetected` action
