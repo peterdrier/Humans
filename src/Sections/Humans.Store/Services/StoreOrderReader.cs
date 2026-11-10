@@ -48,22 +48,10 @@ internal sealed class StoreOrderReader(
 
         var counterparties = new List<CounterpartyOrders>();
 
-        var campSeasons = new List<CampSeasonInfo>();
-        foreach (var camp in await campService.GetCampsForYearAsync(year, ct))
-        {
-            if (allCounterparties)
-            {
-                var season = camp.GetSeasonForYear(year);
-                if (season is not null) campSeasons.Add(season);
-            }
-            else
-            {
-                var leadSeasonId = camp.GetLeadSeasonIdForYear(userId, year);
-                if (leadSeasonId is null) continue;
-                campSeasons.Add(camp.Seasons.First(season => season.Id == leadSeasonId.Value));
-                break; // a user leads at most one camp
-            }
-        }
+        var campSeasons = (await campService.GetCampsForYearAsync(year, ct))
+            .SelectMany(camp => camp.Seasons)
+            .Where(season => season.Year == year && (allCounterparties || season.IsLead(userId)))
+            .ToList();
 
         var teams = (await teamService.GetTeamsAsync(ct)).Values
             .Where(t => t.ParentTeamId is null

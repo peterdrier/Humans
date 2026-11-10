@@ -125,6 +125,41 @@ public class ServiceTests
         result.Counterparties.Should().BeEmpty();
     }
 
+    public enum IndexAudience { Lead, Privileged }
+
+    [HumansTheory]
+    [InlineData(IndexAudience.Lead)]
+    [InlineData(IndexAudience.Privileged)]
+    public async Task Index_includes_every_eligible_camp_season_in_the_catalog_year(IndexAudience audience)
+    {
+        var userId = Guid.NewGuid();
+        var first = MakeCampInfo(Guid.NewGuid(), Guid.NewGuid(), "Spring", userId);
+        var spring = first.Seasons[0];
+        var autumn = MakeCampInfo(first.Id, Guid.NewGuid(), "Autumn", userId).Seasons[0];
+        var unowned = MakeCampInfo(first.Id, Guid.NewGuid(), "Unowned", Guid.NewGuid()).Seasons[0];
+        var historical = spring with { Id = Guid.NewGuid(), Year = 2025 };
+        first = first with { Seasons = [historical, spring, autumn, unowned] };
+        var second = MakeCampInfo(Guid.NewGuid(), Guid.NewGuid(), "Second camp", userId);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([first, second]);
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IReadOnlyCollection<Guid>>().Select(id => new Order
+            {
+                Id = Guid.NewGuid(), CampSeasonId = id, Year = 2026
+            }).ToList());
+
+        var data = audience == IndexAudience.Privileged
+            ? await _service.GetAllCounterpartiesIndexDataAsync(TestContext.Current.CancellationToken)
+            : await _service.GetIndexDataAsync(userId, TestContext.Current.CancellationToken);
+
+        Guid[] expected = audience == IndexAudience.Privileged
+            ? [spring.Id, autumn.Id, unowned.Id, second.Seasons[0].Id]
+            : [spring.Id, autumn.Id, second.Seasons[0].Id];
+        data.Counterparties.Select(c => c.CounterpartyId).Should().BeEquivalentTo(expected);
+        data.Counterparties.Should().OnlyContain(c => c.Orders.Count == 1
+            && c.Orders[0].CampSeasonId == c.CounterpartyId);
+    }
+
     [HumansFact]
     public async Task GetIndexDataAsync_selects_highest_balance_camp_order_with_live_prices()
     {
