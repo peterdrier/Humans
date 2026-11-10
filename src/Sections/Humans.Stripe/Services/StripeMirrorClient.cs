@@ -195,8 +195,25 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
                 rows[key] = row = new StripeBalance { AccountId = accountId, Currency = key };
             return row;
         }
-        foreach (var a in balance.Available ?? []) Row(a.Currency).Available += a.Amount;
-        foreach (var p in balance.Pending ?? []) Row(p.Currency).Pending += p.Amount;
+        // SDK amounts default to zero when absent; validate the raw buckets before accepting wallet totals.
+        using var body = JsonDocument.Parse(balance.StripeResponse.Content);
+        foreach (var bucket in new[] { "available", "pending" })
+        {
+            if (!body.RootElement.TryGetProperty(bucket, out var amounts) || amounts.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException($"Stripe balance: missing {bucket} array.");
+            foreach (var amount in amounts.EnumerateArray())
+            {
+                if (amount.ValueKind != JsonValueKind.Object
+                    || !amount.TryGetProperty("currency", out var currency) || currency.ValueKind != JsonValueKind.String
+                    || string.IsNullOrWhiteSpace(currency.GetString())
+                    || !amount.TryGetProperty("amount", out var value) || value.ValueKind != JsonValueKind.Number
+                    || !value.TryGetInt64(out var minors))
+                    throw new InvalidOperationException($"Stripe balance: {bucket} requires an amount and a nonblank currency.");
+                var row = Row(currency.GetString()!);
+                if (string.Equals(bucket, "available", StringComparison.Ordinal)) row.Available += minors;
+                else row.Pending += minors;
+            }
+        }
         return rows.Values.ToList();
     }
 }

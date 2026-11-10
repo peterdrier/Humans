@@ -133,6 +133,50 @@ public sealed class StripeMirrorClientTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("""{"object":"balance","pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":null,"pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[],"pending":null}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[{"currency":"eur"}],"pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[],"pending":[{"currency":"eur"}]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[{"amount":25,"currency":""}],"pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[],"pending":[{"amount":25,"currency":"  "}]}""")]
+    public async Task Incomplete_wallet_balance_cannot_publish_a_fetch(string body)
+    {
+        Respond(r => r.Uri.AbsolutePath.EndsWith("/balance", StringComparison.Ordinal) ? body : Route(r));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var act = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*balance*");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Complete_wallet_buckets_preserve_empty_zero_and_signed_amounts(bool empty)
+    {
+        var body = empty
+            ? """{"object":"balance","available":[],"pending":[]}"""
+            : """{"object":"balance","available":[{"amount":0,"currency":"eur"},{"amount":-50,"currency":"usd"}],"pending":[{"amount":25,"currency":"EUR"},{"amount":0,"currency":"usd"}]}""";
+        Respond(r => r.Uri.AbsolutePath.EndsWith("/balance", StringComparison.Ordinal) ? body : Route(r));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = await new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        if (empty)
+        {
+            fetch.Balances.Should().BeEmpty();
+            return;
+        }
+        fetch.Balances.Should().HaveCount(2);
+        fetch.Balances.Single(b => string.Equals(b.Currency, "EUR", StringComparison.Ordinal))
+            .Should().Match<Domain.StripeBalance>(b => b.Available == 0 && b.Pending == 25);
+        fetch.Balances.Single(b => string.Equals(b.Currency, "USD", StringComparison.Ordinal))
+            .Should().Match<Domain.StripeBalance>(b => b.Available == -50 && b.Pending == 0);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("transactions")]
     [Xunit.InlineData("payouts")]
     [Xunit.InlineData("payout-breakdown")]

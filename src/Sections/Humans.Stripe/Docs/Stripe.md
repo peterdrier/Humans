@@ -143,6 +143,10 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list.
   The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
   the job and Sync now.
+- Wallet balance reads require both `available` and `pending` arrays, and every amount must explicitly carry
+  an integer minor-unit value and a nonblank currency. Missing buckets or incomplete amounts fail the fetch before
+  account replacement instead of erasing a bucket or manufacturing zero. Explicit empty buckets, zero and signed
+  amounts remain valid; values aggregate by normalized currency. Optional reserve/instant-payout buckets are not mirrored.
 - Bounded mirror text (transaction descriptions, buyer names/emails, payout failures and saved sync errors) preserves complete UTF-16 surrogate pairs, so truncation cannot turn valid vendor text into invalid Unicode.
 - The mirror is read-only: list and retrieve calls only, whatever the key's scopes.
 - Payout link: Stripe links transactions only to automatic payouts, so `PayoutId` is null on a
