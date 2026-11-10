@@ -35,11 +35,14 @@
         </div>
     </div>
 
+    <div class="profile-layout-board">
+        <vc:profile-card user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" layout="Board" />
+    </div>
+
     <div class="profile-layout-main">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h2 class="h3 mb-0">@Localizer["Users_Profile_Participation"]</h2>
             <div class="d-flex gap-2 align-items-center">
-                <small class="text-muted">@Localizer["Users_Profile_NewLayoutNote"] <a asp-controller="Profile" asp-action="Me">@Localizer["Users_Profile_Title"]</a></small>
                 <vc:access-matrix section="Profile" />
                 <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
                     <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
@@ -57,5 +60,7 @@
         </div>
 
         <vc:profile-card user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" layout="History" />
+
+        <p class="small text-muted mb-3">@Localizer["Users_Profile_NewLayoutNote"] <a asp-controller="Profile" asp-action="Me">@Localizer["Users_Profile_Title"]</a></p>
     </div>
 </div>

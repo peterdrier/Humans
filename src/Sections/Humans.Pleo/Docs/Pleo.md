@@ -3,7 +3,7 @@
 -->
 <!-- freshness:flag-on-change
   The sign rules (totalBillValue first, family only as fallback), the reconciliation strip, and that the sweep never
-  touches pleo_categories.
+  deletes, unlinks or changes a hand-linked pleo_categories row.
 -->
 
 # Pleo — Section Invariants
@@ -23,10 +23,10 @@ books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
   EUR totals and counted.
 - **Spend**: completed card purchases, Pleo invoices and out-of-pocket, net of refunds. `PENDING` rows are listed but
   never counted; Pleo's own current balance excludes them too.
-- **Category**: Pleo's spending category. An entry's `accountId` is a category id, and the API that maps categories to
-  accounts (`bookkeeping-categories:search`) is closed to the key, so `pleo_categories` holds that mapping: name →
-  Holded code seeded from Pleo's settings page, id linked by hand. An entry whose category is unlinked or absent is
-  **unmapped** and never booked onto a guessed account.
+- **Category**: Pleo's spending category. An entry's `accountId` is a category id; Pleo's own mapping
+  (`/v1/bookkeeping-categories:search`: id, name, chart account) says which account a category books to.
+  `pleo_categories` holds the mapping in use: each sweep links the ids nobody linked, and a link made by hand stands
+  over Pleo's. An entry whose category is unlinked or absent is **unmapped** and never booked onto a guessed account.
 - **Chart**: Pleo's chart of accounts (`/v1-beta/accounts:search`) is Holded's; `code` is the Holded account number.
 
 ## Data Model (`PleoDbContext`, history `__EFMigrationsHistory_Pleo`)
@@ -38,10 +38,10 @@ books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
 | `pleo_accounts` | the chart: Pleo id, code, name, external (Holded) id, archived |
 | `pleo_balance` | one row: wallet current, available and pending debits in minors |
 | `pleo_sync_states` | one row: status, last run, entries mirrored, empty rows skipped, last error |
-| `pleo_categories` | category name → Holded code, linked Pleo category id (unique when set), who set it and when |
+| `pleo_categories` | category name → Holded code, linked Pleo category id (unique when set), who set it (null: a sweep) and when |
 
-The first five are a cache, rebuilt by every sweep. `pleo_categories` is not: no sweep touches it. Its 13 seed rows
-(`HasData`) are Pleo's "Holded Accounts" categories as of 3 Nov 2026, all unlinked. Its name is not unique-indexed
+The first five are a cache, rebuilt by every sweep. `pleo_categories` is not: a sweep only adds to it (see
+Invariants). Its 13 seed rows (`HasData`) are Pleo's "Holded Accounts" categories as of 3 Nov 2026, all unlinked. Its name is not unique-indexed
 (`unique-constraints-ids-only`); the service refuses a duplicate name. Sentinel table: `pleo_entries`.
 
 ## Routing
@@ -77,8 +77,12 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 - The internal `PleoTextBounds` bounds imported entry notes and saved sync errors to 2,000 UTF-16 units and permanent HTTP-error body previews to 300, without splitting surrogate pairs. The preview must remain valid UTF-8 before it becomes part of a stored sync error. The raw vendor entry remains intact, and recording an error preserves the original exception and existing mirror.
 
-- A sweep fetches entries, chart, cardholders and balance (three to five calls) before writing anything, then
-  replaces the four cache tables in one save: rows the sweep did not return are deleted. A failed call leaves the
+- Whoever linked a category id owns its row. A sweep leaves a row a person linked as it is. An id nobody linked is
+  linked to the unlinked row of the same name (taking Pleo's account), or added as a new row. A row a sweep linked
+  follows Pleo's name and account. A Pleo category with no account, or an account missing from the chart, is skipped.
+  A sweep never deletes or unlinks a category row.
+- A sweep fetches entries, chart, categories, cardholders and balance before writing anything, then
+  replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed call leaves the
   mirror as it was and records the error on the sync row. If that diagnostic save also fails, the secondary failure
   is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
 - JSON API responses must have an object root. A null, array or scalar response fails as a typed
@@ -108,7 +112,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 Every link, unlink and add on `/Pleo/Categories` writes an audit entry naming the category, the Pleo id or Holded code,
 and the actor (`PleoCategoryLinked`, `PleoCategoryUnlinked`, `PleoCategoryAdded`): the mapping decides where spend is
-booked. Sweeps write none; their result is the sync row.
+booked. A sweep writes one entry per category row it links, adds or remaps (`PleoCategoryRemapped`), with the job as
+actor; otherwise its result is the sync row.
 
 ## Negative Access Rules
 
@@ -142,4 +147,4 @@ its Holded code or null and whether it has a receipt. Finance books only entries
 the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
 `/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.
 
-Internal `PleoMirrorSync` owns the full sweep and its vendor-to-mirror conversions, including the shared non-blocking gate and sync-state reporting. Fetch order, skipped/duplicate-row handling, atomic replacement, timestamps, cancellation, original-error preservation and logger category are unchanged. Category mappings remain outside the sweep. No public contract, job signature or DI registration is added.
+Internal `PleoMirrorSync` owns the full sweep and its vendor-to-mirror conversions, including the shared non-blocking gate and sync-state reporting. Fetch order, skipped/duplicate-row handling, atomic replacement, timestamps, cancellation, original-error preservation and logger category are unchanged. Category mappings a person linked remain outside the sweep. No public contract, job signature or DI registration is added.

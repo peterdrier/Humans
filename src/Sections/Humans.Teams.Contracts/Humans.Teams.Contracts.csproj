@@ -3,19 +3,14 @@
   <!-- Stays a leaf: folding into Humans.Teams would close a project cycle: Humans.Teams -> Humans.Auth -> Humans.Teams (also via Humans.GoogleIntegration). -->
 
   <!--
-    Teams' cross-section surface, in its own leaf so that Base and other sections can
-    reference it without referencing the section (a Contracts/ folder inside Humans.Teams
-    would make Base reference a section and cycle — memory/architecture/section-project-cycle-fix.md).
-
     It holds exactly what lives outside the section: the read surface every other section
-    injects, the few members other sections call on the full service, the system-sync,
-    seeding and cache-invalidator contracts, and the flat projections those signatures name
+    injects, the few members other sections call on the full service, the system-sync and
+    seeding contracts, and the flat projections those signatures name
     (TeamMemberRole, RolePeriod, TeamJoinRequestStatus, SlotPriority, CallToAction).
     Everything else — the directory, detail, admin list, roster, join-request,
     role-management and early-entry DTOs — is internal to Humans.Teams.
 
-    It references Base alone (Users decomposition commit 15 dropped the Humans.Users.Contracts
-    edge with GoogleEmailStatus). Base references Humans.Users.Contracts, so nothing in that
+    It references Base alone. Base references Humans.Users.Contracts, so nothing in that
     project may ever reference this one. Do not add Humans.Auth: nothing here names an Auth type, and the edge would pull
     Users and Onboarding into this leaf's chain.
   -->

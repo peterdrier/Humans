@@ -169,8 +169,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
     [HumansFact]
     public async Task SyncMembershipForUserAsync_BarrioLeads_UserAlreadyActiveMember_IsNoOp()
     {
-        // User is already an active member of Barrio Leads and is still a
-        // lead of at least one camp — the guard in the job should short-circuit.
         var userId = Guid.NewGuid();
         StubBarrioLeadsTeam(
             [
@@ -203,8 +201,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
     [HumansFact]
     public async Task SyncMembershipForUserAsync_BarrioLeads_UserBecomesLead_AddsMembership()
     {
-        // User is a new lead but not yet a team member — the job should
-        // enqueue the add via the bulk-delta service call.
         var userId = Guid.NewGuid();
         var team = StubBarrioLeadsTeam();
         _campRepository.IsLeadAnywhereAsync(userId, Arg.Any<CancellationToken>())

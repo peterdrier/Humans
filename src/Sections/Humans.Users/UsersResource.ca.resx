@@ -812,6 +812,9 @@
   <data name="Users_Profile_Settings" xml:space="preserve">
     <value>Configuració</value>
   </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Mostra-les totes ({0})</value>
+  </data>
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Previsualització d'un nou disseny. La pàgina actual:</value>
   </data>

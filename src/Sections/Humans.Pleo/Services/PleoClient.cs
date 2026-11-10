@@ -53,6 +53,14 @@ internal sealed class PleoClient : IPleoClient
         return items.Select(Read<PleoAccountWire>).ToList();
     }
 
+    public async Task<IReadOnlyList<PleoCategoryWire>> SearchCategoriesAsync(CancellationToken ct = default)
+    {
+        var body = JsonSerializer.Serialize(new { companyId = _options.CompanyId });
+        var items = await GetAllPagesAsync("bookkeeping-categories:search", after =>
+            Post($"/v1/bookkeeping-categories:search?limit={PageLimit}{After(after)}", body), ct);
+        return items.Select(Read<PleoCategoryWire>).ToList();
+    }
+
     public async Task<IReadOnlyList<PleoEmployeeWire>> ListEmployeesAsync(CancellationToken ct = default)
     {
         // Historical entries still reference deleted cardholders; an active-only sweep would erase their names.

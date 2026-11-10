@@ -1271,6 +1271,22 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
+    public async Task Sepa_MarksAHalfBookedTransferApartFromAnUnbookedOne()
+    {
+        var generatedBy = Guid.NewGuid();
+        var fileId = Guid.NewGuid();
+        var unbooked = Transfer(fileId, "f.xml", Stamp(1), generatedBy, Ana, 40000002);
+        SepaPayoutsPageVm PageOf(SepaPayoutTransferRow row) => new(
+            [new(fileId, "f.xml", Stamp(1), generatedBy, [new(row, "Ana")], null)], null, [], null, null, 3);
+
+        var plain = await RenderAsync("Sepa", PageOf(unbooked));
+        var partial = await RenderAsync("Sepa", PageOf(unbooked with { HoldedPaymentRefs = "pay-1,pay-2" }));
+
+        plain.Should().Contain(">Generated<").And.NotContain("Partially booked");
+        partial.Should().Contain("Partially booked").And.Contain("pay-1,pay-2").And.NotContain(">Generated<");
+    }
+
+    [HumansFact]
     public async Task Creditors_RenderCurrentHumansWhileKeepingConfirmationText()
     {
         _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(Ana, "Current <b>&"));

@@ -64,9 +64,3 @@ internal sealed record PleoReconcileVm(
 {
     public decimal? Difference => Wallet is { } w ? w.CurrentEur - Holded : null;
 }
-
-/// <summary>The /Finance card: both balances, null where unknown.</summary>
-internal sealed record FinancePleoVm(decimal? Wallet, decimal? Holded)
-{
-    public decimal? Difference => Wallet is { } w && Holded is { } h ? w - h : null;
-}

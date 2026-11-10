@@ -386,7 +386,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         SeedRoleAssignment(role, member2, slotIndex: 1);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Flip IsManagement from false -> true while the role has assignees.
         await _service.UpdateRoleDefinitionAsync(
             role.Id, "Lead", null, 2,
             [SlotPriority.Critical, SlotPriority.Critical], 0,
@@ -716,7 +715,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         SeedRoleAssignment(mgmtRole2, member2, slotIndex: 0);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        // Unassign from team1's management role — but still coordinator on team2
         await _service.UnassignFromRoleAsync(mgmtRole1.Id, member1.Id, admin.Id, Xunit.TestContext.Current.CancellationToken);
 
         ClearAllTrackers();
@@ -727,7 +725,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         var member1InDb = await TeamsDb.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member1.Id, Xunit.TestContext.Current.CancellationToken);
         member1InDb!.Role.Should().Be(TeamMemberRole.Member);
 
-        // member2 is unaffected
         var member2InDb = await TeamsDb.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member2.Id, Xunit.TestContext.Current.CancellationToken);
         member2InDb!.Role.Should().Be(TeamMemberRole.Coordinator);
     }

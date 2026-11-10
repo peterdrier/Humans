@@ -425,6 +425,9 @@
   <data name="Users_Profile_Settings" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Show all ({0})</value>
+  </data>
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Preview of a new layout. The current page:</value>
   </data>

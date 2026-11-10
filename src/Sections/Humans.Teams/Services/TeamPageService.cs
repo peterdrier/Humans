@@ -169,8 +169,7 @@ internal sealed class TeamPageService(
             if (membership is null)
                 continue;
 
-            // A direct Coordinator, a board member, or a coordinator of any ancestor team: the same parent walk as
-            // CanUserApproveRequestsForTeamAsync.
+            // A direct Coordinator, a board member, or the parent's coordinator: same rule as CanUserApproveRequestsForTeamAsync.
             var canManage =
                 (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
                 && !team.IsSystemTeam;

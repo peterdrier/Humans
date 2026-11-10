@@ -251,10 +251,10 @@ collapsed.
 ### When Holded accepts one posting and refuses the next
 
 The state is **retryable, not terminal**. On a Holded failure mid-allocation, the ids already accepted
-are logged and audited (`SepaPayoutTransferBooked`, prefixed `PARTIAL`), but **nothing is written to
-the transfer row** — the row stays unbooked and is retryable. The next attempt re-reads what is
-already posted under the transfer's tag (step 4 above) and continues from there, so nothing is ever
-posted twice.
+are logged and audited (`SepaPayoutTransferBooked`, prefixed `PARTIAL`) and the payment ids are saved
+to `HoldedPaymentRefs` with `BookedAt` still null (`PostedButNotBooked`). The row stays unbooked and
+retryable, and `/Finance/Sepa` marks it **Partially booked** with the landed ids. The next attempt
+resumes from those ids and the journal entry's tag (step 4 above), so nothing is ever posted twice.
 
 A posting Holded **accepted** but gave no readable id for is not a failure at all: the client returns
 `"unconfirmed:{documentId}"` (or `"unconfirmed:entry"`), and the allocation continues. The sentinel

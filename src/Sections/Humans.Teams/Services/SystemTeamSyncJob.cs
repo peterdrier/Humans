@@ -527,3 +527,11 @@ internal sealed class SystemTeamSyncJob(
         }
     }
 }
+
+internal sealed record SystemTeamMembershipSnapshot(
+    Guid Id,
+    string Name,
+    string Slug,
+    bool IsHidden,
+    SystemTeamType SystemTeamType,
+    IReadOnlyList<Guid> ActiveMemberUserIds);

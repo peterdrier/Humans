@@ -66,13 +66,30 @@ public class FinanceOverviewServiceTests
             [47500001] = -40m,
         };
 
-        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, []);
+        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [], pleoWallet: 2m);
 
         cards.Banks.Select(a => a.AccountNum).Should().Equal(57200001, 57200003);
         cards.Stripe.Select(a => a.AccountNum).Should().Equal(44100001);
         cards.CashTotal.Should().Be(125m);
         cards.Receivables.Select(r => r.Amount).Should().Equal(3m, 7m, 0m);
         cards.TaxesOwed.Should().Be(40m);
+        cards.CashAccounts.Where(a => a.Source is not null).Should().ContainSingle()
+            .Which.Should().Match<FinanceAccountLineVm>(a => a.AccountNum == 57200003 && a.Difference == -3m);
+    }
+
+    [HumansFact]
+    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn_OldestFirst()
+    {
+        static SepaPayoutTransferRow Transfer(decimal amount, long sentAt, Instant? booked = null, Instant? withdrawn = null) =>
+            new(Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUnixTimeSeconds(sentAt), Guid.NewGuid(),
+                Guid.NewGuid(), 41000001, null, "N", "ES**", amount, booked, null, null, null, null, null, null,
+                WithdrawnAt: withdrawn);
+        var now = Instant.FromUnixTimeSeconds(9);
+
+        var open = FinanceOverviewService.BuildSepaInProgress(
+            [Transfer(1m, 2), Transfer(2m, 1), Transfer(3m, 0, booked: now), Transfer(4m, 0, withdrawn: now)]);
+
+        open.Select(t => t.Amount).Should().Equal(2m, 1m);
     }
 
     [HumansFact]

@@ -59,8 +59,8 @@ internal sealed class PleoSyncState
 }
 
 /// <summary>
-/// Pleo category → Holded account. Not a cache: the sweep never touches it. The name and code are copied from Pleo's
-/// settings page; the id is linked by hand on /Pleo/Categories, because the API only ever returns the id.
+/// Pleo category → Holded account. Not a cache: a sweep never deletes or unlinks a row. A sweep links the ids nobody
+/// linked from Pleo's own mapping (<see cref="SetByUserId"/> null); a row a person linked on /Pleo/Categories stands.
 /// </summary>
 internal sealed class PleoCategory
 {

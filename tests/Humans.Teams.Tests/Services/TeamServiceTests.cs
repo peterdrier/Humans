@@ -4,8 +4,7 @@ using Humans.Base.Interfaces;
 using Xunit;
 using Humans.Base.Helpers;
 using Humans.Base.Extensions;
-// TeamMember.User is Obsolete and never populated in production; these tests set it before
-// SaveChanges only to satisfy the FK.
+// User.DisplayName is Obsolete; the seeders still set it.
 #pragma warning disable CS0618
 using AwesomeAssertions;
 using Humans.Base.Caching;
@@ -767,7 +766,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var stored = await TeamsDb.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id, TestContext.Current.CancellationToken);
         stored.Description.Should().Be("new");
         stored.GoogleGroupPrefix.Should().Be("vol-prefix");
-        // System teams ignore name/requiresApproval/isActive on update
         stored.Name.Should().Be(originalName);
         stored.Slug.Should().Be(originalSlug);
         stored.RequiresApproval.Should().BeFalse();
@@ -1853,6 +1851,25 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task ApproveJoinRequestAsync_RequestAlreadyRejected_ReturnsRefusalAndAddsNoMember()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id, TeamJoinRequestStatus.Rejected);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var result = await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, "late", TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Match("*pending*");
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        (await _service.GetUserTeamMembershipsAsync(requester.Id, TestContext.Current.CancellationToken))
+            .Should().NotContain(m => m.TeamId == team.Id);
+    }
+
+    [HumansFact]
     public async Task RejectJoinRequestAsync_HappyPath_RecordsRejectionWithReason()
     {
         var coordinator = SeedUser(displayName: "Coordinator");
@@ -2785,7 +2802,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var team = SeedTeam("Alpha");
         var u1 = SeedUser(displayName: "First");
         var u2 = SeedUser(displayName: "Second");
-        // Seed first request earlier
         var earlier = new TeamJoinRequest
         {
             Id = Guid.NewGuid(),
@@ -3500,12 +3516,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var activeEvent = SeedEventSettings("Active Event", isActive: true);
         var inactiveEvent = SeedEventSettings("Old Event", isActive: false);
 
-        // Rota on active event with 2 pending signups
         var activeRota = SeedRota(team.Id, activeEvent.Id, "Gate Shifts");
         var shift1 = SeedShift(activeRota.Id);
         SeedShiftSignup(shift1.Id, user.Id, SignupStatus.Pending);
         SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Pending);
-        SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Confirmed); // not pending
+        SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Confirmed);
 
         // Rota on an inactive event: must NOT be counted.
         var oldRota = SeedRota(team.Id, inactiveEvent.Id, "Old Shifts");
@@ -3579,7 +3594,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var bob = SeedUser(displayName: "Bob");
         SeedTeamMember(team.Id, alice.Id, TeamMemberRole.Coordinator);
         SeedTeamMember(team.Id, bob.Id);
-        // Previously-left member should NOT be touched.
         var ghost = SeedUser(displayName: "Ghost");
         SeedTeamMember(team.Id, ghost.Id, leftAt: Clock.GetCurrentInstant() - Duration.FromDays(30));
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -3594,7 +3608,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var reloaded = await TeamsDb.Teams.AsNoTracking().FirstOrDefaultAsync(t => t.Id == team.Id, TestContext.Current.CancellationToken);
         reloaded!.IsActive.Should().BeFalse();
 
-        // All previously-active memberships now have LeftAt set.
         var aliceMember = await TeamsDb.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == alice.Id, TestContext.Current.CancellationToken);
         var bobMember = await TeamsDb.TeamMembers.AsNoTracking()
@@ -3604,7 +3617,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         aliceMember.LeftAt.Should().Be(Clock.GetCurrentInstant());
         bobMember.LeftAt.Should().Be(Clock.GetCurrentInstant());
 
-        // Previously-left membership is unchanged (still has its original LeftAt).
         var ghostMember = await TeamsDb.TeamMembers.AsNoTracking()
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == ghost.Id, TestContext.Current.CancellationToken);
         ghostMember.LeftAt.Should().Be(Clock.GetCurrentInstant() - Duration.FromDays(30));

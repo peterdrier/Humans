@@ -257,12 +257,13 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansTheory]
-    [InlineData(ProfileCardViewMode.Self, false, true)]
-    [InlineData(ProfileCardViewMode.Public, false, false)]
-    [InlineData(ProfileCardViewMode.Public, true, true)]
-    [InlineData(ProfileCardViewMode.Admin, false, false)]
-    public async Task OnsiteChip_RendersForSelf_OrTheOnsiteRosterPolicy_Only(
-        ProfileCardViewMode mode, bool viewerPassesPolicy, bool renders)
+    [InlineData(ProfileCardViewMode.Self, false, true, true)]
+    [InlineData(ProfileCardViewMode.Self, false, false, false)]
+    [InlineData(ProfileCardViewMode.Public, false, false, false)]
+    [InlineData(ProfileCardViewMode.Public, true, false, true)]
+    [InlineData(ProfileCardViewMode.Admin, false, true, false)]
+    public async Task OnsiteChip_RendersForSelfInTheHoldingsCard_OrTheOnsiteRosterPolicy_Only(
+        ProfileCardViewMode mode, bool viewerPassesPolicy, bool inHoldings, bool renders)
     {
         var userId = Guid.NewGuid();
         var tickets = Substitute.For<ITicketService>();
@@ -279,7 +280,7 @@ public sealed class EventParticipationServiceTests : IDisposable
             .Returns(viewerPassesPolicy ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var component = WithContext(new OnsiteChipViewComponent(tickets, settings, authorization));
 
-        var result = await component.InvokeAsync(userId, mode);
+        var result = await component.InvokeAsync(userId, mode, inHoldings);
 
         if (renders)
             result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model.Should().Be(Now);
@@ -299,7 +300,7 @@ public sealed class EventParticipationServiceTests : IDisposable
             .Returns(BurnFixtures.Burn(year: 2026));
         var component = WithContext(new OnsiteChipViewComponent(tickets, settings, Substitute.For<IAuthorizationService>()));
 
-        (await component.InvokeAsync(userId, ProfileCardViewMode.Self))
+        (await component.InvokeAsync(userId, ProfileCardViewMode.Self, inHoldings: true))
             .Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
 

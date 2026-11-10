@@ -42,7 +42,6 @@ public class TeamServiceSlugRaceTests
         created.Slug.Should().Be("design-2",
             because: "the first persist reported a slug conflict, so the loop must advance to the suffixed slug");
 
-        // Sanity: two persist attempts, both from the retry loop.
         await repo.Received(2).AddTeamWithRequiresApprovalOverrideAsync(
             Arg.Any<Team>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
