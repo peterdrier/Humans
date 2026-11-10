@@ -255,6 +255,11 @@ else if (Model.Run is { Result: { } last } finished)
                         }
                     </div>
                 }
+                else if (item.Row.PostedButNotBooked)
+                {
+                    <span class="badge text-bg-warning" title="An earlier attempt stopped after Holded accepted these postings. Booking again posts only what is still missing.">Partially booked</span>
+                    <div class="text-muted small font-monospace">@item.Row.HoldedPaymentRefs</div>
+                }
                 else
                 {
                     <span class="badge text-bg-secondary">Generated</span>
