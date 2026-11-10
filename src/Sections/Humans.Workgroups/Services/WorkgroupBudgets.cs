@@ -71,8 +71,8 @@ internal sealed class WorkgroupBudgets(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Holded mirror unavailable; the link-existing picker is empty");
-            return [];
+            logger.LogError(ex, "Holded mirror unavailable; expense accounts could not be loaded");
+            throw;
         }
     }
 

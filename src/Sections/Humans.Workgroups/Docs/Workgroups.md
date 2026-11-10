@@ -501,7 +501,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.
 - **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
-  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and leave the picker empty; cancellation propagates. Account creation and linking still go through Finance.
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and propagate, stopping the page rather than presenting an empty account picker; cancellation propagates. Account creation and linking still go through Finance.
 
 ## GDPR
 
