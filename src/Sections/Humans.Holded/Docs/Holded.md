@@ -36,7 +36,9 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
   identities (including expense-account, contact and sales-document IDs) and amounts (including the pending balance on approved purchases), complete pagination, typed write responses, the `unconfirmed:`
   references, the 429 policy with fractional HTTP-date waits) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
-  depends on one consequence: no short or fabricated page ever reaches replace semantics.
+  depends on one consequence: no short or fabricated page ever reaches replace semantics. An unreadable
+  contact fails the complete pull before replacement; the existing mirror remains intact with an Error sync
+  state. Live find-or-create contact writes also stop rather than treating an unreadable contact as absent.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,

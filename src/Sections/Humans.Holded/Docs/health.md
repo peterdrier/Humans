@@ -193,8 +193,8 @@ Settled decisions. Later runs should stop re-litigating these.
   `payments_detail` entry that is new after the POST and matches amount, date and treasury
   account. When the re-read fails or no single entry matches it returns `unconfirmed:{docId}`
   rather than throwing: the money moved, and losing the reference would cause a second payment.
-- **`ListContactsAsync` skips one unreadable contact; every other list fails the whole page.**
-  A missing contact name is cosmetic; a missing ledger line or purchase total is wrong money.
+- **Contact lists fail closed, like the other mirror inputs.** An unreadable contact prevents
+  replacement and live contact matching: skipping it could delete a cached row or permit duplicate creation.
   The chart fails the page as well — Peter's ruling of 2026-09-10 against skip-and-log
   (peterdrier/Humans#1583, item 1). Holded documents an account's `number` as a non-nullable
   integer and a live read of the chart returned none without one, so the numberless account is a
