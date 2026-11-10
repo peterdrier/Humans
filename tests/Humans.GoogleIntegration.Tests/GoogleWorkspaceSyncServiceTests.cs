@@ -1370,6 +1370,178 @@ public sealed class GoogleWorkspaceSyncServiceTests
             await _resourceRepository.DidNotReceiveWithAnyArgs().UpdateNameAsync(default, default!);
     }
 
+    [HumansFact]
+    public async Task UpdateDriveFolderPathsAsync_CallerCancellationDuringReadPropagatesAndStopsBeforeNextResource()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        var nextId = Guid.NewGuid();
+        _resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct)
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, "first"),
+                MakeDriveFolderResource(nextId, TestTeamId, "next")]);
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _drivePermissions.GetFileAsync("first", Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return await Task.FromException<DriveFileMetadataResult>(new OperationCanceledException(ct));
+            });
+
+        var act = () => _syncService.UpdateDriveFolderPathsAsync(ct);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _drivePermissions.DidNotReceive().GetFileAsync("next", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateDriveFolderPathsAsync_UnrelatedCancellationFromReadIsRecoverable()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        var nextId = Guid.NewGuid();
+        _resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct)
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, "first"),
+                MakeDriveFolderResource(nextId, TestTeamId, "next")]);
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _drivePermissions.GetFileAsync("first", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<DriveFileMetadataResult>(new OperationCanceledException(ct)));
+        _drivePermissions.GetFileAsync("next", Arg.Any<CancellationToken>()).Returns(new DriveFileMetadataResult(
+            new DriveFileMetadata("next", "Next", [], null, null), null));
+
+        var updated = await _syncService.UpdateDriveFolderPathsAsync(ct);
+
+        updated.Should().Be(1);
+        await _resourceRepository.Received(1).UpdateNameAsync(nextId, "Next", ct);
+    }
+
+    [HumansFact]
+    public async Task EnforceInheritedAccessRestrictionsAsync_CallerCancellationDuringReadPropagatesAndStopsBeforeNextResource()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        var nextId = Guid.NewGuid();
+        var first = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, "first");
+        var next = MakeDriveFolderResource(nextId, TestTeamId, "next");
+        first.RestrictInheritedAccess = true;
+        next.RestrictInheritedAccess = true;
+        _resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct).Returns([first, next]);
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _drivePermissions.GetFileAsync("first", Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            await cancellation.CancelAsync();
+            return await Task.FromException<DriveFileMetadataResult>(new OperationCanceledException(ct));
+        });
+
+        var act = () => _syncService.EnforceInheritedAccessRestrictionsAsync(ct);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _drivePermissions.DidNotReceive().GetFileAsync("next", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnforceInheritedAccessRestrictionsAsync_UnrelatedCancellationFromReadIsRecoverable()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        var nextId = Guid.NewGuid();
+        var first = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, "first");
+        var next = MakeDriveFolderResource(nextId, TestTeamId, "next");
+        first.RestrictInheritedAccess = true;
+        next.RestrictInheritedAccess = true;
+        _resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct).Returns([first, next]);
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _drivePermissions.GetFileAsync("first", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<DriveFileMetadataResult>(new OperationCanceledException(ct)));
+        _drivePermissions.GetFileAsync("next", Arg.Any<CancellationToken>()).Returns(new DriveFileMetadataResult(
+            new DriveFileMetadata("next", "Next", [], null, true), null));
+
+        var corrected = await _syncService.EnforceInheritedAccessRestrictionsAsync(ct);
+
+        corrected.Should().Be(0);
+        await _drivePermissions.Received(1).GetFileAsync("next", ct);
+    }
+
+    [HumansFact]
+    public async Task EnforceInheritedAccessRestrictionsAsync_CallerCancelsDuringMutationFinishesAuditAndStopsBeforeNextResource()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        var nextId = Guid.NewGuid();
+        var first = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, "first");
+        var next = MakeDriveFolderResource(nextId, TestTeamId, "next");
+        first.RestrictInheritedAccess = true;
+        next.RestrictInheritedAccess = true;
+        _resourceRepository.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, ct).Returns([first, next]);
+        _teamService.GetTeamsAsync(ct).Returns(ExpectedMemberTeam());
+        _drivePermissions.GetFileAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new DriveFileMetadataResult(
+            new DriveFileMetadata("file", "Folder", [], null, false), null));
+        _drivePermissions.SetInheritedPermissionsDisabledAsync("first", true, Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return (GoogleClientError?)null;
+            });
+
+        var act = () => _syncService.EnforceInheritedAccessRestrictionsAsync(ct);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _drivePermissions.Received(1).SetInheritedPermissionsDisabledAsync("first", true, CancellationToken.None);
+        await _auditLogService.Received(1).LogAsync(
+            GoogleIntegrationAuditActions.GoogleResourceInheritanceDriftCorrected,
+            nameof(GoogleResource), TestDriveFolderResourceId, Arg.Any<string>(), "GoogleResourceReconciliationJob");
+        await _drivePermissions.DidNotReceive().GetFileAsync("next", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetInheritedPermissionsDisabledAsync_PreCanceledCallerDoesNotMutate()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var act = () => _syncService.SetInheritedPermissionsDisabledAsync("folder", true, cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _drivePermissions.DidNotReceiveWithAnyArgs()
+            .SetInheritedPermissionsDisabledAsync(default!, default, default);
+    }
+
+    [HumansFact]
+    public async Task RemediateGroupSettingsAsync_PreCanceledCallerDoesNotMutateOrAudit()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var act = () => _syncService.RemediateGroupSettingsAsync("group@nobodies.team", cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _groupProvisioning.DidNotReceiveWithAnyArgs().UpdateGroupSettingsAsync(default!, default!, default);
+        await _auditLogService.DidNotReceive().LogAsync(
+            GoogleIntegrationAuditActions.GoogleResourceSettingsRemediated,
+            nameof(GoogleResource), Guid.Empty, Arg.Any<string>(), nameof(GoogleWorkspaceSyncService));
+    }
+
+    [HumansFact]
+    public async Task RemediateGroupSettingsAsync_CallerCancelsDuringMutationUsesNoneAndFinishesAudit()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        _groupProvisioning.UpdateGroupSettingsAsync("group@nobodies.team", Arg.Any<GroupSettingsExpected>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return (GoogleClientError?)null;
+            });
+
+        var result = await _syncService.RemediateGroupSettingsAsync("group@nobodies.team", ct);
+
+        result.Succeeded.Should().BeTrue();
+        await _groupProvisioning.Received(1).UpdateGroupSettingsAsync(
+            "group@nobodies.team", Arg.Any<GroupSettingsExpected>(), CancellationToken.None);
+        await _auditLogService.Received(1).LogAsync(
+            GoogleIntegrationAuditActions.GoogleResourceSettingsRemediated,
+            nameof(GoogleResource), Guid.Empty, Arg.Any<string>(), nameof(GoogleWorkspaceSyncService));
+    }
+
     private static Dictionary<Guid, TeamInfo> ExpectedMemberTeam() => new()
     {
         [TestTeamId] = new TeamInfo(TestTeamId, "Test Team", null, "test-team", true, false,

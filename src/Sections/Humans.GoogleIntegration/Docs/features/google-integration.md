@@ -403,6 +403,8 @@ Settings applied at group creation can drift if someone changes them manually in
 
 **Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures per group are logged but don't stop the check phase; a phase-level failure that kills the entire check dispatches a `SyncError` Admin alert (covered under per-phase fault isolation above).
 
+Each settings remediation checks cancellation before starting its remote write, then completes that write and its audit independently of shutdown. Cancellation stops the next remediation.
+
 **Manual trigger:** The Google admin page at `/Google` has a "Check Group Settings" button. Results show at `/Google/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
 
 **SyncSettings respected:** If GoogleGroups sync mode is set to None, both the check and auto-remediation are skipped entirely.
@@ -545,6 +547,8 @@ Process: Calls Drive and Group `ReconcileAllAsync` once each with `SyncAction.Ex
 **Per-phase fault isolation:** Each top-level phase (Drive source reconcile covering folders and files, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
 
 **Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` for name, parents and `driveId`; `drives.get` for a Shared Drive root's name, never the `files.get` placeholder). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention. Only a complete root-reaching path replaces the stored name; failed metadata reads or the depth limit preserve it. Initial resource lookup uses the same resolver and reuses its leaf metadata; an incomplete walk returns the leaf name rather than a partial suffix. Shared Drive roots whose file metadata omits `driveId` are resolved through `drives.get`.
+
+Folder-path refresh and inherited-access enforcement keep metadata reads cancellable and propagate requested cancellation rather than returning partial counts. Both stop before the next resource; independent read failures retain per-resource recovery. A started inheritance repair completes its remote write and correction audit independently of cancellation.
 
 > Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at the `/Settings#google-sync` tab before the job will modify Google resources.
 
