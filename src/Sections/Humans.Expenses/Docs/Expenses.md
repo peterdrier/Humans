@@ -171,6 +171,7 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 - Withdrawal POST and its detail-page button use `ExpenseReportOperation.Withdraw`: only the submitter of a Submitted or CoordinatorEndorsed report may withdraw. Draft, Approved and already Withdrawn reports return 403 before mutation, and the service and repository refuse them too, since approval has already queued the Holded push; FinanceAdmin/Admin cannot withdraw another person's report.
 
 - The Holded outbox drain is marked as an external write; HTTP mutations must not pass browser cancellation into its vendor operations. Report transitions only queue the work.
+- Publishing keeps user and prior-report preflight reads cancellable. Once creditor provisioning starts, the report's vendor steps, document IDs, attachment checkpoints, completion and audit finish independently of shutdown, so a returned document ID cannot be lost to cancellation and recreated on retry. Retry/write-off tracking also ignores shutdown; requested preflight cancellation remains uncounted, and the drain stops before the next event.
 
 - Successful Holded push audit summaries are bounded to 3500 UTF-16 units without splitting surrogate pairs, so Unicode receipt descriptions remain valid for database encoding.
 - Holded outbox retries and write-offs bound saved error summaries to 2000 UTF-16 units without splitting surrogate pairs. Permanent-failure audits use the same bounded summary; logs retain the full exception.
