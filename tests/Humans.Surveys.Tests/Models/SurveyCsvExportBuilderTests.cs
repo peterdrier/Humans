@@ -3,12 +3,44 @@ using AwesomeAssertions;
 using Humans.Surveys.Models;
 using NodaTime;
 using Humans.Surveys.Contracts;
+using Humans.Base.Csv;
+using CsvHelper;
 
 namespace Humans.Surveys.Tests.Models;
 
 public sealed class SurveyCsvExportBuilderTests
 {
     private static readonly Instant Submitted = Instant.FromUtc(2026, 6, 4, 9, 30);
+
+    [HumansTheory]
+    [Xunit.InlineData("response_id")]
+    [Xunit.InlineData("anonymity")]
+    [Xunit.InlineData("input_method")]
+    [Xunit.InlineData("submitted_at")]
+    [Xunit.InlineData("user_id")]
+    [Xunit.InlineData("user_name")]
+    [Xunit.InlineData(" USER_ID ")]
+    [Xunit.InlineData("Repeated", "Repeated", "Repeated (aaaaaaaa)")]
+    [Xunit.InlineData("=Formula", "'=Formula")]
+    public void Allocates_unambiguous_headers_without_moving_answer_columns(params string[] prompts)
+    {
+        var questions = prompts.Select((prompt, i) => Text(
+            Guid.Parse($"aaaaaaaa-0000-0000-0000-{i + 1:000000000000}"), prompt)).ToList();
+        var userId = Guid.NewGuid();
+        var export = new SurveyResponseExport(Guid.NewGuid(), "T", "en", questions,
+            [new SurveyExportRow(Guid.NewGuid(), ResponseAnonymity.Identified, SurveyInputMethod.Slug,
+                "en", Submitted, userId, "Sparkle",
+                questions.Select((q, i) => new SurveyExportAnswer(q.QuestionId, [], [], $"Answer {i}", null)).ToList())]);
+        using var csv = CsvReader.FromText(
+            Encoding.UTF8.GetString(SurveyCsvExportBuilder.Build(export)).TrimStart('﻿'), HumansCsv.ReadConfig());
+
+        csv.Read().Should().BeTrue();
+
+        csv.Headers.Select(header => header.Trim().ToLowerInvariant()).Should().OnlyHaveUniqueItems();
+        csv.GetString("user_id").Should().Be(userId.ToString());
+        for (var i = 0; i < questions.Count; i++)
+            csv.GetString(i + 6).Should().Be($"Answer {i}");
+    }
 
     private static SurveyExportQuestion Choice(Guid id, string prompt, params (string Value, string Label)[] opts) =>
         new(id, prompt, SurveyQuestionType.MultiChoice,

@@ -349,6 +349,8 @@ Result drill-down, response export and GDPR response export share the section's 
 
 Markdown response tables preserve literal backslashes and pipes in question prompts, respondent names and answer cells, while collapsing line breaks to spaces. CSV cells retain their existing serialization.
 
+CSV question headers are unique against the six metadata columns and other question headers, including case/whitespace and injection-escaping collisions. Conflicting prompts receive a short question-id suffix and, if needed, a numeric suffix. Column order and answer values are unchanged.
+
 Response exports (admin CSV/JSON and Backdoor analysis) record `SurveyResponsesExported` with the requesting human, survey id and row count in the owner service. Missing surveys and embargoed open Asociado votes return no export and no disclosure audit. Privacy shaping and results authorization remain unchanged.
 
 The internal `SurveyDefinitionReader` owns member/admin summaries, the pending-approval queue with author enrichment, official-link selection, editable definitions and the flattened question graph, reusing `SurveyQuestionMapping`. Admin author scoping, empty-result short-circuits, count/author lookup order and cancellation are unchanged. `SurveyService` forwards its existing entry points; response/results access, authoring writes and invitation delivery retain their existing owners. Open-status and invitation-link precedence, localized default-culture projection, branching payloads and question ordering are unchanged. No public contract or DI registration is added.
