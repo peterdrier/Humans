@@ -68,20 +68,7 @@ internal sealed class SurveyController(
             resumeState.Started = true;
             if (resumeAnonymity == ResponseAnonymity.Identified)
                 resumeState.DraftResponseId = ctx.DraftResponseId;
-            foreach (var a in ctx.DraftAnswers)
-            {
-                resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
-                {
-                    SelectedOptionValues = a.SelectedOptionValues.ToList(),
-                    GridSelections = a.GridSelections?.ToDictionary(
-                        kv => kv.Key,
-                        kv => kv.Value.ToList(),
-                        StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
-                    TextValue = a.TextValue,
-                    RatingValue = a.RatingValue,
-                    RankedValue = a.RankedValue,
-                };
-            }
+            resumeState.Answers = SurveyWizardFlow.ToWizardAnswers(ctx.DraftAnswers);
 
             resumeState.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
                 editable.Questions, SurveyWizardFlow.ToAnswerStates(resumeState.Answers)) ?? 0;
@@ -248,22 +235,7 @@ internal sealed class SurveyController(
 
             participationId = tracked.ParticipationId;
             draftResponseId = tracked.DraftResponseId;
-            foreach (var answer in tracked.DraftAnswers)
-            {
-                stateAnswers[answer.QuestionId.ToString()] = new SurveyWizardAnswer
-                {
-                    SelectedOptionValues = answer.SelectedOptionValues.ToList(),
-                    TextValue = answer.TextValue,
-                    RatingValue = answer.RatingValue,
-                    GridSelections = answer.GridSelections is null
-                        ? new Dictionary<string, List<string>>(StringComparer.Ordinal)
-                        : answer.GridSelections.ToDictionary(
-                            pair => pair.Key,
-                            pair => pair.Value.ToList(),
-                            StringComparer.Ordinal),
-                    RankedValue = answer.RankedValue,
-                };
-            }
+            stateAnswers = SurveyWizardFlow.ToWizardAnswers(tracked.DraftAnswers);
         }
 
         var state = new SurveyWizardState
