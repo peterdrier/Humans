@@ -55,11 +55,13 @@ internal sealed class CachingTeamService(
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
+        bool confirmGroupReactivation = false,
+        Guid? confirmedInactiveGroupResourceId = null,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UpdateTeamWithGoogleGroupAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId,
             googleGroupPrefix, customSlug, hasBudget, isHidden, isSensitive,
-            isPromotedToDirectory, earlyEntryEnabled, cancellationToken));
+            isPromotedToDirectory, earlyEntryEnabled, confirmGroupReactivation, confirmedInactiveGroupResourceId, cancellationToken));
 
     public Task<Team> CreateTeamAsync(
         string name,

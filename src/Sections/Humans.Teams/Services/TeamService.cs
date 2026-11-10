@@ -189,6 +189,8 @@ internal sealed class TeamService(
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
+        bool confirmGroupReactivation = false,
+        Guid? confirmedInactiveGroupResourceId = null,
         CancellationToken cancellationToken = default)
     {
         var result = await UpdateTeamAsync(
@@ -201,10 +203,18 @@ internal sealed class TeamService(
         // The callback must see the saved prefix, including a cleared one, rather than the previous snapshot.
         serviceProvider.GetRequiredService<ITeamManagementService>().InvalidateActiveTeamsCache();
         string? groupWarning;
+        Guid? inactiveGroupResourceId = null;
         try
         {
             var groupResult = await GoogleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: cancellationToken);
+            if (confirmGroupReactivation && confirmedInactiveGroupResourceId is { } confirmedId
+                && groupResult.RequiresConfirmation && groupResult.InactiveResourceId == confirmedId)
+            {
+                groupResult = await GoogleSyncService.EnsureTeamGroupAsync(teamId, true, cancellationToken);
+            }
             groupWarning = GroupLinkWarning(groupResult);
+            if (groupResult.RequiresConfirmation)
+                inactiveGroupResourceId = groupResult.InactiveResourceId;
         }
         catch (Exception ex)
         {
@@ -212,7 +222,7 @@ internal sealed class TeamService(
             groupWarning = $"Team updated but Google Group setup failed: {ex.Message}";
         }
 
-        return result with { GroupWarning = groupWarning };
+        return result with { GroupWarning = groupWarning, InactiveGroupResourceId = inactiveGroupResourceId };
     }
 
     private static string? GroupLinkWarning(GroupLinkResult result) =>

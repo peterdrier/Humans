@@ -80,7 +80,8 @@ internal sealed class GoogleTeamGroupLinking(
         }
 
         var inactiveForTeam = await resourceRepository.FindInactiveGroupByCandidatesAsync(
-            teamId, googleNumericId: email, normalizedGroupEmail: email, cancellationToken);
+            teamId, googleNumericId: email, normalizedGroupEmail: email,
+            normalizedGroupUrl: expectedUrl, ct: cancellationToken);
         if (inactiveForTeam is not null && !confirmReactivation)
         {
             return GroupLinkResult.NeedsConfirmation(
@@ -92,14 +93,26 @@ internal sealed class GoogleTeamGroupLinking(
 
         if (inactiveForTeam is not null && confirmReactivation)
         {
-            await resourceRepository.ReactivateAsync(
+            var reactivated = await resourceRepository.ReactivateAsync(
                 inactiveForTeam.Id,
-                inactiveForTeam.Name,
-                inactiveForTeam.Url,
+                team.Name,
+                expectedUrl,
                 now,
                 newGoogleId: null,
                 newPermissionLevel: null,
-                cancellationToken);
+                deactivateResourceId: existingGroup?.Id,
+                ct: cancellationToken);
+            if (reactivated is null)
+                return GroupLinkResult.Error("The previously linked group no longer exists. Reload the team and try again.");
+
+            if (existingGroup is not null)
+            {
+                await auditLogService.LogAsync(
+                    GoogleIntegrationAuditActions.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
+                    $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
+                    nameof(GoogleWorkspaceSyncService),
+                    relatedEntityId: teamId, relatedEntityType: "Team");
+            }
 
             await auditLogService.LogAsync(
                 GoogleIntegrationAuditActions.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,

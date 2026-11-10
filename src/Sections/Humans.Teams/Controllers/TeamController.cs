@@ -630,7 +630,9 @@ internal sealed class TeamController(
         var result = await teamService.UpdateTeamWithGoogleGroupAsync(
             id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId,
             model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, isSensitive,
-            model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled);
+            model.IsPromotedToDirectory, earlyEntryEnabled: model.EarlyEntryEnabled,
+            confirmGroupReactivation: model.ConfirmGroupReactivation,
+            confirmedInactiveGroupResourceId: model.InactiveGroupResourceId);
         if (!result.Succeeded)
         {
             var (field, reason) = result.Conflict switch
@@ -642,6 +644,18 @@ internal sealed class TeamController(
             };
             logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, reason);
             ModelState.AddModelError(field, reason);
+            await PopulateEligibleParentsAsync(model, id);
+            return View(model);
+        }
+        if (result.InactiveGroupResourceId is { } inactiveGroupResourceId)
+        {
+            model.InactiveGroupResourceId = inactiveGroupResourceId;
+            model.ConfirmGroupReactivation = false;
+            model.Slug = result.Team!.Slug;
+            model.IsSystemTeam = result.Team.IsSystemTeam;
+            model.GoogleGroupEmail = result.Team.GoogleGroupEmail;
+            ModelState.Remove(nameof(model.ConfirmGroupReactivation));
+            ModelState.AddModelError(nameof(model.GoogleGroupPrefix), result.GroupWarning!);
             await PopulateEligibleParentsAsync(model, id);
             return View(model);
         }

@@ -152,6 +152,8 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 
 Google Group membership is reconciled by `IGoogleGroupSync`, not by the Drive-oriented `IGoogleSyncService` gateway. `IGoogleGroupMembershipSource` is a plugin interface: each source returns expected user IDs for the Google group keys it owns, and the orchestrator performs the shared work of hydrating users/emails, filtering deletion/merge/suspension/rejected-email state, diffing against Google, and applying changes.
 
+When a team prefix points back to an inactive group resource, the existing team-edit form requests explicit reactivation confirmation. Recovery recognizes both legacy email-valued IDs and numeric IDs through their canonical group URL. Confirmation restores the same row with the current team name and URL, atomically retires the selected previous group link, and audits both changes. Other manually linked group resources remain active; no duplicate row or provisioning call is needed.
+
 `TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups, and Camps' `CampRoleService` implements it for camp role groups. `ITeamService` intentionally does not inherit the source interface; Teams registers the concrete service as a source so group membership ownership remains explicit and does not expand the general Teams boundary.
 
 Collision handling is fail-closed. If more than one source claims the same group key, `IGoogleGroupSync` logs and audits the collision and skips mutation for that group. First-wins would be unsafe because one source could silently remove members owned by another source.

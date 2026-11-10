@@ -1,5 +1,6 @@
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.GoogleIntegration.Services;
@@ -18,8 +19,8 @@ namespace Humans.GoogleIntegration.Tests;
 
 /// <summary>
 /// Seeds a real InMemory context through the real repository and TeamResourceService, and drives the
-/// Drive engine against the dev stub. Groups are out of scope: <c>SyncResourcesByTypeAsync</c> throws
-/// for them, and <c>GoogleGroupSyncServiceTests</c> covers that path.
+/// Drive engine against the dev stub and group-link restoration against the resource repository.
+/// Group membership reconciliation is covered by <c>GoogleGroupSyncServiceTests</c>.
 /// </summary>
 public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegrationTestHarness
 {
@@ -35,6 +36,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
     private readonly ITeamResourceGoogleClient _teamResourceClient = Substitute.For<ITeamResourceGoogleClient>();
     private readonly IGoogleSyncLogService _syncLog = Substitute.For<IGoogleSyncLogService>();
+    private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
 
     private readonly GoogleWorkspaceSyncService _syncService;
 
@@ -93,7 +95,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
             _userService, _identities,
-            Substitute.For<IGoogleGroupSync>(),
+            _googleGroupSync,
             driveSync,
             [_driveSource],
             AuditLog,
@@ -103,6 +105,66 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
             options,
             Clock,
             NullLogger<GoogleWorkspaceSyncService>.Instance);
+    }
+
+    [HumansTheory]
+    [InlineData("target@nobodies.team", false)]
+    [InlineData("12345", false)]
+    [InlineData("target@nobodies.team", true)]
+    [InlineData("12345", true)]
+    public async Task EnsureTeamGroupAsync_ReactivatesMatchingInactiveGroupWithoutReplacingManualGroups(
+        string inactiveGoogleId,
+        bool confirmReactivation)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var teamId = Guid.NewGuid();
+        const string teamName = "Current team name";
+        const string prefix = "target";
+        const string expectedUrl = "https://groups.google.com/a/nobodies.team/g/target";
+        var now = Clock.GetCurrentInstant();
+        var selectedOldId = SeedGroupResource(teamId, "old-group-id", "Old group", "https://groups.google.com/a/nobodies.team/g/old", now - Duration.FromDays(2));
+        var otherManualId = SeedGroupResource(teamId, "manual-group-id", "Manual group", "https://groups.google.com/a/nobodies.team/g/manual", now - Duration.FromDays(1));
+        var inactiveId = SeedGroupResource(teamId, inactiveGoogleId, "Stale inactive name", expectedUrl, now - Duration.FromDays(3), isActive: false);
+        await SaveAllAsync(ct);
+
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>()).Returns(new TeamInfo(
+            teamId, teamName, null, "current-team", true, false, SystemTeamType.None, false,
+            false, false, false, Instant.MinValue, [], GoogleGroupPrefix: prefix));
+        _googleGroupSync.ReconcileOneAsync(Arg.Any<string>(), SyncAction.Execute, Arg.Any<CancellationToken>(),
+                scheduleRetries: false, syncSource: GoogleSyncSource.ManualSync)
+            .Returns(new ResourceSyncDiff { GoogleId = "12345" });
+
+        var result = await _syncService.EnsureTeamGroupAsync(teamId, confirmReactivation, ct);
+
+        var rows = await GoogleIntegrationDb.GoogleResources.AsNoTracking().Where(r => r.TeamId == teamId).ToListAsync(ct);
+        rows.Should().HaveCount(3);
+        rows.Single(r => r.Id == otherManualId).IsActive.Should().BeTrue("manually linked groups remain active");
+
+        if (!confirmReactivation)
+        {
+            result.RequiresConfirmation.Should().BeTrue();
+            result.InactiveResourceId.Should().Be(inactiveId);
+            rows.Single(r => r.Id == selectedOldId).IsActive.Should().BeTrue();
+            rows.Single(r => r.Id == inactiveId).IsActive.Should().BeFalse();
+            await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileOneAsync(default!, default, default);
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+
+        result.Success.Should().BeTrue();
+        var reactivated = rows.Single(r => r.Id == inactiveId);
+        reactivated.IsActive.Should().BeTrue();
+        reactivated.Name.Should().Be(teamName);
+        reactivated.Url.Should().Be(expectedUrl);
+        rows.Single(r => r.Id == selectedOldId).IsActive.Should().BeFalse("only the selected oldest existing group is replaced");
+
+        await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileOneAsync(default!, default, default);
+        await AuditLog.Received(1).LogAsync(
+            GoogleIntegrationAuditActions.GoogleResourceDeactivated, nameof(GoogleResource), selectedOldId,
+            Arg.Any<string>(), nameof(GoogleWorkspaceSyncService), teamId, "Team");
+        await AuditLog.Received(1).LogAsync(
+            GoogleIntegrationAuditActions.GoogleResourceProvisioned, nameof(GoogleResource), inactiveId,
+            Arg.Any<string>(), nameof(GoogleWorkspaceSyncService), teamId, "Team");
     }
 
     [HumansFact]
@@ -362,6 +424,30 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleIntegr
             DrivePermissionLevel = DrivePermissionLevel.Contributor,
             ProvisionedAt = Clock.GetCurrentInstant(),
             IsActive = true
+        });
+        return id;
+    }
+
+    private Guid SeedGroupResource(
+        Guid teamId,
+        string googleId,
+        string name,
+        string url,
+        Instant provisionedAt,
+        bool isActive = true)
+    {
+        var id = Guid.NewGuid();
+        GoogleIntegrationDb.GoogleResources.Add(new GoogleResource
+        {
+            Id = id,
+            TeamId = teamId,
+            ResourceType = GoogleResourceType.Group,
+            GoogleId = googleId,
+            Name = name,
+            Url = url,
+            ProvisionedAt = provisionedAt,
+            LastSyncedAt = provisionedAt,
+            IsActive = isActive
         });
         return id;
     }

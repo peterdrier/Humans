@@ -144,6 +144,8 @@ internal interface ITeamManagementService : ITeamManagement
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
+        bool confirmGroupReactivation = false,
+        Guid? confirmedInactiveGroupResourceId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Deactivates; nothing is deleted.</summary>
@@ -315,7 +317,8 @@ internal sealed record TeamUpdateResult(
     Team? Team = null,
     TeamUpdateConflict Conflict = TeamUpdateConflict.None,
     string? ErrorMessage = null,
-    string? GroupWarning = null)
+    string? GroupWarning = null,
+    Guid? InactiveGroupResourceId = null)
 {
     public bool Succeeded => Team is not null && Conflict == TeamUpdateConflict.None && ErrorMessage is null;
 
