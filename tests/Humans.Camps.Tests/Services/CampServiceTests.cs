@@ -901,7 +901,7 @@ public sealed class CampServiceTests : CampsTestHarness
         detail.Images.Should().ContainSingle(image => image.Url == "/uploads/camps/fallback.jpg");
         detail.HideHistoricalNames.Should().BeFalse();
 
-        var seasonInfo = detail.GetSeasonForYear(2027, fallbackToLatestSeason: true);
+        var seasonInfo = detail.GetSeasonForEvent(Event2027.Id, fallbackToLatestSeason: true);
         seasonInfo.Should().NotBeNull();
         seasonInfo.Year.Should().Be(2026);
         seasonInfo.IsNameLocked(new LocalDate(2026, 3, 2)).Should().BeTrue();
@@ -926,7 +926,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CampInfo_GetSeasonForYearWithoutFallback_ReturnsNullWhenSeasonMissing()
+    public async Task CampInfo_GetSeasonForEventWithoutFallback_ReturnsNullWhenSeasonMissing()
     {
         await SeedSettingsAsync();
         var leadUserId = Guid.NewGuid();
@@ -950,7 +950,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var detail = await _service.GetCampBySlugAsync(camp.Slug, TestContext.Current.CancellationToken);
 
         detail.Should().NotBeNull();
-        detail.GetSeasonForYear(2027).Should().BeNull();
+        detail.GetSeasonForEvent(Event2027.Id).Should().BeNull();
     }
 
     [HumansFact]

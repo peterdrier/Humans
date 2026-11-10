@@ -60,16 +60,6 @@ public sealed record CampInfo(
     /// <summary>The latest season by year, whatever its status.</summary>
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
 
-    public CampSeasonInfo? GetSeasonForYear(int year, bool fallbackToLatestSeason = false)
-    {
-        var season = Seasons
-            .Where(s => s.Year == year)
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault();
-
-        return season ?? (fallbackToLatestSeason ? Active : null);
-    }
-
     public CampSeasonInfo? GetSeasonForEvent(Guid eventSettingsId, bool fallbackToLatestSeason = false) =>
         Seasons.FirstOrDefault(s => s.EventSettingsId == eventSettingsId)
         ?? (fallbackToLatestSeason ? Active : null);
