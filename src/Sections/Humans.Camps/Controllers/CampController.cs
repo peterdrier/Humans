@@ -73,9 +73,7 @@ internal sealed class CampController(
             return NotFound();
 
         var settings = await _campService.GetSettingsAsync(ct);
-        var season = settings.ActiveEventSettingsId is { } activeEventId
-            ? camp.GetSeasonForEvent(activeEventId, fallbackToLatestSeason: true)
-            : camp.Active;
+        var season = ResolveDisplaySeason(camp, settings.ActiveEventSettingsId);
         if (season is null)
             return NotFound();
 
@@ -163,11 +161,14 @@ internal sealed class CampController(
         var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
-        var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+        var season = await ResolveContactSeasonAsync(camp, user, HttpContext.RequestAborted);
+        if (season is null) return NotFound();
         var model = new CampContactViewModel
         {
             CampSlug = slug,
-            CampName = season?.Name ?? slug
+            CampName = season.Name
         };
         return View(model);
     }
@@ -183,21 +184,19 @@ internal sealed class CampController(
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
+        var season = await ResolveContactSeasonAsync(camp, currentUser, HttpContext.RequestAborted);
+        if (season is null) return NotFound();
+        var campDisplayName = season.Name;
         if (!ModelState.IsValid)
         {
             model.CampSlug = slug;
-            var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            model.CampName = season?.Name ?? slug;
+            model.CampName = campDisplayName;
             return View(model);
         }
 
-        var latestSeason = camp.Seasons
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault();
-        var campDisplayName = latestSeason?.Name ?? slug;
         var senderEmail = currentUser.Email!;
 
-        var leadUserIds = latestSeason?.LeadUserIds ?? [];
+        var leadUserIds = season.LeadUserIds;
 
         try
         {
@@ -227,6 +226,21 @@ internal sealed class CampController(
             SetError(sharedLocalizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
+    }
+
+    private static CampSeasonInfo? ResolveDisplaySeason(CampInfo camp, Guid? activeEventId) =>
+        activeEventId is { } eventId
+            ? camp.GetSeasonForEvent(eventId, fallbackToLatestSeason: true)
+            : camp.Active;
+
+    private async Task<CampSeasonInfo?> ResolveContactSeasonAsync(CampInfo camp, UserInfo user, CancellationToken ct)
+    {
+        var settings = await _campService.GetSettingsAsync(ct);
+        var season = ResolveDisplaySeason(camp, settings.ActiveEventSettingsId);
+        if (season is null || season.IsPublic) return season;
+
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, user);
+        return isLead || isCampAdmin ? season : null;
     }
 
     [Authorize]
