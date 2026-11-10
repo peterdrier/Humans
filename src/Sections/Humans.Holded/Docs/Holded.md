@@ -192,7 +192,7 @@ it wrote.
 
 - `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too); `GetChartSyncedAtAsync` says when.
 
-- Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits.
+- Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits. Both 4xx diagnostics and successful paged responses missing `items` mask decoded JSON strings (including escaped separators); plain-text bodies use the same IBAN formatter. Pager previews truncate only after masking. `HoldedPermanentException.ResponseBody` retains the untouched body for existing business checks.
 
 - Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
 

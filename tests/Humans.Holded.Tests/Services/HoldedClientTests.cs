@@ -267,13 +267,17 @@ public class HoldedClientTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
-    [HumansFact]
-    public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody(bool escaped)
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin
         // card. A 4xx on a contact create can echo the IBAN we just sent
         // (memory/code/iban-mask-in-logs.md). ResponseBody keeps the untouched body.
-        var body = """{"status":0,"info":"invalid iban ES9121000418450200051332"}""";
+        var body = escaped
+            ? System.Text.Json.JsonSerializer.Serialize(new { status = 0, info = "invalid iban E S 9 1 2100\u00a00418\n4502 0005 1332" })
+            : """{"status":0,"info":"invalid iban ES9121000418450200051332"}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest, body));
         var client = Make(handler);
 
@@ -282,6 +286,7 @@ public class HoldedClientTests
         var ex = await act.Should().ThrowAsync<HoldedPermanentException>();
         ex.Which.Message.Should().NotContain("ES9121000418450200051332");
         ex.Which.Message.Should().Contain("ES91****332");
+        ex.Which.Message.Should().NotContain("2100");
         ex.Which.ResponseBody.Should().Be(body);
     }
 
