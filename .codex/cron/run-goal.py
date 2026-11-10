@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Stay attached to one Codex session until its native timed goal completes."""
 import json
-import math
 import os
 from pathlib import Path
 import subprocess
@@ -11,18 +10,39 @@ import time
 
 def quota_stop_reason(result, now, policy=None):
     """Check live usage against the run's fixed allowance, renewed on weekly reset."""
-    buckets = result.get("rateLimitsByLimitId") or {}
-    bucket = buckets.get("codex") or result.get("rateLimits") or {}
+    if not isinstance(result, dict):
+        return "weekly quota invalid"
+    buckets = result.get("rateLimitsByLimitId")
+    if buckets is None:
+        buckets = {}
+    if not isinstance(buckets, dict):
+        return "weekly quota invalid"
+    bucket = buckets.get("codex")
+    if bucket is not None and not isinstance(bucket, dict):
+        return "weekly quota invalid"
+    if not bucket:
+        bucket = result.get("rateLimits")
+    if bucket is None:
+        bucket = {}
+    if not isinstance(bucket, dict):
+        return "weekly quota invalid"
     windows = [bucket.get(key) for key in ("primary", "secondary")]
+    for window in windows:
+        if window is None:
+            continue
+        if not isinstance(window, dict):
+            return "account quota invalid"
+        used = window.get("usedPercent")
+        if (isinstance(used, bool) or not isinstance(used, (int, float)) or
+                not 0 <= used <= 100):
+            return "account quota invalid"
     weekly = [w for w in windows if isinstance(w, dict) and w.get("windowDurationMins") == 10080]
     if len(weekly) != 1:
         return "weekly quota unavailable"
     window = weekly[0]
     used, reset = window.get("usedPercent"), window.get("resetsAt")
-    if (isinstance(used, bool) or not isinstance(used, (int, float)) or
-            not math.isfinite(used) or not 0 <= used <= 100 or
-            isinstance(reset, bool) or not isinstance(reset, (int, float)) or
-            not math.isfinite(reset) or not 0 < reset - now <= 7 * 86400):
+    if (isinstance(reset, bool) or not isinstance(reset, (int, float)) or
+            not now < reset <= now + 7 * 86400):
         return "weekly quota invalid or stale"
     elapsed_days = 7 - (reset - now) / 86400
     if policy is None:

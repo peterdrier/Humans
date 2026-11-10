@@ -67,11 +67,34 @@ class QuotaPolicyTests(unittest.TestCase):
 
     def test_missing_malformed_and_other_exhausted_window(self):
         self.assertIn("unavailable", run_goal.quota_stop_reason({}, 1000000))
-        for used in (None, "17", True, -1, 101, float("nan")):
+        for used in (None, "17", True, -1, 101, float("nan"), 10**400):
             self.assertIn("invalid", run_goal.quota_stop_reason(self.snapshot(used), 1000000))
         snapshot = self.snapshot(0, secondary=True)
         snapshot["rateLimitsByLimitId"]["codex"]["primary"]["usedPercent"] = 100
         self.assertIn("exhausted", run_goal.quota_stop_reason(snapshot, 1000000))
+
+    def test_malformed_other_window_stops_instead_of_aborting_the_runner(self):
+        for window in ("unavailable", [1], 7, True, {},
+                       *({"usedPercent": used} for used in
+                         (None, "17", True, -1, 101, float("nan"), float("inf"), 10**400))):
+            with self.subTest(window=window):
+                snapshot = self.snapshot(0)
+                snapshot["rateLimitsByLimitId"]["codex"]["secondary"] = window
+                self.assertIn("invalid", run_goal.quota_stop_reason(snapshot, 1000000))
+
+    def test_malformed_weekly_reset_stops_without_numeric_conversion_errors(self):
+        for reset in (None, "tomorrow", True, float("nan"), float("inf"), 10**400):
+            with self.subTest(reset=reset):
+                snapshot = self.snapshot(0)
+                snapshot["rateLimitsByLimitId"]["codex"]["primary"]["resetsAt"] = reset
+                self.assertIn("invalid", run_goal.quota_stop_reason(snapshot, 1000000))
+
+    def test_malformed_quota_containers_stop_instead_of_aborting_the_runner(self):
+        for snapshot in (None, [], {"rateLimitsByLimitId": "unavailable"}, {"rateLimitsByLimitId": []},
+                         {"rateLimitsByLimitId": {"codex": [1]}}, {"rateLimitsByLimitId": {"codex": []}},
+                         {"rateLimits": "unavailable"}, {"rateLimits": []}):
+            with self.subTest(snapshot=snapshot):
+                self.assertIn("invalid", run_goal.quota_stop_reason(snapshot, 1000000))
 
 
 class GoalFailureTests(unittest.TestCase):
@@ -340,7 +363,8 @@ class DailyDebtTests(unittest.TestCase):
         (seed / "docs/architecture").mkdir(parents=True)
         (seed / "docs/architecture/debt-ledger.yml").write_text(
             "inbox:\n  - id: CENTRAL-1\n  - id: CENTRAL-2\nthemes:\n  - id: some-theme\n")
-        shutil.copytree(SOURCE / "cron", seed / ".codex/cron")
+        shutil.copytree(SOURCE / "cron", seed / ".codex/cron",
+                        ignore=shutil.ignore_patterns("debt-runner.env", "__pycache__"))
         shutil.copytree(SOURCE / "prompts", seed / ".codex/prompts")
         self.git(seed, "init", "-b", "main")
         self.git(seed, "config", "user.name", "Runner test")
@@ -645,7 +669,8 @@ for line in sys.stdin:
 
     def test_pinned_release_keeps_matching_client_and_prompt_after_refresh(self):
         release = self.root / "release/.codex"
-        shutil.copytree(SOURCE / "cron", release / "cron")
+        shutil.copytree(SOURCE / "cron", release / "cron",
+                        ignore=shutil.ignore_patterns("debt-runner.env", "__pycache__"))
         shutil.copytree(SOURCE / "prompts", release / "prompts")
         (self.clone / ".codex/cron/run-goal.py").write_text("raise RuntimeError('stale client')\n")
         (self.clone / ".codex/prompts/daily-debt.md").write_text("stale prompt\n")
