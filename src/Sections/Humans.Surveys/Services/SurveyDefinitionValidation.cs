@@ -18,8 +18,17 @@ internal static class SurveyDefinitionValidation
 
     private static SurveyAuthoringError? ValidateQuestionConfiguration(IReadOnlyList<SurveyQuestion> questions)
     {
+        var questionIds = new HashSet<Guid>();
+        var optionIds = new HashSet<Guid>();
+        var imageIds = new HashSet<Guid>();
         foreach (var question in questions)
         {
+            if (!questionIds.Add(question.Id)
+                || question.Options.Any(option => !optionIds.Add(option.Id))
+                || (question.InformationImages ?? []).Any(image => !imageIds.Add(image.Id)))
+                return new("Surveys_Validation_DuplicateItem",
+                    $"Survey definition repeats a question, option or image identity near question {question.Id}.");
+
             if (question.Options.Any(option => option.Value.Length > 100))
                 return new("Surveys_Validation_OptionValueLength",
                     $"Option values for question {question.Id} must be 100 characters or fewer.", 100);

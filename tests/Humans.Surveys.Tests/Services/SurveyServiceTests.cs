@@ -439,6 +439,66 @@ public class SurveyServiceTests
     }
 
     [HumansTheory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task Authoring_rejects_duplicate_question_or_option_identities(bool questions, bool update)
+    {
+        var repeatedId = Guid.NewGuid();
+        var first = questions
+            ? Q("First", SurveyQuestionType.ShortText, 1, 0) with { Id = repeatedId }
+            : Q("First", SurveyQuestionType.SingleChoice, 1, 0, Opt("a", "A", 0) with { Id = repeatedId });
+        var second = questions
+            ? Q("Second", SurveyQuestionType.ShortText, 1, 1) with { Id = repeatedId }
+            : Q("Second", SurveyQuestionType.SingleChoice, 1, 1, Opt("b", "B", 0) with { Id = repeatedId });
+        var input = Input(first, second);
+        var existing = SurveyWith(SurveyStatus.Draft, null, null);
+        _repo.GetByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        var service = CreateService();
+
+        var result = update
+            ? await service.UpdateAsync(existing.Id, input, SurveysAdmin(Guid.NewGuid()), TestContext.Current.CancellationToken)
+            : await service.CreateAsync(input, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Key.Should().Be("Surveys_Validation_DuplicateItem");
+        await _repo.DidNotReceive().AddAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateAsync_rejects_repeated_information_image_identities(bool acrossQuestions)
+    {
+        var existing = SurveyWith(SurveyStatus.Draft, null, null);
+        var questionId = Guid.NewGuid();
+        var image = new SurveyInformationImage(Guid.NewGuid(), "uploads/surveys/image.png", "image/png", "image.png", L("Image"), L("Description"));
+        existing.Questions = [new SurveyQuestion
+        {
+            Id = questionId, SurveyId = existing.Id, Type = SurveyQuestionType.Information,
+            HelpText = L("Context"), InformationImages = [image],
+        }];
+        _repo.GetByIdAsync(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        var retained = new InformationImageInput(image.Id, image.Label, image.AltText);
+        var first = Q("Context", SurveyQuestionType.Information, 1, 0) with
+        {
+            Id = questionId, InformationImages = acrossQuestions ? [retained] : [retained, retained],
+        };
+        var input = acrossQuestions
+            ? Input(first, Q("More context", SurveyQuestionType.Information, 1, 1) with { InformationImages = [retained] })
+            : Input(first);
+
+        var result = await CreateService().UpdateAsync(existing.Id, input, SurveysAdmin(Guid.NewGuid()), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Key.Should().Be("Surveys_Validation_DuplicateItem");
+        await _repo.DidNotReceive().UpdateAsync(Arg.Any<Survey>(), Arg.Any<CancellationToken>());
+        await _fileStorage.DidNotReceive().DeleteAsync(image.StoragePath, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(false, true, false)]
     [InlineData(false, true, true)]
     [InlineData(true, true, false)]
