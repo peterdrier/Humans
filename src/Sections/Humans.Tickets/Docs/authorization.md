@@ -24,6 +24,6 @@
 
 ### `IAuthorizationService.AuthorizeAsync` note
 
-`OnsiteChipViewComponent` (profile user part) renders for `ProfileCardViewMode.Self`, otherwise only when the viewer passes `TicketsPolicies.Read`.
+`OnsiteChipViewComponent` (profile user part) renders for `ProfileCardViewMode.Self` (inside the ticket holdings card), otherwise only when the viewer passes `TicketsPolicies.Read`.
 
 `TicketController.Index` gates finance-only metrics with `FinanceRoles.IsFinanceAdmin(User)` after the class-level policy.

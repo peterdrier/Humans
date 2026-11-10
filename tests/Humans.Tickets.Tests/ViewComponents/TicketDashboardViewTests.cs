@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using System.Globalization;
 using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
@@ -37,7 +38,7 @@ public class TicketDashboardViewTests
             new("Zoe active", null, TicketAttendeeStatus.Valid, false, null, null),
             new("alpha active", null, TicketAttendeeStatus.Valid, false, null, null)
         };
-        object model = holdingsCard ? new TicketHoldingsViewModel(1, stubs) : stubs;
+        object model = holdingsCard ? new TicketHoldingsViewModel(Guid.NewGuid(), ProfileCardViewMode.Self, 1, stubs) : stubs;
         var component = holdingsCard ? "TicketHoldings" : "MyTicketStubs";
 
         var html = await RenderAsync(component, model, viewPath:
@@ -236,6 +237,7 @@ public class TicketDashboardViewTests
             .AddApplicationPart(typeof(TicketsResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly);
         builder.Services.AddSingleton(Substitute.For<IUserService>());
+        builder.Services.AddSingleton(Substitute.For<ITicketService>());
         builder.Services.AddSingleton(Substitute.For<Humans.Settings.Contracts.ISettingsService>());
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())

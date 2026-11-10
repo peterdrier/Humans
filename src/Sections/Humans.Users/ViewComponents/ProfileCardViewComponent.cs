@@ -22,7 +22,7 @@ public sealed class ProfileCardViewComponent(
 {
     // Default is the whole card (/Profile/Me, /Profile/{id}); /Users/Me splits it into
     // Identity (left column), Teams (a tile) and History (Burner CV).
-    private static readonly HashSet<string> Layouts = new(StringComparer.Ordinal) { "Default", "Identity", "Teams", "History" };
+    private static readonly HashSet<string> Layouts = new(StringComparer.Ordinal) { "Default", "Identity", "Board", "Teams", "History" };
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode, string layout = "Default")
     {
