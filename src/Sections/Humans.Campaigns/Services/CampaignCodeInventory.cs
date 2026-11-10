@@ -99,6 +99,13 @@ internal sealed class CampaignCodeInventory(
             !Enum.IsDefined(parsedKind))
             return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
 
+        if (discountValue < 0m
+            || (parsedKind == TicketDiscountKind.Percentage
+                && (discountValue > 100m || decimal.Truncate(discountValue) != discountValue))
+            || (parsedKind == TicketDiscountKind.Fixed
+                && (discountValue > decimal.MaxValue / 100m || decimal.Round(discountValue, 2) != discountValue)))
+            return new CampaignGenerateCodesResult(false, "InvalidDiscountValue");
+
         // Through Tickets' contract, never the Base vendor port: Tickets is the only door to ticketing.
         var request = new TicketDiscountCodeRequest(count, parsedKind, discountValue, ExpiresAt: null);
         var codes = await ticketDiscountCodes.GenerateAsync(request, ct);

@@ -233,6 +233,8 @@ internal sealed class CampaignController(
             SetError("Count must be greater than zero.");
         else if (string.Equals(result.ErrorKey, "InvalidDiscountType", StringComparison.Ordinal))
             SetError("Invalid discount type.");
+        else if (string.Equals(result.ErrorKey, "InvalidDiscountValue", StringComparison.Ordinal))
+            SetError("Discount value is invalid or too large. Use a whole percentage from 0 to 100, or a nonnegative fixed euro amount with at most two decimal places.");
         else if (string.Equals(result.ErrorKey, "CodeTooLong", StringComparison.Ordinal))
             SetError("Codes must be at most 200 characters. No codes were imported.");
         else if (!result.Success)

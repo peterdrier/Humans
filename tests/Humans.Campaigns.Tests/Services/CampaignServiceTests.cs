@@ -384,6 +384,43 @@ public sealed class CampaignServiceTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Percentage", "-1", false)]
+    [Xunit.InlineData("Percentage", "100.01", false)]
+    [Xunit.InlineData("Percentage", "25.5", false)]
+    [Xunit.InlineData("Fixed", "-0.01", false)]
+    [Xunit.InlineData("Fixed", "0.001", false)]
+    [Xunit.InlineData("Fixed", "79228162514264337593543950335", false)]
+    [Xunit.InlineData("Percentage", "0", true)]
+    [Xunit.InlineData("Percentage", "100", true)]
+    [Xunit.InlineData("Fixed", "0.01", true)]
+    public async Task GenerateCodes_validates_numeric_discount_before_generation_or_import(
+        string kind, string text, bool valid)
+    {
+        var campaign = await SeedCampaignAsync();
+        var controller = CreateImportController();
+        var value = decimal.Parse(text, CultureInfo.InvariantCulture);
+        _ticketDiscountCodes.GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(["GENERATED"]);
+
+        var result = await controller.GenerateCodes(campaign.Id, 1, kind, value);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        if (!valid)
+        {
+            controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>().Which.Should().Contain("Discount value");
+            controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+            _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
+            (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+            _audit.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+        await _ticketDiscountCodes.Received(1).GenerateAsync(
+            Arg.Is<TicketDiscountCodeRequest>(request => request.Value == value), CancellationToken.None);
+        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
     [HumansFact]
     public async Task GenerateCodes_ImportRefusal_IsNotReportedAsSuccess()
     {
