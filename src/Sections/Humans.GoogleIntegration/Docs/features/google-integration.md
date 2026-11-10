@@ -577,6 +577,8 @@ record `ManualSync`; membership add events record `TeamMemberJoined`.
 
 `GoogleEmailStatus` is set to `Valid` only when `AddUserToTeamResourcesAsync` returns `Accepted`: Google created or confirmed an existing Drive grant and no grant failed. No linked resources, disabled Drive sync and deferred group reconciliation do not validate the address; failed grants do not either. A `Rejected` status is never overwritten with `Valid`; the user must change their email to reset it.
 
+Direct Drive grants retain cancellation on preflight reads and stop before the next resource. A started permission attempt completes its fallback, sync log and target-rejection status independently of shutdown. Once dispatch returns an outcome, the outbox finishes the applicable email status and processed/permanent-failure/retry write before stopping the next event. Requested cancellation during preflight leaves the event pending without consuming a retry; an unrelated dependency timeout still follows the failure path.
+
 ### Resource-Level Retry Strategy
 ```
 On Google API error (resource sync):

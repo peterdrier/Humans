@@ -174,7 +174,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         var response = rejectsTarget
             ? new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, new GoogleClientError(400, "No Google account"))
             : new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null);
-        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, "old@example.org", "writer", ct)
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, "old@example.org", "writer", CancellationToken.None)
             .Returns(_ => { selected = replacement; return response; });
 
         var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
@@ -185,8 +185,171 @@ public sealed class GoogleWorkspaceSyncServiceTests
         result.Outcome.Should().Be(rejectsTarget ? GoogleResourceGrantOutcome.Failed : GoogleResourceGrantOutcome.Accepted);
         if (rejectsTarget)
             await _identities.Received(1).SetStatusFromSyncAsync(
-                TestUserId, "old@example.org", GoogleEmailStatus.Rejected, ct);
+                TestUserId, "old@example.org", GoogleEmailStatus.Rejected, CancellationToken.None);
         await _userEmailService.DidNotReceiveWithAnyArgs().GetEntitiesByUserIdAsync(default);
+    }
+
+    [HumansFact]
+    public async Task AddUserToTeamResourcesAsync_CallerCancelsAfterSuccessfulGrant_FinishesGrantAndLogs()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        _userService.GetUserInfoAsync(TestUserId, ct).Returns(MakeUser(TestUserId, TestUserEmail));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(ExpectedMemberTeam());
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cancellation.Cancel();
+                return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null);
+            });
+
+        var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct,
+            GoogleSyncSource.TeamMemberJoined);
+
+        result.Outcome.Should().Be(GoogleResourceGrantOutcome.Accepted);
+        await _drivePermissions.Received(1).CreatePermissionAsync(
+            TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), CancellationToken.None);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, TestDriveFolderResourceId, Arg.Any<string>(), Arg.Any<string>(),
+            TestUserEmail, Arg.Any<string>(), GoogleSyncSource.TeamMemberJoined, success: true,
+            errorMessage: Arg.Any<string?>(), userId: TestUserId, ct: CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task AddUserToTeamResourcesAsync_CallerCancelsAfterTargetRejection_FinishesStatusAndLog()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        _userService.GetUserInfoAsync(TestUserId, ct).Returns(MakeUser(TestUserId, TestUserEmail));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(ExpectedMemberTeam());
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cancellation.Cancel();
+                return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed,
+                    new GoogleClientError(400, "No Google account associated with this address"));
+            });
+
+        var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct,
+            GoogleSyncSource.TeamMemberJoined);
+
+        result.Outcome.Should().Be(GoogleResourceGrantOutcome.Failed);
+        await _drivePermissions.Received(1).CreatePermissionAsync(
+            TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), CancellationToken.None);
+        await _identities.Received(1).SetStatusFromSyncAsync(
+            TestUserId, TestUserEmail, GoogleEmailStatus.Rejected, CancellationToken.None);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, TestDriveFolderResourceId, Arg.Any<string>(), Arg.Any<string>(),
+            TestUserEmail, Arg.Any<string>(), GoogleSyncSource.TeamMemberJoined, success: false,
+            errorMessage: Arg.Any<string?>(), userId: TestUserId, ct: CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task AddUserToTeamResourcesAsync_CallerCancelsAfterRefusedPlusAddress_CompletesFallbackAndLogs()
+    {
+        const string plusEmail = "alice+burn@example.org";
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        _userService.GetUserInfoAsync(TestUserId, ct).Returns(MakeUser(TestUserId, plusEmail));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(ExpectedMemberTeam());
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, plusEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cancellation.Cancel();
+                return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed,
+                    new GoogleClientError(400, "Sorry, an internal error has occurred and your request was not completed."));
+            });
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, "alice@example.org", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null));
+
+        var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct,
+            GoogleSyncSource.TeamMemberJoined);
+
+        result.Outcome.Should().Be(GoogleResourceGrantOutcome.Accepted);
+        await _drivePermissions.Received(1).CreatePermissionAsync(
+            TestGoogleFolderId, plusEmail, Arg.Any<string>(), CancellationToken.None);
+        await _drivePermissions.Received(1).CreatePermissionAsync(
+            TestGoogleFolderId, "alice@example.org", Arg.Any<string>(), CancellationToken.None);
+        await _identities.Received(1).SetDriveEmailFromSyncAsync(
+            TestUserId, plusEmail, "alice@example.org", CancellationToken.None);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, TestDriveFolderResourceId, Arg.Any<string>(), Arg.Any<string>(),
+            "alice@example.org", Arg.Any<string>(), GoogleSyncSource.TeamMemberJoined, success: true,
+            errorMessage: Arg.Any<string?>(), userId: TestUserId, ct: CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task AddUserToTeamResourcesAsync_CallerCancelsAfterFirstGrant_StopsBeforeSecondResource()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        var secondResourceId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(TestUserId, ct).Returns(MakeUser(TestUserId, TestUserEmail));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(ExpectedMemberTeam());
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId),
+                MakeDriveFolderResource(secondResourceId, TestTeamId, "second-folder")]);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cancellation.Cancel();
+                return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null);
+            });
+
+        var act = () => _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct,
+            GoogleSyncSource.TeamMemberJoined);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _drivePermissions.Received(1).CreatePermissionAsync(
+            TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), CancellationToken.None);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, TestDriveFolderResourceId, Arg.Any<string>(), Arg.Any<string>(),
+            TestUserEmail, Arg.Any<string>(), GoogleSyncSource.TeamMemberJoined, success: true,
+            errorMessage: Arg.Any<string?>(), userId: TestUserId, ct: CancellationToken.None);
+        await _drivePermissions.DidNotReceive().CreatePermissionAsync(
+            "second-folder", TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AddUserToTeamResourcesAsync_CallerCancelsDuringPreflight_DoesNotMutateDrive()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        _userService.GetUserInfoAsync(TestUserId, ct).Returns(MakeUser(TestUserId, TestUserEmail));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(ExpectedMemberTeam());
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, ct).Returns(_ =>
+        {
+            cancellation.Cancel();
+            return SyncMode.AddAndRemove;
+        });
+
+        var act = () => _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _syncSettingsService.Received(1).GetModeAsync(SyncServiceType.GoogleDrive, ct);
+        await _drivePermissions.DidNotReceive().CreatePermissionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -513,7 +676,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             [MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId),
              new GoogleResource { Id = Guid.NewGuid(), TeamId = TestTeamId, ResourceType = GoogleResourceType.Group,
                  GoogleId = "team@example.org", Name = "Group" }]);
-        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), ct)
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, Error: null));
 
         var result = await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, ct);
