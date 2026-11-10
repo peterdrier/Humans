@@ -132,6 +132,37 @@ public sealed class StripeMirrorClientTests
         _requests.Should().NotBeEmpty().And.OnlyContain(r => !r.StripeHeaders.ContainsKey("Stripe-Context"));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("transactions")]
+    [Xunit.InlineData("payouts")]
+    [Xunit.InlineData("payout-breakdown")]
+    public async Task Missing_completion_metadata_cannot_publish_a_partial_fetch(string consumer)
+    {
+        var targetCalls = 0;
+        Respond(r =>
+        {
+            var path = r.Uri.AbsolutePath;
+            var query = Uri.UnescapeDataString(r.Uri.Query);
+            var isTarget = consumer switch
+            {
+                "payouts" => path.EndsWith("/payouts", StringComparison.Ordinal),
+                "payout-breakdown" => query.Contains("payout=po_1", StringComparison.Ordinal),
+                _ => path.EndsWith("/balance_transactions", StringComparison.Ordinal)
+                    && !query.Contains("payout=", StringComparison.Ordinal),
+            };
+            if (!isTarget) return Route(r);
+            return ++targetCalls == 1
+                ? Route(r).Replace("\"has_more\":false", "\"has_more\":true", StringComparison.Ordinal)
+                : """{"object":"list","data":[]}""";
+        });
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var act = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*boolean has_more*");
+        targetCalls.Should().Be(2);
+    }
+
     [HumansFact]
     public async Task A_pager_that_never_ends_throws_instead_of_returning_a_prefix()
     {

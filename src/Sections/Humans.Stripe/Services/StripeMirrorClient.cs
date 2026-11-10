@@ -97,8 +97,13 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         {
             var list = await page(after);
             if (list?.Data is null) throw new InvalidOperationException($"Stripe {what}: a page without data.");
+            // The SDK bool defaults to false when absent; inspect the retained response before completing a sweep.
+            using var body = JsonDocument.Parse(list.StripeResponse.Content);
+            if (!body.RootElement.TryGetProperty("has_more", out var more)
+                || more.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new InvalidOperationException($"Stripe {what}: a page without a boolean has_more.");
             items.AddRange(list.Data);
-            if (!list.HasMore) return items;
+            if (more.ValueKind == JsonValueKind.False) return items;
             if (list.Data.Count == 0) throw new InvalidOperationException($"Stripe {what}: has_more on an empty page.");
             after = id(list.Data[^1]);
         }

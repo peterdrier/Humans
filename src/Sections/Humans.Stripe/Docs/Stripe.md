@@ -138,8 +138,10 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   that account's rows in one save: rows the sweep did not return are deleted, other accounts
   are untouched. A failed fetch keeps that account's mirror and attempts to record the error on its sync row;
   the others still sweep. A failed diagnostic save logs its exception and account ID without stopping healthy
-  accounts or replacing caller cancellation; the sync gate is still released. The pager fails closed
-  (`has_more` on an empty page, or a 500-page cap, throws). One sweep at a time: an in-process gate shared by
+  accounts or replacing caller cancellation; the sync gate is still released. The shared transaction, payout
+  and automatic-payout breakdown pager requires an explicit boolean `has_more` in the raw response; the SDK's
+  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list.
+  The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
   the job and Sync now.
 - Bounded mirror text (transaction descriptions, buyer names/emails, payout failures and saved sync errors) preserves complete UTF-16 surrogate pairs, so truncation cannot turn valid vendor text into invalid Unicode.
 - The mirror is read-only: list and retrieve calls only, whatever the key's scopes.
