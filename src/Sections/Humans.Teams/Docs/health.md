@@ -150,4 +150,4 @@ The shapes imply:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-05 | First pass — leaf trimmed to its cross-section half, docs and comments re-derived from code, dead keys and duplicate tests cut, audit/approval/directory invariants pinned | peterdrier/Humans#1594 |
-| 2 | 2026-11-10 | Invariant doc rewritten as rules only, help access matrix and glossary corrected, leaf trimmed to types other sections name | pending |
+| 2 | 2026-11-10 | Invariant doc rewritten as rules only, help access matrix and glossary corrected, leaf trimmed to types other sections name | peterdrier/Humans#2369 |
