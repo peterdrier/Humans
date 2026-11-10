@@ -84,6 +84,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **Acceptance Criteria:**
 - Leads can edit their own camp; CampsAdmin/Admin can edit any
 - Can update contact info, season data, and camp-level fields
+- Validation errors and save refusals reload edit-form metadata only for the authorized camp and an owned season; posted camp/event identifiers cannot select another camp's images.
 - Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
 - Manual historical names must contain 1–256 characters after trimming, both during registration and when added later. Invalid entries are refused before saving.
 - Audited browser edits, season changes, images, reactivation and deletion carry the signed-in actor through Camps’ service and decorator. Automated dev-persona season opt-in retains job attribution.

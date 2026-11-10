@@ -1226,6 +1226,57 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Edit_RedisplayMetadata_IsScopedToTheAuthorizedCamp(bool saveRefused, bool foreignSeason)
+    {
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("owned", "Owned camp", CampSeasonStatus.Active, actorId);
+        var season = camp.Seasons.Single();
+        var other = MakeCamp("other", "Other camp", CampSeasonStatus.Pending);
+        var otherSeason = other.Seasons.Single() with { EventSettingsId = Guid.NewGuid() };
+        var imageId = Guid.NewGuid();
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp,
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId)
+            .Returns(CampUpdateResult.Failure("Camps_Flash_UpdateFailed"));
+        _camps.GetCampEditDataAsync(camp.Id, season.EventSettingsId)
+            .Returns(MakeEditData(camp, season) with { Images = [new CampImageSummary(imageId, "/owned.jpg", 0)] });
+        _camps.GetCampEditDataAsync(other.Id, otherSeason.EventSettingsId)
+            .Returns(MakeEditData(other, otherSeason) with { Images = [new CampImageSummary(Guid.NewGuid(), "/other.jpg", 0)] });
+        var model = new CampEditViewModel
+        {
+            CampId = other.Id, EventSettingsId = otherSeason.EventSettingsId,
+            SeasonId = foreignSeason ? otherSeason.Id : season.Id,
+            Name = "Submitted edit", ContactEmail = camp.ContactEmail
+        };
+        var controller = BuildController(actorId);
+        if (!saveRefused) controller.ModelState.AddModelError(nameof(model.Name), "Invalid name");
+
+        var result = await controller.Edit(camp.Slug, model);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(model);
+        model.Name.Should().Be("Submitted edit");
+        await _camps.DidNotReceive().GetCampEditDataAsync(other.Id, Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        if (foreignSeason)
+        {
+            model.Images.Should().BeEmpty();
+            _camps.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name,
+                    nameof(ICampManagement.GetCampEditDataAsync), StringComparison.Ordinal))
+                .Should().BeEmpty();
+        }
+        else
+        {
+            model.Images.Should().ContainSingle().Which.Id.Should().Be(imageId);
+            await _camps.Received(1).GetCampEditDataAsync(camp.Id, season.EventSettingsId);
+        }
+    }
+
+    [HumansTheory]
     [InlineData(nameof(CampController.Edit), true)]
     [InlineData(nameof(CampController.Withdraw), true)]
     [InlineData(nameof(CampController.MarkFull), true)]

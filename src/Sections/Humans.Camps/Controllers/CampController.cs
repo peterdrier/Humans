@@ -1114,7 +1114,10 @@ internal sealed class CampController(
 
     private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model, CampInfo camp)
     {
-        var editData = await _campService.GetCampEditDataAsync(model.CampId, model.EventSettingsId);
+        var season = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
+        var editData = season is null
+            ? null
+            : await _campService.GetCampEditDataAsync(camp.Id, season.EventSettingsId);
         if (editData is null)
         {
             model.Images = [];
@@ -1129,7 +1132,6 @@ internal sealed class CampController(
                 SortOrder = image.SortOrder
             })
             .ToList();
-        var season = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
         PopulateEditMembers(model, season);
     }
 
