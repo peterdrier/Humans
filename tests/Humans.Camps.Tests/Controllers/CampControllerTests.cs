@@ -1225,6 +1225,55 @@ public class CampControllerTests
         vm.Camps.Select(c => c.Id).Should().Equal(leadCamp.Id, alphabeticalFirst.Id);
     }
 
+    [HumansTheory]
+    [InlineData(CampSeasonStatus.Active)]
+    [InlineData(CampSeasonStatus.Full)]
+    [InlineData(CampSeasonStatus.Pending)]
+    [InlineData(CampSeasonStatus.Rejected)]
+    public async Task Members_RolePanel_UsesTheSelectedSeason(CampSeasonStatus status)
+    {
+        var leadId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("garden", "Selected event", status, leadId, members: [MakeSeasonMember(memberId)]);
+        var selected = camp.Seasons.Single();
+        var other = selected with
+        {
+            Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Status = CampSeasonStatus.Active,
+            Name = "Other event", Members = []
+        };
+        camp = camp with { Seasons = [other, selected] };
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _camps.GetCampEditDataAsync(camp.Id, selected.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(MakeEditData(camp, selected));
+        _users.GetUserInfoAsync(leadId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(leadId));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [memberId] = MakeUserInfo(memberId) });
+        _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, ShiftUserSummary> { [memberId] = MakeShiftUserSummary(memberId) });
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new CampRolesPanelData(call.ArgAt<Guid>(0), []));
+
+        var result = await BuildController(leadId).Members(camp.Slug, selected.EventSettingsId,
+            TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CampEditViewModel>().Subject;
+        model.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
+        if (selected.IsPublic)
+        {
+            model.RolesPanel.Should().NotBeNull();
+            model.RolesPanel!.CampSeasonId.Should().Be(selected.Id);
+            model.RolesPanel!.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
+            await _roles.Received(1).BuildPanelAsync(selected.Id, TestContext.Current.CancellationToken);
+        }
+        else
+        {
+            model.RolesPanel.Should().BeNull();
+            _roles.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     [HumansFact]
     public async Task Members_Shows_Active_Event_Shift_Counts_From_Shift_View()
     {

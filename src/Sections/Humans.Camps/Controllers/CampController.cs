@@ -397,10 +397,9 @@ internal sealed class CampController(
         }
 
         // Full is informational only: it must not disable camp management, so role management stays available.
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.IsPublic);
-        viewModel.RolesPanel = openSeason is null
-            ? null
-            : await BuildRolesPanelAsync(camp.Slug, openSeason, canManage: true, ct);
+        viewModel.RolesPanel = editSeason is { IsPublic: true }
+            ? await BuildRolesPanelAsync(camp.Slug, editSeason, canManage: true, ct)
+            : null;
 
         return View(viewModel);
     }
