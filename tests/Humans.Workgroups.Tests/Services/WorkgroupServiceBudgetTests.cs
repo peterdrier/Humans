@@ -16,18 +16,24 @@ namespace Humans.Workgroups.Tests.Services;
 public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
 {
     [HumansTheory]
-    [InlineData(false, "0.001")]
-    [InlineData(true, "0.001")]
-    [InlineData(false, "1.005")]
-    [InlineData(true, "1.005")]
-    [InlineData(false, "0")]
-    [InlineData(true, "0")]
-    [InlineData(false, "1.2300")]
-    [InlineData(true, "1.2300")]
-    public async Task BudgetAmounts_RequireWholeCents_BeforeCreatingAccountsOrWriting(bool bootstrap, string rawAmount)
+    [InlineData(false, "0.001", "two decimal places")]
+    [InlineData(true, "0.001", "two decimal places")]
+    [InlineData(false, "1.005", "two decimal places")]
+    [InlineData(true, "1.005", "two decimal places")]
+    [InlineData(false, "0", null)]
+    [InlineData(true, "0", null)]
+    [InlineData(false, "1.2300", null)]
+    [InlineData(true, "1.2300", null)]
+    [InlineData(false, "9999999999999999.99", null)]
+    [InlineData(true, "9999999999999999.99", null)]
+    [InlineData(false, "10000000000000000.00", "too large")]
+    [InlineData(true, "10000000000000000.00", "too large")]
+    [InlineData(false, "79228162514264337593543950335", "too large")]
+    [InlineData(true, "79228162514264337593543950335", "too large")]
+    public async Task BudgetAmounts_MustFitStorage_BeforeCreatingAccountsOrWriting(bool bootstrap, string rawAmount, string? refusalFragment)
     {
         var amount = decimal.Parse(rawAmount, System.Globalization.CultureInfo.InvariantCulture);
-        var invalid = decimal.Round(amount, 2) != amount;
+        var invalid = refusalFragment is not null;
         var actor = SeedUser("Secretary");
         var coordinator = SeedUser("Coordinator");
         var group = bootstrap ? null : await SeedWorkgroupAsync();
@@ -46,7 +52,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
         {
             refusal.Should().NotBeNull();
             refusal!.IsOperatorMessage.Should().BeTrue();
-            refusal.Key.Should().Contain("two decimal places");
+            refusal.Key.Should().Contain(refusalFragment!);
             Finance.ReceivedCalls().Should().BeEmpty();
             GoogleSync.ReceivedCalls().Should().BeEmpty();
             AuditLog.ReceivedCalls().Should().BeEmpty();

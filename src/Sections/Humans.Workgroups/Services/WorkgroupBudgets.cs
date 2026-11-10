@@ -19,6 +19,8 @@ internal sealed class WorkgroupBudgets(
     IClock clock,
     ILogger<WorkgroupService> logger) : IApplicationService
 {
+    private const decimal MaxBudgetAmount = 9_999_999_999_999_999.99m;
+
     internal async Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default)
     {
@@ -95,6 +97,8 @@ internal sealed class WorkgroupBudgets(
     internal static WorkgroupRefusal? ValidateBudgetAmount(decimal? amount)
     {
         if (amount is < 0) return new(WorkgroupErrorKeys.BudgetNegative);
+        if (amount is > MaxBudgetAmount)
+            return new("The budget amount is too large.") { IsOperatorMessage = true };
         if (amount is { } value && decimal.Round(value, 2) != value)
             return new("Budget amounts must have no more than two decimal places.") { IsOperatorMessage = true };
         return null;
