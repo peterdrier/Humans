@@ -54,7 +54,7 @@ internal sealed class ShiftCoordinatorActivity(
             .Where(teamsById.ContainsKey)
             .SelectMany(id => teamsById[id].Members
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .Select(m => new TeamCoordinatorRef(id, m.UserId)))
+                .Select(m => (TeamId: id, m.UserId)))
             .ToList();
         var coordinatorUserIds = coordsRaw.Select(c => c.UserId).Distinct().ToList();
 
