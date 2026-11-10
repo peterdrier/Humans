@@ -679,8 +679,10 @@ internal sealed class BudgetAdminController(
             TotalIncome = summary.TotalIncome,
             TotalExpenses = summary.TotalExpenses,
             NetBalance = summary.NetBalance,
-            IncomeSlices = summary.IncomeSlices,
-            ExpenseSlices = summary.ExpenseSlices,
+            IncomeSlices = summary.IncomeSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
+            ExpenseSlices = summary.ExpenseSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
             HoldedActualsByCategory = holdedActuals
         };
     }
