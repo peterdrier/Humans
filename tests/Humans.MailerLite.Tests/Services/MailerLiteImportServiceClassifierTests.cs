@@ -15,6 +15,55 @@ namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteImportServiceClassifierTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(true, true, null)]
+    [Xunit.InlineData(true, false, null)]
+    [Xunit.InlineData(true, true, 1)]
+    [Xunit.InlineData(true, false, 1)]
+    [Xunit.InlineData(false, true, null)]
+    [Xunit.InlineData(false, false, null)]
+    [Xunit.InlineData(false, true, 1)]
+    [Xunit.InlineData(false, false, 1)]
+    public async Task AliasEquivalentSubscribers_ProvisionOnceAndKeepTheOptOut(
+        bool replacing, bool activeFirst, int? maxPerOutcome)
+    {
+        var harness = new ClassifierHarness();
+        var active = Active("victim@gmail.com") with { Id = "ml-active" };
+        var unsubscribed = Unsubscribed("victim@googlemail.com") with { Id = "ml-unsubscribed" };
+        harness.MlReturns(activeFirst ? [active, unsubscribed] : [unsubscribed, active]);
+        var ownerId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        var provisionedId = Guid.NewGuid();
+        if (replacing)
+        {
+            var row = UserEmailFixtures.Row(ownerId, active.Email, verified: false, id: emailId);
+            harness.AnyEmailRows[active.Email] = [row];
+            harness.AnyEmailRows[unsubscribed.Email] = [row];
+        }
+        var calls = 0;
+        harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(ownerId, emailId, Arg.Any<string>(),
+                Arg.Any<string?>(), ContactSource.MailerLite, Arg.Any<CancellationToken>())
+            .Returns(_ => ++calls == 1
+                ? new AccountProvisioningResult(provisionedId, Created: true)
+                : throw new InvalidOperationException("The unverified replacement plan is stale."));
+        harness.Provisioning.FindOrCreateUserByEmailAsync(Arg.Any<string>(), Arg.Any<string?>(),
+                ContactSource.MailerLite, Arg.Any<CancellationToken>())
+            .Returns(_ => new AccountProvisioningResult(provisionedId, Created: ++calls == 1));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var plan = await harness.Service.BuildPlanAsync(ct);
+
+        var result = await harness.Service.ApplyAsync(plan, Guid.NewGuid(), maxPerOutcome, ct);
+
+        plan.Decisions.Should().HaveCount(2);
+        plan.TotalPulled.Should().Be(2);
+        result.Errors.Should().Be(0);
+        calls.Should().Be(1);
+        result.HumansCreated.Should().Be(1);
+        result.UnverifiedEmailsReplaced.Should().Be(replacing ? 1 : 0);
+        result.PrefsFlippedToOptIn.Should().Be(0);
+        result.DecisionsThrottled.Should().Be(maxPerOutcome.HasValue ? 1 : 0);
+    }
+
     private static MailerLiteSubscriber Active(string email) =>
         new("ml-id", email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, Instant.FromUtc(2026, 1, 1, 0, 0),
