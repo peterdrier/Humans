@@ -102,7 +102,7 @@ Inbound, all through `Contracts/`:
 
 - **Camps** — `CachingCampService` implements `IEarlyEntryProvider`.
 - **Shifts** — `VolunteerTrackingExportService` implements `IEarlyEntryProvider`.
-- **Teams** — `TeamService` implements `IEarlyEntryProvider`.
+- **Teams** — `TeamService` implements `IEarlyEntryProvider`; only grants explicitly bound to the active Settings event contribute. Unassigned legacy grants require operator review in Teams before contributing.
 - **Gate** — `GateService` calls `IEarlyEntryService.GetForUserAsync` for the scanned attendee.
 - **Scanner** — `ScannerController` calls `GetForUserAsync` for the scanned attendee.
 - **Tickets** — `TicketTransferController`, `MyTicketStubsViewComponent` and

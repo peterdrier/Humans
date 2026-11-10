@@ -36,7 +36,7 @@ internal sealed class TeamService(
         repo, auditLogService, clock, logger, serviceProvider, snapshotReader, membershipOutbox, membershipNotices);
     private TeamJoining Joining => new(repo, auditLogService, clock, logger, snapshotReader, membershipOutbox, membershipNotices);
     private TeamRoleDefinitions RoleDefinitions => new(repo, auditLogService, clock, serviceProvider, snapshotReader, membershipOutbox);
-    private TeamEarlyEntry EarlyEntry => new(repo, auditLogService, clock, snapshotReader);
+    private TeamEarlyEntry EarlyEntry => new(repo, auditLogService, clock, snapshotReader, serviceProvider);
     private readonly TeamMembershipOutbox membershipOutbox = new(repo, serviceProvider, clock, logger);
     private readonly TeamMembershipNotices membershipNotices = new(notificationService, serviceProvider, logger);
     private readonly TeamGoogleGroupMemberships googleGroupMemberships = new(repo, logger);
@@ -493,11 +493,11 @@ internal sealed class TeamService(
     public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default) =>
         EarlyEntry.GetEarlyEntryGrantsForTeamAsync(teamId, ct);
 
-    public Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default) =>
-        EarlyEntry.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct);
+    public Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default) =>
+        EarlyEntry.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, eventSettingsId, ct);
 
-    public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default) =>
-        EarlyEntry.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, ct);
+    public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default) =>
+        EarlyEntry.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, eventSettingsId, ct);
 
     public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default) =>
         EarlyEntry.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct);
