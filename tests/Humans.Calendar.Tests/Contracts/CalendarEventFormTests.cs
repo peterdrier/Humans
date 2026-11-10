@@ -39,6 +39,22 @@ public sealed class CalendarEventFormTests
         times.End.Should().Be(start + Duration.FromHours(1));
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Timed_fields_outside_the_instant_range_are_validation_errors(bool endOnly)
+    {
+        var form = Timed("America/Los_Angeles", new LocalTime(23, 0), new LocalTime(23, 30));
+        if (!endOnly) form.StartDate = LocalDate.MaxIsoValue;
+        form.EndDate = LocalDate.MaxIsoValue;
+        var state = new ModelStateDictionary();
+
+        CalendarEventForm.Resolve(form, state, Localizer).Should().BeNull();
+
+        state[string.Empty]!.Errors.Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be("Calendar_InvalidTimedEvent");
+    }
+
     [HumansFact]
     public void An_end_before_the_start_is_a_field_error()
     {

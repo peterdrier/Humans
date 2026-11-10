@@ -134,7 +134,9 @@ Meetings are created and edited through Calendar's shared form (`_CalendarEventF
 organisation zone (`ISettingsService.GetTimeZoneIdAsync`, Settings' `Event:TimeZoneId`). Times
 are read in the chosen zone and stored as UTC instants. A one-off meeting doesn't store its
 zone, so its edit reopens in the organisation zone; a repeating meeting stores it and reopens
-in it. Meetings hide the form's all-day part and use its recurrence picker.
+in it. Meetings hide the form's all-day part and use its recurrence picker. Local times whose
+timezone conversion exceeds the supported instant range return the shared form's localized
+validation error without saving a meeting.
 
 Occurrences are expanded by Calendar's `CalendarRecurrence.Occurrences`, the same expansion
 the community calendar uses; nothing per occurrence is stored. The group page timeline lists
