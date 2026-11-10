@@ -1528,6 +1528,83 @@ public sealed class EventServiceTests
         _repo.SaveChangesCount.Should().Be(0);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BulkImportAsync_UnmatchedNewWeekdaySelection_RefusesTheWholeBatch(bool update)
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0";
+        if (update) _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(title: "Valid sibling"), Row(id: update ? existing.Id : null, title: "Changed",
+                isRecurring: true, recurrenceDays: "Sat", rowNumber: 3)],
+            new LocalDate(2026, 7, 8), 2, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        var error = result.Errors.Should().ContainSingle().Subject;
+        error.RowNumber.Should().Be(3);
+        error.Errors.Should().Contain(_localizer["Events_RecurrenceDaysInvalid"].Value);
+        result.CreatedCount.Should().Be(0);
+        result.UpdatedCount.Should().Be(0);
+        _repo.SaveChangesCount.Should().Be(0);
+        _repo.Events.Should().HaveCount(update ? 1 : 0);
+        if (update)
+        {
+            existing.Title.Should().Be("My Event");
+            existing.Status.Should().Be(EventStatus.Approved);
+            existing.RecurrenceDays.Should().Be("0");
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(" ")]
+    public async Task BulkImportAsync_BlankRecurrenceSelection_KeepsAuthoredStartFallback(string? days)
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", IsActive = true });
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(isRecurring: true, recurrenceDays: days)], new LocalDate(2026, 7, 8), 2,
+            DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        var entry = _repo.Events.Should().ContainSingle().Subject;
+        entry.IsRecurring.Should().BeTrue();
+        entry.RecurrenceDays.Should().BeNull();
+        entry.StartAt.Should().Be(Instant.FromUtc(2026, 7, 8, 9, 30));
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_UnchangedWeekdaysOutsideCurrentWindow_PreserveAuthoredOffsets()
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "3";
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(id: existing.Id, title: "Renamed", isRecurring: true, recurrenceDays: "Sat")],
+            new LocalDate(2026, 7, 8), 2, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        result.UpdatedCount.Should().Be(1);
+        existing.Title.Should().Be("Renamed");
+        existing.RecurrenceDays.Should().Be("3");
+    }
+
     [HumansFact]
     public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
     {

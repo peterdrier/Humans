@@ -194,6 +194,8 @@ Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,Locat
 | `RecurrenceDays` | Only used when `IsRecurring` is true. Space-separated day names: `Mon Tue Wed Thu Fri Sat Sun`. Converted to day offsets from gate-opening date for new or changed recurrence selections. An existing event retains its authored offsets when the weekday selection is unchanged, including during edits to other fields. |
 | `PriorityRank` | Optional. Integer 1–100 when present; blank = unranked (sorted last in the print guide) and round-trips as blank. |
 
+A new or changed nonempty weekday selection that matches no day in the event calendar refuses the whole import. It cannot silently become the authored-start fallback; only a blank selection requests that fallback. Unchanged weekday selections keep their authored offsets.
+
 **Encoding:** comma-separated, UTF-8, RFC 4180 quoting — fields containing commas are wrapped in `"double quotes"`. `RecurrenceDays` uses spaces as the day separator (`Mon Tue Fri`) so it never needs quoting.
 
 #### Validation (all-or-nothing)
