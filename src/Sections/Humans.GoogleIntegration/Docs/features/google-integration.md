@@ -158,6 +158,8 @@ Collision handling is fail-closed. If more than one source claims the same group
 
 `ReconcileAllAsync` is the daily and bulk-preview/bulk-execute path. It loads all claims, hydrates expected users once for the pass, records per-group errors, and on Execute schedules capped scoped retries for groups that fail. `ReconcileOneAsync` is the scoped path used by Hangfire requests after membership/email changes and by per-row Execute in the UI; when scoped Execute hits a Google API failure, it schedules another scoped Hangfire attempt after the retry delay.
 
+Group and Drive reconciliation keep preflight reads cancellable and check job cancellation before the next mutation or resource. A started mutation completes its remote call and required local tracking independently of shutdown, including bounded Drive retries, plus-address fallback, rejection status and removal notification. Completed resources finish their sync-status writes.
+
 Group sync requests use Hangfire instead of in-process retry. Team membership and email changes commit first, then enqueue scoped group reconciliation by group key. This keeps Google API failures outside the Teams transaction and makes retries visible and independently executable.
 
 ## Source-Owned Drive Access
