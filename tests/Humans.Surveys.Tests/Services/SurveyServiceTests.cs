@@ -5075,6 +5075,58 @@ public class SurveyServiceTests
         json.Should().Contain("removed-column");
     }
 
+    [HumansTheory]
+    [InlineData("de", "ES")]
+    [InlineData("ca", "CA")]
+    public async Task ContributeForUserAsync_resolves_titles_and_answer_labels_with_the_survey_default(
+        string requestedCulture, string expectedLanguage)
+    {
+        static LocalizedText Translations(string text) => new(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ca"] = "CA " + text,
+            ["es"] = "ES " + text,
+        });
+        var userId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        survey.DefaultCulture = "es";
+        survey.Title = Translations("survey");
+        var choice = ChoiceQuestion(Guid.NewGuid(), survey.Id, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1));
+        var grid = GridQuestion(Guid.NewGuid(), survey.Id);
+        var ranked = RankedQuestion(Guid.NewGuid(), survey.Id);
+        survey.Questions = [choice, grid, ranked];
+        foreach (var question in survey.Questions)
+        {
+            question.Prompt = Translations("question");
+            foreach (var option in question.Options) option.Label = Translations(option.Value);
+        }
+        grid.GridRows = [new SurveyGridRow("monday", Translations("monday"))];
+        var response = SubmittedResponse(survey.Id, ResponseAnonymity.Identified, SurveyInputMethod.UserSpecificLink,
+            _clock.GetCurrentInstant(), userId,
+            ChoiceAnswer(choice.Id, "yes"), GridAnswer(grid.Id, ("monday", ["morning"])),
+            RankedAnswerFor(ranked.Id, [["a"]], "b"));
+        response.Culture = requestedCulture;
+        _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
+        _repo.GetIdentifiedResponsesForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(new List<SurveyResponse> { response });
+        NoAuthoredSurveys(userId);
+
+        var slices = await CreateService().ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
+
+        var data = slices.Single(slice => string.Equals(slice.SectionName, SurveyService.SurveyResponses, StringComparison.Ordinal)).Data;
+        var row = System.Text.Json.JsonSerializer.SerializeToElement(data)[0];
+        var answers = row.GetProperty("Answers");
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        row.GetProperty("Culture").GetString().Should().Be(requestedCulture);
+        row.GetProperty("Survey").GetString().Should().Be(expectedLanguage + " survey");
+        answers[0].GetProperty("Question").GetString().Should().Be(expectedLanguage + " question");
+        answers[0].GetProperty("SelectedLabels")[0].GetString().Should().Be(expectedLanguage + " yes");
+        var matrix = answers[1].GetProperty("GridSelectionLabels")[0];
+        matrix.GetProperty("RowLabel").GetString().Should().Be(expectedLanguage + " monday");
+        matrix.GetProperty("ColumnLabels")[0].GetString().Should().Be(expectedLanguage + " morning");
+        var ballot = answers[2].GetProperty("RankedBallotLabels");
+        ballot.GetProperty("RankGroups")[0][0].GetString().Should().Be(expectedLanguage + " a");
+        ballot.GetProperty("Rejected")[0].GetString().Should().Be(expectedLanguage + " b");
+    }
+
     [HumansFact]
     public async Task ContributeForUserAsync_returns_empty_collection_slice_when_user_has_no_identified_responses()
     {

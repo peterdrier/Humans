@@ -46,7 +46,7 @@ internal sealed class SurveyDataExport(ISurveyRepository repo, IUserService user
 
                 return new
                 {
-                    Survey = survey?.Title.Resolve(culture, culture) ?? r.SurveyId.ToString(),
+                    Survey = survey?.Title.Resolve(culture, survey.DefaultCulture) ?? r.SurveyId.ToString(),
                     SubmittedAt = r.SubmittedAt.ToIso8601(),
                     Culture = culture,
                     Answers = r.Answers.Select(a => new

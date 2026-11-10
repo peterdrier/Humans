@@ -347,7 +347,7 @@ Culture keys remain case-insensitive through builder rendering and translation p
 
 `SurveyTranslationFiller` owns blank-only translation preparation: one provider batch per target culture, preserving authored text across survey copy, questions, options, Grid rows and Information image labels/alt text. `SurveyService` keeps edit eligibility, persistence and audit; translation preparation retains caller cancellation and does not mutate the source definition.
 
-Result drill-down, response export and GDPR response export share the section's question/prompt/option-label mapper. Each caller keeps its own culture selection and payload shape; missing definitions preserve raw answer keys with empty prompts and fallback labels.
+Result drill-down, response export and GDPR response export share the section's question/prompt/option-label mapper. Each caller keeps its own culture selection and payload shape. GDPR response titles, prompts, choice/ranked labels and grid labels resolve the recorded response culture first, then the survey's default culture, then any available translation, matching the answering wizard. Missing definitions preserve raw answer keys with empty prompts and fallback labels.
 
 Markdown response tables preserve literal backslashes and pipes in question prompts, respondent names and answer cells, while collapsing line breaks to spaces. CSV cells retain their existing serialization.
 
