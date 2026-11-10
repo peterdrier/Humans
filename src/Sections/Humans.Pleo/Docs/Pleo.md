@@ -83,7 +83,7 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
 - The pager fails closed: a body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
   cap throws, so a short fetch can never delete rows.
-- Entries without an id or family are skipped and counted on the sync row.
+- Entries without an id or family are skipped and counted on the sync row. A provided `transactionValue` or `totalBillValue` must contain both a nonblank currency and a minor-unit value; incomplete money objects fail the sweep before mirror replacement and record a sync error. Optional money objects may be absent, and explicit zero amounts remain valid. List/detail views omit the original-currency figure when no currency was supplied.
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and
   told so. No key (`PLEO_API_KEY`, `PLEO_COMPANY_ID`): the job logs and skips, Sync now is disabled.
 - The connector is read-only: GETs and the `:search` POSTs. The key holds write scopes; nothing here uses them.

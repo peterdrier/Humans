@@ -92,6 +92,47 @@ public sealed class PleoSyncTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("transactionValue", "minors")]
+    [Xunit.InlineData("transactionValue", "currency")]
+    [Xunit.InlineData("totalBillValue", "minors")]
+    [Xunit.InlineData("totalBillValue", "currency")]
+    public async Task Incomplete_money_fails_the_sweep_without_replacing_the_mirror(string moneyField, string missingField)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("existing")];
+        await SyncAsync();
+        var wire = System.Text.Json.Nodes.JsonNode.Parse(Entry("incomplete", bill: 1250).GetRawText())!;
+        wire[moneyField]!.AsObject().Remove(missingField);
+        _entries = [Entry("new"), Parse(wire.ToJsonString())];
+
+        var action = () => SyncAsync();
+        await action.Should().ThrowAsync<PleoPermanentException>().WithMessage($"*{moneyField}*");
+
+        var retained = (await _repo.GetEntriesAsync(ct)).Should().ContainSingle().Which;
+        retained.Id.Should().Be("existing");
+        retained.AmountEur.Should().Be(-10m);
+        var state = (await _repo.GetSyncStateAsync(ct))!;
+        state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        state.LastError.Should().Contain(moneyField);
+    }
+
+    [HumansFact]
+    public async Task Complete_zero_and_bill_only_amounts_keep_their_existing_meaning()
+    {
+        _entries =
+        [
+            Entry("zero", minors: 0),
+            Parse("""{"id":"bill-only","family":"CARD_PURCHASE","subFamily":"ONLINE","totalBillValue":{"currency":"EUR","minors":1250}}"""),
+        ];
+
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.Synced);
+
+        var entries = await _repo.GetEntriesAsync(Xunit.TestContext.Current.CancellationToken);
+        entries.Single(e => string.Equals(e.Id, "zero", StringComparison.Ordinal)).AmountEur.Should().Be(0m);
+        entries.Single(e => string.Equals(e.Id, "bill-only", StringComparison.Ordinal)).AmountEur.Should().Be(12.5m);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task Bounded_entry_notes_preserve_unicode_and_the_original_raw_payload(bool pairFits)
