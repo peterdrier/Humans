@@ -99,6 +99,9 @@ after the retention window.
   `GateVendorCheckInJob` runs with `Attempts = 0` (no retry — a retry after a silent success would
   double-record; a missed mirror is acceptable, `gate_scan_events` is authoritative). Before enabling
   the flag, confirm the configured TicketTailor key has Event-manager scope.
+  Enabled jobs observe shutdown before starting the POST, then finish that single attempt independently
+  of cancellation. Shutdown before the attempt propagates without a vendor call; vendor failures retain
+  the existing best-effort, no-retry handling. Disabled jobs still skip the attempt.
   Because check-ins double-record, every enqueued mirror is claimed atomically in the in-memory
   `GateVendorMirrorLedger` (`TryMarkSent`, 24 h retention) — the live admit path marks it (only
   while the flag is on), and the one-off **vendor check-in backfill page**
