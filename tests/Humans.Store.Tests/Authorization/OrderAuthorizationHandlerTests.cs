@@ -84,10 +84,41 @@ public class OrderAuthorizationHandlerTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CampAccess_RequiresLeadershipOfTheOrdersOwnSeason(bool leadsTargetSeason)
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var order = MakeOrder(team: false);
+        var target = MakeCampInfo(campId, order.CampSeasonId!.Value, leadsTargetSeason ? userId : Guid.NewGuid())
+            .Seasons[0] with { EventSettingsId = Guid.NewGuid() };
+        var other = MakeCampInfo(campId, Guid.NewGuid(), userId).Seasons[0] with { EventSettingsId = Guid.NewGuid() };
+        var camp = MakeCampInfo(campId, target.Id, userId) with { Seasons = [target, other] };
+        _campService.GetCampSeasonByIdAsync(target.Id, Arg.Any<CancellationToken>()).Returns(target);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
+        var resources = new (object Resource, OrderOperationRequirement[] Operations)[]
+        {
+            (order, [OrderOperationRequirement.View, OrderOperationRequirement.Pay, OrderOperationRequirement.EditCounterparty]),
+            (new OrderCreateContext(target.Id), [OrderOperationRequirement.Create]),
+            (new OrderLineContext(order, FutureDeadline), [OrderOperationRequirement.AddLine, OrderOperationRequirement.RemoveLine])
+        };
+
+        foreach (var (resource, operations) in resources)
+        {
+            var context = new AuthorizationHandlerContext(operations, Principal(role: null, userId), resource);
+
+            await _handler.HandleAsync(context);
+
+            Assert.Equal(leadsTargetSeason, context.HasSucceeded);
+            if (!leadsTargetSeason) Assert.Equal(operations.Length, context.PendingRequirements.Count());
+        }
+    }
+
+    [HumansTheory]
     [InlineData("Date")]
     [InlineData("User")]
     [InlineData("Season")]
-    [InlineData("Camp")]
     [InlineData("Team")]
     public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
     {
@@ -120,11 +151,6 @@ public class OrderAuthorizationHandlerTests
         {
             Read("Season", call.Arg<CancellationToken>());
             return camp.Seasons[0];
-        });
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            Read("Camp", call.Arg<CancellationToken>());
-            return new List<CampInfo> { camp };
         });
         _teamService.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {

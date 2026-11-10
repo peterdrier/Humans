@@ -277,7 +277,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - A Camp Lead **cannot** add or remove lines after the product's `OrderableUntil` has passed (deadline is per-product, enforced by `OrderAuthorizationHandler` at request time; Store admins are exempt).
 - A Camp Lead **cannot** edit lines or counterparty on an order in `InvoiceIssued` state.
-- A Camp Lead **cannot** view or edit orders for camp-seasons they do not lead (resource-based auth).
+- A Camp Lead **cannot** view or edit orders for camp-seasons they do not lead (resource-based auth). Leadership of another event's season of the same camp, even in the same year, grants no access. The handler uses the order's parent season directly, without an annual camp lookup.
 - Anyone other than StoreAdmin/FinanceAdmin/Admin **cannot** issue an invoice.
 - Re-issuing an already-issued order **cannot** succeed — the second call throws and does not contact Holded.
 - An order holding any payment row — `Paid`, `Pending` or `Failed` — **cannot** be deleted, by anyone.
