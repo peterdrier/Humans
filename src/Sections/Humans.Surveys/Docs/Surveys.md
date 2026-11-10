@@ -343,6 +343,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 
 `ISurveyAnalysisRead` (public, in `Contracts/`): survey list, one survey's resolved question graph (`GetDefinitionAsync` → `SurveyDefinitionSnapshot`), the raw per-response export, and the per-question aggregates. Read-only — a survey is authored only in the admin UI, never over the API. Its sole consumer is `Humans.Backdoor`'s `BackdoorSurveysController` behind `/api/backdoor/surveys`. The section's only other public behaviour surface is `ISurveyReminderSender`, consumed by `Jobs/SendSurveyReminderJob`. There is deliberately **no public `ISurveyService` contract**: the empty public read contract was deleted (no other section consumed it); the internal `ISurveyService` remains — the machine API's needs are a different shape and are served by `ISurveyAnalysisRead`.
 
+Culture keys remain case-insensitive through builder rendering and translation preparation, matching `LocalizedText`: casing never hides authored text or makes it eligible for replacement.
+
 `SurveyTranslationFiller` owns blank-only translation preparation: one provider batch per target culture, preserving authored text across survey copy, questions, options, Grid rows and Information image labels/alt text. `SurveyService` keeps edit eligibility, persistence and audit; translation preparation retains caller cancellation and does not mutate the source definition.
 
 Result drill-down, response export and GDPR response export share the section's question/prompt/option-label mapper. Each caller keeps its own culture selection and payload shape; missing definitions preserve raw answer keys with empty prompts and fallback labels.

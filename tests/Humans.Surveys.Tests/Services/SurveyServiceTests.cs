@@ -1304,14 +1304,17 @@ public class SurveyServiceTests
             .Returns(ci => Task.FromResult<IReadOnlyList<string>>(
                 ci.Arg<IReadOnlyList<string>>().Select(t => ci.ArgAt<string>(2) + ":" + t).ToList()));
 
-    [HumansFact]
-    public async Task PreFillTranslationsAsync_fills_only_blank_cultures_and_never_overwrites()
+    [HumansTheory]
+    [InlineData("en", "es")]
+    [InlineData("EN", "es")]
+    [InlineData("en", "ES")]
+    public async Task PreFillTranslationsAsync_fills_only_blank_cultures_and_never_overwrites(string sourceKey, string targetKey)
     {
         var survey = SurveyWith(SurveyStatus.Draft, null, null);
         survey.Title = new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["en"] = "Hello",
-            ["es"] = "Hola", // authored — must survive untouched
+            [sourceKey] = "Hello",
+            [targetKey] = "Hola", // authored — must survive untouched
         });
         var questionId = Guid.NewGuid();
         survey.Questions = new List<SurveyQuestion>
