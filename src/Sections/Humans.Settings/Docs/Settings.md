@@ -1,6 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Settings/**
-  src/Sections/Humans.Settings/Contracts/**
+  src/Sections/Humans.Camps/Services/CachingCampService.cs
+  src/Sections/Humans.Events/Services/CachingEventService.cs
+  src/Sections/Humans.Rideshare/Services/CachingRideshareService.cs
+  src/Sections/Humans.Shifts/Services/CachingShiftViewService.cs
 -->
 <!-- freshness:flag-on-change
   The at-most-one-Active invariant, and "Settings mints event ids" — re-read both when the section's code changes.
@@ -9,55 +12,46 @@
 # Settings — Section Invariants
 
 App-wide settings: the `system_settings` key/value store every section may read
-and write through `ISettingsService`, and `settings_event`, the home of the
-app-wide event calendar and "which cycle is active" (nobodies-collective/Humans#1104,
-nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
+and write through `ISettingsService`, and `settings_event`, the register of event
+cycles and of which one is active.
 
 ## Concepts
 
 - A **Setting** is one key/value row in `system_settings`. Well-known keys live
-  in `SettingKeys` (`Humans.Settings.Contracts`); values are strings, parsed by
-  the caller.
+  in `SettingKeys`; values are strings, parsed by the caller.
 - **EventSettings** is one event cycle's app-wide values: name, public year,
-  gate-opening date, build calendar, early-entry window and capacity.
-  Crosses the boundary as `EventSettingsInfo`.
+  gate-opening date, build/event/strike offsets, early-entry window and capacity,
+  off-season flag. Crosses the boundary as `EventSettingsInfo`.
 - **The event timezone is global.** One `system_settings` key, `Event:TimeZoneId`
   (absent means Europe/Madrid), applies to every event. `EventSettingsInfo.TimeZoneId`
   is filled from it on every read.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
-  No production path removes a row — other sections store the id — so a cycle
-  ends by going `Inactive`, and nothing sets `Deleted` today. The one real row
-  removal is `IEventSettingsSeeding.DeleteEventAsync`, for fixture teardown.
-- **Settings mints event ids.** A brand-new cycle is created here, at
-  `/Settings#event`, by leaving the form blank — no id, no existing row. Shifts
-  no longer mints ids or a calendar of its own (nobodies-collective/Humans#1631);
-  its own `event_settings` row (if any) only ever carries its section-local
-  knobs, created on demand the first time a rota or knob edit needs one.
-- **`/Settings`** (peterdrier/Humans#1628) is the member-facing settings page: it renders
-  whatever tabs sections contribute through `ISectionSettings` (`Humans.Settings.Contracts`
-  — not every section has settings, so the seam lives in the `Contracts/` folder a
-  contributor already references to opt in, not on Base). This section contributes
-  the **Events** tab (`/Settings#event`), pinned first (`Weight = int.MinValue`) because every
-  other tab's settings hang off the event. For `PolicyNames.AdminOnly` it lists every event
-  (dates, status, Edit, Make active), links "Create next event" (`?event=new`: the latest
-  event's shape one year on, unsaved, inactive) and wraps the `/Settings/Admin` form;
-  every other authenticated member gets the active event read-only (event name, gate date,
-  build/event/strike windows as text) and no list. `/Settings/Admin` has no GET —
-  it removed the redirect-only page (`memory/product/no-url-aliases.md`); only the POST
-  remains, saving back to `/Settings#event`. With no GET to re-render, the POST is
-  post-redirect-get on both outcomes: validation, parse and activation-conflict failures
-  flash the failing rule and redirect back to the tab (by id when the form carried one),
-  exactly as every other settings tab's POST does. Reached from the signed-in
-  user menu via the `user-menu` chrome slot (`ISectionChrome` → `SettingsUserMenuViewComponent`),
-  since nothing else links to it. Its member-facing strings live in `SettingsResource`,
-  including the empty state (`Settings_NoTabs`); `/Settings/Admin` stays admin-exempt
-  (`memory/code/localization-admin-exempt.md`). Settings owns tab
-  composition end to end (`SettingsTabComposition`, `SettingsTabsViewComponent`) — a
-  domain-owning section composes contributions into its own domain, unlike navigational
-  composition, which stays in the Shell — but a **tab label** is different: it may come
-  from any contributing section, so it stays in `SharedResource` (`Settings_TabEvent`),
-  carved by renderer: the composer cannot see any contributor's private resource set,
-  including a `.Contracts` leaf's, which carries no localized strings today anyway.
+  Other sections store the id, so a cycle ends by going `Inactive`; nothing sets
+  `Deleted` today. The only row removal is `IEventSettingsSeeding.DeleteEventAsync`,
+  for fixture teardown.
+- **Settings mints event ids.** A new cycle is created at `/Settings#event` by
+  saving the form with no id. Shifts' own `event_settings` row carries only its
+  section-local knobs and is created on demand the first time a rota or knob edit
+  needs one.
+- **`/Settings`** is the member-facing settings page: it renders whatever tabs
+  sections contribute through `ISectionSettings` (in `Contracts/`, so a contributor
+  opts in through the folder it already references, not through Base). Settings
+  owns tab composition end to end (`SettingsTabComposition`,
+  `SettingsTabsViewComponent`). A **tab label** is a `SharedResource` key
+  (`Settings_TabEvent`), because the strip renders every contributor's label and
+  cannot see their private resource sets.
+- **The Events tab** (`/Settings#event`) is this section's own tab, pinned first
+  (`Weight = int.MinValue`) because every other tab's settings hang off the event.
+  An admin gets the timezone form, the event list (dates, status, Edit, Make
+  active), "Create next event" (`?event=new`: the latest event's shape one year on,
+  unsaved, inactive) and the event form posting to `/Settings/Admin`. Every other
+  member gets the active event read-only (name, gate date, build/event/strike
+  windows) and no list. Member-facing strings live in `SettingsResource`; the admin
+  list and form are admin-exempt (`memory/code/localization-admin-exempt.md`).
+- **`/Settings/Admin`** has no GET. Each POST is post-redirect-get on both outcomes:
+  a refusal flashes the failing rule and redirects back to the tab (by id when the
+  form carried one). `/Settings` is reached from the signed-in user menu
+  (`ISectionChrome` → `SettingsUserMenuViewComponent`) and the admin nav.
 
 ## Data Model
 
@@ -76,7 +70,7 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 
 | Property | Type | Notes |
 |----------|------|-------|
-| Id | Guid | PK — minted here for a new cycle (nobodies-collective/Humans#1631); Shifts creates its own knobs row against this id on demand |
+| Id | Guid | PK — minted here for a new cycle; Shifts creates its own knobs row against this id on demand |
 | EventName | string | |
 | Year | int | Always `GateOpeningDate.Year`; never edited on its own |
 | TimeZoneId | string | IANA; a copy of the global `Event:TimeZoneId`, written on save and never read |
@@ -86,24 +80,24 @@ nobodies-collective/Humans#1630, nobodies-collective/Humans#1631).
 | EarlyEntryCapacity | JSON `Dictionary<int,int>` | Step function, day offset → capacity; dictionary equality and hashing ignore insertion order |
 | BarriosEarlyEntryAllocation | JSON, nullable | |
 | EarlyEntryClose | Instant, nullable | |
-| EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Moved from Camps' `CampSettings.EeStartDate` (nobodies-collective#1633); Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. No data carried across sections — an admin re-enters the value here after the cutover. |
+| EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. |
 | Status | EventSettingsStatus | |
 | IsOffSeason | bool | Admin-set "this cycle is wrapped" switch, a checkbox on the event form. Tickets' and Shifts' member-dashboard cards hide behind it. Deriving it from `StrikeEndOffset` is deferred to the settings revamp. |
 | CreatedAt / UpdatedAt | Instant | Stamped by the repository upsert |
 
-**Indexes / constraints:** PKs only — both invariants below are service-enforced
+**Indexes / constraints:** PKs only — every row rule below is service-enforced
 (`memory/architecture/no-db-check-constraints.md`).
 
 Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
-`__EFMigrationsHistory_Settings`.
+named by `SectionMigrationsHistory.TableFor`.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any section (code) | Read/write `system_settings` keys via `ISettingsService`; read `settings_event` via `GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` |
+| Any section (code) | Read/write `system_settings` keys and read the timezone via `ISettingsService`; read `settings_event` via `GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | Any authenticated member | Views the active event's values, read-only, on the `/Settings#event` tab |
-| Admin | Edits event rows, or starts a new cycle by leaving the form blank, via the `/Settings#event` tab's form (posts to `SettingsAdminController`) |
+| Admin | Edits event rows, starts a new cycle, makes an event active and sets the timezone, from the `/Settings#event` tab (posts to `SettingsAdminController`) |
 
 `SettingsAdminController` is `PolicyNames.AdminOnly`, class-level (pinned in
 `tests/Humans.Settings.Tests/SettingsArchitectureTests.cs`; per-route detail in
@@ -111,111 +105,101 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 
 ## Invariants
 
-- Event save, timezone change and event activation resolve the signed-in account
-  before writing and audit the surviving account ID after a merge. Missing accounts
-  are challenged; cancelled account lookups perform no write.
-
-- Event forms require every rendered field to be posted. Missing keys cannot mint a new cycle or reset the calendar, early-entry settings or flags through defaults. An explicitly blank id still starts a new cycle; blank optional early-entry values still clear them. Existing false and zero values remain valid.
-
-- The event-name editor uses Elsewhere in its example.
-
 - **At most one `Active` row in `settings_event`; zero is legal** (a cycle ends
-  by deactivation). Enforced in `Service.SaveEventSettingsAsync` via
-  `AnyOtherActiveEventSettingsAsync(excludingId)`; `ServiceTests` covers it.
-  This is the *only* home of the invariant — Shifts' own knobs row carries no
-  `IsActive` check of its own (nobodies-collective/Humans#1631).
-- **Settings mints ids for new cycles, with no existence check elsewhere.**
-  `Rota.EventSettingsId` and `EventGuideSettings.EventSettingsId` resolve
-  against `settings_event`, not the other way around — a Shifts knobs row for
-  a new id is created on demand, the first time a rota or knob edit needs it,
-  never checked for on the way in here.
-- **Every successful `SaveEventSettingsAsync` call is audited.** Writes
-  `SettingsAuditActions.EventSettingsUpdated` naming the actor and the saved values
-  (peterdrier/Humans#1628).
-- **Every section reads the calendar from `settings_event`.** Repointed off the
-  Shifts-owned row in nobodies-collective/Humans#1629/#1630; `/Settings#event` is the
-  only editor, `/Shifts/Settings` is knobs-only.
-- **Events never overlap.** An admin save is refused when its build-start to strike-end
-  window (inclusive days) overlaps any other non-Deleted event's, naming that event.
-  Several events in one year are allowed. Seeded activation skips the check.
-- **Switching the active event is one step.** `ActivateEventSettingsAsync` sets the target
-  Active and the previous active row Inactive in one database save, audits once (`EventSettingsUpdated`), and
-  notifies listeners for both ids. The form's own Active box still refuses a second
-  active row.
-- **Committed or uncertain writes notify before audit.** Event saves, timezone changes, activation, seeded activation and deletion notify their affected event ids even when persistence throws after committing. An audit failure cannot leave derived dates cached. Activation includes the former active event; seeding notifies each changed row independently. Pre-write refusals and a confirmed missing-row deletion send no notification.
-- **Changing the timezone moves every event.** `SaveTimeZoneAsync` refuses an unknown IANA
-  id, writes `Event:TimeZoneId`, audits once (`EventSettingsUpdated`, entity `EventTimeZone`),
-  and notifies listeners for every event row.
-- **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`: gate-opening day belongs to the event, and strike cannot end before the event does. Admin saves and seeded activation reject inverted windows before any writes or deactivation. Equal end offsets remain valid (no strike days).
-- **Calendar dates must be representable.** Admin saves and seeded activation reject gate/offset combinations whose dates or following day fall outside BCL date support, before writing or deactivating another cycle. Rejections log Warning without an exception stack and return the existing admin failure flash.
-- **Admin save refusals are results.** Invalid calendar dates, early-entry offsets and competing active cycles return internal refusal results before writes, audit or listener notifications. Unexpected dependency failures propagate instead of becoming operator conflict messages. Seed activation retains its throwing validation contract.
-- **Writes to `settings_event` stay inside the section.**
-  `SaveEventSettingsAsync` lives on the internal `ISettingsWriteService`, not on
-  the `ISettingsService` contract.
-- **`EarlyEntryStartOffset`, when set, stays inside the build window.**
-  `BuildStartOffset ≤ EarlyEntryStartOffset < 0`, enforced in both
-  `Service.SaveEventSettingsAsync` (`ServiceTests`); null (not yet configured) always
-  passes.
+  by deactivation). An admin save is refused while another row is active
+  (`AnyOtherActiveEventSettingsAsync(excludingId)`); this is the only home of the
+  rule — Shifts' knobs row carries no active flag of its own.
+- **Switching the active event is one step.** `ActivateEventSettingsAsync` sets the
+  target Active and the previous active row Inactive in one database save. The
+  form's own Active box still refuses a second active row.
+- **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`:
+  gate-opening day belongs to the event, and strike cannot end before the event
+  does. Equal end offsets are valid (no strike days). Admin saves and seeded
+  activation reject inverted windows before any write.
+- **`EarlyEntryStartOffset`, when set, stays inside the build window**:
+  `BuildStartOffset ≤ EarlyEntryStartOffset < 0`, enforced in
+  `Service.SaveEventSettingsAsync` (`ServiceTests`); null (not yet configured)
+  always passes.
+- **Calendar dates must be representable.** Admin saves and seeded activation
+  reject gate/offset combinations whose dates, or the following day, fall outside
+  BCL date support, before any write.
+- **Events never overlap.** An admin save is refused when its build-start to
+  strike-end window (inclusive days) overlaps any other non-Deleted event's,
+  naming that event. Several events in one year are allowed. Seeded activation
+  skips the check.
+- **The timezone is a known IANA id.** `SaveTimeZoneAsync` refuses anything else.
+- **Admin save refusals are results.** Invalid dates, early-entry offsets,
+  overlaps and competing active cycles return refusal results before any write,
+  audit or listener notification. Unexpected dependency failures propagate.
+  Seeded activation throws on invalid dates instead.
+- **Admin writes name their actor.** Save, make active and timezone resolve the
+  signed-in account before writing; a missing account is challenged and a
+  cancelled lookup writes nothing.
+- **Every posted event form is complete.** Every rendered field is `[BindRequired]`,
+  so a missing key cannot mint a cycle or reset values through defaults. An
+  explicitly blank id still starts a new cycle; blank optional early-entry values
+  clear them.
+- **Writes to `settings_event` stay inside the section.** The event writes live
+  on the internal `ISettingsWriteService`, not on the `ISettingsService` contract.
 - EF entities never leave the section; the cross-section surface is the
-  `Contracts/` folder (`ISettingsService`, `EventSettingsInfo`,
-  `SettingKeys`; namespace `Humans.Settings.Contracts`).
+  `Contracts/` folder (namespace `Humans.Settings.Contracts`).
 
 ## Negative Access Rules
 
 - `/Settings/Admin` has no GET; it 404s for everyone, admin or not.
 - A non-admin **cannot** edit the Event tab: they get the read-only rendering
-  (no `<form>`, no submit button, no inputs to POST), and a POST to
-  `SettingsAdminController` still requires `PolicyNames.AdminOnly` regardless of
-  which page linked to it.
+  (no `<form>`, no list, no inputs to POST), `?event=` is ignored for them, and a
+  POST to `SettingsAdminController` still requires `PolicyNames.AdminOnly`.
 - Code outside the section **cannot** write `settings_event` —
   `ISettingsService` carries no event-settings write.
 
 ## Triggers
 
-None — no background jobs, no notification fan-out. Every `SaveEventSettingsAsync`
-call writes one `SettingsAuditActions.EventSettingsUpdated` audit entry — see Invariants.
-`Humans.Development`'s dashboard seeder calls `IEventSettingsSeeding.CreateActiveEventAsync`
-before seeding Shifts fixtures against the same id, and `DeleteEventAsync` on reset to drop
-that row again (no audit entry either way — seeding has no real actor).
+- **Every admin write is audited** as `SettingsAuditActions.EventSettingsUpdated`,
+  naming the actor: a save (entity `EventSettings`, the saved values), a make-active
+  (entity `EventSettings`, the target and the rows set inactive) and a timezone
+  change (entity `EventTimeZone`, old and new zone).
+- **Every write that may have changed a cycle notifies every
+  `IEventSettingsChangeListener`, before the audit, even when persistence throws
+  after committing**: a save notifies its id, make-active the target and the
+  former active row, a timezone change every event, seeding each row it changed,
+  and a seeded delete unless the row was confirmed missing. Refusals notify nobody.
+- `Humans.Development`'s dashboard seeder calls `IEventSettingsSeeding.CreateActiveEventAsync`
+  before seeding Shifts fixtures against the same id, and `DeleteEventAsync` on
+  reset. Seeding writes no audit entry — it has no real actor.
 
 ## Cross-Section Dependencies
 
-Declared in `Humans.Settings.csproj`: `Humans.Base` only (it carries the audit append path).
-Everything else below is a section reaching *in* through this section's
-`Contracts/` folder, or a seam it implements.
+Declared in `Humans.Settings.csproj`: `Humans.Base` only. `IAuditLogService` and
+`IUserService` (the controller's base-class dependency) live in Base. Everything
+below is another section reaching *in* through `Contracts/`, or implementing a seam.
 
-The **out** rows are complete — they are this section's own dependencies. Of the **in**
-rows, the key/value ones are complete too, because `SettingKeys` bounds them. The
-event-cycle readers are deliberately not listed: the set is most of the app, too wide to
-keep in step by hand. Derive it from the call sites, not from here.
+The event-cycle readers are deliberately not listed: the set is most of the app,
+too wide to keep in step by hand. Derive it from the call sites.
 
 | Direction | Section | Through |
 |---|---|---|
-| out | AuditLog | `IAuditLogService` — one entry per `SaveEventSettingsAsync` |
-| out | Users | `IUserService` (platform base-controller dependency, reached through Base) |
-| in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync`. Not enumerated — see above |
+| in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
-| in | Workgroups | `ISettingsService.GetValueAsync` — legacy root fallback until its admin saves section-owned `workgroups_settings`; no new writes. `ISettingsService.GetTimeZoneIdAsync` — the default zone of the meeting form |
-| out | every `IEventSettingsChangeListener` | fanned out after every successful or uncertain event-settings mutation, the admin save and both `IEventSettingsSeeding` paths (seeded upsert, delete of a row that existed) alike — the gate date, the offsets and the active-event flip move derived dates for every member at once. The notification carries the event settings id. Subscribers today: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView`, and forwards the change through its keyed inner to `IShiftManagement.InvalidateDashboardCaches` for that event's coordinator-dashboard aggregates), Events' `CachingEventService` (its `EventGuideSettingsView` carries the Settings-owned `TimeZoneId`), Camps' `CachingCampService` (open seasons derive from Settings' events), and Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |
+| in | Workgroups | `ISettingsService.GetValueAsync` — legacy root-folder fallback until its admin saves section-owned `workgroups_settings`; no new writes. `ISettingsService.GetTimeZoneIdAsync` — the default zone of the meeting form |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
+| in (seam) | Camps, Events, Rideshare, Shifts | implement `IEventSettingsChangeListener`: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView` and forwards the id to its dashboard aggregates), Events' `CachingEventService` (its guide settings carry the timezone), Camps' `CachingCampService` (open seasons derive from events), Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |
+| in (seam) | sections with settings | implement `ISectionSettings` to contribute a `/Settings` tab |
 
 - **Audit actions:** declared on `SettingsAuditActions` (`src/Sections/Humans.Settings/SettingsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `EventSettingsUpdated`.
 
 ## Architecture
 
 **Owning services:** `Service` (registered as `ISettingsService`,
-`ISettingsWriteService` and `IEventSettingsSeeding` against one instance; also
-writes `IAuditLogService` entries on event-settings saves)
+`ISettingsWriteService` and `IEventSettingsSeeding` against one instance)
 **Owned tables:** `system_settings`, `settings_event`
 **Status:** (A) — own project, own context, repository-only data access; no
-caching decorator (low-traffic key reads, admin-only screens).
+caching decorator (small rows; consumers cache what they derive and flush through
+`IEventSettingsChangeListener`).
 **Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
-tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` —
-the `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav` — the admin shell's "Event settings" tab. Also owns
-composing every section's `ISectionSettings` contributions into the `/Settings`
-tab strip (`SettingsTabComposition`, `SettingsTabsViewComponent`) — Settings
-owns all of settings management, contributed tabs included, not just its own.
+tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` — the
+`/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav`
+— the admin shell's "Event settings" item.
 
-Detail on the repository surface and both invariants:
-[`data-access.md`](data-access.md).
+Detail on the repository surface: [`data-access.md`](data-access.md).
