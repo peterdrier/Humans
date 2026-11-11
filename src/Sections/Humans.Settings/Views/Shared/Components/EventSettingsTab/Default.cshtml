@@ -26,6 +26,15 @@ else
         <dd class="col-sm-8 col-lg-9">@Localizer["Settings_EventRange", Model.Settings.EventEndOffset]</dd>
 
         <dt class="col-sm-4 col-lg-3">@Localizer["Settings_StrikeWindow"]</dt>
-        <dd class="col-sm-8 col-lg-9">@Localizer["Settings_StrikeRange", Model.Settings.EventEndOffset + 1, Model.Settings.StrikeEndOffset]</dd>
+        <dd class="col-sm-8 col-lg-9">
+            @if (Model.Settings.StrikeEndOffset > Model.Settings.EventEndOffset)
+            {
+                @Localizer["Settings_StrikeRange", Model.Settings.EventEndOffset + 1, Model.Settings.StrikeEndOffset]
+            }
+            else
+            {
+                @Localizer["Settings_NoStrike"]
+            }
+        </dd>
     </dl>
 }

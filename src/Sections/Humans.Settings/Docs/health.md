@@ -51,8 +51,8 @@ The shapes imply exactly today's layout:
   sections implement (`IEventSettingsChangeListener`, `ISectionSettings`) and the one the
   dev seeder drives (`IEventSettingsSeeding`).
 - **One service** (`Service`), implementing the internal `ISettingsWriteService` (=
-  contract + the three event writes) plus `IEventSettingsSeeding`, registered once and
-  resolved three ways.
+  contract + the event writes) plus `IEventSettingsSeeding`, registered once and
+  resolved as each of them.
 - **One repository** over the section's two tables, behind `ISettingsRepository`.
 - **One page** (`SettingsController`, `/Settings`) that renders only a tab strip, one
   composer (`SettingsTabComposition`) and one strip renderer — the page knows nothing about
@@ -89,7 +89,7 @@ The shapes imply exactly today's layout:
 - **Every write that may have changed a cycle notifies the listeners, before the audit and
   even when the write throws**: save `Services/Service.cs:106`, make active `:154`,
   timezone `:56`, seeding `:194`, `:207`, `:253`.
-- **Only the section writes `settings_event`.** The three event writes sit on the internal
+- **Only the section writes `settings_event`.** The event writes sit on the internal
   `ISettingsWriteService` (`Services/ISettingsWriteService.cs:8`), off the cross-section
   contract.
 - **`/Settings/Admin` is `AdminOnly`, class-level** (`Controllers/SettingsAdminController.cs:15`)
