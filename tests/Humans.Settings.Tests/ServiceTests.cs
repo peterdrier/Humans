@@ -415,6 +415,25 @@ public sealed class ServiceTests
         _listenerTwo.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(0, 0)]
+    [Xunit.InlineData(6, 6)]
+    public async Task SaveEventSettingsAsync_AcceptsGateDayEventsAndNoStrikeDays(int eventEnd, int strikeEnd)
+    {
+        var settings = MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive) with
+        {
+            EventEndOffset = eventEnd,
+            StrikeEndOffset = strikeEnd,
+        };
+
+        var result = await BuildSut().SaveEventSettingsAsync(settings, Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Is<EventSettings>(e => e.EventEndOffset == eventEnd && e.StrikeEndOffset == strikeEnd),
+            Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
     // The EarlyEntryStartOffset invariant: BuildStartOffset ≤ offset < 0.
 
     [HumansFact]

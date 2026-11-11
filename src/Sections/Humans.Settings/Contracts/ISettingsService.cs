@@ -3,8 +3,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Settings.Contracts;
 
 /// <summary>
-/// No <c>SaveEventSettingsAsync</c> here: only the section's own <c>/Settings/Admin</c> POST writes event settings.
-/// <see cref="SetValueAsync"/> stays because some keys are written from outside the section.
+/// <see cref="SetValueAsync"/> is here because other sections write their own keys; event-settings writes stay
+/// section-internal.
 /// </summary>
 public interface ISettingsService : IApplicationService
 {
