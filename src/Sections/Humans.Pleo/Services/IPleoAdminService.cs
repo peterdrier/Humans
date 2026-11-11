@@ -3,7 +3,14 @@ using Humans.Pleo.Models;
 
 namespace Humans.Pleo.Services;
 
-internal enum PleoSyncOutcome { NotConfigured, Busy, Synced }
+internal enum PleoSyncOutcome
+{
+    NotConfigured,
+    Busy,
+    Synced,
+    /// <summary>Everything but the category fetch synced; its error is on the sync state.</summary>
+    SyncedWithoutCategories,
+}
 
 internal interface IPleoAdminService : IApplicationService
 {

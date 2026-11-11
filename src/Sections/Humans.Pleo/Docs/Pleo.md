@@ -83,7 +83,9 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   A sweep never deletes or unlinks a category row.
 - A sweep fetches entries, chart, categories, cardholders and balance before writing anything, then
   replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed call leaves the
-  mirror as it was and records the error on the sync row. If that diagnostic save also fails, the secondary failure
+  mirror as it was and records the error on the sync row. The category fetch is the exception: if it fails, the sweep
+  goes on without it, leaves `pleo_categories` as it is, and keeps the category error on the sync row (shown on the
+  sync card) while the status stays `Idle`. If that diagnostic save also fails, the secondary failure
   is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
 - The pager fails closed: a body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
   cap throws, so a short fetch can never delete rows.
