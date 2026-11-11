@@ -64,6 +64,7 @@ public sealed class Section :
 
         services.AddScoped<ICalendarFeedContributor, WorkgroupCalendarContributor>();
         services.AddScoped<IGoogleDriveAccessSource, WorkgroupDriveAccessSource>();
+        services.AddScoped<IGoogleGroupMembershipSource, WorkgroupGoogleGroupSource>();
 
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
 

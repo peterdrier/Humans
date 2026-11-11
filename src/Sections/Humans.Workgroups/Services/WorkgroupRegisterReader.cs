@@ -67,7 +67,8 @@ internal sealed class WorkgroupRegisterReader(IWorkgroupRepository repository) :
         w.BudgetAmount,
         w.HoldedAccountNumber,
         w.HoldedAccountId,
-        w.IsSensitive == true);
+        w.IsSensitive == true,
+        w.GoogleGroupEmail);
 
     internal static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
         d.Id,

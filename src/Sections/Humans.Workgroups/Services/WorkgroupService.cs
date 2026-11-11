@@ -1,5 +1,7 @@
 using static Humans.Workgroups.Services.WorkgroupAccess;
 using static Humans.Workgroups.Services.WorkgroupJournal;
+using System.Text.RegularExpressions;
+using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
@@ -25,6 +27,7 @@ internal sealed partial class WorkgroupService(
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
+    IGoogleGroupSync googleGroupSync,
     IFinanceWrite finance,
     IHoldedService holded,
     INotificationService notifications,
@@ -34,8 +37,8 @@ internal sealed partial class WorkgroupService(
     IClock clock,
     ILogger<WorkgroupService> logger) : IWorkgroupService
 {
-    private WorkgroupMembership Membership => new(repository, access, journal, notices, DriveFolders, users, auditLog, clock);
-    private WorkgroupDriveFolders DriveFolders => new(repository, settings, googleSync, googleSyncWrite, auditLog, logger);
+    private WorkgroupMembership Membership => new(repository, access, journal, notices, GoogleResources, users, auditLog, clock);
+    private WorkgroupGoogleResources GoogleResources => new(repository, settings, googleSync, googleSyncWrite, googleGroupSync, auditLog, logger);
     private WorkgroupBudgets Budgets => new(repository, access, journal, finance, holded, clock, logger);
     private WorkgroupActivity Activity => new(repository, access, journal, surveys, clock);
     private readonly WorkgroupAccess access = new(repository, users);
@@ -252,12 +255,66 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default) =>
         Budgets.SetBudgetAsync(workgroupId, actorUserId, save, ct);
 
+    public async Task<WorkgroupMutationResult> SetGoogleGroupAsync(
+        Guid workgroupId, Guid actorUserId, string? prefix, CancellationToken ct = default)
+    {
+        var parsed = ParseGoogleGroupPrefix(prefix);
+        if (parsed.Refusal is { } prefixRefusal) return new(Refusal: prefixRefusal);
+        var newPrefix = parsed.Value;
+
+        var workgroupResult = await access.RequireAsync(workgroupId, ct);
+        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
+        var workgroup = workgroupResult.Value!;
+        if (RequireStatus(workgroup, WorkgroupStatus.Applied, WorkgroupStatus.Referred,
+            WorkgroupStatus.Active, WorkgroupStatus.Dormant) is { } statusRefusal) return new(Refusal: statusRefusal);
+
+        if (string.Equals(workgroup.GoogleGroupPrefix, newPrefix, StringComparison.Ordinal))
+            return new();
+
+        // Two groups on one address would fight over its membership in the fan-out.
+        if (newPrefix is not null && (await registerReader.GetRegisterAsync(ct)).Any(w => w.Id != workgroup.Id
+                && string.Equals(w.GoogleGroupEmail, $"{newPrefix}@{DomainConstants.GoogleGroupDomain}", StringComparison.OrdinalIgnoreCase)))
+            return new(Refusal: new("Another workgroup already uses this email group.") { IsOperatorMessage = true });
+
+        workgroup.GoogleGroupPrefix = newPrefix;
+        workgroup.UpdatedAt = clock.GetCurrentInstant();
+        await repository.UpdateWorkgroupAsync(workgroup, ct);
+        ct = CancellationToken.None;
+
+        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupGoogleGroupSet, workgroup,
+            workgroup.GoogleGroupEmail is { } email ? $"Email group set to {email}" : "Email group cleared", actorUserId);
+        await GoogleResources.RequestGoogleSyncAsync(workgroup, ct);
+        return new();
+    }
+
+    /// <summary>Same rule as a team's group prefix. Admins paste the full address as often as its local part; only our own domain is accepted.</summary>
+    private static WorkgroupMutationResult<string?> ParseGoogleGroupPrefix(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return new((string?)null);
+
+        var prefix = value.Trim().ToLowerInvariant();
+        var at = prefix.IndexOf('@', StringComparison.Ordinal);
+        if (at >= 0)
+        {
+            if (!string.Equals(prefix[(at + 1)..], DomainConstants.GoogleGroupDomain, StringComparison.Ordinal))
+                return new(Refusal: new($"The email group must be on {DomainConstants.GoogleGroupDomain}.") { IsOperatorMessage = true });
+            prefix = prefix[..at];
+        }
+
+        return prefix.Length <= 64 && GoogleGroupPrefixPattern.IsMatch(prefix)
+            ? new(prefix)
+            : new(Refusal: new("Use only lowercase letters, numbers and hyphens for the email group name.") { IsOperatorMessage = true });
+    }
+
+    private static readonly Regex GoogleGroupPrefixPattern =
+        new("^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
+
     public Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
         Budgets.ListExpenseAccountsAsync(ct);
 
     public Task<string?> GetRootDriveFolderIdAsync(CancellationToken ct = default) =>
-        DriveFolders.GetRootDriveFolderIdAsync(ct);
+        GoogleResources.GetRootDriveFolderIdAsync(ct);
 
     public Task<WorkgroupMutationResult> SetRootDriveFolderIdAsync(string folderId, Guid actorUserId, CancellationToken ct = default) =>
-        DriveFolders.SetRootDriveFolderIdAsync(folderId, actorUserId, ct);
+        GoogleResources.SetRootDriveFolderIdAsync(folderId, actorUserId, ct);
 }
