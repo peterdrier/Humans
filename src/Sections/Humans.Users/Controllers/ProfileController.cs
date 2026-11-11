@@ -172,7 +172,6 @@ internal sealed class ProfileController(
 
         await SaveEditedContactFieldsAsync(model, profileId);
 
-        // Remove and replace.
         var newLanguages = model.EditableLanguages
             .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
             .Select(l => new ProfileLanguageInfo(

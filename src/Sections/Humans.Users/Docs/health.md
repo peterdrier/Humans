@@ -13,10 +13,10 @@ Every other section asks Users one of a few questions — who is this id, which 
 address, who is on site, who is due for deletion — and gets back a snapshot that is answered
 from memory, because the whole register fits in memory and is kept there.
 
-People manage themselves under `/Profile/Me/*`; member admins manage people under
-`/Users/Admin/*`; a handful of one-off repair screens sit under `/Profile/Admin/*`;
-`/Email/Unsubscribe/*` and `/Gdpr/Guest/*` (people with no session or no profile) are Email's and Gdpr's since
-Users decomposition commit 14.
+People manage themselves under `/Profile/Me/*`; members see each other under `/Profile/{id}`,
+the birthday calendar and the map under `/Users/*`; member admins manage people under
+`/Users/Admin/*`; one repair screen sits at `/Profile/Admin/EmailProblems`. `/Email/Unsubscribe/*`
+and the guest data pages (people with no session or no profile) are Email's and Gdpr's.
 
 ## 2. The shapes
 
@@ -31,8 +31,9 @@ Users decomposition commit 14.
 | **Presence** | Tickets owns participation and its export/retention paths | `ITicketService.GetParticipationsAsync` |
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | section-internal: `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
-| **Repair** | email-invariant violations; profile-less accounts; unsynced names; picture migration | `IEmailProblemsService`, the `/Profile/Admin/*` backfill controllers |
-| **Admin views** | list / detail / roles roster / audience / merges | `UsersAdminController`, `UsersAdminAccountMergesController` |
+| **Repair** | email-invariant violations; the one remaining data migration (legacy Identity emails) | `IEmailProblemsService` behind `/Profile/Admin/EmailProblems`; `ISectionDataMigrations` on `Section.cs` |
+| **Admin views** | list / detail / audience; suspend, unsuspend, reject, purge; merge requests | `UsersAdminController`, `UsersAdminAccountMergesController` |
+| **Directory views** | whose birthday is this month; where everyone is | `UsersController` (`/Users/Birthdays`, `/Users/Map`) |
 
 Recurring jobs: nightly deletion expiry, nightly non-compliance suspension.
 
@@ -63,45 +64,54 @@ The shapes imply one register with one cache and one write funnel:
   funnel too. Merge is an ordered fan-out over `IUserMerge` with the tombstone last.
 - **Controllers translate only.** The `/Profile` surface is one controller per shape:
   `ProfileController` (own profile), `ProfileEmailsController` (own and admin email grids)
-  and `ProfileViewController` (others' profiles, popovers, search).
-- **Repair screens are temporary** and sit under an admin nav group named Temp; each retires
-  when its count reads zero in production.
+  and `ProfileViewController` (others' profiles, picture, popovers). People search is the
+  `/api/profiles/search` endpoint; the search page is Search's.
+- **Repair is temporary**: the email-problems screen and the data migration each retire when
+  production reads zero.
 
 ## 4. Invariants
 
 - The full app is reachable only when `User.State == Active`; state is written at each
-  transition and never derived on read.
-- Exactly one verified `IsPrimary` address per account (the Google identity is GoogleIntegration's since
-  Users decomposition commit 15; `user_emails.IsGoogle` is dropped); a verified
-  address belongs to at most one account. Each is service-enforced: the verify paths
-  open a merge request when another account already holds the address verified, and the OAuth
-  reconcile blocks or displaces before it writes.
-- An address is rewritten by exactly one path: the OAuth reconcile, matched on
-  `(Provider, ProviderKey)`.
-- Birthday carries month and day only.
-- `MedicalConditions` is Art. 9 data and is off the cached `UserInfo`; `MedicalConditionsService` is its only reader, and others get it only through the audited reveal (`UsersPolicies.MedicalDataViewer`).
-- A merge is ordered, not transactional; every `IUserMerge.ReassignAsync` is idempotent; the
-  source row becomes a tombstone (`MergedToUserId`, `MergedAt`, far-future lockout) and is never
-  deleted; tombstones cannot sign in.
-- `CachingUserService` and `IUserInfoSliceRefresher` are the same singleton.
-- Deletion is a 30-day grace period; memberships and roles go on request, data goes on expiry;
-  purge never runs in Production and never on oneself.
-- Contact-field and email visibility resolve from the viewer's relation to the owner: self and
-  Board see all, coordinators see `CoordinatorsAndBoard` and below, shared-team members see
-  `MyTeams` and below, other active members see `AllActiveProfiles` only.
-- Non-active humans cannot view other profiles or send messages; regular humans cannot view
-  suspended profiles.
+  transition and never derived on read — `src/Humans.Web/Authorization/MembershipRequiredFilter.cs:70`.
+- A verified account holds exactly one verified `IsPrimary` address — `EnsurePrimaryInvariantAsync`,
+  `src/Sections/Humans.Users/Services/UserEmailMutations.cs:209`. A verified address belongs to at
+  most one account: verifying an address another account holds verified opens a merge request
+  instead — `src/Sections/Humans.Users/Services/UserEmailService.cs:132`. `user_emails.IsGoogle`
+  is dropped; the Workspace identity is GoogleIntegration's.
+- An address is rewritten by exactly one path, the OAuth reconcile matched on
+  `(Provider, ProviderKey)` — `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`.
+- Birthday carries month and day only; the year is stored as 4 —
+  `src/Sections/Humans.Users/Services/UserProfileMutations.cs:130`.
+- `MedicalConditions` is Art. 9 data and is off the cached `UserInfo`; `MedicalConditionsService` is
+  its only reader. The owner edits it on `/Profile/Me/Medical`; anyone else gets it only through the
+  audited reveal behind `UsersPolicies.MedicalDataViewer` — `src/Sections/Humans.Users/Controllers/ProfileViewController.cs:209`.
+- A merge leaves the source row as a tombstone (`MergedToUserId`, far-future lockout) and never
+  deletes it — `src/Sections/Humans.Users/Data/Repositories/UserRepository.cs:175`,
+  `src/Sections/Humans.Users/Data/Repositories/UserRepository.cs:205`. The merge is ordered, not
+  transactional, and each `IUserMerge.ReassignAsync` must be idempotent (a contract on every
+  implementer; no test pins it).
+- `CachingUserService` and `IUserInfoSliceRefresher` are the same singleton —
+  `src/Sections/Humans.Users/Section.cs:112`.
+- Deletion is a 30-day grace period — `src/Sections/Humans.Users/Services/AccountDeletionService.cs:52`;
+  purge never runs in Production and never on oneself —
+  `src/Sections/Humans.Users/Services/AccountDeletionService.cs:157`,
+  `src/Sections/Humans.Users/Services/AccountDeletionService.cs:166`.
+- Contact-field visibility resolves from the viewer's relation to the owner: self and Board see
+  all, coordinators see `CoordinatorsAndBoard` and below, shared-team members see `MyTeams` and
+  below, other active members see `AllActiveProfiles` only — `src/Sections/Humans.Users/Helpers/ContactFieldVisibilityRules.cs:10`.
+- Nobody opens a suspended member's profile page — `src/Sections/Humans.Users/Controllers/ProfileViewController.cs:59`;
+  the popover still shows a suspended member's basic identity with a suspended badge.
 
 ## 5. Seams
 
-- Drop of the shadow `users.GoogleEmail`, `users.GoogleEmailStatus`, and
-  `user_emails.IsNotificationTarget`-named columns waits on prod verification.
+- Drop of the shadow `users.GoogleEmail` and `user_emails` `IsGoogle` / `GoogleEmailStatus`
+  columns waits on prod verification (peterdrier/Humans#2156).
 - `Profile.BurnerName/FirstName/LastName` remain dual-written and read by current consumers;
   retiring those columns requires migrating those readers first (nobodies-collective/Humans#1098).
-- Users' remaining data migrations (`ISectionDataMigrations`) retire on the same signal, each by its own key. `users.names-onto-user`, `users.legacy-gdpr-tombstones`, `users.profile-pictures-to-filesystem` and `users.stub-profiles` retired after production reported done on 2026-10-22.
+- Users' one remaining data migration, `users.legacy-identity-emails`, retires when production
+  reports it done.
 - `AccountMergeRequest` still carries `User` navs; strip when the nav-strip pattern is
   generalised.
-- `UsersPolicies.UsersAdminOnly` is registered with no call site.
 - The partial unique index on `user_emails.Email` (verified rows) is a unique index on an
   editable string, which [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md)
   forbids; the service check above is the contract and the drop is schema work (`Docs/debt.yml`).
@@ -139,3 +149,4 @@ The shapes imply one register with one cache and one write funnel:
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-06 | First doctoring | peterdrier/Humans#1603 |
+| 2 | 2026-11-06 | Target and docs match the code; the dead UsersAdminOnly policy is gone | peterdrier/Humans#2339 |

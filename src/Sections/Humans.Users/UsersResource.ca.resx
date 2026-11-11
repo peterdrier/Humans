@@ -232,9 +232,6 @@
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Necessari per a documents oficials i signatures.</value>
   </data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve">
-    <value>Selecciona</value>
-  </data>
   <data name="Users_ProfileEdit_City" xml:space="preserve">
     <value>Ciutat</value>
   </data>

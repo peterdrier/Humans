@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 109
+next_id: 110
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -160,4 +160,8 @@ themes:
       recycled. Shape, id format and `status:` values:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-11-05
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
-inbox: []
+inbox:
+  - added: 2026-11-06
+    id: CENTRAL-109
+    what: "memory/architecture/person-search.md shows a PersonSearchFields.ManageAll member that no longer exists (git grep -n ManageAll finds only that atom and an old run file). Found by the Users section-doctor run."
+    review: light

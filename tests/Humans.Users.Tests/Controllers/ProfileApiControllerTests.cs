@@ -325,8 +325,7 @@ public class ProfileApiControllerTests
     [HumansFact]
     public async Task Search_orders_results_by_relevance_score_then_name()
     {
-        // The reported bug: searching "Ian" buried the literal Ian (exact match) a third of the way
-        // down an alphabetical list of substring hits (Adrian, Brian…). The service returns matches
+        // An exact match (Ian) must outrank substring hits (Adrian, Brian…). The service returns matches
         // unordered; the controller must rank by Score desc, then name. Service order here is
         // deliberately scrambled to prove the controller does the sorting.
         var viewer = MakeUser(Guid.NewGuid());
