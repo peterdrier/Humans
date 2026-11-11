@@ -46,9 +46,7 @@ neither can be a DB constraint (`memory/architecture/no-db-check-constraints.md`
   so re-saving the active row is an ordinary edit. Zero active rows is legal —
   deactivating is how a cycle ends.
 - **`EarlyEntryStartOffset`, when set, stays inside the build window.**
-  `BuildStartOffset ≤ value < 0`; null (not yet configured) passes. The form
-  checks it too, but the service is the backstop for the seeding seam and any
-  future caller.
+  `BuildStartOffset ≤ value < 0`; null (not yet configured) passes.
 
 **Settings mints ids for new cycles** (nobodies-collective/Humans#1631) — a blank id on
 save is a brand-new row, with no existence check against anything else.

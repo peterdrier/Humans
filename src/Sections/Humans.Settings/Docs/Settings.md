@@ -146,7 +146,7 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 - **Changing the timezone moves every event.** `SaveTimeZoneAsync` refuses an unknown IANA
   id, writes `Event:TimeZoneId`, audits once (`EventSettingsUpdated`, entity `EventTimeZone`),
   and notifies listeners for every event row.
-- **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`: gate-opening day belongs to the event, and strike cannot end before the event does. The admin form, saves, and seeded activation reject inverted windows before any writes or deactivation. Equal end offsets remain valid (no strike days).
+- **Event windows stay ordered.** `0 ≤ EventEndOffset ≤ StrikeEndOffset`: gate-opening day belongs to the event, and strike cannot end before the event does. Admin saves and seeded activation reject inverted windows before any writes or deactivation. Equal end offsets remain valid (no strike days).
 - **Calendar dates must be representable.** Admin saves and seeded activation reject gate/offset combinations whose dates or following day fall outside BCL date support, before writing or deactivating another cycle. Rejections log Warning without an exception stack and return the existing admin failure flash.
 - **Admin save refusals are results.** Invalid calendar dates, early-entry offsets and competing active cycles return internal refusal results before writes, audit or listener notifications. Unexpected dependency failures propagate instead of becoming operator conflict messages. Seed activation retains its throwing validation contract.
 - **Writes to `settings_event` stay inside the section.**
@@ -154,8 +154,8 @@ Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
   the `ISettingsService` contract.
 - **`EarlyEntryStartOffset`, when set, stays inside the build window.**
   `BuildStartOffset ≤ EarlyEntryStartOffset < 0`, enforced in both
-  `Service.SaveEventSettingsAsync` and `EventSettingsViewModel` (`ServiceTests`,
-  `EventSettingsViewModelTests`); null (not yet configured) always passes.
+  `Service.SaveEventSettingsAsync` (`ServiceTests`); null (not yet configured) always
+  passes.
 - EF entities never leave the section; the cross-section surface is the
   `Contracts/` folder (`ISettingsService`, `EventSettingsInfo`,
   `SettingKeys`; namespace `Humans.Settings.Contracts`).
