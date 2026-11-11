@@ -27,6 +27,9 @@ internal sealed class WorkgroupsAuditActions : AuditActionContributor
     // Budget allocation and Holded account set, changed or cleared.
     public static readonly AuditActionDefinition WorkgroupBudgetSet = new("WorkgroupBudgetSet");
 
+    // The group's email group linked, changed or cleared.
+    public static readonly AuditActionDefinition WorkgroupGoogleGroupSet = new("WorkgroupGoogleGroupSet");
+
     // The daily job notified the Board that an application passed its fourteenth day.
     public static readonly AuditActionDefinition WorkgroupApplicationOverdue = new("WorkgroupApplicationOverdue");
 

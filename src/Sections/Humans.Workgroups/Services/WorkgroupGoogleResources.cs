@@ -5,14 +5,16 @@ using Humans.GoogleIntegration.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Workgroups.Data;
 using Humans.Workgroups.Domain;
+using Humans.Workgroups.Services.Contributors;
 
 namespace Humans.Workgroups.Services;
 
-internal sealed class WorkgroupDriveFolders(
+internal sealed class WorkgroupGoogleResources(
     IWorkgroupRepository repository,
     ISettingsService settings,
     IGoogleSyncService googleSync,
     IGoogleSyncWrite googleSyncWrite,
+    IGoogleGroupSync googleGroupSync,
     IAuditLogService auditLog,
     ILogger<WorkgroupService> logger) : IApplicationService
 {
@@ -67,19 +69,31 @@ internal sealed class WorkgroupDriveFolders(
     }
 
     /// <summary>Failures are logged, never surfaced: the daily reconciliation covers the drift.</summary>
-    internal async Task RequestDriveSyncAsync(Workgroup w, CancellationToken ct)
+    internal async Task RequestGoogleSyncAsync(Workgroup w, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(w.DriveFolderId))
-            return;
-
-        try
+        if (!string.IsNullOrWhiteSpace(w.DriveFolderId))
         {
-            await googleSyncWrite.RequestSyncAsync(w.DriveFolderId, ct);
+            try
+            {
+                await googleSyncWrite.RequestSyncAsync(w.DriveFolderId, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to request a Drive access sync for workgroup {WorkgroupId}", w.Id);
+            }
         }
-        catch (Exception ex)
+
+        // Only claimed groups: a scoped sync of an unclaimed key is recorded as an error.
+        if (w.GoogleGroupEmail is { } groupKey && WorkgroupGoogleGroupSource.IsClaimed(w.Status))
         {
-            logger.LogError(ex, "Failed to request a Drive access sync for workgroup {WorkgroupId}", w.Id);
+            try
+            {
+                await googleGroupSync.RequestSyncAsync(groupKey, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to request a Google group sync for workgroup {WorkgroupId}", w.Id);
+            }
         }
     }
-
 }

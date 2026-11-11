@@ -141,7 +141,7 @@ internal sealed partial class WorkgroupService
         await notices.EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
 
         // Dormant: the access source now returns Viewer.
-        await DriveFolders.RequestDriveSyncAsync(w, ct);
+        await GoogleResources.RequestGoogleSyncAsync(w, ct);
         await Budgets.SetAccountActiveAsync(w, isActive: false, ct);
     }
 }

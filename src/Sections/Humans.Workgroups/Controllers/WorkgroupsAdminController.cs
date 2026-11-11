@@ -149,6 +149,11 @@ internal sealed class WorkgroupsAdminController(
         return RedirectToAction("Details", "Workgroups", new { slug = id });
     }
 
+    [HttpPost("{id:guid}/GoogleGroup")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> GoogleGroup(Guid id, string? prefix, string? slug, CancellationToken ct) =>
+        ActAsync(actor => workgroups.SetGoogleGroupAsync(id, actor, prefix, ct), "Email group saved", ct, id, slug);
+
     [HttpPost("Documents/{id:guid}/Disposition")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Disposition(
