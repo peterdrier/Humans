@@ -25,43 +25,42 @@ nothing else happens on its own, so a promise nobody used stays on the books as 
 
 ## 3. Structure
 
-One service class split by lane (reads and the Expenses transitions, programs, grants, GDPR) over
-one repository and one DbContext with four tables. Delivery of notices and emails lives in one
+One service façade over small internal components (reads, the Expenses transitions, program
+administration, personal data, audit text) over one repository and one DbContext with four tables. Delivery of notices and emails lives in one
 internal helper shared by the service and the reminder pass; the reminder pass is its own small
 class so the job does not resolve the whole service. Two controllers: a localized member side and an
 English-only manager side under the section's own URL space. A policy handler gates the two
 controllers; a resource handler gates each program. The public face is the two interfaces
 Expenses calls plus the four records they carry; everything else is internal.
 
-That is what is built. One rule still sits in a controller: that a grant action names a grant of
-the route's program (`PREAPPROVALS-2`).
+That is what is built.
 
 ## 4. Invariants
 
 - The ceiling holds: the open, claimed and consumed amounts of a program never sum past its
   ceiling, checked before every write that adds money (`PreapprovalService.Grants.cs:301`) and
-  before a ceiling edit (`PreapprovalService.Programs.cs:73`).
+  before a ceiling edit (`PreapprovalProgramAdministration.cs:82`).
 - Status moves only along Applied → Open or Declined; Open → Claimed or Revoked; Claimed → Open,
   Consumed or Revoked. Each method checks the state it starts from
   (`PreapprovalService.Grants.cs:160`, `PreapprovalService.Grants.cs:193`,
-  `PreapprovalService.Grants.cs:220`, `PreapprovalService.cs:94`, `PreapprovalService.cs:171`).
+  `PreapprovalService.Grants.cs:220`, `PreapprovalClaims.cs:36`, `PreapprovalClaims.cs:120`).
 - Money is committed only on an open program before its deadline
   (`PreapprovalService.Grants.cs:277`); a member applies only while the program is open, accepting
   and before the deadline (`Dtos.cs:42`).
 - A fixed-per-person program refuses an explicit amount on issue and approve
-  (`PreapprovalService.Grants.cs:286`) and ignores one on apply (`PreapprovalService.Grants.cs:111`).
-- A grant's kind cannot change once the program has a grant (`PreapprovalService.Programs.cs:166`).
+  (`PreapprovalService.Grants.cs:286`) and ignores one on apply (`PreapprovalService.Grants.cs:108`).
+- A grant's kind cannot change once the program has a grant (`PreapprovalProgramAdministration.cs:175`).
 - One pending application per person per program, across merged ids: the second submit edits the
   first under a process-wide lock (`PreapprovalService.Grants.cs:95`,
   `PreapprovalService.Grants.cs:124`).
 - A manager of one program never acts on another's grants: a grant route whose grant is not in the
-  route's program is 404 (`PreapprovalsAdminController.cs:175`).
+  route's program is refused by the service and answered 404 (`PreapprovalService.Grants.cs:159`).
 - Only Admin and FinanceAdmin create or edit a program (`ProgramOperationRequirement.cs:37`); Board
   sees every program and changes nothing (`ProgramOperationRequirement.cs:33`).
 - The reminder pass writes only its sent-markers and never a grant
-  (`PreapprovalDeadlineReminders.cs:79`).
+  (`PreapprovalDeadlineReminders.cs:80`).
 - Erasure deletes pending applications and manager rows and keeps every decided grant
-  (`PreapprovalRepository.cs:170`).
+  (`PreapprovalRepository.cs:167`).
 
 ## 5. Seams
 

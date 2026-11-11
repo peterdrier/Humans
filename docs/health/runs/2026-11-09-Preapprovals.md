@@ -30,7 +30,7 @@ code, not from a tool.
 9. Comments: the ceiling comment claimed only grant paths check the ceiling; the notice-kind summaries listed each email's contents; two comments repeated their neighbours.
 10. Both controllers declared their own Madrid time zone beside the service's.
 11. The decline start-state guard had no test.
-12. The rule that a grant action names a grant of the route's program lives only in the controller (PREAPPROVALS-2).
+12. The rule that a grant action names a grant of the route's program lives only in the controller.
 13. The optional `afterCommit` default on the Expenses transitions serves only this section's tests (PREAPPROVALS-3).
 14. `ProgramFormViewModel.ToSave` clears a per-person amount on a per-grant program, so the service's refusal of one never fires from the page; deliberate, recorded as load-bearing weirdness.
 15. A single issue with no person chosen builds its refusal in the controller; one line, left as is.
@@ -46,11 +46,12 @@ code, not from a tool.
 - Finding 5: dead view members deleted.
 - Finding 6: GDPR export reads names from loaded rows.
 - Finding 7: access policy drops the repeated query; the cancellation test drives the manager read through the Manage requirement.
-- Finding 8: admin index asks the program handler; `authorization.md` updated; PREAPPROVALS-1 closed. Reviewer (opus high) approved with that doc correction, after checking role sets, merged ids, the unresolvable-user path and both pinning tests.
+- Finding 8: done on main by the 2026-11-09 debt sweep (peterdrier/Humans#2354), which also closed PREAPPROVALS-1; this run's version was dropped on rebase.
 - Finding 9: false and restating comments cut or corrected.
-- Finding 10: controllers reuse `PreapprovalService.MadridZone`.
+- Finding 10: controllers reuse `PreapprovalReader.MadridZone`.
 - Finding 11: `Decline_NotApplied_RefusedAndUnchanged` added.
-- Findings 12, 13: filed as PREAPPROVALS-2 and PREAPPROVALS-3.
+- Finding 12: done on main by peterdrier/Humans#2354 (the four grant actions now take the program id); its ledger row was dropped on rebase.
+- Finding 13: filed as PREAPPROVALS-3.
 - Issue comments: none; no open issue names this section.
 
 ## Skipped
@@ -130,6 +131,12 @@ The prose gate reads the legal citation Art. 17(3)(b) in the invariant doc as a 
 | `src/Sections/Humans.Preapprovals/Services/PreapprovalService.Grants.cs` | changed |
 | `src/Sections/Humans.Preapprovals/Services/PreapprovalService.Programs.cs` | reviewed |
 | `src/Sections/Humans.Preapprovals/Services/PreapprovalService.cs` | changed |
+| `src/Sections/Humans.Preapprovals/Services/PreapprovalClaims.cs` | reviewed (added on main; read on rebase) |
+| `src/Sections/Humans.Preapprovals/Services/PreapprovalInput.cs` | reviewed (added on main; read on rebase) |
+| `src/Sections/Humans.Preapprovals/Services/PreapprovalJournal.cs` | reviewed (added on main; read on rebase) |
+| `src/Sections/Humans.Preapprovals/Services/PreapprovalPersonalData.cs` | changed (rebase: export names from loaded rows) |
+| `src/Sections/Humans.Preapprovals/Services/PreapprovalProgramAdministration.cs` | reviewed (added on main; cited guards checked on rebase) |
+| `src/Sections/Humans.Preapprovals/Services/PreapprovalReader.cs` | changed (rebase: GrantInfo drops ProgramKind) |
 | `src/Sections/Humans.Preapprovals/Services/PreapprovalsEmailPreviews.cs` | changed |
 | `src/Sections/Humans.Preapprovals/Services/PreapprovalsEmails.cs` | reviewed |
 | `src/Sections/Humans.Preapprovals/Views/Preapprovals/Index.cshtml` | reviewed |
@@ -170,3 +177,6 @@ The prose gate reads the legal citation Art. 17(3)(b) in the invariant doc as a 
 | Comments | subagent (`pd:orch-opus-low`) | opus-low | finding 9 |
 | Inbox | self-run on main (no open issue to review) | session model | none. peterdrier/Humans: covered. nobodies-collective/Humans: not covered: REST read of a known issue refused, repository not enabled for this session |
 
+## Rebase (2026-11-11)
+
+The 2026-11-09 debt sweep split `PreapprovalService` into internal components and did findings 8 and 12. Peter chose to port the rest onto main: the GDPR, DTO and comment changes now sit in the new components, the invariant doc names them, and the target's citations point at the moved lines.
