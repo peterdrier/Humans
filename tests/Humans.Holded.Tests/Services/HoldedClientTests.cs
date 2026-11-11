@@ -291,6 +291,18 @@ public class HoldedClientTests
     }
 
     [HumansFact]
+    public async Task PermanentFailure_KeepsNonAsciiDiagnosticTextReadable()
+    {
+        var body = System.Text.Json.JsonSerializer.Serialize(new { status = 0, info = "Proveedor inválido" });
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.BadRequest, body)));
+
+        var act = async () => await client.GetPurchaseDocumentAsync("doc-1", Xunit.TestContext.Current.CancellationToken);
+
+        var ex = await act.Should().ThrowAsync<HoldedPermanentException>();
+        ex.Which.Message.Should().Contain("Proveedor inválido");
+    }
+
+    [HumansFact]
     public async Task GetPurchaseDocumentAsync_500Throws_HoldedTransient()
     {
         var handler = new StubHandler(_ => Respond(HttpStatusCode.ServiceUnavailable, ""));

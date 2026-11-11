@@ -101,7 +101,8 @@ internal sealed record EventInfo(
         LastUpdatedAt: e.LastUpdatedAt,
         ModerationHistory: e.EventModerationActions
             .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
-            .ToList()) { EventSettingsId = e.EventSettingsId };
+            .ToList())
+    { EventSettingsId = e.EventSettingsId };
 
     public bool CanEdit => Event.IsEditableBySubmitter(Status, CampId is not null);
 

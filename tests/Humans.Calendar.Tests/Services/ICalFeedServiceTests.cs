@@ -244,7 +244,8 @@ public class ICalFeedServiceTests
         StubUser(userId, token);
         var rule = $"FREQ=DAILY;UNTIL={cutoff}";
         var item = MakeItem("finite@humans.nobodies.team", "Workgroups", Instant.FromUtc(2026, 3, 1, 17, 0))
-            with { RecurrenceRule = rule, RecurrenceTimezone = "Europe/Madrid" };
+            with
+        { RecurrenceRule = rule, RecurrenceTimezone = "Europe/Madrid" };
 
         var ics = await CreateService(new FakeContributor(item)).GetFeedIcsAsync(userId, token, TestContext.Current.CancellationToken);
 

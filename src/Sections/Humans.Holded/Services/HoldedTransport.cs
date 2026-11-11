@@ -164,7 +164,9 @@ internal sealed class HoldedTransport
         {
             using var document = JsonDocument.Parse(body);
             using var output = new MemoryStream();
-            using (var writer = new Utf8JsonWriter(output))
+            // Relaxed escaping keeps Spanish vendor text readable; the message is HTML-encoded wherever it renders.
+            using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions
+            { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
                 WriteMasked(document.RootElement, writer);
             return System.Text.Encoding.UTF8.GetString(output.ToArray());
         }

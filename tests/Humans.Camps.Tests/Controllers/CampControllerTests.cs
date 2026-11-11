@@ -61,7 +61,8 @@ public class CampControllerTests
         var active = camp.Seasons[0];
         var other = active with { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Name = "Other event", LeadUserIds = [Guid.NewGuid()] };
         var future = MakeCamp("alpha", "Future camp", CampSeasonStatus.Active, Guid.NewGuid(), year: 2027).Seasons[0]
-            with { CampId = camp.Id };
+            with
+        { CampId = camp.Id };
         camp = camp with { Seasons = [future, other, active] };
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
@@ -1250,9 +1251,11 @@ public class CampControllerTests
             .Returns(MakeEditData(other, otherSeason) with { Images = [new CampImageSummary(Guid.NewGuid(), "/other.jpg", 0)] });
         var model = new CampEditViewModel
         {
-            CampId = other.Id, EventSettingsId = otherSeason.EventSettingsId,
+            CampId = other.Id,
+            EventSettingsId = otherSeason.EventSettingsId,
             SeasonId = foreignSeason ? otherSeason.Id : season.Id,
-            Name = "Submitted edit", ContactEmail = camp.ContactEmail
+            Name = "Submitted edit",
+            ContactEmail = camp.ContactEmail
         };
         var controller = BuildController(actorId);
         if (!saveRefused) controller.ModelState.AddModelError(nameof(model.Name), "Invalid name");
@@ -1298,7 +1301,10 @@ public class CampControllerTests
         var camp = MakeCamp("garden", "Default event", CampSeasonStatus.Active, actorId);
         var selected = camp.Seasons.Single() with
         {
-            Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Name = "Selected event", Members = [member]
+            Id = Guid.NewGuid(),
+            EventSettingsId = Guid.NewGuid(),
+            Name = "Selected event",
+            Members = [member]
         };
         camp = camp with { Seasons = [camp.Seasons.Single(), selected] };
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
@@ -1328,7 +1334,9 @@ public class CampControllerTests
         {
             nameof(CampController.Edit) => await controller.Edit(camp.Slug, new CampEditViewModel
             {
-                SeasonId = selected.Id, EventSettingsId = Guid.NewGuid(), Name = selected.Name,
+                SeasonId = selected.Id,
+                EventSettingsId = Guid.NewGuid(),
+                Name = selected.Name,
                 ContactEmail = camp.ContactEmail
             }),
             nameof(CampController.Withdraw) => await controller.Withdraw(camp.Slug, selected.Id),
@@ -1369,8 +1377,11 @@ public class CampControllerTests
         var selected = camp.Seasons.Single();
         var other = selected with
         {
-            Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Status = CampSeasonStatus.Active,
-            Name = "Other event", Members = []
+            Id = Guid.NewGuid(),
+            EventSettingsId = Guid.NewGuid(),
+            Status = CampSeasonStatus.Active,
+            Name = "Other event",
+            Members = []
         };
         camp = camp with { Seasons = [other, selected] };
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);

@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 4
-inbox:
-  - added: 2026-11-10
-    id: GUIDE-3
-    what: "docs/guide/Profiles.md names Users Admin in its Board/Admin heading but has no parenthetical privilege token, so GuideFilter hides that profile-administration guidance from UsersAdmin. The heading and rendered audience disagree."
-    review: panel
+inbox: []
