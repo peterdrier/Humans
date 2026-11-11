@@ -145,7 +145,9 @@ public class ServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => call.Arg<IReadOnlyCollection<Guid>>().Select(id => new Order
             {
-                Id = Guid.NewGuid(), CampSeasonId = id, Year = 2026
+                Id = Guid.NewGuid(),
+                CampSeasonId = id,
+                Year = 2026
             }).ToList());
 
         var data = audience == IndexAudience.Privileged
@@ -1834,8 +1836,12 @@ public class ServiceTests
         var ct = TestContext.Current.CancellationToken;
         var order = new Order
         {
-            Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), Year = 2026,
-            CheckoutAttemptId = Guid.NewGuid(), CheckoutSessionId = "cs_pending", CheckoutAmountEur = 20m
+            Id = Guid.NewGuid(),
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            CheckoutAttemptId = Guid.NewGuid(),
+            CheckoutSessionId = "cs_pending",
+            CheckoutAmountEur = 20m
         };
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
@@ -1867,8 +1873,12 @@ public class ServiceTests
         var order = new Order { Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), Year = 2026 };
         order.Lines.Add(new OrderLine
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, ProductId = product.Id, Qty = 1,
-            UnitPriceSnapshot = 20m, VatRateSnapshot = 0m
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            ProductId = product.Id,
+            Qty = 1,
+            UnitPriceSnapshot = 20m,
+            VatRateSnapshot = 0m
         });
         var deleted = false;
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => deleted ? null : order);

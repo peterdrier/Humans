@@ -81,8 +81,12 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var service = CreateService(new StaticSource("folder-1", access));
         var resource = new GoogleResource
         {
-            Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), GoogleId = "folder-1", Name = "Team folder",
-            ResourceType = GoogleResourceType.DriveFolder, DrivePermissionLevel = DrivePermissionLevel.Contributor
+            Id = Guid.NewGuid(),
+            TeamId = Guid.NewGuid(),
+            GoogleId = "folder-1",
+            Name = "Team folder",
+            ResourceType = GoogleResourceType.DriveFolder,
+            DrivePermissionLevel = DrivePermissionLevel.Contributor
         };
         _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>()).Returns([resource]);
         if (!string.Equals(mutation, "delete", StringComparison.Ordinal)) StubUsers((userId, "Alice", "alice@nobodies.team"));

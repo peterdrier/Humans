@@ -484,7 +484,8 @@ public class SurveyServiceTests
         var retained = new InformationImageInput(image.Id, image.Label, image.AltText);
         var first = Q("Context", SurveyQuestionType.Information, 1, 0) with
         {
-            Id = questionId, InformationImages = acrossQuestions ? [retained] : [retained, retained],
+            Id = questionId,
+            InformationImages = acrossQuestions ? [retained] : [retained, retained],
         };
         var input = acrossQuestions
             ? Input(first, Q("More context", SurveyQuestionType.Information, 1, 1) with { InformationImages = [retained] })

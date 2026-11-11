@@ -379,7 +379,8 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         new(Guid.NewGuid(), campId, slug, PublicYear, null,
             name, string.Empty, string.Empty, [], CampSeasonStatus.Active,
             YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
-            0, null, null, null, 0, null, null) { EventSettingsId = _event.Id };
+            0, null, null, null, 0, null, null)
+        { EventSettingsId = _event.Id };
 
     private CampInfo MakeCamp(Guid campId, string slug, string name, params Guid[] memberIds) =>
         new(campId, slug, "e@example.com", "+34 600 000 000", false, 0,

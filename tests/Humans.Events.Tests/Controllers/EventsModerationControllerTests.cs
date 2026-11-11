@@ -495,13 +495,17 @@ public sealed class EventsModerationControllerTests
         var current = BurnFixtures.Burn(year: 2026, eventEndOffset: 2);
         var original = BurnFixtures.Burn(year: 2025, eventEndOffset: 6) with
         {
-            GateOpeningDate = new LocalDate(2025, 8, 1), TimeZoneId = "America/New_York"
+            GateOpeningDate = new LocalDate(2025, 8, 1),
+            TimeZoneId = "America/New_York"
         };
         var start = original.GateOpeningDate.At(new LocalTime(10, 30))
             .InZoneLeniently(DateTimeZoneProviders.Tzdb[original.TimeZoneId]).ToInstant();
         var entry = MakeEvent(campEvent ? Guid.NewGuid() : null, EventStatus.Pending) with
         {
-            EventSettingsId = original.Id, StartAt = start, IsRecurring = true, RecurrenceDays = "0,6"
+            EventSettingsId = original.Id,
+            StartAt = start,
+            IsRecurring = true,
+            RecurrenceDays = "0,6"
         };
         _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
@@ -531,10 +535,15 @@ public sealed class EventsModerationControllerTests
         {
             var model = new AdminEventFormViewModel
             {
-                Title = "Edited", Description = "Description", CategoryId = entry.CategoryId,
-                VenueId = entry.GuideSharedVenueId, StartDate = new DateOnly(2025, 8, 1),
-                StartTime = new TimeOnly(10, 30), DurationMinutes = 60,
-                IsRecurring = true, RecurrenceDays = "0,6"
+                Title = "Edited",
+                Description = "Description",
+                CategoryId = entry.CategoryId,
+                VenueId = entry.GuideSharedVenueId,
+                StartDate = new DateOnly(2025, 8, 1),
+                StartTime = new TimeOnly(10, 30),
+                DurationMinutes = 60,
+                IsRecurring = true,
+                RecurrenceDays = "0,6"
             };
             (await controller.Update(entry.Id, model)).Should().BeOfType<RedirectToActionResult>();
             await _guide.Received(1).AdminUpdateAsync(entry.Id,

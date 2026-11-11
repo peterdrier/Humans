@@ -983,7 +983,8 @@ public class EventsControllerTests
             Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         {
-            LeadUserIds = [userId], EventSettingsId = settings.EventSettingsId
+            LeadUserIds = [userId],
+            EventSettingsId = settings.EventSettingsId
         };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
         _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns([camp]);
@@ -1217,7 +1218,9 @@ public class EventsControllerTests
         StubEditableGuideSettings();
         var original = MakeBurnSettings() with
         {
-            Year = 2025, GateOpeningDate = new LocalDate(2025, 8, 1), EventEndOffset = 6,
+            Year = 2025,
+            GateOpeningDate = new LocalDate(2025, 8, 1),
+            EventEndOffset = 6,
             TimeZoneId = "America/New_York"
         };
         var localStart = original.GateOpeningDate.At(new LocalTime(10, 30));
@@ -1225,7 +1228,10 @@ public class EventsControllerTests
         var campId = campEvent ? Guid.NewGuid() : (Guid?)null;
         var entry = MakeEvent(campId, userId, EventStatus.ResubmitRequested) with
         {
-            EventSettingsId = original.Id, StartAt = start, IsRecurring = true, RecurrenceDays = "0,6"
+            EventSettingsId = original.Id,
+            StartAt = start,
+            IsRecurring = true,
+            RecurrenceDays = "0,6"
         };
         _guide.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
         _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);

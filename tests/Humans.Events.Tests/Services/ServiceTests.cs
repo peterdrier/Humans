@@ -1275,10 +1275,18 @@ public sealed class EventServiceTests
         _repo.Venues.Add(venue);
         var entry = new Event
         {
-            Id = Guid.NewGuid(), EventSettingsId = original.Id, CategoryId = category.Id,
-            GuideSharedVenueId = venue.Id, SubmitterUserId = Guid.NewGuid(), Status = EventStatus.Pending,
-            Title = "Original", Description = "Description", DurationMinutes = 60,
-            StartAt = Instant.FromUtc(2025, 8, 1, 14, 30), IsRecurring = true, RecurrenceDays = "0,6"
+            Id = Guid.NewGuid(),
+            EventSettingsId = original.Id,
+            CategoryId = category.Id,
+            GuideSharedVenueId = venue.Id,
+            SubmitterUserId = Guid.NewGuid(),
+            Status = EventStatus.Pending,
+            Title = "Original",
+            Description = "Description",
+            DurationMinutes = 60,
+            StartAt = Instant.FromUtc(2025, 8, 1, 14, 30),
+            IsRecurring = true,
+            RecurrenceDays = "0,6"
         };
         _repo.Events.Add(entry);
         var edit = EditOf(entry) with { Title = "Edited" };

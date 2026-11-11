@@ -20,8 +20,12 @@ public class AttendeeContactImportServiceSquatterTests
         var attendees = new[] { "victim@gmail.com", "victim@googlemail.com" }
             .Select((email, i) => new TicketAttendee
             {
-                Id = Guid.NewGuid(), VendorTicketId = $"tkt_{i}", VendorEventId = "evt_active",
-                AttendeeEmail = email, AttendeeName = "Victim", Status = TicketAttendeeStatus.Valid,
+                Id = Guid.NewGuid(),
+                VendorTicketId = $"tkt_{i}",
+                VendorEventId = "evt_active",
+                AttendeeEmail = email,
+                AttendeeName = "Victim",
+                Status = TicketAttendeeStatus.Valid,
             }).ToList();
         foreach (var attendee in attendees) harness.AddUnmatched(attendee);
         harness.UserEmails.FindByAddressAsync(Arg.Any<string>(), true, true, Arg.Any<CancellationToken>()).Returns([]);

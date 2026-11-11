@@ -92,7 +92,8 @@ public class OrderAuthorizationHandlerTests
         var campId = Guid.NewGuid();
         var order = MakeOrder(team: false);
         var target = MakeCampInfo(campId, order.CampSeasonId!.Value, leadsTargetSeason ? userId : Guid.NewGuid())
-            .Seasons[0] with { EventSettingsId = Guid.NewGuid() };
+            .Seasons[0] with
+        { EventSettingsId = Guid.NewGuid() };
         var other = MakeCampInfo(campId, Guid.NewGuid(), userId).Seasons[0] with { EventSettingsId = Guid.NewGuid() };
         var camp = MakeCampInfo(campId, target.Id, userId) with { Seasons = [target, other] };
         _campService.GetCampSeasonByIdAsync(target.Id, Arg.Any<CancellationToken>()).Returns(target);
