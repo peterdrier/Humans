@@ -191,12 +191,14 @@ too wide to keep in step by hand. Derive it from the call sites.
 
 ## Architecture
 
-**Owning services:** `Service` (registered as `ISettingsService`,
-`ISettingsWriteService` and `IEventSettingsSeeding` against one instance)
+**Owning services:** `Service`, behind `CachingSettingsService` (the Singleton
+registered as `ISettingsService`, `ISettingsWriteService` and `IEventSettingsSeeding`)
 **Owned tables:** `system_settings`, `settings_event`
-**Status:** (A) — own project, own context, repository-only data access; no
-caching decorator (small rows; consumers cache what they derive and flush through
-`IEventSettingsChangeListener`).
+**Status:** (A) — own project, own context, repository-only data access.
+`CachingSettingsService` holds every event row and the timezone in memory, so the
+event reads never reach the database; `Service` clears it on every event or timezone
+write, before it tells the `IEventSettingsChangeListener`s. Plain key reads
+(`GetValueAsync`) are not cached.
 **Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
 tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` — the
 `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav`

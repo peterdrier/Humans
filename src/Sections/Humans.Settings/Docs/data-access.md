@@ -13,10 +13,12 @@ tables from their own repository.
 Every table this section owns is named `settings_*` — except `system_settings`,
 which predates the convention and keeps its name.
 
-### Service (Scoped)
+### Service (Scoped), behind CachingSettingsService (Singleton)
 
 Repository: `ISettingsRepository` (Singleton over
-`IDbContextFactory<SettingsDbContext>`). One instance, three ways in: as
+`IDbContextFactory<SettingsDbContext>`). `CachingSettingsService` serves the event
+and timezone reads from one in-memory snapshot and passes everything else to
+`Service`. One instance, three ways in: as
 `ISettingsService` for everyone outside the section, as the section-internal
 `ISettingsWriteService` for the section's own controller and view component, and
 as `IEventSettingsSeeding` for `Humans.Development`'s dashboard seeder.
