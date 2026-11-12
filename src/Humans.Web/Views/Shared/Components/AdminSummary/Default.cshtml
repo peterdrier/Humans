@@ -1,12 +1,7 @@
 @using Humans.Base.Models
 @model Humans.Web.ViewComponents.AdminSummaryViewModel
 
-<div class="page-head">
-    <div>
-        <h1 class="title">Welcome back, @Model.GreetingFirstName.</h1>
-        <p class="sub">@string.Join(" · ", Model.Strapline)</p>
-    </div>
-</div>
+<page-header title="Welcome back, @Model.GreetingFirstName." subtitle="@string.Join(" · ", Model.Strapline)" variant="compact" />
 
 <div class="stats">
     @foreach (var tile in Model.Tiles)
