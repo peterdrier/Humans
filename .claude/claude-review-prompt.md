@@ -82,7 +82,7 @@ checkout):
 
 Do NOT read docs/sections/, src/Sections/*/Docs/ or docs/features/ as part of
 this review. Section invariants and feature specs are reviewed separately by
-/section-align on demand; including them here burns budget and produces
+/section-doctor; including them here burns budget and produces
 cross-document nits this workflow should not gate on.
 
 Cover correctness, security, and the project's design/coding rules. Do not
