@@ -9,12 +9,12 @@
     var codesRedeemed = Model.Stats.CodesRedeemed;
     var totalGrants = Model.Stats.TotalGrants;
     var redemptionPct = totalGrants > 0 ? (int)Math.Round(100.0 * codesRedeemed / totalGrants) : 0;
-    var statusClass = EnumBadgeMap.For(Model.Campaign.Status);
     var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
     var canGenerateCodes = (await AuthService.AuthorizeAsync(User, Humans.Tickets.Contracts.TicketsPolicies.Manage)).Succeeded;
 }
 
-<page-header title="@Model.Campaign.Title" badge="@Model.Campaign.Status.ToString()" badge-class="@(statusClass + " fs-6")">
+<page-header title="@Model.Campaign.Title">
+    <page-header-badge><status-badge value="@Model.Campaign.Status" class="fs-6" /></page-header-badge>
     @if (!string.IsNullOrWhiteSpace(Model.Campaign.Description))
     {
         <page-header-subtitle>@Html.SanitizedMarkdown(Model.Campaign.Description)</page-header-subtitle>
