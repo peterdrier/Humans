@@ -5,6 +5,7 @@ using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Preapprovals.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -22,8 +23,9 @@ internal sealed class ExpensePageBuilder(
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     internal LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
 
-    public async Task<ExpensesIndexViewModel> BuildIndexAsync(Guid userId, CancellationToken ct = default)
+    public async Task<ExpensesIndexViewModel> BuildIndexAsync(UserInfo viewer, CancellationToken ct = default)
     {
+        var userId = viewer.Id;
         // Newest first across every merged account id, not per id.
         var reports = (await service.GetForSubmitterAsync(userId, ct))
             .OrderByDescending(r => r.CreatedAt).ToList();
@@ -33,7 +35,7 @@ internal sealed class ExpensePageBuilder(
 
         var coordinatorQueue = await service.GetCoordinatorQueueAsync(userId, ct);
         var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
-        var openGrants = (await preapprovals.ListClaimableForUserAsync(userId, ct))
+        var openGrants = (await preapprovals.ListClaimableAsync(viewer.AllUserIds, ct))
             .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 
         // Own account only. GetCreditorLedgerAsync returns null both for "not bound" and "bound, nothing cached
@@ -140,9 +142,10 @@ internal sealed class ExpensePageBuilder(
     private async Task<IReadOnlyDictionary<Guid, GrantOption>> ResolveGrantsAsync(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
     {
+        var all = (await preapprovals.GetGrantsAsync(ct)).ToDictionary(g => g.Id);
         var grants = new Dictionary<Guid, GrantOption>();
         foreach (var report in reports)
-            if (report.PreapprovalGrantId is { } grantId && await preapprovals.GetGrantAsync(grantId, ct) is { } grant)
+            if (report.PreapprovalGrantId is { } grantId && all.TryGetValue(grantId, out var grant))
                 grants[report.Id] = grant;
         return grants;
     }
