@@ -3,7 +3,7 @@
 - Invocation: unattended (scheduled routine section-doctor-daily)
 - Anchor commit: `0b86513ca` (origin/main at branch point); branch `section-doctor/2026-11-12T003843Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#2378
 
 ## Assessment summary
 
