@@ -29,6 +29,7 @@
       their leaves. Only Contracts-folder surface and the components the framework needs public
       are reachable through them (HUM0034).
     -->
+    <ProjectReference Include="..\Humans.Users\Humans.Users.csproj" />
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
