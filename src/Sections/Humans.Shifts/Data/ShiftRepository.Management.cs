@@ -155,6 +155,19 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
         return await query.FirstOrDefaultAsync(r => r.Id == rotaId, ct);
     }
 
+    public async Task<IReadOnlyList<Rota>> GetRotaRowsAsync(
+        IReadOnlyCollection<Guid>? rotaIds, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.Rotas.AsNoTracking()
+            .Include(r => r.Tags)
+            .Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups)
+            .AsQueryable();
+        if (rotaIds is not null)
+            query = query.Where(r => rotaIds.Contains(r.Id));
+        return await query.ToListAsync(ct);
+    }
+
     public async Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
