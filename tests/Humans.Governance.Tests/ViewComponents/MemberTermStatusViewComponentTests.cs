@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
 using Humans.Governance.ViewComponents;
@@ -25,7 +26,7 @@ public sealed class MemberTermStatusViewComponentTests
             [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
 
         var component = new MemberTermStatusViewComponent(
-            Substitute.For<IMembershipCalculator>(), governance, SystemClock.Instance)
+            Substitute.For<ITeamService>(), governance, SystemClock.Instance)
         {
             ViewComponentContext = new ViewComponentContext
             {

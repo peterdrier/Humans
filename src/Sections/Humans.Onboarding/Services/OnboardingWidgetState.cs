@@ -1,5 +1,4 @@
 using Humans.Consent.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
@@ -10,7 +9,6 @@ namespace Humans.Onboarding.Services;
 internal sealed class OnboardingWidgetState(
     IUserService users,
     IShiftView shiftView,
-    IMembershipCalculator membership,
     ISettingsService settingsService,
     IConsentService consents,
     IOnboardingWidgetSessionState session) : IOnboardingWidgetState
@@ -23,7 +21,7 @@ internal sealed class OnboardingWidgetState(
             return OnboardingWidgetStep.Names;
         userId = info.Id;
 
-        if (await membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
+        if (await consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
             return OnboardingWidgetStep.Complete;
 
         // Returning member with any prior signature → skip Shifts, go to Consents (renew/new docs).

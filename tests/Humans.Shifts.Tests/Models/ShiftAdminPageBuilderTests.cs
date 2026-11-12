@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Cantina.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
@@ -26,7 +27,7 @@ public sealed class ShiftAdminPageBuilderTests
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
-    private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
+    private readonly IConsentService _membership = Substitute.For<IConsentService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();

@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -58,7 +59,7 @@ public class ProfileControllerEditTests
         Substitute.For<IGovernanceService>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
@@ -96,7 +97,7 @@ public class ProfileControllerEditTests
             localizer,
             sharedLocalizer,
             _governanceService,
-            _membershipCalculator,
+            _consentService,
             new MedicalConditionsService(_userRepository, _userService, Substitute.For<IAuditLogService>()));
 
         var identity = new ClaimsIdentity([

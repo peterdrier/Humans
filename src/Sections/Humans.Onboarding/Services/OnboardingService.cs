@@ -3,7 +3,6 @@ using System.Resources;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
@@ -23,7 +22,6 @@ internal sealed class OnboardingService(
     OnboardingEmails emailMessages,
     INotificationEmitter notificationService,
     ISystemTeamSync syncJob,
-    IMembershipCalculator membershipCalculator,
     IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IAuditLogService auditLogService,
@@ -147,7 +145,7 @@ internal sealed class OnboardingService(
             return;
         var userId = info.Id;
 
-        var hasAllConsents = await membershipCalculator.HasAllRequiredConsentsForTeamAsync(
+        var hasAllConsents = await consentService.HasAllRequiredConsentsForTeamAsync(
             userId, SystemTeamIds.Volunteers, ct);
         if (!hasAllConsents)
             return;

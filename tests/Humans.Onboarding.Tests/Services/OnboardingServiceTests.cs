@@ -26,7 +26,6 @@ public sealed class OnboardingServiceTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -60,7 +59,6 @@ public sealed class OnboardingServiceTests
             _emailMessages,
             _notificationService,
             _syncJob,
-            _membershipCalculator,
             _consentService,
             _humanLifecycle,
             _auditLogService,
@@ -319,7 +317,7 @@ public sealed class OnboardingServiceTests
 
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, profile)));
-        _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
+        _consentService.HasAllRequiredConsentsForTeamAsync(
                 userId,
                 SystemTeamIds.Volunteers,
                 Arg.Any<CancellationToken>())
@@ -362,7 +360,7 @@ public sealed class OnboardingServiceTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(
                 burnerName: "Burner", firstName: "First", lastName: "Last", createdAt: Instant.FromUnixTimeSeconds(1)))));
-        _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consentService.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
         _consentWrite.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));

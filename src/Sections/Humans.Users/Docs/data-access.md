@@ -177,7 +177,7 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 (`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members who
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
-`IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
+`IConsentService` (who is past the consent deadline), `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService` and `IHumansMetrics`. Google access ends at the next Google reconciliation,
 which excludes suspended humans. No direct DB access or `IMemoryCache`.
 Per-member suspension metrics stay here; run success/failure metrics belong to the scheduled job.

@@ -118,7 +118,6 @@ internal sealed class ProfileViewModel
 
     public bool RemoveProfilePicture { get; set; }
 
-    public MembershipStatus MembershipStatus { get; set; }
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
 

@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using System.Diagnostics.Metrics;
 using System.Reflection;
 using Humans.Governance.Services;
@@ -452,11 +453,11 @@ public sealed class ApplicationRepositoryTests : IDisposable
                 call.Arg<MembershipTier>(), call.Arg<LocalDate>(), call.Arg<CancellationToken>()));
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<UserInfo>)[]);
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetUsersWithAllRequiredConsentsAsync(
-                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns([]);
         var services = new ServiceCollection();
         services.AddSingleton(applications);
