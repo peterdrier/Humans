@@ -427,8 +427,8 @@ public class TicketTailorServiceWriteTests
     [HumansTheory]
     [InlineData(DiscountType.Percentage, 25, "percentage", "price_percent", "25", false)]
     [InlineData(DiscountType.Percentage, 25, "percentage", "price_percent", "25", true)]
-    [InlineData(DiscountType.Fixed, 25.25, "fixed_amount", "price", "2525", false)]
-    [InlineData(DiscountType.Fixed, 25.25, "fixed_amount", "price", "2525", true)]
+    [InlineData(DiscountType.Fixed, "25.25", "fixed_amount", "price", "2525", false)]
+    [InlineData(DiscountType.Fixed, "25.25", "fixed_amount", "price", "2525", true)]
     public async Task GenerateDiscountCodesAsync_PostsDiscountFormsWithOptionalExpiry(
         DiscountType type, decimal value, string expectedType, string amountField, string expectedValue, bool withExpiry)
     {

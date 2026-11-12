@@ -6,10 +6,10 @@ description: Every hook `command` in `.claude/settings.json` must locate its scr
 Hook `command` entries in `.claude/settings.json` must locate their script absolutely:
 
 ```json
-"command": "bash \"$CLAUDE_PROJECT_DIR/.claude/check-ef-output-dir.sh\""
+"command": "bash \"$CLAUDE_PROJECT_DIR/.claude/razor-lint-hook.sh\""
 ```
 
-Not `bash .claude/check-ef-output-dir.sh`.
+Not `bash .claude/razor-lint-hook.sh`.
 
 A hook script that shells out to a sibling script resolves it from its own location:
 

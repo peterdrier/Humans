@@ -105,7 +105,6 @@
   <data name="Users_ProfileEdit_BurnerNameCollisionOne" xml:space="preserve"><value>There is 1 other human with the name '{1}' — please make sure we can tell which one is you!</value></data>
   <data name="Users_ProfileEdit_BurnerNameCollisionMany" xml:space="preserve"><value>There are {0} other humans with the name '{1}' — please make sure we can tell which one is you!</value></data>
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve"><value>Required for official documents and signing.</value></data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve"><value>Select</value></data>
   <data name="Users_ProfileEdit_City" xml:space="preserve"><value>City</value></data>
   <data name="Users_ProfileEdit_CityHelp" xml:space="preserve"><value>Search for your city to set your location.</value></data>
   <data name="Users_ProfileEdit_CurrentLocation" xml:space="preserve"><value>Current location:</value></data>
@@ -424,6 +423,9 @@
   </data>
   <data name="Users_Profile_Settings" xml:space="preserve">
     <value>Settings</value>
+  </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Show all ({0})</value>
   </data>
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Preview of a new layout. The current page:</value>

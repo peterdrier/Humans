@@ -23,6 +23,7 @@ internal sealed class WorkgroupConfiguration : IEntityTypeConfiguration<Workgrou
         b.Property(w => w.BudgetAmount).HasPrecision(18, 2);
         b.Property(w => w.HoldedAccountId).HasMaxLength(64);
         b.Property(w => w.DiscordChannelUrl).HasMaxLength(500);
+        b.Property(w => w.GoogleGroupPrefix).HasMaxLength(64);
         b.Property(w => w.Reasons).HasMaxLength(4000);
         b.Property(w => w.AppliedAt).IsRequired();
         b.Property(w => w.CreatedAt).IsRequired();

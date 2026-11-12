@@ -82,7 +82,7 @@ checkout):
 
 Do NOT read docs/sections/, src/Sections/*/Docs/ or docs/features/ as part of
 this review. Section invariants and feature specs are reviewed separately by
-/section-align on demand; including them here burns budget and produces
+/section-doctor; including them here burns budget and produces
 cross-document nits this workflow should not gate on.
 
 Cover correctness, security, and the project's design/coding rules. Do not
@@ -121,7 +121,7 @@ the PR introduces it; cite the atom or doc named.
   stated elsewhere, or is wrong (`comments-earn-their-place`).
 - **Copying debt.** New code modelled on something carrying
   `[Grandfathered]`, `[Obsolete]` or a baseline entry — debt is never
-  precedent. A new `[DontFix]` from anyone but Peter (`dontfix-attribute`).
+  precedent. A new `[DontFix]` from anyone but Peter (`no-analyzer-suppressions`).
 
 ## Locked decisions
 

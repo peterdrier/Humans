@@ -1,8 +1,9 @@
+using Humans.Holded.Contracts;
 using NodaTime;
 
-namespace Humans.Holded.Contracts;
+namespace Humans.Holded.Services;
 
-public interface IHoldedClient
+internal interface IHoldedClient
 {
     /// <summary>
     /// False without <c>HOLDED_API_KEY_V2</c> (PR previews, local dev). Every call would 401, so callers skip the

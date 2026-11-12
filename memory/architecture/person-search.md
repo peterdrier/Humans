@@ -1,57 +1,49 @@
 ---
-name: Person search uses one bit-flag service method and two canonical UI patterns
+name: person-search
 description: HARD RULE. Person search routes only through `IUserService.SearchUsersAsync`, rendered via `<vc:human-search>`/`<vc:user-search-result>`. Emergency contacts aren't searchable.
 ---
 
-Person search shows up across the app — Camp role assignment, team-admin member picker, public profile search page, admin humans list, ticket-transfer recipient lookup, etc. Today they all consolidate behind a single service method and two UI components. Don't fork.
+Every person search goes through one service method and one of two UI components. Don't fork either.
 
-**Service API — single method, bit-flag input:**
+**Service:** `IUserService.SearchUsersAsync(query, PersonSearchFields fields, limit = 10, ct)` returning
+`HumanSearchResult`s. `PersonSearchFields` (`src/Humans.Base/Users/PersonSearchFields.cs`) is a flags
+enum:
 
-```csharp
-[Flags] public enum PersonSearchFields
-{
-    None = 0,
-    Name = 1,        // User.BurnerName, the resolved display name (public)
-    Bio  = 2,        // bio, city, interests, CV, pronouns + AllActiveProfiles ContactFields (public)
-    Admin = 4,       // verified emails + non-public ContactFields (BoardOnly / CoordinatorsAndBoard / MyTeams)
-    LegalName = 8,   // legal FirstName/LastName — admin/coordinator only; deanonymizes burners
-    ExactName = 16,  // User.BurnerName, folded full-string equality only (public) — burner-name collision counts
-    PublicAll = Name | Bio,
-    ManageAll = Name | Bio | LegalName,            // admin/coordinator pickers (real-name find, no private contact data)
-    AdminAll  = Name | Bio | LegalName | Admin,    // admin/board only
-}
-
-Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
-    string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default);
-```
-
-**Implicit scope:** the service always filters to "not rejected, not deleted". Suspended and unapproved profiles remain searchable in public scopes, per [`profile-visibility-acceptable`](../product/profile-visibility-acceptable.md).
-
-**Hard invariants:**
-
-- **Emergency-contact data is never searchable.** Regardless of bit-flag combination. `Profile.EmergencyContactName` / `EmergencyContactPhone` are skipped by every branch of `PersonSearchMatcher`.
-- **Auth boundary is the controller, not the service.** Services are auth-free per design-rules.md, *Authorization*. A non-admin endpoint passing `Admin` is a programmer error caught in code review, not a runtime check. The bit-flag is auditable at a glance — every call site reads `PersonSearchFields.X` literally.
-- **Service returns matches in unspecified order.** Display ordering happens at the controller / view per [`display-sort-in-controllers.md`](display-sort-in-controllers.md). Don't push a `sortBy` parameter into the service.
-- **Limit is a safety cap, not a presentation choice.** It protects against fan-out under broad queries. Controllers may further `.Take(N)` after their own `OrderBy`.
-
-**Two canonical UI patterns:**
-
-| Pattern | Component | When |
+| Flag | Matches | Who |
 |---|---|---|
-| Inline picker / autocomplete | `<vc:human-search>` (`HumanSearchViewComponent`) | Pick a single person inside a form. Sets a hidden `userId` field on selection. Backed by `/api/profiles/search`. Typed params: `field-name`, `instance-key`, `placeholder`, `scope`, `exclude-user-ids`, `selected-user-id` (optional prefill), `allow-email`. |
-| Page-style search results | `<vc:user-search-result>` (`UserSearchResultViewComponent`) | Browse / find-then-act. Owned by `Humans.Users`, keyed by user id — the caller holds ids, wraps the rows in a `.list-group` and owns its own empty state. Typed params: `user-id`, `match-field`, `match-snippet`, `matched-email`. Used by `/Search`'s Humans bucket (`PublicAll`). `/Users/Admin` is a paged admin directory, not a search result, and renders its own rows (nobodies-collective/Humans#1062). |
+| `Name` | `User.BurnerName`, the display name | public |
+| `Bio` | bio, city, interests, CV, pronouns, all-profiles contact fields | public |
+| `ExactName` | `BurnerName`, folded full-string equality (collision counts) | public |
+| `LegalName` | legal first/last name; deanonymizes burners | admin/coordinator |
+| `Admin` | verified emails and non-public contact fields | admin/board |
 
-Don't roll a third. If you need a new search surface, route it through one of these.
+Composites: `PublicAll = Name | Bio`, `ManageAll = PublicAll | LegalName` (pickers that find by real
+name without private contact data), `AdminAll = ManageAll | Admin`.
 
-**`allow-email` (exact-email opt-in on the inline picker):** when set, a query containing `@` resolves as an **exact, case-insensitive** verified-email match returning at most one person (`IUserEmailService.FindByAddressAsync`, exact form, verified only; a match only when exactly one owner) instead of a name search — `peter@x` matches `PETER@x`, not `peter73@x`. Exact-match-only means no substring/enumeration leak (a caller can only confirm membership for an address they already know in full), so it is **safe on non-admin surfaces** — the ticket-transfer recipient lookup uses it. This is distinct from the `Admin` bit's fuzzy email search, which stays admin-gated. The branch lives in `ProfileApiController.Search` (the controller is the auth boundary); `SearchProfilesAsync` is unchanged.
+**Invariants:**
+- **Emergency-contact data is never searchable**, under any flag combination.
+- The service always filters to "not rejected, not deleted". Suspended and unapproved profiles stay
+  searchable in public scopes ([`profile-visibility-acceptable`](../product/profile-visibility-acceptable.md)).
+- **The controller is the auth boundary.** A non-admin endpoint passing `Admin` or `LegalName` is a
+  programmer error caught in review; every call site names its flags literally.
+- Results come back unordered; sort in the controller or view
+  ([`display-sort-in-controllers`](display-sort-in-controllers.md)). `limit` is a safety cap, not a
+  presentation choice.
 
-**Out-of-scope carve-outs:**
+**The two UI patterns:**
+- **`<vc:human-search>`** — inline picker inside a form; sets a hidden user id; backed by
+  `/api/profiles/search`.
+- **`<vc:user-search-result>`** — one result row keyed by user id (owned by Users); the caller wraps rows
+  in a `.list-group` and owns its empty state. Used by the header search's Humans bucket.
 
-- `ShiftDashboardController.SearchVolunteers` and `ShiftVolunteerSearchBuilder` are intentionally separate. They search *people-against-shifts* (filtering by shift signups, availability, qualifications), not generic person-find. Different inputs, different output shape, different scope rules.
-- `/Tickets/HasNotBought` admin search matches the term in-memory against the verified emails already carried on the loaded `UserInfo.UserEmails` (it cross-references purchase data, not profile data, so it does not route through the person-search funnel).
+**`allow-email` on the picker:** a query containing `@` resolves as an exact, case-insensitive match on
+a verified email with exactly one owner, returning at most one person. Exact-only means no enumeration,
+so it is safe on non-admin surfaces (ticket-transfer recipient lookup). The fuzzy email search behind
+`Admin` stays admin-gated.
 
-**Rejected design alternatives:**
+**Deliberately separate:** shift-volunteer search (`ShiftVolunteerSearchBuilder`: people against shifts,
+different inputs and output), and the tickets "has not bought" admin filter (matches in memory against
+emails it already loaded). The admin users directory is a paged list, not a search result.
 
-- `SearchUsersAsync(predicate)` — too permissive. Audit-by-grep is impossible when every call site can pass arbitrary lambdas.
-- One method per scope (`SearchHumansAsync`, `SearchHumansByNameAsync`, …) — what we replaced. Each method accreted one tiny variant; the service surface grew without anyone deliberately authorizing the expansion.
-- Splitting public vs admin into two interfaces — defeats the budget ratchet. The bit-flag *is* the public/admin split, sitting on a single method.
+**Why one method:** per-scope methods each accreted variants nobody authorized, a predicate parameter
+makes call sites impossible to audit by grep, and the flags *are* the public/admin split.

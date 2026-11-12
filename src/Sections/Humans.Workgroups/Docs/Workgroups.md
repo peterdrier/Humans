@@ -8,6 +8,8 @@
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupMembershipSource.cs
+  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupSync.cs
   src/Sections/Humans.Calendar/Contracts/ICalendarFeedContributor.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
@@ -81,6 +83,7 @@ administrative recognition, and every decision is a human's.
 | DormantReason | WorkgroupDormantReason? | Null unless Dormant |
 | DriveFolderId | string(100)? | Null until Active |
 | DiscordChannelUrl | string(500)? | Optional absolute HTTP/HTTPS link. Applications, registration on behalf and edits reject other schemes before writes; projections omit unsafe legacy values without changing stored data. |
+| GoogleGroupPrefix | string(64)? | Optional email group, local part on the org Google domain (same rule as a team's group prefix). Board/Admin only; one workgroup per group, enforced by the service, not an index |
 | IsSensitive | bool? | Roster, documents, meetings and history for members and Board/Admin only; null reads as false (nullable so the column carries no physical default) |
 | Reasons | string(4000)? | Refusal, withdrawal, or Quiet-close reasons |
 | AppliedByUserId | Guid? | Bare cross-section reference; nulled on erasure |
@@ -290,7 +293,7 @@ Settings and Register an existing group on first setup or after clearing the que
 | Any signed-in human with an approved profile | Browse the register and every group page; read Published/Delivered documents, meetings and the log of a non-sensitive group; ask to join, withdraw the request, or leave; comment during an open window (non-sensitive groups); apply to form a group |
 | Workgroup member | Additionally: read Draft documents; everything on a sensitive group's page; edit register fields (including the sensitive flag); create/edit meetings; post Update, Meeting notes, Disclosure and Note entries; create/edit/publish/deliver documents; open/close comment periods; respond to and dispose of comments; hide a comment with a reason; link an authored survey; mark the group done |
 | Coordinator | Everything a member can, plus the membership decision: approve or decline join requests and add people directly. Named on the register; addressee of notifications and join requests; may hand coordination to another member |
-| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; request a status update; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account |
+| Board, Admin (`BoardOrAdmin`) | Register, refer, refuse, withdraw, close, reactivate; set coordinators (override); approve, decline and add members on any group; register on behalf (bootstrapping); record a document's disposition; view the admin queue; request a status update; edit any group; read sensitive groups; set the root Drive folder; set the budget and its Holded account; link the email group |
 
 ## Invariants
 
@@ -489,10 +492,16 @@ should end is the Board's decision, taken on the register in front of them.
   root → Board readers only. Every claim carries the group's name (`Workgroups` for the root) as the fallback when GoogleIntegration cannot resolve the folder's Drive path, so removal emails and the sync log never show a raw folder id. Every folder-bearing group that is neither Active nor Dormant (Applied, Referred, Refused,
   Withdrawn) remains claimed with an empty roster so existing direct grants are revoked. Calls `IGoogleSyncWrite.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
+- **GoogleIntegration (email group)**: implements `IGoogleGroupMembershipSource` alongside Teams and Camps (inbound) —
+  an Active or Dormant group with a `GoogleGroupPrefix` claims `{prefix}@{GoogleGroupDomain}` for its current members
+  (never a pending request); a Dormant roster is frozen, so the group keeps it. Other statuses claim nothing. Linking,
+  and every change that requests a Drive sync, also call `IGoogleGroupSync.RequestSyncAsync` for a claimed group.
+  Clearing the prefix stops the claim and leaves the Google group's members as they are. A group another source
+  also claims is a collision: GoogleIntegration skips and audits it.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
-- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; group lifecycle transitions remain in `WorkgroupService`; Drive provisioning and sync requests belong to `WorkgroupDriveFolders`; document/comment transitions belong to `WorkgroupDocumentWorkflow`, and rhythm timing belongs to `WorkgroupRhythm`. Member notifications
+- **Notifications, Email, AuditLog**: crosscuts, per Triggers above. The internal `WorkgroupNotices` owns recipient lookup, culture grouping, Board delivery and independent best-effort sends. Lifecycle, document, membership, GDPR and rhythm paths invoke it after their existing state/audit steps; group lifecycle transitions remain in `WorkgroupService`; Drive provisioning and sync requests belong to `WorkgroupGoogleResources`; document/comment transitions belong to `WorkgroupDocumentWorkflow`, and rhythm timing belongs to `WorkgroupRhythm`. Member notifications
   use existing localized labels, grouped by supported recipient language (English fallback); authored content is unchanged.
   A merged-member alias carries both the resolved live id and its language into grouping,
   with one delivery per live recipient even when multiple requested ids resolve to them. Lifecycle and Board emails apply the same resolved-ID deduplication: outbox ownership uses the live recipient ID from the same snapshot as address, name and language, so merged aliases cannot queue duplicate copies or assign new mail to an archived account.
@@ -593,6 +602,6 @@ Internal `WorkgroupActivity` owns meeting creation/update/soft deletion, member-
 
 Internal `WorkgroupBudgets` owns budget updates, expense-account choices, amount validation, account resolution/activation and budget log/audit text. Existing-group registration and lifecycle transitions reuse it at their existing call points; shared status refusal lives with the other guards in `WorkgroupAccess`. Finance-first ordering, retained bindings when clearing, combined budget/system-log persistence, cancellation boundaries, best-effort activation and logger category are unchanged. Group registration/ending remain separate. Existing facade entry points remain; no public contract or DI registration is added.
 
-Internal `WorkgroupDriveFolders` owns root-folder read/save, folder-ID normalization, registration subfolder creation and best-effort access-sync requests. Membership and lifecycle callers reuse it at their existing call points. Legacy Settings fallback, reachability preflight, root-setting audit, detached folder creation, sync failure logging and logger category are unchanged. Access claims remain in `WorkgroupDriveAccessSource`; no public contract, permission change or DI registration is added.
+Internal `WorkgroupGoogleResources` owns root-folder read/save, folder-ID normalization, registration subfolder creation and best-effort Drive and email-group sync requests. Membership and lifecycle callers reuse it at their existing call points. Drive access claims live in `WorkgroupDriveAccessSource`, email-group claims in `WorkgroupGoogleGroupSource`.
 
 Internal `WorkgroupMembership` owns join, approve/decline/add, leave and coordinator replacement, including admission, name lookup and shared member construction. Application and existing-group registration reuse its member construction; canonical target resolution lives in `WorkgroupAccess`. The workflow reuses the existing journal, notices and Drive-folder owner. Pending-request handling, alias resolution, coordinator replacement/admin exceptions, combined member/log writes, GDPR audit attribution and post-commit notice/sync order are unchanged. Existing facade entry points and cancellation boundaries remain; no public contract, permission change or DI registration is added.

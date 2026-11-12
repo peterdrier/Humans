@@ -102,7 +102,6 @@ public sealed class Section :
 
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
 
-        // The policies this handler backs stay in Shell's AuthorizationPolicyExtensions.
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
         services.AddSingleton<TeamsMetricsService>();
@@ -129,10 +128,10 @@ public sealed class Section :
             [
                 Of("View teams & join", ("Volunteer", Allowed), ("Coordinator", Allowed), ("Board", Allowed), ("TeamsAdmin", Allowed)),
                 Of("View team details", ("Volunteer", Allowed), ("Coordinator", Allowed), ("Board", Allowed), ("TeamsAdmin", Allowed)),
-                Of("Manage members", ("Volunteer", Denied), ("Coordinator", Allowed), ("Board", Allowed), ("TeamsAdmin", Allowed)),
-                Of("Manage roles", ("Volunteer", Denied), ("Coordinator", Allowed), ("Board", Allowed), ("TeamsAdmin", Allowed)),
-                Of("Create teams", ("Volunteer", Denied), ("Coordinator", Denied), ("Board", Allowed), ("TeamsAdmin", Allowed)),
-                Of("Delete teams", ("Volunteer", Denied), ("Coordinator", Denied), ("Board", Allowed), ("TeamsAdmin", Denied)),
+                Of("Manage members", ("Volunteer", Denied), ("Coordinator", Allowed), ("Board", Denied), ("TeamsAdmin", Allowed)),
+                Of("Manage roles", ("Volunteer", Denied), ("Coordinator", Allowed), ("Board", Denied), ("TeamsAdmin", Allowed)),
+                Of("Create teams", ("Volunteer", Denied), ("Coordinator", Denied), ("Board", Denied), ("TeamsAdmin", Allowed)),
+                Of("Delete teams", ("Volunteer", Denied), ("Coordinator", Denied), ("Board", Denied), ("TeamsAdmin", Denied)),
                 Of("Google resource sync", ("Volunteer", Denied), ("Coordinator", Denied), ("Board", Denied), ("TeamsAdmin", Limited)),
             ]
         }

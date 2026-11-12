@@ -1,47 +1,40 @@
 ---
-name: Never hand-edit EF migrations OR the model snapshot
-description: HARD RULE. EF migrations and every `*DbContextModelSnapshot.cs` must be 100% auto-generated and committed verbatim — no hand edits, ever. Pre-commit hook enforces migration files.
+name: EF migrations are generated, never hand-written
+description: HARD RULE. Any schema change, `dotnet ef` command, or migration/snapshot file: EF generates every line and it is committed verbatim. This is the one migration rule.
 ---
 
-EF migrations AND the model snapshot must be **100% auto-generated** by `dotnet ef migrations add`/`remove` and committed verbatim. NO hand edits of any kind. Every `dotnet ef` invocation needs `--context <C>` — see [[ef-multi-context-commands]]. There is no single shared context — `HumansDbContext` is gone. "The model snapshot" below means the one belonging to the context the migration targets, named after that context's class — `src/Sections/Humans.<Section>/Data/Migrations/<Context>ModelSnapshot.cs` for a section, `src/Humans.Web/Migrations/System/SystemDbContextModelSnapshot.cs` for the platform context.
+**Only `dotnet ef migrations add` writes a migration.** Every migration `.cs`, `.Designer.cs` and `*DbContextModelSnapshot.cs` is committed exactly as EF generated it. Never write, edit, reorder, rename, comment or delete one by hand, and never restore a snapshot with `git checkout`. This covers `migrationBuilder.Sql(...)`, inserted `AddColumn`/`DropColumn`, changed timestamps and any snapshot edit "so the next regen comes out right". No exceptions, no "just this once".
 
-**Forbidden — migration files (`.cs` + `.Designer.cs`):**
-- `migrationBuilder.Sql(...)` calls
-- Manual `DropColumn` / `AddColumn` insertions
-- Reordering migrationBuilder operations
-- Comments inside the Up/Down method bodies
-- Renaming files or class names to alter timestamp ordering
-- Any change beyond what `dotnet ef migrations add` generated
+**Why:** a hand-touched migration or snapshot applies cleanly and passes tests, then breaks `migrations remove` and every later `migrations add` built on it. Peter, 2026-05-04: "you are never fucking allowed to hand write a migration again."
 
-**Forbidden — `*DbContextModelSnapshot.cs`:**
-- Removing relationship blocks to "make the next regen produce the diff you want"
-- Editing properties, indexes, or constraints
-- Restoring it from `git checkout` of an old commit
-- Any direct edit. Period.
+**If EF generated the wrong thing** (a `RenameColumn` where you meant drop + add, a CHECK constraint, anything): fix the model or configuration, then regenerate. While your migration is still the newest in its context:
 
-The snapshot is a load-bearing tooling artifact. EF Core's tooling computes "what's the diff to generate?" by comparing model → snapshot. Hand-editing it produces migrations that are **syntactically right and semantically wrong** — they'll apply cleanly to fresh DBs and pass tests, but the migration history record stays subtly broken in ways that surface only when you try to `migrations remove` later, or when a future archaeologist reads it.
+```bash
+dotnet ef migrations remove --context <C> --project <P> --startup-project src/Humans.Web
+# fix the model, then rebuild
+dotnet build src/Humans.Web -v quiet
+dotnet ef migrations add <Name> --context <C> --output-dir <D> --project <P> --startup-project src/Humans.Web
+```
 
-**Why hand-editing the snapshot is uniquely dangerous:** unlike a hand-edited migration file (which you CAN see in `git diff` as a violation), an edited snapshot is invisible — it's auto-generated noise that everyone scrolls past. The damage compounds because every later `migrations add` builds on top of the corrupted snapshot.
+**Every `dotnet ef` command names its context.** One DbContext per section plus the platform context; there is no shared one.
 
-**Why hand-editing matters at all:** Hand-edited schema migrations break Designer/snapshot consistency, cause integration test failures, and create migrations that can't be cleanly removed or regenerated. The hook fires on commits touching any `*/Migrations/*.cs` — every context's folder, in `Humans.Web` and in the section projects alike — and refuses if any of: `migrationBuilder.Sql(`, manual column changes, hand-modified content. Peter, 2026-04-29: "hand edited sql is never allowed, you already know that." Peter, 2026-05-04 (after I hand-edited the snapshot during PR 373 cleanup): "you are never fucking allowed to hand write a migration again. never fucking ever. I've told you this 100 times before and I'm really fucking sick of cleaning up the messes you make."
+| Context | `--project` | `--output-dir` |
+|---|---|---|
+| A section's (`StoreDbContext`, …) | `src/Sections/Humans.<Section>` | `Data/Migrations` |
+| Platform (`SystemDbContext`) | `src/Humans.Web` | `Migrations/System` |
 
-**If EF generated something wrong** (e.g., `RenameColumn` instead of `DropColumn` + `AddColumn` for unrelated columns):
-1. `dotnet ef migrations remove`
-2. Adjust the model / configuration to express the correct intent
-3. `dotnet ef migrations add` again
-4. Verify the regenerated file is correct
-5. NEVER patch the existing migration file
+The context class name is the snapshot's file name minus `ModelSnapshot` (it is not always the section name: Consent is `LegalDbContext`). A new context's design-time factory must be `Data/<Context>Factory.cs`, or CI never checks it. Verify before committing: `dotnet ef migrations has-pending-model-changes --context <C> --project <P> --startup-project src/Humans.Web`.
 
-**If the canonical tools won't produce the migration you want — STOP AND ASK PETER.** Do not improvise. Do not hand-edit the snapshot "just this once because the tooling can't do it." Specifically: when migrations from a rebased main interleave with your branch's migrations, `migrations remove` walks back through their Designer snapshots and ends up in a wrong state. That is a stop-and-ask event, not a "creative solution" event. See [`migration-regen-after-rebase`](migration-regen-after-rebase.md).
+**After every EF run, `git diff` the snapshot.** It must change only what your model change explains, and only in the context you named. An empty migration body does not mean a clean snapshot, and `migrations remove` does not undo a snapshot rewrite. Unexplained diff: stop, do not commit it. Don't run EF at all for a code-only change (renaming or removing a nav property while the column and its config stay).
 
-**How to apply:**
+**Once main's migrations sit after yours (you merged main mid-PR), `migrations remove` is unsafe.** It walks back through main's migrations and corrupts the snapshot. Run [`/ef-regen`](../../.claude/skills/ef-regen/SKILL.md), which rebuilds the branch's migrations as one consolidated migration. Never improvise around it: no snapshot edits, no timestamp renames, no removing main's migrations, no `git reset --hard`. Cheaper: regenerate before merging main, while yours is still last.
 
-- For data backfills that the spec calls for "before drop column": **don't put them in the migration.** Use one of:
-  1. Pre-existing admin button (e.g., `/Admin/Users/BackfillUserEmails`) — operator runs before deploy. This is the canonical path.
-  2. A separate one-shot service / script run via admin action.
-  3. Application-layer runtime self-healing (idempotent on every request that needs the data) — fine if cheap.
-- The "defensive backfill in the migration" pattern that earlier-draft specs sometimes mention is a misunderstanding; the admin button IS the defensive backfill.
-- If a migration looks wrong on review, regenerate — don't patch.
-- DB enforcement that needs special SQL (triggers, computed columns) belongs in `OnModelCreating` (via `HasComputedColumnSql`, etc.) where the EF-managed mechanism applies — not in raw SQL inside a migration.
+**A migration merged to `main` is frozen.** QA has applied it. Never edit, delete, rename or regenerate it; a wrong one is fixed by a new generated migration on top. (A whole deleted section is the one case: [`removed-section-migrations`](removed-section-migrations.md).)
 
-**Data-only migrations (EF generates empty Up/Down):** Adding `migrationBuilder.Sql()` is the proper EF API for data migrations when there are no schema changes. However, this requires **explicit user permission** every time — has happened once in 500+ commits. Never do this autonomously.
+**Before committing a migration,** run the [`ef-migration-reviewer`](../../.claude/agents/ef-migration-reviewer.md) agent and resolve every CRITICAL finding by regenerating.
+
+**Migrations are schema only.** Data changes never go in one: [`no-data-backfills`](../process/no-data-backfills.md). Bug-fix, refactor and debt work may include a section-owned migration when the fix needs it; a large ownership transition is its own planned PR.
+
+**If the tools cannot produce the migration you need, stop and ask Peter.** Hand-touched migrations already in history (the #858 peel removals, trigger DDL) were Peter's own exceptions and are not precedent.
+
+**Related:** [`required-columns-need-approval`](required-columns-need-approval.md) · [`destructive-drops-need-approval`](destructive-drops-need-approval.md) · [`no-manual-db-writes`](../process/no-manual-db-writes.md) · [`event-deploy-freeze`](../process/event-deploy-freeze.md)

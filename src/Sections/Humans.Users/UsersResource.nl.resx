@@ -232,9 +232,6 @@
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Vereist voor officiële documenten en ondertekening.</value>
   </data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve">
-    <value>Selecteren</value>
-  </data>
   <data name="Users_ProfileEdit_City" xml:space="preserve">
     <value>Stad</value>
   </data>
@@ -819,6 +816,9 @@
   </data>
   <data name="Users_Profile_Settings" xml:space="preserve">
     <value>Instellingen</value>
+  </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Alles tonen ({0})</value>
   </data>
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Voorbeeld van een nieuwe indeling. De huidige pagina:</value>

@@ -3,14 +3,32 @@ name: universal-enforcement-over-per-section
 description: When adding/reviewing an architecture analyzer or arch test, it must be universal (derived from a hard rule), never per-section — a per-section enforcer or workaround is itself a smell.
 ---
 
-Architecture enforcement is **universal** — derived from a hard rule and applied to every section the same way — never a per-section analyzer or per-class test. A per-section enforcer is a smell, and resolves to exactly one of: **(a) redundant** — it duplicates an existing universal enforcer → delete it; **(b) a gap** — a real hard rule with no universal enforcer yet → build the universal enforcer, then delete the instances; **(c) a genuine one-off** domain invariant → keep, but only after proving it cannot be restated generally.
+Architecture enforcement is **universal**: derived from a hard rule and applied to every section the
+same way. A per-section analyzer or per-class test is a smell that resolves to one of:
 
-**Why:** Per-section enforcers multiply without bound — one ~140-line analyzer or a cluster of reflection tests per section — and drift apart (e.g. DbSet-write enforcement became Notifications=analyzer HUM0022 vs Events/AuditLog=ratchet tests, same rule, three shapes). The hard rules in `peters-hard-rules.md` are already universal; the enforcer should be too. Corollary: the *existence of a workaround mechanism is itself the warning.* A `SaveChangesInterceptor`, a dual-writer allowlist, a per-class "is-not-present" tombstone — each exists because a cross-section boundary wasn't closed. Done right (section read/write interfaces, owning-repository writes), the workaround has nothing to do and disappears. The rule is "none should exist," not "this named one must stay gone."
+- **Redundant** — duplicates a universal enforcer → delete it.
+- **A gap** — a real hard rule with no universal enforcer → build that, then delete the instances.
+- **A genuine one-off** domain invariant → keep, only after proving it cannot be stated generally.
+
+**Why:** per-section enforcers multiply without bound and drift into different shapes of the same rule.
+The corollary: a workaround mechanism is itself the warning. A `SaveChangesInterceptor`, a dual-writer
+allowlist, a per-class "is-not-present" tombstone each exist because a boundary wasn't closed; closed
+properly, the workaround has nothing to do. The rule is "none should exist", not "this one stays gone".
 
 **How to apply:**
-- Before writing a new analyzer/arch test scoped to one section, table, column, or class: stop. Find the universal rule it instances and enforce *that* once, keyed off convention (namespace/`[Section]`/ownership map), not a hardcoded name list. The cross-section-write analyzer derives `DbSet → owning section` and `writer-type → its section` from an ownership map, not from a hardcoded `NotificationDbSets`/`NotificationRepository` list. (`CrossSectionEfJoinAnalyzer` (HUM0024) was the original example of that map; it was retired in nobodies-collective/Humans#1278, so build the map from `Internal/Sections.cs` + `Internal/SectionDbContexts.cs` rather than copying it.)
-- Severity follows the existing hard rule [[analyzer-exceptions-via-attributes]]: ship `Error` + `[Grandfathered("HUM####", ...)]` on the finite existing violators (new violations fail the PR that introduces them; known debt rides as a visible warning). No baselines, no `Directory.Build.props` blanket downgrade, no `Info`/`NoWarn` for live architecture debt — those hide it. `TreatWarningsAsErrors=true` stays; the `WarningsNotAsErrors` line is the visible migration ledger, deleted per-rule when its last `[Grandfathered]` is gone.
-- Discipline (this rule was written after two failures of it): do **not** invent the universal rule to justify the consolidation. If no source in `peters-hard-rules.md`, `design-rules.md`, a `memory/` atom, an existing `Rules/*.cs`, or a `HUM####` analyzer states it, it is *proposed*, not a rule — it needs an explicit decision before any enforcer or deletion, never a silent migration.
-- A test/analyzer named after a single section/class is the trigger to apply this rule. Reflection-test "this symbol must exist" wiring assertions and DI-singleton checks can't be analyzers (they fire on absent code); consolidate those into one universal reflection test, not N per-section copies.
+- About to write an analyzer or arch test scoped to one section, table, column or class (the name is the
+  trigger)? Find the universal rule it instances and enforce that once, keyed off convention
+  (namespace, `[Section]`, the ownership map in the analyzers' `Internal/Sections.cs` +
+  `Internal/SectionDbContexts.cs`), never a hardcoded name list.
+- **Don't invent the universal rule to justify a consolidation.** If the hard rules, `design-rules.md`,
+  an atom, an existing `Rules/*.cs` or a `HUM####` analyzer doesn't state it, it is a proposal that
+  needs a decision before any enforcer or deletion.
+- Severity: ship `Error` plus `[Grandfathered("HUM####", …)]` on the finite existing violators. No
+  baselines, blanket downgrades, `Info` or `NoWarn` for live architecture debt —
+  [`no-analyzer-suppressions`](../process/no-analyzer-suppressions.md).
+- "This symbol must exist" wiring checks and DI-singleton checks can't be analyzers; consolidate them
+  into one universal reflection test, not a copy per section.
 
-**Related:** [[analyzer-exceptions-via-attributes]] (severity/grandfather mechanism), [[orchestrator-marker]] (a documented universal analyzer still "to build"), [[crosscut-purity]] (why interceptors reaching across lanes are smells), [[section-public-contract]] (the boundary that makes workarounds unnecessary), [[repository-required-for-db-access]] and [[no-cross-section-ef-joins]] (hard rules the write/ join analyzers enforce). Execution complete — HUM0025–HUM0028 shipped; see [`docs/architecture/roslyn-analysis.md`](../../docs/architecture/roslyn-analysis.md).
+**Related:** [`no-tests-for-absences`](no-tests-for-absences.md) ·
+[`crosscut-purity`](crosscut-purity.md) · [`section-public-contract`](section-public-contract.md) ·
+[`repository-required-for-db-access`](repository-required-for-db-access.md)

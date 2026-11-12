@@ -12,7 +12,7 @@ internal sealed record FinanceOverviewVm(
     FinanceBudgetVm? Budget,
     FinanceRunwayVm? Runway,
     FinanceIncomeVm? Income,
-    FinancePleoVm Pleo)
+    IReadOnlyList<FinanceSepaTransferVm> SepaInProgress)
 {
     /// <summary>Cash plus what others owe us, less what we owe. Null until every part is known.</summary>
     public decimal? NetPosition => Ledger is { } l && Owed.Total is { } owed
@@ -28,11 +28,24 @@ internal sealed record FinanceLedgerCardsVm(
     decimal TaxesOwed,
     IReadOnlyList<FinanceTaxFilingVm> TaxFilings)
 {
+    public IReadOnlyList<FinanceAccountLineVm> CashAccounts => [.. Banks, .. Stripe];
     public decimal CashTotal => Banks.Sum(a => a.Amount) + Stripe.Sum(a => a.Amount);
     public decimal ReceivablesTotal => Receivables.Sum(a => a.Amount);
 }
 
-internal sealed record FinanceAccountLineVm(int AccountNum, string Name, decimal Amount);
+/// <summary><see cref="Amount"/> is Holded's ledger balance. <see cref="Source"/> is set on an account whose provider
+/// reports its own balance.</summary>
+internal sealed record FinanceAccountLineVm(
+    int AccountNum, string Name, decimal Amount, FinanceAccountSourceVm? Source = null)
+{
+    public decimal? Difference => Source?.Balance is { } b ? b - Amount : null;
+}
+
+/// <summary>The provider's own balance, null when unknown, and the Finance action that reconciles the two.</summary>
+internal sealed record FinanceAccountSourceVm(decimal? Balance, string ReconcileAction);
+
+/// <summary>A transfer sent to the bank in a SEPA file and not booked in Holded yet.</summary>
+internal sealed record FinanceSepaTransferVm(Guid UserId, string FileName, Instant GeneratedAt, decimal Amount);
 
 /// <summary>A quarterly return. <see cref="IsComplete"/> false: the quarter is still running, so the amount is so
 /// far.</summary>

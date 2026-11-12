@@ -6,7 +6,7 @@ public sealed record HoldedBankMovementDto
 {
     public required string Id { get; init; }
     /// <summary><c>booking_date</c>, falling back to <c>value_date</c>, never zone-shifted. A <c>LocalDate</c> because
-    /// it feeds straight back into a posting date (<see cref="IHoldedClient.PayPurchaseDocumentAsync"/>), and a
+    /// it feeds straight back into a posting date (<see cref="IHoldedWrite.PayPurchaseDocumentAsync"/>), and a
     /// round trip through a midnight instant can only lose.</summary>
     public required LocalDate Date { get; init; }
     /// <summary>Signed euros: negative is money leaving the account.</summary>

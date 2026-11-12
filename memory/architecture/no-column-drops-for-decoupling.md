@@ -1,34 +1,28 @@
 ---
-name: Don't drop columns for decoupling work — the property override IS the migration
-description: HARD RULE. When decoupling code from a column, a property override plus read sweeps completes the work — the column drop is separate, optional, and waits for prod verification.
+name: no-column-drops-for-decoupling
+description: HARD RULE. When decoupling code from a column, a property override plus read sweeps completes the work — the column drop is separate, optional, and never part of the decoupling PR.
 ---
 
-When the goal is "stop relying on a column as the source of truth," the **property override + read sweeps are the migration.** The column drop is separate, optional, and dangerous — defer it until the entire multi-PR sequence has run through production successfully.
+When the goal is "stop relying on a column as the source of truth", **the property override plus read
+sweeps are the migration.** The column drop is separate and optional.
 
-**Why:** For email-identity decoupling specifically, the `User.Email` override that returns first-verified-`UserEmail` (with `?? base.Email` fallback) means new code paths use UserEmails as canonical, while legacy LINQ filters that hit the column continue working unchanged. **No code is broken. No schema is changed. The architectural goal is achieved.** When an earlier PR 361 had attempted the column drop / `Ignore()` path, every existing user on the preview environment disappeared from the UI and Peter had to reset the PR environment. The "What's deferred" section in PR 361's body was the walk-back. Concrete fingerprint of getting this wrong: cloned QA users present in the DB but invisible to the app.
+**Why:** Peter: *"we can stop using columns of data and not drop them. you're overly complicating
+things again … Stop doing dangerous things."* An override that reads from the new source achieves the
+goal with no schema change and is reversible by deleting it. The attempt to drop/`Ignore()` the email
+column made every existing user disappear from the preview UI.
 
-Peter's verbatim from 2026-04-29: "we can stop using columns of data and not drop them. you're overly complicating things again. we can be fully migrated past pr6 before we drop anything if need be. Stop doing dangerous things."
-
-**How to apply:**
-
-A "decouple X from Y" PR is **complete** when:
+**A decoupling PR is complete when:**
 1. The property override (or equivalent shim) reads from the new source of truth.
-2. Read sweeps redirect new/active code paths through the canonical service.
-3. Writes to the old column are stopped (architecture test enforcement).
+2. Read sweeps route new and active code paths through the canonical service.
+3. Writes to the old column have stopped.
 4. Tests pass.
 
-A "decouple X from Y" PR is **NOT** required to:
-- Drop the column.
-- Add `Ignore()` to the EF mapping.
-- Add a custom Identity store that hides the column from EF entirely.
-- Refactor every legacy LINQ filter that still reads the column.
+**It does not need to:** drop the column, `Ignore()` it in the EF mapping, hide it behind a custom
+store, or refactor every legacy query that still reads it. Those queries keep working because the
+column is still there.
 
-If the override masks the column without breaking anything, **leave the column alone** — indefinitely if need be. Schema changes are forward-only and dangerous; in-memory routing through an override is reversible by deleting the override.
-
-Spec items like "PR 2 drops the column" can be revised down to "PR 2 makes the column unused; drop is optional, separate, scheduled when the full sequence is verified end-to-end in production."
-
-When you find LINQ filter sites that read the column during decoupling work, that is **not a blocker** — those sites continue working because the column is still there. The thick-repo refactor for those sites is its own concern, untied to the decoupling effort.
-
-"Stop doing dangerous things" is the canonical Peter feedback for: forcing column drops, hand-editing migrations, expanding scope past what's safe. When uncertain: leave the column, ship the override, move on.
-
-**Related:** [`no-drops-until-prod-verified`](no-drops-until-prod-verified.md) — broader hard-storage rule.
+**How to apply:**
+- A spec line like "PR 2 drops the column" is revised to "PR 2 makes the column unused".
+- Unsure? Leave the column, ship the override, move on. It can stay indefinitely.
+- A drop that is wanted later is its own PR under
+  [`destructive-drops-need-approval`](destructive-drops-need-approval.md).

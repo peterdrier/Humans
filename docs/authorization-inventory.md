@@ -282,7 +282,6 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Store | `StorePolicies.Read`, `StorePolicies.Manage` |
 | Teams | `TeamsPolicies.Read`, `TeamsPolicies.Manage` |
 | Tickets | `TicketsPolicies.Read`, `TicketsPolicies.Manage` (also gate Campaigns' detail page and code generation, and the Gate admin pages) |
-| Users | `UsersPolicies.Read`, `UsersPolicies.Manage`, `UsersPolicies.UsersAdminOnly`, `UsersPolicies.MedicalDataViewer` |
 
 | Policy | Roles | Notes |
 |---|---|---|
@@ -293,7 +292,6 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `UsersPolicies.Read` | UsersAdmin, Board, Admin | Human admin pages, the admin cards on a profile, Google's per-human page |
 | `UsersPolicies.Manage` | UsersAdmin, Admin | Suspend, unsuspend, reject, role assignment, Workspace email and provisioning |
 | `UsersPolicies.MedicalDataViewer` | ShiftsNoInfo, Board, Admin | The audited medical reveal |
-| `UsersPolicies.UsersAdminOnly` | UsersAdmin AND NOT (Admin OR Board) | Composite (`HumanAdminOnlyHandler`); the standalone "Humans" nav link |
 | `TeamsPolicies.Read` | TeamsAdmin, Board, Admin | Teams summary, team settings form, Google resource sync |
 | `TeamsPolicies.Manage` | TeamsAdmin, Admin | Create and edit teams; deleting a team is `AdminOnly` |
 | `CampsPolicies.Read` | CampsAdmin, Board, Admin | Camps admin overview and roles |
@@ -338,7 +336,6 @@ The per-object handlers (team admin pages, Google team resources, member email e
 - `ShiftsPolicies.Read` and `ShiftsPolicies.DepartmentRead` are intentionally distinct: the first is role-list-based, the second additionally permits any team manager/coordinator (composite via `IsAnyTeamManagerOrCoordinatorHandler`).
 - `AppAccess` is the single nav-visibility gate: `UserState == Active` (the user entered their legal name). A plain `RequireAssertion` — no custom requirement/handler. It replaced the former `IsActiveMember` / `ActiveMemberOrShiftAccess` policies (and there is no separate shift access).
 - `CampsPolicies.Compliance` is deliberately broader than `CampsPolicies.Manage`: it short-circuits for CampsAdmin/Board/Admin and otherwise admits any team/sub-team coordinator (composite via `CampComplianceAccessHandler`, reusing the same `IShiftService.GetCoordinatorTeamIdsAsync` lookup as `IsAnyTeamManagerOrCoordinatorHandler`). It gates only the read-only Barrios compliance matrix; the camp-management writes in `CampAdminController` stay on `CampsPolicies.Manage`.
-- `UsersPolicies.UsersAdminOnly` is a composite policy used for the nav "Humans" link that only shows when the user has UsersAdmin but not the broader Board/Admin access.
 - `UsersPolicies.MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether the medical reveal is offered within pages the user already has access to (the member's profile page, `/Profile/{id}`); the text itself comes only from Users' audited `POST /Profile/{id}/Medical/Reveal`.
 - Operator tooling (`/Debug/*`, `/Backdoor`, `/Agent/Admin/*`, Hangfire) is `BoardOrAdmin` to read; every state-changing POST there is `AdminOnly`.
 - `GateAdmit` is `ScannerAccess` minus Board (same assertion, `admitsBoard: false`): the durable gate write surface (`/Gate/Decision`, `/Gate/Claim` POST, `/Gate/ClaimPin`, `/Gate/EndShift`) never rides on the read-only Scanner gate. The supervisor roles that may authorize an override are Admin and TicketsAdmin. Supervisor overrides inside `Decision` are a second factor on top of the policy — the shared `Gate:SupervisorPin`, not an identity check (see §4).
@@ -355,7 +352,6 @@ Every handler — resource-based and composite — lives in its owning section's
 
 | Handler | Requirement | Owning section | Backs policy |
 |---|---|---|---|
-| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | Users | `UsersPolicies.UsersAdminOnly` |
 | `IsAnyTeamManagerOrCoordinatorHandler` | `IsAnyTeamManagerOrCoordinatorRequirement` | Shifts | `ShiftsPolicies.DepartmentRead` |
 | `CampComplianceAccessHandler` | `CampComplianceAccessRequirement` | Camps | `CampsPolicies.Compliance` |
 | `CityPlanningMapAdminHandler` | `CityPlanningMapAdminRequirement` | CityPlanning | `CityPlanningMapAdmin` |
@@ -476,7 +472,6 @@ Only `Admin` and `Board` are `RoleNames` constants in Base. Every other role is 
 | `TeamsRoles.IsTeamsAdminBoardOrAdmin` | `TeamsPolicies.Read` |
 | `CampsRoles.IsCampsAdmin` | `CampsPolicies.Manage` |
 | `UsersRoleChecks.IsUsersAdminBoardOrAdmin` | `UsersPolicies.Read` |
-| `UsersRoleChecks.IsUsersAdmin` | `UsersPolicies.UsersAdminOnly` (composite, when negated against Board/Admin) |
 | `FinanceRoles.IsFinanceAdmin` | `FinancePolicies.Manage` |
 | `StoreRoles.CanAdministerStore` | `StorePolicies.Manage` |
 | `IsVolunteerManager` | `ShiftsPolicies.ManageVolunteers` |

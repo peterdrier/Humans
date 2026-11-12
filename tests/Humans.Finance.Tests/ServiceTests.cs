@@ -37,7 +37,7 @@ public class HoldedFinanceServiceTests
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 5, 1, 12, 0);
 
     private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
-    private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
+    private readonly IHoldedFeed _feed = Substitute.For<IHoldedFeed>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
@@ -69,18 +69,6 @@ public class HoldedFinanceServiceTests
             .Returns(true);
         _repo.TryInsertCreditorContactAsync(Arg.Any<HoldedCreditorContact>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        // The sync's per-document notes read; an unstubbed record is null.
-        _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => new HoldedPurchaseDocumentDto
-            {
-                Id = ci.Arg<string>(),
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-            });
         // The document mirror synced and holds nothing.
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedPurchaseDocMirror(FixedNow, "Idle", null, 0, FixedNow, []));
@@ -820,7 +808,6 @@ public class HoldedFinanceServiceTests
             userId, "Maria Garcia", null, null, null, null, "TestJob", TestContext.Current.CancellationToken);
 
         id.Should().Be("contact-A");
-        await _client.DidNotReceiveWithAnyArgs().DeleteContactAsync(default!);
         await _audit.DidNotReceive().LogAsync(FinanceAuditActions.HoldedDuplicateRemoved, Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1312,8 +1299,7 @@ public class HoldedFinanceServiceTests
         rows.Single(r => r.SupplierAccountNum == 40000005).OpenDocumentCount.Should().Be(1);
         rows.Single(r => r.SupplierAccountNum == 40000006).OpenDocumentCount.Should().BeNull("a collision is unpayable");
         rows.Single(r => r.SupplierAccountNum == 40000007).OpenDocumentCount.Should().BeNull("unbound");
-        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
-        await _client.DidNotReceiveWithAnyArgs().ListContactsAsync();
+        await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
 
         static HoldedPurchaseDocListItemDto OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new()
         {
@@ -1366,7 +1352,6 @@ public class HoldedFinanceServiceTests
         result.ErrorMessage.Should().Contain("already bound to a different member");
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _client.DidNotReceive().ListContactsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1906,7 +1891,6 @@ public class HoldedFinanceServiceTests
         result.ErrorMessage.Should().Contain("outside the member creditor block");
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
-        await _client.DidNotReceiveWithAnyArgs().ListContactsAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -2308,7 +2292,7 @@ public class HoldedFinanceServiceTests
         _sepa.CreditorIdentifier = "G12345678901";
         _sepa.TreasuryAccountId = "treasury-1";
         _sepa.TreasuryLedgerAccount = 57200001;
-        TestHoldedSync.Wire(_holded, _client);
+        TestHoldedSync.Wire(_holded, _feed);
     }
 
     [HumansFact]
@@ -2915,7 +2899,7 @@ public class HoldedFinanceServiceTests
         };
 
     private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
-        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
+        _feed.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
 
     private void SeedPaymentIds(params string[] ids)
     {
@@ -2938,7 +2922,7 @@ public class HoldedFinanceServiceTests
         decimal amount = -30m, decimal owed = 30m,
         string? description = "40000004 - NCA - ANA RUIZ", string status = "pending")
     {
-        _client.ListBankMovementsAsync(
+        _feed.ListBankMovementsAsync(
                 Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
             .Returns(new List<HoldedBankMovementDto>
             {
@@ -2948,7 +2932,7 @@ public class HoldedFinanceServiceTests
                     Amount = amount, Description = description, Status = status,
                 },
             });
-        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
+        _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedAccountDto>
             {
                 new()
@@ -3044,7 +3028,7 @@ public class HoldedFinanceServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Message.Should().Contain("different Holded contact");
-        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
+        await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
         await _write.DidNotReceiveWithAnyArgs().PayPurchaseDocumentAsync(
             default!, default, default, default, default);
         await _repo.DidNotReceiveWithAnyArgs().SaveSepaTransferBookingAsync(
@@ -3297,7 +3281,7 @@ public class HoldedFinanceServiceTests
 
         unavailable.Should().Contain("Sepa:TreasuryAccountId");
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
-        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
+        await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
     }
 
     /// <summary>Backdoor's <c>sepa-transfers</c> route reuses <see cref="Service.GetSepaPayoutsAsync"/>'s
@@ -3314,7 +3298,7 @@ public class HoldedFinanceServiceTests
 
         transfers.Should().ContainSingle();
         unavailable.Should().BeNull();
-        await _client.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
+        await _feed.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
             default!, default, default);
     }
 
@@ -3416,7 +3400,7 @@ public class HoldedFinanceServiceTests
         // CanBook also needs a matched bank line; this test covers only the account/contact guard,
         // so it checks the guard directly.
         rows.Should().ContainSingle().Which.NotBookableReason.Should().BeNull();
-        await _client.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
+        await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
     }
 
     /// <summary>
@@ -3645,6 +3629,5 @@ public class HoldedFinanceServiceTests
             (62900151, "Workgroups / ALM 2026", false, false),
         ]);
         active.Select(o => o.AccountNum).Should().BeEquivalentTo([62900100, 62900150]);
-        await _client.DidNotReceive().ListExpenseAccountsAsync(Arg.Any<CancellationToken>());
     }
 }

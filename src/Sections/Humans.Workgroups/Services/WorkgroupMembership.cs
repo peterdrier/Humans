@@ -17,7 +17,7 @@ internal sealed class WorkgroupMembership(
     WorkgroupAccess access,
     WorkgroupJournal journal,
     WorkgroupNotices notices,
-    WorkgroupDriveFolders driveFolders,
+    WorkgroupGoogleResources googleResources,
     IUserService users,
     IAuditLogService auditLog,
     IClock clock) : IApplicationService
@@ -120,7 +120,7 @@ internal sealed class WorkgroupMembership(
             relatedEntityId: member.UserId, relatedEntityType: AuditSubjectTypes.User);
         await notices.NotifyAsync([member.UserId], WorkgroupsNotificationSources.WorkgroupMembershipDecided,
             noticeKey, ToInfo(workgroup), body: null, ct);
-        await driveFolders.RequestDriveSyncAsync(workgroup, ct);
+        await googleResources.RequestGoogleSyncAsync(workgroup, ct);
         return new();
     }
 
@@ -190,7 +190,7 @@ internal sealed class WorkgroupMembership(
                 userId);
         }
 
-        await driveFolders.RequestDriveSyncAsync(workgroup, ct);
+        await googleResources.RequestGoogleSyncAsync(workgroup, ct);
         return new();
     }
 

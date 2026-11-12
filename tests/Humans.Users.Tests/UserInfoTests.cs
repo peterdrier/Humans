@@ -162,7 +162,7 @@ public class UserInfoTests
     [HumansFact]
     public void IsGdprAnonymized_false_for_the_retired_name_only_tombstone()
     {
-        // Production migration is complete: names no longer identify erased accounts.
+        // Names alone never identify erased accounts.
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;

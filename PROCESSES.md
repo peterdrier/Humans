@@ -50,16 +50,6 @@ How to use the skills and agents in this project. Ordered by typical workflow. E
 /reuse-review PR 64
 ```
 
-## Review: `/check-pr`
-
-**When:** A PR arrives from outside the agent workflow.
-
-**What it does:** Checks it for rule violations against the `memory/INDEX.md` atoms and `docs/architecture/code-review-rules.md`.
-
-```
-/check-pr PR 64
-```
-
 ## Review findings: `/fix`
 
 **When:** Bot or human review findings are open on a PR, before any fix commit in a review loop.
@@ -79,18 +69,6 @@ How to use the skills and agents in this project. Ordered by typical workflow. E
 
 ```
 /ef-regen AddContainers   # name of the consolidated migration
-```
-
-## Navigation: `/nav-audit`
-
-**When:** After adding new pages or features, or periodically as hygiene.
-
-**What it does:** Scans controller actions and views, maps navigation links, and finds orphan pages, missing backlinks and poor discoverability. Produces a list; changes no code.
-
-```
-/nav-audit         # full site audit
-/nav-audit admin   # audit admin navigation only
-/nav-audit teams   # audit team navigation only
 ```
 
 ## Testing: `/test-site`
@@ -119,17 +97,6 @@ How to use the skills and agents in this project. Ordered by typical workflow. E
 follow docs/maintenance/section-doctor/README.md
 follow docs/maintenance/section-doctor/README.md with --section=Camps
 follow docs/maintenance/section-doctor/README.md with resume
-```
-
-## Section boundaries: `/section-align`
-
-**When:** A sizable PR landed or a section shows architecture drift.
-
-**What it does:** Checks a section's boundaries, internal cohesion and test focus, then fixes them in a push-and-bot-review loop.
-
-```
-/section-align PR 374
-/section-align section Camps --inventory-only
 ```
 
 ## Debt: `/debt-sweep` and debt review
@@ -193,7 +160,6 @@ follow docs/maintenance/freshness-sweep/README.md with --full
 
 | Skill | When to use |
 |-------|-------------|
-| `/finish` | End of session — checks git state, captures context, flags loose ends |
 | `/reforge` | Roslyn-powered queries for references, callers and implementations |
 | `/refactor-swarm` | Parallel Reforge-guided refactors across several sections, one draft PR each |
 
@@ -209,7 +175,7 @@ These are used internally by the skills above:
 | `doctor-reviewer`, `doctor-reviewer-light`, `doctor-reviewer-critical` | section doctor | Score-blind second-opinion gate for non-mechanical strikes, tiered by section risk |
 | `ef-migration-reviewer` | Manual (before committing migrations) | Reviews EF Core migrations for common traps |
 
-Codex runs its own nightly debt and bug-hunt passes from `.codex/` (see `.codex/README.md`); debt review picks up their PRs.
+Codex runs its own nightly debt pass from `.codex/` (see `.codex/README.md`); debt review picks up their PRs.
 
 ## Typical Session Flow
 
@@ -220,4 +186,3 @@ Codex runs its own nightly debt and bug-hunt passes from `.codex/` (see `.codex/
 5. **Merge the QA PR** (with Peter's go) — `peterdrier/Humans` main auto-deploys to QA
 6. **`/test-site`** — smoke test the QA deployment
 7. **`/pr-prod`** — promote to `nobodies-collective/Humans` once QA passes
-8. **`/finish`** — clean up, capture context

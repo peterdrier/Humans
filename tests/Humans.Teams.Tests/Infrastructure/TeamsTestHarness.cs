@@ -33,8 +33,7 @@ public abstract class TeamsTestHarness : IDisposable
     private protected TestDbContextFactory DbFactory { get; }
 
     // Section contexts are separate in-memory stores: a test seeding across two saves each.
-    // Every pair is built on first touch: eager construction gave each test its own EF
-    // service provider, which pushed a 5s-budget test past its CI timeout.
+    // Each pair is built on first touch: building one costs an EF service provider.
 
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 

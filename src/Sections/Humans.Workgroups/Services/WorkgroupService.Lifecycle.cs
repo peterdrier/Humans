@@ -21,7 +21,7 @@ internal sealed partial class WorkgroupService
         // The folder comes first: a failure here leaves the row as it was, so the Secretary can retry.
         if (workgroup.DriveFolderId is null)
         {
-            var folderResult = await DriveFolders.CreateGroupFolderAsync(workgroup, ct);
+            var folderResult = await GoogleResources.CreateGroupFolderAsync(workgroup, ct);
             if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
             workgroup.DriveFolderId = folderResult.Value!;
         }
@@ -37,7 +37,7 @@ internal sealed partial class WorkgroupService
         await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupRegistered, workgroup,
             $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
-        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
+        await GoogleResources.RequestGoogleSyncAsync(workgroup, ct);
         return new();
     }
 
@@ -114,7 +114,7 @@ internal sealed partial class WorkgroupService
             $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
         // Withdrawn isn't Active, so the source stops claiming write access.
-        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
+        await GoogleResources.RequestGoogleSyncAsync(workgroup, ct);
         await Budgets.SetAccountActiveAsync(workgroup, isActive: false, ct);
         return new();
     }
@@ -153,7 +153,7 @@ internal sealed partial class WorkgroupService
         await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
-        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
+        await GoogleResources.RequestGoogleSyncAsync(workgroup, ct);
         await Budgets.SetAccountActiveAsync(workgroup, isActive: true, ct);
         return new();
     }
@@ -217,7 +217,7 @@ internal sealed partial class WorkgroupService
                 WorkgroupBudgets.BudgetLogBody(workgroup), actorUserId));
         }
 
-        var folderResult = await DriveFolders.CreateGroupFolderAsync(workgroup, ct);
+        var folderResult = await GoogleResources.CreateGroupFolderAsync(workgroup, ct);
         if (folderResult.Refusal is { } folderRefusal) return new(Refusal: folderRefusal);
         workgroup.DriveFolderId = folderResult.Value!;
         await repository.AddWorkgroupAsync(workgroup, ct);
@@ -227,7 +227,7 @@ internal sealed partial class WorkgroupService
                 + $"{bootstrap.RegisteredAt.InUtc().Date.ToInvariantDate()}",
             actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
-        await DriveFolders.RequestDriveSyncAsync(workgroup, ct);
+        await GoogleResources.RequestGoogleSyncAsync(workgroup, ct);
         if (budget is not null)
             await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, WorkgroupBudgets.BudgetAuditSummary(workgroup), actorUserId);
 

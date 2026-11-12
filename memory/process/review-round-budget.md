@@ -19,30 +19,24 @@ functionally complete. Nothing else is a round:
 The reverse holds too: a maintainer instruction does not reset the count or raise the
 ceiling. Five bot rounds stay five, whatever else lands on the PR.
 
-**Why:** each review event arrives as a fresh wake, and by then the context that would
-have said "this is round seventeen" has been compacted away — so every round looks like
-round one, and "stop when it stops converging" gets re-derived and rationalised past on
-every firing. A count derived from the PR is the only thing in the loop that remembers.
-Bots have no memory between rounds either; they are generators, not reviewers working
-toward done — deciding the review is over is your job, and past ~5 rounds the next commit
-is likelier to open a leak than close one. That reasoning is about bot loops, which is why
-finishing the PR, or doing what Peter asked, spends nothing.
+**Why:** each review event arrives as a fresh wake with the earlier rounds compacted away,
+so every round looks like round one. A count derived from the PR is the only thing in the
+loop that remembers. Bots are generators with no memory either; deciding the review is over
+is your job, and past about five rounds the next commit is likelier to open a leak than
+close one.
 
 **How to apply:**
 
-The count answers one question — *how many times has this PR already churned on automated
-review?* Everything below serves that. Where a case isn't listed, answer that question and
-act on the answer; don't hunt for a rule that names it.
+The count answers one question: how many times has this PR already churned on automated
+review? Where a case isn't listed, answer that and act on it.
 
 - Every review-round commit carries a `Review-round: <n>` trailer, `<n>` being its own
   number. Count spent = those trailers on the PR
   (`git log origin/main..HEAD --format=%B | grep -c '^Review-round:'`). A commit that is
   not a round must not carry one.
-- The trailer is the memory, not the definition — a record you keep for a future you who
-  has lost the context, not an enforcement mechanism. It is self-declared on purpose
-  (Peter, 2026-08-26: self-declaration has worked in practice). A round commit that
-  predates this rule or lost its trailer to a rebase still counts; where the trailers and
-  the PR's review history disagree, the history wins.
+- The trailer is the memory, not the definition, and is self-declared on purpose. A round
+  commit that lost its trailer to a rebase still counts; where trailers and the PR's review
+  history disagree, the history wins.
 - At 4 spent: last commit — read every open finding, spend it on the most serious.
 - At 5+: no triage, no patch. One comment (open items, what you'd do, what needs
   deciding), unsubscribe from PR activity, drop any check-in schedule, stop.

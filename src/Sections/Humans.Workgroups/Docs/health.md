@@ -92,7 +92,7 @@ loader and must not be gated. The group-loading methods take the check from the 
   which refuses blank (`Services/WorkgroupService.Helpers.cs:163`).
 - **A group is never registered without somewhere to work.** The Drive subfolder is created
   before the status flips (`Services/WorkgroupService.Lifecycle.cs:28`); a failure there returns
-  a refusal and leaves the row untouched (`Services/WorkgroupDriveFolders.cs`).
+  a refusal and leaves the row untouched (`Services/WorkgroupGoogleResources.cs`).
 - **A decision, once committed, finishes.** After the first write each mutation drops its
   cancellation token, so the log entry, audit row and notices that follow cannot be torn off by a
   closed tab (`Services/WorkgroupService.Helpers.cs:561`); Register drops it before it starts

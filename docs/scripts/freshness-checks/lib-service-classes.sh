@@ -1,7 +1,7 @@
 #!/bin/bash
 # Shared helper: enumerate the real service classes under the section and Shell
 # Services/ trees, and the names the architecture docs may legitimately use for
-# each one. Sourced by dependency-graph.sh and service-data-access-map.sh.
+# each one. Sourced by service-data-access-map.sh.
 #
 # Why this is not a file walk. Both checks used to take every `.cs` basename
 # below a Services/ folder as a required doc entry. That treats interfaces, DTOs,
@@ -120,7 +120,7 @@ service_classes() {
 
         # Docs key a service by its interface, not its class: Holded`s `Service`
         # class is documented as HoldedService. Read-split boundaries collapse
-        # onto the owning service node (dependency-graph.md, "How to read"), so
+        # onto the owning service entry, so
         # IStoreServiceRead also offers StoreService.
         #
         # A bare marker is the exception: IApplicationService names every

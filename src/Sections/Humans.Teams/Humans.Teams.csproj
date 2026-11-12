@@ -18,7 +18,6 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
@@ -37,32 +36,20 @@
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
-    <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>, which moved out of Humans.UI into the
-         AuditLog section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches
-         back only to Humans.Teams.Contracts, never to this project — no cycle. -->
+    <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>. AuditLog references only Teams.Contracts, so no cycle. -->
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
-    <!--
-      SystemTeamSyncJob's eligibility inputs (G5 lane 4b-2e). Camps supplies active camp
-      leads, Governance the approved-tier and consent reads, Users the person read model,
-      Email the added-to-team notice. All four are pure leaves (Interfaces + Domain only),
-      so none of these edges cycles back into Humans.Teams. They already arrived
-      transitively through Humans.Application; declared here so they survive its deletion.
-    -->
+    <!-- SystemTeamSyncJob's eligibility inputs: Camps (camp leads), Governance (approved tiers),
+         Users (person read model), Email (added-to-team notice). All are leaves, so no edge cycles back. -->
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <!-- The Consent Coordinator review (IConsentService): tier-team approval gate, and the
-         birthday/map listings. Consent reaches only Teams.Contracts, never this project. -->
+    <!-- SystemTeamSyncJob's Consent Coordinator review read (IConsentService). Consent reaches only Teams.Contracts, so no cycle. -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      SystemTeamSyncJob's [DisableConcurrentExecution]. It arrived transitively through
-      Humans.Infrastructure until G5 lane 5b-6 deleted that project; declaring it makes it
-      honest (lane 5b-1's precedent on Email/Notifications/Issues). Package, not project.
-    -->
+    <!-- SystemTeamSyncJob's [DisableConcurrentExecution]. -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />

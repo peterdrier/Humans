@@ -42,6 +42,7 @@ public sealed class PleoSyncTests
         _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(_ => _entries);
         _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
             [new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false)]);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns([]);
         _client.ListEmployeesAsync(Arg.Any<CancellationToken>()).Returns(
             [new PleoEmployeeWire("emp-1", "Zak", "Bulpitt ", "NCA003", false)]);
         _client.GetBalanceAsync(Arg.Any<CancellationToken>()).Returns(new PleoBalanceWire("EUR", 1_000_000, 990_000, 0));
@@ -228,6 +229,64 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
+    public async Task Sweep_links_and_adds_categories_from_Pleos_mapping_but_leaves_a_hand_link()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var powerRow = Guid.Parse("ec1e51be-d96b-453f-8318-c79371282045");
+        _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false),
+            new PleoAccountWire("acc-2", "62900199", "Departments / Other", "h2", false),
+        ]);
+        (await _service.LinkCategoryAsync("hand-id", powerRow, Guid.NewGuid(), ct)).Should().BeNull();
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-1", false),
+            new PleoCategoryWire("new-id", "Dept - Brand New", "acc-2", false),
+            new PleoCategoryWire("hand-id", "Dept - Power", "acc-2", false),
+            new PleoCategoryWire("no-account", "Dept - LNT", null, false),
+        ]);
+        _entries = [Entry("a")];
+
+        await SyncAsync();
+        await SyncAsync(); // a second sweep changes nothing
+
+        var categories = await _repo.GetCategoriesAsync(ct);
+        categories.Should().HaveCount(14);
+        categories.Single(c => c.Id == LaCantinaRow).PleoCategoryId.Should().Be(LaCantinaCategory);
+        categories.Single(c => string.Equals(c.PleoCategoryId, "new-id", StringComparison.Ordinal))
+            .Should().BeEquivalentTo(new { Name = "Dept - Brand New", HoldedCode = "62900199", SetByUserId = (Guid?)null });
+        categories.Single(c => c.Id == powerRow).HoldedCode.Should().Be("62900117");
+        categories.Single(c => string.Equals(c.Name, "Dept - LNT", StringComparison.Ordinal)).PleoCategoryId.Should().BeNull();
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryLinked, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), "PleoSyncJob");
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryAdded, "PleoCategory", Arg.Any<Guid>(),
+            Arg.Any<string>(), "PleoSyncJob");
+    }
+
+    [HumansFact]
+    public async Task A_sweep_linked_category_follows_a_changed_account_in_Pleo()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false),
+            new PleoAccountWire("acc-2", "62900199", "Departments / Other", "h2", false),
+        ]);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-1", false)]);
+        await SyncAsync();
+
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-2", false)]);
+        await SyncAsync();
+
+        (await _repo.GetCategoriesAsync(ct)).Single(c => c.Id == LaCantinaRow).HoldedCode.Should().Be("62900199");
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryRemapped, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), "PleoSyncJob");
+    }
+
+    [HumansFact]
     public async Task A_failed_fetch_leaves_the_mirror_and_records_the_error()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -242,6 +301,24 @@ public sealed class PleoSyncTests
         (await _repo.GetEntriesAsync(ct)).Should().ContainSingle();
         var state = await _repo.GetSyncStateAsync(ct);
         state!.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        state.LastError.Should().Contain("403");
+    }
+
+    [HumansFact]
+    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var before = await _repo.GetCategoriesAsync(ct);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns<IReadOnlyList<PleoCategoryWire>>(
+            _ => throw new PleoPermanentException("Pleo bookkeeping-categories:search: 403 Forbidden", 403));
+        _entries = [Entry("a")];
+
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.SyncedWithoutCategories);
+
+        (await _repo.GetEntriesAsync(ct)).Should().ContainSingle();
+        (await _repo.GetCategoriesAsync(ct)).Should().BeEquivalentTo(before);
+        var state = await _repo.GetSyncStateAsync(ct);
+        state!.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
         state.LastError.Should().Contain("403");
     }
 

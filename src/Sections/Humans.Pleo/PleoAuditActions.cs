@@ -11,4 +11,7 @@ internal sealed class PleoAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition PleoCategoryUnlinked = new("PleoCategoryUnlinked");
 
     public static readonly AuditActionDefinition PleoCategoryAdded = new("PleoCategoryAdded");
+
+    /// <summary>A sweep-linked category changed name or account in Pleo.</summary>
+    public static readonly AuditActionDefinition PleoCategoryRemapped = new("PleoCategoryRemapped");
 }

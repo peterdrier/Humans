@@ -31,7 +31,7 @@ Production data showed at least one user with two `IsGoogle = true` rows. The Pr
 
 This feature adds:
 
-1. Service-level recovery methods (`ClearGoogleAsync`, `ClearPrimaryAsync`) that drop a single row's flag without auto-promoting a successor — so the operator can deliberately resolve the duplicate state.
+1. A service-level recovery method (`ClearPrimaryAsync`) that drops a single row's primary flag without auto-promoting a successor — so the operator can deliberately resolve the duplicate state.
 2. UI exposure on the Emails grid, for both admin and self, surfaced only on rows in an N>1 violation state — so a stuck user can self-recover.
 3. A site-wide admin scan page (`/Google/EmailFlagViolations`) that lists every affected user and deep-links to their grid.
 
@@ -46,7 +46,7 @@ This feature adds:
 - On `/Profile/{id}/Admin/Emails`, a flagged row shows an inline `×` Clear button next to its flag icon when that flag is in an N>1 violation state (same gating as the self path — `hasMultipleGoogle` / `hasMultiplePrimary` over the user's rows).
 - Clicking Clear drops only that row's flag — the sibling row's flag stays unchanged.
 - `ClearPrimary` does not auto-promote a successor; the admin sets the new primary explicitly.
-- An audit row is written (`UserEmailGoogleCleared` / `UserEmailPrimaryCleared`).
+- An audit row is written (`UserEmailPrimaryCleared`).
 
 ### US-46.2: User self-recovers from a stuck-radio state
 **As a** member with two `IsGoogle = true` rows in my data
@@ -56,7 +56,7 @@ This feature adds:
 **Acceptance Criteria:**
 - On `/Profile/Me/Emails`, a Clear button appears on a flagged row only when the user is in an N>1 violation state for that flag (`hasMultipleGoogle` or `hasMultiplePrimary` over verified rows).
 - When data is healthy, only the existing exclusive Set Primary / Set Google buttons are shown — no Clear.
-- The same `ClearGoogleAsync` / `ClearPrimaryAsync` service methods back self and admin paths; auth is `UserEmailOperations.Edit` (self-or-admin), symmetric with `SetPrimary` / `SetGoogle`.
+- The same `ClearPrimaryAsync` service method backs self and admin paths; auth is `UserEmailOperations.Edit` (self-or-admin), symmetric with `SetPrimary`.
 
 ### US-46.3: Admin scans for invariant violations site-wide
 **As an** admin

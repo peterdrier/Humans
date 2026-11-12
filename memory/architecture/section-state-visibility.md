@@ -1,6 +1,6 @@
 ---
 name: Every section shows its own current state and config
-description: A section holding config, mappings, sync state or external-account maps owns an admin page that shows the current state — what maps to what, what is disabled, orphaned or stale. Hidden state that can break a user path is a gap to fill in the same PR.
+description: "A section holding config, mappings, sync state or external-account maps owns an admin page showing that state. Hidden state that can break a user path is a gap to fill in the same PR."
 ---
 
 Each section exposes, on its own admin surface, the current state of everything it configures or mirrors: integration mappings, account maps, flags, sync status, with the degraded rows (disabled, orphaned, stale, unmatched) called out as such. Nobody should need the database or a log to answer "what is this section configured as right now?".

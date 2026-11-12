@@ -1,6 +1,6 @@
 ---
 name: Nightly debt runs stop at time or quota boundaries
-description: Nightly debt work uses Sol with optional Luna helpers, batches simple corrections, prioritizes production fixes, and checks cumulative weekly quota between committed rounds.
+description: "Nightly debt work selects the latest origin/main runner per run, uses Sol with optional Luna helpers, requires discovery before batching simple corrections and reasons for splits, checks cumulative weekly quota between committed rounds, and reports cleanup/repair/subagent spend."
 ---
 
 Work in validated, committed rounds for at most 12 hours, finishing the active

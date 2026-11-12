@@ -36,6 +36,9 @@ internal sealed class PleoController(
             switch (await pleo.SyncAsync(ct))
             {
                 case PleoSyncOutcome.Synced: SetSuccess("Pleo mirror refreshed."); break;
+                case PleoSyncOutcome.SyncedWithoutCategories:
+                    SetError("Pleo mirror refreshed, but categories could not be fetched; the error is on the sync card.");
+                    break;
                 case PleoSyncOutcome.Busy: SetInfo("A sweep was already running, so this one was skipped."); break;
                 default: SetError("Pleo is not configured."); break;
             }

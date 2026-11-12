@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Users/Services/ProfileService.cs
-  src/Sections/Humans.Teams/**
+  src/Sections/Humans.Users/Controllers/UsersController.cs
+  src/Sections/Humans.Users/Views/Users/Birthdays.cshtml
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Controllers/ProfileViewController.cs
   src/Sections/Humans.Users/Views/Profile/Edit.cshtml
@@ -8,7 +9,7 @@
   src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
-  Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, the ProfileViewController picture endpoint, or the team birthdays view change.
+  Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, the ProfileViewController picture endpoint, or the `/Users/Birthdays` view change.
 -->
 
 # Profile Pictures & Birthday Calendar
@@ -46,7 +47,7 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 ### US-14.3: Set Date of Birth
 **As a** member
 **I want to** set my date of birth on my profile
-**So that** my birthday appears in the team birthday calendar
+**So that** my birthday appears in the birthday calendar
 
 **Acceptance Criteria:**
 - Date of birth field on profile edit page
@@ -152,7 +153,6 @@ The team photo gallery (US-14.2) renders member pictures through the shared `<vc
 | Data | Member | Other Members | Board |
 |------|--------|---------------|-------|
 | Profile picture | Yes | Yes (in teams) | Yes |
-| Date of birth (full) | Yes | No | Yes |
 | Birthday (month+day) | Yes | Yes (calendar) | Yes |
 
 ## Localization

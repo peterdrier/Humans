@@ -62,7 +62,7 @@ Members need to maintain personal information for organizational records while p
 **Acceptance Criteria:**
 - Google Places autocomplete suggestions as user types
 - Selecting a place captures: city, country, coordinates
-- Stored coordinates enable future map features
+- Stored coordinates feed the Humans map (`/Users/Map`)
 - PlaceId stored for reference
 
 ## Data Model

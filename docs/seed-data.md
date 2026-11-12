@@ -28,7 +28,7 @@
 
 **Lazy singleton instead of `HasData`** — some single-row settings tables are deliberately *not* seeded and are created on first save instead (`GateSettingsConfiguration`, `HoldedSyncStateConfiguration` both carry a comment saying so). Prefer this when the row's shape is likely to change: it avoids a `HasData` value baked into an old migration drifting from the entity.
 
-**Migration SQL** — one-off backfills tied to schema changes, written directly into a migration's `Up()`. These don't survive as standalone examples: a section move or DbContext peel squashes its migration chain into one baseline (see `memory/architecture/migration-regen-after-rebase.md`), absorbing any prior one-off backfill along with everything else.
+**Never migration SQL.** Data is not written from a migration's `Up()`: migrations are EF-generated and schema-only (`memory/architecture/no-hand-edited-migrations.md`), and a bulk data fix goes through `/Debug/DataMigrations` (`memory/process/no-data-backfills.md`).
 
 **Well-known system accounts** — non-human accounts with a deterministic ID reserved in `Humans.Base.Constants.SystemUserIds` (GUID block `0004`). The shared gate-terminal account (`SystemUserIds.GateTerminal`) is provisioned lazily — `GateTerminalAccountSeeder` creates the User + Stub→Active Profile through the canonical application-service path the first time a ticket admin sets its password from `/Tickets/Admin/Gate` — not via `HasData` or migration SQL. Idempotent; holds no roles and no email.
 

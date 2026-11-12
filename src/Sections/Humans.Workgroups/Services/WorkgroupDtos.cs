@@ -32,7 +32,8 @@ internal sealed record WorkgroupInfo(
     decimal? BudgetAmount,
     int? HoldedAccountNumber,
     string? HoldedAccountId,
-    bool IsSensitive = false)
+    bool IsSensitive = false,
+    string? GoogleGroupEmail = null)
 {
     public bool HasBudget => BudgetAmount is not null;
 

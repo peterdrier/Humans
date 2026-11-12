@@ -5,7 +5,7 @@ namespace Humans.Analyzers.Internal;
 
 /// <summary>
 /// The only sanctioned suppression for HUM rules
-/// (<c>memory/architecture/analyzer-exceptions-via-attributes.md</c>).
+/// (<c>memory/process/no-analyzer-suppressions.md</c>).
 /// </summary>
 /// <remarks>
 /// Typical usage in an analyzer:

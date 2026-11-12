@@ -232,9 +232,6 @@
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Necesario para documentos oficiales y firmas.</value>
   </data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve">
-    <value>Seleccionar</value>
-  </data>
   <data name="Users_ProfileEdit_City" xml:space="preserve">
     <value>Ciudad</value>
   </data>
@@ -811,6 +808,9 @@
   </data>
   <data name="Users_Profile_Settings" xml:space="preserve">
     <value>Ajustes</value>
+  </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Mostrar todas ({0})</value>
   </data>
   <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
     <value>Vista previa de un nuevo diseño. La página actual:</value>

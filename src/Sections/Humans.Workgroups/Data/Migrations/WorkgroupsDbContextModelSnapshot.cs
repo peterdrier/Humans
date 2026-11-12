@@ -72,6 +72,10 @@ namespace Humans.Workgroups.Data.Migrations
                     b.Property<Instant?>("EndedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("GoogleGroupPrefix")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("HoldedAccountId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");

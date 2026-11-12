@@ -194,7 +194,7 @@ public sealed record UserInfo(
     public bool IsActive =>
         Profile is not null && State != UserState.Rejected && !IsTombstone;
 
-    /// <summary>The canonical suspended predicate (memory/code/no-issuspended.md).</summary>
+    /// <summary>The canonical suspended predicate (memory/code/no-paving-obsolete-fields.md).</summary>
     public bool IsSuspended =>
         State is UserState.Suspended or UserState.AdminSuspended;
 
