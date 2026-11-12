@@ -115,7 +115,7 @@ Each cites the line that enforces it.
 - Approval and rejection require at least one Board vote to exist; with none, finalization is
   refused and nothing is written (`Services/ApplicationDecisionService.cs:127`).
 - Finalization is atomic: the application update, the destruction of every `BoardVote` row for
-  it and, on approval, the member's tier row commit together (`Data/ApplicationRepository.cs:97`).
+  it and, on approval, the member's tier row commit together (`Data/ApplicationRepository.cs:98`).
 - Approval sets a term expiring 31 December of the current cycle's odd year: the approval year
   if odd, else the next; from 1 October of an odd year, the next cycle's
   (`Services/TermExpiryCalculator.cs:15`).
@@ -125,7 +125,7 @@ Each cites the line that enforces it.
 - `application_state_history` is append-only in normal operation: the repository offers no
   update or delete for it. GDPR erasure is the one exception, nulling `Notes` on the rows of the
   person's own applications and on the rows they authored as a Board member
-  (`Data/ApplicationRepository.cs:316`, `:336`).
+  (`Data/ApplicationRepository.cs:317`, `:337`).
 - Casting a Board vote is Board-only and finalizing is Admin-only
   (`Controllers/GovernanceBoardVotingController.cs:113`, `:156`).
 
@@ -135,7 +135,7 @@ Each cites the line that enforces it.
   so knowing a draft's id is not a way to read its motion early
   (`Services/AssemblyVoteMemberWorkflow.cs:34`, `:63`).
 - Content is immutable once Open. The draft write refuses a non-draft, and the open refuses a
-  draft edited while its roster was being built (`Services/AssemblyVoteDrafts.cs:76`,
+  draft edited while its roster was being built (`Services/AssemblyVoteDrafts.cs:80`,
   `Data/AssemblyVoteRepository.cs:189`).
 - The electorate is written exactly once, at open, in the same unit of work as the transition
   (`Data/AssemblyVoteRepository.cs:199`), and is never recomputed. A person reachable through
@@ -152,12 +152,12 @@ Each cites the line that enforces it.
   row (`Services/AssemblyVoteMemberWorkflow.cs:162`).
 - The embargo: the only reads that return anything derived from ballot content are the stored
   result after close, the audited peek, and the audited post-close ballot list
-  (`Services/AssemblyVoteService.cs:106`, `:211`, `:256`; the contract is stated at
+  (`Services/AssemblyVoteService.cs:84`, `:189`, `:234`; the contract is stated at
   `Services/IAssemblyVoteService.cs:8`).
 - A peek is recorded before its tally is handed back, and only while the vote still accepts
-  ballots (`Services/AssemblyVoteService.cs:223`, `Data/AssemblyVoteRepository.cs:413`).
+  ballots (`Services/AssemblyVoteService.cs:201`, `Data/AssemblyVoteRepository.cs:413`).
 - Individual ballots are disclosed for a Closed vote only; a Cancelled vote's are not
-  (`Services/AssemblyVoteService.cs:256`).
+  (`Services/AssemblyVoteService.cs:234`).
 - The result is computed once and stored, and the close persists the closed status *before* it
   reads any ballot (`Services/AssemblyVoteSettlement.cs:134`, `:169`).
 - A vote whose deadline has passed is closed for every purpose, whether or not the hourly job
@@ -169,7 +169,7 @@ Each cites the line that enforces it.
 - The announced deadline of an open vote only ever moves later
   (`Data/AssemblyVoteRepository.cs:60`).
 - A ranked draft carrying a two-thirds threshold is rejected: instant runoff has no defined
-  two-thirds rule (`Services/AssemblyVoteDrafts.cs:206`).
+  two-thirds rule (`Services/AssemblyVoteDrafts.cs:210`).
 - YesNo: Simple passes when for beats against and ties when level; TwoThirds passes at
   `ceil(2/3 × (for + against))`. Abstentions are in neither base
   (`Services/AssemblyVoteCounting.cs:47`).
@@ -184,7 +184,7 @@ Each cites the line that enforces it.
 - Erasure keeps the vote arithmetically valid: the roster row is unlinked from the account and
   the ballot is retained (`Data/AssemblyVoteRepository.cs:493`).
 - An account merge leaves roster rows and ballots exactly where they were cast and audits every
-  vote it found one on (`Services/AssemblyVoteService.cs:385`,
+  vote it found one on (`Services/AssemblyVoteService.cs:363`,
   `Data/AssemblyVoteRepository.cs:507`).
 
 **Both**
@@ -268,3 +268,4 @@ Settled decisions. Do not re-litigate.
 |---|---|---|---|
 | 1 | 2026-09-02 | Term expiry shown wrong on both member pages; dead `/Governance/MyApplications` notification link; dead surface removed; doc and comment truth | peterdrier/Humans#1580 |
 | 2 | 2026-09-18 | Assembly votes reached the member guide, the routing table and `authorization.md`; tier plural fixed in four cultures; dead members and resource keys cut | peterdrier/Humans#1739 |
+| 3 | 2026-11-12 | Docs no longer put the tier on the profile or the vote logic in one class; contract records no other section reads became internal | pending |
