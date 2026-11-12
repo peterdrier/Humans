@@ -30,7 +30,6 @@
     <!-- CalendarFeedTokenService joins the GDPR export/erasure fan-out for calendar_feed_tokens. -->
     <!-- ICalFeedService resolves merges forward through IUserService; the token service
          joins the account-merge fan-out through IUserMerge. -->
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

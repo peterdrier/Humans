@@ -43,7 +43,6 @@
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- SystemTeamSyncJob's Consent Coordinator review read (IConsentService). Consent reaches only Teams.Contracts, so no cycle. -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
   </ItemGroup>

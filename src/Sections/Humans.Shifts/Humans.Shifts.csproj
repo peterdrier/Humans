@@ -47,7 +47,6 @@
     <!-- ICantinaService (Contracts/ folder): the missing-dietary banner.
          Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
     <ProjectReference Include="..\Humans.Cantina\Humans.Cantina.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Humans.Shifts
       type (they may name Humans.Shifts.Contracts, which is

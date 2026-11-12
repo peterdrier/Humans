@@ -5,7 +5,7 @@
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Tickets.Contracts/ParticipationStatus.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
-  src/Sections/Humans.Users.Contracts/IUserMerge.cs
+  src/Humans.Base/Users/IUserMerge.cs
 -->
 <!-- freshness:flag-on-change
   Shift signup state machine, capacity ceilings, range-block atomicity, voluntelling rules, and coordinator/manager scope — review when Shifts services/entities/controllers change.
