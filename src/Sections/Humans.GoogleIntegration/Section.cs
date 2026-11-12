@@ -32,6 +32,7 @@ namespace Humans.GoogleIntegration;
 public sealed class Section :
     ISection,
     ISectionAccessMatrix,
+    ISectionHelp,
     ISectionAdminNav,
     ISectionConfiguration,
     ISectionHealthChecks,
@@ -53,6 +54,12 @@ public sealed class Section :
             ]
         }
     ];
+
+    IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => HelpEntries;
+
+    // Read once per process: the markdown ships inside this assembly and never changes at runtime.
+    private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
+        [SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "GoogleSync", 84)];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {

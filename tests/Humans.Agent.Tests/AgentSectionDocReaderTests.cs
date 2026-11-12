@@ -82,7 +82,10 @@ public class AgentSectionDocReaderTests
     [InlineData("ContainerMap", "Containers")]
     [InlineData("ConsentReview", "Consent")]
     [InlineData("Board", "Governance")]
-    [InlineData("Admin", "Governance")]
+    [InlineData("UsersAdmin", "Users")]
+    [InlineData("RoleAssignments", "Auth")]
+    [InlineData("LegalDocuments", "Consent")]
+    [InlineData("GoogleSync", "GoogleIntegration")]
     [InlineData("LegalAndConsent", "Consent")]
     public async Task ReadAsync_resolves_the_aliases_the_agent_reads_out_of_its_own_prompt(string key, string expectedStem)
     {
@@ -107,7 +110,10 @@ public class AgentSectionDocReaderTests
     [InlineData("ContainerMap")]
     [InlineData("ConsentReview")]
     [InlineData("Board")]
-    [InlineData("Admin")]
+    [InlineData("UsersAdmin")]
+    [InlineData("RoleAssignments")]
+    [InlineData("LegalDocuments")]
+    [InlineData("GoogleSync")]
     [InlineData("LegalAndConsent")]
     public void Every_alias_target_is_a_whitelisted_section(string alias)
     {

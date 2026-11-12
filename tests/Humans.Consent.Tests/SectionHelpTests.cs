@@ -17,7 +17,7 @@ public class SectionHelpTests
     {
         ((ISectionHelp)new Section()).HelpEntries
             .Select(e => (e.Key, e.Order))
-            .Should().Equal(("ConsentReview", 70));
+            .Should().Equal(("ConsentReview", 70), ("LegalDocuments", 83));
     }
 
     [HumansFact]
@@ -29,5 +29,15 @@ public class SectionHelpTests
         entry.Guide.Should().EndWith("- The review queue badge in the nav updates in real-time", "the file's trailing newline is framing, not content");
         entry.Glossary.Should().StartWith("## Consent Review Glossary");
         entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
+    }
+
+    [HumansFact]
+    public void Reads_the_LegalDocuments_help_out_of_the_assembly()
+    {
+        var entry = ((ISectionHelp)new Section()).HelpEntries
+            .Single(e => string.Equals(e.Key, "LegalDocuments", StringComparison.Ordinal));
+
+        entry.Guide.Should().StartWith("## Legal Documents");
+        entry.Glossary.Should().StartWith("## Legal Documents Glossary");
     }
 }

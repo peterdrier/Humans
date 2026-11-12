@@ -281,6 +281,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> Entries =
     [
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Profile", 20),
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "UsersAdmin", 81),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)

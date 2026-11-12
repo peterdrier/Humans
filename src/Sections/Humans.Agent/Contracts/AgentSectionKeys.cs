@@ -36,9 +36,11 @@ public static class AgentSectionKeys
             // context: docs/guide/ has not been renamed (GuideFiles.Sections still lists
             // "LegalAndConsent"), and stored conversations emit it.
             ["LegalAndConsent"] = "Consent",
-            // /Admin is a nav holder, not a section; its help glossary is governance/ops terms.
-            ["Admin"] = "Governance",
             ["Board"] = "Governance",
+            ["UsersAdmin"] = "Users",
+            ["RoleAssignments"] = "Auth",
+            ["LegalDocuments"] = "Consent",
+            ["GoogleSync"] = "GoogleIntegration",
             // A barrio is a camp — Camps.md defines them; CityPlanning.md only places them.
             ["Barrios"] = "Camps",
             ["CityPlanningOverview"] = "CityPlanning",

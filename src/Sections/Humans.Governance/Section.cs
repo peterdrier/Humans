@@ -166,9 +166,7 @@ public sealed class Section :
     // Read once per process: the markdown ships inside this assembly and never changes at runtime.
     private static readonly IReadOnlyList<SectionHelpEntry> Entries =
     [
-        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Admin", 30),
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Governance", 60),
-        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Board", 80),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
