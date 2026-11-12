@@ -175,24 +175,24 @@ The public surface is a `Contracts/` folder in the section (no `.Contracts` leaf
 ```csharp
 public interface IPreapprovalService
 {
-    // Grants the member may file against today: Open and ClaimBy not passed.
-    Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct);
-    Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct);
-    // Grants whose program the user is a named manager of (Expenses' first-review queue).
-    Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct);
+    // Every grant of every program, any state. Expenses picks a member's claimable grants and a
+    // manager's grants itself, comparing every id the person has held.
+    Task<IReadOnlyList<GrantOption>> GetGrantsAsync(CancellationToken ct);
 }
 
 public sealed record GrantOption(
-    Guid Id, string ProgramName, string? Label, decimal MaxAmount,
-    int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy, GrantStatus Status);
+    Guid Id, Guid HolderUserId, IReadOnlyList<Guid> ManagerUserIds, string ProgramName, string? Label,
+    decimal MaxAmount, int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy, GrantStatus Status,
+    bool ClaimableToday); // Open and ClaimBy not passed (Europe/Madrid)
 
 // IPreapprovalWrite, called by Expenses only. Each one audited with the report id. A refusal comes back
-// in the result (Refusal), not as an exception; afterCommit defers notices until Expenses' transaction commits.
-Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null); // Open → Claimed; idempotent for the same report; refused unless claimable
+// in the result (Refusal), not as an exception; audit and notices go into afterCommit, which Expenses runs after its
+// transaction commits.
+Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>> afterCommit); // Open → Claimed; idempotent for the same report; refused unless claimable
 Task<PreapprovalWriteResult> ReleaseAsync(/* same parameters */); // Claimed → Open (withdraw before approval)
 Task<PreapprovalWriteResult> ConsumeAsync(/* same parameters */); // Claimed → Consumed (approve)
 
-public sealed record PreapprovalWriteResult(GrantStamp? Stamp = null, string? Refusal = null);
+public sealed record PreapprovalWriteResult(GrantOption? Claimed = null, string? Refusal = null);
 ```
 
 Program and manager administration, issuing, applying, approving, declining and revoking live on
@@ -200,9 +200,8 @@ the internal `IPreapprovalManagement` (the `I<Section>Management` pattern), whic
 controllers inject. Nothing outside the section sees them. When Creativity exists it gets one narrow
 issue command on the public contract, not the whole management surface.
 
-A successful `ClaimAsync` carries the stamp Expenses must write in `PreapprovalWriteResult.Stamp`: `GrantStamp(decimal MaxAmount,
-int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy)`, read from the program as
-it is **at submit time**.
+A successful `ClaimAsync` carries the grant in `PreapprovalWriteResult.Claimed`; Expenses writes its `MaxAmount`,
+`HoldedAccountNumber` and `HoldedAccountId`, read from the program as it is **at submit time**.
 
 ## Expenses changes
 
@@ -219,7 +218,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
   (`HoldedAccountNumber` is non-nullable after Phase 2) and the grant's cap for display; submit
   overwrites both from the stamp. A finance admin
   filing on a member's behalf may pick one of **that member's** grants.
-- **Submit:** `ClaimAsync` in the same transaction as the status change; its `GrantStamp` is
+- **Submit:** `ClaimAsync` in the same transaction as the status change; the claimed grant's cap and account are
   written to `MaxAmount`, `HoldedAccountNumber` / `HoldedAccountId` **then**, so a program whose
   account was changed between draft and submit books to the account the program has now. If the
   grant is no longer claimable (revoked, claimed by another report, `ClaimBy` passed)

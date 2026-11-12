@@ -44,7 +44,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var model = await pageBuilder.BuildIndexAsync(user.Id, HttpContext.RequestAborted);
+            var model = await pageBuilder.BuildIndexAsync(user, HttpContext.RequestAborted);
             return View(model);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -83,7 +83,7 @@ internal sealed class ExpensesController(
                 SubmitterUserId = user.Id,
                 PreapprovalGrantId = grant,
             };
-            await PopulateGrantOptionsAsync(model, user.Id, HttpContext.RequestAborted);
+            await PopulateGrantOptionsAsync(model, user, HttpContext.RequestAborted);
             // The grant's label is the project name, which is what the Subject asks for.
             model.Note = model.Grants.FirstOrDefault(g => g.Id == grant)?.Label;
             return View(model);
@@ -115,7 +115,7 @@ internal sealed class ExpensesController(
         if (!ModelState.IsValid)
         {
             model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
-            await PopulateGrantOptionsAsync(model, user.Id, HttpContext.RequestAborted);
+            await PopulateGrantOptionsAsync(model, user, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -144,7 +144,7 @@ internal sealed class ExpensesController(
                 ? $"{localizer["Expenses_Flash_CreateFailed"]} {reason}"
                 : localizer["Expenses_Flash_CreateFailed"].Value);
             model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user.Id);
+            await PopulateGrantOptionsAsync(model, user);
             return View(model);
         }
         catch (Exception ex)
@@ -152,16 +152,16 @@ internal sealed class ExpensesController(
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
             SetError(localizer["Expenses_Flash_CreateFailed"]);
             model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user.Id);
+            await PopulateGrantOptionsAsync(model, user);
             return View(model);
         }
     }
 
     /// <summary>The viewer's claimable grants, plus the preselected one when it is somebody else's (an admin filing on
     /// their behalf).</summary>
-    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, Guid viewerId, CancellationToken ct = default)
+    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, UserInfo viewer, CancellationToken ct = default)
     {
-        var grants = (await preapprovals.ListClaimableForUserAsync(viewerId, ct)).OrderBy(g => g.ClaimBy).ToList();
+        var grants = (await preapprovals.ListClaimableAsync(viewer.AllUserIds, ct)).OrderBy(g => g.ClaimBy).ToList();
         if (model.PreapprovalGrantId is { } wanted && grants.All(g => g.Id != wanted)
             && await preapprovals.GetGrantAsync(wanted, ct) is { } other)
             grants.Insert(0, other);
@@ -848,7 +848,9 @@ internal sealed class ExpensesController(
         model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
         // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between the member's own.
         // The one the report holds stays listed in any state.
-        var grants = (await preapprovals.ListClaimableForUserAsync(report.SubmitterUserId, HttpContext.RequestAborted)).OrderBy(g => g.ClaimBy).ToList();
+        var submitter = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
+        var grants = (await preapprovals.ListClaimableAsync(submitter?.AllUserIds ?? [report.SubmitterUserId], HttpContext.RequestAborted))
+            .OrderBy(g => g.ClaimBy).ToList();
         if (report.PreapprovalGrantId is { } held && grants.All(g => g.Id != held)
             && await preapprovals.GetGrantAsync(held, HttpContext.RequestAborted) is { } heldGrant)
             grants.Insert(0, heldGrant);

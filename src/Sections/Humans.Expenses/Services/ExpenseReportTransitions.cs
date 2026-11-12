@@ -30,9 +30,6 @@ internal sealed class ExpenseReportTransitions(
     ExpenseReportAccess reportAccess,
     ExpenseReportAudit reportAudit) : IApplicationService
 {
-    /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
     // Scoped transitions hold this through ambient transaction disposal and completion.
     private static readonly TrackedLock TransitionLock = new("Expenses.ReportTransitions");
 
@@ -190,7 +187,7 @@ internal sealed class ExpenseReportTransitions(
                     logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
                     return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
                 }
-                var stamp = claim.Stamp!;
+                var stamp = claim.Claimed!;
                 var ok = await repo.SubmitAsync(
                     reportId, legalName, payeeIban, now,
                     grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
@@ -392,10 +389,9 @@ internal sealed class ExpenseReportTransitions(
             case GrantStatus.Revoked:
                 return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalRevoked");
             case GrantStatus.Open:
-                var today = clock.GetCurrentInstant().InZone(MadridZone).Date;
-                return grant.ClaimBy < today
-                    ? ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalDeadlinePassed", grant.ClaimBy.ToInvariantDate())
-                    : null;
+                return grant.ClaimableToday
+                    ? null
+                    : ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalDeadlinePassed", grant.ClaimBy.ToInvariantDate());
             case GrantStatus.Claimed:
                 // Held by this report (a resubmit) or by another one; ClaimAsync tells them apart.
                 return null;

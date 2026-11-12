@@ -70,6 +70,7 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
+    private readonly Dictionary<Guid, GrantOption> _grantStore = new();
     private readonly IPreapprovalWrite _preapprovalWrites = Substitute.For<IPreapprovalWrite>();
     private readonly ExpenseReportService _sut;
 
@@ -86,8 +87,10 @@ public sealed partial class ExpenseReportServiceTests
 
     public ExpenseReportServiceTests()
     {
-        _preapprovalWrites.ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>?>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
-        _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>?>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<GrantOption>)_grantStore.Values.ToList());
+        _preapprovalWrites.ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
+        _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
         // DrainHoldedOutboxAsync returns early unless IHoldedService.IsConfigured, so the
@@ -3215,9 +3218,9 @@ public sealed partial class ExpenseReportServiceTests
         {
             var grant = MakeGrant(status: GrantStatus.Claimed);
             await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted);
-            _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+            PutGrant(grant);
             _preapprovalWrites.ConsumeAsync(grant.Id, reportId, actor, Arg.Any<CancellationToken>(),
-                Arg.Any<Action<Func<CancellationToken, Task>>?>()).Returns(call =>
+                Arg.Any<Action<Func<CancellationToken, Task>>>()).Returns(call =>
                 {
                     call.ArgAt<Action<Func<CancellationToken, Task>>>(4)(_ => Task.FromException(failure));
                     return new PreapprovalWriteResult();
