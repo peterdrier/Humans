@@ -336,7 +336,7 @@ Same diff logic as full sync, but read-only — no writes to Google APIs.
 
 ## Sync Mode Settings
 
-Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `sync_service_settings` table and managed via the `/Settings#google-sync` tab (Admin-only).
+Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `google_sync_service_settings` table and managed via the `/Settings#google-sync` tab (Admin-only).
 
 ### SyncServiceSettings Entity
 ```

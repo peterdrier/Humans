@@ -131,7 +131,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyVote
 
-**Table:** `assembly_votes`
+**Table:** `governance_assembly_votes`
 
 | Property | Type | Notes |
 |---|---|---|
@@ -157,7 +157,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyVoteOption
 
-**Table:** `assembly_vote_options` (aggregate-local, Cascade). RankedChoice only.
+**Table:** `governance_assembly_vote_options` (aggregate-local, Cascade). RankedChoice only.
 
 | Property | Type | Notes |
 |---|---|---|
@@ -169,7 +169,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyVoteRoster
 
-**Table:** `assembly_vote_roster`. Written once at open, never updated except by erasure.
+**Table:** `governance_assembly_vote_roster_entries`. Written once at open, never updated except by erasure.
 
 | Property | Type | Notes |
 |---|---|---|
@@ -186,7 +186,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyBallot
 
-**Table:** `assembly_ballots`. The member's current standing ballot.
+**Table:** `governance_assembly_ballots`. The member's current standing ballot.
 
 | Property | Type | Notes |
 |---|---|---|
@@ -203,7 +203,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyBallotHistory
 
-**Table:** `assembly_ballot_history`. Append-only (repository exposes Add and Get only, design-rules.md, *Append-only entities*).
+**Table:** `governance_assembly_ballot_history`. Append-only (repository exposes Add and Get only, design-rules.md, *Append-only entities*).
 
 | Property | Type | Notes |
 |---|---|---|
@@ -215,7 +215,7 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyVotePeek
 
-**Table:** `assembly_vote_peeks`. Append-only.
+**Table:** `governance_assembly_vote_peeks`. Append-only.
 
 | Property | Type | Notes |
 |---|---|---|
@@ -293,12 +293,12 @@ Board members are de facto Asociados: they are on the official roster whether or
 ## Invariants
 
 - Only roster rows with `IsOfficial = true` contribute to the official result; indicative ballots are tallied separately and never merged.
-- The roster is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official), and the Volunteers team for `AllMembers`; it is never recomputed. A person appearing in more than one source gets one row, official if any source is official.
+- The roster is written exactly once, at open, from Governance's own `governance_applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official), and the Volunteers team for `AllMembers`; it is never recomputed. A person appearing in more than one source gets one row, official if any source is official.
 - A ballot can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision` and append history; nothing is ever deleted.
 - List ordering is presentation-owned: member list Open-first then latest closing, admin list latest closing, member task entries latest closing.
 - Content (`Title`, `OfficialText`, options, `Kind`, `RequiredMajority`, audiences, disclosure) is immutable once Open.
 - No read path returns per-option counts, rankings, or any ballot content for an Open vote except `Peek`, and `Peek` always writes its audit entry and peek row in the same unit of work as the read.
-- The audit entry for a ballot event names actor and vote, never the choice. The choice lives only in `assembly_ballots` / `assembly_ballot_history`.
+- The audit entry for a ballot event names actor and vote, never the choice. The choice lives only in `governance_assembly_ballots` / `governance_assembly_ballot_history`.
 - The result is computed once, at close, and stored; the results page renders the stored result.
 - Closed and Cancelled are terminal, enforced at the write and not just at the read: every write to a vote row takes that row's lock and applies only while the row is still in the state its caller read. A stop, cancel or extend built from an Open read is refused once anything else has closed the vote — including a second stop, which is how two admins clicking at once produce one close, one audit entry and one notification. An automatic close is refused as well when an Extend has pushed the deadline past the one it read, and an extension is refused when the persisted deadline is already later than the one it carries — two admins extending at once both validate against the deadline they read, and the shorter one must not take the electorate's deadline back. A stop or cancel built from the pre-extension deadline still goes through — it is a legitimate terminal write — but keeps the locked row's later deadline, so the record never shows a deadline the extension superseded. Deleting or opening applies only while the row is still Draft, and opening — like a translation pre-fill — is refused outright when the draft was edited since the write was built, because the electorate is computed from the draft and then frozen. The caller reports the refusal as `WrongState`.
 - A vote whose `ClosesAt` has passed is Closed for every purpose, whether or not the lapse job has run yet.
@@ -330,7 +330,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 - **GDPR export:** `IUserDataContributor` contributes the member's roster rows, current ballots and history under a new export key it declares as `AssemblyVoteService.AssemblyVotes`. Actor-side data (drafted/opened/closed votes, peeks) goes in a second slice, `AssemblyVoteService.AssemblyVoteActions`, and is declared as retained: the acta names the closer and the results page publishes the early-view list.
 - **Duplicate accounts:** a merge leaves assembly-vote roster rows and ballots exactly where they are. One human enrolled on a roster twice, and casting two ballots, is a defect in the vote itself, and re-pointing or collapsing the rows would destroy the only record that it happened. Nothing becomes unreachable, because every member-facing read walks the chain instead: `AssemblyVoteMemberWorkflow.EffectiveRosterAsync` resolves the viewer to their own roster row or to one left on an account merged into theirs — a row that already carries a ballot wins over every other candidate, the viewer's own included, so a human holding two rows on one vote amends the ballot they cast rather than casting a second, and rows are considered in id order so two reads never disagree. So the survivor of a merge can still see the vote, cast and amend the ballot the frozen roster granted them; and the GDPR export unions `UserInfo.MergedUserIds`, the same chain erasure already follows. Mail follows the same chain: `RecipientsAsync` resolves every roster row's user id through `GetUserInfosAsync`, groups the rows by the resolved human, and mails once — so a row left on a tombstone reaches the survivor, and a human holding two rows on one vote gets one email with both rows stamped.
 - **Art. 17 erasure:** roster `UserId` → null (tombstone keeps counts and the stored result valid); ballot and history rows are retained unlinked, because the vote is a legal record of the association (Art. 17(3)(b) / (e)). Declared as partial retention in the section's `ErasureDeclaration`.
-- **Account merge (`IUserMerge`):** roster rows and ballots do **not** re-FK from source to target — they record who was entitled when the vote opened and what that entitlement produced, not who holds the account today. Every vote the merged-away account was rostered on gets an audit entry naming that id, so the Board can see the merge found the row and left it standing. The vote's own actor columns (`CreatedByUserId`, `OpenedByUserId`, `ClosedByUserId`) and `assembly_vote_peeks.AdminUserId` do move, so the acta and the published peek list keep naming the surviving human instead of a tombstone.
+- **Account merge (`IUserMerge`):** roster rows and ballots do **not** re-FK from source to target — they record who was entitled when the vote opened and what that entitlement produced, not who holds the account today. Every vote the merged-away account was rostered on gets an audit entry naming that id, so the Board can see the merge found the row and left it standing. The vote's own actor columns (`CreatedByUserId`, `OpenedByUserId`, `ClosedByUserId`) and `governance_assembly_vote_peeks.AdminUserId` do move, so the acta and the published peek list keep naming the surviving human instead of a tombstone.
 
 ## Cross-section dependencies
 

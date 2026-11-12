@@ -6,7 +6,7 @@ using NodaTime;
 namespace Humans.GoogleIntegration.Services;
 
 /// <summary>
-/// One-time copy of Google-sync history from <c>audit_log</c> into <c>google_sync_log</c>; source rows are never
+/// One-time copy of Google-sync history from <c>audit_log_entries</c> into <c>google_sync_log_entries</c>; source rows are never
 /// touched. Idempotent: a copy keeps the audit row's id. Goes when the six audit columns do.
 /// </summary>
 internal interface IGoogleSyncHistoryMigrationService : IApplicationService
@@ -19,7 +19,7 @@ internal interface IGoogleSyncHistoryMigrationService : IApplicationService
 
 /// <summary>Counts for one preview or run, plus the rows behind them.</summary>
 /// <param name="Examined">Audit rows carrying a Google resource id.</param>
-/// <param name="AlreadyPresent">Of those, ones already in <c>google_sync_log</c>.</param>
+/// <param name="AlreadyPresent">Of those, ones already in <c>google_sync_log_entries</c>.</param>
 /// <param name="Movable">Of the rest, ones that map to a sync-log row.</param>
 /// <param name="Moved">Rows actually written — always 0 for a preview.</param>
 /// <param name="MovableRows">The movable rows, newest first, capped for display.</param>
@@ -36,7 +36,7 @@ internal sealed record GoogleSyncHistoryMigrationReport(
     public int Skipped => Examined - AlreadyPresent - Movable;
 }
 
-/// <summary>An audit row as it will land in <c>google_sync_log</c>.</summary>
+/// <summary>An audit row as it will land in <c>google_sync_log_entries</c>.</summary>
 internal sealed record GoogleSyncHistoryMovableRow(
     Guid AuditId,
     Instant OccurredAt,

@@ -8,7 +8,7 @@ internal sealed class HoldedCategoryMapConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<HoldedCategoryMap> b)
     {
-        b.ToTable("holded_category_map");
+        b.ToTable("finance_holded_category_maps");
         b.HasKey(x => x.Id);
         b.HasIndex(x => x.BudgetCategoryId).IsUnique();
         b.HasIndex(x => x.HoldedAccountNumber).IsUnique();

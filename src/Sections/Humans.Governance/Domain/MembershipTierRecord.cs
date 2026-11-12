@@ -5,7 +5,7 @@ namespace Humans.Governance.Domain;
 
 /// <summary>
 /// One row per member. No row means Volunteer; a <see cref="MembershipTier.Volunteer"/> row
-/// records an expired term, so the read never falls back to the legacy <c>profiles.MembershipTier</c>.
+/// records an expired term, so the read never falls back to the legacy <c>user_profiles.MembershipTier</c>.
 /// </summary>
 internal sealed class MembershipTierRecord
 {

@@ -30,7 +30,7 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 
 ### SyncServiceSettings
 
-**Table:** `sync_service_settings`
+**Table:** `google_sync_service_settings`
 
 Per-service sync-mode configuration. Holds `UpdatedByUserId` — a bare cross-section Guid column, no FK constraint, no nav. Display names are resolved via `IUserService.GetUserInfosAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
 
@@ -48,13 +48,13 @@ Flat record — already clean. Holds `TeamId`/`UserId` scalars with no navs. Two
 
 ### GoogleSyncLogEntry
 
-**Table:** `google_sync_log`
+**Table:** `google_sync_log_entries`
 
 One row per permission grant or revocation the sync path applies: `Action` (`AccessGranted` / `AccessRevoked`), `ResourceId`, optional `UserId`, `UserEmail` at the time of the call, `Role`, `Source` (`GoogleSyncSource`), `Success`, `ErrorMessage`, `Description`, `JobName`, `OccurredAt`. All Guids are bare columns — no navs, no FKs. Enums persist as strings; indexes on `ResourceId`, `UserId` and `OccurredAt`.
 
-This wing lived in `audit_log` until nobodies-collective/Humans#1083. The section that produces the rows owns them.
+This wing lived in `audit_log_entries` until nobodies-collective/Humans#1083. The section that produces the rows owns them.
 
-The rows written before the split are still on `audit_log`. **`/Google/Admin/SyncHistoryMigration`** (admin-only, under the *Google* nav group) copies them forward: GET is a dry run reporting how many rows were examined, are already here, would move and cannot be mapped; POST copies. `GoogleSyncHistoryMigrationService` reads through `ILegacyGoogleSyncAuditReader` (AuditLog's `Contracts/` folder) and writes through `IGoogleSyncLogRepository`, so neither section touches the other's context. A copied row keeps its source audit row's id, which is what makes a second run a no-op; only `GoogleResourceAccessGranted` / `GoogleResourceAccessRevoked` rows carrying a `SyncSource` and a `Success` map, and the rest are reported as skipped. Nothing on `audit_log` is changed or deleted — the column drop is its own PR, after this has been run and verified. The screen, the service and the reader all come out with the columns.
+The rows written before the split are still on `audit_log_entries`. **`/Google/Admin/SyncHistoryMigration`** (admin-only, under the *Google* nav group) copies them forward: GET is a dry run reporting how many rows were examined, are already here, would move and cannot be mapped; POST copies. `GoogleSyncHistoryMigrationService` reads through `ILegacyGoogleSyncAuditReader` (AuditLog's `Contracts/` folder) and writes through `IGoogleSyncLogRepository`, so neither section touches the other's context. A copied row keeps its source audit row's id, which is what makes a second run a no-op; only `GoogleResourceAccessGranted` / `GoogleResourceAccessRevoked` rows carrying a `SyncSource` and a `Success` map, and the rest are reported as skipped. Nothing on `audit_log_entries` is changed or deleted — the column drop is its own PR, after this has been run and verified. The screen, the service and the reader all come out with the columns.
 
 `UserId` is nullable only because a sync can act on an address no `user_emails` row claims — an outside collaborator, or a mailbox left behind after a purge. Everywhere a human is identifiable the writers record them: expected members carry their id on the plan, and **extra** members — the revocation case, where the human has already left the team and is reachable only through the address Google still holds — are resolved by email (`IUserEmailService.MatchByEmailsAsync`) in Group reconciliation and both Drive reconciliation paths, including source-claimed folders. That query returns every matching `user_emails` row in no order, so both go through `UserEmailMatchOwner.ByEmail` — verified > most-recently-updated > stable id — because an unverified duplicate outranking the real owner would file the row in the wrong human's GDPR export. That dictionary is keyed by `GmailAliasEmailComparer` (nobodies-collective/Humans#1101): the matched row may be stored as a Gmail alias (`old.user+burn@googlemail.com`) of the canonical address Google reports, and a case-only comparer would hash it into an unreachable bucket. `GetWorkspaceAccountListAsync` shares the same picker. That is what makes `/Google/Human/{id}` and the GDPR slice non-empty.
 
@@ -78,7 +78,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 | `/Google/SyncSettings` | POST | Admin | Update sync mode for a service (posted from the `/Settings#google-sync` tab, no GET — peterdrier/Humans#1634) |
 | `/Google/SyncSystemTeams` | POST | Admin | Manual system-team sync trigger |
 | `/Google/SyncResults` | GET | Admin | PRG landing for sync report |
-| `/Google/ActivityLog` | GET | Admin | Newest-first `google_sync_log` (500 rows), filterable by date, action, trigger, success, resource name |
+| `/Google/ActivityLog` | GET | Admin | Newest-first `google_sync_log_entries` (500 rows), filterable by date, action, trigger, success, resource name |
 | `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Resource sync status dashboard |
 | `/Google/Resource/{id}` | GET | Board, Admin | Sync history for one resource |
 | `/Google/Human/{id}` | GET | UsersAdmin, Board, Admin | Sync history for one human |
@@ -248,7 +248,7 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - The system team sync job runs hourly, reconciling system team membership.
 - After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
 - The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.
-- On every applied or failed Drive/Group permission grant or revocation, `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` / `GoogleDriveAccessSyncService` append a `google_sync_log` row via `IGoogleSyncLogService.LogAsync`, carrying `success: false` + the API error on failure. Group recipient failures record the resource error, failed sync log and applicable scoped retry before updating the attempted Users email row; a status-write failure propagates with those diagnostics preserved.
+- On every applied or failed Drive/Group permission grant or revocation, `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` / `GoogleDriveAccessSyncService` append a `google_sync_log_entries` row via `IGoogleSyncLogService.LogAsync`, carrying `success: false` + the API error on failure. Group recipient failures record the resource error, failed sync log and applicable scoped retry before updating the attempted Users email row; a status-write failure propagates with those diagnostics preserved.
 - Source-claimed groups without a linked resource row still log applied and failed membership writes with `ResourceId = Guid.Empty`, the group key in the description and the known member ID. Auto-provisioning a missing claimed group writes `GoogleResourceProvisioned` to the audit trail. Existing sync-log export and erasure cover these rows.
 - The daily reconciliation job runs `IGoogleDriveSync.ReconcileAllAsync` once for all registered source claims, including linked team files/folders and Workgroups folders. Retired teams' resources are deactivated only in `AddAndRemove` after every linked resource of the selected type reconciles without error; API failures remain visible and block deactivation. Per-resource errors in the returned result count as a failed Drive phase: the job records `partial_failure` and sends a SyncError alert. Source-only claims (no linked resource row, e.g. Workgroup folders) show the folder id read-only on the sync dashboard, with no per-resource Audit or Execute controls.
 
@@ -276,7 +276,7 @@ The internal `DriveAccessClaims` owns source collection, per-folder claim unions
 The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Drive permission plan, including Gmail alias grouping, inherited access floors and direct-grant classification. `GoogleDriveAccessSyncService` retains hydration, API mutations, retry/error policy, sync logs and removal notices. Planning still selects the highest claimed access level with the same user-ID tie-break; no permission decisions, DI registrations or public contracts change.
 
 **Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncManagement`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleDriveAccessSyncService` (implements `IGoogleDriveSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
-**Owned tables:** `sync_service_settings`, `google_sync_outbox`, `google_sync_log`, `google_resources`, `google_workspace_identities`
+**Owned tables:** `google_sync_service_settings`, `google_sync_outbox`, `google_sync_log_entries`, `google_resources`, `google_workspace_identities`
 **Status:** (A) Migrated.
 
 ### Public contract
@@ -308,9 +308,9 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 
 ### Repository surface
 
-- **`ISyncSettingsRepository`** — owns `sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:31`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
+- **`ISyncSettingsRepository`** — owns `google_sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:31`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
 - **`IGoogleSyncOutboxRepository`** — owns `google_sync_outbox`. Entity holds `TeamId`/`UserId` scalars only; no entity-level navs and no FK constraint — bare Guid columns. Indexes on `(ProcessedAt, OccurredAt)`, `(TeamId, UserId, ProcessedAt)`, and `DeduplicationKey` (unique). Enqueue writes live here (`AddAsync` / `AddRangeAsync`) and are surfaced to producers through `IGoogleSyncOutboxService`. When an enqueue must be atomic with another section's mutation — e.g. `TeamService` queuing an event on a `TeamMember` change — the producer wraps the team-repository call and `IGoogleSyncOutboxService.AddAsync` in an ambient `TransactionScope` rather than folding the outbox write into `TeamRepository`.
-- **`IGoogleSyncLogRepository`** — owns `google_sync_log`. Append + three top-N reads (by resource, by user ids at 200 rows each; recent-across-resources for the Activity Log, limit set by the caller) + the distinct resource ids it references + the GDPR paths (`DeleteByUserIdsAsync` erasure, `GetAllByUserIdsContributorAsync` export). Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
+- **`IGoogleSyncLogRepository`** — owns `google_sync_log_entries`. Append + three top-N reads (by resource, by user ids at 200 rows each; recent-across-resources for the Activity Log, limit set by the caller) + the distinct resource ids it references + the GDPR paths (`DeleteByUserIdsAsync` erasure, `GetAllByUserIdsContributorAsync` export). Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
 - **`IGoogleResourceRepository`** — owns `google_resources`. `TeamResourceService` is the main caller; `GoogleWorkspaceSyncService` and `GoogleDriveAccessSyncService` use it for resource reads and reconciliation-loop atomic writes. Other sections read through `ITeamResourceService`; writes stay inside the section.
 
 > `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than GoogleIntegration's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceService`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../Humans.Monitor/Docs/Monitor.md).

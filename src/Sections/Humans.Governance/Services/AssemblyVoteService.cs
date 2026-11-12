@@ -53,7 +53,7 @@ internal sealed class AssemblyVoteService(
     // so an over-long value is a rejected draft rather than a 500. Title's jsonb column is
     // uncapped, but it is copied into bounded email and notification columns after an
     // irreversible transition, so it is bounded at the draft while the vote is still editable.
-    internal const int MaxTitleLength = AssemblyVoteDrafts.MaxTitleLength;         // assembly_votes.Title, per culture
+    internal const int MaxTitleLength = AssemblyVoteDrafts.MaxTitleLength;         // governance_assembly_votes.Title, per culture
 
     /// <summary>
     /// Enums as names so a stored result survives CLR reordering; NodaTime because

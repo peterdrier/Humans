@@ -18,7 +18,7 @@ namespace Humans.Preapprovals.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -77,7 +77,7 @@ namespace Humans.Preapprovals.Data.Migrations
 
                     b.HasIndex("ProgramId", "Status");
 
-                    b.ToTable("pre_grants", (string)null);
+                    b.ToTable("preapproval_grants", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Preapprovals.Domain.PreapprovalProgram", b =>
@@ -138,7 +138,7 @@ namespace Humans.Preapprovals.Data.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("pre_programs", (string)null);
+                    b.ToTable("preapproval_programs", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Preapprovals.Domain.ProgramManager", b =>
@@ -159,7 +159,7 @@ namespace Humans.Preapprovals.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("pre_program_managers", (string)null);
+                    b.ToTable("preapproval_program_managers", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Preapprovals.Domain.ReminderSent", b =>
@@ -179,7 +179,7 @@ namespace Humans.Preapprovals.Data.Migrations
 
                     b.HasKey("GrantId", "Kind", "ClaimBy");
 
-                    b.ToTable("pre_reminders_sent", (string)null);
+                    b.ToTable("preapproval_sent_reminders", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Preapprovals.Domain.PreapprovalGrant", b =>

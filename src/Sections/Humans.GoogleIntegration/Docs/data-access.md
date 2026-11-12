@@ -204,12 +204,12 @@ Repository: `IGoogleSyncLogRepository`.
 | GoogleSyncLog | R/W |
 
 Backs the one-time `/Google/Admin/SyncHistoryMigration` screen. Reads the
-Google-sync history left on `audit_log` through `ILegacyGoogleSyncAuditReader`
+Google-sync history left on `audit_log_entries` through `ILegacyGoogleSyncAuditReader`
 and appends it here in one batch; the copy keeps the source audit row's id, so
-`GetExistingIdsAsync` makes a re-run a no-op. Never writes to `audit_log`.
+`GetExistingIdsAsync` makes a re-run a no-op. Never writes to `audit_log_entries`.
 Cross-section calls: `ILegacyGoogleSyncAuditReader` and
 `ITeamResourceManagement` (resource display names for the preview table). No cache.
-Comes out with the six Google columns on `audit_log`.
+Comes out with the six Google columns on `audit_log_entries`.
 
 ### TeamResourceService (Scoped)
 

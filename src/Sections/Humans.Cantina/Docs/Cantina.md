@@ -3,7 +3,7 @@
   tests/Humans.Cantina.Tests/**
 -->
 <!-- freshness:flag-on-change
-  Cantina access gate, weekly-roster aggregation, on-site definition, the dietary-profile store, and the MedicalConditions exclusion — review when Cantina services/controllers/views change, or when Shifts changes the shape of `volunteer_event_profiles` / `shift_signups`.
+  Cantina access gate, weekly-roster aggregation, on-site definition, the dietary-profile store, and the MedicalConditions exclusion — review when Cantina services/controllers/views change, or when Shifts changes the shape of `shift_volunteer_event_profiles` / `shift_signups`.
 -->
 
 # Cantina — Section Invariants
@@ -39,7 +39,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 ### Read sources
 
 - `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
-- `profiles` / `users` — owned by **Users/Identity**. Burner names and the merge chain are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
+- `user_profiles` / `users` — owned by **Users/Identity**. Burner names and the merge chain are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
 
 ## Routing
 

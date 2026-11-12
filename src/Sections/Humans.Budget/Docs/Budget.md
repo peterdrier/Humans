@@ -143,7 +143,7 @@ Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exp
 
 Projection parameters for a ticketing budget group. One-to-one with `BudgetGroup` where `IsTicketingGroup = true`.
 
-**Table:** `ticketing_projections`
+**Table:** `budget_ticketing_projections`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -278,7 +278,7 @@ Stored as string via `HasConversion<string>()`.
 The internal `BudgetReader` owns year/category/line-item views, coordinator scope, audit rows, ticketing projection entries and their shared DTO mapping. `BudgetService` forwards the existing reads and reuses those mappings after mutations. Coordinator restrictions, missing-team fallbacks, field/order preservation, projection dates/formatting and cancellation are unchanged. Mutation validation, audit writes, ticketing synchronization, calculations and GDPR retain their existing owners; no public contract or DI registration is added.
 
 **Owning services:** `BudgetService`, `TicketingBudgetService`
-**Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
+**Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `budget_ticketing_projections`
 **Status:** (A) Migrated.
 
 - Everything but `Section`, `BudgetResource`, `TicketingBudgetSyncJob` (public with an internal constructor — the Shell names the type for Hangfire registration) and the migrations is `internal` — HUM0034 enforces it. The cross-section surface is the `Contracts/` folder (namespace `Humans.Budget.Contracts`): `IBudgetService` (incl. `GetYearByIdAsync`, read by `BudgetAdminController` and Backdoor's finance views), `IBudgetDemoSeeder`, the DTOs those name, and the `BudgetYearStatus` / `ExpenditureType` enums. `ITicketingBudgetService` is internal.

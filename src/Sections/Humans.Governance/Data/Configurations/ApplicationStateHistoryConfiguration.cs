@@ -8,7 +8,7 @@ internal sealed class ApplicationStateHistoryConfiguration : IEntityTypeConfigur
 {
     public void Configure(EntityTypeBuilder<ApplicationStateHistory> builder)
     {
-        builder.ToTable("application_state_history");
+        builder.ToTable("governance_application_state_history");
 
         builder.HasKey(sh => sh.Id);
 

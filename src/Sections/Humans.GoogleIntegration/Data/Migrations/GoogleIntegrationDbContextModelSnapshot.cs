@@ -18,7 +18,7 @@ namespace Humans.GoogleIntegration.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -163,7 +163,7 @@ namespace Humans.GoogleIntegration.Data.Migrations
                     b.HasIndex("ServiceType")
                         .IsUnique();
 
-                    b.ToTable("sync_service_settings", (string)null);
+                    b.ToTable("google_sync_service_settings", (string)null);
 
                     b.HasData(
                         new
@@ -249,7 +249,7 @@ namespace Humans.GoogleIntegration.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("google_sync_log", (string)null);
+                    b.ToTable("google_sync_log_entries", (string)null);
                 });
 
             modelBuilder.Entity("Humans.GoogleIntegration.Domain.WorkspaceIdentityRecord", b =>

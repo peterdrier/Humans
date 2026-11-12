@@ -81,14 +81,14 @@ Summary:
 |-------|------|---------|
 | `Id` | `Guid` | PK |
 | `UserId` | `Guid` | Bare cross-section FK to `users.id` (no nav property) |
-| `EventSettingsId` | `Guid` | Same-section FK to `event_settings.id` (cascade delete) |
+| `EventSettingsId` | `Guid` | Same-section FK to `shift_event_settings.id` (cascade delete) |
 | `BarrioSetupStartDate` | `LocalDate?` | Day the volunteer joined camp set-up; nullable |
 | `SetByUserId` | `Guid?` | Actor who set the camp-set-up marker |
 | `SetAt` | `Instant?` | When the marker was set |
 | `Notes` | `string?` | Free-text from the coordinator who set/cleared the date |
 | `DayOffs` | `List<DayOffEntry>` | Sparse day-off entries (jsonb); each carries `DayOffset`, `Reason`, `MarkedByUserId`, `MarkedAt` |
 
-**Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
+**Table:** `shift_volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
 Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. `EntityType = nameof(VolunteerBuildStatus)`.
 

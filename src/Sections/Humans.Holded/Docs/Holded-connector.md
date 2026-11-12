@@ -137,4 +137,4 @@ this section's connector types directly — each section names its own concrete 
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
 `IFinanceService` / `IFinanceWrite`) is the `IUserDataContributor` that exports the member's
-`holded_creditor_contacts` binding.
+`finance_holded_creditor_contacts` binding.

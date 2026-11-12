@@ -22,7 +22,7 @@ The Governance page is the association's home for every signed-in member: tier t
 - **Colaborador** is an active contributor with project and event responsibilities. Requires an application and Board vote. 2-year term.
 - **Asociado** is a voting member with governance rights (assemblies, elections). Requires an application and Board vote. 2-year term. There is no code-enforced prerequisite of being a Colaborador first — the Application/Create UI defaults the radio to Asociado when the applicant holds an active (unexpired) approved Colaborador term — the same `HasActiveApprovedTierAsync` rule the Applications index uses — but the Submit endpoint accepts either tier from any volunteer.
 - **Application** is a formal request to become a Colaborador or Asociado. Never used for becoming a Volunteer.
-- **Membership tier** is the member's current tier (Volunteer, Colaborador or Asociado), one `governance_membership_tiers` row per member, written by the approval and by term expiry. `MembershipTier` sits on `Humans.Governance.Contracts`; every other section reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (Users decomposition commit 11; it used to be `profiles.MembershipTier`).
+- **Membership tier** is the member's current tier (Volunteer, Colaborador or Asociado), one `governance_membership_tiers` row per member, written by the approval and by term expiry. `MembershipTier` sits on `Humans.Governance.Contracts`; every other section reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (Users decomposition commit 11; it used to be `user_profiles.MembershipTier`).
 - **Board Vote** is an individual Board member's vote on a tier application. Board votes are transient working data — they are deleted when the application is approved, rejected or withdrawn, and only the collective decision note and meeting date are retained (GDPR data minimization).
 - **Term** — Colaborador and Asociado memberships have synchronized 2-year terms expiring on December 31 of odd years (2027, 2029, 2031...).
 - **Assembly Vote** is a binding vote of the association (statutes Art. 8.2 / Art. 10). Distinct from a **Board Vote**, which is the Board's internal vote on one tier application, and from a Surveys **Asociado vote**, which is a secret ballot. An assembly vote is a *recorded vote under embargo*: every ballot is attributable and changeable until close, the tally is invisible until close, and the result is part of the permanent record. Full design: [`features/assembly-votes.md`](features/assembly-votes.md).
@@ -37,7 +37,7 @@ The Governance page is the association's home for every signed-in member: tier t
 
 Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). Always created via the Governance Applications route; initial profile setup only links to it.
 
-**Table:** `applications`
+**Table:** `governance_applications`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -75,19 +75,19 @@ One row per member; a member with no row is a Volunteer.
 | ExpiresAt | LocalDate? | The granting application's `TermExpiresAt`; kept in step by the term-expiry repair |
 | GrantedByApplicationId | Guid? | The approved application that granted the tier; null for Volunteer or a copied tier with no matching approval |
 
-**Read source:** tier reads, account merges and the register-of-members export use only `governance_membership_tiers`. The legacy `profiles.MembershipTier` column is dropped.
+**Read source:** tier reads, account merges and the register-of-members export use only `governance_membership_tiers`. The legacy `user_profiles.MembershipTier` column is dropped.
 
 ### ApplicationStateHistory
 
 Append-only per design-rules.md, *Append-only entities* — `IApplicationRepository` exposes no update or delete surface for this table. (Append-only is enforced at the repository layer, not via DB triggers — only `consent_records` has DB-level immutability triggers.)
 
-**Table:** `application_state_history`
+**Table:** `governance_application_state_history`
 
 ### BoardVote
 
 Individual Board member's vote on a tier application. **Transient working data** — records are deleted when the application is approved, rejected or withdrawn (GDPR data minimization). Only the collective decision (`Application.DecisionNote`, `BoardMeetingDate`) is retained.
 
-**Table:** `board_votes`
+**Table:** `governance_board_votes`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -125,7 +125,7 @@ Stored as string via `HasConversion<string>()`.
 
 A binding vote of the association. Full design in [`features/assembly-votes.md`](features/assembly-votes.md).
 
-**Table:** `assembly_votes`
+**Table:** `governance_assembly_votes`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -153,13 +153,13 @@ A binding vote of the association. Full design in [`features/assembly-votes.md`]
 
 One authored RankedChoice option: a stable `Key`, the authored `Order` (the documented last tie-break), and a per-culture `Label`. YesNo votes author no options — Yes / No / Abstain are fixed.
 
-**Table:** `assembly_vote_options` — no unique index on `Key`; duplicate keys within a vote are rejected by `IsDraftValid`, per [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md).
+**Table:** `governance_assembly_vote_options` — no unique index on `Key`; duplicate keys within a vote are rejected by `IsDraftValid`, per [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md).
 
 ### AssemblyVoteRoster
 
 The frozen electorate, written exactly once at open.
 
-**Table:** `assembly_vote_roster`
+**Table:** `governance_assembly_vote_roster_entries`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -177,7 +177,7 @@ The frozen electorate, written exactly once at open.
 
 One person's standing ballot. Hangs off `RosterId`, **not** `UserId`, so erasure can unlink the voter and leave the ballot as the association's legal record with the counts intact.
 
-**Table:** `assembly_ballots`
+**Table:** `governance_assembly_ballots`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -196,13 +196,13 @@ One person's standing ballot. Hangs off `RosterId`, **not** `UserId`, so erasure
 
 Append-only: one row per revision, written in the same unit of work as the ballot it records. Nothing is ever updated or deleted.
 
-**Table:** `assembly_ballot_history` — unique `(BallotId, Revision)`.
+**Table:** `governance_assembly_ballot_history` — unique `(BallotId, Revision)`.
 
 ### AssemblyVotePeek
 
 One row per Admin peek at the embargoed tally: `VoteId`, `AdminUserId` (**FK only**), `PeekedAt`. Written in the same unit of work as the read it records, and listed on the results page after close.
 
-**Table:** `assembly_vote_peeks`
+**Table:** `governance_assembly_vote_peeks`
 
 ### Assembly vote enums
 
@@ -313,7 +313,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - Role assignments track temporal membership with valid-from and optional valid-to dates. See `Auth.md` for the role-assignment entity.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - Member vote lists, details, ballots and results resolve the signed-in account through Users before calling the vote service. Missing accounts receive Challenge; cancelled identity reads stop before service calls. Merged sessions use the surviving ID for ballot audit and notification resolution while frozen-roster eligibility still follows all account IDs, preferring an existing ballot over an unused row.
-- **Assembly votes — the roster** is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official — Board members are de facto Asociados whatever their profile tier says), and the Volunteers team for `AllMembers`. It is **never recomputed**. A person appearing in more than one source gets one row, official if any source is official.
+- **Assembly votes — the roster** is written exactly once, at open, from Governance's own `governance_applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official — Board members are de facto Asociados whatever their profile tier says), and the Volunteers team for `AllMembers`. It is **never recomputed**. A person appearing in more than one source gets one row, official if any source is official.
 - **Vote list display ordering** belongs to the controllers: members see Open first then latest closing; admins see latest closing first. Member task entries use latest closing first. The service supplies permitted rows without display ordering.
 - Member vote reads carry authored option positions without sorting. Ranked ballot forms, result columns and peek columns order by those positions; ballot label lookups are keyed. Counting independently applies authored order for its tie-breaks.
 - Draft reads also carry option positions without sorting; the draft form's `FromDraft` mapping orders rows before they can be edited or posted back.
@@ -326,7 +326,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - **The embargo:** no read path returns per-option counts, rankings, or any ballot content for an Open vote except `Peek`, which writes its audit entry and peek row in the same unit of work as the read. Structurally, only `GetResultsAsync`, `PeekAsync` and `GetBallotsForBoardAsync` on `IAssemblyVoteService` can return ballot-derived content; a fourth such path is a change to the association's voting guarantees, not a refactor.
 - Bounded assembly notice/email titles retain their UTF-16 limits without splitting a Unicode surrogate pair.
 - Ranked ballot forms reject binding errors before projecting ranks or casting: the existing localized invalid-ballot message redisplays the submitted choice and leaves the stored ballot, revision and ballot history unchanged, without writing a ballot audit. Redisplay skips missing option keys and refuses non-roster POSTs. Intentional blank ranks remain valid, and Abstain ignores inactive rank fields, including their binding errors.
-- **A ballot audit entry** names the actor and the vote, never the choice. The choice lives only in `assembly_ballots` / `assembly_ballot_history`.
+- **A ballot audit entry** names the actor and the vote, never the choice. The choice lives only in `governance_assembly_ballots` / `governance_assembly_ballot_history`.
 - **The result** is computed once, at close, and stored in `ResultJson`; the results page renders the stored result rather than recounting. Closure persists the closed status before it reads the ballots, and `UpsertBallotAsync` re-reads the vote under its row lock, so no ballot is ever told "recorded" and then left out of the tally. Every write to a vote row — close, extend, cancel, draft edit, open, delete — names the state it read and applies under the same lock only while the row is still in it, so a transition that committed first is never undone or repeated by a request that started before it.
 - **A vote whose `ClosesAt` has passed is Closed for every purpose**, whether or not the hourly lapse job has run: every service read and write settles the state first, so the job is a backstop rather than the thing that makes closing correct. Such a vote's `ClosedAt` is its announced `ClosesAt`, not the instant the lapse was noticed — the acta prints `ClosedAt`, so a late sweep must not make the record claim the vote ran long. An Admin `Stop` stamps the moment it was stopped.
 - **Individual ballots are disclosed for a Closed vote only.** A Cancelled vote's ballots are retained as an abandoned record with no result; `GetBallotsForBoardAsync` answers null for it. The results and Board ballot views order disclosed rows official-first, then by display name using the current culture; the service returns the permitted rows without display ordering.
@@ -335,7 +335,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - **IRV:** the majority base in each round is the ballots that still rank a continuing option; ballots that rank none (or Abstain) are exhausted. Elimination takes the fewest votes, breaking ties by fewest votes in the previous round and then by authored option order.
 - The IRV counter derives its continuing options and authored-order tie-break lookup from one ordered key sequence; callers need not order options before counting.
 - **Ties are reported, never resolved.** Statutes Art. 10.2 gives the President of the Board the casting vote and the Secretary records it in the acta; the system prints that rule and stops.
-- `application_state_history` is append-only per design-rules.md, *Append-only entities* — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
+- `governance_application_state_history` is append-only per design-rules.md, *Append-only entities* — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
 
 The Board-voting dashboard controller orders member columns by display name with ordinal case-insensitive comparison. The decision service returns the member data without presentation ordering.
 
@@ -379,7 +379,7 @@ The Board-voting dashboard controller orders member columns by display name with
 - **Ballot cast or changed:** a history row is appended and audit `AssemblyBallotCast` / `AssemblyBallotChanged` is written naming the voter and the vote but **not** the choice. The audit entity is the **vote**, never the ballot row: an audit entry keeps its actor for good, so naming the ballot id would leave a permanent join from an erased person to their recorded choice. After recording, only the voter’s `AssemblyVoteOpened` notification for this vote is resolved; other voters and open votes are untouched, and a resolve failure is logged without failing the saved ballot.
 - **Stop / Extend / Cancel:** audited with before/after values or the required reason. Cancellation audit entries preserve the complete accepted reason, including a 4000-character reason plus the vote-id prefix. Cancel emails the roster (`GovernanceEmails.AssemblyVoteCancelled`) and computes no result.
 - **Close (any path):** stamps `ClosedAt`, computes and stores the result once, resolves the open-vote notification via `INotificationAutoResolve.ResolveBySourceKeyAsync`, and audits `AssemblyVoteClosed` / `AssemblyVoteStopped` — under the job actor (the `jobName` overload of `IAuditLogService.LogAsync`) when the hourly `governance-assembly-vote-lapse` job did it. Any earlier request that observes the deadline passed closes inline before serving.
-- **Peek:** an `assembly_vote_peeks` row plus audit `AssemblyVotePeeked`, in the same unit of work as the read.
+- **Peek:** an `governance_assembly_vote_peeks` row plus audit `AssemblyVotePeeked`, in the same unit of work as the read.
 - **Ballots list after close:** audit `AssemblyBallotsViewed` on every call.
 - **T-24h reminder:** one email to roster members with no ballot (`GovernanceEmails.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats for one deadline, and only while the vote still closes at the time the email named. An accepted extension clears the stamps written up to that moment and the roster is reminded again when the new deadline comes into range; a stamp written after it belongs to the new deadline and is kept. Sent by the same hourly job as the lapse sweep (`ISectionJobs`, cron `0 * * * *`).
 - **GDPR export:** `IUserDataContributor` contributes the member's roster rows, standing ballots and history under the export key it declares as `AssemblyVoteService.AssemblyVotes`. A second slice, `AssemblyVoteService.AssemblyVoteActions`, carries the other side of the feature: the votes the person drafted, opened or closed, and the live tallies they peeked at — an officer who runs a vote without being on its roster has no rows in the first slice at all.
@@ -410,7 +410,7 @@ The internal `AssemblyVoteDrafts` owns draft read/create/update/delete, blank-on
 The internal `ApplicationReader` owns member application history/detail, filtered admin lists/detail, pending snapshots, Board dashboard/detail and summary counts, including shared history/vote projections. `ApplicationDecisionService` forwards the existing reads and retains voting-badge caching, decisions, tier changes, reminder workflows, GDPR and expiry repair. Ownership checks, filter/paging behavior, applicant fallbacks, vote/history ordering and cancellation are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `ApplicationDecisionService`, `MembershipTierService`, `AssemblyVoteService`
-**Owned tables:** `applications`, `application_state_history`, `board_votes`, `assembly_votes`, `assembly_vote_options`, `assembly_vote_roster`, `assembly_ballots`, `assembly_ballot_history`, `assembly_vote_peeks`, `governance_membership_tiers`
+**Owned tables:** `governance_applications`, `governance_application_state_history`, `governance_board_votes`, `governance_assembly_votes`, `governance_assembly_vote_options`, `governance_assembly_vote_roster_entries`, `governance_assembly_ballots`, `governance_assembly_ballot_history`, `governance_assembly_vote_peeks`, `governance_membership_tiers`
 **Public surface:** the cross-section surface — `IGovernanceService`, `ApplicationStatus` and `MembershipTier` — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
 
 ### Public contract

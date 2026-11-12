@@ -8,7 +8,7 @@ internal sealed class AssemblyVoteConfiguration : IEntityTypeConfiguration<Assem
 {
     public void Configure(EntityTypeBuilder<AssemblyVote> builder)
     {
-        builder.ToTable("assembly_votes");
+        builder.ToTable("governance_assembly_votes");
 
         builder.HasKey(v => v.Id);
 

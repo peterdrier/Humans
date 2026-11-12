@@ -316,8 +316,8 @@ that check can't: it discovers contributors by reflection over the same section
 assemblies the runtime composes itself from, and requires no category be
 claimed twice across the whole roster and no retention be left unexplained.
 
-Append-only entities per `design-rules.md`, *Append-only entities* (`consent_records`, `audit_log`,
-`budget_audit_logs`, `camp_polygon_histories`, `application_state_history`,
+Append-only entities per `design-rules.md`, *Append-only entities* (`consent_records`, `audit_log_entries`,
+`budget_audit_logs`, `city_camp_polygon_history`, `governance_application_state_history`,
 `team_join_request_state_history`) are not deleted — foreign keys are nulled or
 the row is re-pointed at the anonymized user rather than a separate tombstone
 user. The lawful basis for each retained category lives in the owning

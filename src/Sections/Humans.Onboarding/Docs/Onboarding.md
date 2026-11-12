@@ -36,7 +36,7 @@ Where it points them depends on what the association needs right now. The shifts
 > **Three-concerns split.** `OnboardingService` is the *intake funnel only* (signup → profile → consents → first-team admission, plus signup reject). The Consent Coordinator review queue is Consent's (`/Consent/ReviewQueue`), next to the `consent_reviews` table it writes. Sibling services own the other workflow stages so onboarding stays narrow:
 >
 > - **Lifecycle state-machine** (suspend/unsuspend, future re-consent suspensions and term-renewals) → `IHumanLifecycleService`.
-> - **Board voting** → Governance's `ApplicationDecisionService`, injected by its own `GovernanceBoardVotingController` (Governance owns the `applications` + `board_votes` tables; OnboardingService carries no delegating wrappers).
+> - **Board voting** → Governance's `ApplicationDecisionService`, injected by its own `GovernanceBoardVotingController` (Governance owns the `governance_applications` + `governance_board_votes` tables; OnboardingService carries no delegating wrappers).
 > - **No dashboard aggregation lives here.** The review-queue badge is `ReviewQueuePillCountAsync` in Consent's `Section.cs`, counting `UserInfo.NeedsConsentReview` off `IUserService`; the member dashboard is section-contributed chrome.
 > - **Account deletion cascade** → `IAccountDeletionService` (`src/Sections/Humans.Users.Contracts/IAccountDeletionService.cs`).
 
