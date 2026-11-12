@@ -142,7 +142,7 @@ internal sealed class TeamAdminController(
         var rows = members
             .Select(m => new TeamRosterRowViewModel(
                 m.UserId,
-                infos.GetValueOrDefault(m.UserId)?.Profile?.FullName ?? string.Empty,
+                infos.GetValueOrDefault(m.UserId)?.FullName ?? string.Empty,
                 m.JoinedAt))
             .OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase)
             .ToList();

@@ -163,11 +163,13 @@ public class EmailProvisioningServiceTests
             teamService, notify, email, audit, identities);
     }
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string language = "en", string? email = null) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string language = "en", string? email = null,
+        string firstName = "", string lastName = "") => UserInfo.Create(
         user: new User
         {
             Id = userId,
-            DisplayName = profile.BurnerName,
+            FirstName = firstName,
+            LastName = lastName,
             PreferredLanguage = language,
             Email = email,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
@@ -179,7 +181,7 @@ public class EmailProvisioningServiceTests
     private static void StubTargetUser(ProvisioningFixture f, Guid userId)
     {
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Target", lastName: "Two")));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), firstName: "Target", lastName: "Two"));
     }
 
     [HumansFact]
@@ -212,7 +214,7 @@ public class EmailProvisioningServiceTests
         var f = BuildFixture();
         var userId = Guid.NewGuid();
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
-            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), email: "personal@example.org"));
+            userId, UserFixtures.Profile(), firstName: "Person", lastName: "Test", email: "personal@example.org"));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmailEditDto>());
         f.WorkspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -250,7 +252,7 @@ public class EmailProvisioningServiceTests
         var f = BuildFixture();
         var userId = Guid.NewGuid();
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
-            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"),
+            userId, UserFixtures.Profile(), firstName: "Person", lastName: "Test",
             email: hasRecoveryEmail ? "personal@example.org" : null));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmailEditDto>());
@@ -284,7 +286,7 @@ public class EmailProvisioningServiceTests
         var f = BuildFixture();
         var userId = Guid.NewGuid();
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(
-            userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), email: oauthEmail));
+            userId, UserFixtures.Profile(), firstName: "Person", lastName: "Test", email: oauthEmail));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>()).Returns(primaryEmail is null
             ? new List<UserEmailEditDto>()
             : [new UserEmailEditDto(Guid.NewGuid(), primaryEmail, IsVerified: true,
@@ -397,7 +399,7 @@ public class EmailProvisioningServiceTests
         var userId = Guid.NewGuid();
         StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test"), language, "recovery@example.com"));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), language, "recovery@example.com", firstName: "Person", lastName: "Test"));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmailEditDto>());
 
@@ -447,7 +449,7 @@ public class EmailProvisioningServiceTests
         var existingRowId = Guid.NewGuid();
         StubTargetUser(f, userId);
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(firstName: "Person", lastName: "Test")));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), firstName: "Person", lastName: "Test"));
 
         // Pre-existing UNVERIFIED row before AdminMarkVerifiedAsync runs;
         // post-verification the row reads back verified; the workspace identity
@@ -509,7 +511,7 @@ public class EmailProvisioningServiceTests
         var mergedAwayId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         f.UserService.GetUserInfoAsync(mergedAwayId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(firstName: "Survivor", lastName: "Two")));
+            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(), firstName: "Survivor", lastName: "Two"));
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(mergedAwayId, "bob", mergedAwayId);
 
@@ -537,10 +539,12 @@ public class EmailProvisioningServiceTests
                 Email = $"deleted-{userId:N}@deleted.local",
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                FirstName = "Merged",
+                LastName = "User",
             },
             userEmails: [],
             externalLogins: [],
-            profile: UserFixtures.Profile(firstName: "Merged", lastName: "User"));
+            profile: UserFixtures.Profile());
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(tombstone);
 

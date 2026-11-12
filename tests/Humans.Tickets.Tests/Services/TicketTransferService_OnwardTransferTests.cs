@@ -146,9 +146,8 @@ public sealed class TicketTransferService_OnwardTransferTests
                 MatchedUserId = UserB,
                 TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
             });
-        var carol = new User { Id = UserC, DisplayName = "Carol", PreferredLanguage = "en", Email = "carol@example.com" };
-        var carolProfile = UserFixtures.Profile(
-            burnerName: "Carol", firstName: "Carol", lastName: "Cohen");
+        var carol = new User { Id = UserC, BurnerName = "Carol", FirstName = "Carol", LastName = "Cohen", PreferredLanguage = "en", Email = "carol@example.com" };
+        var carolProfile = UserFixtures.Profile();
         _userService.GetUserInfoAsync(UserC, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 user: carol,

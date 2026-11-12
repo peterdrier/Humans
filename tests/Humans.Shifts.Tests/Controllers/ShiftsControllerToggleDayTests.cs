@@ -83,7 +83,7 @@ public class ShiftsControllerToggleDayTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            Substitute.For<IAuditViewerService>(), _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -115,7 +115,9 @@ public class ShiftsControllerToggleDayTests
             user: new User
             {
                 Id = userId,
-                DisplayName = burner,
+                BurnerName = burner,
+                FirstName = first,
+                LastName = last,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)

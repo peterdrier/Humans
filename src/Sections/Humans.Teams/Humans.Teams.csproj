@@ -39,11 +39,10 @@
     <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>. AuditLog references only Teams.Contracts, so no cycle. -->
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!-- SystemTeamSyncJob's eligibility inputs: Camps (camp leads), Governance (approved tiers),
-         Users (person read model), Email (added-to-team notice). All are leaves, so no edge cycles back. -->
+         Email (added-to-team notice). All are leaves, so no edge cycles back. -->
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- SystemTeamSyncJob's Consent Coordinator review read (IConsentService). Consent reaches only Teams.Contracts, so no cycle. -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
   </ItemGroup>

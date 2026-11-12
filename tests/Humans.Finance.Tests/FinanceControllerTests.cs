@@ -73,7 +73,6 @@ public class FinanceControllerTests
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, _holdedLedger, _expenses,
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
-            new CreditorMatchService(_holdedLedger, _expenses),
             new FinanceOverviewService(_holdedLedger, _finance, _expenses, _budget,
                 new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(), SepaRunner,

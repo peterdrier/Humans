@@ -173,37 +173,35 @@
         <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
     </div>
     <div class="wg-card-note">
-        Badges showing volunteer event profile info — skills, quirks, dietary, languages. Synthetic sample below.
+        Badges showing volunteer event profile info — skills, quirks, languages. Synthetic sample below.
     </div>
     @ParamsBlock(
-        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina)")
+        ("@@model", "<code>VolunteerBadgesViewModel</code> (from the volunteer event profile)")
     )
     <div class="wg-card-example">
         @await Html.PartialAsync("_VolunteerProfileBadges",
             new VolunteerBadgesViewModel(
                 Skills: ["Welding", "First Aid"],
                 Quirks: ["Early riser", "Coffee snob"],
-                Languages: ["English", "Spanish"],
-                DietaryPreference: null))
+                Languages: ["English", "Spanish"]))
     </div>
 </div>
 
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:shift-signups&gt;</span>
+            <span class="wg-card-name">ShiftSignupsViewComponent</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
-        <span class="wg-card-path">src/Sections/Humans.Shifts/Contracts/ShiftSignupsViewComponent.cs</span>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/ShiftSignupsViewComponent.cs</span>
     </div>
     <div class="wg-card-note">A human's shift signups for the active event, split into Upcoming / Pending / Past.</div>
     @ParamsBlock(
         ("userId", "<code>Guid</code> — required"),
-        ("viewMode", "<code>ShiftSignupsViewMode</code> — Self · Admin"),
-        ("displayName", "<code>string?</code> — caller-provided name to label the panel")
+        ("viewMode", "<code>ProfileCardViewMode</code> — Self · Admin")
     )
     <div class="wg-card-example">
-        <vc:shift-signups user-id="@Model.CurrentUserId" view-mode="@ShiftSignupsViewMode.Self" />
+        @await Component.InvokeAsync(typeof(ShiftSignupsViewComponent), new { userId = Model.CurrentUserId, viewMode = ProfileCardViewMode.Self })
     </div>
 </div>
 
@@ -280,14 +278,14 @@
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:volunteer-build-strip&gt;</span>
+            <span class="wg-card-name">VolunteerBuildStripViewComponent</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
         <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerHeatmap.cshtml</span>
     </div>
     <div class="wg-card-note">
-        Not rendered here: the single-user build heatmap (<code>_VolunteerHeatmap</code>, <code>ShowAvailabilityControls=true</code>) renders on the
-        <a href="/Profile/Me">profile</a>; the full-tracking variant (<code>_VolunteerUnbookedHeatmap</code>) needs the whole
+        Not rendered here: the single-user build heatmap (<code>_VolunteerHeatmap</code>, <code>ShowAvailabilityControls=true</code>) renders in the
+        Shifts card on another member's profile; the full-tracking variant (<code>_VolunteerUnbookedHeatmap</code>) needs the whole
         <code>VolunteerTrackingPageViewModel</code>. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.
     </div>
     @ParamsBlock()

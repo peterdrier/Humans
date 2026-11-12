@@ -1876,9 +1876,8 @@ public class CampControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId) =>
         UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = "Lead Human" },
             [],
             [],
-            UserFixtures.Profile(
-                burnerName: "Lead Human"));
+            UserFixtures.Profile());
 }

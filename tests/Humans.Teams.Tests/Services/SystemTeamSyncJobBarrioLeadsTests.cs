@@ -79,12 +79,9 @@ public class SystemTeamSyncJobBarrioLeadsTests
     public async Task SyncVolunteersTeam_emails_added_members_in_supported_language(string? language, string expectedLanguage)
     {
         using var culture = new CultureScope("fr");
-        var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language! };
+        var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", FirstName = "First", LastName = "Last", PreferredLanguage = language! };
         var profile = new ProfileInfo(
             Id: Guid.NewGuid(),
-            BurnerName: "Member",
-            FirstName: "First",
-            LastName: "Last",
             City: null,
             CountryCode: null,
             Latitude: null,

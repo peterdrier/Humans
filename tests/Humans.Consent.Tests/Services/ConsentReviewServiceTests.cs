@@ -47,13 +47,14 @@ public sealed class ConsentReviewServiceTests : IDisposable
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private UserInfo SeedUser(
-        ProfileInfo? profile = null, UserState state = UserState.Active, Guid? id = null, Instant? mergedAt = null)
+        ProfileInfo? profile = null, UserState state = UserState.Active, Guid? id = null, Instant? mergedAt = null,
+        string burnerName = "Ana", string firstName = "Ana", string lastName = "García")
     {
         var userId = id ?? Guid.NewGuid();
         var info = UserInfo.Create(
-            new User { Id = userId, BurnerName = "Ana", CreatedAt = Now, State = state, MergedAt = mergedAt },
+            new User { Id = userId, BurnerName = burnerName, FirstName = firstName, LastName = lastName, CreatedAt = Now, State = state, MergedAt = mergedAt },
             [], [],
-            profile ?? UserFixtures.Profile(burnerName: "Ana", firstName: "Ana", lastName: "García"));
+            profile ?? UserFixtures.Profile());
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         return info;
@@ -402,7 +403,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     [HumansFact]
     public async Task ReviewCard_RendersForAdminOnly_WithTheRejectionAndReviewer()
     {
-        var reviewer = SeedUser(UserFixtures.Profile(burnerName: "Rita", firstName: "R", lastName: "C"));
+        var reviewer = SeedUser(UserFixtures.Profile(), burnerName: "Rita", firstName: "R", lastName: "C");
         var user = SeedUser(state: UserState.Rejected);
         var consent = Substitute.For<IConsentService>();
         consent.GetConsentReviewAsync(user.Id, Arg.Any<CancellationToken>()).Returns(ConsentReviewInfo.None(user.Id) with

@@ -67,7 +67,8 @@ internal sealed record FinanceOwedVm(
     public decimal? Total => Unavailable is null && Taxes is { } t ? Members + Suppliers + t : null;
 }
 
-/// <summary><see cref="Problems"/> is null when the expense recon is unavailable.</summary>
+/// <summary><see cref="Problems"/> is null when the expense recon is unavailable. <see cref="DuplicateAccounts"/>
+/// counts only accounts with duplicate documents that the recon does not already report.</summary>
 internal sealed record FinanceWorkVm(
     int AwaitingCoordinator,
     Instant? OldestAwaitingCoordinator,

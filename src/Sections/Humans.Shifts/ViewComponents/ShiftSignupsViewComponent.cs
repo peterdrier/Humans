@@ -1,22 +1,22 @@
+using Humans.Shifts.Contracts;
+using Humans.Base.Enums;
 using Humans.Shifts.Models;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Shifts.Services;
 
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.ViewComponents;
 
-/// <summary>
-/// Public, under <c>Contracts/</c>, so MVC discovers the tag helper; so it reads the leaf <see cref="IShiftView"/>,
-/// since a public constructor cannot take the internal row view (CS0051).
-/// </summary>
-public sealed class ShiftSignupsViewComponent(
+/// <summary>Rendered by type (<c>Component.InvokeAsync</c>), so it can stay internal.</summary>
+internal sealed class ShiftSignupsViewComponent(
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
     ITeamService teamService,
     IClock clock,
     ILogger<ShiftSignupsViewComponent> logger) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ShiftSignupsViewMode viewMode)
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         var model = new ShiftSignupsViewModel
         {
@@ -69,11 +69,4 @@ public sealed class ShiftSignupsViewComponent(
 
         return View(model);
     }
-}
-
-/// <summary>Public because it is a parameter of <see cref="ShiftSignupsViewComponent.InvokeAsync"/>.</summary>
-public enum ShiftSignupsViewMode
-{
-    Self,
-    Admin
 }

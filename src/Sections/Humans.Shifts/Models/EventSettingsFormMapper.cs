@@ -1,5 +1,6 @@
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services.Dtos;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Models;
 
@@ -17,8 +18,6 @@ internal static class EventSettingsFormMapper
             : new EventSettingsViewModel
             {
                 IsShiftBrowsingOpen = knobs.IsShiftBrowsingOpen,
-                GlobalVolunteerCap = knobs.GlobalVolunteerCap,
-                ReminderLeadTimeHours = knobs.ReminderLeadTimeHours,
             };
         model.FirstCrewStartOffset = burn.FirstCrewStartOffset;
         model.SetupWeekStartOffset = burn.SetupWeekStartOffset;

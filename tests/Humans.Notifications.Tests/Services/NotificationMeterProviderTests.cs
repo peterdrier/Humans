@@ -510,13 +510,13 @@ public class NotificationMeterProviderTests : IDisposable
                     DisplayName = "U",
                     PreferredLanguage = "en",
                     CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                    BurnerName = "B",
+                    FirstName = "F",
+                    LastName = "L",
                 },
                 userEmails: [],
                 externalLogins: [],
-                profile: UserFixtures.Profile(
-                    burnerName: "B",
-                    firstName: "F",
-                    lastName: "L"));
+                profile: UserFixtures.Profile());
         }).ToList();
 
     private static CampInfo MakeCampInfoWithPendingRequest(Guid leadUserId, int year = 2026, Guid? eventSettingsId = null)

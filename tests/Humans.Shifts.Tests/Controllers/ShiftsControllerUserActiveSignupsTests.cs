@@ -279,7 +279,7 @@ public class ShiftsControllerUserActiveSignupsTests
 
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
-            Substitute.For<IAuditViewerService>(), _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
+            _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
             new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 
@@ -340,7 +340,9 @@ public class ShiftsControllerUserActiveSignupsTests
             user: new User
             {
                 Id = userId,
-                DisplayName = "Burner",
+                BurnerName = "Burner",
+                FirstName = "First",
+                LastName = "Last",
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 State = UserState.Active,

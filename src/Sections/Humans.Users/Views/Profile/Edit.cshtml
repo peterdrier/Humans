@@ -1,5 +1,4 @@
 @model Humans.Users.Models.ProfileViewModel
-@inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
     ViewData["Title"] = Localizer["Users_ProfileEdit_Title"].Value;
     var languageOptionsHtml = string.Join("", LanguageCatalog.Languages.Select(lang =>
@@ -387,8 +386,8 @@
 
                     <hr />
                     <div class="mb-3">
-                        <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
-                        <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
+                        <h6>@Localizer["Users_ProfileEdit_ShiftPreferences"]</h6>
+                        <p class="text-muted small mb-2">@Localizer["Users_ProfileEdit_ShiftPreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
                         <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="btn btn-outline-primary btn-sm">@Localizer["Users_Profile_ShiftInfo"]</a>
                     </div>
                 </div>

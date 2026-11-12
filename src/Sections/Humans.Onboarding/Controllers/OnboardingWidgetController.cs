@@ -51,12 +51,13 @@ internal sealed class OnboardingWidgetController(
     public async Task<IActionResult> Names(CancellationToken ct)
     {
         // Prefill from the user's own saved profile, never from OAuth claims, which are unverified.
-        var profile = (await _userService.GetUserInfoAsync(CurrentUserId(), ct))?.Profile;
+        var info = await _userService.GetUserInfoAsync(CurrentUserId(), ct);
+        var saved = info?.Profile is null ? null : info;
         return View(new NamesViewModel
         {
-            BurnerName = profile?.BurnerName ?? string.Empty,
-            FirstName = profile?.FirstName ?? string.Empty,
-            LastName = profile?.LastName ?? string.Empty,
+            BurnerName = saved?.BurnerName ?? string.Empty,
+            FirstName = saved?.FirstName ?? string.Empty,
+            LastName = saved?.LastName ?? string.Empty,
         });
     }
 

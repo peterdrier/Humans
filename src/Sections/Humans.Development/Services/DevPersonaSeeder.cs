@@ -264,7 +264,7 @@ internal sealed class DevPersonaSeeder(
     public async Task ResetLegalNamesAsync(Guid userId)
     {
         var info = await userService.GetUserInfoAsync(userId);
-        var burnerName = info?.Profile?.BurnerName;
+        var burnerName = info?.Profile is null ? null : info.BurnerName;
         if (string.IsNullOrWhiteSpace(burnerName))
         {
             logger.LogWarning(

@@ -167,9 +167,17 @@ public class AgentUserSnapshotProviderTests
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(
                 UserInfo.Create(
-                    new User { Id = userId, DisplayName = "T", PreferredLanguage = "es", State = state },
-                    [], [], profile: state == UserState.Bare ? null
-                        : UserFixtures.Profile(burnerName: "T", firstName: "Test", lastName: "Member"))));
+                    new User
+                    {
+                        Id = userId,
+                        DisplayName = "T",
+                        PreferredLanguage = "es",
+                        State = state,
+                        BurnerName = "T",
+                        FirstName = "Test",
+                        LastName = "Member"
+                    },
+                    [], [], profile: state == UserState.Bare ? null : UserFixtures.Profile())));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);

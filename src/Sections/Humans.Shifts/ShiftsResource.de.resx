@@ -1291,4 +1291,7 @@
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Mehrere Schichten für '{0}' abgelehnt ({1} Schichten).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Mehrere Schichten von '{0}' abgesagt ({1} Schichten).</value></data>
   <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Einige ausgewählte Tags sind nicht mehr verfügbar. Prüfe deine Auswahl und versuche es erneut.</value></data>
+  <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>No-Show-Verlauf ({0})</value></data>
+  <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
+  <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
 </root>

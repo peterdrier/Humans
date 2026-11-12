@@ -701,6 +701,18 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
+    public async Task Booking_ResyncsTheCreditorLedger_AfterPosting()
+    {
+        SeedTransfer(30m);
+        SeedOpenDocs(Doc("d1", 30m, 1));
+
+        (await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid())).Succeeded.Should().BeTrue();
+
+        // Once before posting (to judge), once after (so the member stops reading as owed).
+        await _holded.Received(2).SyncAccountLedgerAsync(Account, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Booking_AuditEntry_CarriesEveryHoldedId_AndMasksTheIban()
     {
         SeedOpenDocs(Doc("d1", 10m, 1));

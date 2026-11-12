@@ -610,8 +610,8 @@ public sealed class EventsModerationControllerTests
         Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0), []);
 
     private static UserInfo UserInfoFor(Guid userId) => UserInfo.Create(
-        new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue },
+        new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue, BurnerName = "Moderator", FirstName = "Mod", LastName = "Erator" },
         userEmails: [],
         externalLogins: [],
-        profile: UserFixtures.Profile(burnerName: "Moderator", firstName: "Mod", lastName: "Erator"));
+        profile: UserFixtures.Profile());
 }

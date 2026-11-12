@@ -51,8 +51,9 @@ The shapes imply exactly today's layout:
   sections implement (`IEventSettingsChangeListener`, `ISectionSettings`) and the one the
   dev seeder drives (`IEventSettingsSeeding`).
 - **One service** (`Service`), implementing the internal `ISettingsWriteService` (=
-  contract + the event writes) plus `IEventSettingsSeeding`, registered once and
-  resolved as each of them.
+  contract + the event writes) plus `IEventSettingsSeeding`, reached through
+  `CachingSettingsService`, which keeps the event rows and timezone in memory because
+  every section asks for the active event on nearly every request.
 - **One repository** over the section's two tables, behind `ISettingsRepository`.
 - **One page** (`SettingsController`, `/Settings`) that renders only a tab strip, one
   composer (`SettingsTabComposition`) and one strip renderer — the page knows nothing about
@@ -114,8 +115,6 @@ The shapes imply exactly today's layout:
 
 ## 6. Deliberately not done
 
-- **No caching decorator.** The event read is a small row, and its consumers already cache
-  what they derive from it — that is what the change-listener seam is for.
 - **No blank-form tab for a non-admin.** A viewer who cannot edit and has no active cycle
   gets the empty-state line.
 - **No DB uniqueness/check constraint for the one-active rule** — project rule; the service

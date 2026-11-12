@@ -226,17 +226,6 @@ internal sealed partial class ShiftRepository
         return (affected.Count, eventIds);
     }
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default)
-    {
-        return await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(s => s.Shift)
-                .ThenInclude(sh => sh.Rota)
-                    .ThenInclude(r => r.EventSettings)
-            .OrderBy(s => s.CreatedAt) // arch:db-sort-ok orphan-scan deterministic order (maintenance job, no UI)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, int buildStartOffset, CancellationToken ct = default)
     {

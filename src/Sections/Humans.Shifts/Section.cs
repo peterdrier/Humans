@@ -49,7 +49,8 @@ public sealed class Section :
     IOnboardingShiftsStep,
     ISectionPolicies,
     ISectionSettings,
-    ISectionThingsToDo
+    ISectionThingsToDo,
+    IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -195,7 +196,6 @@ public sealed class Section :
             new("Volunteer tracking","VolunteerTracking",   "Index",          null, null, "fa-solid fa-user-clock",       ShiftsPolicies.Read),
             new("Workload",          "ShiftWorkloadAdmin",  "Index",          null, null, "fa-solid fa-scale-unbalanced", ShiftsPolicies.Read),
             new("Post-event stats",  "ShiftDashboard",      "PostEventStats", null, null, "fa-solid fa-chart-bar",        ShiftsPolicies.Read),
-            new("Orphan signups",    "Shifts",              "OrphanSignups",  null, null, "fa-solid fa-user-secret",      PolicyNames.AdminOnly)
         ])
     ];
 
@@ -220,6 +220,12 @@ public sealed class Section :
                 Secondary: "—",
                 Summary: $"{percent}% shift coverage");
     }
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+    [
+        new(UserPartSlots.Profile, typeof(ProfileShiftsViewComponent)),
+        new(UserPartSlots.AdminDetail, typeof(ShiftSignupsViewComponent)),
+    ];
 
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [

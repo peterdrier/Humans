@@ -29,23 +29,13 @@ internal sealed class PreapprovalReader(
     internal async Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default) =>
         (await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct)).Select(ToInfo).ToList();
 
-    internal async Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct)
+    internal async Task<IReadOnlyList<GrantOption>> GetGrantOptionsAsync(CancellationToken ct)
     {
         var today = Today;
-        return (await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct))
-            .Where(g => g.Status == GrantStatus.Open && today <= g.Program.ClaimBy)
-            .Select(ToOption)
+        return (await repository.GetProgramsAsync(ct))
+            .SelectMany(p => p.Grants.Select(g => ToOption(g, p, today)))
             .ToList();
     }
-
-    internal async Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct)
-    {
-        var grant = await repository.GetGrantAsync(grantId, ct);
-        return grant is null ? null : ToOption(grant);
-    }
-
-    internal async Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct) =>
-        (await repository.GetGrantIdsOfManagedProgramsAsync(await AllIdsAsync(userId, ct), ct)).ToHashSet();
 
     internal async Task<bool> HasAnythingForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -71,9 +61,10 @@ internal sealed class PreapprovalReader(
         g.ApplicationNote, g.RequestedAmount, g.DecidedByUserId, g.DecidedAt, g.ExpenseReportId,
         p.ClaimBy, g.CreatedAt, g.UpdatedAt);
 
-    private static GrantOption ToOption(PreapprovalGrant g) => new(
-        g.Id, g.Program.Name, g.Label, g.MaxAmount, g.Program.HoldedAccountNumber,
-        g.Program.HoldedAccountId, g.Program.ClaimBy, g.Status);
+    internal static GrantOption ToOption(PreapprovalGrant g, PreapprovalProgram p, LocalDate today) => new(
+        g.Id, g.BeneficiaryUserId, p.Managers.Select(m => m.UserId).ToList(), p.Name, g.Label, g.MaxAmount,
+        p.HoldedAccountNumber, p.HoldedAccountId, p.ClaimBy, g.Status,
+        g.Status == GrantStatus.Open && today <= p.ClaimBy);
 
     /// <summary>So a grant under a since-merged id is still theirs.</summary>
     internal async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct)

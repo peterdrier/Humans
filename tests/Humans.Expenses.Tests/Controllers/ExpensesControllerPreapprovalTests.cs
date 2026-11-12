@@ -34,6 +34,7 @@ public sealed class ExpensesControllerPreapprovalTests
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
+    private readonly Dictionary<Guid, GrantOption> _grantStore = new();
     private readonly IStringLocalizer<ExpensesResource> _localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
     private readonly IAuthorizationService _authorization = Substitute.For<IAuthorizationService>();
 
@@ -46,7 +47,8 @@ public sealed class ExpensesControllerPreapprovalTests
         _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         _finance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
             .Returns([new ExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
-        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<GrantOption>)_grantStore.Values.ToList());
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
@@ -200,20 +202,11 @@ public sealed class ExpensesControllerPreapprovalTests
             }
             return Array.Empty<ExpenseAccountOption>();
         });
-        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            if (lookup == NewFormLookup.ClaimableGrants)
-            {
-                call.Arg<CancellationToken>().Should().Be(request.Token);
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            }
-            return Array.Empty<GrantOption>();
-        });
-        _preapprovals.GetGrantAsync(grantId, Arg.Any<CancellationToken>()).Returns(call =>
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return (GrantOption?)null;
+            return Array.Empty<GrantOption>();
         });
         var controller = Build();
         controller.HttpContext.RequestAborted = request.Token;
@@ -228,7 +221,14 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     private static GrantOption Grant(string program, LocalDate claimBy, GrantStatus status = GrantStatus.Open) =>
-        new(Guid.NewGuid(), program, null, 100m, 62900500, "acc-grant", claimBy, status);
+        new(Guid.NewGuid(), Guid.Empty, [], program, null, 100m, 62900500, "acc-grant", claimBy, status, false);
+
+    private void PutGrant(GrantOption grant) => _grantStore[grant.Id] = grant;
+
+    private void StubClaimable(Guid holder, params GrantOption[] grants)
+    {
+        foreach (var g in grants) _grantStore[g.Id] = g with { HolderUserId = holder, ClaimableToday = true };
+    }
 
     [HumansFact]
     public async Task EditGet_AccountOptionsObserveRequestCancellation()
@@ -256,8 +256,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var later = Grant("Alpha", Today.PlusDays(30));
         var soon = Grant("Zulu", Today.PlusDays(3));
         var sameDay = Grant("Bravo", Today.PlusDays(3));
-        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>())
-            .Returns([later, soon, sameDay]);
+        StubClaimable(_actorId, later, soon, sameDay);
 
         var model = (await Build().Index()).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpensesIndexViewModel>().Subject;
@@ -273,8 +272,8 @@ public sealed class ExpensesControllerPreapprovalTests
         // grant; the form must show it even though it is not in the viewer's own list.
         var own = Grant("Own", Today.PlusDays(10));
         var theirs = Grant("Theirs", Today.PlusDays(5));
-        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([own]);
-        _preapprovals.GetGrantAsync(theirs.Id, Arg.Any<CancellationToken>()).Returns(theirs);
+        StubClaimable(_actorId, own);
+        PutGrant(theirs);
 
         var model = (await Build().New(theirs.Id)).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpenseNewViewModel>().Subject;
@@ -288,7 +287,7 @@ public sealed class ExpensesControllerPreapprovalTests
     {
         // The grant's label is the project name, which is what the required Subject asks for.
         var labelled = Grant("Art", Today.PlusDays(10)) with { Label = "Giant Duck" };
-        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([labelled]);
+        StubClaimable(_actorId, labelled);
 
         var model = (await Build().New(labelled.Id)).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpenseNewViewModel>().Subject;
@@ -300,7 +299,7 @@ public sealed class ExpensesControllerPreapprovalTests
     public async Task NewGet_WithoutAGrant_OffersOnlyTheViewersClaimableGrants()
     {
         var own = Grant("Own", Today.PlusDays(10));
-        _preapprovals.ListClaimableForUserAsync(_actorId, Arg.Any<CancellationToken>()).Returns([own]);
+        StubClaimable(_actorId, own);
         _finance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>()).Returns([
             new ExpenseAccountOption(62900001, "other", "Alpha", false, true),
             new ExpenseAccountOption(62900003, "z", "Zulu", true, true),
@@ -314,7 +313,6 @@ public sealed class ExpensesControllerPreapprovalTests
         model.PreapprovalGrantId.Should().BeNull();
         model.Grants.Should().ContainSingle().Which.Id.Should().Be(own.Id);
         model.Accounts.Select(a => a.AccountNum).Should().Equal(62900004, 62900005, 62900003, 62900001);
-        await _preapprovals.DidNotReceive().GetGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -373,7 +371,7 @@ public sealed class ExpensesControllerPreapprovalTests
         _reports.CreateDraftAsync(_actorId, _actorId, 0, null, grant.Id, Arg.Any<CancellationToken>())
             .Returns(new ExpenseCreateDraftResult(false,
                 new ExpenseError("Expenses_Validation_PreapprovalNotClaimable", []), null));
-        _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+        PutGrant(grant);
 
         var controller = Build();
         var result = await controller.New(new ExpenseNewViewModel { PreapprovalGrantId = grant.Id });
@@ -398,8 +396,8 @@ public sealed class ExpensesControllerPreapprovalTests
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         _finance.ListExpenseAccountsAsync(activeOnly: false, Arg.Any<CancellationToken>()).Returns([]);
-        _preapprovals.GetGrantAsync(revoked.Id, Arg.Any<CancellationToken>()).Returns(revoked);
-        _preapprovals.GetGrantAsync(held.Id, Arg.Any<CancellationToken>()).Returns(held);
+        PutGrant(revoked);
+        PutGrant(held);
 
         var model = (await Build().Review()).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpenseReviewViewModel>().Subject;

@@ -220,7 +220,14 @@ internal sealed class FinanceOverviewService(
         var ready = creditors
             .Where(r => r.NotPayableReason is null)
             .ToList();
-        var duplicates = creditors.Count(r => r.HasDuplicateDocuments == true);
+        // The recon and the duplicate-document check see the same doubled purchase from two mirrors: an account the
+        // recon already names is not a second problem.
+        var reconDuplicateAccounts = recon.Lines
+            .Where(l => l.Status == ExpenseReconLineStatus.Duplicated && l.LedgerAccountNum is not null)
+            .Select(l => l.LedgerAccountNum!.Value)
+            .ToHashSet();
+        var duplicates = creditors.Count(r =>
+            r.HasDuplicateDocuments == true && !reconDuplicateAccounts.Contains(r.SupplierAccountNum));
         int? reconProblems = recon.IsAvailable ? recon.Totals.Problems : null;
 
         return new FinanceWorkVm(

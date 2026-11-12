@@ -5,7 +5,7 @@
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Tickets.Contracts/ParticipationStatus.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
-  src/Sections/Humans.Users.Contracts/IUserMerge.cs
+  src/Humans.Base/Users/IUserMerge.cs
 -->
 <!-- freshness:flag-on-change
   Shift signup state machine, capacity ceilings, range-block atomicity, voluntelling rules, and coordinator/manager scope — review when Shifts services/entities/controllers change.
@@ -33,7 +33,7 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 
 ### EventSettings
 
-Shifts' own per-event knobs, keyed by the `settings_event` id Settings mints: `GlobalVolunteerCap`, `ReminderLeadTimeHours`, `IsShiftBrowsingOpen`, and the build sub-period starts `SubPeriodFirstCrewStart`, `SubPeriodSetupWeekStart`, `SubPeriodPreEventWeekStart`, `SubPeriodFinishingWeekendStart` (nullable). Edited at `/Settings#shifts` (peterdrier/Humans#1634).
+Shifts' own per-event knobs, keyed by the `settings_event` id Settings mints: `IsShiftBrowsingOpen`, and the build sub-period starts `SubPeriodFirstCrewStart`, `SubPeriodSetupWeekStart`, `SubPeriodPreEventWeekStart`, `SubPeriodFinishingWeekendStart` (nullable). Edited at `/Settings#shifts` (peterdrier/Humans#1634).
 
 **The app-wide calendar columns (EventName, Year, TimeZoneId, GateOpeningDate, every offset including the four build sub-period boundaries, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose) and `IsActive` are fully dead as of nobodies-collective/Humans#1631.** No Shifts code reads or writes them — Settings (`ISettingsService`, `Humans.Settings.Contracts`) is the calendar's sole source of truth and owns "which cycle is active"; Shifts internals resolve the calendar per-rota via `Rota.EventSettingsId`, or the active id for active-event paths, through an internal `EventCalendarResolver`. The columns are not dropped — that's a separate, Peter-approved follow-up (`memory/architecture/no-column-drops-for-decoupling.md`) — so they still exist in the table and take their C# defaults on insert. A row here is created on demand: the first rota or knob edit against an event id Settings knows about creates its knobs row; `CreateRotaAsync`/`UpdateAsync` no longer enforce single-active (that invariant moved to Settings' `SaveEventSettingsAsync`).
 
@@ -185,8 +185,7 @@ Selected routes:
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |
 | `POST /Shifts/Mine/Availability` | Save general availability |
 | `POST /Shifts/Preferences/Tags` | Save volunteer tag preferences |
-| `POST /Shifts/Settings` | Admin: saves the knobs (`IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`, the four build sub-period starts, each `-365 ≤ start`; audited as `ShiftSettingsUpdated` with the actor) for the active event, creating its Shifts row on demand if none exists yet; posted from `/Settings#shifts` (peterdrier/Humans#1634; the old `GET /Shifts/Settings` page is retired outright, no redirect) |
-| `GET /Shifts/OrphanSignups` | Admin: signups without audit log entries (AdminOnly) |
+| `POST /Shifts/Settings` | Admin: saves the knobs (`IsShiftBrowsingOpen`, the four build sub-period starts, each `-365 ≤ start`; audited as `ShiftSettingsUpdated` with the actor) for the active event, creating its Shifts row on demand if none exists yet; posted from `/Settings#shifts` (peterdrier/Humans#1634; the old `GET /Shifts/Settings` page is retired outright, no redirect) |
 | `GET /Shifts/Summary` | Read-only Shift Summary by Camp — global scope (all teams) (`ShiftsPolicies.DepartmentRead` policy) |
 | `GET /Shifts/Summary/{teamSlug}` | Shift Summary scoped to a team-set (the team + its non-promoted sub-teams) |
 | `GET /Shifts/Summary/{teamSlug}/{rotaGuid:guid}` | Shift Summary scoped to a single rota |
@@ -426,18 +425,21 @@ declared `internal`; they serve the section's own call sites by inheriting the c
 
 | Leaf interface | What it carries |
 |---|---|
-| `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate`, the build calendar (Settings-sourced, except the build sub-period starts, which are Shifts-owned with Shifts defaults) and `IsShiftBrowsingOpen` (Shifts-owned, defaults to `false` if no knobs row exists yet for that event id); never the `EventSettings` entity. Kept intact for external consumers (nobodies-collective/Humans#1630); internally, Shifts itself resolves the calendar via `ISettingsService`/`EventCalendarResolver`, not this service. |
-| `IShiftService` | Pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, rota search, and one rota by id. |
-| `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes). |
-| `IShiftSignups` | Sign up, sign up a range, no-show history, cancel-all-for-user. |
+| `IShiftService` | Pure reads with an external caller — coordinator/department lookups, browse shifts, rota search, and one rota by id. |
+| `IShiftSignups` | Sign up, sign up a range. |
 | `IShiftView` | The cached per-user / per-rota projections (issue #720). Only Shifts' own writes evict them. |
-| `IVolunteerTrackingService` | One member — the profile build strip. |
 | `IShiftSeeding`, `IShiftSignupSeeding` | `Humans.Development`'s dashboard seeder only. |
 
 Everything else on the two full interfaces — rota and shift CRUD, bulk generation, the
 coordinator dashboard's aggregates, the coverage heatmap, post-event stats, the
-approve/refuse/no-show review surface, the orphan scan — has no caller outside the
-section and is not on the leaf.
+approve/refuse/no-show review surface — has no caller outside the
+section and is not on the leaf. The active-burn read (`IBurnSettingsService` → `BurnSettingsInfo`), volunteer
+profiles, the build strip, no-show history and the staffing snapshot are section-internal too.
+
+**Profile parts.** Shifts fills two Users slots through `IUserPart`: on another member's profile
+(`UserPartSlots.Profile`), a card with their signups, build strip and no-show history, shown only to a
+coordinator or a privileged signup approver and never on one's own profile; on the admin human-detail page
+(`UserPartSlots.AdminDetail`), their signups.
 
 ### Outbound
 
@@ -447,11 +449,11 @@ section and is not on the leaf.
 - **Users:** `IUserService` — `GetUserInfosAsync` resolves display data (name, profile picture) for signup rows now that `ShiftSignup.User` nav is stripped. Also used by the dashboard activity computation and the volunteer search builder.
 - **Auth:** `IRoleAssignmentService` (lazy-resolved) — role checks for `Admin`, `ShiftsNoInfo`, `ShiftsAdmin` from `HasActiveRoleAsync`.
 - **Tickets:** `ITicketService` — used by the coordinator dashboard to compute ticket-buyer cross-references from `TicketOrderInfo`; `GetAllParticipationsAsync` gives volunteer tracking each living user's participation status for the active year.
-- **Audit Log:** `IAuditLogService` (append path, in Base) — every signup state change and rota move emits an audit entry; `IAuditViewerService` serves the orphan-signup scan.
+- **Audit Log:** `IAuditLogService` (append path, in Base) — every signup state change and rota move emits an audit entry.
 - **Notifications:** `INotificationEmitter` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section. Its sources are declared in `ShiftsNotificationSources` (`src/Sections/Humans.Shifts/ShiftsNotificationSources.cs`), one `NotificationSourceDefinition` each: `ShiftCoverageGap` (actionable, to dept coordinators: confirmed count drops below min); `ShiftSignupChange` (informational, to dept coordinators: signup confirmed/bailed); `ShiftAssigned` (informational, to the volunteer: coordinator voluntells a shift).
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
 - **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (`Humans.Shifts` references `Humans.Calendar` for the contributor interface) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded. Shifts is a **contributor only**: the subscription card, the feed URL and the token rotation live on `/Calendar` (Calendar owns the feed end to end), and no Shifts page renders them.
-- **Cantina:** `ICantinaService` (project reference; acyclic — Cantina reaches only `Shifts.Contracts`) — `DietaryMissingBannerViewComponent` (reads Cantina's profile facts and decides itself: hidden on a preference or `DeclinedToAnswer`; the banner's "I don't want to answer" posts to `/Cantina/Dietary`) and the dietary badges in volunteer search and the shift-admin page. Dietary info never gates a signup.
+- **Cantina:** `ICantinaService` (project reference; acyclic — Cantina reaches only `Shifts.Contracts`) — `DietaryMissingBannerViewComponent` (reads Cantina's profile facts and decides itself: hidden on a preference or `DeclinedToAnswer`; the banner's "I don't want to answer" posts to `/Cantina/Dietary`). Shifts pages show no dietary badges. Dietary info never gates a signup.
 - **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
 - **Settings:** `ISettingsService` (`Humans.Settings.Contracts`) — the calendar authority as of nobodies-collective/Humans#1630, and "active event" authority as of nobodies-collective/Humans#1631. Internal `EventCalendarResolver` wraps it (memoized per request) and resolves the calendar by `Rota.EventSettingsId` via `GetEventSettingsByIdAsync`, or `GetActiveEventSettingsAsync` for active-event paths. No fallback to this section's own `EventSettings` columns when the calendar can't be resolved — those columns are dead. The resolver composes a `BurnSettingsInfo` with this section's build sub-period starts and browsing switch; `BurnSettingsService` reuses that projection without a second repository read.
 - **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. EarlyEntry reads this live on every call, so no signup, shift edit or rota move signals it.
@@ -471,7 +473,7 @@ section and is not on the leaf.
   - `ShiftManagementService` takes `IMemoryCache` directly (no decorator). `GetCoordinatorTeamIdsAsync` has no cache of its own: it reads `ITeamService.GetUserCoordinatedTeamIdsAsync`, which Teams' singleton decorator answers from its in-RAM team model and keeps current on its own writes, so no section evicts anything in Shifts for it. Dashboard queries (overview / coordinator-activity / trends) use a 5-minute sliding cache owned by `ShiftManagementService`; the report readers compute uncached results. Sub-period queries bypass that cache. `ShiftSignupService` and `VolunteerTrackingService` use no cache (the no-decorator option of the caching pattern).
   - **View cache (`IShiftView`)** — nobodies-collective/Humans#720. Singleton `CachingShiftViewService` wraps a keyed Scoped `ShiftViewService` (both in `Humans.Shifts.Services`). The inner service builds single-user and batch user views through the same batch projection. Two `ConcurrentDictionary` caches keyed by user id (`ShiftUserView`) and rota id (`ShiftRotaView`); `GetUserAsync` / `GetUsersAsync` / `GetRotaAsync` return a dict hit without a `DbContext` round-trip, lazy-on-miss cold build, no startup warmup. Loads begun before invalidation cannot repopulate either cache with old data, including bulk user loads. Owns its eviction (`InvalidateUser` / `InvalidateRota` / `InvalidateShift` / `InvalidateAll`, called only by Shifts' own services; account erasure evicts through Shifts' own GDPR contributor), and implements Settings' `IEventSettingsChangeListener` — every `ShiftUserView` carries the active event's calendar and that event's signups, so a gate-date, timezone, offset or active-event save in Settings clears both dicts, and the notification's event id is forwarded through the keyed inner `IShiftRowView.EventSettingsChanged` to `IShiftManagement.InvalidateDashboardCaches` so that event's coordinator-dashboard aggregates go too (both flushes the Shifts-owned EventSettings write used to do inline, nobodies-collective/Humans#1631). Every Shifts mutation in `ShiftSignupService` / `ShiftManagementService` / `VolunteerTrackingService` calls the appropriate `Invalidate*` after `SaveChanges`; rota create/update evict after the complete rota-and-tags save attempt, including a failed tag save or uncertain rota-save completion; signup mutations also evict the coordinator dashboard aggregates through `IShiftManagement.InvalidateDashboardCaches`. Single-signup and range mutations share private invalidation helpers that clear the event dashboard, then the user view, then the affected shift or whole rota, after saving. Per-user signup, tag-preference and availability reads on the browse/mine pages, the volunteer search builder, the Agent snapshot and the shift-profile page all go through `IShiftView`; its dashboard, signup-card, profile build-strip, and widget-gallery readers (including the gallery’s department rota lookup) pass request cancellation through and do not turn an aborted response into a fallback card; `IShiftSignupService.GetByUserAsync` / `GetTeamProbeAsync` are the remaining per-user reads not on it (see `health.md` §5).
 - **No cross-domain navs:** `Rota.Team`, `ShiftSignup.User` / `EnrolledByUser` / `ReviewedByUser`, `VolunteerEventProfile.User`, `VolunteerTagPreference.User`, `GeneralAvailability.User` do not exist. Display stitching routes through `IUserService.GetUserInfosAsync` and `ITeamService.GetTeamsAsync`.
-- **Cross-section calls:** `ITeamService`, `IUserService`, `IRoleAssignmentService` (lazy), `ITicketService` (lazy, dashboard only), `IAuditLogService`, `IAuditViewerService`, `INotificationEmitter`.
+- **Cross-section calls:** `ITeamService`, `IUserService`, `IRoleAssignmentService` (lazy), `ITicketService` (lazy, dashboard only), `IAuditLogService`, `INotificationEmitter`.
 - **Architecture tests:** `tests/Humans.Shifts.Tests/Architecture/ShiftManagementArchitectureTests.cs`, `ShiftViewArchitectureTests.cs`.
 - Shift-preference free-text skill/language fields accept at most 200 characters, matching their inputs. Invalid form submissions return the entered wizard with localized validation errors before creating or changing the profile.
 - Shift-preference option labels and time descriptions use section resources; language names reuse `ToDisplayLanguageName` and Other uses `Common_Other`. Other free-text visibility follows the checkbox value, independent of its translated label. Submitted skill, quirk and language values retain their existing English vocabulary, including `Other:` free text.

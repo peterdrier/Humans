@@ -22,12 +22,16 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Models;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.GoogleIntegration;
 
 /// <summary><c>GoogleWorkspaceOptions</c> is bound in Shell, not here: Camps and Users read it too.</summary>
 public sealed class Section :
     ISection,
+    ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionConfiguration,
     ISectionHealthChecks,
@@ -35,6 +39,21 @@ public sealed class Section :
     ISectionSettings,
     IUserPart
 {
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "GoogleSync",
+            SectionName = "Google Sync",
+            Order = 93,
+            Roles = ["Admin"],
+            Features =
+            [
+                Of("Sync settings", ("Admin", Allowed)),
+            ]
+        }
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>

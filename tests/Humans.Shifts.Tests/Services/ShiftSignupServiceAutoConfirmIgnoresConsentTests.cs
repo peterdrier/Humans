@@ -44,8 +44,10 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         _userInfo = UserInfoStubHelpers.MakeUserInfo(_userId) with
         {
             State = UserState.Active,
-            Profile = UserFixtures.Profile(
-                burnerName: "New Human", firstName: "New", lastName: "Human"),
+            BurnerName = "New Human",
+            FirstName = "New",
+            LastName = "Human",
+            Profile = UserFixtures.Profile(),
         };
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(_userInfo);
         var teamService = Substitute.For<ITeamService>();
