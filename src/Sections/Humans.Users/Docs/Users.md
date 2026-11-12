@@ -420,6 +420,7 @@ The private-email label on self-profile cards uses the same localized email labe
 |----------|------|-------|
 | Id | Guid | PK |
 | ProfileId | Guid | FK → Profile (Cascade) |
+| UserId | Guid? | The owning user, the key these rows are moving to. Written on every new row and on account merge; older rows are filled by the `users.profile-children-user-id` data migration. No FK yet |
 | FieldType | ContactFieldType | Stored as string (max 50) |
 | CustomLabel | string? (100) | Required when `FieldType == Other` |
 | Value | string (500) | Required |
@@ -427,7 +428,7 @@ The private-email label on self-profile cards uses the same localized email labe
 | DisplayOrder | int | Sort order |
 | CreatedAt / UpdatedAt | Instant | Maintained by `ContactFieldService` |
 
-**Indexes:** `ProfileId`; composite `(ProfileId, Visibility)`.
+**Indexes:** `ProfileId`; `UserId`; composite `(ProfileId, Visibility)`.
 
 #### Field types (`ContactFieldType`)
 
@@ -499,12 +500,13 @@ Sub-aggregate of Profile — no separate service. Written through `IProfileEdito
 |----------|------|-------|
 | Id | Guid | PK |
 | ProfileId | Guid | FK → Profile (Cascade) |
+| UserId | Guid? | The owning user, the key these rows are moving to. Written on every new row and on account merge; older rows are filled by the `users.profile-children-user-id` data migration. No FK yet |
 | Date | LocalDate | Required; users may enter a full date or first-of-month. Displayed as e.g. `Mar'25`. |
 | EventName | string (256) | Required |
 | Description | string? (2000) | Optional |
 | CreatedAt / UpdatedAt | Instant | Maintained by `ProfileService` |
 
-**Indexes:** `ProfileId`.
+**Indexes:** `ProfileId`, `UserId`.
 
 ### ProfileLanguage
 
@@ -516,10 +518,11 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 |----------|------|-------|
 | Id | Guid | PK |
 | ProfileId | Guid | FK → Profile (Cascade) |
+| UserId | Guid? | The owning user, the key these rows are moving to. Written on every new row and on account merge; older rows are filled by the `users.profile-children-user-id` data migration. No FK yet |
 | LanguageCode | string (10) | ISO 639-1 two-letter code (e.g., `en`, `es`, `de`) |
 | Proficiency | LanguageProficiency | Stored as string (max 50) |
 
-**Indexes:** `ProfileId`.
+**Indexes:** `ProfileId`, `UserId`.
 
 ### Frozen legacy (awaiting drop)
 
@@ -598,6 +601,7 @@ Users' one-off copies are **data migrations** (`ISectionDataMigrations`, impleme
 |-----|--------|---------------|
 | `users.legacy-identity-emails` | A verified `UserEmail` row from the legacy `User.Email` Identity column, via `IEmailProblemsService.BackfillLegacyIdentityEmailsAsync` (the Email Problems page still lists these rows and links to the migration); a row the add refuses is skipped, logged, and stays listed | `LegacyIdentityEmailBackfilled` |
 | `users.profile-names-to-user-row` | `BurnerName`/`FirstName`/`LastName` from the profile onto every users row that lacks a name its profile holds; a blank profile name never counts and is never copied, so a stub profile can't erase a seeded name. Production `done` is the proof every users row holds the names, which gates stopping the profile-side write and dropping the three `profiles` name columns (nobodies-collective/Humans#1098) | none (the screen's `DataMigrationApplied` entry) |
+| `users.profile-children-user-id` | The owning `UserId` onto every `contact_fields`, `profile_languages` and `volunteer_history_entries` row that lacks one (one pending row per user, with counts per table). Production `done` gates switching those tables' reads to `UserId` and dropping `ProfileId` | none (the screen's `DataMigrationApplied` entry) |
 
 The legacy-email scan and migration share the same eligibility selection: a non-tombstone with a nonempty legacy address and no case-insensitive matching verified `UserEmail`. Profile-less accounts remain eligible.
 

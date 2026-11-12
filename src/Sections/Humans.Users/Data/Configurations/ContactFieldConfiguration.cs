@@ -43,6 +43,7 @@ internal sealed class ContactFieldConfiguration : IEntityTypeConfiguration<Conta
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(cf => cf.ProfileId);
+        builder.HasIndex(cf => cf.UserId);
         builder.HasIndex(cf => new { cf.ProfileId, cf.Visibility });
 
         builder.Ignore(cf => cf.DisplayLabel);
