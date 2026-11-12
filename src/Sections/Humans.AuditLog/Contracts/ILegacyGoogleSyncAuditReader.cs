@@ -5,7 +5,7 @@ using NodaTime;
 namespace Humans.AuditLog.Contracts;
 
 /// <summary>
-/// Temporary: feeds GoogleIntegration's one-time history migration screen, and goes with the six Google columns
+/// Temporary: feeds Google's one-time history migration screen, and goes with the six Google columns
 /// on <c>audit_log</c>.
 /// </summary>
 public interface ILegacyGoogleSyncAuditReader : IApplicationService

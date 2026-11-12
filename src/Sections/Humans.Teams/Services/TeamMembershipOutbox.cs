@@ -1,6 +1,6 @@
 using System.Transactions;
 using Humans.Base.Interfaces;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
@@ -15,9 +15,9 @@ internal sealed class TeamMembershipOutbox(
     IClock clock,
     ILogger<TeamService> logger) : IApplicationService
 {
-    // Lazy: GoogleIntegration's identity read resolves Users, which depends on Teams.
-    private IGoogleIntegrationService GoogleIdentities
-        => serviceProvider.GetRequiredService<IGoogleIntegrationService>();
+    // Lazy: Google's identity read resolves Users, which depends on Teams.
+    private IGoogleService GoogleIdentities
+        => serviceProvider.GetRequiredService<IGoogleService>();
 
     private IGoogleSyncOutboxService GoogleSyncOutboxService
         => serviceProvider.GetRequiredService<IGoogleSyncOutboxService>();

@@ -76,10 +76,10 @@ Repository: `IUserRepository`. Notification-address projections use existing `IU
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `Users.GoogleEmailStatus` is frozen and unwritten: the Google Workspace identity is GoogleIntegration's `google_workspace_identities` (Users decomposition commit 15). |
+| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `Users.GoogleEmailStatus` is frozen and unwritten: the Google Workspace identity is Google's `google_workspace_identities` (Users decomposition commit 15). |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
-`IAuditLogService` (manual-verify and primary-cleared entries) and `IServiceProvider` for lazy resolution (Tickets' `ITicketService`, Users' `IAccountMergeService`, and GoogleIntegration's `IGoogleIntegrationWrite.ClearIfAddressAsync` after each committed delete, unlink or OAuth tag-move/rename/displacement). Implements `IUserMerge`. No
+`IAuditLogService` (manual-verify and primary-cleared entries) and `IServiceProvider` for lazy resolution (Tickets' `ITicketService`, Users' `IAccountMergeService`, and Google's `IGoogleWrite.ClearIfAddressAsync` after each committed delete, unlink or OAuth tag-move/rename/displacement). Implements `IUserMerge`. No
 `IMemoryCache` directly.
 **Cross-section design-rule note:** `Users` reads/writes overlap the User
 section — `IUserRepository` is the consolidated owner and this is the
@@ -127,7 +127,7 @@ no cache.
 | UserEmails | R/W (the plan: delete, update, insert in one transaction) |
 | IdentityUserLogins | R (via `IUserManagement.GetExternalLoginsByUserIdsAsync`) |
 
-Cross-section calls via `IAuditLogService`, and `IGoogleIntegrationWrite` (resolved lazily — clears
+Cross-section calls via `IAuditLogService`, and `IGoogleWrite` (resolved lazily — clears
 the Workspace identity when its address is displaced).
 
 ### AdminHumanListAssembler / PersonSearchFields / PersonSearchMatcher

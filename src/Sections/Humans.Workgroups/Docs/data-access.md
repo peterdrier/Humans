@@ -4,7 +4,7 @@
   src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
+  src/Sections/Humans.Google/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs

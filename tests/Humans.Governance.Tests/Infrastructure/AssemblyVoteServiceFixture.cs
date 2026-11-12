@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;

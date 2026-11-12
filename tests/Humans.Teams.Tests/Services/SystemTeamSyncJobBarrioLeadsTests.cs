@@ -1,7 +1,7 @@
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;

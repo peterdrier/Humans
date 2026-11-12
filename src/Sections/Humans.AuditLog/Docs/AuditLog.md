@@ -14,7 +14,7 @@ Append-only system audit trail: who did what, when, to which entity. Used by eve
 - **For:** the Board can see what people, admins and automation did to members' records and the association's data, after the fact, without trusting anyone's memory.
 - **Good looks like:** every privileged or automated change leaves one row, written after the change saves; nothing can edit or delete a row; any page can show the history of the thing it shows without reading audit itself; every shown entry names people, never ids.
 - **Deliberate choices:** best-effort writes (an audit hiccup never fails the business step); no cache; database-side filtering because the table never stops growing; no retention or pruning, under GDPR Art. 30 and 17(3)(b).
-- **Out of scope:** field-level change history (Budget keeps its own), Google sync history (GoogleIntegration's own log), deciding anything from audit rows.
+- **Out of scope:** field-level change history (Budget keeps its own), Google sync history (Google's own log), deciding anything from audit rows.
 
 ## Concepts
 
@@ -44,7 +44,7 @@ Append-only per design-rules.md, *Append-only entities*. Enforced by the Postgre
 | RelatedEntityId | Guid? | Id of a secondary related entity (e.g. UserId when EntityType=Team) |
 | RelatedEntityType | string? (100) | Type of the secondary related entity |
 
-**Retired columns.** `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. GoogleIntegration's own `google_sync_log` replaced them in nobodies-collective/Humans#1083, and nothing reads or writes them any more: they are off `AuditLogEntrySnapshot` and `AuditEvent`, and the entity keeps them only so the historical rows stay readable until the data move retires them. `ILegacyGoogleSyncAuditReader` (`Contracts/` folder, implemented by `AuditLogService`) is the one read left over them — it feeds GoogleIntegration's `/Google/Admin/SyncHistoryMigration` screen, which copies the history into `google_sync_log` and changes nothing here. The column drop, and this reader, are their own PR under `destructive-drops-need-approval`.
+**Retired columns.** `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. Google's own `google_sync_log` replaced them in nobodies-collective/Humans#1083, and nothing reads or writes them any more: they are off `AuditLogEntrySnapshot` and `AuditEvent`, and the entity keeps them only so the historical rows stay readable until the data move retires them. `ILegacyGoogleSyncAuditReader` (`Contracts/` folder, implemented by `AuditLogService`) is the one read left over them — it feeds Google's `/Google/Admin/SyncHistoryMigration` screen, which copies the history into `google_sync_log` and changes nothing here. The column drop, and this reader, are their own PR under `destructive-drops-need-approval`.
 
 **Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`.
 
@@ -60,7 +60,7 @@ All Audit Log routes are owned by `AuditLogController` (`[Route("AuditLog")]`).
 
 Drive-activity checks belong to [Monitor](../../Humans.Monitor/Docs/Monitor.md).
 Per-resource and per-human sync audits belong to
-[GoogleIntegration](../../Humans.GoogleIntegration/Docs/GoogleIntegration.md):
+[Google](../../Humans.Google/Docs/Google.md):
 
 | Route | Now |
 |---|---|
@@ -102,7 +102,7 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render; it propagates a cancelled host request instead of logging it as a failed empty history.
 
 - **Predicates** (first match wins): `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
-- **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`. The Google sync grid is GoogleIntegration's own `<vc:google-sync-log>`, not a layout here.
+- **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`. The Google sync grid is Google's own `<vc:google-sync-log>`, not a layout here.
 - **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. A localized host page supplies the chrome; AuditLogResource supplies entry labels, action badges and narrative verbs in all supported cultures, keyed by action name, and a definition without entries renders its English verb and its name split into words. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
 - Every consuming assembly needs `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`. Missing it is silent: the element ships as inert literal markup with a green build and no runtime error. Pinned by `AuditLogPageRenderTests` (`Humans.Integration.Tests`, nightly, not CI).
 
@@ -141,7 +141,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 `AuditViewerService` wraps the section's own `IAuditLogReader` raw queries with actor, subject and team name resolution, taken from `IEnumerable<IEntityNameContributor>` (`Humans.Base`). Its one project reference is `Humans.Base`, which also carries `IUserService` for merge-tombstone chain-following.
 
-**Two homes, one namespace.** The append path every section calls — `IAuditLogService` (writes only) and `AuditActionDefinition` / `IAuditActionContributor` / `AuditActionContributor` — lives in `src/Humans.Base/AuditLog/`, so writers need no reference to this section. The section's `Contracts/` folder keeps every read: `IAuditViewerService` / `AuditEvent` (Agent, Issues, Expenses, Users, Shifts) and `ILegacyGoogleSyncAuditReader` (GoogleIntegration). Both use namespace `Humans.AuditLog.Contracts`.
+**Two homes, one namespace.** The append path every section calls — `IAuditLogService` (writes only) and `AuditActionDefinition` / `IAuditActionContributor` / `AuditActionContributor` — lives in `src/Humans.Base/AuditLog/`, so writers need no reference to this section. The section's `Contracts/` folder keeps every read: `IAuditViewerService` / `AuditEvent` (Agent, Issues, Expenses, Users, Shifts) and `ILegacyGoogleSyncAuditReader` (Google). Both use namespace `Humans.AuditLog.Contracts`.
 
 **Section-internal reads: `IAuditLogReader`.** `internal interface IAuditLogReader` (`Services/IAuditLogReader.cs`) holds the raw-snapshot reads, over the internal `AuditLogEntrySnapshot`, whose only caller is `AuditViewerService` — `GetFilteredAsync`, `GetByUserAsync` and `GetFilteredEntriesAsync`. `AuditLogService` implements it alongside `IAuditLogService`; `Section.Register` maps both to the same scoped instance. Nothing outside this assembly can name it, which is the point: those reads stay off the public surface.
 

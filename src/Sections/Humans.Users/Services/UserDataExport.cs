@@ -36,7 +36,7 @@ internal sealed class UserDataExport(IUserRepository repo) : IApplicationService
         }
         userId = user.Id;
 
-        // The Workspace identity is GoogleIntegration's export slice; the legacy per-row flags stay here.
+        // The Workspace identity is Google's export slice; the legacy per-row flags stay here.
         var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
         var effectiveEmail = userEmails
             .Where(e => e.IsVerified)

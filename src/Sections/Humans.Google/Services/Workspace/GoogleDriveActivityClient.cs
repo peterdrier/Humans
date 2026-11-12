@@ -1,0 +1,227 @@
+using Humans.Google.Contracts;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using Google.Apis.Admin.Directory.directory_v1;
+using Google.Apis.DriveActivity.v2;
+using Google.Apis.DriveActivity.v2.Data;
+using Google.Apis.Services;
+using Humans.Base.Extensions;
+using Humans.Base.Configuration;
+using Microsoft.Extensions.Options;
+
+namespace Humans.Google.Services.Workspace;
+
+internal sealed class GoogleDriveActivityClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleDriveActivityClient> logger) : IGoogleDriveActivityClient
+{
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
+
+    private DriveActivityService? _activityService;
+    private DirectoryService? _directoryService;
+    private string? _serviceAccountEmail;
+    private string? _serviceAccountClientId;
+    private bool _serviceAccountClientIdResolved;
+
+    public bool IsConfigured =>
+        !string.IsNullOrEmpty(_settings.ServiceAccountKeyPath) ||
+        !string.IsNullOrEmpty(_settings.ServiceAccountKeyJson);
+
+    public async Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        if (_serviceAccountEmail is not null)
+        {
+            return _serviceAccountEmail;
+        }
+
+        var json = await GoogleCredentialLoader.GetServiceAccountJsonAsync(_settings, ct);
+        if (json is not null)
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("client_email", out var emailElement))
+            {
+                _serviceAccountEmail = emailElement.GetString();
+            }
+        }
+
+        _serviceAccountEmail ??= "unknown@serviceaccount.iam.gserviceaccount.com";
+        return _serviceAccountEmail;
+    }
+
+    public async Task<string?> GetServiceAccountClientIdAsync(CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        if (_serviceAccountClientIdResolved)
+        {
+            return _serviceAccountClientId;
+        }
+
+        var json = await GoogleCredentialLoader.GetServiceAccountJsonAsync(_settings, ct);
+        if (json is not null)
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("client_id", out var clientIdElement))
+            {
+                _serviceAccountClientId = clientIdElement.GetString();
+            }
+        }
+
+        _serviceAccountClientIdResolved = true;
+        return _serviceAccountClientId;
+    }
+
+    public async IAsyncEnumerable<DriveActivityEvent> QueryActivityAsync(
+        string googleItemId,
+        string sinceIsoTimestamp,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        ct.ThrowIfCancellationRequested();
+        var activityService = await GetActivityServiceAsync(ct);
+        string? pageToken = null;
+
+        do
+        {
+            var request = new QueryDriveActivityRequest
+            {
+                ItemName = $"items/{googleItemId}",
+                Filter = $"time >= \"{sinceIsoTimestamp}\"",
+                PageSize = 100,
+                PageToken = pageToken,
+            };
+
+            QueryDriveActivityResponse response;
+            try
+            {
+                response = await activityService.Activity.Query(request).ExecuteAsync(ct);
+            }
+            catch (global::Google.GoogleApiException ex) when (ex.Error?.Code == 404)
+            {
+                throw new DriveActivityResourceNotFoundException($"Drive item '{googleItemId}' not found (404)", ex);
+            }
+
+            if (response.Activities is not null)
+            {
+                foreach (var activity in response.Activities)
+                {
+                    yield return Map(activity);
+                }
+            }
+
+            pageToken = response.NextPageToken;
+        } while (!string.IsNullOrEmpty(pageToken));
+    }
+
+    public async Task<string?> TryResolvePersonEmailAsync(string peopleId, CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        if (!peopleId.StartsWith("people/", StringComparison.Ordinal))
+        {
+            // Already an email, no lookup needed.
+            return peopleId;
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            var directoryService = await GetDirectoryServiceAsync(ct);
+            var userId = peopleId["people/".Length..];
+            var user = await directoryService.Users.Get(userId).ExecuteAsync(ct);
+            return user?.PrimaryEmail;
+        }
+        catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
+        {
+            logger.LogDebug("Directory API could not resolve {PeopleId} (HTTP {Code})",
+                peopleId, ex.Error.Code);
+            return null;
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Error resolving {PeopleId} via Directory API", peopleId);
+            return null;
+        }
+    }
+
+    private static DriveActivityEvent Map(DriveActivity activity)
+    {
+        var actors = new List<DriveActivityActor>();
+        if (activity.Actors is not null)
+        {
+            foreach (var actor in activity.Actors)
+            {
+                actors.Add(new DriveActivityActor(
+                    KnownUserPersonName: actor.User?.KnownUser?.PersonName,
+                    IsAdministrator: actor.Administrator is not null,
+                    IsSystem: actor.System is not null));
+            }
+        }
+
+        DriveActivityPermissionChange? permissionChange = null;
+        var permChange = activity.PrimaryActionDetail?.PermissionChange;
+        if (permChange is not null)
+        {
+            permissionChange = new DriveActivityPermissionChange(
+                AddedPermissions: MapPermissions(permChange.AddedPermissions),
+                RemovedPermissions: MapPermissions(permChange.RemovedPermissions));
+        }
+
+        return new DriveActivityEvent(actors, permissionChange);
+    }
+
+    private static IReadOnlyList<DriveActivityPermission> MapPermissions(IList<Permission>? source)
+    {
+        if (source is null || source.Count == 0)
+        {
+            return [];
+        }
+
+        var result = new List<DriveActivityPermission>(source.Count);
+        foreach (var p in source)
+        {
+            result.Add(new DriveActivityPermission(
+                Role: p.Role,
+                UserPersonName: p.User?.KnownUser?.PersonName,
+                GroupEmail: p.Group?.Email,
+                DomainName: p.Domain?.Name,
+                IsAnyone: p.Anyone is not null));
+        }
+        return result;
+    }
+
+    private async Task<DriveActivityService> GetActivityServiceAsync(CancellationToken ct)
+    {
+        if (_activityService is not null)
+        {
+            return _activityService;
+        }
+
+        var credential = await GoogleCredentialLoader.LoadScopedAsync(_settings, ct, DriveActivityService.Scope.DriveActivityReadonly);
+
+        _activityService = new DriveActivityService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans",
+        });
+
+        return _activityService;
+    }
+
+    private async Task<DirectoryService> GetDirectoryServiceAsync(CancellationToken ct)
+    {
+        if (_directoryService is not null)
+        {
+            return _directoryService;
+        }
+
+        var credential = await GoogleCredentialLoader.LoadScopedAsync(_settings, ct, DirectoryService.Scope.AdminDirectoryUserReadonly);
+
+        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans",
+        });
+
+        return _directoryService;
+    }
+}

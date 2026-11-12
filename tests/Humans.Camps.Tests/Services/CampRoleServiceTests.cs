@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Camps.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Notifications.Contracts;
@@ -16,7 +16,7 @@ namespace Humans.Camps.Tests.Services;
 public sealed class CampRoleServiceTests : CampsTestHarness
 {
     private readonly CampRoleService _service;
-    private readonly IGoogleIntegrationService _googleIdentities;
+    private readonly IGoogleService _googleIdentities;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly Guid _actorUserId = Guid.NewGuid();
@@ -25,7 +25,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     public CampRoleServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        _googleIdentities = Substitute.For<IGoogleIntegrationService>();
+        _googleIdentities = Substitute.For<IGoogleService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2026]) { Events = [Event2026] });

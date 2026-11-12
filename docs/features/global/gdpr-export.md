@@ -23,7 +23,7 @@
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
   src/Sections/Humans.Finance/Services/Service.cs
   src/Sections/Humans.Gate/Services/GateService.cs
-  src/Sections/Humans.GoogleIntegration/Services/GoogleSyncLogService.cs
+  src/Sections/Humans.Google/Services/GoogleSyncLogService.cs
   src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs
   src/Sections/Humans.Email/Services/EmailOutboxService.cs
   src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
@@ -163,7 +163,7 @@ archived account and the survivor.
 | `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
 | `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
 | `CommunicationPreferences` | `CommunicationPreferenceService` (Email) | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the effective preferences. Deleted on erasure. |
-| `WorkspaceIdentity` | `WorkspaceIdentityService` (GoogleIntegration) | Single object `{ Email, Status }` — the member's effective Google Workspace identity; null when the member has no verified address. Erasure deletes the `google_workspace_identities` row. |
+| `WorkspaceIdentity` | `WorkspaceIdentityService` (Google) | Single object `{ Email, Status }` — the member's effective Google Workspace identity; null when the member has no verified address. Erasure deletes the `google_workspace_identities` row. |
 | `EventParticipations` | `EventParticipationService` (Tickets) | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation record for (Ticketed / Attended / NoShow / NotAttending); requests under an archived ID resolve to the survivor. Retained on erasure. |
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |
 | `MembershipTier` | `MembershipTierService` | Single object `{ Tier, GrantedAt, ExpiresAt, GrantedByApplicationId }`; null for a Volunteer. Retained on erasure (register of members). |

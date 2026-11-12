@@ -1,6 +1,6 @@
 using Humans.Shifts.Contracts;
 using Humans.Teams.Data;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Controllers;
 using Humans.Teams.Services;

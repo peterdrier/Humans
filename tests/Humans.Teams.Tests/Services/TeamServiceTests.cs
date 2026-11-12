@@ -18,9 +18,9 @@ using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.GoogleIntegration.Contracts;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services;
+using Humans.Google.Contracts;
+using Humans.Google.Data;
+using Humans.Google.Services;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
@@ -100,7 +100,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceManagement _teamResourceService;
     private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
-    private readonly IGoogleIntegrationService _googleIdentities = Substitute.For<IGoogleIntegrationService>();
+    private readonly IGoogleService _googleIdentities = Substitute.For<IGoogleService>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamServiceTests()
@@ -131,7 +131,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         // NSubstitute can't attach an outer .Returns() to a factory that itself configures substitute calls.
         var userService = _userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
-            new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
+            new GoogleSyncOutboxRepository(GoogleDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
             .With(_teamCache)
@@ -3117,7 +3117,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             (await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
                 .Refusal.Should().Contain("missing, deleted or merged");
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await TeamsDb.TeamRoleAssignments.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
@@ -3153,7 +3153,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var savedRequest = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id,
             TestContext.Current.CancellationToken);
         savedRequest.Status.Should().Be(alreadyMember ? TeamJoinRequestStatus.Pending : TeamJoinRequestStatus.Approved);
-        var outbox = await GoogleIntegrationDb.GoogleSyncOutboxEvents.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+        var outbox = await GoogleDb.GoogleSyncOutboxEvents.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         if (alreadyMember) outbox.Should().BeEmpty();
         else outbox.Should().ContainSingle().Which.UserId.Should().Be(target.Id);
     }
@@ -3178,7 +3178,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Succeeded.Should().BeTrue();
         result.Assignment!.TeamMemberId.Should().Be(member.Id);
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -3216,7 +3216,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken))
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken))
             .Should().Be(events);
     }
 
@@ -3580,7 +3580,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             ghost.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
 
         // DeactivateResourcesForTeamAsync is intentionally NOT called from DeleteTeamAsync:
-        // flipping GoogleResource.IsActive here would make the next reconciliation tick
+        // flipping TeamGoogleResource.IsActive here would make the next reconciliation tick
         // skip the resources and leave stale Google access in place. Deactivation happens
         // in the sync service after access has been revoked.
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(

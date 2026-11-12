@@ -1,5 +1,5 @@
 using Humans.Base.Interfaces;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Surveys.Domain;
 
 namespace Humans.Surveys.Services;

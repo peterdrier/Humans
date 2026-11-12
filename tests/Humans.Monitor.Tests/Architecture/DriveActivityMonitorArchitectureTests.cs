@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Monitor.Services;
@@ -36,21 +36,21 @@ public class DriveActivityMonitorArchitectureTests
     }
 
     [HumansFact]
-    public void IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf()
+    public void IGoogleDriveActivityClient_LivesOnGoogleLeaf()
     {
-        // Public in the Contracts/ folder, not internal like GoogleIntegration's other
+        // Public in the Contracts/ folder, not internal like Google's other
         // connectors, because Monitor consumes it across an assembly boundary. The compiler
-        // does not catch a move out of Contracts/: Monitor references Humans.GoogleIntegration
+        // does not catch a move out of Contracts/: Monitor references Humans.Google
         // whole, since its contracts are a folder of that project rather than their own.
         typeof(IGoogleDriveActivityClient).Namespace
-            .Should().Be("Humans.GoogleIntegration.Contracts",
-                because: "Monitor consumes this connector across an assembly boundary, so it must be public surface in GoogleIntegration's Contracts/ folder");
+            .Should().Be("Humans.Google.Contracts",
+                because: "Monitor consumes this connector across an assembly boundary, so it must be public surface in Google's Contracts/ folder");
     }
 
     [HumansFact]
     public void IGoogleDriveActivityClient_HasNoGoogleSdkTypesInSignatures()
     {
-        // Parameters and return types must be BCL or Humans.GoogleIntegration.Contracts types,
+        // Parameters and return types must be BCL or Humans.Google.Contracts types,
         // never Google.Apis.*.
         var methods = typeof(IGoogleDriveActivityClient).GetMethods();
 

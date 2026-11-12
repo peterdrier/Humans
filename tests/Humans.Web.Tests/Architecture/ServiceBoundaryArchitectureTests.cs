@@ -81,9 +81,9 @@ public class ServiceBoundaryArchitectureTests
     [
         typeof(Users.Contracts.User),
         typeof(Users.Contracts.UserEmail),
-        typeof(GoogleIntegration.Contracts.GoogleResource),
-        typeof(GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
-        typeof(GoogleIntegration.Contracts.SyncServiceSettings),
+        typeof(Google.Contracts.TeamGoogleResource),
+        typeof(Google.Contracts.GoogleSyncOutboxEvent),
+        typeof(Google.Contracts.SyncServiceSettings),
     ];
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()

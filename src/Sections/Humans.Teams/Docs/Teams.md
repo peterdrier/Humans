@@ -72,7 +72,7 @@ One early-entry grant: a human may enter on a date for a named project, on a tea
 
 ## Routing
 
-`TeamController` (`[Route("Teams")]`) serves the member-facing and TeamsAdmin pages. `TeamAdminController` (`[Route("Teams/{slug}")]`) serves per-team management through `HumansTeamControllerBase`. `TeamMessageController` serves send as team. A team's Google resources page is GoogleIntegration's (`/Google/Teams/{slug}/Resources`); the team page and the Members page link to it.
+`TeamController` (`[Route("Teams")]`) serves the member-facing and TeamsAdmin pages. `TeamAdminController` (`[Route("Teams/{slug}")]`) serves per-team management through `HumansTeamControllerBase`. `TeamMessageController` serves send as team. A team's Google resources page is Google's (`/Google/Teams/{slug}/Resources`); the team page and the Members page link to it.
 
 | Route | Method | Controller | Auth |
 |-------|--------|------------|------|
@@ -171,7 +171,7 @@ One early-entry grant: a human may enter on a date for a named project, on a tea
 ## Triggers
 
 - When a join request is approved, or a coordinator adds a member, the membership is created and the human gets a welcome email and an inbox notice. Coordinators get a notice for every new request and direct join. Notices and emails go in the recipient's saved language, falling back to English, and finish after the membership commits; a notice failure never undoes the membership.
-- When a member is added, the Google outbox event grants their Drive and Group access, including the parent's resources for a sub-team add. Removals wait for GoogleIntegration's daily reconciliation.
+- When a member is added, the Google outbox event grants their Drive and Group access, including the parent's resources for a sub-team add. Removals wait for Google's daily reconciliation.
 - When a department's management-role assignment changes, or a team moves into or out of being an active department, the affected humans' Coordinators system-team membership is recalculated. Sub-team manager changes do not touch the Coordinators system team.
 - The system-team sync runs hourly (Hangfire `teams-system-sync`) and on demand from the sections whose facts it reads. It recomputes Volunteers (approved, unsuspended, consents signed, not rejected by the Consent Coordinator), Coordinators, Board, Asociados and Colaboradors (approved tiers with active terms), and Barrio Leads (active camp leads), reconciles `TeamMember.Role` against management assignments, audits every committed change before Google provisioning, and ends with a Google Group reconciliation pass when Workspace credentials are configured. It sends no "added to team" email for hidden teams.
 - When an account merge is accepted, Teams ends the source's non-system memberships, adds the survivor where needed, moves role assignments, join requests and early-entry grants to the survivor (a source Pending request colliding with a survivor Pending request for the same team is dropped), and reconciles both humans' Coordinators membership.
@@ -185,7 +185,7 @@ One early-entry grant: a human may enter on a date for a named project, on a tea
 - **Notifications.Contracts:** `INotificationEmitter` for the sources in `TeamsNotificationSources`.
 - **Users.Contracts:** `IUserService` for member display data, account resolution and the sync's person reads.
 - **Auth:** `IRoleAssignmentService` for role holders, `IAdminAuthorizationService` for actor checks.
-- **GoogleIntegration:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.
+- **Google:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.
 - **Shifts.Contracts:** `IShiftService` for the team page's shifts card and pending-shift counts.
 - **Email.Contracts:** `IEmailService`, `IEmailMessageFactory` and `ICommunicationPreferenceService` for send as team and the welcome email; Teams owns its templates (`TeamsEmails`, previewed through `TeamsEmailPreviews`).
 - **EarlyEntry:** Teams implements `IEarlyEntryProvider` for the roster and reads `EarlyEntryRoles`.
@@ -201,7 +201,7 @@ One early-entry grant: a human may enter on a date for a named project, on a tea
 
 - **Search:** renders team hits with `<vc:teams-search-result>`.
 - **Budget, Expenses:** coordinator scoping (`GetEffectiveBudgetCoordinatorTeamIdsAsync`, `IsUserCoordinatorOfTeamAsync`); Budget's dev seeder uses `ITeamSeeding`.
-- **Onboarding, Governance, Auth, Camps, GoogleIntegration, Development:** call `ISystemTeamSync` after the facts they own change.
+- **Onboarding, Governance, Auth, Camps, Google, Development:** call `ISystemTeamSync` after the facts they own change.
 - **Users:** account deletion calls `RevokeAllMembershipsAsync`; account merge reaches `IUserMerge.ReassignAsync`; profiles read team memberships.
 - **Shifts:** `ShiftAdminController` derives from `HumansTeamControllerBase`; shift authorization reads `GetUserCoordinatedTeamIdsAsync`.
 - **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read `ITeamService` / `TeamInfo`.

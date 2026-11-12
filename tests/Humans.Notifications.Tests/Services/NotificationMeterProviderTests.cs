@@ -7,7 +7,7 @@ using Humans.Notifications.Controllers;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Enums;
 using Humans.Notifications.Services;

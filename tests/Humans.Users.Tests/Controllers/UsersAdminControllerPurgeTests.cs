@@ -65,7 +65,7 @@ public class UsersAdminControllerPurgeTests
             _onboarding,
             _audience,
             _deletion,
-            Substitute.For<Humans.GoogleIntegration.Contracts.IGoogleIntegrationService>(),
+            Substitute.For<Humans.Google.Contracts.IGoogleService>(),
             _environment,
             NullLogger<UsersAdminController>.Instance,
             _localizer);

@@ -1,7 +1,7 @@
 using Humans.Shifts.Contracts;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.Localization;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Base.Caching;
 using System.Security.Claims;
 using Humans.Notifications.Services.Dtos;

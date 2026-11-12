@@ -1,0 +1,657 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Google/Services/**
+  src/Sections/Humans.Google/Controllers/GoogleController.cs
+  src/Sections/Humans.Google/Views/Google/**
+  src/Sections/Humans.Google/Contracts/TeamGoogleResource.cs
+  src/Sections/Humans.Google/Contracts/GoogleSyncOutboxEvent.cs
+  src/Sections/Humans.Google/Contracts/SyncServiceSettings.cs
+  src/Sections/Humans.Google/Contracts/GoogleSyncOutboxEventTypes.cs
+  src/Sections/Humans.Google/Data/Configurations/GoogleResourceConfiguration.cs
+  src/Sections/Humans.Google/Data/Configurations/GoogleSyncOutboxEventConfiguration.cs
+  src/Sections/Humans.Google/Data/Configurations/SyncServiceSettingsConfiguration.cs
+  src/Sections/Humans.Google/Jobs/GoogleResourceReconciliationJob.cs
+  src/Sections/Humans.Google/Jobs/ProcessGoogleSyncOutboxJob.cs
+  src/Sections/Humans.Teams/Services/SystemTeamSyncJob.cs
+  src/Sections/Humans.Google/Controllers/TeamResourcesController.cs
+  src/Sections/Humans.Google/Views/TeamResources/Index.cshtml
+-->
+<!-- freshness:flag-on-change
+  IGoogleSyncService/Write/Management surface, ITeamResourceService/Write/Management, sync mode/action enums, drift detection, error classification, and /Google routes — review when Google integration services, jobs, or controllers change.
+-->
+
+# Google
+
+## Business Context
+
+Nobodies Collective uses Google Workspace for collaboration. The system integrates with **Shared Drives** and **Google Groups** to manage shared resources for teams. Google Groups are provisioned automatically for teams. Linked Drive resources are never created by the system — an admin pre-shares an existing Shared Drive folder or file with the service account and links it. The one exception is Workgroups, which creates its group's subfolder under the configured root folder.
+
+> **Important: All Drive resources are Shared Drives.** This system does not use regular (My Drive) folders. All permission logic accounts for Shared Drive behavior, including inherited permissions from the drive level.
+
+## User Stories
+
+### US-7.1: Team Shared Drive Linking
+**As a** team
+**I want to** have our Shared Drive folder linked to the team
+**So that** team members get access to it automatically
+
+**Acceptance Criteria:**
+- Admin pre-shares an existing Shared Drive folder with the service account, then links it by URL
+- Tracked in system for permission management
+- All API calls use `SupportsAllDrives = true`
+
+> Linking is the only way a team Drive resource enters the system
+> (`ITeamResourceManagement.LinkDriveResourceAsync`); only Google Groups are
+> provisioned automatically. Workgroups is the exception: it creates its
+> group's subfolder through `IGoogleSyncWrite.CreateSubfolderAsync` and claims
+> it as a Drive access source, with no `TeamGoogleResource` row.
+
+### US-7.2: Automatic Access Grants
+**As a** new team member
+**I want to** automatically get access to the team's Google resources
+**So that** I can immediately participate in team work
+
+**Acceptance Criteria:**
+- Access granted on join approval
+- Provisioning returns the actual attempted email row and failure classification; transient returned failures stay queued and permanent refusals remain visible as failed events. Vendor results cannot change a newer selected address’s state.
+- Uses member's Google account (OAuth-linked)
+- Permission level from the resource's `DrivePermissionLevel`
+- Notification that access was granted
+
+### US-7.3: Automatic Access Revocation
+**As a** team
+**I want** former members to lose access to resources
+**So that** team documents remain protected
+
+**Acceptance Criteria:**
+- Access revoked on leave
+- Access revoked on removal by admin
+- Revocation logged for audit
+- Works even if user account is disabled
+- Only direct permissions are removed (inherited Shared Drive permissions are not touched)
+- Affected user is notified by email — see [`google-removal-notifications.md`](google-removal-notifications.md) for variant logic, suppression cases, and localization.
+
+### US-7.4: Resource Sync Status & Drift Detection
+**As an** administrator
+**I want to** see the status of Google resource sync and any drift
+**So that** I can troubleshoot access issues and verify correctness
+
+**Acceptance Criteria:**
+- Sync status page at `/Google/Sync` shows all active resources (accessible to TeamsAdmin, Board, Admin)
+- Tabbed interface: Google Drive tab and Google Groups tab
+- Per-tab preview loads via AJAX (read-only API calls)
+- Summary cards per tab: Total Resources, In Sync, Drifted, Errors
+- Per-resource table showing members to add/remove
+- Drifted resources shown first
+- "Sync Now" button per resource (Admin-only, executes adds/removes based on sync mode)
+- "Sync All" button per tab (Admin-only)
+- Inherited Shared Drive permissions are excluded from drift detection
+
+### US-7.5: Link Existing Shared Drive Folder
+**As a** TeamsAdmin or authorized Coordinator
+**I want to** link an existing Shared Drive folder to a team
+**So that** team members automatically get access to the shared folder
+
+**Acceptance Criteria:**
+- Admin pastes a Google Drive folder URL
+- System validates the service account has access to the folder
+- If access denied, shows clear instructions with service account email to share with
+- Folder metadata (name, URL) fetched and saved as TeamGoogleResource
+- Duplicate links prevented (same folder + team)
+- Supports multiple URL formats (direct, u/0, open?id=)
+- All API calls use `SupportsAllDrives = true`
+
+### US-7.5b: Link Existing Drive File
+**As a** TeamsAdmin or authorized Coordinator
+**I want to** link an individual Drive file (Sheet, Doc, Slides, etc.) to a team
+**So that** team members automatically get access to specific shared files
+
+**Acceptance Criteria:**
+- Admin pastes a Google Drive file URL (Sheets, Docs, Slides, Forms, or generic /file/d/ URLs)
+- System validates the service account has access to the file
+- If access denied, shows clear instructions with service account email to share with
+- File metadata (name, URL) fetched and saved as TeamGoogleResource with type DriveFile
+- Duplicate links prevented (same file + team)
+- Folder and file URLs are accepted through the same link form/route (`LinkDriveResourceAsync` dispatches on URL shape); only a URL matching neither pattern is rejected, with a message listing both accepted formats
+- All API calls use `SupportsAllDrives = true`
+- Permission sync works the same as for folders (team members get the resource's `DrivePermissionLevel`)
+
+### US-7.6: Link Existing Google Group
+**As a** TeamsAdmin or authorized Coordinator
+**I want to** link an existing Google Group to a team
+**So that** team membership automatically syncs with group membership
+
+**Acceptance Criteria:**
+- Admin enters a Google Group email address
+- System validates the service account has access to the group
+- If access denied, shows clear instructions with service account email
+- Group metadata (name, ID) fetched and saved as TeamGoogleResource
+- Duplicate links prevented (same group + team), including an alias that resolves to an already-linked numeric id or canonical address
+- Legacy email-valued ids match literally, ignoring case; inactive recovery also matches the exact numeric id. Recovery remains scoped to the same team and Group resource type.
+
+### US-7.7: Unlink Resource
+**As a** TeamsAdmin or authorized Coordinator
+**I want to** unlink a Google resource from a team
+**So that** the association is removed without deleting the resource
+
+**Acceptance Criteria:**
+- Soft unlink: sets IsActive = false (preserves audit trail)
+- Resource disappears from active list
+- Google permissions are NOT automatically revoked (manual cleanup)
+
+### US-7.8: Coordinator Resource Management
+**As an** admin
+**I want to** control whether Coordinators can manage team resources
+**So that** I can delegate resource management when appropriate
+
+**Acceptance Criteria:**
+- Controlled by `TeamResourceManagement:AllowCoordinatorsToManageResources` config setting
+- Default: false (only TeamsAdmins and Admins can manage)
+- When enabled, Coordinators can link/unlink/sync resources for their teams
+
+## Google Group Membership Sync Architecture
+
+Google Group membership is reconciled by `IGoogleGroupSync`, not by the Drive-oriented `IGoogleSyncService` gateway. `IGoogleGroupMembershipSource` is a plugin interface: each source returns expected user IDs for the Google group keys it owns, and the orchestrator performs the shared work of hydrating users/emails, filtering deletion/merge/suspension/rejected-email state, diffing against Google, and applying changes.
+
+`TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups, and Camps' `CampRoleService` implements it for camp role groups. `ITeamService` intentionally does not inherit the source interface; Teams registers the concrete service as a source so group membership ownership remains explicit and does not expand the general Teams boundary.
+
+Collision handling is fail-closed. If more than one source claims the same group key, `IGoogleGroupSync` logs and audits the collision and skips mutation for that group. First-wins would be unsafe because one source could silently remove members owned by another source.
+
+`ReconcileAllAsync` is the daily and bulk-preview/bulk-execute path. It loads all claims, hydrates expected users once for the pass, records per-group errors, and on Execute schedules capped scoped retries for groups that fail. `ReconcileOneAsync` is the scoped path used by Hangfire requests after membership/email changes and by per-row Execute in the UI; when scoped Execute hits a Google API failure, it schedules another scoped Hangfire attempt after the retry delay.
+
+Group sync requests use Hangfire instead of in-process retry. Team membership and email changes commit first, then enqueue scoped group reconciliation by group key. This keeps Google API failures outside the Teams transaction and makes retries visible and independently executable.
+
+## Source-Owned Drive Access
+
+`GoogleDriveAccessSyncService` reconciles Drive resource claims from Teams and Workgroups through `IGoogleDriveAccessSource`. Teams supplies linked-resource and per-member team badges; reconciliation preserves resource IDs, names, types and URLs for manual results. A Google permission can combine inherited access with a direct grant. This path preserves both components and updates direct role changes in place. Desired access never falls below the highest inherited role; dormancy, departure and retirement reduce excess direct access to that floor. An equal-floor permission needs no further mutation whether Google returns it as mixed or purely inherited.
+
+When multiple source-claimed user IDs hydrate to the same canonical Google address, their access is combined at the highest claimed level and reconciled once. The highest-level claimant owns the sync-log attribution, with a stable user-ID tie break.
+
+Pure direct extras are deleted. Mixed grants are never deleted and their role reduction does not send a total-removal notice. Role updates record success or failure in the Google sync log. Extra permissions are attributed to the email owner using the same verified-first, Gmail-alias-aware policy as Group Drive reconciliation, including failed deletes and mixed-role reductions. Preview and `None` make no changes; `AddOnly` permits additions and elevations, while downgrades and removals require `AddAndRemove`.
+
+A direct role above the claimed level — including one raised by hand in Drive — is a `Downgrade`. The sync page lists every pending downgrade (resource, member, current and expected role, teams) above the per-resource tables so admins can give real access through a team role or permission level before an `AddAndRemove` run lowers it. A folder claimed by more than one source (e.g. a team and a workgroup) gets the union of the claims, highest level per user. If any source throws, the pass holds all removals and demotions and marks each claimed resource with an error.
+
+## Data Model
+
+### TeamGoogleResource Entity
+```
+TeamGoogleResource
+├── Id: Guid
+├── ResourceType: GoogleResourceType [enum]
+├── GoogleId: string (256) [Google's ID; unique per team while active]
+├── Name: string (512)
+├── Url: string? (2048) [Google Drive URL]
+├── TeamId: Guid (required; bare cross-section id — no FK constraint, no nav)
+├── ProvisionedAt: Instant
+├── LastSyncedAt: Instant?
+├── IsActive: bool
+├── ErrorMessage: string? (2000)
+├── DrivePermissionLevel: DrivePermissionLevel [enum, Drive only]
+└── RestrictInheritedAccess: bool [default false, Drive folders only]
+```
+
+### GoogleResourceType Enum
+```
+DriveFolder  = 0  // Shared Drive folder
+SharedDrive  = 1  // Shared Drive (reserved)
+Group        = 2  // Google Group
+DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs, etc.)
+```
+
+> **Note:** `DriveFolder` refers to folders within Shared Drives, not regular My Drive folders. The `SharedDrive` value is reserved for future use if top-level Shared Drives need to be tracked separately. `DriveFile` covers any individual file (Sheets, Docs, Slides, etc.) on a Shared Drive.
+
+## Service Interface
+
+### IGoogleSyncService / IGoogleSyncWrite / IGoogleSyncManagement
+Public reads (`IGoogleSyncService`):
+```csharp
+Task<int> GetFailedSyncEventCountAsync(CancellationToken ct = default);
+Task<bool> IsFolderReachableAsync(string folderId, CancellationToken ct = default);
+```
+Public writes (`IGoogleSyncWrite`, only what other sections call):
+```csharp
+Task<GoogleResourceGrantResult> AddUserToTeamResourcesAsync(Guid teamId, Guid userId, ...);
+Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, ...);
+Task<string> CreateSubfolderAsync(string parentFolderId, string name, ...);
+Task RequestSyncAsync(string folderId, ...);
+```
+Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncSingleResourceAsync`, `SyncResourcesByTypeAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
+
+### IGoogleGroupSync
+```csharp
+public interface IGoogleGroupSync
+{
+    Task RequestSyncAsync(string groupKey, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+    Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default, int retryAttempt = 0, bool scheduleRetries = true, GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync);
+}
+```
+
+The trigger follows queued and retry work into sync logs. Hangfire calls serialize the current signature with every argument explicit and `CancellationToken.None`; no compatibility overload is retained (standing policy D13).
+
+### SyncAction Enum
+```
+Preview  = 0  // Compute diff only, make no changes
+Execute  = 1  // Compute diff and apply — adds/removes gated by the per-service SyncMode
+```
+
+Used as a parameter in sync methods (not persisted). Both scheduled jobs and manual Admin UI actions pass `SyncAction.Execute`; the persisted `SyncMode` (`None` / `AddOnly` / `AddAndRemove`) is checked inside the sync methods at execution time to decide which mutations, if any, actually run.
+
+### SyncPreviewResult / ResourceSyncDiff
+```csharp
+public class ResourceSyncDiff
+{
+    public Guid ResourceId { get; init; }
+    public string ResourceName, ResourceType { get; init; } = string.Empty;
+    public string? GoogleId, Url, ErrorMessage, PermissionLevel { get; init; }
+    public List<TeamLink> LinkedTeams { get; init; } = [];   // all teams linking this resource
+    public List<MemberSyncStatus> Members { get; init; } = [];
+
+    // Convenience properties, derived from Members
+    public List<string> MembersToAdd => Members.Where(m => m.State == MemberSyncState.Missing).Select(m => m.Email).ToList();
+    public List<string> MembersToRemove => Members.Where(m => m.State == MemberSyncState.Extra).Select(m => m.Email).ToList();
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole or MemberSyncState.Downgrade) && ErrorMessage is null;
+}
+
+public record TeamLink(string Name, string Slug, string? PermissionLevel = null);
+
+public record MemberSyncStatus(
+    string Email, string DisplayName, MemberSyncState State, List<TeamLink> TeamLinks,
+    string? CurrentRole = null, string? ExpectedRole = null, Guid? UserId = null, string? ProfilePictureUrl = null);
+
+public enum MemberSyncState { Correct, Missing, Extra, Inherited, WrongRole, Downgrade }
+
+public class SyncPreviewResult
+{
+    public List<ResourceSyncDiff> Diffs { get; init; } = [];
+    public int TotalResources => Diffs.Count;
+    public int InSyncCount => Diffs.Count(d => d.IsInSync);
+    public int DriftCount => Diffs.Count(d => !d.IsInSync && d.ErrorMessage is null);
+    public int ErrorCount => Diffs.Count(d => d.ErrorMessage is not null);
+}
+```
+
+## Shared Drive Permission Model
+
+All Drive resources in this system are on Shared Drives. This has important implications for permission management:
+
+### Inherited vs Direct Permissions
+- **Inherited permissions** come from the Shared Drive or parent folders. The system preserves this access; the source-claimed reconciler tracks its role as the minimum permitted role when updating a mixed grant.
+- **Direct permissions** are set on individual folders within the Shared Drive. These ARE managed by this system.
+
+### Permission Filtering Logic
+When listing permissions, the system uses `permissionDetails` from the Drive API to distinguish inherited from direct:
+```csharp
+// A permission is considered "direct" (managed by us) if:
+// 1. Type is "user" (not domain, group, or anyone)
+// 2. Role is not "owner"
+// 3. Has a valid email address
+// 4. Is not a service account (.iam.gserviceaccount.com)
+// 5. Has a direct component; mixed grants require a known
+//    inherited floor and are updated in place, never deleted at the child
+//    (nobodies-collective/Humans#945). Floor-only grants need no mutation.
+```
+
+### API Requirements
+All Drive API calls MUST use:
+- `SupportsAllDrives = true`
+- `Fields` including `permissionDetails` when listing permissions
+
+### Multi-Team Permission Level Resolution
+When the same Drive resource (same `GoogleId`) is linked to multiple teams with different `DrivePermissionLevel` values, the system resolves the **maximum** level before setting permissions. For example, if Team A links a folder as Viewer and Team B links the same folder as Contributor, a user who belongs to both teams gets Contributor access.
+
+`TeamDriveAccessSource` groups resources by `GoogleId` and computes each member's maximum level across active claiming teams. Both reconciliation and immediate `AddUserToTeamResourcesAsync` grants use that claim; an absent claim never falls back to an arbitrary level; a folder Workgroups also claims gets the union. Reconciliation repairs `WrongRole` (below expected) and `Downgrade` (above expected) drift using the expected level and inherited floor.
+
+## Subteam Member Rollup
+
+When a department (parent team) has child sub-teams, the effective membership for Google resource sync includes both direct department members and all active members of child teams. This ensures sub-team members automatically get access to department-level resources.
+
+**Key behaviors:**
+- Rollup is one-way: sub-team members get parent department resources. Parent members do NOT get sub-team resources.
+- On subteam join: `AddUserToTeamResourcesAsync` immediately adds the user to parent department resources.
+- On subteam leave: removal is deferred to the reconciliation job, which recomputes effective membership. If the user is still a direct department member or in another sub-team, they keep access.
+- The department detail page (`/Teams/{slug}`) shows a "Humans via sub-teams" section with source team badges, visually distinct from direct members.
+
+Teams owns Drive rollup in `TeamDriveAccessSource` and Group rollup in its `IGoogleGroupMembershipSource` implementation; Camps claims camp role groups through its own `IGoogleGroupMembershipSource`; Google consumes their user-ID claims. Shared Drive resources are claimed once with the union of eligible members and their maximum level. Workgroups defines its own rosters.
+
+## Permission Sync
+
+### Full Sync
+For claimed Drive resources:
+1. Load user IDs and permission levels from owning sections' sources, then hydrate eligible users and Google addresses.
+2. List permissions from Google, retaining direct and inherited components.
+3. Add missing grants and update role drift in place, respecting the inherited floor.
+4. Delete pure direct extras; reduce mixed direct elevations to their inherited floor.
+5. Record outcomes and errors against linked resource IDs; mark successful enabled reconciliations synced.
+6. In `AddAndRemove`, deactivate retired teams' resources only after every resource of that type reconciles without error.
+
+For Google Groups:
+1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
+2. List current group members from Google (paginated)
+3. Add missing members
+4. Remove stale members
+5. Update `LastSyncedAt`
+
+### Preview (`SyncAction.Preview`)
+Same diff logic as full sync, but read-only — no writes to Google APIs.
+
+## Sync Mode Settings
+
+Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `sync_service_settings` table and managed via the `/Settings#google-sync` tab (Admin-only).
+
+### SyncServiceSettings Entity
+```
+SyncServiceSettings
+├── Id: Guid
+├── ServiceType: SyncServiceType [enum]
+├── SyncMode: SyncMode [enum]
+├── UpdatedAt: Instant
+└── UpdatedByUserId: Guid? (bare cross-section id — no FK constraint, no nav)
+```
+
+### SyncServiceType Enum
+```
+GoogleDrive   = 0
+GoogleGroups  = 1
+Discord       = 2  // reserved for future use
+```
+
+### SyncMode Enum
+```
+None          = 0  // Jobs skip this service entirely
+AddOnly       = 1  // Only add missing members
+AddAndRemove  = 2  // Add missing + remove extra members
+```
+
+All services default to `SyncMode.None` (seed data). An Admin must explicitly enable sync from the `/Settings#google-sync` tab before automated jobs or manual sync will modify Google resources.
+
+### ISyncSettingsService
+```csharp
+public interface ISyncSettingsService
+{
+    Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default);
+    Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default);
+    Task UpdateModeAsync(SyncServiceType serviceType, SyncMode mode, Guid actorUserId, CancellationToken ct = default);
+}
+```
+
+## Google Group Lifecycle
+
+### GoogleGroupPrefix on Team
+Teams can have a `GoogleGroupPrefix` (e.g., `"events"` produces `events@nobodies.team`). This is set via the team edit form by TeamsAdmin or Admin users.
+
+### EnsureTeamGroupAsync
+When `GoogleGroupPrefix` is set on a team, `EnsureTeamGroupAsync` is called to:
+1. Check if the team already has an active Group resource
+2. If not, create (or link) the Google Group using the computed email
+3. Apply configured `GroupSettings` (WhoCanViewMembership, WhoCanPostMessage, AllowExternalMembers) from `GoogleWorkspace:Groups` config
+
+When `GoogleGroupPrefix` is cleared, the existing Group resource is deactivated (soft unlink). The Google Group itself is not deleted.
+
+### Group Settings
+Group creation applies all expected settings via `BuildExpectedGroupSettings()` — the same method used by drift detection, ensuring creation and detection share a single source of truth.
+
+### Group Settings Drift Detection
+Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift:
+
+**Checked settings** (from `GoogleWorkspace:Groups` config):
+- WhoCanJoin, WhoCanViewMembership, WhoCanContactOwner, WhoCanPostMessage, WhoCanViewGroup, WhoCanModerateMembers, AllowExternalMembers
+
+**Additional hardcoded settings** (applied at creation and checked for drift):
+- IsArchived (expected: true — enables conversation history), MembersCanPostAsTheGroup (expected: true), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: true)
+
+**Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures per group are logged but don't stop the check phase; a phase-level failure that kills the entire check dispatches a `SyncError` Admin alert (covered under per-phase fault isolation above).
+
+**Manual trigger:** The Google admin page at `/Google` has a "Check Group Settings" button. Results show at `/Google/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
+
+**SyncSettings respected:** If GoogleGroups sync mode is set to None, both the check and auto-remediation are skipped entirely.
+
+## Resource Linking (Pre-Shared Access Model)
+
+Instead of creating resources with domain-wide delegation, admins can link existing Google resources that have been pre-shared with the service account.
+
+### Access Model
+- **Shared Drive folders**: Admin shares the folder with the service account email as "Editor"
+- **Google Groups**: Admin adds the service account as a Group Manager
+- The service account authenticates as itself (no impersonation) for validation/linking
+
+### ITeamResourceService / ITeamResourceManagement
+Separate from the IGoogleSync* interfaces: linking/validation, not provisioning.
+- `ITeamResourceService` (public reads): `GetTeamResourcesAsync`, `GetResourcesByTeamIdsAsync`, `GetTeamResourceSummariesAsync`, `GetActiveDriveFoldersAsync`, `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`, `GetResourceByIdAsync`.
+- `ITeamResourceManagement : ITeamResourceService` (internal): `LinkDriveResourceAsync`, `LinkGroupAsync`, `UnlinkResourceAsync`, `UpdatePermissionLevelAsync`, `SetRestrictInheritedAccessWithResultAsync`, `GetActiveResourceCountsByTeamAsync`, `MarkResourceSyncedAsync`, `RecordResourceErrorAsync`, `GetResourceCountAsync`, `DeactivateResourcesForTeamAsync`, `GetResourceNamesByIdsAsync`.
+
+### Resource Linking Flow
+```
+┌────────────────────────┐
+│ Admin pastes URL/email │
+└────────┬───────────────┘
+         │
+         ▼
+┌────────────────────────┐
+│ Parse & validate input │
+│ (URL → folder ID)      │
+└────────┬───────────────┘
+         │
+         ▼
+┌──────────────────────────┐
+│ Google API (as service   │
+│ account, no impersonation│
+│ - Files.Get / Groups.Get │
+└────────┬─────────────────┘
+         │
+    ┌────┴─────┐
+    │          │
+ Success    Failure
+    │          │
+    ▼          ▼
+┌────────┐ ┌─────────────────────┐
+│ Save   │ │ Show error +        │
+│ record │ │ service account     │
+│        │ │ email for sharing   │
+└────────┘ └─────────────────────┘
+```
+
+### Drive Folder URL Parsing
+Supports multiple Google Drive URL formats:
+- `https://drive.google.com/drive/folders/{id}`
+- `https://drive.google.com/drive/u/0/folders/{id}`
+- `https://drive.google.com/open?id={id}`
+- `https://drive.google.com/drive/folders/{id}?usp=sharing`
+- Direct folder ID
+
+### Drive File URL Parsing
+Supports multiple Google Drive/Docs URL formats:
+- `https://drive.google.com/file/d/{id}/...`
+- `https://docs.google.com/spreadsheets/d/{id}/...`
+- `https://docs.google.com/document/d/{id}/...`
+- `https://docs.google.com/presentation/d/{id}/...`
+- `https://docs.google.com/forms/d/{id}/...`
+- `https://drive.google.com/open?id={id}`
+- Direct file ID
+
+### Authorization
+- TeamsAdmins and Admins: can manage resources for any team
+- Board: reads every team's resources page; manages nothing
+- Coordinators: controlled by `TeamResourceManagement:AllowCoordinatorsToManageResources` (default: false)
+
+### Route: `/Google/Teams/{slug}/Resources`
+Actions (on `TeamResourcesController`, `src/Sections/Humans.Google/Controllers/`). Every action 404s an unknown slug and 403s a caller who is neither TeamsAdmin/Admin nor a resource manager of the team's department (the index also admits Board, read-only) (sub-teams are gated at their department); every `{resourceId}` action 404s a resource that belongs to another team:
+| Route | Method | Action |
+|-------|--------|--------|
+| `` (index) | GET | View linked resources + link forms |
+| `LinkDrive` | POST | Link a Shared Drive folder **or** file by URL — one form, one route; `LinkDriveResourceAsync` dispatches to the folder or file path by inspecting the URL (there is no separate "link file" route) |
+| `LinkGroup` | POST | Link a Google Group by email |
+| `{resourceId}/PermissionLevel` | POST | Change the permission level granted for a linked resource |
+| `{resourceId}/RestrictInheritedAccess` | POST | Toggle `RestrictInheritedAccess` on a linked Drive folder |
+| `{resourceId}/Unlink` | POST | Soft-unlink (IsActive = false) |
+| `{resourceId}/Sync` | POST | Trigger permission sync |
+
+## Sync Status Page
+
+### Route: `/Google/Sync`
+Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resources with a tabbed interface (Google Drive / Google Groups).
+
+| Route | Method | Auth | Action |
+|-------|--------|------|--------|
+| `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Sync status page |
+| `/Google/Sync/Preview/{resourceType}` | POST | TeamsAdmin, Board, Admin | AJAX: preview drift for resource type |
+| `/Google/Sync/Execute/{resourceId}` | POST | Admin only | Execute sync for one resource |
+| `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin only | Execute sync for all resources of a type |
+
+### Summary Cards (per tab)
+- **Total Resources** — count of active TeamGoogleResource records of that type
+- **In Sync** — resources where expected == actual
+- **Drifted** — resources with members to add or remove
+- **Errors** — resources where the API call failed
+
+### Resource Table
+Per resource: Name, Team, Status badge, members to add/remove.
+Drifted resources shown first, then in-sync.
+
+### Sync Settings Tab
+
+#### `/Settings#google-sync`
+Admin-only tab for configuring per-service sync modes, contributed by `GoogleSyncSettingsTabViewComponent`.
+
+| Route | Method | Action |
+|-------|--------|--------|
+| `/Google/SyncSettings` | POST | Update sync mode for a service; redirects back to `/Settings#google-sync` |
+
+## Stub Implementations
+
+Both the IGoogleSync* and ITeamResource* interface sets have stub implementations for development without Google credentials:
+- `StubGoogleSyncService`: logs provisioning/sync actions, returns empty preview
+- `StubTeamResourceGoogleClient`: simulates Google API validation; `TeamResourceService` still performs the real DB operations
+
+Stub vs. real implementation is selected automatically based on whether `GoogleWorkspace:ServiceAccountKeyPath` or `GoogleWorkspace:ServiceAccountKeyJson` is configured.
+
+## Background Jobs
+
+### GoogleResourceReconciliationJob
+```
+Schedule: 3:00 AM daily (mode-gated via SyncSettings)
+Purpose: Full reconciliation of all Google resources with DB state
+Process: Calls Drive and Group `ReconcileAllAsync` once each with `SyncAction.Execute`; Drive sync records `GoogleSyncSource.ScheduledSync`.
+         for every service; each service checks its own persisted SyncMode
+         internally to decide whether adds/removes actually apply
+```
+
+**Mode-gated behavior:**
+- `SyncMode.None` — reconciliation remains read-only
+- `SyncMode.AddOnly` — job computes diff and only adds missing members
+- `SyncMode.AddAndRemove` — job computes diff, adds missing and removes extra members
+
+**Per-phase fault isolation:** Each top-level phase (Drive source reconcile covering folders and files, Group membership reconcile, Drive folder path updates, Inherited access enforcement, Group settings check) runs independently. A failure in one phase does not abort the others. After all phases complete, the job records `google_resource_reconciliation / partial_failure` in metrics and dispatches a single `SyncError` Admin alert listing which phases failed. If all phases succeed, the metric is `success` and no error alert fires.
+
+**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` for name, parents and `driveId`; `drives.get` for a Shared Drive root's name, never the `files.get` placeholder). If a folder has been renamed or moved, `TeamGoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention. Only a complete root-reaching path replaces the stored name; failed metadata reads or the depth limit preserve it. Initial resource lookup uses the same resolver and reuses its leaf metadata; an incomplete walk returns the leaf name rather than a partial suffix. Shared Drive roots whose file metadata omits `driveId` are resolved through `drives.get`.
+
+> Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at the `/Settings#google-sync` tab before the job will modify Google resources.
+
+### SystemTeamSyncJob
+```
+Schedule: Hourly (mode-gated via SyncSettings)
+Purpose: Sync system team membership and Google resource permissions
+```
+
+### System Team Sync
+When system teams are synced, Google permissions are also updated:
+- New member → Add to Shared Drive folders + Groups
+- Removed member → Remove from Shared Drive folders + Groups
+
+## Error Handling
+
+### Outbox Sync Error Classification
+
+The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categories:
+
+When Google Workspace credentials are absent, processing is reported as skipped and the
+batch remains pending. Stub dispatch is never treated as successful and cannot mark a Google
+email valid. Admin rerun events are distinguished by their existing deduplication-key
+shapes (`admin-resync:` prefix for a per-human rerun, `:resync:` for an account link) and
+record `ManualSync`; membership add events record `TeamMemberJoined`.
+
+**Permanent failures (HTTP 400, 403, 404):** User-level errors — invalid email format, no Google account for that address, or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user and the user is excluded from all sync paths (reconciliation, outbox, direct add). Failures surface via the "Failed Google sync events" meter and the `/Google/SyncOutbox` admin page (per-event Retry). The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships. Permanently-failed outbox events can be requeued individually via `POST /Google/SyncOutbox/{id}/Requeue` or in bulk via `POST /Google/SyncOutbox/RequeueAll`.
+
+**Transient failures (all other errors including 429, 5xx):** Retried on each drain run, up to 10 times. When the retry budget is exhausted (dead-lettered), the event is marked `FailedPermanently` and surfaces via the "Failed Google sync events" meter and the `/Google/SyncOutbox` admin page with Retry.
+
+`GoogleEmailStatus` is set to `Valid` only when `AddUserToTeamResourcesAsync` returns `Accepted`: Google created or confirmed an existing Drive grant and no grant failed. No linked resources, disabled Drive sync and deferred group reconciliation do not validate the address; failed grants do not either. A `Rejected` status is never overwritten with `Valid`; the user must change their email to reset it.
+
+### Resource-Level Retry Strategy
+```
+On Google API error (resource sync):
+  1. Log error with details
+  2. Store error in TeamGoogleResource.ErrorMessage
+  3. Set IsActive = false if persistent
+  4. Background job will retry on next sync
+```
+
+### Error Scenarios
+| Error | Handling |
+|-------|----------|
+| Rate limit exceeded (429, or a 403 whose message says "rate limit exceeded") | Transient — Drive permission listing, create and role change retry in-pass with backoff |
+| Dropped connection (reset, I/O error) in a Group client | One group's failed call, never the pass's; Execute schedules a scoped retry |
+| Drive 400 "internal error" on a grant | Transient in-pass; the same refusal on the member's next run marks the address rejected |
+| User not found (404) | Permanent — mark user email rejected |
+| Invalid email (400) | Permanent — mark user email rejected |
+| Permission denied (403, other than rate limit) | Permanent — no Google account for address, mark rejected |
+| Folder not found | Resource marked inactive — an admin re-links the folder |
+| Inherited permission delete | Any permission with an inherited component is excluded from deletion. Source-owned Drive reconciliation can instead reduce a direct elevation to the inherited floor, as described above. If Drive still 403s on a delete race (inheritance changed between list and delete), the failure is classified terminal, logged once, and not retried until the next reconciliation pass (nobodies-collective/Humans#945) |
+
+### Failed-Sync Admin Meter
+
+Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncService.GetFailedSyncEventCountAsync` — the count of outbox events that are `FailedPermanently` or unprocessed with a non-null `LastError`. The meter links to `/Google/SyncOutbox`.
+
+## Security Considerations
+
+1. **Minimal Permissions**: Grant only the resource's configured `DrivePermissionLevel`, never Owner
+2. **Service Account**: Never expose service account credentials
+3. **Audit Trail**: Log all permission changes
+4. **Revocation**: Ensure timely removal on leave/suspension
+5. **Domain Restriction**: Only add users within the organization domain
+6. **Inherited Permissions**: Never attempt to remove inherited Shared Drive permissions
+
+## Configuration
+
+### GoogleWorkspace Settings
+```json
+{
+  "GoogleWorkspace": {
+    "ServiceAccountKeyPath": "/secrets/google-sa.json",
+    "ServiceAccountKeyJson": "",
+    "Domain": "nobodies.team",
+    "Groups": {
+      "WhoCanViewMembership": "ALL_MEMBERS_CAN_VIEW",
+      "WhoCanPostMessage": "ANYONE_CAN_POST",
+      "AllowExternalMembers": true
+    }
+  }
+}
+```
+
+### TeamResourceManagement Settings
+```json
+{
+  "TeamResourceManagement": {
+    "AllowCoordinatorsToManageResources": false
+  }
+}
+```
+
+## Monitoring
+
+### Metrics
+- Google Groups provisioned (counter)
+- Permission grants/revocations (counter)
+- API errors by type (counter)
+- Sync duration (histogram)
+
+### Alerts
+- Repeated API failures
+- Permission sync backlog
+- Resources in error state
+
+## Related Features
+
+- [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) - Triggers Google Group provisioning and access sync
+- [Background Jobs](../../../../../docs/features/global/background-jobs.md) - Resource sync job
+- [Authentication](../../../Humans.Auth/Docs/features/authentication.md) - User Google identity
+- [Drive Activity Monitoring](../../../Humans.Monitor/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection

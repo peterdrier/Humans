@@ -1,0 +1,1050 @@
+using Humans.Google.Contracts;
+using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Google.Tests.Infrastructure;
+using Humans.Base.Enums;
+using Microsoft.Extensions.Logging;
+using NodaTime;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using GoogleAdminService = Humans.Google.Services.GoogleAdminService;
+using Humans.Google.Services;
+
+namespace Humans.Google.Tests;
+
+public class GoogleAdminServiceTests
+{
+    private readonly IGoogleWorkspaceUserService _workspaceUserService;
+    private readonly IGoogleSyncManagement _googleSyncService;
+    private readonly ITeamService _teamService;
+    private readonly ITeamWrite _teamServiceWrite;
+    private readonly IUserService _userService;
+    private readonly IGoogleService _workspaceIdentities;
+    private readonly IUserEmailService _userEmailService;
+    private readonly IAuditLogService _auditLogService;
+    private readonly GoogleAdminService _service;
+    private readonly ILogger<GoogleAdminService> _logger = Substitute.For<ILogger<GoogleAdminService>>();
+
+    private readonly Guid _actorUserId = Guid.NewGuid();
+
+    public GoogleAdminServiceTests()
+    {
+        _workspaceUserService = Substitute.For<IGoogleWorkspaceUserService>();
+        _googleSyncService = Substitute.For<IGoogleSyncManagement>();
+        _teamService = Substitute.For<ITeamService>();
+        _teamServiceWrite = Substitute.For<ITeamWrite>();
+        var teamResourceService = Substitute.For<ITeamResourceManagement>();
+        _userService = Substitute.For<IUserService>();
+        _workspaceIdentities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
+        _userEmailService = Substitute.For<IUserEmailService>();
+        _userEmailService.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
+        _auditLogService = Substitute.For<IAuditLogService>();
+
+        teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
+
+        // Default: Reset+2FA gate sees the account as not-yet-enrolled in 2SV,
+        // so the recovery flow runs end-to-end. Tests that need the enrolled
+        // path override this per-test.
+        _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new WorkspaceUserAccount(
+                PrimaryEmail: ci.ArgAt<string>(0),
+                FirstName: "Test",
+                LastName: "User",
+                IsSuspended: false,
+                CreationTime: DateTime.UtcNow,
+                LastLoginTime: null,
+                IsEnrolledIn2Sv: false));
+
+        _service = new GoogleAdminService(
+            _workspaceUserService,
+            _googleSyncService,
+            _teamService, _teamServiceWrite,
+            teamResourceService,
+            _userService, _workspaceIdentities,
+            _userEmailService,
+            _auditLogService,
+            _logger);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task DetectEmailRenamesAsync_SeparatesCallerAndDependencyCancellation(bool duringAccountRead, bool callerAborted)
+    {
+        using var cancellation = new CancellationTokenSource();
+        if (callerAborted) await cancellation.CancelAsync();
+        var failure = new OperationCanceledException(cancellation.Token);
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        if (duringAccountRead)
+        {
+            _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([
+                UserInfo.Create(new User { Id = first }, [], [], null),
+                UserInfo.Create(new User { Id = second }, [], [], null),
+            ]);
+            _workspaceIdentities.GetWorkspaceIdentitiesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(new Dictionary<Guid, WorkspaceIdentity>
+                {
+                    [first] = new(first, "first@nobodies.team", GoogleEmailStatus.Valid),
+                    [second] = new(second, "second@nobodies.team", GoogleEmailStatus.Valid),
+                });
+            _teamService.GetUserTeamMembershipsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+            _workspaceUserService.GetAccountAsync("first@nobodies.team", Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        }
+        else
+        {
+            _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        }
+
+        var act = () => _service.DetectEmailRenamesAsync(cancellation.Token);
+        if (callerAborted)
+            (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        else
+        {
+            var result = await act();
+            if (duringAccountRead) result.ErrorMessage.Should().BeNull();
+            else result.ErrorMessage.Should().NotBeNull();
+        }
+        if (duringAccountRead)
+        {
+            if (callerAborted)
+                await _workspaceUserService.DidNotReceive().GetAccountAsync("second@nobodies.team", Arg.Any<CancellationToken>());
+            else
+                await _workspaceUserService.Received(1).GetAccountAsync("second@nobodies.team", cancellation.Token);
+        }
+        var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(callerAborted || duringAccountRead ? LogLevel.Warning : LogLevel.Error);
+        args[3].Should().BeSameAs(callerAborted ? null : failure);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetWorkspaceAccountListAsync_SeparatesCallerAndDependencyCancellation(bool callerAborted)
+    {
+        using var cancellation = new CancellationTokenSource();
+        if (callerAborted) await cancellation.CancelAsync();
+        var failure = new OperationCanceledException(cancellation.Token);
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        var act = () => _service.GetWorkspaceAccountListAsync(cancellation.Token);
+        if (callerAborted) (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(failure);
+        else (await act()).ErrorMessage.Should().NotBeNull();
+
+        var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);
+        args[3].Should().BeSameAs(callerAborted ? null : failure);
+    }
+
+    [HumansFact]
+    public async Task GetWorkspaceAccountListAsync_ReturnsAccountsWithMatchedUsers()
+    {
+        var userId = Guid.NewGuid();
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Smith", false,
+                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true,
+                    RecoveryEmail: "alice.personal@example.com"),
+                new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Jones", true,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false,
+                    RecoveryEmail: null),
+            ]);
+
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailMatch(
+                    "alice@nobodies.team",
+                    userId,
+                    IsPrimary: true,
+                    IsVerified: true,
+                    UpdatedAt: SystemClock.Instance.GetCurrentInstant())
+            ]);
+
+        var testUser = new User { Id = userId, DisplayName = "Test User" };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
+
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.TotalAccounts.Should().Be(2);
+        result.ActiveAccounts.Should().Be(1);
+        result.SuspendedAccounts.Should().Be(1);
+        result.LinkedAccounts.Should().Be(1);
+        result.UnlinkedAccounts.Should().Be(1);
+        // Bob is unenrolled but suspended — suspended accounts are excluded
+        // from the missing-2FA count by design (they can't sign in anyway).
+        result.MissingTwoFactorCount.Should().Be(0);
+        result.ErrorMessage.Should().BeNull();
+
+        var alice = result.Accounts.Single(a =>
+            string.Equals(a.PrimaryEmail, "alice@nobodies.team", StringComparison.OrdinalIgnoreCase));
+        alice.MatchedUserId.Should().Be(userId);
+        alice.IsUsedAsPrimary.Should().BeTrue();
+        alice.RecoveryEmail.Should().Be("alice.personal@example.com");
+
+        var bob = result.Accounts.Single(a =>
+            string.Equals(a.PrimaryEmail, "bob@nobodies.team", StringComparison.OrdinalIgnoreCase));
+        bob.RecoveryEmail.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetWorkspaceAccountListAsync_CountsActiveUnenrolledTowardMissingTwoFactor()
+    {
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new WorkspaceUserAccount("alice@nobodies.team", "Alice", "Smith", false,
+                    DateTime.UtcNow, DateTime.UtcNow, IsEnrolledIn2Sv: true),
+                new WorkspaceUserAccount("carol@nobodies.team", "Carol", "Doe", false,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+                new WorkspaceUserAccount("bob@nobodies.team", "Bob", "Jones", true,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+            ]);
+
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.MissingTwoFactorCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task GetWorkspaceAccountListAsync_PicksVerifiedWinner_WhenDuplicateEmailMatches()
+    {
+        // user_emails may hold both a verified and unverified row for the
+        // same address. MatchByEmailsAsync surfaces both; the service must
+        // collapse them rather than throw on the duplicate key.
+        var verifiedUserId = Guid.NewGuid();
+        var unverifiedUserId = Guid.NewGuid();
+        var now = SystemClock.Instance.GetCurrentInstant();
+
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new WorkspaceUserAccount("dup@nobodies.team", "Dup", "User", false,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false),
+            ]);
+
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                // Unverified row is newer but must lose to the verified row.
+                new UserEmailMatch(
+                    "dup@nobodies.team", unverifiedUserId,
+                    IsPrimary: false,
+                    IsVerified: false,
+                    UpdatedAt: now),
+                new UserEmailMatch(
+                    "dup@nobodies.team", verifiedUserId,
+                    IsPrimary: true,
+                    IsVerified: true,
+                    UpdatedAt: now - Duration.FromHours(1)),
+            ]);
+
+        var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [verifiedUserId] = verifiedUser.ToUserInfo() }));
+
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorMessage.Should().BeNull();
+        result.TotalAccounts.Should().Be(1);
+        var dup = result.Accounts.Single();
+        dup.MatchedUserId.Should().Be(verifiedUserId);
+        dup.IsUsedAsPrimary.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetWorkspaceAccountListAsync_ReturnsErrorOnException()
+    {
+        _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.ErrorMessage.Should().NotBeNull();
+        result.TotalAccounts.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsInvalidUsernameBeforeWorkspaceReadsOrWrites()
+    {
+        _workspaceUserService.ClearReceivedCalls();
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "bad@name", "First", "Last", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        _workspaceUserService.ReceivedCalls().Should().BeEmpty();
+        _userEmailService.ReceivedCalls().Should().BeEmpty();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("test", "test")]
+    [Xunit.InlineData("Müller", "müller")]
+    public async Task ProvisionStandaloneAccountAsync_CreatesAccountAndAudits(string prefix, string normalizedPrefix)
+    {
+        _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        _workspaceUserService.ProvisionAccountAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            prefix, "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+        result.Message.Should().Contain($"{normalizedPrefix}@nobodies.team");
+        await _workspaceUserService.Received(1).ProvisionAccountAsync(
+            $"{normalizedPrefix}@nobodies.team", "Test", "User", Arg.Any<string>(), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLogService.Received(1).LogAsync(
+            Arg.Any<AuditActionDefinition>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ProvisionStandaloneAccountAsync_DeliversCommittedPasswordDespiteAuditFailure(bool workspaceFails)
+    {
+        _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        string? issuedPassword = null;
+        _workspaceUserService.ProvisionAccountAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                if (workspaceFails) throw new InvalidOperationException("Workspace unavailable");
+                issuedPassword = call.ArgAt<string>(3);
+                return new WorkspaceUserAccount("person@nobodies.team", "Person", "Test", false,
+                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
+            });
+        _auditLogService.LogAsync(GoogleAuditActions.WorkspaceAccountProvisioned,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit unavailable"));
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "person", "Person", "Test", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().Be(!workspaceFails);
+        result.TemporaryPassword.Should().Be(issuedPassword);
+        if (!workspaceFails)
+        {
+            result.TemporaryPassword.Should().NotBeNullOrEmpty();
+            _logger.Received(1).Log(LogLevel.Critical, Arg.Any<EventId>(),
+                Arg.Is<object>(state => !state.ToString()!.Contains(issuedPassword!)),
+                Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
+        }
+        else
+            _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task ProvisionStandaloneAccountAsync_ReturnsErrorIfAlreadyExists()
+    {
+        _workspaceUserService.GetAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already exists in Google Workspace");
+    }
+
+    [HumansFact]
+    public async Task ProvisionStandaloneAccountAsync_ReturnsErrorForMissingRequiredFields()
+    {
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "test",
+            "",
+            "User",
+            _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("All fields are required.");
+
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(null!, null!, null!, null!, null, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByUserEmail()
+    {
+        _userEmailService.FindByAddressAsync(
+                "test@nobodies.team", false, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(Guid.NewGuid(), "test@nobodies.team")]);
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already in use by another human");
+
+        // No Workspace calls, no audit write
+        await _workspaceUserService.DidNotReceive().GetAccountAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditActionDefinition>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByGoogleEmail()
+    {
+        var ownerId = Guid.NewGuid();
+        _userEmailService.FindByAddressAsync(
+                Arg.Any<string>(), false, false, Arg.Any<CancellationToken>())
+            .Returns([]);
+        _userService.GetByEmailOrAlternateAsync(
+                "test@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = ownerId,
+                Email = "x@example.com",
+                DisplayName = "X",
+            }.ToUserInfo());
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already in use by another human");
+
+        await _workspaceUserService.DidNotReceive().GetAccountAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
+    {
+        _userEmailService.FindByAddressAsync(
+                Arg.Any<string>(), false, false, Arg.Any<CancellationToken>())
+            .Returns([]);
+        _userService.GetByEmailOrAlternateAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
+        var commsTeamId = Guid.NewGuid();
+        var commsTeam = new TeamInfo(
+            commsTeamId, "Communications", null, "communications",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: [],
+            GoogleGroupPrefix: "comms");
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamInfo> { [commsTeamId] = commsTeam });
+
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "comms", "Any", "Name", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Google Group");
+        result.ErrorMessage.Should().Contain("Communications");
+
+        await _workspaceUserService.DidNotReceive().GetAccountAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().ProvisionAccountAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SuspendAccountAsync_SuspendsAndAudits()
+    {
+        var result = await _service.SuspendAccountAsync(
+            "test@nobodies.team", _actorUserId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.Message.Should().Contain("suspended");
+
+        await _workspaceUserService.Received(1)
+            .SuspendAccountAsync("test@nobodies.team", Arg.Any<CancellationToken>());
+
+        // Admin-initiated suspend: the readable address belongs in the audit row.
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountSuspended,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(s => s.Contains("test@nobodies.team")), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SuspendAccountAsync_OmitEmailFromAudit_AuditsWithoutTheAddress()
+    {
+        // The GDPR erasure path sets this: the audit log survives erasure, so an
+        // address quoted here would re-seed the identity the cascade just removed.
+        var result = await _service.SuspendAccountAsync(
+            "erased@nobodies.team", _actorUserId, omitEmailFromAudit: true,
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        await _workspaceUserService.Received(1)
+            .SuspendAccountAsync("erased@nobodies.team", Arg.Any<CancellationToken>());
+
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountSuspended,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(s => !s.Contains("erased@nobodies.team")), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SuspendAccountAsync_ReturnsErrorOnFailure()
+    {
+        _workspaceUserService.SuspendAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("API error"));
+
+        var result = await _service.SuspendAccountAsync(
+            "test@nobodies.team", _actorUserId, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Failed to suspend");
+    }
+
+    [HumansFact]
+    public async Task ReactivateAccountAsync_ReactivatesAndAudits()
+    {
+        var result = await _service.ReactivateAccountAsync(
+            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.Message.Should().Contain("reactivated");
+
+        await _workspaceUserService.Received(1)
+            .ReactivateAccountAsync("test@nobodies.team", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_ResetsAndReturnsNewPassword()
+    {
+        var result = await _service.ResetPasswordAsync(
+            "test@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+        result.Message.Should().Contain("Password reset");
+
+        await _workspaceUserService.Received(1)
+            .ResetPasswordAsync("test@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsErrorForMissingEmail()
+    {
+        var result = await _service.ResetPasswordAsync("", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Email is required.");
+
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsPasswordEvenWhenAuditWriteFails()
+    {
+        // Workspace has already rotated the password — if the audit-side
+        // lookup or LogAsync throws (DB outage, timeout), the caller still
+        // needs the new temporary password back. Otherwise they retry the
+        // reset, lock the human out further, and we own the confusion.
+        _auditLogService.LogAsync(
+                GoogleAuditActions.WorkspaceAccountPasswordReset,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+        result.Message.Should().Contain("Password reset");
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsPasswordEvenWhenLinkedUserLookupFails()
+    {
+        // Same as above for the email-match leg: a DB outage in
+        // MatchByEmailsAsync must not convert a successful Workspace reset
+        // into a failure result.
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("user_emails query failed"));
+
+        var result = await _service.ResetPasswordAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.TemporaryPassword.Should().NotBeNullOrEmpty();
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_AuditsLinkedHumanAsSubject()
+    {
+        // When the workspace address resolves to a human, the audit row's
+        // EntityId must carry that UserId so the activity feed renders the
+        // human's name as subject instead of "Unknown".
+        var linkedUserId = Guid.NewGuid();
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([
+                new UserEmailMatch(
+                    "bentree@gmail.com", Guid.NewGuid(),
+                    IsPrimary: true, IsVerified: false,
+                    UpdatedAt: Instant.FromUtc(2026, 10, 3, 0, 0)),
+                new UserEmailMatch(
+                    "ben.tree@gmail.com", Guid.NewGuid(),
+                    IsPrimary: true, IsVerified: true,
+                    UpdatedAt: Instant.FromUtc(2026, 10, 1, 0, 0)),
+                new UserEmailMatch(
+                    "ben.tree+burn@googlemail.com", linkedUserId,
+                    IsPrimary: false, IsVerified: true,
+                    UpdatedAt: Instant.FromUtc(2026, 10, 2, 0, 0))
+            ]);
+
+        await _service.ResetPasswordAsync("bentree@gmail.com", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountPasswordReset,
+            "WorkspaceAccount", linkedUserId,
+            Arg.Is<string>(s => s.Contains("bentree@gmail.com")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsCodesAndAuditsOnSuccess()
+    {
+        // GenerateBackupCodesAsync is private; exercise it through the public combined method.
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222", "cccc-3333"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(issued);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.Email.Should().Be("alice@nobodies.team");
+        // The combined method exposes the first code as BackupCode.
+        result.BackupCode.Should().Be("aaaa-1111");
+
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountBackupCodesGenerated,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team") && s.Contains("3 code")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsFailureAndDoesNotAuditOnEmptyList()
+    {
+        // Generate succeeded on Google's side but List returned 0 — we
+        // must not write a misleading "generated 0 codes" audit entry.
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        // Combined method returns Success=true with password-only on backup-code failure.
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("none were returned");
+
+        await _auditLogService.DidNotReceive().LogAsync(
+            GoogleAuditActions.WorkspaceAccountBackupCodesGenerated,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsErrorOnWorkspaceFailure()
+    {
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        // Combined method surfaces backup-code failure as Success=true, BackupCode=null.
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("Backup-code generation failed");
+
+        await _auditLogService.DidNotReceive().LogAsync(
+            GoogleAuditActions.WorkspaceAccountBackupCodesGenerated,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task GenerateBackupCodesAsync_ReturnsCodesEvenWhenAuditWriteFails()
+    {
+        // Google has already invalidated the previously-issued set, so dropping
+        // the new codes locks the human out. The audit failure for backup-code
+        // generation is logged loudly but the code must still flow back to the admin.
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(issued);
+        // Only fail the backup-codes audit; let the password-reset audit succeed
+        // so the combined method reaches the backup-code path.
+        _auditLogService.LogAsync(
+                GoogleAuditActions.WorkspaceAccountBackupCodesGenerated,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.BackupCode.Should().Be("aaaa-1111");
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsBothCredentialsOnSuccess()
+    {
+        IReadOnlyList<string> issued = ["aaaa-1111", "bbbb-2222", "cccc-3333"];
+        _workspaceUserService.GenerateBackupCodesAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(issued);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.Email.Should().Be("alice@nobodies.team");
+        result.TempPassword.Should().NotBeNullOrEmpty();
+        // The recovery flow uses one code, not the full set.
+        result.BackupCode.Should().Be("aaaa-1111");
+
+        await _workspaceUserService.Received(1).ResetPasswordAsync(
+            "alice@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        // Two audit entries — one for the password reset, one for the codes generation.
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountPasswordReset,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountBackupCodesGenerated,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsFailureWhenPasswordResetFails()
+    {
+        _workspaceUserService.ResetPasswordAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.TempPassword.Should().BeNull();
+        result.BackupCode.Should().BeNull();
+        result.ErrorMessage.Should().Contain("Failed to reset password");
+
+        // Backup-code generation must NOT be attempted when password reset failed.
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsPasswordOnlyWhenBackupCodesFail()
+    {
+        // Password reset succeeds, but Google rejects the backup-code request.
+        // The admin still gets the password — partial success is more useful
+        // than asking them to retry from scratch (Google has already rotated).
+        _workspaceUserService.GenerateBackupCodesAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Google API error"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.TempPassword.Should().NotBeNullOrEmpty();
+        result.BackupCode.Should().BeNull();
+        result.Message.Should().Contain("Backup-code generation failed");
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_RefusesAndAuditsWhenAlreadyEnrolledIn2Sv()
+    {
+        // Live Directory state says the human already has 2-Step Verification.
+        // Running the combined flow would destructively rotate their working
+        // 2FA setup, so the service must refuse — even if the UI button was
+        // somehow bypassed by a hand-crafted POST.
+        _workspaceUserService.GetAccountAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount(
+                "alice@nobodies.team", "Alice", "Smith", IsSuspended: false,
+                CreationTime: DateTime.UtcNow, LastLoginTime: null,
+                IsEnrolledIn2Sv: true));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.TempPassword.Should().BeNull();
+        result.BackupCode.Should().BeNull();
+        result.ErrorMessage.Should().Contain("already enrolled in 2FA");
+
+        // No password reset, no backup-code rotation.
+        await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        // Refusal is audited so the attempt shows up in the trail.
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountResetBlockedFor2Sv,
+            "WorkspaceAccount", Guid.Empty,
+            Arg.Is<string>(s => s.Contains("alice@nobodies.team")),
+            _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_StillRefusesWhenAuditWriteFailsOnEnrolledAccount()
+    {
+        // The 2SV refusal happens BEFORE any Workspace mutation, so an audit
+        // outage must not turn a safe refusal into a 500 — we surface the
+        // refusal regardless and log the audit failure as Critical.
+        _workspaceUserService.GetAccountAsync(
+                "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount(
+                "alice@nobodies.team", "Alice", "Smith", IsSuspended: false,
+                CreationTime: DateTime.UtcNow, LastLoginTime: null,
+                IsEnrolledIn2Sv: true));
+        _auditLogService.LogAsync(
+                GoogleAuditActions.WorkspaceAccountResetBlockedFor2Sv,
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<string>(), Arg.Any<Guid>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>())
+            .ThrowsAsync(new InvalidOperationException("Audit DB unavailable"));
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "alice@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already enrolled in 2FA");
+
+        await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceive().GenerateBackupCodesAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsErrorWhenAccountNotFound()
+    {
+        _workspaceUserService.GetAccountAsync(
+                "ghost@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+
+        var result = await _service.ResetPasswordAndGenerate2FaAsync(
+            "ghost@nobodies.team", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not found");
+
+        await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsErrorForMissingEmail()
+    {
+        var result = await _service.ResetPasswordAndGenerate2FaAsync("", _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Email is required.");
+
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(null!, Arg.Any<CancellationToken>());
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(null!, null!, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task LinkAccountAsync_LinksEmailAndResyncs()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, DisplayName = "Test User" }.ToUserInfo());
+        _userEmailService.FindByAddressAsync(Arg.Any<string>(), false, false, Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var result = await _service.LinkAccountAsync(
+            "alice@nobodies.team", userId, _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.Message.Should().Contain("Linked");
+
+        // AddVerifiedEmailAsync creates the row; the workspace identity resolves
+        // to the verified @nobodies.team address at read time, with a fresh status.
+        await _userEmailService.Received(1)
+            .AddVerifiedEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>());
+        await _teamServiceWrite.Received(1)
+            .EnqueueGoogleResyncForUserTeamsAsync(userId, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.WorkspaceAccountLinked,
+            "WorkspaceAccount", userId,
+            Arg.Any<string>(), _actorUserId,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task LinkAccountAsync_ReturnsErrorIfUserNotFound()
+    {
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
+
+        var result = await _service.LinkAccountAsync(
+            "alice@nobodies.team", Guid.NewGuid(), _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not found");
+    }
+
+    [HumansFact]
+    public async Task LinkAccountAsync_ReturnsErrorIfEmailConflict()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, DisplayName = "Test" }.ToUserInfo());
+        _userEmailService.FindByAddressAsync(
+                "alice@nobodies.team", false, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(Guid.NewGuid(), "alice@nobodies.team")]);
+
+        var result = await _service.LinkAccountAsync(
+            "alice@nobodies.team", userId, _actorUserId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("already linked");
+
+        await _userEmailService.DidNotReceive()
+            .AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task LinkGroupToTeamAsync_LinksGroupAndSaves()
+    {
+        var teamId = Guid.NewGuid();
+        _teamServiceWrite.SetGoogleGroupPrefixAsync(teamId, "test-team", Arg.Any<CancellationToken>())
+            .Returns((true, (string?)null));
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, "Test Team", "test-team"));
+        _googleSyncService.EnsureTeamGroupAsync(teamId, false, Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.Ok());
+
+        var result = await _service.LinkGroupToTeamAsync(teamId, "test-team", Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.Message.Should().Contain("test-team@nobodies.team");
+
+        await _teamServiceWrite.Received(1).SetGoogleGroupPrefixAsync(
+            teamId, "test-team", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task LinkGroupToTeamAsync_ReturnsErrorIfTeamNotFound()
+    {
+        _teamServiceWrite.SetGoogleGroupPrefixAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((false, (string?)null));
+
+        var result = await _service.LinkGroupToTeamAsync(Guid.NewGuid(), "prefix", Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not found");
+    }
+
+    [HumansFact]
+    public async Task LinkGroupToTeamAsync_RevertsOnError()
+    {
+        var teamId = Guid.NewGuid();
+        _teamServiceWrite.SetGoogleGroupPrefixAsync(teamId, "new-prefix", Arg.Any<CancellationToken>())
+            .Returns((true, "old-prefix"));
+        _teamService.GetTeamAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(MakeTeamInfo(teamId, "Test Team", "test-team"));
+        _googleSyncService.EnsureTeamGroupAsync(teamId, false, Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.Error("Failed to create group"));
+
+        var result = await _service.LinkGroupToTeamAsync(teamId, "new-prefix", Xunit.TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Failed to create group");
+
+        // Revert call — first SetGoogleGroupPrefixAsync with the new prefix, then with the previous.
+        await _teamServiceWrite.Received(1).SetGoogleGroupPrefixAsync(
+            teamId, "old-prefix", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetActiveTeamsAsync_ReturnsOnlyActiveTeamsOrdered()
+    {
+        var alphaId = Guid.NewGuid();
+        var zebraId = Guid.NewGuid();
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [alphaId] = new(
+                alphaId, "Alpha", null, "alpha",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: []),
+            [zebraId] = new(
+                zebraId, "Zebra", null, "zebra",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: []),
+        };
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(teams);
+
+        var result = await _service.GetActiveTeamsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().HaveCount(2);
+        result[0].Name.Should().Be("Alpha");
+        result[1].Name.Should().Be("Zebra");
+    }
+
+    private static TeamInfo MakeTeamInfo(Guid id, string name, string slug) =>
+        new(id, name, null, slug, IsActive: true, IsSystemTeam: false,
+            SystemTeamType.None, RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, SystemClock.Instance.GetCurrentInstant(), []);
+
+}

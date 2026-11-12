@@ -8,7 +8,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
 using Humans.Governance.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Notifications.Controllers;
 using Humans.Notifications.Services;
 using Humans.Teams.Contracts;

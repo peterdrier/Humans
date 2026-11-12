@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
@@ -34,8 +34,8 @@ internal sealed class UserEmailService(
     private Humans.Tickets.Contracts.ITicketService TicketService =>
         serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketService>();
 
-    // Lazy: GoogleIntegration's identity service reads IUserService.
-    private IGoogleIntegrationWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleIntegrationWrite>();
+    // Lazy: Google's identity service reads IUserService.
+    private IGoogleWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleWrite>();
 
     public Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default) =>

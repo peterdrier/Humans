@@ -10,7 +10,7 @@ argument-hint: "[sections...] [--intensity=light|standard|deep] [--mode=workflow
 
 Drive **several sections at once** toward the target Reforge shape — one small read surface, one write/full surface, one canonical `<Section>Info`, fewer cross-section/write-surface dependencies — by running independent refactor **lanes** concurrently. Each lane is the single-section [`humans-refactor`](../../../.codex/skills/humans-refactor/SKILL.md) loop (that skill is the per-lane source of truth for section-shape discovery, the candidate ledger, scoring, and stasis). This skill is the **orchestrator**: lane selection, conflict avoidance, the review panel, and the intensity/mode dials.
 
-Reference run: 2026-05-29 (Users/Tickets/GoogleIntegration/Budget/Email) — 25 commits, 0 rejected, −1,073 combined section points, ~3.85× speedup vs sequential, 5 draft PRs.
+Reference run: 2026-05-29 (Users/Tickets/Google/Budget/Email) — 25 commits, 0 rejected, −1,073 combined section points, ~3.85× speedup vs sequential, 5 draft PRs.
 
 ## Hard rules (non-negotiable)
 

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Teams/**
-  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
+  src/Sections/Humans.Google/Services/GoogleWorkspaceSyncService.cs
   src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs
 -->
 <!-- freshness:flag-on-change
@@ -297,6 +297,6 @@ User clicks "Leave"
 
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — Teams Admin and Admin roles enable team creation
 - [Volunteer Status](../../../Humans.Onboarding/Docs/features/volunteer-status.md) — Determines Volunteers team membership
-- [Google Integration](../../../Humans.GoogleIntegration/Docs/features/google-integration.md) — Team resource provisioning
+- [Google](../../../Humans.Google/Docs/features/google-integration.md) — Team resource provisioning
 - [Background Jobs](../../../../../docs/features/global/background-jobs.md) — System team sync job
 - [Hidden Teams](hidden-teams.md) — Admin-only team visibility flag

@@ -134,7 +134,7 @@ Inbox selection checkboxes have a localized accessible label in all supported cu
 - **Consent:** `IConsentService.GetConsentReviewsAsync` and `ConsentReviewPredicates.NeedsConsentReview` — the consent-review meter, which Board and Shifts Admin also see as onboarding profiles pending; Admin and `ConsentRoles.ConsentCoordinator` see it.
 - **Governance:** `IGovernanceService.GetUnvotedApplicationCountAsync(boardMemberUserId)` — per-board-member voting meter.
 - **Tickets:** `ITicketSync.IsInErrorStateAsync` — admin ticket-sync-error meter.
-- **Google Integration:** `IGoogleSyncService.GetFailedSyncEventCountAsync` — admin failed-sync-events meter.
+- **Google:** `IGoogleSyncService.GetFailedSyncEventCountAsync` — admin failed-sync-events meter.
 - **Camps:** `ICampService.GetSettingsAsync` + `GetCampsForYearAsync(year)` — per-camp-lead pending-requests meter (count derived in-memory from the returned camp snapshots).
 - **Email (communication preferences, since Users decomposition commit 14):** `ICommunicationPreferenceService.GetUsersWithInboxDisabledAsync` (`Humans.Email.Contracts`, a Base-only leaf — no cycle) — filters out informational notifications for users who suppressed the source's `MessageCategory`.
 - **GDPR:** `NotificationInboxService` implements `IUserDataContributor` (via `INotificationRepository.GetAllForUserContributorAsync`) for the GDPR export.

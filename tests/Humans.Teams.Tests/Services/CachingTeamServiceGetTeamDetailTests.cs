@@ -65,7 +65,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
             NullLogger<CachingTeamService>.Instance);
         _pages = new TeamPageService(
             _service,
-            Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
+            Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),
             _shifts,
             _settings,
             _roleAssignmentService);

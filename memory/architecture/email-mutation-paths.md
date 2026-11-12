@@ -29,7 +29,7 @@ HARD RULE. One service entry point rewrites an email address, and `User.Email` i
 6. No tagged row, no sibling, no collision → insert a verified tagged row → `NewRowCreated`.
 
 Then it runs `EnsurePrimaryInvariantAsync` for every affected user, invalidates `FullProfile`, commits,
-and calls GoogleIntegration's `ClearIfAddressAsync` for any address that left. The service writes every
+and calls Google's `ClearIfAddressAsync` for any address that left. The service writes every
 audit row; the controller writes none.
 
 **Sole caller:** `ExternalLoginService.CompleteExternalLoginAsync`, once per OAuth-success path. It

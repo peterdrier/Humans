@@ -1,0 +1,53 @@
+using Humans.Google.Contracts;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Humans.Google.Data.Configurations;
+
+internal sealed class GoogleResourceConfiguration : IEntityTypeConfiguration<TeamGoogleResource>
+{
+    public void Configure(EntityTypeBuilder<TeamGoogleResource> builder)
+    {
+        builder.ToTable("google_resources");
+
+        builder.HasKey(gr => gr.Id);
+
+        builder.Property(gr => gr.ResourceType)
+            .IsRequired()
+            .HasConversion<string>();
+
+        builder.Property(gr => gr.GoogleId)
+            .HasMaxLength(256)
+            .IsRequired();
+
+        builder.Property(gr => gr.Name)
+            .HasMaxLength(512)
+            .IsRequired();
+
+        builder.Property(gr => gr.Url)
+            .HasMaxLength(2048);
+
+        builder.Property(gr => gr.ProvisionedAt)
+            .IsRequired();
+
+        builder.Property(gr => gr.ErrorMessage)
+            .HasMaxLength(2000);
+
+        builder.Property(gr => gr.DrivePermissionLevel)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        builder.HasIndex(gr => gr.GoogleId);
+
+        builder.HasIndex(gr => gr.TeamId);
+        builder.HasIndex(gr => gr.IsActive);
+
+        // Filtered unique index: one active resource per (Team, GoogleId)
+        builder.HasIndex(gr => new { gr.TeamId, gr.GoogleId })
+            .HasFilter("\"IsActive\" = true")
+            .IsUnique();
+
+        // TeamId has no FK: the pre-check in TeamService.PermanentlyDeleteTeamAsync keeps a team with
+        // resources from being hard-deleted.
+    }
+}

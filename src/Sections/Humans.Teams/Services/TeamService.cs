@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
