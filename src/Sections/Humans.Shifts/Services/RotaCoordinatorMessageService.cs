@@ -341,7 +341,7 @@ internal sealed class RotaCoordinatorMessageService(
     // Chronological, in the rota's timezone.
     private static IReadOnlyList<string> BuildShiftLines(
         IReadOnlyList<ShiftSignup> userSignups,
-        Humans.Shifts.Contracts.BurnSettingsInfo eventSettings)
+        BurnSettingsInfo eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
         return userSignups
@@ -376,7 +376,7 @@ internal sealed class RotaCoordinatorMessageService(
     private sealed record RotaSignupGroup(
         Guid RotaId,
         string RotaName,
-        Humans.Shifts.Contracts.BurnSettingsInfo EventSettings,
+        BurnSettingsInfo EventSettings,
         IReadOnlyList<ShiftSignup> Signups);
 
     private sealed record DispatchSummary(

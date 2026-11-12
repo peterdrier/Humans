@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 

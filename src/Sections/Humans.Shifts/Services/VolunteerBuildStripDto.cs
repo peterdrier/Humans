@@ -1,12 +1,12 @@
 using NodaTime;
 
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.Services;
 
 /// <summary>
 /// Shared by both cohort heatmaps and the profile build strip, which can render any state in one row. On the leaf
 /// because <see cref="VolunteerBuildStripDto"/> is built from it.
 /// </summary>
-public enum VolunteerCellState
+internal enum VolunteerCellState
 {
     Outside,        // outside active window
     Confirmed,      // green
@@ -21,15 +21,15 @@ public enum VolunteerCellState
 }
 
 /// <summary>RotaNames is non-empty only on a day with a Confirmed or Pending signup; it feeds the popover.</summary>
-public sealed record VolunteerCell(
+internal sealed record VolunteerCell(
     int DayOffset,
     VolunteerCellState State,
     IReadOnlyList<string> RotaNames,
     bool DeclaredAvailable = false);
 
-public sealed record DayOffSummary(int DayOffset, string? Reason);
+internal sealed record DayOffSummary(int DayOffset, string? Reason);
 
-public sealed record VolunteerHeatmapRow(
+internal sealed record VolunteerHeatmapRow(
     Guid UserId,
     int FirstSignupDay,
     int LastEligibleSignupOffset,
@@ -38,7 +38,7 @@ public sealed record VolunteerHeatmapRow(
     IReadOnlyList<VolunteerCell> Cells,
     IReadOnlyList<DayOffSummary> DayOffs);
 
-public sealed record VolunteerBuildStripDto(
+internal sealed record VolunteerBuildStripDto(
     int BuildStartOffset,
     LocalDate GateOpeningDate,
     VolunteerHeatmapRow Row);

@@ -17,6 +17,17 @@ namespace Humans.Shifts.Services;
 internal interface IShiftManagement
     : IShiftService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
+    /// <summary>
+    /// Excludes admin-only shifts and hidden rotas unless asked; the role-protected dashboard opts in.
+    /// </summary>
+    Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
+        Guid eventSettingsId, int? limit = null,
+        Guid? departmentId = null,
+        LocalDate? startDate = null, LocalDate? endDate = null,
+        ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null,
+        bool includeRestricted = false, CancellationToken ct = default);
+
     Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default);

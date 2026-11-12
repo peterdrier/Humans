@@ -105,13 +105,9 @@ public class ShiftUrgencyTests
     public void ApplyPeriodDiverseLimit_EnsuresEventAndStrikeRepresented()
     {
         // 3 build shifts with highest scores, 1 event, 1 strike
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
+        var es = new EventSettingsInfo(
+            Guid.NewGuid(), "Test", 2026, "UTC", new LocalDate(2026, 7, 1), BuildStartOffset: -14,
+            EventEndOffset: 3, StrikeEndOffset: 5, new Dictionary<int, int>(), null, null);
 
         var buildShifts = Enumerable.Range(0, 3).Select(i =>
             MakeUrgentShift(dayOffset: -5 + i, score: 100 - i, remaining: 10, es)).ToList();
@@ -238,7 +234,7 @@ public class ShiftUrgencyTests
     }
 
     private static UrgentShiftInfo MakeUrgentShift(
-        int dayOffset, double score, int remaining, EventSettings? es = null) =>
+        int dayOffset, double score, int remaining, EventSettingsInfo? es = null) =>
         UrgentShiftFixtures.Urgent(
             shift: UrgentShiftFixtures.Shift(dayOffset: dayOffset, maxVolunteers: remaining + 1),
             burn: es,

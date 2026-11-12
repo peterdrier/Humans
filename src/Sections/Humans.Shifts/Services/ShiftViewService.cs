@@ -53,7 +53,7 @@ internal sealed class ShiftViewService : IShiftRowView
         Dictionary<Guid, GeneralAvailability> availabilityByUser = [];
         Dictionary<Guid, VolunteerBuildStatus> buildStatusByUser = [];
         Dictionary<Guid, IReadOnlyList<ShiftSignup>> signupsByUser = [];
-        Humans.Shifts.Contracts.BurnSettingsInfo? calendar = null;
+        BurnSettingsInfo? calendar = null;
 
         if (activeEvent is not null)
         {

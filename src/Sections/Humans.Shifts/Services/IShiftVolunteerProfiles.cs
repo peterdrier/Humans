@@ -1,10 +1,11 @@
-namespace Humans.Shifts.Contracts;
+using Humans.Shifts.Contracts;
+namespace Humans.Shifts.Services;
 
 /// <summary>
 /// Carries writes, so it keeps an honest name rather than a <c>Read</c> suffix. Users' profile edit page is the
 /// consumer.
 /// </summary>
-public interface IShiftVolunteerProfiles
+internal interface IShiftVolunteerProfiles
 {
     /// <summary>Null when the user has none.</summary>
     Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default);
@@ -16,9 +17,7 @@ public interface IShiftVolunteerProfiles
     Task<bool> SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
 }
 
-public record ShiftTagSummary(Guid Id, string Name);
-
-public sealed record ShiftVolunteerProfileInfo(
+internal sealed record ShiftVolunteerProfileInfo(
     Guid UserId,
     IReadOnlyList<string> Skills,
     IReadOnlyList<string> Quirks,

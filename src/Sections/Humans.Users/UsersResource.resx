@@ -84,11 +84,8 @@
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible to you, the Shifts NoInfo admins and the Board; every time one of them opens it, that is recorded and listed below. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Visible to you, the Shifts NoInfo admins and the Board, and every look is recorded.</value></data>
-  <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Marked At</value></data>
-  <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Marked By</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>My Emails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>No in-platform messages on record.</value></data>
-  <data name="Users_Profile_NoShowHistory" xml:space="preserve"><value>No-Show History ({0})</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Sent messages</value></data>
   <data name="Users_Profile_ShiftInfo" xml:space="preserve"><value>Shift Info</value></data>
 
@@ -434,4 +431,6 @@
   <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Could not load the medical details.</value></data>
   <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Show medical details (every look is recorded in the audit log)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Select a valid location.</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferences" xml:space="preserve"><value>Edit preferences</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve"><value>Select tags that match the kind of work you enjoy. Matching shifts will be highlighted with a star.</value></data>
 </root>

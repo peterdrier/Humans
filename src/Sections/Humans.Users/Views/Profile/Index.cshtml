@@ -44,39 +44,6 @@
 
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
-        @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
-        {
-            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" />
-            <vc:volunteer-build-strip user-id="@Model.UserId" />
-        }
-
-        @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)
-        {
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> @Localizer["Users_Profile_NoShowHistory", Model.NoShowHistory!.Count]</h5>
-                </div>
-                <div class="card-body p-0">
-                    @{
-                        Func<NoShowHistoryItem, IHtmlContent> reviewerCell = @<text>
-                            @if (item.MarkedByUserId is { } reviewerId)
-                            {
-                                <vc:human user-id="@reviewerId" link="None" />
-                            }
-                        </text>;
-                        var noShowTable = TableModel.For(Model.NoShowHistory!)
-                            .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
-                            .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
-                            .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel, c => c.Css("text-nowrap"))
-                            .Template(Localizer["Users_Profile_MarkedBy"].Value, reviewerCell)
-                            .Column(Localizer["Users_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
-                            .Build();
-                    }
-                    <partial name="_Table" model="noShowTable" />
-                </div>
-            </div>
-        }
-
         @if (!Model.IsOwnProfile && (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.MedicalDataViewer)).Succeeded)
         {
             @* Art. 9: the text is not in the page. Each click is one audited reveal, listed to the member. *@

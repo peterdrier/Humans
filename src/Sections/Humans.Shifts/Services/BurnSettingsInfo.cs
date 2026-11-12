@@ -2,13 +2,13 @@
 using NodaTime;
 using Humans.Settings.Contracts;
 
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.Services;
 
 /// <summary>
 /// The calendar from Settings plus Shifts' own build sub-periods and browsing switch. "Burn" names an event cycle, to keep clear of the
 /// unrelated Events section. Shifts' tuning knobs stay internal.
 /// </summary>
-public sealed record BurnSettingsInfo(
+internal sealed record BurnSettingsInfo(
     Guid Id,
     string EventName,
     int Year,

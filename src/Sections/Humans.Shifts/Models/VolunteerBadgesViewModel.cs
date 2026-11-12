@@ -1,7 +1,7 @@
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.Models;
 
 /// <summary>Public because widget-gallery sample cards construct it.</summary>
-public sealed record VolunteerBadgesViewModel(
+internal sealed record VolunteerBadgesViewModel(
     IReadOnlyList<string> Skills,
     IReadOnlyList<string> Quirks,
     IReadOnlyList<string> Languages);

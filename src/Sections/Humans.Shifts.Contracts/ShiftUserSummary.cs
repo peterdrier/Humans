@@ -5,7 +5,7 @@ namespace Humans.Shifts.Contracts;
 
 /// <summary>
 /// The flattened, entity-free shape of the section's cached per-user rows. Profile, availability and build status
-/// are absent: nothing outside read them; the profile is on <see cref="IShiftVolunteerProfiles"/>.
+/// are absent: nothing outside reads them.
 /// </summary>
 public sealed record ShiftUserSummary(
     Guid UserId,

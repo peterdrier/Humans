@@ -23,7 +23,7 @@ else if (Model.HasUpcomingShifts)
 {
     <div class="row justify-content-center mb-5">
         <div class="col-lg-8">
-            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Self" />
+            @await Component.InvokeAsync(typeof(ShiftSignupsViewComponent), new { userId = Model.UserId, viewMode = ProfileCardViewMode.Self })
 
             @if (Model.UrgentShifts.Count > 0)
             {
