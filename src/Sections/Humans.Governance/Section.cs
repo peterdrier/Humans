@@ -140,35 +140,6 @@ public sealed class Section :
                 Of("View applications", ("Volunteer", Limited), ("Board", Allowed)),
                 Of("Vote on applications", ("Volunteer", Denied), ("Board", Allowed)),
             ]
-        },
-        new()
-        {
-            Key = "Board",
-            SectionName = "Board Dashboard",
-            Order = 60,
-            Roles = ["Board"],
-            Features =
-            [
-                Of("Dashboard & stats", ("Board", Allowed)),
-                Of("Audit log", ("Board", Allowed)),
-            ]
-        },
-        new()
-        {
-            Key = "Admin",
-            SectionName = "Admin Tools",
-            Order = 90,
-            Roles = ["Admin"],
-            Features =
-            [
-                Of("Configuration status", ("Admin", Allowed)),
-                Of("Sync settings", ("Admin", Allowed)),
-                Of("Email outbox", ("Admin", Allowed)),
-                Of("Background jobs", ("Admin", Allowed)),
-                Of("All humans list", ("Admin", Allowed)),
-                Of("Role assignments", ("Admin", Allowed)),
-                Of("Legal documents", ("Admin", Allowed)),
-            ]
         }
     ];
 

@@ -147,6 +147,17 @@ public sealed class Section :
                 Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
                 Of("Board voting", ("ConsentCoordinator", Denied), ("ShiftsAdmin", Denied), ("Board", Allowed)),
             ]
+        },
+        new()
+        {
+            Key = "LegalDocuments",
+            SectionName = "Legal Documents",
+            Order = 92,
+            Roles = ["Board", "Admin"],
+            Features =
+            [
+                Of("Legal documents", ("Board", Allowed), ("Admin", Allowed)),
+            ]
         }
     ];
 
