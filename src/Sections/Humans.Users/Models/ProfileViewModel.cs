@@ -175,11 +175,6 @@ internal sealed class ProfileViewModel
 
     public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
 
-    public List<NoShowHistoryItem>? NoShowHistory { get; set; }
-
-    /// <summary>Same gate as NoShowHistory; only meaningful when IsOwnProfile is false.</summary>
-    public bool CanViewShiftSignups { get; set; }
-
     public List<ProfileLanguageEditViewModel> EditableLanguages { get; set; } = [];
 
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
@@ -367,12 +362,3 @@ internal sealed class ProfileLanguageDisplayViewModel
     };
 }
 
-/// <summary>One no-show row, from <c>IShiftSignups.GetNoShowHistoryAsync</c>.</summary>
-internal sealed class NoShowHistoryItem
-{
-    public string ShiftLabel { get; set; } = string.Empty;
-    public string DepartmentName { get; set; } = string.Empty;
-    public string ShiftDateLabel { get; set; } = string.Empty;
-    public Guid? MarkedByUserId { get; set; }
-    public string? MarkedAtLabel { get; set; }
-}

@@ -2,6 +2,7 @@ using Humans.Shifts.Contracts;
 
 using NodaTime;
 using Humans.Shifts.Services.Dtos;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Models;
 

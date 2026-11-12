@@ -131,6 +131,7 @@ graph LR
     Containers -.-> Camps
     Containers -.-> CityPlanning
     Debug --> Consent
+    Debug --> Settings
     Debug -.-> Email
     Debug -.-> Shifts
     Debug -.-> Tickets
@@ -316,11 +317,11 @@ graph LR
     Users --> GoogleIntegration
     Users --> Issues
     Users --> Settings
-    Users --> Shifts
     Users -.-> Email
     Users -.-> Governance
     Users -.-> Notifications
     Users -.-> Onboarding
+    Users -.-> Shifts
     Users -.-> Teams
     Users -.-> Tickets
     Workgroups --> Auth

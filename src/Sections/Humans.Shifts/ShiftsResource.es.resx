@@ -1292,4 +1292,7 @@
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscripción a varios turnos de '{0}' rechazada ({1} turnos).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Cancelación de varios turnos de '{0}' ({1} turnos).</value></data>
   <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Algunas etiquetas seleccionadas ya no están disponibles. Revisa tu selección e inténtalo de nuevo.</value></data>
+  <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>Historial de ausencias ({0})</value></data>
+  <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Marcado por</value></data>
+  <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Marcado el</value></data>
 </root>
