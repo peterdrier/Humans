@@ -17,11 +17,11 @@ internal partial interface IUserRepository
     Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Every user whose row's names differ from their profile's (null and empty are equal). Read-only.
+    /// Every user whose row lacks a name their profile holds. A blank profile name never counts. Read-only.
     /// </summary>
     Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default);
 
-    /// <summary>Copies the profile's names onto every mismatched user row. Returns the rows written.</summary>
+    /// <summary>Copies the profile's non-blank names onto every mismatched user row. Returns the rows written.</summary>
     Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default);
 
     /// <summary>

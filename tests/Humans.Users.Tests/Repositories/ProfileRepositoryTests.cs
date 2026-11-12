@@ -352,6 +352,9 @@ public sealed class UserRepositoryProfileTests : IDisposable
         current.FirstName = "First";
         current.LastName = "Last";
         await SeedUserAsync(); // no profile: nothing to copy
+        var seeded = await SeedUserAsync(); // blank stub profile must not erase the seeded name
+        seeded.BurnerName = "Seeded";
+        _dbContext.Profiles.Add(NewProfile(seeded.Id, "", "", ""));
         _dbContext.Profiles.Add(NewProfile(stale.Id, "Burner", "First", "Last"));
         _dbContext.Profiles.Add(NewProfile(current.Id, "Same", "First", "Last"));
         await _dbContext.SaveChangesAsync(ct);
@@ -365,6 +368,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var fixedRow = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == stale.Id, ct);
         (fixedRow.BurnerName, fixedRow.FirstName, fixedRow.LastName).Should().Be(("Burner", "First", "Last"));
         (await _repo.GetProfileNameMismatchesAsync(ct)).Should().BeEmpty();
+        (await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == seeded.Id, ct)).BurnerName.Should().Be("Seeded");
     }
 
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)

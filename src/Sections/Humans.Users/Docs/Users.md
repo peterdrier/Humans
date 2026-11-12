@@ -597,7 +597,7 @@ Users' one-off copies are **data migrations** (`ISectionDataMigrations`, impleme
 | Key | Copies | Per-row audit |
 |-----|--------|---------------|
 | `users.legacy-identity-emails` | A verified `UserEmail` row from the legacy `User.Email` Identity column, via `IEmailProblemsService.BackfillLegacyIdentityEmailsAsync` (the Email Problems page still lists these rows and links to the migration); a row the add refuses is skipped, logged, and stays listed | `LegacyIdentityEmailBackfilled` |
-| `users.profile-names-to-user-row` | `BurnerName`/`FirstName`/`LastName` from the profile onto every users row where they differ (null equals empty). Production `done` is the proof every users row holds the names, which gates stopping the profile-side write and dropping the three `profiles` name columns (nobodies-collective/Humans#1098) | none (the screen's `DataMigrationApplied` entry) |
+| `users.profile-names-to-user-row` | `BurnerName`/`FirstName`/`LastName` from the profile onto every users row that lacks a name its profile holds; a blank profile name never counts and is never copied, so a stub profile can't erase a seeded name. Production `done` is the proof every users row holds the names, which gates stopping the profile-side write and dropping the three `profiles` name columns (nobodies-collective/Humans#1098) | none (the screen's `DataMigrationApplied` entry) |
 
 The legacy-email scan and migration share the same eligibility selection: a non-tombstone with a nonempty legacy address and no case-insensitive matching verified `UserEmail`. Profile-less accounts remain eligible.
 

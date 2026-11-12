@@ -264,7 +264,7 @@ public sealed class Section :
             "The legacy-column fallback in User.Email / UserInfo.Email",
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
         new(ProfileNamesKey, SectionName,
-            "Copy burner, first and last name from the profile onto the users row where they differ",
+            "Copy burner, first and last name from the profile onto the users row where the row lacks them",
             "The profile save's second copy of the names, then the three name columns on profiles",
             ProfileNamesStatusAsync, ApplyProfileNamesAsync),
     ];

@@ -153,17 +153,26 @@ internal sealed partial class UserRepository
             .Select(x => x.Profile)
             .ToListAsync(ct);
         foreach (var profile in profiles)
-            await MirrorProfileNamesToUserAsync(ctx, profile, ct);
+        {
+            var user = await ctx.Users.FindAsync([profile.UserId], ct);
+            if (user is null)
+                continue;
+            if (!string.IsNullOrEmpty(profile.BurnerName)) user.BurnerName = profile.BurnerName;
+            if (!string.IsNullOrEmpty(profile.FirstName)) user.FirstName = profile.FirstName;
+            if (!string.IsNullOrEmpty(profile.LastName)) user.LastName = profile.LastName;
+        }
         await ctx.SaveChangesAsync(ct);
         return profiles.Count;
     }
 
+    // A blank profile name is never a mismatch: older stub profiles are blank where the users row holds the
+    // seeded name, and copying the blank across would erase it.
     private static IQueryable<UserProfilePair> NameMismatches(IQueryable<User> users, IQueryable<Profile> profiles) =>
         users
             .Join(profiles, u => u.Id, p => p.UserId, (u, p) => new UserProfilePair { User = u, Profile = p })
-            .Where(x => (x.User.BurnerName ?? "") != (x.Profile.BurnerName ?? "")
-                || (x.User.FirstName ?? "") != (x.Profile.FirstName ?? "")
-                || (x.User.LastName ?? "") != (x.Profile.LastName ?? ""));
+            .Where(x => ((x.Profile.BurnerName ?? "") != "" && x.User.BurnerName != x.Profile.BurnerName)
+                || ((x.Profile.FirstName ?? "") != "" && x.User.FirstName != x.Profile.FirstName)
+                || ((x.Profile.LastName ?? "") != "" && x.User.LastName != x.Profile.LastName));
 
     private sealed class UserProfilePair
     {
