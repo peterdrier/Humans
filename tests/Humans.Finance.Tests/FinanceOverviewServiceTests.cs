@@ -66,7 +66,10 @@ public class FinanceOverviewServiceTests
             [47500001] = -40m,
         };
 
-        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [], pleoWallet: 2m);
+        var feed = new FinanceBankFeedVm(3, Instant.FromUtc(2026, 1, 1, 0, 0));
+        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [], pleoWallet: 2m, 57200001, feed);
+
+        cards.Banks.Select(a => a.BankFeed).Should().Equal(feed, null);
 
         cards.Banks.Select(a => a.AccountNum).Should().Equal(57200001, 57200003);
         cards.Stripe.Select(a => a.AccountNum).Should().Equal(44100001);

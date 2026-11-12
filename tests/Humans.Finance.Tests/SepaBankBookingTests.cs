@@ -1008,15 +1008,21 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_NothingUnbooked_MakesNoHoldedCalls()
+    public async Task Sweep_NothingUnbooked_RefreshesTheFeedOnlyOnceItIsADayOld()
     {
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId,
             reconciledAt: FixedNow));
+        var mirrorAge = Duration.FromHours(1);
+        _holded.GetBankMovementsAsync(
+                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new HoldedBankMovementMirror(FixedNow - mirrorAge, []));
 
         await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
+        await _holded.DidNotReceiveWithAnyArgs().SyncBankMovementsAsync(default!, default, default, default, default);
 
-        await _feed.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
-            default!, default, default);
+        mirrorAge = Duration.FromHours(21);
+        await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
+        await _holded.ReceivedWithAnyArgs(1).SyncBankMovementsAsync(default!, default, default, default, default);
         await AssertNothingPostedAsync();
     }
 

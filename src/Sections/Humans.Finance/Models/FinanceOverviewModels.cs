@@ -34,15 +34,20 @@ internal sealed record FinanceLedgerCardsVm(
 }
 
 /// <summary><see cref="Amount"/> is Holded's ledger balance. <see cref="Source"/> is set on an account whose provider
-/// reports its own balance.</summary>
+/// reports its own balance, <see cref="BankFeed"/> on the account Holded's bank feed is mirrored for.</summary>
 internal sealed record FinanceAccountLineVm(
-    int AccountNum, string Name, decimal Amount, FinanceAccountSourceVm? Source = null)
+    int AccountNum, string Name, decimal Amount, FinanceAccountSourceVm? Source = null,
+    FinanceBankFeedVm? BankFeed = null)
 {
     public decimal? Difference => Source?.Balance is { } b ? b - Amount : null;
 }
 
 /// <summary>The provider's own balance, null when unknown, and the Finance action that reconciles the two.</summary>
 internal sealed record FinanceAccountSourceVm(decimal? Balance, string ReconcileAction);
+
+/// <summary>Bank lines of the last <see cref="Services.SepaBankBooking.FeedWindowDays"/> days that Holded has not fully
+/// reconciled, as of <see cref="SyncedAt"/>. Both null when the feed has never been mirrored.</summary>
+internal sealed record FinanceBankFeedVm(int? Unreconciled, Instant? SyncedAt);
 
 /// <summary>A transfer sent to the bank in a SEPA file and not booked in Holded yet.</summary>
 internal sealed record FinanceSepaTransferVm(Guid UserId, string FileName, Instant GeneratedAt, decimal Amount);
