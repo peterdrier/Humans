@@ -37,7 +37,9 @@ namespace Humans.Cantina.Data.Migrations
                         .HasColumnType("character varying(500)");
 
                     b.Property<bool?>("DeclinedToAnswer")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValueSql("NULL");
 
                     b.Property<string>("DietaryPreference")
                         .HasMaxLength(200)
