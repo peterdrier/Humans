@@ -342,6 +342,35 @@ public sealed class UserRepositoryProfileTests : IDisposable
         erased.MedicalConditions.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task CopyProfileNamesToUsersAsync_FixesExactlyTheMismatchedRows()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var stale = await SeedUserAsync(UserState.Active);
+        var current = await SeedUserAsync(UserState.Active);
+        current.BurnerName = "Same";
+        current.FirstName = "First";
+        current.LastName = "Last";
+        await SeedUserAsync(); // no profile: nothing to copy
+        var seeded = await SeedUserAsync(); // blank stub profile must not erase the seeded name
+        seeded.BurnerName = "Seeded";
+        _dbContext.Profiles.Add(NewProfile(seeded.Id, "", "", ""));
+        _dbContext.Profiles.Add(NewProfile(stale.Id, "Burner", "First", "Last"));
+        _dbContext.Profiles.Add(NewProfile(current.Id, "Same", "First", "Last"));
+        await _dbContext.SaveChangesAsync(ct);
+        _dbContext.ChangeTracker.Clear();
+
+        (await _repo.GetProfileNameMismatchesAsync(ct)).Should().ContainSingle()
+            .Which.Should().Be(new ProfileNameMismatch(stale.Id, "", "", "", "Burner", "First", "Last"));
+
+        (await _repo.CopyProfileNamesToUsersAsync(ct)).Should().Be(1);
+
+        var fixedRow = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == stale.Id, ct);
+        (fixedRow.BurnerName, fixedRow.FirstName, fixedRow.LastName).Should().Be(("Burner", "First", "Last"));
+        (await _repo.GetProfileNameMismatchesAsync(ct)).Should().BeEmpty();
+        (await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == seeded.Id, ct)).BurnerName.Should().Be("Seeded");
+    }
+
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
     {
         var user = new User
