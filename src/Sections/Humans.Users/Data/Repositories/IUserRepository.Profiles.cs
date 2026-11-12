@@ -17,6 +17,14 @@ internal partial interface IUserRepository
     Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
+    /// Every user whose row's names differ from their profile's (null and empty are equal). Read-only.
+    /// </summary>
+    Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default);
+
+    /// <summary>Copies the profile's names onto every mismatched user row. Returns the rows written.</summary>
+    Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// The content type (the GDPR gate checked before serving the file) and versioned storage key
     /// (null at the legacy key). Null when there is no picture, so an anonymized profile is never
     /// served a stale file.
@@ -78,3 +86,8 @@ internal partial interface IUserRepository
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default);
 }
+
+internal sealed record ProfileNameMismatch(
+    Guid UserId,
+    string UserBurnerName, string UserFirstName, string UserLastName,
+    string ProfileBurnerName, string ProfileFirstName, string ProfileLastName);

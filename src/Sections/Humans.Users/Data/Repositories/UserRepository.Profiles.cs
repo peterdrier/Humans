@@ -135,6 +135,42 @@ internal sealed partial class UserRepository
             CopyNamesToUser(user, profile);
     }
 
+    public async Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await NameMismatches(ctx.Users.AsNoTracking(), ctx.Profiles.AsNoTracking())
+            .Select(x => new ProfileNameMismatch(
+                x.User.Id,
+                x.User.BurnerName ?? "", x.User.FirstName ?? "", x.User.LastName ?? "",
+                x.Profile.BurnerName ?? "", x.Profile.FirstName ?? "", x.Profile.LastName ?? ""))
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var profiles = await NameMismatches(ctx.Users.AsNoTracking(), ctx.Profiles.AsNoTracking())
+            .Select(x => x.Profile)
+            .ToListAsync(ct);
+        foreach (var profile in profiles)
+            await MirrorProfileNamesToUserAsync(ctx, profile, ct);
+        await ctx.SaveChangesAsync(ct);
+        return profiles.Count;
+    }
+
+    private static IQueryable<UserProfilePair> NameMismatches(IQueryable<User> users, IQueryable<Profile> profiles) =>
+        users
+            .Join(profiles, u => u.Id, p => p.UserId, (u, p) => new UserProfilePair { User = u, Profile = p })
+            .Where(x => (x.User.BurnerName ?? "") != (x.Profile.BurnerName ?? "")
+                || (x.User.FirstName ?? "") != (x.Profile.FirstName ?? "")
+                || (x.User.LastName ?? "") != (x.Profile.LastName ?? ""));
+
+    private sealed class UserProfilePair
+    {
+        public required User User { get; init; }
+        public required Profile Profile { get; init; }
+    }
+
     public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

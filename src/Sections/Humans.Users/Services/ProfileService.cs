@@ -21,4 +21,10 @@ internal sealed class ProfileService(IUserRepository userRepository,
         var fsBytes = await fileStorage.TryReadAsync(key, ct);
         return fsBytes is not null ? (fsBytes, picture.ContentType) : null;
     }
+
+    public Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default) =>
+        userRepository.GetProfileNameMismatchesAsync(ct);
+
+    public Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default) =>
+        userRepository.CopyProfileNamesToUsersAsync(ct);
 }
