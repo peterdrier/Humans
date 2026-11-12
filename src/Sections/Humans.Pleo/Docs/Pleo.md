@@ -116,7 +116,8 @@ actor; otherwise its result is the sync row.
 
 ## Triggers
 
-- `pleo-sync`, nightly at 03:15 (Hangfire, `PleoSyncJob`): the full sweep.
+- `pleo-sync`, nightly at 03:15 (Hangfire, `PleoSyncJob`): the full sweep. A 4xx from Pleo ends the run with one warning and no retry;
+  transient failures (5xx, 429, network) keep Hangfire's retries.
 
 ## Cross-Section Dependencies
 
