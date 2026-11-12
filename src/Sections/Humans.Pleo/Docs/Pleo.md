@@ -83,7 +83,9 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   A sweep never deletes or unlinks a category row.
 - A sweep fetches entries, chart, categories, cardholders and balance before writing anything, then
   replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed call leaves the
-  mirror as it was and records the error on the sync row. If that diagnostic save also fails, the secondary failure
+  mirror as it was and records the error on the sync row. The category fetch is the exception: if it fails, the sweep
+  goes on without it, leaves `pleo_categories` as it is, and keeps the category error on the sync row (shown on the
+  sync card) while the status stays `Idle`. If that diagnostic save also fails, the secondary failure
   is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
 - JSON API responses must have an object root. A null, array or scalar response fails as a typed
   `PleoPermanentException`, so live receipt reads use their existing failure feedback instead of leaking a
@@ -122,7 +124,8 @@ actor; otherwise its result is the sync row.
 
 ## Triggers
 
-- `pleo-sync`, nightly at 03:15 (Hangfire, `PleoSyncJob`): the full sweep.
+- `pleo-sync`, nightly at 03:15 (Hangfire, `PleoSyncJob`): the full sweep. A 4xx from Pleo ends the run with one warning and no retry;
+  transient failures (5xx, 429, network) keep Hangfire's retries.
 
 ## Cross-Section Dependencies
 

@@ -130,7 +130,7 @@ For configuration:
 
 Date/time format strings live in **one home**: `Humans.Base.Extensions.DateFormattingExtensions`. Render dates by calling a named method on the home — `ToDate` / `ToDateTime` / `ToWeekdayDayMonth` for culture display, `ToInvariantDate` / `ToInvariantTimestamp` / `ToIso8601` for machine output. For an `Instant` in a request/view, the ambient overloads in `Humans.Base.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
 
-Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, interpolation `{x:MMM d}`, NodaTime `*Pattern.Create("…")`). If no method fits, add one to the home rather than hand-rolling a literal. Enforced by analyzer **HUM0030** (build error in production assemblies). See [`memory/architecture/datetime-format-single-home.md`](../../memory/architecture/datetime-format-single-home.md) and [`memory/code/datetime-display-formatting.md`](../../memory/code/datetime-display-formatting.md).
+Never inline a custom format string at the call site (`ToString("d MMM yyyy")`, interpolation `{x:MMM d}`, NodaTime `*Pattern.Create("…")`). If no method fits, add one to the home rather than hand-rolling a literal. Enforced by analyzer **HUM0030** (build error in production assemblies). See [`memory/architecture/datetime-format-single-home.md`](../../memory/architecture/datetime-format-single-home.md) and [`memory/architecture/datetime-format-single-home.md`](../../memory/architecture/datetime-format-single-home.md).
 
 ## Rendering
 

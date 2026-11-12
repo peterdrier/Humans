@@ -1,6 +1,6 @@
 ---
 name: The debt ledger must shrink
-description: Debt ledgers are a holding bucket, not an archive — debt runs work already-found rows before hunting new debt, and the ledger must shrink over time; rows that truly can't be fixed autonomously go to GitHub issues after a re-check, at most three a night.
+description: "Debt runs work existing ledger rows before hunting new debt, and the ledger must shrink. Rows that can't be fixed autonomously become GitHub issues after a re-check, at most three a night."
 ---
 
 The debt ledgers (central `inbox:` plus every section `Docs/debt.yml`) are a holding bucket. If the open-row count does not fall over time, the debt process has failed.

@@ -68,7 +68,7 @@ Group added files by folder — each folder is one DbContext chain (`src/Section
 
    If `<folder>` doesn't exist on `upstream/main` because the batch renames it (`R` entries in the step-4 diff, e.g. SystemSettings→Settings), run the same command against the **old** path from the rename entry — the chain continues across the rename. Only a genuinely new context has no upstream chain to compare.
 
-   A new migration sorting before an existing upstream one is mid-chain (`memory/architecture/migration-regen-after-rebase.md`).
+   A new migration sorting before an existing upstream one is mid-chain (`memory/architecture/no-hand-edited-migrations.md`).
 
 2. **Snapshot updated** — the folder's `*DbContextModelSnapshot.cs` appears in the same diff as `M`, as `A` (new folder), or as the destination of an `R` entry (renamed folder — a rename with a small content change is reported as `R<score>`, not `M`). New migrations with an untouched snapshot mean the snapshot wasn't regenerated.
 
@@ -93,7 +93,7 @@ Group added files by folder — each folder is one DbContext chain (`src/Section
      --project src/Sections/Humans.<Section> --startup-project src/Humans.Web --no-build
    ```
 
-   Must report no pending model changes (`--project` per `memory/process/ef-multi-context-commands.md`; the platform context uses `--project src/Humans.Web`). Together, (a) + (b) prove the newest Designer's model incorporates every promoted migration's entity changes.
+   Must report no pending model changes (`--project` per `memory/architecture/no-hand-edited-migrations.md`; the platform context uses `--project src/Humans.Web`). Together, (a) + (b) prove the newest Designer's model incorporates every promoted migration's entity changes.
 
 **Any check fails → STOP. Do not open the PR.** Report which context and which check. The fix happens on the fork before promotion (stop-and-ask per the atom above; `/ef-regen` is the sanctioned recovery) — a broken chain promoted to prod is a deploy incident, not a PR-body footnote.
 

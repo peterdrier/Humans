@@ -1,6 +1,6 @@
 ---
 name: Stripe money-out — refunds only through the guarded API path; payouts and chargebacks stay dashboard-manual
-description: HARD RULE. Payouts and chargebacks are never called from Humans. Refunds may be, but only through the one guarded refund path (nobodies-collective/Humans#1254); until it ships, refunds are issued on stripe.com and booked by hand.
+description: "HARD RULE. Payouts and chargebacks never via API; refunds only through the one guarded refund path (nobodies-collective/Humans#1254), by hand on stripe.com until it ships."
 ---
 
 Money that leaves a Stripe account cannot be taken back. Payouts and chargeback responses are always done by a person on stripe.com; Humans never calls those APIs. Refunds may go through the API, but only through one guarded path (nobodies-collective/Humans#1254, decided by Peter 2026-10-27).

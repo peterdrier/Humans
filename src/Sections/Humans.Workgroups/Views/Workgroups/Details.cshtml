@@ -102,6 +102,10 @@
             {
                 <a href="https://drive.google.com/drive/folders/@w.DriveFolderId" target="_blank" rel="noopener"><i class="fa-brands fa-google-drive me-1"></i>@Localizer["Workgroups_DriveFolder"]</a>
             }
+            @if (w.GoogleGroupEmail is { } groupEmail)
+            {
+                <a href="mailto:@groupEmail" title="@Localizer["Workgroups_EmailGroup"]"><i class="fa-solid fa-envelope me-1"></i>@groupEmail</a>
+            }
         </div>
     </div>
 </div>
@@ -158,6 +162,24 @@
                     }
                 </select>
                 <button type="submit" class="btn btn-sm btn-primary">Save budget</button>
+            </form>
+        </div>
+    </details>
+}
+
+@if (Model.CanAdminister && w.Status is not (WorkgroupStatus.Refused or WorkgroupStatus.Withdrawn))
+{
+    <details class="card mb-3">
+        <summary class="card-header">Email group (Board/Admin)</summary>
+        <div class="card-body">
+            <form method="post" asp-controller="WorkgroupsAdmin" asp-action="GoogleGroup" asp-route-id="@w.Id" asp-route-slug="@w.Slug">
+                <label class="form-label" for="google-group-prefix">Google group</label>
+                <div class="input-group mb-2" style="max-width: 480px;">
+                    <input class="form-control" id="google-group-prefix" name="prefix" maxlength="64" value="@(w.GoogleGroupEmail?.Split('@')[0])" />
+                    <span class="input-group-text">@@@Humans.Base.Constants.DomainConstants.GoogleGroupDomain</span>
+                </div>
+                <p class="small text-muted mb-2">Optional. Once Active, the group's current members are kept in sync with this Google group. Blank unlinks it and leaves the Google group as it is.</p>
+                <button type="submit" class="btn btn-sm btn-primary">Save email group</button>
             </form>
         </div>
     </details>

@@ -346,6 +346,24 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
+    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var before = await _repo.GetCategoriesAsync(ct);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns<IReadOnlyList<PleoCategoryWire>>(
+            _ => throw new PleoPermanentException("Pleo bookkeeping-categories:search: 403 Forbidden", 403));
+        _entries = [Entry("a")];
+
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.SyncedWithoutCategories);
+
+        (await _repo.GetEntriesAsync(ct)).Should().ContainSingle();
+        (await _repo.GetCategoriesAsync(ct)).Should().BeEquivalentTo(before);
+        var state = await _repo.GetSyncStateAsync(ct);
+        state!.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
+        state.LastError.Should().Contain("403");
+    }
+
+    [HumansFact]
     public async Task Summary_reconciles_loads_spend_and_refunds_against_Pleos_balance()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

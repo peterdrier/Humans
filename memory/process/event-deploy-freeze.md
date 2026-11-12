@@ -1,5 +1,5 @@
 ---
-name: No schema-changing deploy during a live event
+name: event-deploy-freeze
 description: "HARD RULE. Build week through strike: no deploy with a pending EF migration. An unavoidable one needs a confirmed pre-deploy snapshot, an awake admin, and Peter's go."
 ---
 
@@ -35,11 +35,9 @@ hand-restore. That is a ten-minute job with a snapshot, the runbook, and an awak
 outage of unknown length without them, during the one week the app is load-bearing in real time.
 
 **How to apply:** when planning or executing a deploy during a live-event window, check for pending
-migrations first. If there are any, the answer is "after the event" unless the four conditions
+migrations first. If there are any, the answer is "after the event" unless the five conditions
 above are met and Peter has said go. Outside a live-event window, this freeze does not apply —
 normal migration discipline governs instead.
 
-**Related:** [`no-drops-until-prod-verified`](../architecture/no-drops-until-prod-verified.md) —
-the hard-storage drop split this rule leans on;
-[`docs/database-restore-runbook.md`](../../docs/database-restore-runbook.md) — the recovery
-procedure and the pre-deploy snapshot mechanism (nobodies-collective/Humans#845).
+**Related:** [`destructive-drops-need-approval`](../architecture/destructive-drops-need-approval.md) ·
+[`docs/database-restore-runbook.md`](../../docs/database-restore-runbook.md)

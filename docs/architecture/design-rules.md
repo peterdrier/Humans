@@ -58,7 +58,7 @@ Each service is the exclusive gateway to its data. No component — controller, 
 
 **There is one context per table-owning section, plus the platform context.** Each section's `<Section>DbContext` maps only that section's tables, with its own `__EFMigrationsHistory_<Section>` table and its own `Data/Migrations/` folder; `SystemDbContext` (`src/Humans.Web/Data/`) holds the framework-owned tables no section could plausibly own. Consequences:
 
-- **One design-time factory per context, beside it.** Every `dotnet ef` command therefore needs `--context` ([`ef-multi-context-commands`](../../memory/process/ef-multi-context-commands.md)).
+- **One design-time factory per context, beside it.** Every `dotnet ef` command therefore needs `--context` ([`no-hand-edited-migrations`](../../memory/architecture/no-hand-edited-migrations.md)).
 - **History-table names are derived, never typed.** `SectionMigrationsHistory.TableFor<TContext>()` (`Humans.Base/Data/`) is the single source for the runtime registration (`AddSectionDbContext`) and the design-time factories.
 - **Section contexts apply their configurations explicitly** — no assembly scanning, which would drag in other sections. `DbContextEntityOwnershipTests` (`tests/Humans.Web.Tests/Architecture/`) fails if an `IEntityTypeConfiguration` is applied by zero contexts or by two.
 - **Only a baseline is ever fake-applied.** `SectionMigrationRunner` (`Humans.Base/Hosting/`) records a baseline as applied without executing it only when the context's history is empty and its sentinel table exists; a fresh database executes every baseline for real, and post-baseline migrations always run. There is no migrate-down below a baseline: rolling back a peel means reverting the PR.

@@ -34,7 +34,7 @@ internal sealed class PleoMirrorSync(
                 // Everything is fetched before anything is written, so a failed call leaves the mirror as it was.
                 var rawEntries = await client.SearchEntriesAsync(ct);
                 var accounts = await client.SearchAccountsAsync(ct);
-                var pleoCategories = await client.SearchCategoriesAsync(ct);
+                var (pleoCategories, categoryError) = await TrySearchCategoriesAsync(ct);
                 var employees = await client.ListEmployeesAsync(ct);
                 var balance = await client.GetBalanceAsync(ct);
 
@@ -62,11 +62,11 @@ internal sealed class PleoMirrorSync(
                 state.StatusChangedAt = now;
                 state.LastCount = entries.Count;
                 state.SkippedCount = skipped;
-                state.LastError = null;
+                state.LastError = categoryError;
                 await repo.SaveSyncStateAsync(state, ct);
                 logger.LogInformation("Pleo sweep mirrored {Entries} entries ({Skipped} skipped), {Accounts} accounts, {Employees} cardholders",
                     entries.Count, skipped, accounts.Count, employees.Count);
-                return PleoSyncOutcome.Synced;
+                return categoryError is null ? PleoSyncOutcome.Synced : PleoSyncOutcome.SyncedWithoutCategories;
             }
             catch (Exception ex)
             {
@@ -87,6 +87,23 @@ internal sealed class PleoMirrorSync(
         finally
         {
             SyncGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Categories only feed Pleo's own mapping, so a failed fetch (e.g. a key without <c>accountCategory:read</c>) must
+    /// not stop the sweep: <c>pleo_categories</c> stays as it is and the error is kept for the sync card.
+    /// </summary>
+    private async Task<(IReadOnlyList<PleoCategoryWire> Categories, string? Error)> TrySearchCategoriesAsync(CancellationToken ct)
+    {
+        try
+        {
+            return (await client.SearchCategoriesAsync(ct), null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Pleo category fetch failed; sweeping without refreshing categories");
+            return ([], PleoTextBounds.Bound($"Categories not refreshed: {ex.Message}", 2000));
         }
     }
 

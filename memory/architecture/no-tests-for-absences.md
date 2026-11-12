@@ -3,92 +3,42 @@ name: no-tests-for-absences
 description: Never write a per-section test asserting a section lacks something (no repo, DbContext, nav property) — absence has no behaviour to regress. Repo-wide universal enforcers are exempt.
 ---
 
-Never write a per-section test whose assertion is that a section *lacks* something. The category is
-irrelevant — repository, `DbContext`, Hangfire, `UserManager`, `IServiceProvider`, a nav
-property, a ctor parameter, a public type, an assembly reference, a whole interceptor. If
-the section doesn't have it, it doesn't have it. That's the whole story.
+Never write a per-section test whose assertion is that a section *lacks* something: a repository,
+`DbContext`, nav property, ctor parameter, public type, assembly reference, anything.
 
-**Why:** Three reasons, each sufficient.
+**Why:** The set is unbounded (a three-file section could carry 45 green "no xyz" tests). Nothing drifts,
+so there is no behaviour to regress. It only goes red for the person deliberately editing that exact
+declaration, who then updates the test in the same commit. And several were testing the impossible:
+sections are separate assemblies with internal repositories and entities, so cross-section reach cannot
+compile.
 
-*Unbounded.* A section could plausibly have ~50 kinds of thing. A section that owns three
-files could therefore carry 45 green "no xyz" tests, each green because nobody wrote the
-code. That isn't coverage; it's a hand-maintained second copy of the file listing.
-
-*No behaviour to regress.* Regression tests exist because behaviour drifts silently.
-Nothing drifts here.
-
-*It fails the wrong person.* An absence test inspects one declaration site and can only go
-red when someone deliberately edits that exact site — adds the ctor parameter, adds the
-method, marks the type public. That person is already looking at the thing and updates the
-test in the same commit. The test never warns anyone; it just adds an edit.
-
-*And some are testing for the impossible.* Each section is its own assembly with its
-own `DbContext`, and repositories and entities are internal. A cross-section navigation
-property or an out-of-section repository consumer cannot compile, so the seven per-section
-nav-property tests and the seven `I*Repository_HasNoUnexpectedConsumers` were pinning a
-historical hazard the structure had already closed (Peter, 2026-08-24).
-
-**The trap that generates these:** a section doc claims an architecture test enforces
-something and the test doesn't exist. The doc is wrong. Delete the false claim — do not
-write the test to make the sentence true. A doc sentence is not a specification. This
-shipped twice from `/section-doctor` runs: nobodies-collective/Humans#1465 (Onboarding, four
-tests written, deleted again here) and peterdrier/Humans#1480 (Development, caught before
-the write). Twice more on peterdrier/Humans#1778 (Settings), both caught on review, the
-second after the first had already been withdrawn in the same PR — the run rewrote the
-forbidden shape under an authorization label rather than dropping the premise. A run that
-withdraws one of these should re-read every test it added in the same pass.
-
-**Nor is an absence a question for Peter.** "Does this section owe an `Architecture/` folder?",
-"should there be a test project here?", "is this enum member missing on purpose?" — asking costs
-Peter a decision on something that is not a problem. If we needed it we would have it; if you find
-a reason we need it, say what breaks without it. Peter, 2026-09-16: "if we needed/had arch tests
-they go in the arch folder. if there's no tests, no folder, don't look for things that don't need
-to exist. absence isn't a problem." A missing thing goes in a Needs-Peter queue only with a
+**Nor is an absence a question for Peter.** *"if there's no tests, no folder, don't look for things that
+don't need to exist. absence isn't a problem."* A missing thing goes in a Needs-Peter queue only with a
 concrete failure attached.
 
 **How to apply:**
-- About to assert `BeEmpty()` / `BeNull()` / `NotContain()` / `BeEquivalentTo([…])` over what
-  a section's types, constructors, dependencies, entities or exports *are not*? Stop.
-- About to *ask* whether a section is missing something? Same stop — unless you can name what
-  goes wrong today because it is missing.
-- Doc claims a pinning test that isn't there? Fix the doc, not the test file.
-- Genuinely need it enforced? Enforce it **once, universally**, keyed off convention — never a
-  per-section test. An analyzer whenever one can express the rule (Peter's hard rule: analyzers
-  beat tests for call-site rules, because they give in-editor feedback and a source location);
-  a single repo-wide reflection test only where an analyzer can't reach.
-  See [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md).
-- Deleting one already in the tree: retire it with a note saying why the premise died, the
-  way `AuditLogArchitectureTests` retired `SectionReferencesNoVerticalSection` — "re-listing
-  the leaves would restate whatever the csproj happens to say, which is not an invariant."
+- About to assert `BeEmpty()` / `BeNull()` / `NotContain()` over what a section's types, constructors,
+  dependencies or exports *are not*? Stop.
+- A section doc claims a pinning test that doesn't exist? The doc is wrong: delete the claim, don't write
+  the test. A run that withdraws one of these re-reads every test it added in the same pass.
+- Genuinely need it enforced? Do it once, universally: an analyzer where one can express it, otherwise a
+  single repo-wide reflection test —
+  [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md).
+- Deleting one already in the tree: leave a note saying why the premise died.
 
-**Universal enforcers are exempt.** This rule is about *per-section* tests. The sanctioned
-repo-wide reflection tests in `tests/Humans.Web.Tests/Architecture/Rules/` — e.g.
-`ApplicationServicesTakeNoDbContextRule`, which sweeps every section's services — assert an
-absence and stay. The reasoning inverts at that scope: one test covers 40 sections' worth of
-authors who have never seen it, so it fires on someone who wasn't thinking about the rule.
-Never delete one of those under this atom; the most it justifies is asking whether an
-analyzer could replace it.
+**Universal enforcers are exempt.** The repo-wide rules in `tests/Humans.Web.Tests/Architecture/Rules/`
+(e.g. `ApplicationServicesTakeNoDbContextRule`) assert an absence and stay: one test fires on authors
+across every section who never saw the rule. Never delete one under this atom.
 
-**Not this rule** — these assert something the code actively does, and stay:
-- A query returning no rows for an input that should match nothing.
-- A localizer *binding* check: a misbind renders the raw key with a green build and no log
-  line. Real defect, caught twice in Onboarding.
-- An authorization negative: this role gets `404`/`AccessDenied` on this route. Note the shape —
-  a *request* against the route, asserting the deny. Reading an `[Authorize]` attribute by
-  reflection and asserting its `Policy`/`Roles` are null is not this carve-out; it is the
-  per-section absence test above, wearing an authorization label.
-- **Containment of something the section really has** — the section references the Stripe
-  SDK / Google SDK / Octokit, and the test pins which layer may name it. A new method
-  returning a vendor type is a realistic accident, and it fails whoever wrote it.
-- **A privacy guard on data the section already holds.** `SurveyInvitation` has no
-  completion timestamp because one would correlate with the anonymous response's
-  `SubmittedAt` and re-identify the respondent; Cantina's roster DTOs carry no medical
-  field because the service holds `ProfileInfo.MedicalConditions` already. The absent
-  column is one property away from existing, and the harm is disclosure, not shape.
-  Judge these as security constraints, not architecture.
+**Not this rule — these test something the code does:**
+- A query returning no rows for input that should match nothing.
+- A localizer binding check (a misbind renders the raw key on a green build).
+- An authorization negative as a *request* against the route asserting the deny. Reading an
+  `[Authorize]` attribute by reflection is the forbidden shape wearing an authorization label.
+- Containment of something the section really has: it references a vendor SDK and the test pins which
+  layer may name it.
+- A privacy guard on data the section already holds (`SurveyInvitation` has no completion timestamp
+  because it would re-identify the anonymous response; Cantina roster DTOs carry no medical field).
+  Judge these as security constraints.
 
-The test: does the code *do* the thing you're checking, or are you checking that code was
-never written?
-
-**Related:** [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md)
-(a per-class "is-not-present" tombstone is called out there as a smell in its own right).
+The test: does the code *do* the thing you're checking, or are you checking that code was never written?

@@ -22,14 +22,13 @@ Tick items as you go, or strike through (`~~item~~`) with a reason if a row genu
 ## Checklist
 
 - [ ] **Review tier** stated: `tier:lightweight`, `tier:standard` or `tier:thorough` — see `REVIEW.md`.
-- [ ] **No migration edited by hand** — every migration file was written by `dotnet ef migrations add`; no merged migration was edited, deleted, renamed or regenerated (`REVIEW.md` hard rule 1).
+- [ ] **No migration edited by hand** — every migration file was written by `dotnet ef migrations add`; no merged migration was edited, deleted, renamed or regenerated (`memory/architecture/no-hand-edited-migrations.md`).
 - [ ] **No NOT NULL column added to an existing table** without Peter's explicit permission, linked here (`REVIEW.md` hard rule 2).
 
 - [ ] **Section labeled** — issue and PR carry a section label (Camps / Teams / Legal / Shifts / Tickets / Board / Onboarding / Admin / etc.).
 - [ ] **Targeting `main` on `peterdrier/Humans`** (the QA fork). No direct commits to `main` — `memory/process/no-direct-to-main.md`.
 - [ ] **Branched off `origin/main`**, not `upstream/main`.
 - [ ] **Issue refs are qualified** (`owner/repo#N`) when crossing repo boundaries — `memory/process/issue-refs-qualified.md`.
-- [ ] **EF migrations** (if any) auto-generated, not hand-edited — `memory/architecture/no-hand-edited-migrations.md` and `memory/architecture/migration-regen-after-rebase.md`.
 - [ ] **NuGet packages updated?** If yes, `Views/About/Index.cshtml` updated with new versions + licenses — `memory/process/about-page-license-attribution.md`.
 - [ ] **New project rule?** Captured as a `memory/<bucket>/<name>.md` atom **in this PR**, with a one-line entry added to `memory/INDEX.md`. See `memory/META.md`.
 - [ ] **Reuse-first checked** — no unnecessary new files, public types, interface methods, service/repository methods, DTOs/view models, helpers, endpoints, dependencies, or DI registrations. See `memory/process/reuse-first-change-discipline.md`.

@@ -208,6 +208,7 @@
   <data name="Workgroups_Leave" xml:space="preserve"><value>Leave</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Discord channel</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Drive folder</value></data>
+  <data name="Workgroups_EmailGroup" xml:space="preserve"><value>Email group</value></data>
   <data name="Workgroups_Budget" xml:space="preserve"><value>Budget</value></data>
   <data name="Workgroups_BudgetAccount" xml:space="preserve"><value>Holded account</value></data>
   <data name="Enum_WorkgroupLogKind_BudgetSet" xml:space="preserve"><value>Budget set</value></data>

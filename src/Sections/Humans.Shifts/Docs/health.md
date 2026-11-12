@@ -88,7 +88,7 @@ The shapes imply:
   the constraint is that `IShiftView` stays the only cached per-user projection, so do not add
   a second cache in front of these; move callers onto `IShiftView` when they are touched.
 - **Unused VEP dietary/medical columns** await a post-prod-soak drop
-  (`no-drops-until-prod-verified`).
+  (`destructive-drops-need-approval`).
 
 ## 6. Deliberately not done
 

@@ -34,7 +34,7 @@ Google Group membership is reconciled as expected state from application-owned s
 - apply adds/removes according to Google Groups sync mode
 - audit, notify on removals, and schedule scoped retries
 
-`TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups, and Camps' `CampRoleService` implements it for camp role groups. `ITeamService` intentionally does not inherit the source interface; Teams registers the concrete service as a source so the Teams public service boundary does not grow for Google-only ownership.
+`TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups, Camps' `CampRoleService` implements it for camp role groups, and Workgroups' `WorkgroupGoogleGroupSource` for a workgroup's optional email group. `ITeamService` intentionally does not inherit the source interface; Teams registers the concrete service as a source so the Teams public service boundary does not grow for Google-only ownership.
 
 ## Reconciliation Modes
 

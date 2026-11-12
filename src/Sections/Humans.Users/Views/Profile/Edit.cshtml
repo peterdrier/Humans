@@ -891,7 +891,6 @@
         })();
     </script>
     <script nonce="@Context.Items["CspNonce"]">
-        // Client-side CV validation: block submit if no CV rows and checkbox unchecked
         (function() {
             const form = document.querySelector('form[action*="Edit"]');
             const checkbox = document.getElementById('noPriorBurnCheckbox');
@@ -914,7 +913,6 @@
         })();
     </script>
     <script nonce="@Context.Items["CspNonce"]">
-        // Toggle volunteer history section visibility based on "No Prior Burn Experience" checkbox
         (function() {
             const checkbox = document.getElementById('noPriorBurnCheckbox');
             const historyContainer = document.getElementById('volunteerHistoryContainer');

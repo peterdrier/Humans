@@ -16,10 +16,9 @@ what's overdue.
 | Freshness sweep (full) | — | — | Weekly | — | `/freshness-sweep --full` — full regeneration of every catalog entry. First run pending. |
 | Code simplification | 2026-06-11 | — | After features | codex: ~5% | Per-section pass: #969–#980. |
 | ReSharper InspectCode | 2026-06-10 | 2026-06-17 | Weekly | — | `/resharper` — fix Tier 1+2 warnings. Last: #928. |
-| Context cleanup | 2026-03-18 | 2026-04-18 | Monthly | — | CLAUDE.md, .claude/, memory/ |
+| Context cleanup | 2026-11-12 | 2026-12-12 | Monthly | — | AGENTS.md, .claude/, memory/ |
 | Feature spec sync | 2026-04-05 | 2026-05-05 | Monthly | — | section `Docs/features/` specs + docs/features/global/ vs implementation |
 | i18n audit | 2026-02-24 | 2026-03-24 | Monthly | gemini: ~2% | Missing translations |
-| Navigation audit | 2026-03-22 | 2026-04-22 | Monthly | — | `/nav-audit` — discoverability, backlinks |
 | GDPR audit | — | — | Quarterly | — | Exports, consent, PII logging |
 | Migration squash check | 2026-02-24 | 2026-03-24 | Monthly | — | Check `/Debug/DbVersion` on prod, QA (humans.n.burn.camp), and local dev. Oldest `lastApplied` across all three is the safe squash boundary. |
 | Architecture ratchet sweep (`arch-sweep`) | 2026-06-24 | 2026-07-08 | Bi-weekly | — | `dotnet test --filter "FullyQualifiedName~Architecture.Rules"`; baselines at `tests/Humans.Application.Tests/Architecture/`. 2026-06-24: all green, 0 regressions. |

@@ -90,8 +90,10 @@ cache.
 - `WorkgroupDriveAccessSource` (`Services/Contributors/`) implements
   `IGoogleDriveAccessSource` the same way, plus `IUserService`/`ITeamService` for
   the root folder's reader list.
+- `WorkgroupGoogleGroupSource` (`Services/Contributors/`) implements
+  `IGoogleGroupMembershipSource` the same way, for each group's optional email group.
 
-Neither owns a table or touches `WorkgroupsDbContext` directly — both go through
+None owns a table or touches `WorkgroupsDbContext` directly — all go through
 `IWorkgroupService`, consistent with "repository is the only DbContext caller."
 
 ---

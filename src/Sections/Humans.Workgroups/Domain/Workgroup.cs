@@ -1,3 +1,4 @@
+using Humans.Base.Constants;
 using NodaTime;
 
 namespace Humans.Workgroups.Domain;
@@ -32,6 +33,13 @@ internal sealed class Workgroup
     public string? DriveFolderId { get; set; }
 
     public string? DiscordChannelUrl { get; set; }
+
+    /// <summary>Local part only; null means the group has no email group.</summary>
+    public string? GoogleGroupPrefix { get; set; }
+
+    public string? GoogleGroupEmail => GoogleGroupPrefix is not null
+        ? $"{GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}"
+        : null;
 
     /// <summary>Nullable so the column adds no physical default; null reads as not sensitive.</summary>
     public bool? IsSensitive { get; set; }

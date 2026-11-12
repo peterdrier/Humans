@@ -20,4 +20,4 @@ git push origin main --force-with-lease
 - Only the fork (`origin`) needs this reset; upstream is already authoritative.
 - Don't reset upstream — the fork tracks upstream, never the reverse.
 
-**Related:** `CLAUDE.md` "Git Workflow" section for the broader two-remote workflow.
+**Related:** `AGENTS.md`, *Pull requests*, for the two-remote workflow.

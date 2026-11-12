@@ -101,8 +101,8 @@ orchestrator logger; does not write or decide reconciliation actions.
 ### GoogleGroupSyncService (Scoped)
 
 No repository directly — operates over external clients and the
-in-process `IEnumerable<IGoogleGroupMembershipSource>` (`TeamService` and
-Camps' `CampRoleService`). Cross-section calls via `IGoogleGroupMembershipClient`,
+in-process `IEnumerable<IGoogleGroupMembershipSource>` (`TeamService`,
+Camps' `CampRoleService` and Workgroups' `WorkgroupGoogleGroupSource`). Cross-section calls via `IGoogleGroupMembershipClient`,
 `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`,
 `ITeamResourceManagement`, `ITeamService`, `IUserService`,
 `IWorkspaceIdentityManagement`, `IUserEmailService`, `ISyncSettingsService`, `IAuditLogService`,

@@ -1,81 +1,64 @@
 ---
-name: Email Mutation Paths
+name: email-mutation-paths
 description: HARD RULE. `UserEmail.Email` is written only by the OAuth-callback reconcile primitive (`(Provider, ProviderKey)` match); `User.Email` is vestigial, never written by app code.
 ---
 
-# Email Mutation Paths
+HARD RULE. One service entry point rewrites an email address, and `User.Email` is never written.
 
-HARD RULE. The OAuth-callback write path is collapsed to a single service entry point with `AspNetUserLogins` as the authoritative store for OAuth identity. `User.Email` is a vestigial ASP.NET Identity field — it is a computed projection of the user's verified `IsPrimary` `UserEmail` row, never written by application code.
+## Who is authoritative for what
 
-## Authority model
+- **`AspNetUserLogins`**: `(Provider, ProviderKey) → UserId`. Mutated only through
+  `UserManager.{Add,Find,Remove}LoginAsync`; its shape never changes.
+- **`UserEmail`**: verified `Email → UserId` (magic-link login and every email lookup).
+- **`UserEmail.Provider` / `ProviderKey`**: a per-row tag saying which of *this user's* rows matches an
+  OAuth identity, so a provider rename rewrites the right row. Never used for cross-user lookup.
 
-- **`AspNetUserLogins`** (ASP.NET Identity-managed) is authoritative for `(Provider, ProviderKey) → UserId`. Mutated only via `UserManager.{Add,Find,Remove}LoginAsync`. We never alter the table shape.
-- **`UserEmail`** is authoritative for `Email → UserId` (verified). Used by magic-link login and every email-based lookup.
-- **`UserEmail.Provider` / `UserEmail.ProviderKey`** is a per-row tag indicating *which row of this user's emails currently corresponds to a given OAuth identity*. Used to decide which row to rewrite when the provider asserts a rename. **Never used for cross-user identity lookup** — `AspNetUserLogins` answers that.
+## The only primitive that rewrites `UserEmail.Email`
 
-## `UserEmail.Email` — the only mutation primitive
+`IUserEmailService.ReconcileOAuthIdentityAsync(userId, provider, providerKey, claimEmail, claimEmailVerified, ct)`:
 
-**Write site:** `IUserEmailService.ReconcileOAuthIdentityAsync(Guid userId, string provider, string providerKey, string claimEmail, bool claimEmailVerified, CancellationToken ct) -> Task<OAuthReconcileResult>`. Internal policy ladder, all inside one reconcile flow:
+1. Tagged row already at the claim email → `NoChange`.
+2. Another user verified-holds the claim email: unverified claim → block, audit
+   `OAuthRenameCollisionBlocked`, return `CrossUserBlocked`, no mutation. Verified claim → Google wins:
+   delete the other user's row, write paired `OAuthRenameCollision` + `UserEmailDisplacedByOAuthRename`
+   audits, continue, return `CrossUserDisplaced`.
+3. Tagged row elsewhere + a sibling row holds the claim → move the tag onto the sibling, union
+   `IsPrimary`, force `IsVerified`, delete the old row → `TagMoved`.
+4. Tagged row elsewhere + no sibling → rewrite `Email` in place → `EmailRewritten`.
+5. No tagged row + sibling holds the claim → attach the tag → `TagMoved`.
+6. No tagged row, no sibling, no collision → insert a verified tagged row → `NewRowCreated`.
 
-1. **Tagged row at claim email** → `NoChange`.
-2. **Cross-user collision pre-check** — when another user verified-holds the claim email:
-   - `claimEmailVerified == false` → block, audit `OAuthRenameCollisionBlocked`, return `CrossUserBlocked` with the mother-of-all diagnostic. No mutation.
-   - `claimEmailVerified == true` → Google wins. Delete the other user's row, write paired `OAuthRenameCollision` (signing user) + `UserEmailDisplacedByOAuthRename` (displaced user) audits, proceed with the mutation, return `CrossUserDisplaced`. When the delete leaves the displaced user with zero verified rows, the audit description and `DisplacedUserLeftWithoutVerifiedEmail` flag reflect that.
-3. **Tagged row at a different email + sibling holds claim** → tag-move: move `(Provider, ProviderKey)` onto the matching row, **union** `IsPrimary` (matching row keeps a `true` flag from either side), force `IsVerified = true`, delete the old row. Return `TagMoved`.
-4. **Tagged row at a different email + no sibling** → rewrite the row's `Email` in place. Return `EmailRewritten`.
-5. **No tagged row + sibling holds claim** → attach the tag onto the sibling. Return `TagMoved`.
-6. **No tagged row + no sibling + no cross-user collision** → insert a verified tagged row. Return `NewRowCreated`.
+Then it runs `EnsurePrimaryInvariantAsync` for every affected user, invalidates `FullProfile`, commits,
+and calls GoogleIntegration's `ClearIfAddressAsync` for any address that left. The service writes every
+audit row; the controller writes none.
 
-After the data change, the service runs `EnsurePrimaryInvariantAsync` on every affected user (signing + displaced), invalidates `FullProfile`, and commits; then it calls GoogleIntegration's `ClearIfAddressAsync` for the address that left (tag-move / rename) and for the displaced user's row.
+**Sole caller:** `ExternalLoginService.CompleteExternalLoginAsync`, once per OAuth-success path. It
+swallows reconcile exceptions, because sign-in must never block on reconcile; new-user creation is the
+exception and rolls the half-built account back. Don't widen the allowlist to a general-purpose service
+such as `AccountProvisioningService`.
 
-**Audit ownership:** every audit row for every outcome is written by the service inside the reconcile flow. The controller writes no audit rows on the OAuth path.
+**Enforcement:** analyzers `HUM0005` (pins the service method to `ExternalLoginService`) and `HUM0006`
+(pins `IUserEmailRepository.ApplyReconcilePlanAsync` to `UserEmailService`) in
+`src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`.
 
-**Sole caller:** `ExternalLoginService.CompleteExternalLoginAsync` — the OAuth-callback decision service that `AccountController.ExternalLoginCallback` dispatches to. It calls reconcile exactly once per OAuth-success path — five paths: existing-user sign-in, already-authenticated link, lockout-relink, email-match link, new-user creation. The service swallows reconcile exceptions: **sign-in must never block on reconcile**. (The one exception is new-user creation, where a failed reconcile rolls the half-built account back rather than signing anyone in.)
+**Forbidden:** any admin "fix this email" flow, `_userManager.SetEmailAsync`, any direct update of
+`user_emails.email`, any other caller of the primitive.
 
-The pin sat on `AccountController` until HUM0031 forced the decision ladder out of the controller (nobodies-collective/Humans#857). `ExternalLoginService` exists solely to serve that callback, so the allowlist is still exactly one type wide and still names the OAuth-callback moment — do not widen it to a general-purpose service (e.g. `AccountProvisioningService`, which also serves import jobs).
+## `User.Email` is computed
 
-Build-time enforcement: analyzers `HUM0005` (service-caller) and `HUM0006` (repo-caller) in `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`. HUM0005 pins `IUserEmailService.ReconcileOAuthIdentityAsync` to `ExternalLoginService` as its sole caller; HUM0006 pins `IUserEmailRepository.ApplyReconcilePlanAsync` to `UserEmailService`. Any other call site — including `AccountController` itself — fails the build with a pointer back to this atom. Pattern + catalogue in `docs/architecture/code-analysis.md`.
+The `Email` getter override on `User` returns the verified `IsPrimary` `UserEmail` row's address. No
+service or admin button writes it; it changes only because the underlying rows change. The legacy
+Identity column is readable for diagnostics through `User.IdentityEmailColumn` and otherwise ignored.
 
-**Forbidden:** any admin-triggered "fix this email" flow, any `_userManager.SetEmailAsync`, any direct `UPDATE user_emails SET email = ...` outside the reconcile primitive, any caller of `ReconcileOAuthIdentityAsync` other than `ExternalLoginService`. None of these can produce a correct rewrite — admin lacks the OAuth `sub` and `email_verified` claim in the authoritative moment.
+## Operations that never rewrite an address
 
-## `User.Email` — vestigial Identity field, computed
+Account merge (reparents and dedupes rows), provisioning (inserts), admin email backfill (inserts missing
+rows only, attaches no OAuth tag), profile email add/remove (insert and delete), sync jobs and reads.
 
-The ASP.NET Identity `User.Email` column exists only because Identity machinery touches it. Application code must treat it as derived:
+Drift between the two stores shows on the per-user admin emails diagnostic and self-heals on the user's
+next OAuth sign-in.
 
-```
-User.Email = UserEmails.Where(IsVerified).OrderByDescending(IsPrimary).First().Email
-```
-
-The `User` entity already enforces this via an `Email` getter override (see `User.cs` — `Email` property override and the `IdentityEmailColumn` diagnostic accessor for the legacy underlying column).
-
-**Application code MUST NOT write `User.Email`.** It changes only as a consequence of underlying data changing:
-- The `IsPrimary` row's `Email` is rewritten by reconcile (the only path that mutates an existing row's `Email`).
-- The `IsPrimary` flag flips between rows (via the existing primary-flip flow in `UserEmailService`).
-- A row is added or removed in a way that changes which row is the `IsPrimary` verified row.
-
-No service writes `User.Email` directly. No admin button writes `User.Email` directly. The legacy `base.Email` column is read-only-for-diagnostic via `User.IdentityEmailColumn` and otherwise ignored application-wide.
-
-## Per-user admin diagnostic
-
-`/Profile/{userId}/Admin/Emails` shows the `UserEmail` grid alongside the `AspNetUserLogins` table for the user. Per-row disagreement flags surface the two ways the two stores can drift:
-
-- A `UserEmail` row is tagged with `(Provider, ProviderKey)` but no `AspNetUserLogins` row for this user matches → flag on the `UserEmail` row.
-- An `AspNetUserLogins` row exists but no `UserEmail` row of this user is tagged with the same `(Provider, ProviderKey)` → flag on the login row.
-
-Both disagreements self-heal on the user's next OAuth sign-in via reconcile's `TagMoved` / `NewRowCreated` branches.
-
-The global `/Profile/Admin/EmailProblems` scanner's `GhostExternalLogins` finding deep-links into this per-user diagnostic — there is no inline cleanup button on the scanner.
-
-## Operations that do NOT mutate `UserEmail.Email`
-
-- **Account merge** — reparents rows (changes `UserId`), deduplicates by deleting one of two rows with the same address; never modifies the `Email` field.
-- **Account provisioning** — `INSERT`s new rows for new users; never rewrites.
-- **Admin email backfill** — its sole legitimate job is to `INSERT` missing `UserEmail` rows for legacy Identity-email values. It never rewrites existing rows and does not attempt to attach an OAuth tag (the next OAuth sign-in's reconcile does that via `TagMoved`).
-- **Profile UI email add/remove** — `INSERT` and `DELETE` only; never modifies `Email`.
-- **Workspace sync, group sync, audit, reads** — never mutate `Email`.
-
-## Why
-
-A user can have multiple OAuth identities on a single `User`. Each identity is uniquely keyed by `(Provider, ProviderKey)` — the provider's stable `sub`. Two stores answering "which user owns this identity?" is the root cause of every bug PR #477 patched: rename detection drifting, backfill failing on legacy users, cross-user `23505` collisions, `IsPrimary` / `IsGoogle` reconciliation lagging, corrupted state where the two stores disagree. Collapsing to one authoritative store + one reconcile entry point removes the cause.
-
-The OAuth callback is the only path that holds the authoritative `(userId, provider, providerKey, claimEmail, claimEmailVerified)` quintuple in the same atomic moment the provider asserts the identity. Every other surface (admin pages, jobs, syncs) operates on stale or partial state and cannot produce a correct rewrite. Auto-heal on next sign-in is correct and sufficient; admin-triggered rewriting is forbidden.
+**Why:** two stores answering "which user owns this identity?" caused rename drift, failed backfills,
+cross-user unique collisions and lagging primary flags. Only the OAuth callback holds
+`(userId, provider, providerKey, claimEmail, claimEmailVerified)` at the moment the provider asserts it;
+every other surface works on stale or partial state and cannot produce a correct rewrite.

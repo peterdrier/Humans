@@ -1,81 +1,36 @@
 ---
-name: No derived aggregates in docs
+name: no-derived-aggregates-in-docs
 description: HARD RULE. Never write a doc number derived from data already in that doc — no list counts, `Total` rows, or code-owned-set counts. Any count you find, delete it on sight; never refresh it.
 ---
 
-# No derived aggregates in docs
+**HARD RULE.** Never write a number into a doc that is derived from something else.
 
-**HARD RULE.** Never write a number into documentation that is derived from data already
-present in that documentation. No `count = 3` under a list of three items. No `Total` row
-summing a table. No "G1: 4 gaps" verdict line under a gap list of four. If a reader wants the
-count, they can do it mentally.
+Covers:
+- Counts of a list on the same page ("**five** sections:", "three things follow").
+- `Total` and subtotal rows; summary lines restating a count stated elsewhere.
+- A count in doc A of items listed in doc B.
+- Count-reconciliation changelog ("was 9, then 8"). Git records that.
+- **Counts of a set the code owns** ("there are 43 sections", "25 services implement X"), even with no
+  list in the doc. Write "all of them", name them, or give the defining predicate. Peter: *"we don't
+  allow counts in docs. remove the number — 'all of them' is sufficient."*
 
-This covers:
+**Why:** a derived number is a hand-maintained copy with nothing keeping it honest; it drifts silently
+the moment the source changes, and every later correction has to chase the fact plus its shadows.
 
-- Counts of a list that sits on the same page ("**five** sections:", "the exception list stays
-  at **three**", "Three things follow").
-- `Total` / subtotal rows in a table whose body already carries the values.
-- Summary sections that restate a count, cycle tally, or edge total stated elsewhere in the
-  same document.
-- A count in doc A of items enumerated in doc B (a tracker cell holding a gap count owned by a
-  scorecard).
-- Count-reconciliation changelog — "was 9, then briefly 8", "total moves 6 → 7". Git history
-  records how a number changed; the doc should not.
-- **Counts of a set the code owns, with no list in the doc at all** — "there are **43**
-  sections", "**30** own tables", "25 section services implement `IUserDataContributor`",
-  "24 section projects reference `Humans.Gdpr.Contracts`". Same defect one step out: the
-  generator is the compiler rather than an adjacent list, so it drifts on the next section,
-  contributor or table and nothing fails. Write "all of them", "they are: …", or a defining
-  predicate ("those with a paired `.Contracts` project") instead. Peter, 2026-08-25: "we
-  don't allow counts in docs. remove the number — 'all of them' is sufficient."
+**How to apply:**
+- Write the list or table once and stop. A summary carries judgment, never arithmetic. Where a roll-up
+  earns its keep, generate it from structured data (the `freshness-catalog.yml` / `debt-ledger.yml`
+  pattern).
+- **The fix is deletion, never a refresh.** A count your change invalidates is removed, not updated.
+- **Pre-existing counts: delete on sight**, in the change you are already making. No question to Peter,
+  no follow-up. Exception: never edit Peter's own rule files; tell him instead.
+- **Never log one** in a ledger, run file or issue; that creates another shadow copy.
+- **Sweep the whole diff, not the flagged line**, before pushing a docs change:
 
-**Why:** derived numbers are hand-maintained copies with no generator keeping them honest, so
-they drift the moment the underlying list changes — and they drift silently, because nothing
-fails. The Q3 G0 audit docs (nobodies-collective/Humans#1153) accumulated 115 review findings
-across 11 rounds, and the large majority were a derived copy disagreeing with its own source
-list rather than any error in the underlying audit. Every correction had to be applied to the
-fact plus its three or four shadows, and the shadow that got missed became the next round's
-finding.
+  ```bash
+  git diff origin/main...HEAD -- '*.md' '*.yml' | grep '^+' | grep -v '^+++' \
+    | grep -inE '\b(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+) [a-z][a-z-]*(s|es)\b'
+  ```
 
-**How to apply:** write the list, the table, or the predicate rows once and stop. Where a
-roll-up genuinely earns its keep, generate it from structured data rather than typing it —
-the [`freshness-catalog.yml`](../../docs/architecture/freshness-catalog.yml) and
-[`debt-ledger.yml`](../../docs/architecture/debt-ledger.yml) pattern. A summary section should
-carry *judgment* ("the Users/Onboarding conflation is the headline structural problem"), never
-arithmetic. Qualitative characterizations are fine and welcome; it is specifically the numbers
-that must not be duplicated.
-
-**The fix is deletion, never a refresh.** When a change invalidates a count — yours or a
-pre-existing one your change touches anyway — remove the number; never update it to the new
-value. A refreshed count is the same defect re-shipped with a shorter fuse, and it reads as
-done, so it survives review after review until the set changes again. On
-peterdrier/Humans#1572 a "36 keys" claim refreshed to "30" instead of deleted cost a third
-review round on a class two rounds had already paid for.
-
-**Sweep the whole diff, not the flagged line.** Eyeballing finds the count a reviewer
-already named and leaves its siblings for the next round. On peterdrier/Humans#1621 that cost
-three rounds on this one rule — each round fixed what was quoted, and the round after found
-another. Before pushing a docs change, run the class over every line the branch adds:
-
-```bash
-git diff origin/main...HEAD -- '*.md' '*.yml' | grep '^+' | grep -v '^+++' \
-  | grep -inE '\b(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+) [a-z][a-z-]*(s|es)\b'
-```
-
-It over-reports — dates, issue refs, config values and thresholds all match, and those are
-fine. Read each hit and ask the one question: *is this number derived from something else?*
-Delete the ones that are, in the same commit.
-
-**Pre-existing counts: remove on sight.** Whoever finds a derived count, in any doc, deletes
-the number in the change they are already making. No question to Peter, no follow-up, no
-"not this PR's" punt. Peter, 2026-10-21: "we don't count in our docs ... remove the number",
-and make that automatic whenever more are found. Two limits: never edit Peter's own files
-(`docs/architecture/peters-hard-rules.md`, `peters-working-rules.md`); tell him instead.
-And a reviewer's finding about a pre-existing count is not a defect of the PR's logic: the
-author just deletes the number and says so in one line.
-
-**Never log one.** A derived count is never recorded in a debt ledger, run file, issue, or any
-other log. Writing "doc X has a hand-maintained count" anywhere creates exactly the shadow copy
-this rule forbids. The fix is the deletion, done where it sits.
-
-Related: [[reuse-first-change-discipline]], [[rules-maintenance]], [[review-finding-triage]].
+  It over-reports (dates, issue refs, thresholds are fine). For each hit ask: is this number derived
+  from something else?

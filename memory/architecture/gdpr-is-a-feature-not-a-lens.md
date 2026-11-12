@@ -1,6 +1,6 @@
 ---
 name: GDPR is a feature we implement, not a lens to audit our own code through
-description: HARD RULE — never argue that our own in-process code reading personal data is a GDPR concern. Metrics, snapshots, caches, full-population reads: not GDPR questions. The GDPR features are consent gates, export, and erasure; "this caller sees more personal data than it needs" is not a finding.
+description: "HARD RULE. Our own in-process code reading personal data is never a GDPR finding. GDPR here means the consent gates, export, erasure, and anything leaving the system."
 ---
 
 We own 100% of this code and we trust ourselves with it. Personal data moving between our own services, caches and snapshots in one process is not a data-protection event.

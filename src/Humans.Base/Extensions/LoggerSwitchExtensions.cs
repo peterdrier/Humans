@@ -6,7 +6,7 @@ namespace Humans.Base.Extensions;
 /// Warns when a switch (or dictionary lookup) falls through to its default case. A default
 /// is almost always "a value I did not know about" — a new enum member nobody wrote a branch
 /// for — so this turns a silent, wrong-but-plausible fallback into a log line naming the
-/// enum type, the value, and the call site. See memory/architecture/switch-default-warn.md.
+/// enum type, the value, and the call site. See memory/code/switch-default-warn.md.
 /// </summary>
 public static partial class LoggerSwitchExtensions
 {
