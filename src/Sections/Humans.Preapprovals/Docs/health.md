@@ -76,7 +76,7 @@ That is what is built.
 
 ## Load-bearing weirdness
 
-- **Expenses' transitions take an `afterCommit` callback.** They run inside Expenses'
+- **Expenses' transitions take a required `afterCommit` list.** They run inside Expenses'
   `TransactionScope`; audit and notices must wait for that commit, so the caller collects and runs
   them.
 - **`ProgramsWithChildren` uses `AsNoTrackingWithIdentityResolution`.** The grant → program back

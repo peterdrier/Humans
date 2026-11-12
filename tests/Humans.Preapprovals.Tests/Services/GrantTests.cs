@@ -610,7 +610,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync();
         var open = await SeedGrantAsync(program);
         (await NewService().DeclineAsync(program.Id, open.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
-        (await NewService().GetGrantAsync(open.Id, Ct))!.Status.Should().Be(GrantStatus.Open);
+        (await ReadGrantAsync(open.Id)).Status.Should().Be(GrantStatus.Open);
     }
 
     [HumansFact]

@@ -51,7 +51,7 @@ code, not from a tool.
 - Finding 10: controllers reuse `PreapprovalReader.MadridZone`.
 - Finding 11: `Decline_NotApplied_RefusedAndUnchanged` added.
 - Finding 12: done on main by peterdrier/Humans#2354 (the four grant actions now take the program id); its ledger row was dropped on rebase.
-- Finding 13: filed as PREAPPROVALS-3.
+- Finding 13: filed as PREAPPROVALS-3; closed when peterdrier/Humans#2386 made `afterCommit` required and cut `IPreapprovalService` to one read, so the row is gone.
 - Issue comments: none; no open issue names this section.
 
 ## Skipped
@@ -74,7 +74,7 @@ The prose gate reads the legal citation Art. 17(3)(b) in the invariant doc as a 
 
 ## Needs Peter
 
-- [ ] 13 — make `afterCommit` required on the Expenses transitions?
+- [x] 13 — make `afterCommit` required on the Expenses transitions? Done in peterdrier/Humans#2386.
 
 ## File coverage
 
@@ -180,3 +180,7 @@ The prose gate reads the legal citation Art. 17(3)(b) in the invariant doc as a 
 ## Rebase (2026-11-11)
 
 The 2026-11-09 debt sweep split `PreapprovalService` into internal components and did findings 8 and 12. Peter chose to port the rest onto main: the GDPR, DTO and comment changes now sit in the new components, the invariant doc names them, and the target's citations point at the moved lines.
+
+## Rebase (2026-11-12)
+
+peterdrier/Humans#2386 merged first: one grants read on `IPreapprovalService`, a required `afterCommit`. The invariant doc keeps its contract table; PREAPPROVALS-3 is closed.
