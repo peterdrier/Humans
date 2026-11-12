@@ -17,16 +17,36 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Models;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Auth;
 
 public sealed class Section :
     ISection,
+    ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionDataMigrations,
     ISectionRoles,
     IUserPart
 {
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "RoleAssignments",
+            SectionName = "Role Assignments",
+            Order = 91,
+            Roles = ["Board", "UsersAdmin", "Admin"],
+            Features =
+            [
+                Of("View role assignments", ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+                Of("Add or end role assignments", ("Board", Denied), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+            ]
+        }
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, AuthAuditActions>();

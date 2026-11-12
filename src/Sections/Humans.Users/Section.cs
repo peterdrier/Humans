@@ -178,6 +178,17 @@ public sealed class Section :
                 Of("View contact fields", ("Volunteer", Limited), ("Coordinator", Limited), ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
                 Of("Admin view of profile", ("Volunteer", Denied), ("Coordinator", Denied), ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
             ]
+        },
+        new()
+        {
+            Key = "UsersAdmin",
+            SectionName = "All Humans",
+            Order = 90,
+            Roles = ["Board", "UsersAdmin", "Admin"],
+            Features =
+            [
+                Of("All humans list", ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+            ]
         }
     ];
 
