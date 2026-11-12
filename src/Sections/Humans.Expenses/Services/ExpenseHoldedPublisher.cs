@@ -125,7 +125,7 @@ internal sealed class ExpenseHoldedPublisher(
                         "Expense report {ReportId} is pushed, but a ledger sync was running: creditor account {Account} shows its old balance until the next sync.",
                         report.Id, accountNum);
             }
-            catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+            catch (Exception ex) // anything: the money step is done, and what follows audits it
             {
                 logger.LogWarning(ex,
                     "Expense report {ReportId} is pushed, but creditor account {Account} could not be re-synced: it shows its old balance until the next sync.",
