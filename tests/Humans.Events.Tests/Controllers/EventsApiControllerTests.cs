@@ -468,16 +468,13 @@ public class EventsApiControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName)
     {
-        var profile = UserFixtures.Profile(
-            burnerName: burnerName,
-            firstName: "Test",
-            lastName: "Submitter");
+        var profile = UserFixtures.Profile();
         var user = new User
         {
             Id = userId,
-            DisplayName = "Test Submitter",
-            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = burnerName,
+            FirstName = "Test",
+            LastName = "Submitter",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

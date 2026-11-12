@@ -1,3 +1,4 @@
+using Humans.Shifts.ViewComponents;
 using AwesomeAssertions;
 using Xunit;
 using Humans.Base.Extensions;
@@ -15,6 +16,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.Services;
 
@@ -193,7 +195,7 @@ public class ShiftSignupsBucketingTests
         };
         component.ViewComponentContext = new ViewComponentContext { ViewContext = viewContext };
 
-        var result = await component.InvokeAsync(_userId, ShiftSignupsViewMode.Self);
+        var result = await component.InvokeAsync(_userId, ProfileCardViewMode.Self);
         var viewResult = (ViewViewComponentResult)result;
         return (ShiftSignupsViewModel)viewResult.ViewData!.Model!;
     }

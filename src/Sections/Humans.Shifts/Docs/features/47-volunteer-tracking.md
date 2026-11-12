@@ -130,7 +130,7 @@ An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator d
 ### Profile embed — single-volunteer strip
 
 <!-- wheat: docs/superpowers/specs/2026-05-27-coordinator-availability-on-profile-design.md -->
-`VolunteerBuildStripViewComponent` (`Humans.Shifts.Contracts`) renders one volunteer's row of `_VolunteerHeatmap.cshtml` as `<vc:volunteer-build-strip user-id="…">` on `/Profile/{id}` — gated by the same coordinator check as `<vc:shift-signups>` (`!IsOwnProfile && CanViewShiftSignups`); never shown on a human's own profile. `HeatmapPartialModel.ShowAvailabilityControls` distinguishes the two hosts: `true` on the profile (adds a Mark/Unmark-available popover toggle driven by a per-cell `DeclaredAvailable` flag, orthogonal to `VolunteerCellState`), `false` on the tracking page (cohort heatmap unchanged).
+`VolunteerBuildStripViewComponent` (internal) renders one volunteer's row of `_VolunteerHeatmap.cshtml` inside Shifts' profile card on `/Profile/{id}` (the `UserPartSlots.Profile` part), which shows only to a coordinator or a privileged signup approver and never on a human's own profile. `HeatmapPartialModel.ShowAvailabilityControls` distinguishes the two hosts: `true` on the profile (adds a Mark/Unmark-available popover toggle driven by a per-cell `DeclaredAvailable` flag, orthogonal to `VolunteerCellState`), `false` on the tracking page (cohort heatmap unchanged).
 
 ## Routes
 

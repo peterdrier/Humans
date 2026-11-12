@@ -135,7 +135,7 @@ public class MedicalConditionsServiceTests
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => _userService.GetUserInfoAsync(ci.ArgAt<Guid>(0), ci.ArgAt<CancellationToken>(1)));
         var controller = new ProfileViewController(users, Substitute.For<IProfilePictureService>(),
-            Substitute.For<IShiftSignups>(), Substitute.For<IShiftService>(),
+            Substitute.For<IShiftService>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<ITeamService>(),
             Substitute.For<ICampService>(), Substitute.For<IGovernanceService>(),
             Substitute.For<IAuthorizationService>(), _sut);

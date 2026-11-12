@@ -423,18 +423,21 @@ declared `internal`; they serve the section's own call sites by inheriting the c
 
 | Leaf interface | What it carries |
 |---|---|
-| `IBurnSettingsService` → `BurnSettingsInfo` | **The only way to read the active burn from outside.** `Year`, `TimeZoneId`, `GateOpeningDate`, the build calendar (Settings-sourced, except the build sub-period starts, which are Shifts-owned with Shifts defaults) and `IsShiftBrowsingOpen` (Shifts-owned, defaults to `false` if no knobs row exists yet for that event id); never the `EventSettings` entity. Kept intact for external consumers (nobodies-collective/Humans#1630); internally, Shifts itself resolves the calendar via `ISettingsService`/`EventCalendarResolver`, not this service. |
-| `IShiftService` | Pure reads with an external caller — coordinator/department lookups, browse + urgent shifts, rota search, and one rota by id. |
-| `IShiftVolunteerProfiles` | The volunteer's own shift profile and tag preferences (reads *and* writes). |
-| `IShiftSignups` | Sign up, sign up a range, no-show history, cancel-all-for-user. |
+| `IShiftService` | Pure reads with an external caller — coordinator/department lookups, browse shifts, rota search, and one rota by id. |
+| `IShiftSignups` | Sign up, sign up a range. |
 | `IShiftView` | The cached per-user / per-rota projections (issue #720). Only Shifts' own writes evict them. |
-| `IVolunteerTrackingService` | One member — the profile build strip. |
 | `IShiftSeeding`, `IShiftSignupSeeding` | `Humans.Development`'s dashboard seeder only. |
 
 Everything else on the two full interfaces — rota and shift CRUD, bulk generation, the
 coordinator dashboard's aggregates, the coverage heatmap, post-event stats, the
 approve/refuse/no-show review surface — has no caller outside the
-section and is not on the leaf.
+section and is not on the leaf. The active-burn read (`IBurnSettingsService` → `BurnSettingsInfo`), volunteer
+profiles, the build strip, no-show history and the staffing snapshot are section-internal too.
+
+**Profile parts.** Shifts fills two Users slots through `IUserPart`: on another member's profile
+(`UserPartSlots.Profile`), a card with their signups, build strip and no-show history, shown only to a
+coordinator or a privileged signup approver and never on one's own profile; on the admin human-detail page
+(`UserPartSlots.AdminDetail`), their signups.
 
 ### Outbound
 

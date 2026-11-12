@@ -70,6 +70,7 @@ public sealed partial class ExpenseReportServiceTests
     private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
+    private readonly Dictionary<Guid, GrantOption> _grantStore = new();
     private readonly IPreapprovalWrite _preapprovalWrites = Substitute.For<IPreapprovalWrite>();
     private readonly ExpenseReportService _sut;
 
@@ -86,8 +87,10 @@ public sealed partial class ExpenseReportServiceTests
 
     public ExpenseReportServiceTests()
     {
-        _preapprovalWrites.ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>?>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
-        _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>?>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyList<GrantOption>)_grantStore.Values.ToList());
+        _preapprovalWrites.ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
+        _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
 
         // DrainHoldedOutboxAsync returns early unless IHoldedService.IsConfigured, so the
@@ -121,13 +124,13 @@ public sealed partial class ExpenseReportServiceTests
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string burnerName = "", string firstName = "", string lastName = "") => UserInfo.Create(
         user: new User
         {
             Id = userId,
-            DisplayName = profile.BurnerName,
-            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            BurnerName = profile.BurnerName,
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
         },
@@ -1915,8 +1918,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter),
             TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(submitter, UserFixtures.Profile(
-                firstName: firstName, lastName: lastName)));
+            .Returns(WrapInUserInfo(submitter, UserFixtures.Profile(), firstName: firstName, lastName: lastName));
         _finance.GetIbanAsync(submitter, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
         if (financeAdmin)
             SetupUserAndProfile(actor, "Finance Admin", "ES9121000418450200051332");
@@ -3215,9 +3217,9 @@ public sealed partial class ExpenseReportServiceTests
         {
             var grant = MakeGrant(status: GrantStatus.Claimed);
             await SeedGrantReportAsync(reportId, submitter, grant.Id, ExpenseReportStatus.Submitted);
-            _preapprovals.GetGrantAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+            PutGrant(grant);
             _preapprovalWrites.ConsumeAsync(grant.Id, reportId, actor, Arg.Any<CancellationToken>(),
-                Arg.Any<Action<Func<CancellationToken, Task>>?>()).Returns(call =>
+                Arg.Any<Action<Func<CancellationToken, Task>>>()).Returns(call =>
                 {
                     call.ArgAt<Action<Func<CancellationToken, Task>>>(4)(_ => Task.FromException(failure));
                     return new PreapprovalWriteResult();
@@ -4220,8 +4222,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
-                burnerName: "Meri", firstName: "Maria", lastName: "Garcia")));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), burnerName: "Meri", firstName: "Maria", lastName: "Garcia"));
         _finance.GetIbanAsync(userId, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
         _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
@@ -4272,10 +4273,7 @@ public sealed partial class ExpenseReportServiceTests
         var (_, category) = SetupActiveYear();
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
-                burnerName: "Meri",
-                firstName: "Maria",
-                lastName: "Garcia")));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), burnerName: "Meri", firstName: "Maria", lastName: "Garcia"));
         _finance.GetIbanAsync(userId, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
         _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(
             MakeCategorySnapshot(category.Id, teamId: null, "Test Category"));
@@ -4315,8 +4313,7 @@ public sealed partial class ExpenseReportServiceTests
         var tombstoneId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(
-                firstName: "Maria", lastName: "Garcia")));
+            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(), firstName: "Maria", lastName: "Garcia"));
         _finance.GetIbanAsync(tombstoneId, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(tombstoneId);
         var line = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0];
@@ -4361,10 +4358,7 @@ public sealed partial class ExpenseReportServiceTests
         const string iban = "ES9121000418450200051332";
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
-                burnerName: burnerName,
-                firstName: legalFirst,
-                lastName: legalLast)));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), burnerName: burnerName, firstName: legalFirst, lastName: legalLast));
         _finance.GetIbanAsync(userId, Arg.Any<CancellationToken>()).Returns(iban);
 
         // Seed approved report with an attachment via the real service flow
@@ -4531,10 +4525,7 @@ public sealed partial class ExpenseReportServiceTests
         var lastName = nameParts.Length > 1 ? nameParts[1] : "Tester";
 
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(
-                burnerName: displayName,
-                firstName: firstName,
-                lastName: lastName)));
+            .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), burnerName: displayName, firstName: firstName, lastName: lastName));
         _finance.GetIbanAsync(userId, Arg.Any<CancellationToken>()).Returns(iban);
     }
 

@@ -53,9 +53,11 @@ public class HomeControllerTests
     private static ClaimsPrincipal Authenticated(Guid userId) =>
         new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
 
-    private void StubUserInfo(Guid userId, ProfileInfo? profile = null, ConsentReviewInfo? review = null)
+    private void StubUserInfo(
+        Guid userId, ProfileInfo? profile = null, ConsentReviewInfo? review = null,
+        string? burnerName = null, string? firstName = null, string? lastName = null)
     {
-        var user = new User { Id = userId, DisplayName = "Test" };
+        var user = new User { Id = userId, BurnerName = burnerName, FirstName = firstName, LastName = lastName };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
                 user, [], [], profile)));
@@ -67,8 +69,8 @@ public class HomeControllerTests
     public async Task Index_Dashboard_ShowsConsentsRecordedRejectionAndReason()
     {
         var userId = Guid.NewGuid();
-        StubUserInfo(userId, UserFixtures.Profile(burnerName: "B", firstName: "F", lastName: "L"),
-            ConsentReviewInfo.None(userId) with
+        StubUserInfo(userId, UserFixtures.Profile(), burnerName: "B", firstName: "F", lastName: "L",
+            review: ConsentReviewInfo.None(userId) with
             {
                 RejectionReason = "Not a fit",
                 RejectedAt = Instant.FromUtc(2026, 5, 1, 0, 0),

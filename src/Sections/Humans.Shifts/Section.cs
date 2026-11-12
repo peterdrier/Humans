@@ -49,7 +49,8 @@ public sealed class Section :
     IOnboardingShiftsStep,
     ISectionPolicies,
     ISectionSettings,
-    ISectionThingsToDo
+    ISectionThingsToDo,
+    IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -219,6 +220,12 @@ public sealed class Section :
                 Secondary: "—",
                 Summary: $"{percent}% shift coverage");
     }
+
+    IEnumerable<UserPart> IUserPart.Parts() =>
+    [
+        new(UserPartSlots.Profile, typeof(ProfileShiftsViewComponent)),
+        new(UserPartSlots.AdminDetail, typeof(ShiftSignupsViewComponent)),
+    ];
 
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [

@@ -101,10 +101,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             .Returns(callInfo => WrapInUserInfo(
                 callInfo.ArgAt<Guid>(0),
                 UserFixtures.Profile(
-                    burnerName: "Burner",
-                    firstName: "First",
-                    lastName: "Last",
-                    createdAt: Clock.GetCurrentInstant())));
+                    createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last"));
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => ResolveUserInfosAsync(
@@ -152,14 +149,16 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         return infos;
     }
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string burnerName = "", string firstName = "", string lastName = "") => UserInfo.Create(
         user: new User
         {
             Id = userId,
-            DisplayName = profile.BurnerName,
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
-            State = UserFixtures.StateFor(profile),
+            State = UserFixtures.StateFor(profile, burnerName, firstName, lastName),
         },
         userEmails: [],
         externalLogins: [],
@@ -253,8 +252,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         var info = WrapInUserInfo(userId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant())) with
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last") with
         { MergedUserIds = [sourceId] };
         foreach (var id in info.AllUserIds)
             _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
@@ -299,8 +297,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var requestedId = archivedId ? Guid.NewGuid() : userId;
         var info = WrapInUserInfo(userId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant())) with
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last") with
         { MergedUserIds = archivedId ? [requestedId] : [] };
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
@@ -571,12 +568,9 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
         var activeProfile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "First",
-            lastName: "Last",
             createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, activeProfile));
+            .Returns(WrapInUserInfo(userId, activeProfile, burnerName: "Burner", firstName: "First", lastName: "Last"));
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", TestContext.Current.CancellationToken);
 
@@ -768,11 +762,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         SeedConsentRecord(userId, versionId);
         var profile = UserFixtures.Profile(
-            burnerName: "Test",
-            firstName: "Jane",
-            lastName: "Doe",
             createdAt: Clock.GetCurrentInstant());
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile, burnerName: "Test", firstName: "Jane", lastName: "Doe"));
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, TestContext.Current.CancellationToken);
@@ -790,11 +781,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         var profile = UserFixtures.Profile(
-            burnerName: "Test",
-            firstName: "Jane",
-            lastName: "Doe",
             createdAt: Clock.GetCurrentInstant());
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile, burnerName: "Test", firstName: "Jane", lastName: "Doe"));
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, TestContext.Current.CancellationToken);
@@ -843,8 +831,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         // id still resolves to the target's record (the redirect), and the
         // unrelated id lists nothing.
         var target = WrapInUserInfo(targetId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant()));
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last");
         var targetInfo = target with { MergedUserIds = [sourceId] };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -852,8 +839,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                     id => id,
                     id => id == unrelatedId
                         ? WrapInUserInfo(unrelatedId, UserFixtures.Profile(
-                            burnerName: "Burner", firstName: "First", lastName: "Last",
-                            createdAt: Clock.GetCurrentInstant()))
+                            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last")
                         : targetInfo)));
 
         var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId], TestContext.Current.CancellationToken);
@@ -879,8 +865,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var target = WrapInUserInfo(targetId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant()));
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last");
         var targetInfo = target with { MergedUserIds = [sourceId] };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -979,8 +964,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var target = WrapInUserInfo(targetId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant()));
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last");
         var targetInfo = target with { MergedUserIds = [sourceId] };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(

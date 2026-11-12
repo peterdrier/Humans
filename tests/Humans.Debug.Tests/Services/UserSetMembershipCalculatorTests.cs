@@ -135,10 +135,7 @@ public class UserSetMembershipCalculatorTests
     {
         var id = Guid.NewGuid();
         var profile = hasProfile
-            ? UserFixtures.Profile(
-                burnerName: "Dusty",
-                firstName: "Dusty",
-                lastName: "Rhoads")
+            ? UserFixtures.Profile()
             : null;
 
         if (ticketYear.HasValue)
@@ -158,7 +155,9 @@ public class UserSetMembershipCalculatorTests
             user: new User
             {
                 Id = id,
-                DisplayName = "U",
+                BurnerName = hasProfile ? "Dusty" : null,
+                FirstName = hasProfile ? "Dusty" : null,
+                LastName = hasProfile ? "Rhoads" : null,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

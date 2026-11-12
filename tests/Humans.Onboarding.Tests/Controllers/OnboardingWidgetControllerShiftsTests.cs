@@ -75,8 +75,8 @@ public class OnboardingWidgetControllerShiftsTests
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         var shiftId = Guid.NewGuid();
         _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [],
-                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last")));
+            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active, BurnerName = "Burner", FirstName = "First", LastName = "Last" }, [], [],
+                UserFixtures.Profile()));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(BurnFixtures.Burn());
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())

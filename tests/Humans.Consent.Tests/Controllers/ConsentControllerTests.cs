@@ -204,19 +204,19 @@ public sealed class ConsentControllerTests
 
     private static ProfileInfo StubProfile() => UserFixtures.Profile();
 
-    private static ProfileInfo ActiveProfile() => UserFixtures.Profile(
-        burnerName: "Burner",
-        firstName: "First",
-        lastName: "Last");
+    private static ProfileInfo ActiveProfile() => UserFixtures.Profile();
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(
+        Guid userId, ProfileInfo profile, string burnerName = "Burner", string firstName = "First", string lastName = "Last") => UserInfo.Create(
         user: new User
         {
             Id = userId,
-            DisplayName = profile.BurnerName,
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            State = UserFixtures.StateFor(profile),
+            State = UserFixtures.StateFor(profile, burnerName, firstName, lastName),
         },
         userEmails: [],
         externalLogins: [],
@@ -346,7 +346,7 @@ public sealed class ConsentControllerTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, StubProfile()));
+            .Returns(WrapInUserInfo(userId, StubProfile(), "", "", ""));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Review(Guid.NewGuid());
@@ -364,7 +364,7 @@ public sealed class ConsentControllerTests
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, StubProfile()));
+            .Returns(WrapInUserInfo(userId, StubProfile(), "", "", ""));
         _consentService.SubmitConsentAsync(userId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConsentSubmitResult(false, ErrorKey: "StubProfile"));
         var ctrl = BuildSut(userId);

@@ -62,9 +62,9 @@ internal static class PersonSearchMatcher
             return new PersonSearchMatch(Label("Users_Search_Name"), null, null, ScoreNameTier(Fold(user.BurnerName), foldedQuery));
 
         // ── Legal name: FirstName/LastName. Admin/coordinator only — never public. ──
-        if (includeLegal && AllTokensIn($"{p.FirstName} {p.LastName}", tokens))
+        if (includeLegal && AllTokensIn(user.FullName, tokens))
             return new PersonSearchMatch(
-                Label("Users_Profile_LegalName"), null, null, ScoreNameTier(Fold($"{p.FirstName} {p.LastName}"), foldedQuery));
+                Label("Users_Profile_LegalName"), null, null, ScoreNameTier(Fold(user.FullName), foldedQuery));
 
         // ── Bio bucket: public long-form + CV + AllActiveProfiles ContactFields + publicly-exposed emails. ──
         if (includeBio)

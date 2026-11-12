@@ -143,18 +143,25 @@ public class NameRequiredFilterTests
     private static IUserService StubUserInfo(string burnerName)
     {
         var users = Substitute.For<IUserService>();
-        var profile = UserFixtures.Profile(
-            burnerName: burnerName,
-            firstName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Jane",
-            lastName: string.IsNullOrWhiteSpace(burnerName) ? "" : "Doe");
+        var named = !string.IsNullOrWhiteSpace(burnerName);
         users.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(profile)));
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(
+                UserFixtures.Profile(), burnerName, named ? "Jane" : "", named ? "Doe" : "")));
         return users;
     }
 
-    private static UserInfo MakeUserInfo(ProfileInfo? profile) =>
+    private static UserInfo MakeUserInfo(
+        ProfileInfo? profile, string burnerName = "", string firstName = "", string lastName = "") =>
         UserInfo.Create(
-            new User { Id = UserId, PreferredLanguage = "en", State = UserFixtures.StateFor(profile) },
+            new User
+            {
+                Id = UserId,
+                PreferredLanguage = "en",
+                BurnerName = burnerName,
+                FirstName = firstName,
+                LastName = lastName,
+                State = UserFixtures.StateFor(profile, burnerName, firstName, lastName),
+            },
             [], [],
             profile: profile);
 

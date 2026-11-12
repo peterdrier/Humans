@@ -115,7 +115,9 @@ public class ShiftsControllerToggleDayTests
             user: new User
             {
                 Id = userId,
-                DisplayName = burner,
+                BurnerName = burner,
+                FirstName = first,
+                LastName = last,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)

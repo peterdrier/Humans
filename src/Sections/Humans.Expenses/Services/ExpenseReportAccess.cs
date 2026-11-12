@@ -31,7 +31,7 @@ internal sealed class ExpenseReportAccess(
         var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
         if (viewer is null) return [];
         var categoryIds = await GetCoordinatorCategoryIdsAsync(viewer.Id, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewer.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewer.AllUserIds, ct);
         var ownIds = viewer.AllUserIds;
         return queue
             .Where(r => ownIds.Contains(r.SubmitterUserId)
@@ -46,7 +46,7 @@ internal sealed class ExpenseReportAccess(
         var coordinator = await userService.GetUserInfoAsync(coordinatorUserId, ct);
         if (coordinator is null) return [];
         var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinator.Id, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinator.Id, ct);
+        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinator.AllUserIds, ct);
 
         var queue = categoryIds.Count == 0
             ? []
@@ -141,7 +141,7 @@ internal sealed class ExpenseReportAccess(
         ExpenseReportDto report, Guid actorUserId, CancellationToken ct)
     {
         if (report.PreapprovalGrantId is { } grantId)
-            return (await preapprovals.ListManagedGrantIdsAsync(actorUserId, ct)).Contains(grantId)
+            return (await preapprovals.ListManagedGrantIdsAsync(await AllIdsAsync(actorUserId, ct), ct)).Contains(grantId)
                 ? null
                 : ExpenseMutationResult.OperatorFailure("Actor is not a manager of the report's pre-approval program.");
 
@@ -159,6 +159,9 @@ internal sealed class ExpenseReportAccess(
             return ExpenseMutationResult.OperatorFailure("Actor is not a coordinator of the category's team.");
         return null;
     }
+    private async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct) =>
+        (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+
     /// <summary>Submitted, not yet approved: has a payee snapshot and a booked year, but is not final.</summary>
     internal static bool IsPendingApproval(ExpenseReportStatus status) =>
         status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
@@ -191,7 +194,7 @@ internal sealed class ExpenseReportAccess(
     {
         var grant = grantId == heldGrantId
             ? await preapprovals.GetGrantAsync(grantId, ct)
-            : (await preapprovals.ListClaimableForUserAsync(submitterUserId, ct)).FirstOrDefault(g => g.Id == grantId);
+            : (await preapprovals.ListClaimableAsync(await AllIdsAsync(submitterUserId, ct), ct)).FirstOrDefault(g => g.Id == grantId);
         if (grant is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotClaimable"));
         return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);

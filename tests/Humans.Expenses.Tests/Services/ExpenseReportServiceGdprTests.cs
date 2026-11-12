@@ -81,7 +81,6 @@ public class ExpenseReportServiceGdprTests
         user: new User
         {
             Id = userId,
-            DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
         },

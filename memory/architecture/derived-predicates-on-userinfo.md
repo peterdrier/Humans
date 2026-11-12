@@ -18,7 +18,7 @@ predicates force every caller to know which one to look in.
    if two properties repeat a short check.
 4. No parallel predicate on the `Profile` entity for write paths; inline the field checks at the write
    site.
-5. A trivial field formatter (`ProfileInfo.FullName`) is not a predicate and stays put.
+5. A trivial field formatter (`UserInfo.FullName`) is not a predicate and stays put.
 
 **Exception: the predicate needs another section's data.** It lives with that section, as an extension
 over `UserInfo` or on that section's own read model: consent-review predicates are extension methods in

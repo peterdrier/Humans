@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
+using NodaTime;
 
 namespace Humans.Finance.Jobs;
 
@@ -8,14 +9,24 @@ namespace Humans.Finance.Jobs;
 /// No API-key gate: a preview without Holded reports an unavailable mirror.</summary>
 internal sealed class ExpenseReconJob(
     IFinanceService finance,
+    IClock clock,
     ILogger<ExpenseReconJob> logger) : IRecurringJob
 {
+    /// <summary>The 03:00 ledger sweep is long done by 03:30 unless it failed or is still running.</summary>
+    internal static readonly Duration StaleAfter = Duration.FromHours(2);
+
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var report = await finance.GetExpenseReconAsync(null, cancellationToken);
         var t = report.Totals;
         if (!report.IsAvailable)
             logger.LogWarning("Expense recon: not computed — {Reason}", report.UnavailableReason);
+        else if (report.MirrorSyncedAt is { } syncedAt && clock.GetCurrentInstant() - syncedAt > StaleAfter)
+            // Never "0 problems" off an old mirror: that reads as a clean night when the sweep did not finish.
+            logger.LogWarning(
+                "Expense recon: tonight's ledger sweep has not finished — computed on the mirror as of {SyncedAt}: "
+                + "{Problems} problem(s), {Warnings} member balance warning(s). See /Finance/ExpenseRecon.",
+                syncedAt, t.Problems, t.Warnings);
         else if (t.Problems == 0 && t.Warnings == 0)
             logger.LogInformation(
                 "Expense recon: 0 problems — {Reports} reports, {Lines} lines, {Purchases} ledger purchases, {Members} members balanced.",

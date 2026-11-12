@@ -21,11 +21,10 @@ internal static class UserInfoStubHelpers
 
     public static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
     {
-        var resolvedProfile = profile ?? UserFixtures.Profile(
-            burnerName: displayName);
+        var resolvedProfile = profile ?? UserFixtures.Profile();
         return UserInfo.Create(
             // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            new User { Id = userId, PreferredLanguage = "en", BurnerName = resolvedProfile.BurnerName },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = displayName },
             [],
             [],
             profile: resolvedProfile);
