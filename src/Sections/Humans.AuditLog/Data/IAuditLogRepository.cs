@@ -37,11 +37,6 @@ internal interface IAuditLogRepository : IRepository
     Task<IReadOnlyList<AuditLogEntry>> GetAllForUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
-    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<string> actions,
-        CancellationToken ct = default);
-
     /// <summary>Oldest first, uncapped. Goes with the Google columns.</summary>
     Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default);
 }

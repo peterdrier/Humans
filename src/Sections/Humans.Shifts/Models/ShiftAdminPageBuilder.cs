@@ -1,4 +1,3 @@
-using Humans.Cantina.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
@@ -23,7 +22,6 @@ internal sealed class ShiftAdminPageBuilder(
     IShiftManagement shiftManagement,
     IConsentService consentService,
     IUserService userService,
-    ICantinaService cantina,
     ITeamService teamService)
 {
     public async Task<ShiftAdminViewModel> BuildAsync(ShiftAdminPageRequest request, CancellationToken ct = default)
@@ -111,20 +109,16 @@ internal sealed class ShiftAdminPageBuilder(
         var result = new Dictionary<Guid, VolunteerBadgesViewModel>();
         if (userIds.Count == 0) return result;
 
-        // Skills from the shift profile, dietary from Cantina.
-        var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
         foreach (var uid in userIds)
         {
             var vep = await shiftManagement.GetShiftProfileAsync(uid, ct);
             userInfos.TryGetValue(uid, out var info);
-            diets.TryGetValue(uid, out var diet);
-            if (vep is null && info?.Profile is null && diet is null) continue;
+            if (vep is null && info?.Profile is null) continue;
 
             result[uid] = new VolunteerBadgesViewModel(
                 Skills: vep?.Skills ?? [],
                 Quirks: vep?.Quirks ?? [],
-                Languages: vep?.Languages ?? [],
-                DietaryPreference: diet?.DietaryPreference);
+                Languages: vep?.Languages ?? []);
         }
 
         return result;

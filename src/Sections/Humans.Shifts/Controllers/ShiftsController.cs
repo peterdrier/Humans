@@ -1,7 +1,6 @@
 using Humans.Base.Controllers;
 using System.Globalization;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
@@ -27,7 +26,6 @@ internal sealed class ShiftsController(
     IVolunteerTrackingManagement volunteerTrackingService,
     IShiftRowView shiftView,
     ITeamService teamService,
-    IAuditViewerService auditViewer,
     IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
     // The name-gate message is Onboarding's copy, rendered from here.
@@ -409,7 +407,7 @@ internal sealed class ShiftsController(
         }
 
         await shiftMgmt.SaveKnobsAsync(
-            active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours,
+            active.Id, model.IsShiftBrowsingOpen,
             new BuildSubPeriodStarts(model.FirstCrewStartOffset, model.SetupWeekStartOffset,
                 model.PreEventWeekStartOffset, model.FinishingWeekendStartOffset),
             actor.Id);
@@ -457,79 +455,6 @@ internal sealed class ShiftsController(
 
         return items;
     }
-
-    // Signups with no Created/Voluntold/Confirmed audit row: Pending self-signups that skipped Confirm.
-    [HttpGet("OrphanSignups")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
-    {
-        var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
-        var auditedIds = await auditViewer.GetEntityIdsForEntityTypeActionsAsync(
-            nameof(ShiftSignup),
-            [ShiftsAuditActions.ShiftSignupCreated, ShiftsAuditActions.ShiftSignupVoluntold, ShiftsAuditActions.ShiftSignupConfirmed],
-            ct);
-
-        var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();
-        var users = await ResolveOrphanActorsAsync(orphans, _userService, ct);
-        var rows = BuildOrphanRows(orphans, users);
-
-        return View(new OrphanSignupsViewModel(
-            TotalSignups: allSignups.Count,
-            OrphanCount: rows.Count,
-            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
-            Rows: rows));
-    }
-
-    private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
-        IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
-    {
-        var userIds = orphans
-            .Select(s => s.UserId)
-            .Distinct()
-            .ToList();
-        return userIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await userService.GetUserInfosAsync(userIds, ct);
-    }
-
-    private static List<OrphanSignupRow> BuildOrphanRows(
-        IReadOnlyList<OrphanSignupSnapshot> orphans,
-        IReadOnlyDictionary<Guid, UserInfo> users)
-    {
-        string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.BurnerName : null;
-
-        return orphans
-            .Select(s => new OrphanSignupRow(
-                SignupId: s.Id,
-                UserId: s.UserId,
-                UserDisplayName: GetName(s.UserId) ?? s.UserId.ToString(),
-                RotaName: s.RotaName,
-                ShiftDate: s.ShiftDate,
-                Status: s.Status,
-                CreatedAt: s.CreatedAt,
-                ReviewedByUserId: s.ReviewedByUserId,
-                EnrolledByUserId: s.EnrolledByUserId,
-                SignupBlockId: s.SignupBlockId))
-            .OrderBy(r => r.UserDisplayName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(r => r.CreatedAt)
-            .ToList();
-    }
 }
 
-internal sealed record OrphanSignupRow(
-    Guid SignupId,
-    Guid UserId,
-    string UserDisplayName,
-    string RotaName,
-    LocalDate ShiftDate,
-    SignupStatus Status,
-    Instant CreatedAt,
-    Guid? ReviewedByUserId,
-    Guid? EnrolledByUserId,
-    Guid? SignupBlockId);
 
-internal sealed record OrphanSignupsViewModel(
-    int TotalSignups,
-    int OrphanCount,
-    int UniqueUsers,
-    IReadOnlyList<OrphanSignupRow> Rows);

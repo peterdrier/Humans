@@ -75,8 +75,6 @@ internal partial interface IShiftManagementRepository
         Instant updatedAt,
         CancellationToken ct = default);
 
-    Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
-
     /// <summary>
     /// Confirmed or Pending signups from <paramref name="buildStartOffset"/> up to day 0 on Build or All rotas.
     /// The offset comes from the caller: a repository must not read app-wide calendar fields itself.

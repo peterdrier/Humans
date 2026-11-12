@@ -195,7 +195,6 @@ public sealed class Section :
             new("Volunteer tracking","VolunteerTracking",   "Index",          null, null, "fa-solid fa-user-clock",       ShiftsPolicies.Read),
             new("Workload",          "ShiftWorkloadAdmin",  "Index",          null, null, "fa-solid fa-scale-unbalanced", ShiftsPolicies.Read),
             new("Post-event stats",  "ShiftDashboard",      "PostEventStats", null, null, "fa-solid fa-chart-bar",        ShiftsPolicies.Read),
-            new("Orphan signups",    "Shifts",              "OrphanSignups",  null, null, "fa-solid fa-user-secret",      PolicyNames.AdminOnly)
         ])
     ];
 

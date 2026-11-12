@@ -52,10 +52,10 @@ internal sealed class EventSettings : IBurnSettingsInfo
     /// <summary>Whether regular volunteers can browse shifts.</summary>
     public bool IsShiftBrowsingOpen { get; set; }
 
-    /// <summary>Optional cap on total volunteer signups per event.</summary>
+    /// <summary>Unused: no code reads or writes it. Dropped with its column.</summary>
     public int? GlobalVolunteerCap { get; set; }
 
-    /// <summary>How long before a shift its reminder goes out.</summary>
+    /// <summary>Unused: no code reads or writes it. Dropped with its column.</summary>
     public int ReminderLeadTimeHours { get; set; } = 24;
 
     public bool IsActive { get; set; }

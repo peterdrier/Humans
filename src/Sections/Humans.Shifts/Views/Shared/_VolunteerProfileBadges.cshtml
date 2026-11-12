@@ -11,10 +11,6 @@
         {
             <span class="badge bg-secondary me-1">@quirk</span>
         }
-        @if (!string.IsNullOrEmpty(Model.DietaryPreference))
-        {
-            <span class="badge bg-success me-1">@Model.DietaryPreference</span>
-        }
         @foreach (var lang in Model.Languages)
         {
             <span class="badge bg-primary me-1">@lang</span>
