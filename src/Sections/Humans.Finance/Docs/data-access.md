@@ -12,7 +12,7 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `HoldedCategoryMap`, `HoldedCreditorContacts`,
 `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`. `HoldedExpenseDocs` and
 `HoldedDocSyncStates` are still mapped but unread and unwritten since the purchase-document mirror
-moved to Holded; dropping them is its own PR (`no-drops-until-prod-verified`).
+moved to Holded; dropping them is its own PR (`destructive-drops-need-approval`).
 `PaymentDetailsRepository` (`Data/PaymentDetailsRepository.cs`, implements
 `IPaymentDetailsRepository`) owns `PaymentDetails` (`finance_payment_details`) on the same context.
 

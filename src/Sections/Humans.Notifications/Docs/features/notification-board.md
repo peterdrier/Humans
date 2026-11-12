@@ -212,7 +212,7 @@ Every `NotificationSourceDefinition` declared at the time of writing appears in 
 
 ## What is deleted
 
-- Tables `notifications` and `notification_recipients`, `NotificationsDbContext`, its migrations and factory. The drop is its own PR after prod verification, per [`no-drops-until-prod-verified`](../../../../../memory/architecture/no-drops-until-prod-verified.md).
+- Tables `notifications` and `notification_recipients`, `NotificationsDbContext`, its migrations and factory. The drop is its own PR after prod verification, per [`destructive-drops-need-approval`](../../../../../memory/architecture/destructive-drops-need-approval.md).
 - `INotificationEmitter`, `INotificationService`, `INotificationAutoResolve`, `INotificationRetention`, `NotificationSourceDefinition`, `NotificationSourceContributor`, `INotificationSourceContributor`, `NotificationSourceRegistry`, `NotificationClass`, `NotificationPriority`.
 - `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider`, `NotificationRepository`, `CleanupNotificationsJob`, the `IUserMerge` and `IUserDataContributor` participation (the board holds nothing to export; a merged or deleted user's entries go with the owning section's state and the next reconcile).
 - Controller routes Resolve, Dismiss, MarkRead, MarkAllRead, BulkResolve, BulkDismiss, ClickThrough, and the inbox views behind them.

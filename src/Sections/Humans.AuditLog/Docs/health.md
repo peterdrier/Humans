@@ -84,7 +84,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 - **Drop the Google-sync columns** (`ResourceId`, `Success`, `ErrorMessage`, `Role`,
   `SyncSource`, `UserEmail`) and `ILegacyGoogleSyncAuditReader` with them, once the
-  GoogleIntegration history-migration screen has run in prod (`no-drops-until-prod-verified`).
+  GoogleIntegration history-migration screen has run in prod (`destructive-drops-need-approval`).
   A schema change: Peter's, not a doctor strike.
 
 ## 6. Deliberately not done

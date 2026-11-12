@@ -151,7 +151,7 @@ that already has an open PR, and list it in the summary. Open nothing while
 [`event-deploy-freeze`](../../../memory/process/event-deploy-freeze.md) applies.
 
 Open **at most one drop PR a night**, for the oldest due issue, following the standing-approval
-path in [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md):
+path in [`destructive-drops-need-approval`](../../../memory/architecture/destructive-drops-need-approval.md):
 
 - Branch `db-drop/<issue>` off `origin/main`, separate from the debt PR.
 - Delete what the issue lists: the frozen properties and mappings, the `Legacy*` enums, the

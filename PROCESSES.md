@@ -175,7 +175,7 @@ These are used internally by the skills above:
 | `doctor-reviewer`, `doctor-reviewer-light`, `doctor-reviewer-critical` | `/section-doctor` | Score-blind second-opinion gate for non-mechanical strikes, tiered by section risk |
 | `ef-migration-reviewer` | Manual (before committing migrations) | Reviews EF Core migrations for common traps |
 
-Codex runs its own nightly debt and bug-hunt passes from `.codex/` (see `.codex/README.md`); `/debt-review` picks up their PRs.
+Codex runs its own nightly debt pass from `.codex/` (see `.codex/README.md`); `/debt-review` picks up their PRs.
 
 ## Typical Session Flow
 

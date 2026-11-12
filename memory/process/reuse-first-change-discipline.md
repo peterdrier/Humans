@@ -1,29 +1,32 @@
 ---
-name: Reuse existing surface before adding durable surface
+name: reuse-first-change-discipline
 description: Before adding any new file, public type, service/repo method, DTO, helper, or DI registration, audit existing owners and prefer reuse; public surface needs Peter's approval.
 ---
 
-New durable surface is technical debt until proven otherwise. Before adding any new file, public type, interface method, service/repository method, DTO/view model, helper, endpoint, dependency, or DI registration, audit the existing owner and prefer reuse, caller-side composition, or a small local LINQ/mapping chain.
-
-**Why:** Agent-generated PRs tend to solve local friction by adding methods, helpers, DTOs, services, and routes. Each addition looks reasonable in isolation, but the accumulated surface makes later maintenance and review expensive. The project already enforces interface method budgets; this rule applies the same reuse-first discipline to every other durable surface.
+New durable surface is debt until proven otherwise. Before adding a file, public type, interface
+method, service or repository method, DTO or view model, helper, endpoint, dependency or DI
+registration, audit the existing owner and prefer reuse or caller-side composition.
 
 **How to apply:**
+1. Identify the owning section, service or component.
+2. Find the existing method, type, view or helper closest to the need.
+3. Logic local to one caller is composed at that caller over existing list- or DTO-returning methods
+   (`GetAllAsync()` plus a `.Where(...)`, not a new `GetSpecialCaseAsync()`).
+4. Extend an existing view component, partial or page view model before creating a near-duplicate.
+5. Extract shared code only with multiple live call sites, one obvious owner, and a simpler system as
+   the result.
+6. Still need new surface? Say which existing options you rejected and why.
+7. **Stop and ask Peter** before adding public or interface surface, or a parallel service, repository
+   or helper where an owner exists. Pre-approved: a contract change whose shape an existing rule
+   already prescribes (listed in the PR); and `internal` types are never public surface —
+   [`debt-sweep-standing-policy`](debt-sweep-standing-policy.md) D1/D2.
 
-1. Identify the owning section/service/component before adding anything.
-2. List the existing method/type/view/component/helper that is closest to the need.
-3. Prefer caller-side composition on existing list-returning or DTO-returning methods when the extra logic is local to one caller.
-4. Extract shared code only when there are multiple live call sites, one obvious owner, and the extraction makes the net system simpler.
-5. If new surface is still necessary, state which existing options were rejected and why.
-6. Stop and ask Peter before adding public/interface surface, or before adding a parallel service/repository/helper where an owner already exists. Exception (Peter, 2026-10-06): a contract change whose shape an existing rule already prescribes is pre-approved and listed in the PR, and `internal` types are never public surface — [`debt-sweep-standing-policy`](debt-sweep-standing-policy.md) D1/D2.
+**Approval-required is not default-deny.** When a task needs surface that requires approval, propose
+the minimal reasonable version and ask (a read-only stats view is the canonical reasonable case). Never
+silently drop the feature and describe the descope afterwards as "needed approval": that turns the gate
+into a veto Peter never issued.
 
-**Approval-required is not default-deny.** The gate exists to make surface growth deliberate, not impossible — surface has a cost, but there is a reasonableness argument, and a read-only stats/aggregate view is the canonical reasonable case. When a task needs surface that requires approval, propose the minimal reasonable version and ask; never silently drop the feature and narrate the descope as "needed approval" afterward — that converts the gate into a veto Peter never issued (Peter, 2026-08-12, PR peterdrier/Humans#1272: a spec'd dashboard tile was dropped because the section had no public read surface; the right move was proposing the read-leaf promotion, which he approved on sight).
+**Why:** agent PRs relieve local friction by adding methods, helpers, DTOs and routes. Each looks
+reasonable alone; together they make maintenance and review expensive.
 
-**Examples:**
-
-- Prefer `GetAllAsync()` + `.Where(...).FirstOrDefault()` at one call site over `GetSpecialCaseAsync()` on an interface.
-- Prefer extending an existing view component or partial over creating a near-duplicate component.
-- Prefer adding a field to an existing view model only when that view model already owns the page; do not create a parallel model just to avoid touching call-site mapping.
-
-**Related:**
-- [`../architecture/interface-method-additions-are-debt.md`](../architecture/interface-method-additions-are-debt.md)
-- [`debt-sweep-standing-policy`](debt-sweep-standing-policy.md)
+**Related:** [`interface-method-additions-are-debt`](../architecture/interface-method-additions-are-debt.md)

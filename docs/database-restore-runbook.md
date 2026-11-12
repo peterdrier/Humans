@@ -450,7 +450,7 @@ The freeze window runs from the start of build week through the end of strike.
 - Anything with a pending EF migration (any `Up()` at all: `AddColumn` is as frozen as
   `DropColumn`).
 - Anything that drops or rewrites hard storage. Those already wait for a separate
-  post-verification PR anyway — see `memory/architecture/no-drops-until-prod-verified.md`.
+  post-verification PR anyway — see `memory/architecture/destructive-drops-need-approval.md`.
 
 **Allowed during the window:** code-only deploys with no pending migrations. They roll back with
 the image in minutes, and the pre-migration snapshot correctly does not fire for them.

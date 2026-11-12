@@ -56,7 +56,7 @@ What lives here: attribution of the purchase documents the Holded section mirror
 
 `holded_expense_docs` and `holded_doc_sync_state` held Finance's own copy of the purchase documents
 before the mirror moved to the Holded section. Still mapped, never read or written; dropped in their
-own PR once production is verified (`no-drops-until-prod-verified`).
+own PR once production is verified (`destructive-drops-need-approval`).
 
 ### HoldedCategoryMap
 

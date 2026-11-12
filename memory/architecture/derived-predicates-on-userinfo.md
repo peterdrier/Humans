@@ -1,34 +1,30 @@
 ---
-name: Derived user/profile predicates live on UserInfo, not ProfileInfo
+name: derived-predicates-on-userinfo
 description: "Derived user predicates (IsActive, IsStub, IsRejected) go on `UserInfo`, never `ProfileInfo` or `Profile`; one needing another section's data lives with that section."
 ---
 
-`UserInfo` is the one-stop-shop read model (see [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md)). Every derived predicate about a user — including ones that read off `Profile` fields — lives on `UserInfo`, not on `ProfileInfo`.
+Every derived predicate about a user lives on `UserInfo`, including ones that read `Profile` fields.
+`ProfileInfo` stays a flat projection of `Profile` columns: no `IsX` / `HasX` / `NeedsX` on it.
 
-`ProfileInfo` stays a flat immutable projection of `Profile` columns. Don't add `IsX`/`HasX`/`NeedsX` properties to it.
-
-**Why:** Callers should never have to chain `info.Profile?.X` to ask a "does this user need / have / can do …" question. If every predicate ends up on `UserInfo`, the answer is always one short property access regardless of whether the user has a profile yet. Two homes for predicates fragments the read API and forces callers to know which one to look at.
+**Why:** callers should never chain `info.Profile?.X` to ask a question about a user, and two homes for
+predicates force every caller to know which one to look in.
 
 **How to apply:**
+1. New derived property about a user → `UserInfo` (`IsStub`, `IsActive`, `HasRequiredNameFields`,
+   `IsRejected` are there).
+2. If it reads `Profile` fields, the `UserInfo` property absorbs the null-profile check and returns the
+   safe default.
+3. No helper on `ProfileInfo` "only `UserInfo` would call"; read the fields in the `UserInfo` body, even
+   if two properties repeat a short check.
+4. No parallel predicate on the `Profile` entity for write paths; inline the field checks at the write
+   site.
+5. A trivial field formatter (`ProfileInfo.FullName`) is not a predicate and stays put.
 
-1. New derived property answering a question about a user → on `UserInfo`.
-2. If the predicate reads `Profile` fields, the `UserInfo` property absorbs the null-`Profile` check internally (return `false` when no profile, or whatever the safe default is for the predicate's intent).
-3. Don't reintroduce helpers on `ProfileInfo` even when "they'd only be called by `UserInfo`" — read the `Profile` fields directly in the `UserInfo` body, even if that means duplicating a short check across two `UserInfo` properties. The body is short; the home discipline is what matters.
-4. Do NOT add parallel predicates to the `Profile` entity for use at write paths. Inline the field checks at the write callsite — the rule is short enough (three null/whitespace checks) that duplication is cheaper than maintaining a parallel entity-side predicate that drifts.
+**Exception: the predicate needs another section's data.** It lives with that section, as an extension
+over `UserInfo` or on that section's own read model: consent-review predicates are extension methods in
+Consent's contracts (`ConsentReviewPredicates`), ticket/onsite state is on Tickets'
+`EventParticipationInfo`, marketing opt-out is Email's `ICommunicationPreferenceService`.
 
-**Examples already on `UserInfo`:**
-- `BurnerName`, `Email`, `EmailConfirmed`, `IsDeletionPending`
-- `PrimaryEmail`, `GoogleEmail`, `AllVerifiedEmails`
-- `IsStub`, `IsActive`, `HasRequiredNameFields`, `IsRejected`
-- `FullName` lives on `ProfileInfo` as a trivial concatenation — that's a **field formatter**, not a predicate; keep it where it is.
-
-**Exception — the predicate needs another section's data.** `NeedsConsentReview` / `IsConsentCheckFlagged` read the Consent Coordinator review, which Consent owns (`consent_reviews`), so they are extension methods `ConsentReviewPredicates.X(this UserInfo, ConsentReviewInfo)` in Consent's contracts, not `UserInfo` properties: `Users.Contracts` cannot see Consent's types. Likewise `HasTicket` / `OnsiteSince` moved off `UserInfo` onto Tickets' `EventParticipationInfo` when Tickets took event participation (Users decomposition commit 13), and `MarketingOptedOut` gave way to Email's `ICommunicationPreferenceService` when Email took communication preferences (commit 14).
-
-**Counter-example (don't do):**
-- ❌ `ProfileInfo.IsStub` (was briefly considered, rejected — moved to `UserInfo`).
-- ❌ `ProfileInfo.HasRequiredNameFields` (was added, removed, briefly considered for re-add — moved to `UserInfo` instead).
-- ❌ `Profile.HasRequiredIdentityFields()` (existed as a parallel entity-side predicate; removed in favor of `UserInfo.HasRequiredNameFields` plus inline checks at the two write callsites).
-
-**Related:**
-- [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md) — the broader direction this rule enforces.
-- [`interface-method-additions-are-debt`](interface-method-additions-are-debt.md) — adding properties to `UserInfo` is fine; adding methods to `IUserService` / `IProfileService` is not.
+**Related:** [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md) ·
+[`interface-method-additions-are-debt`](interface-method-additions-are-debt.md) (properties on
+`UserInfo` are fine; new interface methods are not)

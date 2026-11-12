@@ -18,4 +18,4 @@ if (string.Equals(status, "submitted", StringComparison.Ordinal))
 
 **Search/input convention:**
 - For user-entered search terms, prefer the shared helpers in `Humans.Base.Extensions.StringSearchExtensions` (`HasSearchTerm`, `ContainsOrdinalIgnoreCase`) instead of open-coding whitespace/length guards or ad hoc case handling
-- For person search specifically, use `IProfileService.SearchProfilesAsync` with the `PersonSearchFields` bit-flag — never reach for `IQueryable` helpers; the search runs in-memory over the FullProfile cache snapshot
+- For person search specifically, use `IUserService.SearchUsersAsync` with the `PersonSearchFields` flags ([`person-search`](../architecture/person-search.md)); it runs in memory over the cached `UserInfo` snapshot

@@ -37,4 +37,4 @@ The context class name is the snapshot's file name minus `ModelSnapshot` (it is 
 
 **If the tools cannot produce the migration you need, stop and ask Peter.** Hand-touched migrations already in history (the #858 peel removals, trigger DDL) were Peter's own exceptions and are not precedent.
 
-**Related:** [`required-columns-need-approval`](required-columns-need-approval.md) · [`no-drops-until-prod-verified`](no-drops-until-prod-verified.md) · [`no-manual-db-writes`](../process/no-manual-db-writes.md) · [`event-deploy-freeze`](../process/event-deploy-freeze.md)
+**Related:** [`required-columns-need-approval`](required-columns-need-approval.md) · [`destructive-drops-need-approval`](destructive-drops-need-approval.md) · [`no-manual-db-writes`](../process/no-manual-db-writes.md) · [`event-deploy-freeze`](../process/event-deploy-freeze.md)

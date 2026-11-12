@@ -9,7 +9,7 @@ The initial-setup profile form (`Views/Profile/Edit.cshtml`) no longer hosts the
 
 **What this rules out:**
 
-- A `tier-locking` domain interface or service method. The `isTierLocked` boolean that lived on `IProfileService.GetProfileEditDataAsync` was a UI signal for "should the radios disable?" — derived from "does the user have a Submitted/Approved Application?". That's view-composition logic; it belongs in the controller alongside the `IApplicationDecisionService` call, not as a Profile-domain query.
+- A `tier-locking` domain interface or service method. An `isTierLocked` boolean on a profile-edit query is a UI signal for "should the radios disable?" — derived from "does the user have a Submitted/Approved Application?". That's view-composition logic; it belongs in the controller alongside the `IApplicationDecisionService` call, not as a Profile-domain query.
 - An `ITierLockQuery` / `IUserApplicationsQuery` foundational interface that exists only so ProfileService can answer a tier question. The question is the controller's question; ProfileService doesn't need to ask.
 - A "Profile concern: can the user edit their tier?" framing. Tier isn't a Profile-edit operation — submitting an Application is. The form just hosts both because the same submission is convenient during onboarding.
 

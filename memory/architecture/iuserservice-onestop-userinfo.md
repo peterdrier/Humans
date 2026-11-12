@@ -3,20 +3,27 @@ name: iuserservice-onestop-userinfo
 description: "Long-term direction: `IUserService` is the one-stop-shop for every `UserInfo` field, reads and writes — prefer it for new callers; sibling services drain into it over time."
 ---
 
-`IUserService` owns the canonical `UserInfo` read-model AND the write paths for every field on it. When you need to read or write anything inside `UserInfo`'s scope — user identity columns, user-email rows, external logins, event participations, profile fields, contact fields, profile languages, volunteer history, communication preferences — prefer `IUserService`.
+`IUserService` owns the cached `UserInfo` read model
+([UserInfo.cs](../../src/Humans.Base/Users/UserInfo.cs)) and, as the destination, the write paths for
+every field on it: identity columns, emails, external logins, profile and contact fields, languages,
+volunteer history.
 
-**Why:** `UserInfo` is already the cached canonical "everything-about-a-person" projection ([UserInfo.cs](../../src/Humans.Base/Users/UserInfo.cs), issue #703). Today the *read* side is consolidated there; the *write* side is still scattered across `IProfileService`, `IUserEmailService`, `ICommunicationPreferenceService`, etc. Long-term, those drain into `IUserService` so there is one service surface for "data about a person." Two services for two halves of the same projection is the tech debt; one-stop-shop is the destination.
+**Why:** one service surface for "data about a person". Reads are consolidated on `UserInfo`; some
+writes still sit on sibling services (`IUserEmailService`), and two services for two halves of one
+projection is the debt.
 
 **How to apply:**
+- New read callers (render, notification, validation) use `IUserService.GetUserInfoAsync` instead of
+  stitching several lookups.
+- New write paths for a `UserInfo` field go on `IUserService`, subject to
+  [`interface-method-additions-are-debt`](interface-method-additions-are-debt.md).
+- Existing sibling-service callers are drained when that code is touched for another reason. No
+  flag-day refactor.
+- **Exception: ASP.NET Identity interop.** `UserManager`, `SignInManager`, claims transformation and
+  lockout APIs need the tracked `User` entity; use `GetByIdAsync` or `UserManager.FindByIdAsync` when
+  the next call is an Identity API.
+- Data another section owns about a person (tickets, consent review, communication preferences) stays
+  with that section — [`derived-predicates-on-userinfo`](derived-predicates-on-userinfo.md).
 
-- New read callers in render/notification/validation paths → use `IUserService.GetUserInfoAsync` (sync-on-hit) rather than stitching `IUserService.GetByIdAsync` + `IProfileService.GetProfileAsync` + `IUserEmailService.GetUserEmailsAsync`. The fields are all on `UserInfo`.
-- New write paths for any `UserInfo` field → add them to `IUserService` (subject to [`interface-method-additions-are-debt`](interface-method-additions-are-debt.md): audit existing methods first, ask before adding).
-- Existing callers of `IProfileService` / `IUserEmailService` / `ICommunicationPreferenceService` are NOT a refactor target on their own — drain opportunistically when touching that code for other reasons. No big-bang flag day.
-- The one genuine exception for external callers: **ASP.NET Identity interop** — `UserManager.UpdateAsync(user)`, `SignInManager`, claims transformation, lockout APIs all want the tracked `User` entity. Use `GetByIdAsync` (or `UserManager.FindByIdAsync`) when the next call is an Identity API. (UserService-internal writes naturally go through `_userRepository` etc.; that's normal section-internal repo usage, not an exception to this rule.)
-- Does NOT contradict [`users-profiles-one-section`](users-profiles-one-section.md) — that rule says don't bounce code between `Services.Users` and `Services.Profile` for boundary cleanup; this rule names which interface surface wins inside that one section.
-
-**Related:**
-
-- [`caching-transparent`](caching-transparent.md) — UserInfo IS the caching-pattern stitched DTO for this section.
-- [`interface-method-additions-are-debt`](interface-method-additions-are-debt.md) — adding writes to `IUserService` still requires audit-first + ask-Peter.
-- [`users-profiles-one-section`](users-profiles-one-section.md) — same ownership boundary; this rule clarifies the long-term service surface within it.
+**Related:** [`users-profiles-one-section`](users-profiles-one-section.md) ·
+[`caching-transparent`](caching-transparent.md)
