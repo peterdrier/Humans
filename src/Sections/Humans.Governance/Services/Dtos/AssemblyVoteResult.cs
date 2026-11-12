@@ -72,7 +72,7 @@ internal sealed record InstantRunoffRound(
 /// <summary>
 /// One counting note, stored structurally so the members' results page can render it in the
 /// viewer's culture. Storing the English sentence instead would freeze it into
-/// <c>ResultJson</c> for the life of the record and show English to the five other cultures.
+/// <c>ResultJson</c> for the life of the record and show English to every other culture.
 /// </summary>
 /// <param name="Kind">Which note this is; the rendered sentence comes from the resx.</param>
 /// <param name="Round">The round it applies to; 0 when the note is not about one round.</param>

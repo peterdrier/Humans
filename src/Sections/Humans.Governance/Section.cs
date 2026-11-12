@@ -140,35 +140,6 @@ public sealed class Section :
                 Of("View applications", ("Volunteer", Limited), ("Board", Allowed)),
                 Of("Vote on applications", ("Volunteer", Denied), ("Board", Allowed)),
             ]
-        },
-        new()
-        {
-            Key = "Board",
-            SectionName = "Board Dashboard",
-            Order = 60,
-            Roles = ["Board"],
-            Features =
-            [
-                Of("Dashboard & stats", ("Board", Allowed)),
-                Of("Audit log", ("Board", Allowed)),
-            ]
-        },
-        new()
-        {
-            Key = "Admin",
-            SectionName = "Admin Tools",
-            Order = 90,
-            Roles = ["Admin"],
-            Features =
-            [
-                Of("Configuration status", ("Admin", Allowed)),
-                Of("Sync settings", ("Admin", Allowed)),
-                Of("Email outbox", ("Admin", Allowed)),
-                Of("Background jobs", ("Admin", Allowed)),
-                Of("All humans list", ("Admin", Allowed)),
-                Of("Role assignments", ("Admin", Allowed)),
-                Of("Legal documents", ("Admin", Allowed)),
-            ]
         }
     ];
 
@@ -206,7 +177,7 @@ public sealed class Section :
         yield return new RecurringJobDescriptor(
             "governance-term-renewal-reminder", typeof(TermRenewalReminderJob), "0 5 * * 1");
 
-        // Tier term expiry. Five minutes after the midnight UTC system-team sync, which has
+        // Tier term expiry. Five minutes after the hourly system-team sync's midnight run, which has
         // already dropped the lapsed members from their team; the sync reads the dated
         // approvals, so it never waits on this.
         yield return new RecurringJobDescriptor(

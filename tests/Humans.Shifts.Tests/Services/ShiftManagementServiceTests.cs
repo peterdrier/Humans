@@ -150,7 +150,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         Func<Task> mutate = operation switch
         {
             ManagementWrite.Knobs or ManagementWrite.NewKnobs => () => service.SaveKnobsAsync(
-                eventId, false, null, 24, BuildSubPeriodStarts.Default, user.Id),
+                eventId, false, BuildSubPeriodStarts.Default, user.Id),
             ManagementWrite.BrowsingSwitch => () => service.SetShiftBrowsingOpenAsync(eventId, false),
             ManagementWrite.MoveRota => () => service.MoveRotaToTeamAsync(new MoveRotaInput(rota.Id, rota.TeamId, targetTeamId, user.Id)),
             ManagementWrite.DeleteRota => () => service.DeleteRotaAsync(rota.Id, user.Id),
@@ -1411,14 +1411,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     {
         var eventId = Guid.NewGuid();
 
-        await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true, globalVolunteerCap: 50, reminderLeadTimeHours: 12,
+        await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true,
             new BuildSubPeriodStarts(-28, -20, -10, -3), actorUserId: ActorId);
 
         ShiftsDb.ChangeTracker.Clear();
         var saved = await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == eventId, Xunit.TestContext.Current.CancellationToken);
         saved.IsShiftBrowsingOpen.Should().BeTrue();
-        saved.GlobalVolunteerCap.Should().Be(50);
-        saved.ReminderLeadTimeHours.Should().Be(12);
         saved.SubPeriodFirstCrewStart.Should().Be(-28);
         saved.SubPeriodSetupWeekStart.Should().Be(-20);
         saved.SubPeriodPreEventWeekStart.Should().Be(-10);
@@ -1442,7 +1440,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         ShiftsDb.EventSettings.Add(existing);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true, globalVolunteerCap: null, reminderLeadTimeHours: 24,
+        await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true,
             new BuildSubPeriodStarts(-25, -16, -9, -4), actorUserId: ActorId);
 
         (await ShiftsDb.EventSettings.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);

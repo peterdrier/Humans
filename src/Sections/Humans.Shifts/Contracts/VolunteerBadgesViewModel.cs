@@ -4,5 +4,4 @@ namespace Humans.Shifts.Contracts;
 public sealed record VolunteerBadgesViewModel(
     IReadOnlyList<string> Skills,
     IReadOnlyList<string> Quirks,
-    IReadOnlyList<string> Languages,
-    string? DietaryPreference);
+    IReadOnlyList<string> Languages);

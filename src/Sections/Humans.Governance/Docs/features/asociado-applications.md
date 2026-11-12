@@ -16,7 +16,7 @@
 
 ## Business Context
 
-The Application entity serves all tier-based membership applications: **Colaborador** (active contributor) and **Asociado** (voting member). Each Application has a `MembershipTier` field indicating which tier is being applied for. There is a specific application form for each tier, on the dedicated Governance Applications route. During initial signup, profile setup shows a membership tier card that links to that route; it no longer submits an application itself.
+The Application entity serves all tier-based membership applications: **Colaborador** (active contributor) and **Asociado** (voting member). Each Application has a `MembershipTier` field indicating which tier is being applied for. There is a specific application form for each tier, on the dedicated Governance Applications route. During initial signup, profile setup shows a membership tier card that links to that route.
 
 After initial onboarding, existing volunteers apply for Colaborador or Asociado through the same route.
 

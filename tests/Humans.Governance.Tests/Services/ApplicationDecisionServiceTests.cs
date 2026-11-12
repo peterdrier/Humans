@@ -18,6 +18,7 @@ using NSubstitute.Core;
 using Xunit;
 using Humans.Auth.Contracts;
 using Humans.Governance.Domain;
+using Humans.Governance.Services.Dtos;
 using NodaTime.Testing;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Humans.AuditLog.Contracts;

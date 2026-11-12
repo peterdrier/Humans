@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Cantina.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Domain;
@@ -174,7 +173,7 @@ public class ShiftDashboardControllerTests
     private ShiftDashboardController Controller() => new(
         _settings, _management, _signups, _users,
         new ShiftDashboardPageBuilder(_management, Substitute.For<IWebHostEnvironment>(), SystemClock.Instance),
-        new ShiftVolunteerSearchBuilder(_settings, _users, Substitute.For<ICantinaService>(),
+        new ShiftVolunteerSearchBuilder(_settings, _users,
             Substitute.For<IShiftRowView>(), _signups, Substitute.For<IVolunteerTrackingManagement>()),
         NullLogger<ShiftDashboardController>.Instance)
     {

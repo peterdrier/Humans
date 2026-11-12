@@ -34,7 +34,6 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         ("/Shifts", "Shifts"),
         ("/Shifts/Mine", "Shifts"),
         ("/Shifts/Summary", "Summary"),
-        ("/Shifts/OrphanSignups", "Orphan"),
         ("/Shifts/Dashboard", "Dashboard"),
         ("/Shifts/Dashboard/PostEventStats", "Stats"),
         ("/Shifts/Admin/Workload", "Workload"),

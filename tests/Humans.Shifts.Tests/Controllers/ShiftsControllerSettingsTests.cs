@@ -121,8 +121,8 @@ public sealed class ShiftsControllerSettingsTests
             if (account == AccountScenario.Merged)
             {
                 result.Should().BeOfType<RedirectResult>();
-                await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, Arg.Any<bool>(), Arg.Any<int?>(),
-                    Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>(), actorId);
+                await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, Arg.Any<bool>(),
+                    Arg.Any<BuildSubPeriodStarts>(), actorId);
             }
             else result.Should().BeOfType<ChallengeResult>();
         }
@@ -137,7 +137,7 @@ public sealed class ShiftsControllerSettingsTests
     {
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            Substitute.For<IAuditViewerService>(), _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(UserInfoStubHelpers.MakeUserInfo(actorId));
@@ -156,13 +156,11 @@ public sealed class ShiftsControllerSettingsTests
 
     [HumansTheory]
     [Xunit.InlineData("IsShiftBrowsingOpen", false)]
-    [Xunit.InlineData("GlobalVolunteerCap", false)]
-    [Xunit.InlineData("ReminderLeadTimeHours", false)]
     [Xunit.InlineData("FirstCrewStartOffset", false)]
     [Xunit.InlineData("FinishingWeekendStartOffset", false)]
     [Xunit.InlineData("", false)]
     [Xunit.InlineData("", true)]
-    public async Task Settings_require_posted_browsing_cap_and_reminder_choices(string omitted, bool clear)
+    public async Task Settings_require_posted_browsing_and_sub_period_choices(string omitted, bool clear)
     {
         _burnSettings.GetActiveAsync().Returns(ActiveEvent);
         var controller = BuildSut();
@@ -173,8 +171,6 @@ public sealed class ShiftsControllerSettingsTests
         var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
         {
             ["IsShiftBrowsingOpen"] = clear ? "false" : "true",
-            ["GlobalVolunteerCap"] = clear ? "" : "50",
-            ["ReminderLeadTimeHours"] = clear ? "0" : "12",
             ["FirstCrewStartOffset"] = "-28",
             ["SetupWeekStartOffset"] = "-20",
             ["PreEventWeekStartOffset"] = "-10",
@@ -206,7 +202,7 @@ public sealed class ShiftsControllerSettingsTests
         else
         {
             controller.ModelState.IsValid.Should().BeTrue();
-            await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, !clear, clear ? null : 50, clear ? 0 : 12,
+            await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, !clear,
                 new BuildSubPeriodStarts(-28, -20, -10, -3), Arg.Any<Guid>());
         }
     }
@@ -219,14 +215,12 @@ public sealed class ShiftsControllerSettingsTests
         var model = new EventSettingsViewModel
         {
             IsShiftBrowsingOpen = true,
-            GlobalVolunteerCap = 50,
-            ReminderLeadTimeHours = 12,
         };
 
         var result = await ctrl.Settings(model);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#shifts");
-        await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, true, 50, 12, new BuildSubPeriodStarts(-25, -16, -9, -4), Arg.Any<Guid>());
+        await _shiftMgmt.Received(1).SaveKnobsAsync(ActiveEvent.Id, true, new BuildSubPeriodStarts(-25, -16, -9, -4), Arg.Any<Guid>());
     }
 
     [HumansFact]
@@ -240,21 +234,21 @@ public sealed class ShiftsControllerSettingsTests
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#shifts");
         await _shiftMgmt.DidNotReceive().SaveKnobsAsync(
-            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>(), Arg.Any<Guid>());
+            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<BuildSubPeriodStarts>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
     public async Task Settings_Post_InvalidModel_RedirectsWithoutSaving()
     {
         var ctrl = BuildSut();
-        ctrl.ModelState.AddModelError("ReminderLeadTimeHours", "Reminder lead time is invalid.");
+        ctrl.ModelState.AddModelError("FirstCrewStartOffset", "First crew start is invalid.");
         var model = new EventSettingsViewModel();
 
         var result = await ctrl.Settings(model);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#shifts");
-        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("Reminder lead time is invalid.");
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("First crew start is invalid.");
         await _shiftMgmt.DidNotReceive().SaveKnobsAsync(
-            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<BuildSubPeriodStarts>(), Arg.Any<Guid>());
+            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<BuildSubPeriodStarts>(), Arg.Any<Guid>());
     }
 }

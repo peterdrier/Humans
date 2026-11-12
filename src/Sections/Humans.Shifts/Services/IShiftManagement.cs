@@ -38,8 +38,7 @@ internal interface IShiftManagement
 
     /// <summary>Inserts the row on demand. Audited as the actor's, since the sub-periods reclassify every build shift.</summary>
     Task SaveKnobsAsync(
-        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
-        BuildSubPeriodStarts subPeriods, Guid actorUserId);
+        Guid eventSettingsId, bool isShiftBrowsingOpen, BuildSubPeriodStarts subPeriods, Guid actorUserId);
 
     /// <summary>Validates that the team is a department and the event is active.</summary>
     Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);

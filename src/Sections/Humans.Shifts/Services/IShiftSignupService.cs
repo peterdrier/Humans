@@ -40,8 +40,6 @@ internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationServic
     /// <summary>For admin authorization checks.</summary>
     Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default);
 
-    Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default);
-
     /// <summary>
     /// Bails an active signup on the shift, else signs up. Dietary info never gates it.
     /// <see cref="ToggleDaySignupOutcome.CanViewRestricted"/> adds dept-coordinator status to
@@ -75,16 +73,6 @@ internal enum ShiftSignupTeamProbeScope
     SignupBlock
 }
 
-internal sealed record OrphanSignupSnapshot(
-    Guid Id,
-    Guid UserId,
-    string RotaName,
-    LocalDate ShiftDate,
-    SignupStatus Status,
-    Instant CreatedAt,
-    Guid? ReviewedByUserId,
-    Guid? EnrolledByUserId,
-    Guid? SignupBlockId);
 
 /// <summary>Range-bail refusal key; null indicates success, including an already-empty block.</summary>
 internal sealed record BailRangeResult(string? ErrorKey = null);

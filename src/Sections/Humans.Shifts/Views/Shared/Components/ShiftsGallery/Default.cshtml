@@ -173,18 +173,17 @@
         <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
     </div>
     <div class="wg-card-note">
-        Badges showing volunteer event profile info — skills, quirks, dietary, languages. Synthetic sample below.
+        Badges showing volunteer event profile info — skills, quirks, languages. Synthetic sample below.
     </div>
     @ParamsBlock(
-        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina)")
+        ("@@model", "<code>VolunteerBadgesViewModel</code> (from the volunteer event profile)")
     )
     <div class="wg-card-example">
         @await Html.PartialAsync("_VolunteerProfileBadges",
             new VolunteerBadgesViewModel(
                 Skills: ["Welding", "First Aid"],
                 Quirks: ["Early riser", "Coffee snob"],
-                Languages: ["English", "Spanish"],
-                DietaryPreference: null))
+                Languages: ["English", "Spanish"]))
     </div>
 </div>
 

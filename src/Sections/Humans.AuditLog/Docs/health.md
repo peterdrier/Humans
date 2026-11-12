@@ -32,7 +32,6 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 |---|---|---|
 | Append an action | `IAuditLogService.LogAsync` (human and job overloads) | most sections, after a privileged action |
 | Named events for a filter or a person | `IAuditViewerService` (`GetFilteredAsync`, `GetForUserAsync`) | `<vc:audit-log>`, Agent tool, Issues (interleaves audit with comments), Expenses (GDPR export), Users (duplicate-account scan) |
-| Which entities ever had these actions | `IAuditViewerService.GetEntityIdsForEntityTypeActionsAsync` | Shifts orphan-signup screen |
 | Named events for a page | internal `AuditViewerService.GetPageAsync` | `/AuditLog`, admin tile |
 | Show history on a host page | `<vc:audit-log>`, layouts `line` / `table` | Calendar, Debug, Expenses, Store, Teams, Tickets, Users |
 | Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration's history-migration screen; leaves with those columns |

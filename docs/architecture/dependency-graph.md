@@ -247,7 +247,6 @@ graph LR
     Search --> Shifts
     Search --> Teams
     Search --> Users
-    Shifts --> AuditLog
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Cantina

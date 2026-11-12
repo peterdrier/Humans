@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Cantina.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Services;
@@ -33,7 +32,6 @@ public class ShiftVolunteerSearchBuilderTests
 
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IVolunteerTrackingManagement _tracking = Substitute.For<IVolunteerTrackingManagement>();
@@ -50,12 +48,10 @@ public class ShiftVolunteerSearchBuilderTests
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         _tracking.GetAvailableForDayAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
-        _cantina.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, DietaryProfileInfo>());
     }
 
     private ShiftVolunteerSearchBuilder BuildSut() =>
-        new(_burnSettings, _userService, _cantina, _shiftView, _signupService, _tracking);
+        new(_burnSettings, _userService, _shiftView, _signupService, _tracking);
 
     [HumansFact]
     public async Task SearchReads_PreserveCancellationAcrossEventAndCandidateLookups()
@@ -134,22 +130,6 @@ public class ShiftVolunteerSearchBuilderTests
             "ann");
 
         Assert.Equal(VolunteerSearchBuildStatus.NotFound, result.Status);
-    }
-
-    [HumansFact]
-    public async Task DietaryBadge_ComesFromCantina()
-    {
-        var target = MakeShift(ActiveBurnId, dayOffset: 1, new LocalTime(10, 0), Duration.FromHours(4));
-        SetCachedSignups();
-        _cantina.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, DietaryProfileInfo>
-            {
-                [_candidateId] = new(_candidateId, "Vegan", [], null, [], null),
-            });
-
-        var result = await BuildSut().BuildForShiftAsync(target, "ann");
-
-        Assert.Equal("Vegan", Assert.Single(result.Results).DietaryPreference);
     }
 
     [HumansFact]

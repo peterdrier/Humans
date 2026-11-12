@@ -16,29 +16,31 @@ calculator the rest of the app asks questions of.
 **Tier membership.** A volunteer asks to become a Colaborador or an Asociado. They write a
 motivation (and, for Asociado, what they have contributed and what they think the role is).
 The Board reads the request, each Board member records a position on it, and an Admin closes
-it at a Board meeting — approved or not. Approval grants the tier for a term that runs to
-31 December of the current cycle's odd year, puts the person in the matching system team, tells
-them by email and in-app, and leaves an audit entry. Ninety days before a term runs out the
-person is reminded to re-apply. Individual Board positions are destroyed the moment the
-decision is made; only the Board's collective note and the meeting date survive.
+it at a Board meeting, approved or not. Approval grants the tier for a term that runs to
+31 December of the current cycle's odd year, records it in the section's own register of
+members, puts the person in the matching system team, tells them by email and in-app, and leaves
+an audit entry. Ninety days before a term runs out the person is reminded to re-apply; the day
+after it runs out a nightly job drops them to the other tier they still hold, or to Volunteer.
+Individual Board positions are destroyed the moment the decision is made; only the Board's
+collective note and the meeting date survive.
 
 **Binding votes of the association.** The Board writes a motion in every supported language, with
 either a yes/no/abstain answer or a ranked list of options, and a time it closes. An Admin
-opens it; at that instant the list of who may vote is frozen — the current Asociados and Board
+opens it; at that instant the list of who may vote is frozen: the current Asociados and Board
 members vote for the record, and, if the motion says so, Colaboradores or every volunteer may
 add an opinion that is counted separately and never mixed in. Everyone on that list is emailed
 in their own language and nudged once more a day before the close. Any member may read the
 motion and watch how many people have voted; nobody may see which way it is going. Members
 vote from their phone and may change their answer as often as they like until it closes, and
 every version is kept. An Admin who has to know the numbers early can look, and that look is
-recorded and published beside the result. At the announced time — or when an Admin stops it —
+recorded and published beside the result. At the announced time, or when an Admin stops it,
 the count is taken once and stored, the outcome is shown with every elimination round, and a
 plain-text block is produced for the Secretary to paste into the minutes. An Admin may also
 extend the deadline or call the whole thing off with a reason. Nothing reopens.
 
 **Membership standing.** Separately, this section answers "is this person in good standing?"
 for the rest of the app: are they approved, suspended, awaiting approval, deleting, or missing
-agreements they were required to sign — and which agreements those are. Nothing here owns that
+agreements they were required to sign, and which agreements those are. Nothing here owns that
 data; it is computed from profiles, teams, roles and consents each time it is asked.
 
 ## 2. The shapes
@@ -48,17 +50,17 @@ The external surface, grouped by the question each group answers.
 | # | Question shape | Where it is answered | Surface |
 |---|---|---|---|
 | S1 | *What tier applications does this person have, and what happened to them?* | contracts read surface + own pages | `GetUserApplicationsAsync`, `GetUserApplicationDetailAsync`, `GetSubmittedApplicationForUserAsync`, `GetUserIdsWithPendingApplicationAsync`; `GET /Governance`, `GET /Governance/Applications`, `GET /Governance/Applications/Details/{id}` |
-| S2 | *Does this person hold an active tier today?* | contracts read surface | `HasActiveApprovedTierAsync`, `GetActiveApprovedTierUserIdsAsync`, `GetMembershipTierAsync`, `GetMembershipTiersAsync` |
+| S2 | *What tier does this person hold today?* | contracts read surface | `HasActiveApprovedTierAsync`, `GetActiveApprovedTierUserIdsAsync`, `GetMembershipTierAsync`, `GetMembershipTiersAsync` |
 | S3 | *What is still on the Board's plate?* | contracts read surface (`GetUnvotedApplicationCountAsync`) + internal management + admin pages | `GetUnvotedApplicationCountAsync`, `GetPendingApplicationCountAsync`, `GetAdminStatsAsync`; `GET /Governance/Applications/Admin`, `GET /Governance/BoardVoting` |
-| S4 | *Move one application along its state machine* | internal management + own pages | `ValidateSubmission`, `SubmitAsync`, `WithdrawAsync`, `CastBoardVoteAsync`, `ApproveAsync`, `RejectAsync`; `POST /Governance/Applications/Create`, `POST /Governance/BoardVoting/Vote`, `POST /Governance/BoardVoting/Finalize` |
-| S5 | *Who needs a renewal nudge, and has it gone out?* | internal management, job-only | `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync`; `TermRenewalReminderJob` |
-| S6 | *Is this person in good standing, and what are they missing?* | membership-calculator read surface | the whole of `IMembershipCalculator` — consent completeness (per person, per team, batched), the consolidated snapshot, the standing partition, required-team resolution |
+| S4 | *Move one application along its state machine* | the decision service, own pages only | `ValidateSubmission`, `SubmitAsync`, `WithdrawAsync`, `CastBoardVoteAsync`, `ApproveAsync`, `RejectAsync`; `POST /Governance/Applications/Create`, `POST /Governance/BoardVoting/Vote`, `POST /Governance/BoardVoting/Finalize` |
+| S5 | *Whose term is ending or has ended?* | internal management, job-only | `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync`, `ExpireMembershipTiersAsync`; `TermRenewalReminderJob`, `MembershipTierExpiryJob` |
+| S6 | *Is this person in good standing, and what are they missing?* | membership-calculator read surface | the whole of `IMembershipCalculator`: consent completeness (per person, per team, batched), the consolidated snapshot, the standing partition, required-team resolution |
 | S7 | *What is the association voting on, and may I vote?* | own pages only | `GetVotesForMemberAsync`, `GetVoteForMemberAsync`; `GET /Governance/Votes`, `GET /Governance/Votes/{id}` |
 | S8 | *Record what I choose, and let me change it* | own pages only | `CastBallotAsync`; `POST /Governance/Votes/{id}/Ballot` |
 | S9 | *Author a motion and run its lifecycle* | own admin pages only | `GetAllForAdminAsync`, `GetDraftAsync`, `CreateDraftAsync`, `UpdateDraftAsync`, `PreFillTranslationsAsync`, `DeleteDraftAsync`, `OpenAsync`, `StopAsync`, `ExtendAsync`, `CancelAsync`; `GET /Governance/Votes/Admin`, `GET/POST /Governance/Votes/Admin/Create`, `GET/POST /Governance/Votes/Admin/{id}/Edit`, `POST /Governance/Votes/Admin/{id}/Delete`, `POST /Governance/Votes/Admin/{id}/Open`, `POST /Governance/Votes/Admin/{id}/Stop`, `POST /Governance/Votes/Admin/{id}/Extend`, `POST /Governance/Votes/Admin/{id}/Cancel` |
 | S10 | *What did the vote decide, and who looked early?* | own pages only | `GetResultsAsync`, `PeekAsync`, `GetBallotsForBoardAsync`; `GET /Governance/Votes/{id}/Results`, `GET /Governance/Votes/{id}/Results.csv`, `GET /Governance/Votes/Admin/{id}/Peek`, `GET /Governance/Votes/Admin/{id}/Ballots` |
 | S11 | *Keep the automation honest while nobody is looking* | job-only | `RunLapseAndReminderSweepAsync`; `AssemblyVoteLapseJob` |
-| S12 | *GDPR and identity plumbing* | crosscut contracts | two `IUserDataContributor` export + erasure declarations, two `IUserMerge` re-FK paths |
+| S12 | *GDPR and identity plumbing* | crosscut contracts | three `IUserDataContributor` export and erasure declarations (applications, membership tier, assembly votes), three `IUserMerge` re-FK paths |
 
 Load-bearing consequences of the grouping:
 
@@ -74,25 +76,26 @@ Load-bearing consequences of the grouping:
 
 Written fresh from the shapes, not from today's folders.
 
-- **`applications` aggregate** — `Application` (+ `ApplicationStateHistory`, `BoardVote` as
-  aggregate-local children), one repository as the sole reader/writer of its tables, one
-  service holding the state-machine rules and the fan-out to email / notifications / audit /
-  system teams. S1–S5 are this.
-- **`assembly_*` aggregate** — `AssemblyVote` (+ options, roster, ballots, ballot history and
+- **`applications` aggregate**: `Application` (+ `ApplicationStateHistory`, `BoardVote` as
+  aggregate-local children) and the per-member tier row it grants, one repository as the sole
+  reader/writer of those tables, one service holding the state-machine rules and the fan-out to
+  email / notifications / audit / system teams. S1–S5 are this. The tier register is a second
+  table in the same repository because an approval writes both in one save.
+- **`assembly_*` aggregate**: `AssemblyVote` (+ options, roster, ballots, ballot history and
   peeks as aggregate-local children), one repository as the sole reader/writer of its tables,
-  one service holding the lifecycle, the embargo and the fan-out to email / notifications /
-  audit / translation. S7–S11 are this. The counting is a separate pure function with no
-  clock and no repository, so a member can check a published result by hand against it.
-- **Term arithmetic** — one pure function (`TermExpiryCalculator`); no state, no dependencies.
-- **Membership standing** — one calculator (S6) with a query adapter under it whose only reason
+  one service facade holding the embargo, with the lifecycle split into collaborators it
+  constructs itself (drafts, administration, settlement, member workflow, effects, roster
+  builder, result reader, export). S7–S11 are this. The counting is a separate pure function
+  with no clock and no repository, so a member can check a published result by hand against it.
+- **Term arithmetic**: one pure function (`TermExpiryCalculator`); no state, no dependencies.
+- **Membership standing**: one calculator (S6) with a query adapter under it whose only reason
   to exist is breaking the DI cycle through `ISystemTeamSync`. No repository, no table.
-- **Presentation** — one controller per audience (own applications, Board voting, the section
+- **Presentation**: one controller per audience (own applications, Board voting, the section
   index, member-facing votes, vote administration); view components for the member dashboard
-  and the admin dashboard; one nav contribution each for members and admins; one job
-  contribution carrying two jobs.
-- **Contracts leaf** — exactly what lives outside the section: the read surface, the write
-  members Users' profile submit path and the renewal job call, the membership-calculator read
-  surface, the DTOs those signatures name, and `ApplicationStatus`.
+  and the admin dashboard; one admin nav group; one job contribution carrying three jobs.
+- **Contracts leaf**: exactly what lives outside the section: the application and tier read
+  surface, the membership-calculator read surface, the DTOs those signatures name, and
+  `ApplicationStatus`. Governance publishes no write interface.
 
 Nothing that is only called from inside the section belongs on an interface.
 
@@ -103,83 +106,86 @@ Each cites the line that enforces it.
 **Tier applications**
 
 - An application exists only for Colaborador or Asociado; Volunteer is rejected at the entity
-  (`Domain/Application.cs:99`).
-- `Submitted` is the only state anything can be done from — approve, reject, withdraw and vote
-  all refuse anything else (`Services/ApplicationDecisionService.cs:58`, `:140`, `:307`, `:548`;
-  the state machine permits nothing else, `Domain/Application.cs:121`).
+  (`Domain/Application.cs:61`).
+- `Submitted` is the only state anything can be done from: approve, reject, withdraw and vote
+  all refuse anything else (`Services/ApplicationDecisionService.cs:123`, `:252`, `:346`;
+  the state machine permits nothing else, `Domain/Application.cs:77`).
 - A person may hold at most one `Submitted` application at a time, any tier
-  (`Services/ApplicationDecisionService.cs:268`).
+  (`Services/ApplicationDecisionService.cs:213`).
 - Approval and rejection require at least one Board vote to exist; with none, finalization is
-  refused and nothing is written (`Services/ApplicationDecisionService.cs:68`, `:147`).
-- Finalization is atomic: the application update and the destruction of every `BoardVote` row
-  for it commit together (`Data/ApplicationRepository.cs:84`).
-- Approval sets a term expiring 31 December of the current cycle's odd year — the approval year
+  refused and nothing is written (`Services/ApplicationDecisionService.cs:127`).
+- Finalization is atomic: the application update, the destruction of every `BoardVote` row for
+  it and, on approval, the member's tier row commit together (`Data/ApplicationRepository.cs:98`).
+- Approval sets a term expiring 31 December of the current cycle's odd year: the approval year
   if odd, else the next; from 1 October of an odd year, the next cycle's
-  (`Services/TermExpiryCalculator.cs:19`).
+  (`Services/TermExpiryCalculator.cs:15`).
+- A tier lapses only when no Approved application for it is still in term; the member drops to
+  their other in-term tier, or to Volunteer, and each drop is audited
+  (`Services/MembershipTierService.cs:47`).
 - `application_state_history` is append-only in normal operation: the repository offers no
   update or delete for it. GDPR erasure is the one exception, nulling `Notes` on the rows of the
   person's own applications and on the rows they authored as a Board member
-  (`Data/ApplicationRepository.cs:292`).
+  (`Data/ApplicationRepository.cs:317`, `:337`).
 - Casting a Board vote is Board-only and finalizing is Admin-only
-  (`Controllers/GovernanceBoardVotingController.cs:114`, `:149`).
+  (`Controllers/GovernanceBoardVotingController.cs:113`, `:156`).
 
 **Assembly votes**
 
 - A draft is invisible to members: the list omits it and the detail read answers null for it,
   so knowing a draft's id is not a way to read its motion early
-  (`Services/AssemblyVoteService.cs:116`, `:150`).
-- Content is immutable once Open. The draft write refuses a non-draft, and the option replace
-  re-reads the status under the row lock
-  (`Services/AssemblyVoteService.cs:872`, `Data/AssemblyVoteRepository.cs:141`).
+  (`Services/AssemblyVoteMemberWorkflow.cs:34`, `:63`).
+- Content is immutable once Open. The draft write refuses a non-draft, and the open refuses a
+  draft edited while its roster was being built (`Services/AssemblyVoteDrafts.cs:80`,
+  `Data/AssemblyVoteRepository.cs:189`).
 - The electorate is written exactly once, at open, in the same unit of work as the transition
-  (`Data/AssemblyVoteRepository.cs:198`), and is never recomputed. A person reachable through
+  (`Data/AssemblyVoteRepository.cs:199`), and is never recomputed. A person reachable through
   more than one source gets one row, official if any source is official
-  (`Services/AssemblyVoteService.cs:1122`).
+  (`Services/AssemblyVoteRosterBuilder.cs:60`).
 - Only official roster rows contribute to the official result; an indicative audience is
-  tallied separately and never merged (`Services/AssemblyVoteService.cs:558`).
+  tallied separately and never merged (`Services/AssemblyVoteResultReader.cs:26`).
 - A ballot is accepted only while the vote is Open and its deadline has not passed, and only
   from the roster row that entitles the submitter. Checked once before the write
-  (`AssemblyVoteMemberWorkflow.CastBallotAsync`) and again under the vote row's lock
-  (`Data/AssemblyVoteRepository.cs:357`), so a ballot accepted after the count began is
+  (`Services/AssemblyVoteMemberWorkflow.cs:139`) and again under the vote row's lock
+  (`Data/AssemblyVoteRepository.cs:308`), so a ballot accepted after the count began is
   impossible rather than unlikely.
 - A ballot's audit entry names the actor and the vote, never the choice, and never the ballot
-  row (`AssemblyVoteMemberWorkflow.CastBallotAsync`).
+  row (`Services/AssemblyVoteMemberWorkflow.cs:162`).
 - The embargo: the only reads that return anything derived from ballot content are the stored
   result after close, the audited peek, and the audited post-close ballot list
-  (`Services/AssemblyVoteService.cs:609`, `:1316`, `:1349`; the contract is stated at
-  `Services/IAssemblyVoteService.cs:14`).
+  (`Services/AssemblyVoteService.cs:84`, `:189`, `:234`; the contract is stated at
+  `Services/IAssemblyVoteService.cs:8`).
 - A peek is recorded before its tally is handed back, and only while the vote still accepts
-  ballots (`Services/AssemblyVoteService.cs:1316`, `Data/AssemblyVoteRepository.cs:470`).
+  ballots (`Services/AssemblyVoteService.cs:201`, `Data/AssemblyVoteRepository.cs:413`).
 - Individual ballots are disclosed for a Closed vote only; a Cancelled vote's are not
-  (`Services/AssemblyVoteService.cs:1349`).
+  (`Services/AssemblyVoteService.cs:234`).
 - The result is computed once and stored, and the close persists the closed status *before* it
-  reads any ballot (`Services/AssemblyVoteService.cs:438`, `:484`).
+  reads any ballot (`Services/AssemblyVoteSettlement.cs:134`, `:169`).
 - A vote whose deadline has passed is closed for every purpose, whether or not the hourly job
   has run: every read and write settles the state first
-  (`Services/AssemblyVoteService.cs:339`).
+  (`Services/AssemblyVoteSettlement.cs:49`).
 - Closed and Cancelled are terminal, enforced at the write: every vote-row write names the
   state it read and applies under that row's lock only while the row is still in it
-  (`Data/AssemblyVoteRepository.cs:68`, lock at `:115`).
+  (`Data/AssemblyVoteRepository.cs:55`, lock at `:103`).
 - The announced deadline of an open vote only ever moves later
-  (`Data/AssemblyVoteRepository.cs:75`).
+  (`Data/AssemblyVoteRepository.cs:60`).
 - A ranked draft carrying a two-thirds threshold is rejected: instant runoff has no defined
-  two-thirds rule (`Services/AssemblyVoteService.cs:1007`).
+  two-thirds rule (`Services/AssemblyVoteDrafts.cs:210`).
 - YesNo: Simple passes when for beats against and ties when level; TwoThirds passes at
   `ceil(2/3 × (for + against))`. Abstentions are in neither base
-  (`Services/AssemblyVoteCounting.cs:45`).
+  (`Services/AssemblyVoteCounting.cs:47`).
 - Instant runoff: a round's majority base is the ballots still ranking a continuing option, and
   a level deciding round is reported as a tie rather than broken
-  (`Services/AssemblyVoteCounting.cs:128`, `:152`).
-- Nothing in this section ever resolves an *outcome* tie — a level deciding round and an
+  (`Services/AssemblyVoteCounting.cs:113`, `:136`).
+- Nothing in this section ever resolves an *outcome* tie: a level deciding round and an
   exhausted field both return `Tie` rather than pick a winner
-  (`Services/AssemblyVoteCounting.cs:144`, `:156`). *Elimination* ties inside instant runoff
+  (`Services/AssemblyVoteCounting.cs:128`, `:140`). *Elimination* ties inside instant runoff
   are resolved, by fewest votes in the previous round and then authored order, and every
-  step used is written into the published notes (`Services/AssemblyVoteCounting.cs:172`).
+  step used is written into the published notes (`Services/AssemblyVoteCounting.cs:168`).
 - Erasure keeps the vote arithmetically valid: the roster row is unlinked from the account and
-  the ballot is retained (`Data/AssemblyVoteRepository.cs:545`).
+  the ballot is retained (`Data/AssemblyVoteRepository.cs:493`).
 - An account merge leaves roster rows and ballots exactly where they were cast and audits every
-  vote it found one on (`Services/AssemblyVoteService.cs:1991`,
-  `Data/AssemblyVoteRepository.cs:575`).
+  vote it found one on (`Services/AssemblyVoteService.cs:363`,
+  `Data/AssemblyVoteRepository.cs:507`).
 
 **Both**
 
@@ -189,20 +195,15 @@ Each cites the line that enforces it.
 
 Specified but not built. Reserved, not ranked, not to be built by a doctor run.
 
-- **Request-more-info.** The state machine permits a `Submitted → Submitted` re-entry carrying
-  reviewer notes, and the entity implements it (`Domain/Application.cs:123`, `:174`), but no
-  route, service method or UI reaches it. `Application.ReviewStartedAt` belongs to the same
-  unbuilt flow: nothing sets it, and DTOs and views carry it through to the page as a
-  permanent blank.
 - **Colaborador-before-Asociado.** The Create page defaults the radio to Asociado for an
   approved Colaborador, but no rule requires the order. Whether one should exist is not settled.
 - **Opening moves to the Board.** Opening a vote is Admin-only for the first live votes by
   decision, and is meant to become Board-or-Admin once the process has run once or twice
-  (`Controllers/GovernanceVotesAdminController.cs:119`). A policy-constant change, not a
+  (`Controllers/GovernanceVotesAdminController.cs:127`). A policy-constant change, not a
   redesign.
 - **The temporary term-expiry repair page.** `GET /Governance/Applications/Admin/TermExpiry`
   and its POST exist to rewrite rows approved under the pre-September-2026 rule, and are marked
-  for deletion once QA and production are clean (`Section.cs:22`).
+  for deletion once QA and production are clean (`Section.cs:184`).
 
 ## 6. Deliberately not done
 
@@ -222,6 +223,8 @@ Specified but not built. Reserved, not ranked, not to be built by a doctor run.
   must not silently change the schema.
 - **No shared localized-text type with Surveys**, and no promotion of one to Base: a Base type
   would be public surface that nothing outside Governance and Surveys needs.
+- **No DI registration for the assembly-vote collaborators.** The facade builds them from its
+  own dependencies; they are an internal split of one service, not services of their own.
 - **No absence tests.** "There is no route for X" is not a test.
 - **No PDF, no Backdoor read, no proxy votes, no quorum determination.** All explicitly out of
   scope for the vote lane; the acta block and the CSV are the export.
@@ -234,9 +237,7 @@ Settled decisions. Do not re-litigate.
   `IRoleAssignmentService`. It is not: injecting them directly closes a DI cycle through
   `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentService`
   resolve through `IServiceProvider` inside `MembershipCalculator`.
-- `TermRenewalReminderJob` is `public` in a section assembly (HUM0034 makes that an error for
-  everything else) because Shell names the concrete type when it schedules it.
-- `Humans.Governance` references whole sections — `Humans.Consent` and `Humans.Onboarding` —
+- `Humans.Governance` references whole sections, `Humans.Consent` and `Humans.Onboarding`,
   for their resource markers alone. Both are acyclic and disclosed in the csproj.
 - The Contracts leaf exists as a separate project, not a folder, because Base-resident consumers
   read through it; a folder inside the section would make Base reference a section.
@@ -246,19 +247,20 @@ Settled decisions. Do not re-litigate.
   state check alone outside PostgreSQL.
 - Both repositories are registered singleton; they hold no state and take a
   `IDbContextFactory`, so a context is created per call.
-- The application badge map deliberately carries no row for `ApplicationStatus.Withdrawn` —
+- The application badge map deliberately carries no row for `ApplicationStatus.Withdrawn`:
   unmapped values render `bg-secondary`, which is what a withdrawn application should look like.
-- `AssemblyVoteService` is long, and most of its length is comment. Every non-obvious ordering
-  in it — notification before emails, status before tally, stamp per row rather than per batch,
-  the five-minute grace before a result-less close is taken over — was a defect found in
+- The assembly-vote code is long, and most of its length is comment. Every non-obvious ordering
+  in it (notification before emails, status before tally, stamp per row rather than per batch,
+  the five-minute grace before a result-less close is taken over) was a defect found in
   review, and the comment is the only thing standing between the next reader and reintroducing
   it. Length here is not a target.
 - The acta block is deliberately unlocalized and unstyled: it goes into a Spanish legal
-  document, and the numbers are what statutes Art. 8.6 requires. Rendering it per viewer is
-  tracked as peterdrier/Humans#1695.
+  document, and the numbers are what statutes Art. 8.6 requires.
 - `EffectiveRosterAsync` walks the merge chain on every member-facing read instead of the merge
   re-pointing rows. The roster is evidence of who was entitled when the vote opened; rewriting
   it would destroy the record of a human enrolled twice.
+- The account-merge order matters: `MembershipTierService` is registered as an `IUserMerge`
+  ahead of `ApplicationDecisionService` (`Section.cs:59`).
 
 ## Run history
 
@@ -266,3 +268,4 @@ Settled decisions. Do not re-litigate.
 |---|---|---|---|
 | 1 | 2026-09-02 | Term expiry shown wrong on both member pages; dead `/Governance/MyApplications` notification link; dead surface removed; doc and comment truth | peterdrier/Humans#1580 |
 | 2 | 2026-09-18 | Assembly votes reached the member guide, the routing table and `authorization.md`; tier plural fixed in four cultures; dead members and resource keys cut | peterdrier/Humans#1739 |
+| 3 | 2026-11-12 | Docs no longer put the tier on the profile or the vote logic in one class; contract records no other section reads became internal | peterdrier/Humans#2378 |

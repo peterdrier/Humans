@@ -371,7 +371,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         ownApplication.SignificantContribution = "private contribution";
         ownApplication.RoleUnderstanding = "private understanding";
         ownApplication.DecisionNote = "private decision";
-        // Seed legacy review prose directly; the former information-request workflow is gone.
+        // ReviewNotes has a private setter, so it is seeded through the change tracker.
         _dbContext.Entry(ownApplication).Property(application => application.ReviewNotes)
             .CurrentValue = "private state note";
         ownApplication.StateHistory.Add(new ApplicationStateHistory

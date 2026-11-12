@@ -19,9 +19,4 @@ internal interface IAuditLogReader : IApplicationService
         IReadOnlyList<string>? actions,
         int limit,
         CancellationToken ct = default);
-
-    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditActionDefinition> actions,
-        CancellationToken ct = default);
 }
