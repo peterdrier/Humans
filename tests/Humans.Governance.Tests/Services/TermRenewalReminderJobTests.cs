@@ -5,6 +5,7 @@ using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
 using Humans.Governance.Jobs;
+using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;

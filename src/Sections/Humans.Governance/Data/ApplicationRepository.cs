@@ -1,4 +1,5 @@
 using Humans.Governance.Contracts;
+using Humans.Governance.Services.Dtos;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;

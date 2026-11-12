@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.Governance.Contracts;
+using Humans.Governance.Services.Dtos;
 using Humans.Governance.Domain;
 using NodaTime;
 using MemberApplication = Humans.Governance.Domain.Application;
