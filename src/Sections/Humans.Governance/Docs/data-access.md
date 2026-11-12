@@ -126,23 +126,10 @@ output.
 
 No repository, no cache, not part of the `IApplicationService` inventory
 (a `System.Diagnostics.Metrics` gauge publisher, not a section service).
-Polls `IMembershipCalculator`, `IGovernanceManagement`,
+Polls `IConsentService`, `IGovernanceManagement`,
 `IUserService` on a timer to publish `humans.asociados`,
 `humans.applications_pending`, `humans.pending_consents`,
 `humans.consent_deadline_approaching`.
-
-### MembershipCalculator (Scoped)
-
-No repository. Pure read computation over `IMembershipQuery`,
-`IUserService`, `ILegalDocumentSyncService`, `IConsentService`
-(resolved lazily via `IServiceProvider` to break a DI cycle), and
-`IClock`. Implements `IMembershipCalculator`. No DB access, no cache.
-
-### MembershipQuery (Scoped)
-
-No repository. Read-only fan-out over `ITeamService`,
-`IRoleAssignmentService`. Exists to break the DI cycle through
-`ISystemTeamSync`. No DB access, no cache.
 
 ### GovernanceIndexService (Scoped)
 

@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Teams.Contracts;
 using System.Security.Claims;
 using Humans.Governance.Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +9,7 @@ namespace Humans.Governance.ViewComponents;
 
 /// <summary>Renders nothing for a plain Volunteer.</summary>
 public sealed class MemberTermStatusViewComponent(
-    IMembershipCalculator membershipCalculator,
+    ITeamService teamService,
     IGovernanceService applicationService,
     IClock clock) : ViewComponent
 {
@@ -20,7 +22,8 @@ public sealed class MemberTermStatusViewComponent(
         }
 
         var tier = await applicationService.GetMembershipTierAsync(userId, ct);
-        var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
+        var isVolunteerMember = (await teamService.GetTeamAsync(SystemTeamIds.Volunteers, ct))
+            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
         if (!isVolunteerMember || tier == MembershipTier.Volunteer)
         {

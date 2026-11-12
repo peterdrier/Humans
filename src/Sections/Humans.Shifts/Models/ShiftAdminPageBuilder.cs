@@ -1,5 +1,5 @@
 using Humans.Cantina.Contracts;
-using Humans.Governance.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -21,7 +21,7 @@ internal sealed record ShiftAdminPageRequest(
 
 internal sealed class ShiftAdminPageBuilder(
     IShiftManagement shiftManagement,
-    IMembershipCalculator membership,
+    IConsentService consentService,
     IUserService userService,
     ICantinaService cantina,
     ITeamService teamService)
@@ -97,7 +97,7 @@ internal sealed class ShiftAdminPageBuilder(
         if (signups.Count == 0) return signups;
 
         var userIds = signups.Select(s => s.UserId).Distinct().ToList();
-        var withConsents = await membership.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var withConsents = await consentService.GetUsersWithAllRequiredConsentsForTeamAsync(
             userIds,
             SystemTeamIds.Volunteers, ct);
 

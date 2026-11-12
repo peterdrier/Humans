@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base;
@@ -77,9 +78,6 @@ public sealed class Section :
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<AssemblyVoteService>());
         services.AddScoped<AssemblyVoteLapseJob>();
 
-        services.AddScoped<IMembershipQuery, MembershipQuery>();
-        services.AddScoped<MembershipCalculator>();
-        services.AddScoped<IMembershipCalculator>(sp => sp.GetRequiredService<MembershipCalculator>());
 
         // Base cannot name a moved section's enums, so the section pushes its badge rows into
         // the Humans.UI registry rather than Humans.UI referencing this section.
@@ -237,14 +235,14 @@ public sealed class Section :
             return [];
         }
 
-        var snapshot = await services.GetRequiredService<IMembershipCalculator>()
-            .GetMembershipSnapshotAsync(userId, ct);
+        var progress = await services.GetRequiredService<IConsentService>()
+            .GetConsentProgressAsync(userId, ct);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
-        var complete = snapshot.PendingConsentCount == 0;
+        var complete = progress.PendingCount == 0;
 
         List<ThingsToDoEntry> entries = [];
 
-        if (snapshot.RequiredConsentCount > 0)
+        if (progress.RequiredCount > 0)
         {
             entries.Add(new ThingsToDoEntry("consents", localizer["Todo_Consents_Title"].Value,
                 "fa-solid fa-file-signature", Controller: "Consent", Action: "Index", Weight: 20)
@@ -252,7 +250,7 @@ public sealed class Section :
                 Description = complete
                     ? localizer["Todo_Consents_Done"].Value
                     : string.Format(CultureInfo.CurrentCulture, localizer["Todo_Consents_Pending"].Value,
-                        snapshot.PendingConsentCount, snapshot.RequiredConsentCount),
+                        progress.PendingCount, progress.RequiredCount),
                 IsDone = complete,
                 ActionText = localizer["Todo_Consents_Action"].Value,
             });

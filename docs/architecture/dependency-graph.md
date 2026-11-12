@@ -120,6 +120,7 @@ graph LR
     CityPlanning --> Settings
     CityPlanning -.-> Camps
     CityPlanning -.-> Teams
+    Consent --> Auth
     Consent --> Issues
     Consent -.-> Email
     Consent -.-> Governance
@@ -139,7 +140,6 @@ graph LR
     Development --> Settings
     Development -.-> Camps
     Development -.-> CityPlanning
-    Development -.-> Governance
     Development -.-> Shifts
     Development -.-> Teams
     Development -.-> Users
@@ -251,6 +251,7 @@ graph LR
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Cantina
+    Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
     Shifts --> Onboarding
@@ -258,7 +259,6 @@ graph LR
     Shifts --> Teams
     Shifts -.-> Camps
     Shifts -.-> Email
-    Shifts -.-> Governance
     Shifts -.-> Notifications
     Shifts -.-> Tickets
     Shifts -.-> Users

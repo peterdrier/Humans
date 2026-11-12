@@ -9,14 +9,14 @@ using Humans.Base.Interfaces;
 using Humans.Base.Configuration;
 using Humans.Consent.Services;
 using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 
 namespace Humans.Consent.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendReConsentReminderJob(
-    IMembershipCalculator membershipCalculator,
+    IConsentService consentService,
     ILegalDocumentSyncManagement legalDocService,
     IUserService userService,
     ConsentReminderService reminders,
@@ -40,8 +40,8 @@ internal sealed class SendReConsentReminderJob(
 
         try
         {
-            var usersNeedingReminder = await membershipCalculator
-                .GetUsersRequiringStatusUpdateAsync(cancellationToken, Duration.FromDays(daysBeforeSuspension));
+            var usersNeedingReminder = await consentService
+                .GetUsersPastConsentDeadlineAsync(Duration.FromDays(daysBeforeSuspension), cancellationToken);
 
             var requiredVersions = await legalDocService.GetRequiredVersionsAsync(cancellationToken);
             var requiredDocNames = requiredVersions

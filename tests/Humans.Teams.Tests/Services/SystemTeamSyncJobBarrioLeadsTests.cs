@@ -40,13 +40,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly TeamsEmails _emailMessages = TestTeamsEmails.Create();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
-    private SystemTeamSyncJob CreateJob(IMembershipCalculator? membershipCalculator = null, ITeamResourceService? resources = null)
+    private SystemTeamSyncJob CreateJob(IConsentService? consentService = null, ITeamResourceService? resources = null)
     {
         _googleClient.IsConfigured.Returns(true);
         var services = new ServiceCollection();
-        services.AddSingleton(membershipCalculator ?? Substitute.For<IMembershipCalculator>());
         services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
-        var consent = Substitute.For<IConsentService>();
+        var consent = consentService ?? Substitute.For<IConsentService>();
         consent.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => ConsentReviewInfo.None(call.Arg<Guid>()));
         consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
@@ -117,7 +116,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new[] { user });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [user.Id] = user }));
-        var calculator = Substitute.For<IMembershipCalculator>();
+        var calculator = Substitute.For<IConsentService>();
         calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), team.Id, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { user.Id });
