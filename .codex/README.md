@@ -8,4 +8,4 @@ Project-local automation for unattended Codex maintenance.
 - `prompts/daily-debt.md`, `prompts/debt-ladder.md` — the nightly runner's prompts.
 - `skills/humans-refactor/` — Reforge-guided single-section refactor loop.
 
-The nightly PR is reviewed by `/debt-review` (`.claude/skills/debt-review`).
+The nightly PR is reviewed by debt review (`docs/maintenance/debt-review/README.md`).

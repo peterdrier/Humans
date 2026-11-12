@@ -9,7 +9,7 @@ started), sums per-API-call token usage, and prints a markdown table with
 API-equivalent cost: the main thread as `orchestrator`, each subagent transcript
 assigned to the batch whose branch name appears in it.
 
-Adapted from .claude/skills/section-doctor/cost-report.py (phase buckets swapped
+Adapted from docs/maintenance/section-doctor/cost-report.py (phase buckets swapped
 for batch grouping). Exits 0 with "Cost: unmeasured (...)" on any discovery
 failure — never fail the run.
 """

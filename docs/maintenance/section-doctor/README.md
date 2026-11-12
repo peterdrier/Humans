@@ -1,9 +1,3 @@
----
-name: section-doctor
-description: "Daily per-section review that drives one section toward its smallest clear form: picks the section, inventories it, strikes a ranked list, opens one PR with a Needs-Peter queue. Use for the morning run, 'doctor <section>', 'run section doctor', or 'resume'."
-argument-hint: "[unattended] [resume] [--section=<Name>] [--budget=2.5h] [--mutation]"
----
-
 # Section Doctor
 
 Design record: `docs/superpowers/specs/2026-08-17-section-doctor-design.md`.
@@ -129,7 +123,7 @@ prices into the row above it.
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel)
 TS=$(date -u +%Y-%m-%dT%H%M%SZ)          # the run's identity: branch, run dir, run file
-RUNDIR=$(python .claude/skills/section-doctor/doctor.py rundir --ts $TS)
+RUNDIR=$(python docs/maintenance/section-doctor/doctor.py rundir --ts $TS)
 git fetch origin main
 if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then   # ephemeral container: no worktree
   git checkout -b section-doctor/$TS origin/main; WORKTREE=$REPO_ROOT
@@ -137,7 +131,7 @@ else
   git worktree add $REPO_ROOT/.claude/worktrees/section-doctor-$TS -b section-doctor/$TS origin/main
   WORKTREE=$REPO_ROOT/.claude/worktrees/section-doctor-$TS    # EnterWorktree; everything runs inside
 fi
-python .claude/skills/section-doctor/doctor.py mark phase1 worktree
+python docs/maintenance/section-doctor/doctor.py mark phase1 worktree
 ```
 
 Scope is frozen at the branch point; never reconcile against `origin/main` mid-run. Locally, scope
@@ -150,7 +144,7 @@ or a quoted heredoc. Environment caveats are dated per-session lines in the run 
 
 ```bash
 gh pr list --repo peterdrier/Humans --state open --limit 200 --json number,headRefName,title > "$RUNDIR/prs.json"
-python .claude/skills/section-doctor/select-section.py --prs "$RUNDIR/prs.json" | tee "$RUNDIR/selection.txt"
+python docs/maintenance/section-doctor/select-section.py --prs "$RUNDIR/prs.json" | tee "$RUNDIR/selection.txt"
 exit "${PIPESTATUS[0]}"
 ```
 
@@ -432,7 +426,7 @@ test run, `doctor.py push`, and the PR against `peterdrier/Humans` `main`:
   forecast from `$RUNDIR/selection.txt` (omitted under `--section`); assessment summary;
   worked/skipped bullets; `## Needs Peter`, numbered, citing findings by number, answerable in a
   word or two. The PR body is the authoritative queue while the PR is open.
-- Cost: `python .claude/skills/section-doctor/cost-report.py`, posted as one PR comment right
+- Cost: `python docs/maintenance/section-doctor/cost-report.py`, posted as one PR comment right
   after creation (`gh pr comment --body-file`, or the MCP comment tool), never into the body or the
   run file, never compared to another run. On failure it prints `Cost: unmeasured (<error>)`;
   post that line all the same.
