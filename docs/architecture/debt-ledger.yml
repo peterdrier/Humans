@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 110
+next_id: 111
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -161,6 +161,10 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-11-05
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-11-12
+    id: CENTRAL-110
+    what: "Humans.Governance's Section.cs declares the access-matrix entries 'Board Dashboard' (dashboard, audit log) and 'Admin Tools' (configuration status, sync settings, email outbox, background jobs, all humans list, role assignments, legal documents). None of those features is Governance's; each row belongs to the section or shell that owns the feature. Found by the Governance section-doctor run."
+    review: panel
   - added: 2026-11-06
     id: CENTRAL-109
     what: "memory/architecture/person-search.md shows a PersonSearchFields.ManageAll member that no longer exists (git grep -n ManageAll finds only that atom and an old run file). Found by the Users section-doctor run."
