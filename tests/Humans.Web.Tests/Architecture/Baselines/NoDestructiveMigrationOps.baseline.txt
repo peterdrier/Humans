@@ -362,3 +362,290 @@ src/Sections/Humans.Users/Data/Migrations/20261107081416_DropUserEmailsLegacyGoo
 # Down() caveat: EF re-adds the column as jsonb NOT NULL DEFAULT '', which Postgres rejects, so a
 # rollback re-adds it by hand (accepted shape, peterdrier/Humans#1379).
 src/Sections/Humans.Camps/Data/Migrations/20261107081446_DropCampSettingsOpenSeasons.cs:DropColumn(name=OpenSeasons,table=camp_settings)#1
+
+# AuditLog: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_audit_log on audit_log
+src/Sections/Humans.AuditLog/Data/Migrations/20261112195835_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_audit_log,table=audit_log)#1
+
+# Budget: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   FK_ticketing_projections_budget_groups_BudgetGroupId on ticketing_projections
+#   PK_ticketing_projections on ticketing_projections
+src/Sections/Humans.Budget/Data/Migrations/20261112195757_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_ticketing_projections_budget_groups_BudgetGroupId,table=ticketing_projections)#1
+src/Sections/Humans.Budget/Data/Migrations/20261112195757_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_ticketing_projections,table=ticketing_projections)#1
+
+# CityPlanning: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_camp_polygon_histories on camp_polygon_histories
+#   PK_camp_polygons on camp_polygons
+#   PK_city_planning_settings on city_planning_settings
+src/Sections/Humans.CityPlanning/Data/Migrations/20261112195800_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_camp_polygon_histories,table=camp_polygon_histories)#1
+src/Sections/Humans.CityPlanning/Data/Migrations/20261112195800_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_camp_polygons,table=camp_polygons)#1
+src/Sections/Humans.CityPlanning/Data/Migrations/20261112195800_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_city_planning_settings,table=city_planning_settings)#1
+
+# Consent: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   FK_consent_records_document_versions_DocumentVersionId on consent_records
+#   FK_document_versions_legal_documents_LegalDocumentId on document_versions
+#   PK_document_versions on document_versions
+#   PK_legal_documents on legal_documents
+src/Sections/Humans.Consent/Data/Migrations/20261112195803_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_consent_records_document_versions_DocumentVersionId,table=consent_records)#1
+src/Sections/Humans.Consent/Data/Migrations/20261112195803_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_document_versions_legal_documents_LegalDocumentId,table=document_versions)#1
+src/Sections/Humans.Consent/Data/Migrations/20261112195803_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_document_versions,table=document_versions)#1
+src/Sections/Humans.Consent/Data/Migrations/20261112195803_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_legal_documents,table=legal_documents)#1
+
+# Expenses: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_holded_expense_outbox_events on holded_expense_outbox_events
+src/Sections/Humans.Expenses/Data/Migrations/20261112195809_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_holded_expense_outbox_events,table=holded_expense_outbox_events)#1
+
+# Finance: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_holded_category_map on holded_category_map
+#   PK_holded_creditor_contacts on holded_creditor_contacts
+#   PK_holded_doc_sync_state on holded_doc_sync_state
+#   PK_holded_expense_docs on holded_expense_docs
+#   PK_holded_managed_accounts on holded_managed_accounts
+#   PK_sepa_payout_files on sepa_payout_files
+#   PK_sepa_payout_transfers on sepa_payout_transfers
+src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_holded_category_map,table=holded_category_map)#1
+src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_holded_creditor_contacts,table=holded_creditor_contacts)#1
+src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_holded_doc_sync_state,table=holded_doc_sync_state)#1
+src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_holded_expense_docs,table=holded_expense_docs)#1
+src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_holded_managed_accounts,table=holded_managed_accounts)#1
+src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_sepa_payout_files,table=sepa_payout_files)#1
+src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_sepa_payout_transfers,table=sepa_payout_transfers)#1
+
+# GoogleIntegration: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_google_sync_log on google_sync_log
+#   PK_sync_service_settings on sync_service_settings
+src/Sections/Humans.GoogleIntegration/Data/Migrations/20261112195811_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_google_sync_log,table=google_sync_log)#1
+src/Sections/Humans.GoogleIntegration/Data/Migrations/20261112195811_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_sync_service_settings,table=sync_service_settings)#1
+
+# Governance: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   FK_application_state_history_applications_ApplicationId on application_state_history
+#   FK_assembly_ballot_history_assembly_ballots_BallotId on assembly_ballot_history
+#   FK_assembly_ballots_assembly_vote_roster_RosterId on assembly_ballots
+#   FK_assembly_ballots_assembly_votes_VoteId on assembly_ballots
+#   FK_assembly_vote_options_assembly_votes_VoteId on assembly_vote_options
+#   FK_assembly_vote_peeks_assembly_votes_VoteId on assembly_vote_peeks
+#   FK_assembly_vote_roster_assembly_votes_VoteId on assembly_vote_roster
+#   FK_board_votes_applications_ApplicationId on board_votes
+#   PK_application_state_history on application_state_history
+#   PK_applications on applications
+#   PK_assembly_ballot_history on assembly_ballot_history
+#   PK_assembly_ballots on assembly_ballots
+#   PK_assembly_vote_options on assembly_vote_options
+#   PK_assembly_vote_peeks on assembly_vote_peeks
+#   PK_assembly_vote_roster on assembly_vote_roster
+#   PK_assembly_votes on assembly_votes
+#   PK_board_votes on board_votes
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_application_state_history_applications_ApplicationId,table=application_state_history)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_assembly_ballot_history_assembly_ballots_BallotId,table=assembly_ballot_history)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_assembly_ballots_assembly_vote_roster_RosterId,table=assembly_ballots)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_assembly_ballots_assembly_votes_VoteId,table=assembly_ballots)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_assembly_vote_options_assembly_votes_VoteId,table=assembly_vote_options)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_assembly_vote_peeks_assembly_votes_VoteId,table=assembly_vote_peeks)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_assembly_vote_roster_assembly_votes_VoteId,table=assembly_vote_roster)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_board_votes_applications_ApplicationId,table=board_votes)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_application_state_history,table=application_state_history)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_applications,table=applications)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_assembly_ballot_history,table=assembly_ballot_history)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_assembly_ballots,table=assembly_ballots)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_assembly_vote_options,table=assembly_vote_options)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_assembly_vote_peeks,table=assembly_vote_peeks)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_assembly_vote_roster,table=assembly_vote_roster)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_assembly_votes,table=assembly_votes)#1
+src/Sections/Humans.Governance/Data/Migrations/20261112195814_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_board_votes,table=board_votes)#1
+
+# Pleo: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_pleo_balance on pleo_balance
+src/Sections/Humans.Pleo/Data/Migrations/20261112195837_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_pleo_balance,table=pleo_balance)#1
+
+# Preapprovals: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   FK_pre_grants_pre_programs_ProgramId on pre_grants
+#   FK_pre_program_managers_pre_programs_ProgramId on pre_program_managers
+#   FK_pre_reminders_sent_pre_grants_GrantId on pre_reminders_sent
+#   PK_pre_grants on pre_grants
+#   PK_pre_program_managers on pre_program_managers
+#   PK_pre_programs on pre_programs
+#   PK_pre_reminders_sent on pre_reminders_sent
+src/Sections/Humans.Preapprovals/Data/Migrations/20261112195817_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_pre_grants_pre_programs_ProgramId,table=pre_grants)#1
+src/Sections/Humans.Preapprovals/Data/Migrations/20261112195817_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_pre_program_managers_pre_programs_ProgramId,table=pre_program_managers)#1
+src/Sections/Humans.Preapprovals/Data/Migrations/20261112195817_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_pre_reminders_sent_pre_grants_GrantId,table=pre_reminders_sent)#1
+src/Sections/Humans.Preapprovals/Data/Migrations/20261112195817_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_pre_grants,table=pre_grants)#1
+src/Sections/Humans.Preapprovals/Data/Migrations/20261112195817_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_pre_program_managers,table=pre_program_managers)#1
+src/Sections/Humans.Preapprovals/Data/Migrations/20261112195817_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_pre_programs,table=pre_programs)#1
+src/Sections/Humans.Preapprovals/Data/Migrations/20261112195817_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_pre_reminders_sent,table=pre_reminders_sent)#1
+
+# Settings: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_settings_event on settings_event
+#   PK_system_settings on system_settings
+src/Sections/Humans.Settings/Data/Migrations/20261112195820_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_settings_event,table=settings_event)#1
+src/Sections/Humans.Settings/Data/Migrations/20261112195820_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_system_settings,table=system_settings)#1
+
+# Shifts: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   FK_general_availability_event_settings_EventSettingsId on general_availability
+#   FK_rota_shift_tags_rotas_RotaId on rota_shift_tags
+#   FK_rota_shift_tags_shift_tags_ShiftTagId on rota_shift_tags
+#   FK_rotas_event_settings_EventSettingsId on rotas
+#   FK_shifts_rotas_RotaId on shifts
+#   FK_volunteer_build_statuses_event_settings_EventSettingsId on volunteer_build_statuses
+#   FK_volunteer_tag_preferences_shift_tags_ShiftTagId on volunteer_tag_preferences
+#   PK_event_settings on event_settings
+#   PK_general_availability on general_availability
+#   PK_rota_shift_tags on rota_shift_tags
+#   PK_rotas on rotas
+#   PK_volunteer_build_statuses on volunteer_build_statuses
+#   PK_volunteer_event_profiles on volunteer_event_profiles
+#   PK_volunteer_tag_preferences on volunteer_tag_preferences
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_general_availability_event_settings_EventSettingsId,table=general_availability)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_rota_shift_tags_rotas_RotaId,table=rota_shift_tags)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_rota_shift_tags_shift_tags_ShiftTagId,table=rota_shift_tags)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_rotas_event_settings_EventSettingsId,table=rotas)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_shifts_rotas_RotaId,table=shifts)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_volunteer_build_statuses_event_settings_EventSettingsId,table=volunteer_build_statuses)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_volunteer_tag_preferences_shift_tags_ShiftTagId,table=volunteer_tag_preferences)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_event_settings,table=event_settings)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_general_availability,table=general_availability)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_rota_shift_tags,table=rota_shift_tags)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_rotas,table=rotas)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_volunteer_build_statuses,table=volunteer_build_statuses)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_volunteer_event_profiles,table=volunteer_event_profiles)#1
+src/Sections/Humans.Shifts/Data/Migrations/20261112195823_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_volunteer_tag_preferences,table=volunteer_tag_preferences)#1
+
+# Tickets: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_ticket_sync_state on ticket_sync_state
+#   PK_tickets_event_participations on tickets_event_participations
+src/Sections/Humans.Tickets/Data/Migrations/20261112195829_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_ticket_sync_state,table=ticket_sync_state)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261112195829_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_tickets_event_participations,table=tickets_event_participations)#1
+
+# Users: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   FK_account_merge_requests_users_ResolvedByUserId on account_merge_requests
+#   FK_account_merge_requests_users_SourceUserId on account_merge_requests
+#   FK_account_merge_requests_users_TargetUserId on account_merge_requests
+#   FK_contact_fields_profiles_ProfileId on contact_fields
+#   FK_profile_languages_profiles_ProfileId on profile_languages
+#   FK_profiles_users_UserId on profiles
+#   FK_volunteer_history_entries_profiles_ProfileId on volunteer_history_entries
+#   PK_account_merge_requests on account_merge_requests
+#   PK_contact_fields on contact_fields
+#   PK_profile_languages on profile_languages
+#   PK_profiles on profiles
+#   PK_volunteer_history_entries on volunteer_history_entries
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_account_merge_requests_users_ResolvedByUserId,table=account_merge_requests)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_account_merge_requests_users_SourceUserId,table=account_merge_requests)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_account_merge_requests_users_TargetUserId,table=account_merge_requests)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_contact_fields_profiles_ProfileId,table=contact_fields)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_profile_languages_profiles_ProfileId,table=profile_languages)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_profiles_users_UserId,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropForeignKey(name=FK_volunteer_history_entries_profiles_ProfileId,table=volunteer_history_entries)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_account_merge_requests,table=account_merge_requests)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_contact_fields,table=contact_fields)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_profile_languages,table=profile_languages)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_profiles,table=profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_volunteer_history_entries,table=volunteer_history_entries)#1
+
+# Workgroups: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
+# primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then
+# AddPrimaryKey/AddForeignKey on the same columns, principal and onDelete. No column, table or row
+# is removed; RenameTable keeps the data.
+# Evidence: the same migration re-adds every dropped key (ef-migration-reviewer, op-by-op pairing
+# of Up/Down in #2391); preview deploy 2391.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
+# Keys (name on table):
+#   PK_workgroups_settings on workgroups_settings
+src/Sections/Humans.Workgroups/Data/Migrations/20261112195832_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_workgroups_settings,table=workgroups_settings)#1
