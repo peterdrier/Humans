@@ -47,13 +47,11 @@
     <!-- ICantinaService (Contracts/ folder): the missing-dietary banner.
          Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
     <ProjectReference Include="..\Humans.Cantina\Humans.Cantina.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Humans.Shifts
       type (they may name Humans.Shifts.Contracts, which is
       below this project).
         Camps         — ICampService: camp labels and rosters for the summary-by-camp.
-        Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.
         Auth          — the coordinator/manager authorization surface.
         EarlyEntry    — VolunteerTrackingExportService implements IEarlyEntryProvider;
                         the section project, since EarlyEntry's contracts are a folder.
