@@ -436,6 +436,8 @@ public class ExpenseReportServiceHoldedOutboxTests
             report.Lines[0].Id, holdedDocId, Now, Arg.Any<CancellationToken>());
         await _repo.Received(1).MarkOutboxProcessedAsync(
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+        // The member's creditor ledger is re-pulled, so the new payable shows before the nightly sync.
+        await _holdedService.Received(1).SyncAccountLedgerAsync(40000050, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

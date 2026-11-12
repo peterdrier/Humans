@@ -671,13 +671,8 @@ public class SepaBankBookingTests
 
         await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
-        Received.InOrder(() =>
-        {
-            _ = _write.PayPurchaseDocumentAsync("oldest", 12m, "treasury-1", LineDate, Tag,
-                Arg.Any<CancellationToken>());
-            _ = _write.PayPurchaseDocumentAsync("middle", 18m, "treasury-1", LineDate, Tag,
-                Arg.Any<CancellationToken>());
-        });
+        // Once before posting (to judge), once after (so the member stops reading as owed).
+        await _holded.Received(2).SyncAccountLedgerAsync(Account, Arg.Any<CancellationToken>());
         await _write.DidNotReceive().PayPurchaseDocumentAsync(
             "newest", Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<string>(),
             Arg.Any<CancellationToken>());
@@ -698,6 +693,18 @@ public class SepaBankBookingTests
             default!, default, default, default, default!);
         await _write.Received(1).PostJournalEntryAsync(
             LineDate, Account, 57200001, 30m, Tag, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booking_ResyncsTheCreditorLedger_AfterPosting()
+    {
+        SeedTransfer(30m);
+        SeedOpenDocs(Doc("d1", 30m, 1));
+
+        (await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid())).Succeeded.Should().BeTrue();
+
+        // Once before posting (to judge), once after (so the member stops reading as owed).
+        await _holded.Received(2).SyncAccountLedgerAsync(Account, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

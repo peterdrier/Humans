@@ -941,6 +941,22 @@ internal sealed class SepaBankBooking(
                 + $"marked booked; {NextStep()}.");
         }
 
+        // Booking released the "in a payout file" gate, so the mirror is now all that says what the member is owed:
+        // without this the account reads owed and payable until the nightly ledger sync.
+        try
+        {
+            if (!await holded.SyncAccountLedgerAsync(transfer.SupplierAccountNum, CancellationToken.None))
+                logger.LogWarning(
+                    "SEPA transfer {TransferId} is booked, but a ledger sync was running: creditor account {Account} shows its old balance until the next sync.",
+                    transferId, transfer.SupplierAccountNum);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(ex,
+                "SEPA transfer {TransferId} is booked, but creditor account {Account} could not be re-synced: it shows its old balance until the next sync.",
+                transferId, transfer.SupplierAccountNum);
+        }
+
         // Name the PAYMENTS, never the documents: a purchase ref makes Holded mint a new payment for the whole line.
         // An unconfirmed payment or a journal entry cannot be named, so Holded may read the line `partial`.
         var docs = PaymentRefs(refs);

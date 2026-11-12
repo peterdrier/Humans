@@ -114,6 +114,25 @@ internal sealed class ExpenseHoldedPublisher(
 
         await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
 
+        // So the member's owed balance and the report's ledger match show the new documents now, not after the nightly
+        // sync. Best-effort: the push is done, and the nightly sync catches up whatever this misses.
+        if (supplierAccountNum is { } accountNum)
+        {
+            try
+            {
+                if (!await holded.SyncAccountLedgerAsync(accountNum, CancellationToken.None))
+                    logger.LogWarning(
+                        "Expense report {ReportId} is pushed, but a ledger sync was running: creditor account {Account} shows its old balance until the next sync.",
+                        report.Id, accountNum);
+            }
+            catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+            {
+                logger.LogWarning(ex,
+                    "Expense report {ReportId} is pushed, but creditor account {Account} could not be re-synced: it shows its old balance until the next sync.",
+                    report.Id, accountNum);
+            }
+        }
+
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseHoldedPushed,
             AuditEntityTypes.Report, report.Id,
