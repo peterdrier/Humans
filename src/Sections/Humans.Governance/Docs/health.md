@@ -237,8 +237,6 @@ Settled decisions. Do not re-litigate.
   `IRoleAssignmentService`. It is not: injecting them directly closes a DI cycle through
   `ISystemTeamSync` and trips `ValidateOnBuild`. Same for the lazy `IConsentService`
   resolve through `IServiceProvider` inside `MembershipCalculator`.
-- `TermRenewalReminderJob` is `public` in a section assembly (HUM0034 makes that an error for
-  everything else) because Shell names the concrete type when it schedules it.
 - `Humans.Governance` references whole sections, `Humans.Consent` and `Humans.Onboarding`,
   for their resource markers alone. Both are acyclic and disclosed in the csproj.
 - The Contracts leaf exists as a separate project, not a folder, because Base-resident consumers

@@ -55,7 +55,7 @@ Sources: Ley Orgánica 1/2002 reguladora del Derecho de Asociación; the associa
 
 Admin-only for the first votes because they are live tests; once the process has run once or twice, opening moves to `BoardOrAdmin` (a policy constant change, no redesign).
 
-- Opening snapshots the **roster**: every current Asociado and every active Board role holder (official, one row per person, Board members are de facto Asociados whatever their profile tier says) plus the indicative audience (Colaboradores and/or all active Volunteers) as of that instant. The roster is the legal record of who was entitled to vote and the denominator for turnout. It never changes afterwards; members approved, expired, suspended or erased during the vote keep or lose nothing on the roster, only their ability to log in.
+- Opening snapshots the **roster**: every current Asociado and every active Board role holder (official, one row per person, Board members are de facto Asociados whatever their recorded membership tier says) plus the indicative audience (Colaboradores and/or all active Volunteers) as of that instant. The roster is the legal record of who was entitled to vote and the denominator for turnout. It never changes afterwards; members approved, expired, suspended or erased during the vote keep or lose nothing on the roster, only their ability to log in.
 - Each roster member is emailed in their preferred language with the title, the closing time, whether their ballot is official or indicative, and a link to the ballot page. Category `System` (operational, never marketing).
 - Audit entry `AssemblyVoteOpened` with roster counts.
 
@@ -114,7 +114,7 @@ The hourly sweep reports recipient delivery failures after attempting the remain
 
 ## Why not Surveys
 
-Daniel's Surveys section already carries an **Asociado vote** mode with ranked-choice counting (nobodies-collective/Humans#1151, #1157, #1585). It was the right tool for the 2027 event-date decision and stays. It is the wrong base for binding association votes, for reasons that are structural, not cosmetic:
+Daniel's Surveys section already carries an **Asociado vote** mode with ranked-choice counting (nobodies-collective/Humans#1151, nobodies-collective/Humans#1157, peterdrier/Humans#1585). It was the right tool for the 2027 event-date decision and stays. It is the wrong base for binding association votes, for reasons that are structural, not cosmetic:
 
 1. **Opposite privacy contract.** Surveys' load-bearing invariant is *unlinkability*: Asociado ballots store no `UserId`, no completion timestamp, and "individual response submissions cannot be audit-logged". Binding votes require the reverse: every ballot attributable, every change audited, the member able to see their own history, and the Board able to inspect ballots after close. You cannot hold "never link" and "always link and audit" as invariants of one section; whichever branch is the exception becomes an untested path through the other's privacy guarantees.
 2. **Changeable ballots.** Surveys' CompletionTracked tier cannot resume or amend because there is no link to resume from. Statutes-compliant remote voting during a live assembly needs "change your vote until the chair closes it".
@@ -169,14 +169,14 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyVoteRoster
 
-**Table:** `assembly_vote_roster`. Written once at open, never updated except by erasure.
+**Table:** `assembly_vote_roster`. Membership written once at open; afterwards only the `NotifiedAt` / `ReminderSentAt` delivery stamps change (`ReminderSentAt` is cleared on extension), plus the erasure tombstone.
 
 | Property | Type | Notes |
 |---|---|---|
 | Id | Guid | PK |
 | VoteId | Guid | FK |
 | UserId | Guid? | bare FK → User, no nav; null after Art. 17 erasure |
-| Tier | MembershipTier | profile tier at open |
+| Tier | MembershipTier | tier at open, from active approved terms (Board role holders recorded as Asociado, Volunteers-team members as Volunteer) |
 | IsBoardMember | bool | held the Board role at open |
 | IsOfficial | bool | Asociado or Board member at open |
 | NotifiedAt | Instant? | open email queued |
@@ -288,7 +288,7 @@ Navigation: a `ISectionNav` entry ("Votes", `Nav_*` SharedResource key, visible 
 | Admin | everything Board can, plus open, stop, extend, cancel, peek | see the tally before close without an audit trail |
 | Automation (lapse job) | close a lapsed vote and audit it, send the T-24h reminder and audit the batch | anything else |
 
-Board members are de facto Asociados: they are on the official roster whether or not their profile tier says Asociado, with one ballot like anyone else.
+Board members are de facto Asociados: they are on the official roster whether or not their recorded membership tier says Asociado, with one ballot like anyone else.
 
 ## Invariants
 
@@ -377,4 +377,4 @@ Anything not listed is the implementer's call within this spec.
 
 - [Board voting](board-voting.md), [Membership tiers](membership-tiers.md), [Governance invariants](../Governance.md)
 - Surveys secret-ballot mode: [ranked-choice-voting.md](../../../Humans.Surveys/Docs/features/ranked-choice-voting.md)
-- nobodies-collective/Humans#86 (original ask), nobodies-collective/Humans#1151 and #1157 (Surveys RCV), peterdrier/Humans#1585 (unlinkable Asociado ballots)
+- nobodies-collective/Humans#86 (original ask), nobodies-collective/Humans#1151 and nobodies-collective/Humans#1157 (Surveys RCV), peterdrier/Humans#1585 (unlinkable Asociado ballots)

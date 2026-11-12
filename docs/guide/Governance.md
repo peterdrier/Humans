@@ -123,7 +123,7 @@ The system does not count votes for you — this is a consensus model. The Final
 
 On the detail page, fill in the **meeting date** (required) and a **decision note**, then choose **Approve** or **Reject**. The decision note is required for rejections and optional for approvals.
 
-On **Approve**, the applicant's tier is updated on their profile, their term expiry is set to December 31 of the current cycle's odd year, and they are added to the Colaboradors or Asociados system team. An approval email and an in-app notification are sent. On **Reject**, the applicant stays at their current tier and receives a rejection email plus an in-app notification with the decision note.
+On **Approve**, the applicant's membership tier is recorded, their term expiry is set to December 31 of the current cycle's odd year, and they are added to the Colaboradors or Asociados system team. An approval email and an in-app notification are sent. On **Reject**, the applicant stays at their current tier and receives a rejection email plus an in-app notification with the decision note.
 
 Either way, finalization immediately **deletes all individual Board vote records** for that application. Only the collective decision — final status, meeting date, and decision note — is retained, per GDPR data minimization. Finalization is not reversible.
 
