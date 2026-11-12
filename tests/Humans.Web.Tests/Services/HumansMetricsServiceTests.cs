@@ -18,8 +18,8 @@ public class HumansMetricsServiceTests
     {
         var humans = Enum.GetValues<UserState>().Append(UserState.Active)
             .Select(state => UserInfo.Create(
-                new User { Id = Guid.NewGuid(), Email = "human@example.com", State = state }, [], [],
-                UserFixtures.Profile(burnerName: "Human", firstName: "First", lastName: "Last")))
+                new User { Id = Guid.NewGuid(), Email = "human@example.com", State = state, BurnerName = "Human", FirstName = "First", LastName = "Last" }, [], [],
+                UserFixtures.Profile()))
             .ToList();
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(humans);

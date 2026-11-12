@@ -30,7 +30,7 @@ internal sealed class EarlyEntryRosterController(
         foreach (var r in ordered)
         {
             var info = await FindUserInfoByIdAsync(r.UserId, ct);
-            var legalName = info?.Profile?.FullName ?? string.Empty;
+            var legalName = info?.FullName ?? string.Empty;
             vms.Add(new EarlyEntryRosterRowVm(r.UserId, legalName, r.EarliestEntryDate, r.Sources, r.HasMultiple));
         }
 

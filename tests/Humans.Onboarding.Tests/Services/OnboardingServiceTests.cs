@@ -180,7 +180,7 @@ public sealed class OnboardingServiceTests
         _consentWrite.RecordRejectionAsync(userId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Member"))
+            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Member")
                 with
             { PreferredLanguage = "es" });
 
@@ -205,7 +205,7 @@ public sealed class OnboardingServiceTests
         _consentWrite.RecordRejectionAsync(userId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Member"))
+            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Member")
                 with
             { PreferredLanguage = "es" });
 
@@ -256,7 +256,7 @@ public sealed class OnboardingServiceTests
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(
-                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Rejected One"))));
+                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Rejected One")));
 
         var result = await BuildSut()
             .RejectSignupAsync(userId, reviewerId, reason, Xunit.TestContext.Current.CancellationToken);
@@ -310,13 +310,10 @@ public sealed class OnboardingServiceTests
         var userId = Guid.NewGuid();
         var requestedId = archivedId ? Guid.NewGuid() : userId;
         var profile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "First",
-            lastName: "Last",
             createdAt: Instant.FromUnixTimeSeconds(1));
 
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, profile)));
+            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, profile, burnerName: "Burner", firstName: "First", lastName: "Last")));
         _consentService.HasAllRequiredConsentsForTeamAsync(
                 userId,
                 SystemTeamIds.Volunteers,
@@ -338,7 +335,7 @@ public sealed class OnboardingServiceTests
         bool approved, bool deletionPending, bool expectCancel)
     {
         var userId = Guid.NewGuid();
-        var info = UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Burner"))
+        var info = UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Burner")
             with
         { DeletionRequestedAt = deletionPending ? Instant.FromUnixTimeSeconds(1) : null };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -358,8 +355,7 @@ public sealed class OnboardingServiceTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(
-                burnerName: "Burner", firstName: "First", lastName: "Last", createdAt: Instant.FromUnixTimeSeconds(1)))));
+            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(createdAt: Instant.FromUnixTimeSeconds(1)), burnerName: "Burner", firstName: "First", lastName: "Last")));
         _consentService.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
         _consentWrite.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>())

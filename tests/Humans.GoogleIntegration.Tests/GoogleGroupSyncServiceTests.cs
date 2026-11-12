@@ -1042,7 +1042,6 @@ public sealed class GoogleGroupSyncServiceTests
         foreach (var p in profiles)
         {
             _profilesByUserId[p.UserId] = UserFixtures.Profile(
-                burnerName: p.BurnerName ?? string.Empty,
                 createdAt: _clock.GetCurrentInstant());
 
             // Mirror CopyNamesToUser: a Profile save keeps User.BurnerName in sync, and the

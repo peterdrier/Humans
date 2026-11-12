@@ -197,7 +197,7 @@ internal sealed class ExpensesController(
             // Reaching this page needs View, which only the submitter, the first reviewer and finance admins
             // hold, so the viewer may see who submitted. The IBAN stays behind CanSeePayee.
             var submitterInfo = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
-            var profileLegalName = $"{submitterInfo?.Profile?.FirstName} {submitterInfo?.Profile?.LastName}".Trim();
+            var profileLegalName = submitterInfo?.FullName ?? string.Empty;
 
             var model = new ExpenseDetailViewModel
             {

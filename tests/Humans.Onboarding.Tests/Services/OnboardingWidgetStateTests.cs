@@ -34,22 +34,22 @@ public class OnboardingWidgetStateTests
         new(_users, _shiftView, _burnSettings, _consents, _session);
 
     private static UserInfo NonStubUserInfo(Guid userId) =>
-        WrapInUserInfo(userId, UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "First",
-            lastName: "Last"));
+        WrapInUserInfo(userId, UserFixtures.Profile(), burnerName: "Burner", firstName: "First", lastName: "Last");
 
     private static UserInfo StubUserInfo(Guid userId) =>
         WrapInUserInfo(userId, UserFixtures.Profile());
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo? profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo? profile, string burnerName = "", string firstName = "", string lastName = "") => UserInfo.Create(
         user: new User
         {
             Id = userId,
             DisplayName = "Test",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            State = UserFixtures.StateFor(profile),
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
+            State = UserFixtures.StateFor(profile, burnerName, firstName, lastName),
         },
         userEmails: [],
         externalLogins: [],

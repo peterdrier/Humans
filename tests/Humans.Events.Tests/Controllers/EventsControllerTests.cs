@@ -1215,14 +1215,13 @@ public class EventsControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName)
     {
-        var profile = UserFixtures.Profile(
-            burnerName: burnerName,
-            firstName: "Test",
-            lastName: "User");
+        var profile = UserFixtures.Profile();
         var user = new User
         {
             Id = userId,
-            DisplayName = "Test User",
+            BurnerName = burnerName,
+            FirstName = "Test",
+            LastName = "User",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

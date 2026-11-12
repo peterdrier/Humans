@@ -376,8 +376,8 @@ public class CantinaRosterServiceTests
         };
     }
 
-    /// <summary>Builds a human: burner name on the profile, dietary as Cantina's own record.</summary>
-    private static (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet) Human(
+    /// <summary>Builds a human: burner name on the user, dietary as Cantina's own record.</summary>
+    private static (Guid UserId, ProfileInfo Profile, string BurnerName, DietaryProfileInfo? Diet) Human(
         Guid userId,
         string burner,
         string? dietary = null,
@@ -386,7 +386,7 @@ public class CantinaRosterServiceTests
         IReadOnlyList<string>? intolerances = null,
         string? intoleranceOther = null) => (
         userId,
-        UserFixtures.Profile(burnerName: burner),
+        UserFixtures.Profile(), burner,
         dietary is null && allergies is null && intolerances is null
             ? null
             : new DietaryProfileInfo(userId, dietary, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther));
@@ -708,8 +708,7 @@ public class CantinaRosterServiceTests
         var userId = Guid.NewGuid();
         SetupDay(WeekStartOffset + 0, userId);
         // Profile carries medical; the cantina DTO/JSON must still omit it.
-        SetupHumans((userId, UserFixtures.Profile(
-            burnerName: "Sensitive"),
+        SetupHumans((userId, UserFixtures.Profile(), "Sensitive",
             new DietaryProfileInfo(userId, "Omnivore", [], null, [], null)));
 
         var result = Xunit.Assert.IsType<WeeklyRosterDto>(await _service.GetWeeklyRosterAsync(WeekStartOffset, ct: Xunit.TestContext.Current.CancellationToken));
@@ -858,13 +857,13 @@ public class CantinaRosterServiceTests
     /// Stubs <see cref="IUserService.GetUserInfosAsync"/> to return a
     /// <c>UserInfo</c> per profile; names only, dietary is stubbed on <c>ICantinaService</c>.
     /// </summary>
-    private void SetupHumans(params (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet)[] profiles)
+    private void SetupHumans(params (Guid UserId, ProfileInfo Profile, string BurnerName, DietaryProfileInfo? Diet)[] profiles)
     {
         var dict = profiles.ToDictionary(
             p => p.UserId,
             p => UserInfo.Create(
                 // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-                user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
+                user: new User { Id = p.UserId, BurnerName = p.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
                 externalLogins: [],
                 profile: p.Profile));

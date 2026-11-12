@@ -59,7 +59,8 @@ internal sealed class ConsentReviewQueueService(
 
     public async Task<ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
     {
-        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var profile = info?.Profile;
 
         if (profile is null)
             return new ReviewDetailData(null, 0, 0, null);
@@ -73,8 +74,8 @@ internal sealed class ConsentReviewQueueService(
 
         return new ReviewDetailData(
             new ReviewProfileDetail(
-                profile.FirstName,
-                profile.LastName,
+                info!.FirstName,
+                info.LastName,
                 profile.City,
                 profile.CountryCode,
                 tier,

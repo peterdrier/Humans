@@ -100,7 +100,7 @@ internal sealed class ConsentReader(
             ChangesSummary: version.ChangesSummary,
             HasAlreadyConsented: consentRecord is not null,
             ConsentedAt: consentRecord?.ConsentedAt,
-            UserFullName: info?.Profile?.FullName);
+            UserFullName: info?.Profile is null ? null : info.FullName);
     }
 
     internal async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)

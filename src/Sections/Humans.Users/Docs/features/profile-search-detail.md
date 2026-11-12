@@ -67,7 +67,7 @@ For each result row, the controller calls `GetSharedDetailAsync(userId, viewerUs
    The obsolete `ContactFieldType.Email` is skipped (`UserEmail` is the canonical email source).
 3. `null` — no second line is rendered.
 
-Legal name (`Profile.FirstName + Profile.LastName`) is deliberately **not** part of the priority order, even for self or board viewers — a settled decision. Board members see legal name via the profile card on click-through.
+Legal name (`UserInfo.FullName`) is deliberately **not** part of the priority order, even for self or board viewers — a settled decision. Board members see legal name via the profile card on click-through.
 
 ## Privacy Gating
 

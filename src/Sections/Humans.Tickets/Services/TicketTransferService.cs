@@ -76,7 +76,6 @@ internal sealed class TicketTransferService(
         // Receiver must have a legal name; same message as not-found so the reason doesn't leak.
         if (!receiverInfo.HasRequiredNameFields)
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");
-        var receiverProfile = receiverInfo.Profile!;
 
         // Block duplicate pendings; ToDictionary elsewhere would crash on them.
         var existingPending = (await transferRepo.GetBySenderAsync(senderUserId, ct))
@@ -85,7 +84,7 @@ internal sealed class TicketTransferService(
         if (existingPending)
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_AlreadyPending");
 
-        var receiverLegalName = receiverProfile.FullName;
+        var receiverLegalName = receiverInfo.FullName;
         var receiverEmail = receiverInfo.Email;
         if (string.IsNullOrWhiteSpace(receiverEmail))
             return TicketTransferMutationResult.Refused("Tickets_TicketTransfer_InvalidSelection");

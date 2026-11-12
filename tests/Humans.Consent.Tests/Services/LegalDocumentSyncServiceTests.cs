@@ -1081,16 +1081,17 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     private void StubActiveUser()
     {
         var profile = UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
             createdAt: Clock.GetCurrentInstant());
         var user = UserInfo.Create(
             user: new User
             {
                 Id = Guid.NewGuid(),
-                DisplayName = profile.BurnerName,
+                BurnerName = "Burner",
+                FirstName = "First",
+                LastName = "Last",
                 PreferredLanguage = "en",
                 CreatedAt = profile.CreatedAt,
-                State = UserFixtures.StateFor(profile),
+                State = UserState.Active,
             },
             userEmails: [],
             externalLogins: [],
