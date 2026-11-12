@@ -1,10 +1,6 @@
 using Humans.Shifts.Contracts;
 namespace Humans.Shifts.Services;
 
-/// <summary>
-/// Carries writes, so it keeps an honest name rather than a <c>Read</c> suffix. Users' profile edit page is the
-/// consumer.
-/// </summary>
 internal interface IShiftVolunteerProfiles
 {
     /// <summary>Null when the user has none.</summary>

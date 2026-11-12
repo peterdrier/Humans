@@ -3,8 +3,7 @@ using NodaTime;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Implemented by the Shifts entity and by <see cref="BurnSettingsInfo"/>, so calendar helpers take either without
-/// the entity leaking across the boundary.
+/// Implemented by the Shifts entity and by <see cref="BurnSettingsInfo"/>, so calendar helpers take either.
 /// </summary>
 internal interface IBurnSettingsInfo
 {

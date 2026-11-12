@@ -3,8 +3,7 @@ using NodaTime;
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Shared by both cohort heatmaps and the profile build strip, which can render any state in one row. On the leaf
-/// because <see cref="VolunteerBuildStripDto"/> is built from it.
+/// Shared by both cohort heatmaps and the profile build strip, which can render any state in one row.
 /// </summary>
 internal enum VolunteerCellState
 {

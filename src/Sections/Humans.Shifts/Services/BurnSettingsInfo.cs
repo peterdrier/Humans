@@ -6,7 +6,7 @@ namespace Humans.Shifts.Services;
 
 /// <summary>
 /// The calendar from Settings plus Shifts' own build sub-periods and browsing switch. "Burn" names an event cycle, to keep clear of the
-/// unrelated Events section. Shifts' tuning knobs stay internal.
+/// unrelated Events section.
 /// </summary>
 internal sealed record BurnSettingsInfo(
     Guid Id,
