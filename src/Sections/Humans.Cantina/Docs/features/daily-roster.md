@@ -35,7 +35,7 @@ Access is role-based only. There is no team-membership-based path.
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 
-`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. The roster introduces no retention policy of its own; the answers live in Cantina's `cantina_dietary_profiles` (see [Dietary Nudge](dietary-nudge.md)).
+`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data the roster aggregates for cantina coordinators. The roster introduces no retention policy of its own; the answers live in Cantina's `cantina_dietary_profiles` (see [Dietary Nudge](dietary-nudge.md)).
 
 The free-text allergy and intolerance entries (health data) stay hidden on the weekly and daily pages until the viewer presses the audited reveal (`CantinaHealthDetailsRevealed`, one row naming the actor and the week or day, never one per member shown); preference roll-ups and allergy / intolerance counts always show.
 

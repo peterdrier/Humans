@@ -22,10 +22,4 @@ public interface IAuditViewerService : IApplicationService
         IReadOnlyList<string>? actions,
         int limit,
         CancellationToken ct = default);
-
-    /// <summary>Ids of <paramref name="entityType"/> rows that have at least one of <paramref name="actions"/>.</summary>
-    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditActionDefinition> actions,
-        CancellationToken ct = default);
 }

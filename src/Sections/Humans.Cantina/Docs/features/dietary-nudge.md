@@ -102,7 +102,7 @@ Dietary answers are read only from `cantina_dietary_profiles`. Users' legacy foo
 
 ## Cross-section dependencies
 
-- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`), volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
+- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`). Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
 - **Users** → Cantina: `ICantinaService.GetDietaryProfileAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain.
 
 ## Negative access rules

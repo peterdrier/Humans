@@ -20,10 +20,6 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 {
     [BindRequired]
     public bool IsShiftBrowsingOpen { get; set; }
-    [BindRequired]
-    public int? GlobalVolunteerCap { get; set; }
-    [BindRequired]
-    public int ReminderLeadTimeHours { get; set; } = 24;
 
     [BindRequired]
     public int FirstCrewStartOffset { get; set; } = -25;
@@ -513,7 +509,6 @@ internal sealed class VolunteerSearchResult
     public List<string> Skills { get; set; } = [];
     public List<string> Quirks { get; set; } = [];
     public List<string> Languages { get; set; } = [];
-    public string? DietaryPreference { get; set; }
     public int BookedShiftCount { get; set; }
     public bool HasOverlap { get; set; }
     public bool IsInPool { get; set; }

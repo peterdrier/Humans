@@ -121,7 +121,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **Settings:** `ISettingsService.GetActiveEventSettingsAsync` (active event/burn).
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.
 - **Gdpr / Users:** implements `IUserDataContributor` (Base) and `IUserMerge` (Users contract) in `DietaryProfileService`.
-- **Inbound:** Shifts (banner, volunteer search, admin badges) and Users (medical prompt) read `ICantinaService`.
+- **Inbound:** Shifts (banner) and Users (medical prompt) read `ICantinaService`.
 
 ## Architecture
 

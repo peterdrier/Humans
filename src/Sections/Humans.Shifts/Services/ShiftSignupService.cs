@@ -1080,31 +1080,6 @@ internal sealed class ShiftSignupService(
         }
     }
 
-    public async Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default)
-    {
-        var signups = await repo.GetAllForOrphanScanAsync(ct);
-
-        var calendarsById = new Dictionary<Guid, BurnSettingsInfo>();
-        foreach (var id in signups.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
-        {
-            var calendar = await calendarResolver.GetAsync(id, ct);
-            if (calendar is not null) calendarsById[id] = calendar;
-        }
-
-        return signups
-            .Where(s => calendarsById.ContainsKey(s.Shift.Rota.EventSettingsId))
-            .Select(s => new OrphanSignupSnapshot(
-                s.Id,
-                s.UserId,
-                s.Shift.Rota.Name,
-                calendarsById[s.Shift.Rota.EventSettingsId].GateOpeningDate.PlusDays(s.Shift.DayOffset),
-                s.Status,
-                s.CreatedAt,
-                s.ReviewedByUserId,
-                s.EnrolledByUserId,
-                s.SignupBlockId)).ToList();
-    }
-
     public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
         Guid userId,
         Guid shiftId,
