@@ -62,6 +62,8 @@ internal sealed class Service(
         }
         finally
         {
+            // Not left to the listener loop: with no event rows yet it never runs.
+            cache.Clear();
             // Every event's derived dates move, including if the write committed before its acknowledgement failed.
             foreach (var id in eventIds)
                 NotifyChangeListeners(id);

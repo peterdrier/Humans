@@ -47,6 +47,19 @@ public sealed class ServiceTests
         Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
     [HumansFact]
+    public async Task TimeZoneSave_WithNoEvents_StillClearsTheSnapshot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        (await _cache.GetTimeZoneIdAsync(ct)).Should().Be("Europe/Madrid");
+
+        _repository.GetValueAsync(SettingKeys.EventTimeZoneId, Arg.Any<CancellationToken>()).Returns("Atlantic/Canary");
+        await _cache.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct);
+
+        (await _cache.GetTimeZoneIdAsync(ct)).Should().Be("Atlantic/Canary");
+    }
+
+    [HumansFact]
     public async Task EventReads_AreServedFromMemoryUntilAWriteClearsThem()
     {
         var ct = TestContext.Current.CancellationToken;
