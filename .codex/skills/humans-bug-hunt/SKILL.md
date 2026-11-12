@@ -16,7 +16,7 @@ Run recurring autonomous bug-hunt passes in this repository.
 
 ## Non-Negotiable Limits
 
-- Section-owned persistence and generated migrations are allowed when the fix needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
+- Section-owned persistence and generated migrations are allowed when the fix needs them. Follow [`no-hand-edited-migrations`](../../../memory/architecture/no-hand-edited-migrations.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 - Do not modify `.csproj` files, `src/Humans.Web/Program.cs`, or DI registration unless the user explicitly overrides the rule.
 - Do not delete files, remove controller actions, or remove public members as part of the hunt.
 - Focus on real defects only. Skip refactors, style cleanup, performance work, and feature ideas.

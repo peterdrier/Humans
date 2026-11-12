@@ -121,7 +121,7 @@ the PR introduces it; cite the atom or doc named.
   stated elsewhere, or is wrong (`comments-earn-their-place`).
 - **Copying debt.** New code modelled on something carrying
   `[Grandfathered]`, `[Obsolete]` or a baseline entry — debt is never
-  precedent. A new `[DontFix]` from anyone but Peter (`dontfix-attribute`).
+  precedent. A new `[DontFix]` from anyone but Peter (`no-analyzer-suppressions`).
 
 ## Locked decisions
 

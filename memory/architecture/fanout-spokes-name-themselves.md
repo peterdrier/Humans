@@ -1,6 +1,6 @@
 ---
 name: A fanout hub never enumerates its spokes
-description: When adding/changing a fanout interface (contributor pattern, hub iterates IEnumerable<IContract>), never add a central constant, enum, or type list naming which sections implement it — spokes declare their own facts, tests derive the roster by reflection.
+description: "Adding or changing a fanout interface (hub iterates `IEnumerable<IContract>`): no central constant, enum or type list of participating sections; spokes declare themselves."
 ---
 
 A **fanout** is one interface in a section's contracts (`Contracts/` folder or `.Contracts` leaf)

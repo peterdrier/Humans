@@ -1,6 +1,6 @@
 ---
 name: Authorization — policy-attribute, never raw role strings
-description: Controllers use `[Authorize(Policy = ...)]` with a section's `<Section>Policies.Read` (Board reads) on the class and `.Manage` on every write; views use `authorize-policy`. Never `[Authorize(Roles=...)]` or `User.IsInRole` chains.
+description: "Controllers use `[Authorize(Policy = ...)]`: `<Section>Policies.Read` on the class, `.Manage` on every write; views use `authorize-policy`. Never `[Authorize(Roles=...)]` or `User.IsInRole`."
 ---
 
 Authorization in Humans is **policy-based, end to end** — controllers, views, and view components all speak the same policy vocabulary. ASP.NET Core's `IAuthorizationService` is the single evaluator.

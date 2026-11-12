@@ -1,25 +1,26 @@
 ---
-name: No suppressions of Humans architecture analyzers
-description: "HARD RULE. Never suppress a HUM* analyzer via `#pragma`, `[SuppressMessage]`, or `// ReSharper disable` — fix the structural mismatch. Sole exception: Peter-applied `[DontFix]`."
+name: Analyzer exceptions: fix it, or tag the declaration
+description: "HARD RULE. An architecture analyzer (HUM*) fires: fix the structure, never suppress or allowlist it. Existing debt gets `[Grandfathered]`; `[DontFix]` is Peter-only."
 ---
 
-There is no path under which *silencing* a Humans architecture analyzer (HUM* diagnostic id) with `#pragma` / `[SuppressMessage]` / ReSharper-disable is the right answer. Always fix the underlying architectural mistake — or, for a deliberate **permanent** exception, use a Peter-applied `[DontFix]` (see below).
+When a Humans architecture analyzer fires, fix the architecture: move the service to its section, break the DI cycle, add the missing interface member. If the structure is genuinely incoherent at that point, report it; the PR does not ship until it is fixed.
 
-`#pragma warning disable HUM<NNNN>`, `[SuppressMessage("HUM<NNNN>", ...)]`, and `// ReSharper disable [once] <RuleId>` for HUM rules are forbidden as a way to silence a custom architecture analyzer finding. The same prohibition applies to ReSharper findings that flag real architectural drift.
+**Never silence one.** No `#pragma warning disable HUM…`, no `[SuppressMessage]`, no `// ReSharper disable`, no `.editorconfig` severity override, no baseline `.txt` entry, no allowlist of names inside the analyzer. No memory atom that rationalises a specific suppression either. Language-level warnings (CS0414 and the like) follow normal C# practice.
 
-## The one exception — `[DontFix]`
+**The two attributes** (both in `Humans.Base.Attributes`), which live on the violating declaration itself:
 
-A Peter-applied `[DontFix("reason", since)]` on a class is the **single** sanctioned way to make a Humans architecture analyzer permanently accept a violation. It differs from the banned forms above in three ways: it is **owner-applied only** — agents never add it; if a rule seems wrong, an agent reports it rather than tagging the class — it is **greppable per class** (not a scattered pragma or a centralised allowlist), and it records **intent** (this is correct here and will not be fixed). The analyzer emits nothing for a `[DontFix]`-tagged class, unlike `[Grandfathered]`, which stays a Warning because it *will* be fixed. See [[dontfix-attribute]]. This exception does **not** reopen `#pragma` / `[SuppressMessage]` / `// ReSharper disable` — those remain forbidden.
+| | `[Grandfathered(ruleId, justification, since, issueRef)]` | `[DontFix("reason", since)]` |
+|---|---|---|
+| Means | debt, will be fixed | correct here, never touch |
+| Who adds it | agents may, to record debt that already exists | **Peter only.** If a rule seems wrong, report it |
+| Analyzer output | Error becomes Warning | nothing |
+| Debt runs | work it down | skip it |
 
-**Why:** The analyzers exist to enforce design rules. Silencing one without fixing the underlying violation defeats the analyzer's purpose. Memory atoms that "explain" a suppression encode the avoidance rather than the fix and are equally forbidden. (Documenting the sanctioned `[DontFix]` mechanism itself — see [[dontfix-attribute]] — is not such an atom; what's forbidden is an atom that rationalises a specific avoided fix.)
+- Fixing a grandfathered declaration: remove the attribute in the same commit.
+- A new `[Grandfathered]` is for making existing debt visible, never for a violation you are introducing.
+- `WarningsNotAsErrors` in `Directory.Build.props` lists rule ids that have grandfathers. That is rule-level config and fine; a list keyed by class or file is what's banned.
+- Writing an analyzer: read `[Grandfathered]`/`[DontFix]` with the matching rule id off the symbol; emit Warning for the first, nothing for the second.
 
-**How to apply:** When an analyzer fires, the answer is to fix the architecture, not to disable the analyzer. Concrete examples of "fix the architecture":
+**Why:** centralised exception lists conflict on every merge and hide the debt away from the code. A suppression defeats the rule it silences.
 
-- The interface's `[SurfaceBudget]` is too low for the legitimate surface area — raise the budget (the rule against raising is about papering over creep, not refusing to size a budget correctly for a real refactor).
-- A service is in the wrong namespace/folder for its section — move it (e.g. `memory/architecture/team-resources-google-integration-section.md`).
-- An interface does not expose a method it structurally should — add it (within budget).
-- A service has a DI cycle because two services mutually depend — break the cycle by extracting the shared logic to a third type, or by inverting the dependency.
-
-If after exhausting structural fixes the architecture is genuinely incoherent at that point, that is a real finding — report it back with the specific architectural incoherence named, and **the PR does not ship** until the architecture is fixed. The suppression is never the answer.
-
-**Scope:** Applies to all `HUM*` analyzer ids (e.g. HUM0001 through the current HUM* set, plus the named HUM_* ids like HUM_USER_DISPLAYNAME, HUM_PROFILE_ISSUSPENDED, etc.) and to ReSharper findings that flag architectural drift. Does not apply to language-level warnings (e.g. CS0414) that genuinely cannot be addressed structurally — those follow normal C# practice.
+**Related:** [`surface-budget-owner-applied`](../code/surface-budget-owner-applied.md) · [`brief-before-retiring-guardrails`](brief-before-retiring-guardrails.md) · [`our-rules-are-movable`](our-rules-are-movable.md)

@@ -16,7 +16,7 @@ Run recurring autonomous tech-debt reduction passes in this repository.
 
 ## Non-Negotiable Limits
 
-- Section-owned persistence and generated migrations are allowed when the task needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
+- Section-owned persistence and generated migrations are allowed when the task needs them. Follow [`no-hand-edited-migrations`](../../../memory/architecture/no-hand-edited-migrations.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 - Preserve JSON serialization contracts unless the task authorizes changing them.
 - Removing or reshaping public members follows [debt-sweep-standing-policy](../../../memory/process/debt-sweep-standing-policy.md): dead members and pre-approved in-place shapes go; deleting files or controller actions still needs Peter.
 - Prefer structural simplification and consolidation over broad rewrites.

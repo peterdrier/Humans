@@ -1,6 +1,6 @@
 ---
 name: A destructive migration needs a written description of what it removes and Peter's approval for that case
-description: HARD RULE. Dropping DB columns/tables/indexes or persisted files needs a written description, evidence of no in-use readers, and Peter's per-case approval — code deletions are exempt. A replaced object whose registered data migration reports `done` on production has standing approval.
+description: "HARD RULE. Dropping a DB column, table, index or persisted file needs a written case, evidence of no readers, and Peter's per-case approval. Code deletions are exempt."
 ---
 
 > **Filename is historical.** The slug still says `no-drops-until-prod-verified` because ~20 files link

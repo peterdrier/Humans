@@ -85,5 +85,5 @@ When you add a service method that reaches a new outbound write, mark it —
 the analyzer is only as complete as the markers.
 
 **Related:** [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md) ·
-[`analyzer-exceptions-via-attributes`](analyzer-exceptions-via-attributes.md) ·
+[`no-analyzer-suppressions`](../process/no-analyzer-suppressions.md) ·
 [`vendor-connectors-own-sections`](vendor-connectors-own-sections.md)

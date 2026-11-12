@@ -1,6 +1,6 @@
 ---
 name: section-doctor
-description: "Daily per-section review cycle driving a section toward the smallest, clearest form that still does everything it does today. Selects its section live each run (scripted), inventories every file, derives the target shape before any scan, works parallel reading threads into one ranked list and strikes it on a 2-3h budget. One PR per run; each run's report and Needs-Peter queue live in its own docs/health/runs/ file, and a purpose/surface/debt review is posted as a PR comment; 'resume' applies Peter's answers later. Use for the morning section-improvement run, 'doctor <section>', or 'run section doctor'."
+description: "Daily per-section review that drives one section toward its smallest clear form: picks the section, inventories it, strikes a ranked list, opens one PR with a Needs-Peter queue. Use for the morning run, 'doctor <section>', 'run section doctor', or 'resume'."
 argument-hint: "[unattended] [resume] [--section=<Name>] [--budget=2.5h] [--mutation]"
 ---
 

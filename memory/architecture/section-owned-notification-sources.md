@@ -1,6 +1,6 @@
 ---
 name: Section-owned notification sources
-description: A section that emits a notification declares the source itself (a `NotificationSourceDefinition` static field on its `<Section>NotificationSources` contributor); never add anything to Humans.Notifications or borrow another section's source.
+description: "A section that emits a notification declares the source itself on its `<Section>NotificationSources` contributor; never add to Humans.Notifications or borrow another section's source."
 ---
 
 A notification source belongs to the section that emits it. Declare it as a `public static readonly NotificationSourceDefinition` field on the section's `<Section>NotificationSources : NotificationSourceContributor` class, register that class with `services.AddSingleton<INotificationSourceContributor, <Section>NotificationSources>()` in `Section.Register`, and pass the field to `SendAsync` / `SendToRoleAsync` / `ResolveBySource*`.

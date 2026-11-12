@@ -5,7 +5,7 @@ description: "Long-term direction: `IUserService` is the one-stop-shop for every
 
 `IUserService` owns the canonical `UserInfo` read-model AND the write paths for every field on it. When you need to read or write anything inside `UserInfo`'s scope — user identity columns, user-email rows, external logins, event participations, profile fields, contact fields, profile languages, volunteer history, communication preferences — prefer `IUserService`.
 
-**Why:** `UserInfo` is already the cached canonical "everything-about-a-person" projection ([UserInfo.cs](../../src/Humans.Application/UserInfo.cs), issue #703). Today the *read* side is consolidated there; the *write* side is still scattered across `IProfileService`, `IUserEmailService`, `ICommunicationPreferenceService`, etc. Long-term, those drain into `IUserService` so there is one service surface for "data about a person." Two services for two halves of the same projection is the tech debt; one-stop-shop is the destination.
+**Why:** `UserInfo` is already the cached canonical "everything-about-a-person" projection ([UserInfo.cs](../../src/Humans.Base/Users/UserInfo.cs), issue #703). Today the *read* side is consolidated there; the *write* side is still scattered across `IProfileService`, `IUserEmailService`, `ICommunicationPreferenceService`, etc. Long-term, those drain into `IUserService` so there is one service surface for "data about a person." Two services for two halves of the same projection is the tech debt; one-stop-shop is the destination.
 
 **How to apply:**
 

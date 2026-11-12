@@ -1,53 +1,18 @@
 ---
 name: no-rm-rf
-description: HARD RULE. `rm -rf` / `Remove-Item -Recurse -Force` is never allowed, no exceptions. Worktree removal is git-only + `rmdir` on the empty husk; build output uses `dotnet clean`.
+description: HARD RULE. Deleting a directory, clearing bin/obj, or removing a worktree: never `rm -rf` or any recursive forced delete. `dotnet clean` for build output, `git worktree remove` for worktrees.
 ---
 
-**HARD RULE.** `rm -rf` — and equivalents, including PowerShell `Remove-Item -Recurse -Force` on repo paths — is never allowed for anything. No exceptions, no fallbacks. A prior Claude Code session destroyed files with `rm -rf`, which is why a PreToolUse hook hard-blocks the pattern on this machine; beyond the block, reaching for a recursive/forced delete is the wrong tool regardless.
+`rm -rf` and every equivalent (`Remove-Item -Recurse -Force`, `rd /s /q`, `robocopy /MIR`, `find … -exec rm`) is never allowed, for anything. A hook blocks it; a past session destroyed files this way.
 
-**Why:** recursive, forced deletion has no undo. Every legitimate reason to reach for it already has a purpose-built, safer tool: git for worktrees, `dotnet clean` for build artifacts. A "let me just force-delete this stuck thing" instinct is exactly the failure mode this rule exists to stop.
+**Build output.** Stale metadata after a rebase or branch switch (`CS0009 … PE image doesn't contain managed metadata`, corrupt `obj`): `dotnet clean Humans.slnx -v quiet`, then rebuild. Not in a cloud container, where `dotnet clean` removes the prebuilt binaries: see [`phantom-razor-errors`](phantom-razor-errors.md).
 
-**How to apply:**
-- Stale build artifacts (bin/obj corruption, PE-image metadata errors) are cleared with `dotnet clean Humans.slnx -v quiet`, never a recursive delete. Detail: [[dotnet-clean-not-rm]].
-- The hook scans the whole Bash command string, so prose containing the literal text "rm -rf" (e.g. in a commit message) can trip it too — pass such text via a file (`git commit -F`) instead of inline.
-- Worktree cleanup is git-only — see below.
+**Worktrees.** The only command is `git worktree remove <path> [--force]`.
 
-## Worktree removal — git only, then `rmdir` the empty husk
+- It fails, for any reason: run `ls <path>`. Completely empty (no hidden entries): `rmdir <path>`, non-recursive. Anything left: paste the literal git error to Peter and stop.
+- Never follow up with a recursive delete, killing processes that may hold handles, `dotnet build-server shutdown` to release locks, retrying from another cwd, or sleep-and-retry. "In use" means something Peter cares about is touching the path.
+- `git worktree prune`, `git branch -d` and deleting the remote branch can still proceed.
 
-**The only allowed command:**
+The hook scans the whole command string, so the literal text in a commit message trips it: pass such text with `git commit -F`.
 
-```bash
-git worktree remove <path> [--force]
-```
-
-**If it succeeds:** done.
-
-**If it fails — for ANY reason** (locked, "not a working tree", "files in use", permission denied, anything):
-
-1. Check whether git nonetheless emptied the directory's contents (it often does when only the final parent-dir removal fails). Run `ls <path>` (or `Get-ChildItem -Force <path>`).
-2. **Empty parent → rmdir:** If the directory is **completely empty** (no files, no subdirs, no hidden entries), `rmdir <path>` (non-recursive — no `/s`, no `-r`, no `-Force`, no `Remove-Item -Recurse`). This is the normal second step, not an exception: `rmdir` cannot delete non-empty directories and cannot circumvent file locks, so it never substitutes for an `rm -rf`.
-3. **Anything else:** tell Peter the exact git error and stop. Do not retry, do not wait, do not investigate the lock, do not propose follow-up actions.
-
-**Forbidden follow-ups (still — even after a partial success):**
-
-- `Remove-Item -Recurse -Force` (PowerShell) — recursive deletion of a directory tree.
-- `rm -rf` (bash) — same.
-- Any recursive/force-flagged delete via any command (`robocopy /MIR`, `cmd /c rd /s /q`, etc.).
-- Killing processes that might hold handles (dotnet, MSBuild nodes, IDEs, anything).
-- `dotnet build-server shutdown` to release MSBuild handles.
-- Retrying the delete from a different cwd.
-- Any "let me try X first to release the lock then retry the delete" pattern.
-- Sleeping/waiting and retrying `git worktree remove` — surface the failure instead.
-
-**Why (worktree case):** Past breach (2026-05-02): `git worktree remove` failed with "Permission denied"; instead of stopping, the agent escalated through PowerShell `Remove-Item -Recurse -Force`, then killed MSBuild daemons, then retried twice more from different cwds. Three of those four follow-ups are exactly the rm-rf pattern wearing different syntax. The "in use" error is a signal that something Peter cares about (an IDE, a build, another session) is touching the path; the right response is to surface it, not to escalate.
-
-The `rmdir` step exists because `git worktree remove` often empties the contents but fails on the empty parent. `rmdir` (non-recursive) on a verified-empty dir doesn't open the rm-rf door — it lacks recursion and can't bypass locks; if the dir still held anything in use, `rmdir` would fail too.
-
-**How to apply (worktree case):**
-
-- The rule fires the moment `git worktree remove` returns non-zero.
-- Before reporting, check if the contents are gone (`ls <path>`). That single check decides between the rmdir step and the stop-and-report path.
-- If the dir has any contents whatsoever — files, subdirs, hidden files — STOP. Don't escalate.
-- Reporting format: paste the literal git error and stop. Don't propose follow-up actions.
-- Git-level cleanup (registration via `git worktree prune`, local branch via `git branch -d`, remote branch via `git push origin --delete`) can still proceed without the filesystem dir being gone — none of that depends on filesystem deletion.
-- Applies to ANY worktree under `.claude/worktrees/<name>` or anywhere else, regardless of whether the branch was just merged, abandoned, or never had a remote.
+**Why:** recursive forced deletion has no undo. On 2026-05-02 an agent answered a "Permission denied" by escalating through PowerShell, killing MSBuild and retrying from other directories.

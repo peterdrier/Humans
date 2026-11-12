@@ -27,7 +27,7 @@ Good candidates usually look like:
 
 ## Persistence Changes
 
-Section-owned persistence and generated migrations may be part of a justified improvement. Follow [section-migrations-in-maintenance](../../../../memory/process/section-migrations-in-maintenance.md), including existing EF review and approval requirements. Substantial architecture transitions are separately scoped tasks with dedicated PRs. Preserve serialization contracts unless the task authorizes changing them.
+Section-owned persistence and generated migrations may be part of a justified improvement. Follow [`no-hand-edited-migrations`](../../../../memory/architecture/no-hand-edited-migrations.md), including existing EF review and approval requirements. Substantial architecture transitions are separately scoped tasks with dedicated PRs. Preserve serialization contracts unless the task authorizes changing them.
 
 ## Tech-Debt Priorities
 

@@ -1,6 +1,6 @@
 ---
 name: debt-review
-description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>). Judges every commit GOOD / REPAIR / REVERT, triages the bot review findings through /fix, lands one round-1 commit, files follow-up issues, then stewards the PR itself with a 3-round ceiling. Also opens at most one flagged ⚠️ DESTRUCTIVE drop PR a night for a retirement already on production; Peter merges it. Run by the 08:00 UTC cloud routine; also '/debt-review', '/debt-review 1789'."
+description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>): judge each commit, triage bot findings through /fix, file follow-ups. Run by the 08:00 UTC cloud routine; also '/debt-review [PR]'."
 argument-hint: "(none — today's codex/daily-debt PR) | 1789"
 ---
 

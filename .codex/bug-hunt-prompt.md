@@ -54,7 +54,7 @@ If you're unsure whether something is "unused" — it isn't. Skip it.
 
 ## PERSISTENCE AND EXCLUSION ZONES
 
-Section-owned persistence, entity-model, configuration, and generated migrations are allowed when the fix needs them. Read and follow [section-migrations-in-maintenance](../memory/process/section-migrations-in-maintenance.md), including migration tooling, review, and existing approval requirements. Substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
+Section-owned persistence, entity-model, configuration, and generated migrations are allowed when the fix needs them. Read and follow [`no-hand-edited-migrations`](../memory/architecture/no-hand-edited-migrations.md), including migration tooling, review, and existing approval requirements. Substantial architecture transitions get explicitly scoped tasks and dedicated PRs.
 
 Do not modify:
 - **Entity properties that appear unused** — they are accessed via reflection
@@ -121,7 +121,7 @@ Resx files are XML. HTML inside `<value>` elements must be XML-escaped (`<p>` �
 
 **How to find them:** search every `*.resx` for `<value>` entries starting with a raw tag (`<value><[a-z]`); compare escaped-entry counts between the English file and each locale; email bodies (`Email_*_Body`) carry the most HTML.
 
-**How to fix:** escape `<`/`>` inside the `<value>` content only, keep it on one line matching the English template, and re-check the counts. See `memory/code/resx-structure-aware-edits.md`.
+**How to fix:** escape `<`/`>` inside the `<value>` content only, keep it on one line matching the English template, and re-check the counts. See `memory/code/resx-edits.md`.
 
 ## Phase 2: Missing .Include() on EF Core Queries *(6+ historical fixes)*
 
@@ -175,7 +175,7 @@ When a POST action fails validation and re-displays the form, all user input mus
 
 Verify a suspected default/sentinel bug against the owning section's entity configuration and repository writes. Reproduce the incorrect persisted value before changing anything; a default value alone does not establish a bug.
 
-Fix the cause in that section's model/configuration or write path. Generate a section-owned migration if the model change requires one, following `memory/process/section-migrations-in-maintenance.md`. Do not work around an excluded configuration file or substitute a service comment for a needed fix.
+Fix the cause in that section's model/configuration or write path. Generate a section-owned migration if the model change requires one, following `memory/architecture/no-hand-edited-migrations.md`. Do not work around an excluded configuration file or substitute a service comment for a needed fix.
 
 ## Phase 6: Authorization Gaps *(8+ historical fixes, partially addressed)*
 
@@ -313,7 +313,7 @@ Configuration bugs in environment handling, database connections, and external s
 
 Before every fix, verify:
 
-1. **Am I touching an EF entity, migration, or DbContext configuration?** → Allowed only in the owning section under `memory/process/section-migrations-in-maintenance.md`: generate the migration, inspect the snapshot diff, pass the review gate. Never hand-edit shipped migrations; storage drops and required columns still need Peter's per-case approval — skip those.
+1. **Am I touching an EF entity, migration, or DbContext configuration?** → Allowed only in the owning section under `memory/architecture/no-hand-edited-migrations.md`: generate the migration, inspect the snapshot diff, pass the review gate. Never hand-edit shipped migrations; storage drops and required columns still need Peter's per-case approval — skip those.
 2. **Am I removing a property that looks unused?** → STOP, it's likely used via reflection.
 3. **Am I removing a method, file, or controller action?** → STOP, that's not your job.
 4. **Am I changing authorization level?** → Verify the new level matches the original intent exactly.

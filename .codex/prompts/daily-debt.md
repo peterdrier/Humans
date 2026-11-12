@@ -127,7 +127,7 @@ These come straight from this repo's own rules
   Auto-generated only, never hand-edited — see
   `memory/architecture/no-hand-edited-migrations.md`. If your branch's
   migrations end up interleaved with what's already on `main` mid-chain, stop
-  — `memory/architecture/migration-regen-after-rebase.md` — do not attempt
+  — `memory/architecture/no-hand-edited-migrations.md` — do not attempt
   surgery.
 - **Update `Docs/<Section>.md`** for any section whose behavior you changed,
   in the same commit — a behavior change without an invariant-doc update is

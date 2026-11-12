@@ -29,7 +29,7 @@ Start with controllers, services, and views. Prefer application tests when addin
 
 ## Persistence Changes
 
-Section-owned persistence and generated migrations may be part of a bug fix. Follow [section-migrations-in-maintenance](../../../../memory/process/section-migrations-in-maintenance.md), including existing EF review and approval requirements. Substantial architecture transitions are separately scoped tasks with dedicated PRs. Preserve JSON serialization contracts unless the task authorizes changing them.
+Section-owned persistence and generated migrations may be part of a bug fix. Follow [`no-hand-edited-migrations`](../../../../memory/architecture/no-hand-edited-migrations.md), including existing EF review and approval requirements. Substantial architecture transitions are separately scoped tasks with dedicated PRs. Preserve JSON serialization contracts unless the task authorizes changing them.
 
 ## High-Yield Search Patterns
 

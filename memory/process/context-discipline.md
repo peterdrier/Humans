@@ -63,4 +63,4 @@ If a multi-file change is held entirely in working-tree limbo until the end, eve
 
 `cd` **does** persist between `Bash` calls in the main loop — `cd` once into the worktree and run everything unprefixed from there. It does **not** persist reliably inside a subagent, where the working directory resets between calls and can land in a sibling agent's worktree (anthropics/claude-code#87953); a subagent must use absolute paths for every read, edit and build, and must not run git at all.
 
-**Never `git -C <path>`.** It defeats every `Bash(git …:*)` permission-allowlist prefix and forces a classifier round-trip on each call.
+Never `git -C <path>`: [[never-use-git-dash-c]].

@@ -21,4 +21,4 @@ Consequence: an agent that goes idle mid-work before checkpointing loses its wor
 
 **How to apply:** in every worker prompt, make the first action after `git checkout -b` an empty commit — `git commit --allow-empty -m "wip: start #<N>"` — so the worktree is never in a commitless state. Reinforce checkpoint-early-and-often for the same reason. If a worktree is already reaped, spawn a fresh agent with the salvaged findings rather than resuming the old one into the main checkout.
 
-Related: [[always-use-worktree]], [[worktrees-off-origin-main]], [[no-rm-rf]].
+Related: [[always-use-worktree]], [[always-use-worktree]], [[no-rm-rf]].

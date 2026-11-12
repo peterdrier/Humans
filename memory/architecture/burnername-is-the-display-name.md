@@ -36,4 +36,4 @@ Exception — audit-log historical snapshots (`RejectedByName`, `ResolvedByName`
 
 - SEPA pain.001 payee name + Holded purchase document contact name (`ExpenseReportService.SubmitAsync` payee snapshot). The bank rejects transfers when the payee name doesn't match the bank-account holder's legal identity, so these records must use `Profile.FirstName + " " + Profile.LastName` (the legal-name fields), falling back to `User.DisplayName` only when the legal-name fields are blank. Never use `BurnerName` for financial records — a pseudonym does not match the bank account.
 
-**Related:** `src/Humans.Application/FullProfile.cs` (resolution); `src/Humans.Web/ViewComponents/HumanViewComponent.cs` (rendering path); `src/Humans.Application/Services/Profiles/PersonSearchMatcher.cs:126` (search uses BurnerName as primary name match).
+**Related:** `src/Humans.Base/ViewComponents/HumanViewComponent.cs` (rendering path); `src/Sections/Humans.Users/Services/PersonSearchMatcher.cs` (search matches on BurnerName first).

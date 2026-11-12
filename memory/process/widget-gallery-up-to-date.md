@@ -1,6 +1,6 @@
 ---
 name: A section's widgets are cataloged by the section's own gallery contribution
-description: Adding/removing a public TagHelper, ViewComponent, or shared partial → add or update its card in the owning section's gallery view component (contributed through `ChromeSlots.WidgetGallery`); Debug's own gallery view catalogs Base and Shell widgets only.
+description: "Adding or removing a public TagHelper, ViewComponent or shared partial: update its card in the owning section's widget gallery component (`ChromeSlots.WidgetGallery`)."
 ---
 
 `/Debug/WidgetGallery` is the one place to see every reusable widget rendered against sample data. **The cards live with their owners**: Debug's `Views/WidgetGallery/Index.cshtml` hand-writes cards only for Base and Shell widgets, and every section's cards come from that section's own gallery view component (`<Section>GalleryViewComponent` + `Views/Shared/Components/<Section>Gallery/Default.cshtml`), contributed from its `Section` (`ISectionChrome`) under `ChromeSlots.WidgetGallery`. The page names no section, and Debug references no section for it.

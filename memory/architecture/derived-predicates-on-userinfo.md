@@ -1,6 +1,6 @@
 ---
 name: Derived user/profile predicates live on UserInfo, not ProfileInfo
-description: Derived user predicates (IsActive, IsStub, IsRejected, etc.) go on `UserInfo`, never on `ProfileInfo` or `Profile` — ProfileInfo stays a flat field projection; one that also needs another section's data lives with that section.
+description: "Derived user predicates (IsActive, IsStub, IsRejected) go on `UserInfo`, never `ProfileInfo` or `Profile`; one needing another section's data lives with that section."
 ---
 
 `UserInfo` is the one-stop-shop read model (see [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md)). Every derived predicate about a user — including ones that read off `Profile` fields — lives on `UserInfo`, not on `ProfileInfo`.

@@ -1,6 +1,6 @@
 ---
 name: The section list comes from DI — don't hand-maintain another one
-description: Before hand-writing a list of section names — in code, in a doc, or in a skill's ledger — inject `ISectionCatalog` or glob `src/Sections/Humans.*`. A deliberate subset publishes `ISectionAnnotations` so drift shows.
+description: "Before hand-writing a list of section names in code, a doc or a skill ledger: inject `ISectionCatalog` or glob `src/Sections/Humans.*` instead."
 ---
 
 **Don't hand-maintain a list of section names.** `ISectionCatalog` is a singleton in `Humans.Base.Interfaces`, built by `SectionCatalogBuilder` from the same dependency-graph walk that registers the sections, so it cannot drift from what the app runs. Inject it. It carries, per section, everything derived from the assembly: `IsActive`, `DependsOn`, `Seams`, `DbContexts`, `ServiceInterfaces`, `Repositories`, `HasContracts`, `HasResources`. `TryResolve` canonicalizes casing, which is what you want before building a path, a cache key or a stored column value.

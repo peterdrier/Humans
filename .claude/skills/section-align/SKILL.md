@@ -1,6 +1,6 @@
 ---
 name: section-align
-description: "Three-axis orchestrator: (1) clean section boundaries — naming, routes, views, ViewModels, DB ownership, cross-section access; (2) internal cohesion — no EF in service layer, caching in service only, proper interfaces, reusable ViewComponents, architecture-test coverage; (3) focused tests — grouped under the section, covering invariants/negatives/triggers, pruned of redundancy. Push-and-bot-review loop. Use when a sizable PR landed, a section shows arch drift, or /pr-review returned a non-trivial violation list. Camps is the gold-standard reference."
+description: "Bring one section into line on boundaries (routes, views, DB ownership, cross-section access), internal layering, and focused tests, in a push-and-bot-review loop. Use after a sizable PR lands or when a section shows architecture drift."
 argument-hint: "PR 374 | section EventGuide | section Camps --inventory-only"
 ---
 
@@ -61,7 +61,7 @@ Each section owns far more than `Services/` and `Data/`: `Humans.Events` also ca
 
 Two things the section project does **not** absorb — resolve them separately:
 
-- **The DbContext.** There is no shared `HumansDbContext`. `dotnet ef` commands need `--context <Context> --project $SEC --output-dir Data/Migrations`, with `<Context>` looked up rather than synthesized: `<Section>DbContext` is wrong for `Humans.Consent` (`LegalDbContext`) and `Humans.Events` (`EventGuideDbContext`). The design-time factory beside the context, `Data/<Context>Factory.cs`, is authoritative (CI derives its context list from those files) — see `memory/process/ef-multi-context-commands.md`.
+- **The DbContext.** There is no shared `HumansDbContext`. `dotnet ef` commands need `--context <Context> --project $SEC --output-dir Data/Migrations`, with `<Context>` looked up rather than synthesized: `<Section>DbContext` is wrong for `Humans.Consent` (`LegalDbContext`) and `Humans.Events` (`EventGuideDbContext`). The design-time factory beside the context, `Data/<Context>Factory.cs`, is authoritative (CI derives its context list from those files) — see `memory/architecture/no-hand-edited-migrations.md`.
 - **The invariant doc.** Every section carries it in-project at `$SEC/Docs/<Section>.md`, resolved once as `$DOC` — every later phase that reads or edits the invariant doc must use `$DOC`, never a literal `docs/sections/` path.
 
 ## Boundary-fix protocol
@@ -598,7 +598,7 @@ Axis 1 items:
 - **Inbound cross-section DB access (producer-side)** — ensure our public API satisfies the need. Add the method if missing (budget bump if interface ≥10, add `InterfaceMethodBudgetTests.Budgets` entry). The caller's section becomes a follow-up /section-align target; do not touch their call site in this PR unless trivial (one or two lines).
 - **Outbound cross-section access (consumer-side)** — if the supplier section has the public API, switch to it. If not, document the gap, leave the code, flag their section as follow-up. Never reach into another section's repository or DbContext.
 - **Controller-DI-DbContext** — extract service+repo layer.
-- **Hand-edited migration** — `dotnet ef migrations remove --context <C> --project <P>` + redo the `add` with the full flag set for that context's shape: `--context <C> --project <P> --output-dir <Data/Migrations | Migrations/<Area>>` (per `memory/process/ef-multi-context-commands.md`). Omitting `--output-dir` silently regenerates into the project's default `Migrations/` folder, away from the snapshot — and the `check-ef-output-dir.sh` guard only inspects commands that already carry the flag. Verify snapshot is byte-for-byte EF output.
+- **Hand-edited migration** — `dotnet ef migrations remove --context <C> --project <P>` + redo the `add` with the full flag set for that context's shape: `--context <C> --project <P> --output-dir <Data/Migrations | Migrations/<Area>>` (per `memory/architecture/no-hand-edited-migrations.md`). Omitting `--output-dir` silently regenerates into the project's default `Migrations/` folder, away from the snapshot — and the `check-ef-output-dir.sh` guard only inspects commands that already carry the flag. Verify snapshot is byte-for-byte EF output.
 - **URL aliases / cross-section URL exposure** — remove; surface downstream consumer risk.
 - **Prior review threads** — fix or reply with reasoning via `gh api .../comments/<id>/replies`; never top-level.
 

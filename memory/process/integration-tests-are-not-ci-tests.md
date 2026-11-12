@@ -1,6 +1,6 @@
 ---
 name: "`Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it"
-description: HARD RULE. `Humans.Integration.Tests` is opt-in (`HUMANS_INTEGRATION_TESTS=1`) and never runs in a default `dotnet test` — agents never opt in; never mention, investigate, count, or CI-gate it.
+description: "HARD RULE. `Humans.Integration.Tests` is opt-in (`HUMANS_INTEGRATION_TESTS=1`) and never runs in a default `dotnet test` — agents never opt in unless Peter explicitly asks; never mention, investigate, count, or CI-gate it."
 ---
 
 # `Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it
