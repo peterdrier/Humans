@@ -118,6 +118,11 @@ public class FinanceOverviewServiceTests
         work.ReadyToPayAmount.Should().Be(50m);
         work.AwaitingBooking.Should().Be(1);
         work.Problems.Should().Be(4);
+
+        // The recon already names 40000004's doubled purchase: the account is not counted again.
+        var line = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "d", 10m, new LocalDate(2026, 1, 1), "",
+            ExpenseReconLineStatus.Duplicated, null, 40000004, 1, null, [2], 10m);
+        FinanceOverviewService.BuildWork([], rows, recon with { Lines = [line] }).Problems.Should().Be(3);
     }
 
     [HumansFact]
