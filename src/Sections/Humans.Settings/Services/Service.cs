@@ -11,17 +11,28 @@ internal sealed class Service(
     ISettingsRepository repository,
     IAuditLogService auditLog,
     IEnumerable<IEventSettingsChangeListener> changeListeners,
+    CachingSettingsService cache,
     IClock clock,
     ILogger<Service> logger) : ISettingsWriteService, IEventSettingsSeeding
 {
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
         repository.GetValueAsync(key, cancellationToken);
 
-    public Task SetValueAsync(
+    public async Task SetValueAsync(
         string key,
         string value,
-        CancellationToken cancellationToken = default) =>
-        repository.SetValueAsync(key, value, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await repository.SetValueAsync(key, value, cancellationToken);
+        }
+        finally
+        {
+            if (string.Equals(key, SettingKeys.EventTimeZoneId, StringComparison.Ordinal))
+                cache.Clear();
+        }
+    }
 
     /// <summary>Every row was entered as Europe/Madrid before the timezone became global.</summary>
     private const string DefaultTimeZoneId = "Europe/Madrid";
@@ -260,6 +271,8 @@ internal sealed class Service(
     /// </summary>
     private void NotifyChangeListeners(Guid eventSettingsId)
     {
+        // First: a listener rebuilds by reading the event back.
+        cache.Clear();
         foreach (var listener in changeListeners)
             listener.EventSettingsChanged(eventSettingsId);
     }

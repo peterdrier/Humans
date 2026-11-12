@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
@@ -32,10 +33,37 @@ public sealed class ServiceTests
     {
         _clock.GetCurrentInstant().Returns(Now);
         _repository.GetValueAsync(SettingKeys.EventTimeZoneId, Arg.Any<CancellationToken>()).Returns((string?)null);
+
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ISettingsWriteService>(CachingSettingsService.InnerServiceKey, (_, _) => BuildSut());
+        _cache = new CachingSettingsService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingSettingsService>.Instance);
     }
 
-    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _clock,
+    private readonly CachingSettingsService _cache;
+
+    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _cache, _clock,
         Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+
+    [HumansFact]
+    public async Task EventReads_AreServedFromMemoryUntilAWriteClearsThem()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var first = MakeEntity(Guid.NewGuid());
+        var second = MakeEntity(Guid.NewGuid());
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([first]);
+
+        (await _cache.GetActiveEventSettingsAsync(ct))!.Id.Should().Be(first.Id);
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([second]);
+        (await _cache.GetActiveEventSettingsAsync(ct))!.Id.Should().Be(first.Id, "a read must not reach the repository");
+        await _repository.Received(1).GetAllEventSettingsAsync(Arg.Any<CancellationToken>());
+
+        _repository.DeleteEventSettingsAsync(first.Id, Arg.Any<CancellationToken>()).Returns(1);
+        await _cache.DeleteEventAsync(first.Id, ct);
+
+        (await _cache.GetActiveEventSettingsAsync(ct))!.Id.Should().Be(second.Id, "a write must clear the snapshot");
+    }
 
     private static EventSettings MakeEntity(Guid id, bool isActive = true) => new()
     {
@@ -77,7 +105,7 @@ public sealed class ServiceTests
         var writeOptions = new DbContextOptionsBuilder<SettingsDbContext>(options)
             .AddInterceptors(new LostSettingsSaveAcknowledgement(failure, failedSave)).Options;
         var service = new Service(new Repository(new TestDbContextFactory<SettingsDbContext>(writeOptions)),
-            _auditLog, [_listenerOne, _listenerTwo], _clock,
+            _auditLog, [_listenerOne, _listenerTwo], _cache, _clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
         var draft = MakeDto(next.Id, EventSettingsStatus.Inactive) with
         { GateOpeningDate = next.GateOpeningDate, EventName = "Revised" };
