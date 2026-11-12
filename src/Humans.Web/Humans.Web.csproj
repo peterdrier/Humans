@@ -14,62 +14,13 @@
       contracts leaves Shell had been reaching through it are declared below.
     -->
     <ProjectReference Include="..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Budget\Humans.Budget.csproj" />
-    <ProjectReference Include="..\Sections\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
-    <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Pleo\Humans.Pleo.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Agent\Humans.Agent.csproj" />
-    <ProjectReference Include="..\Sections\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Sections\Humans.Auth\Humans.Auth.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Calendar\Humans.Calendar.csproj" />
-    <ProjectReference Include="..\Sections\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Camps\Humans.Camps.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Campaigns\Humans.Campaigns.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Cantina\Humans.Cantina.csproj" />
-    <ProjectReference Include="..\Sections\Humans.CityPlanning\Humans.CityPlanning.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Containers\Humans.Containers.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Debug\Humans.Debug.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Development\Humans.Development.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Email\Humans.Email.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Events\Humans.Events.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Expenses\Humans.Expenses.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Finance\Humans.Finance.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Gate\Humans.Gate.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Onboarding\Humans.Onboarding.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Governance\Humans.Governance.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Grants\Humans.Grants.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Guide\Humans.Guide.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Issues\Humans.Issues.csproj" />
-    <ProjectReference Include="..\Sections\Humans.LowIncome\Humans.LowIncome.csproj" />
-    <ProjectReference Include="..\Sections\Humans.MailerLite\Humans.MailerLite.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Notifications\Humans.Notifications.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Rideshare\Humans.Rideshare.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Preapprovals\Humans.Preapprovals.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Workgroups\Humans.Workgroups.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Scanner\Humans.Scanner.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Search\Humans.Search.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Shifts\Humans.Shifts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Stripe\Humans.Stripe.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Surveys\Humans.Surveys.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Settings\Humans.Settings.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tickets\Humans.Tickets.csproj" />
-    <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Tour\Humans.Tour.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Issues\Humans.Issues.csproj" />
+    <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Backdoor\Humans.Backdoor.csproj" />
     <ProjectReference Include="..\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>
 
@@ -119,5 +70,74 @@
     <PackageReference Include="AspNetCore.HealthChecks.Hangfire" />
     <PackageReference Include="AspNetCore.HealthChecks.Uris" />
   </ItemGroup>
+
+  <!--
+    Section modules. Shell compiles against only the sections above. Every other section, with the packages it
+    needs, is copied flat into the output beside Shell and loaded at startup by SectionModuleLoader: not in
+    Shell's deps.json, but where dotnet ef with startup project Humans.Web still finds it. The MSBuild call
+    inherits this build's global properties, so inside a solution build it reuses the sections already built.
+  -->
+  <ItemGroup>
+    <SectionModuleProject Include="..\Sections\*\*.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopySectionModules" AfterTargets="CopyFilesToOutputDirectory">
+    <PropertyGroup>
+      <_SectionModuleManifest>$(IntermediateOutputPath)section-modules.txt</_SectionModuleManifest>
+    </PropertyGroup>
+    <MSBuild Projects="@(SectionModuleProject)" Targets="Build" BuildInParallel="true">
+      <Output TaskParameter="TargetOutputs" ItemName="_SectionModuleAssembly" />
+    </MSBuild>
+    <ReadLinesFromFile File="$(_SectionModuleManifest)" Condition="Exists('$(_SectionModuleManifest)')">
+      <Output TaskParameter="Lines" ItemName="_PreviousSectionModuleFile" />
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <_SectionModuleDir Include="@(_SectionModuleAssembly->'%(RootDir)%(Directory)')" />
+      <_SectionModuleFile Include="%(_SectionModuleDir.Identity)*.dll;%(_SectionModuleDir.Identity)Humans.*.pdb;%(_SectionModuleDir.Identity)**\*.resources.dll" />
+      <_SectionModuleFile>
+        <Relative>%(RecursiveDir)%(Filename)%(Extension)</Relative>
+      </_SectionModuleFile>
+      <_PreviousSectionModuleFile Relative="%(Identity)" />
+      <!-- What Shell ships itself stays Shell's; a file this target copied on an earlier build is still a module's. -->
+      <_ShellOwnedFile Include="@(_SectionModuleFile)" Condition="Exists('$(OutDir)%(Relative)')" />
+      <_ShellOwnedFile Remove="@(_PreviousSectionModuleFile)" MatchOnMetadata="Relative" />
+      <_SectionModuleFile Remove="@(_ShellOwnedFile)" MatchOnMetadata="Relative" />
+      <!-- A copy-local section bin also holds shared-framework assemblies; the runtime always takes the framework's. -->
+      <_SharedFrameworkFile Include="$(NetCoreTargetingPackRoot)\Microsoft.NETCore.App.Ref\$(BundledNETCoreAppPackageVersion)\ref\**\*.dll;$(NetCoreTargetingPackRoot)\Microsoft.AspNetCore.App.Ref\$(BundledNETCoreAppPackageVersion)\ref\**\*.dll" />
+      <_SharedFrameworkFile Relative="%(Filename)%(Extension)" />
+      <_SectionModuleFile Remove="@(_SharedFrameworkFile)" MatchOnMetadata="Relative" />
+      <_ShellOwnedSection Include="@(_ShellOwnedFile->'%(Filename)')" Condition="'%(Extension)' == '.dll'" Section="%(Filename)" />
+      <_SectionModuleWebRoot Include="$([System.IO.Path]::GetDirectoryName('%(SectionModuleProject.FullPath)'))\wwwroot\**\*">
+        <Section>%(SectionModuleProject.Filename)</Section>
+      </_SectionModuleWebRoot>
+      <_SectionModuleWebRoot Remove="@(_ShellOwnedSection)" MatchOnMetadata="Section" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_SectionModuleFile)"
+          DestinationFiles="@(_SectionModuleFile->'$(OutDir)%(Relative)')"
+          SkipUnchangedFiles="true">
+      <!-- FileWrites: clean and incremental clean remove a module that stops being built, so it is not discovered. -->
+      <Output TaskParameter="CopiedFiles" ItemName="FileWrites" />
+    </Copy>
+    <Copy SourceFiles="@(_SectionModuleWebRoot)"
+          DestinationFiles="@(_SectionModuleWebRoot->'$(OutDir)_content\%(Section)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true">
+      <!-- FileWrites: clean and incremental clean remove a module that stops being built, so it is not discovered. -->
+      <Output TaskParameter="CopiedFiles" ItemName="FileWrites" />
+    </Copy>
+    <WriteLinesToFile File="$(_SectionModuleManifest)" Lines="@(_SectionModuleFile->'%(Relative)')" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <FileWrites Include="$(_SectionModuleManifest)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- In publish, a module's wwwroot lands where a referenced section's would: wwwroot/_content/<Section>. -->
+  <Target Name="PublishSectionModules" AfterTargets="Publish" DependsOnTargets="CopySectionModules">
+    <Copy SourceFiles="@(_SectionModuleFile)"
+          DestinationFiles="@(_SectionModuleFile->'$(PublishDir)%(Relative)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_SectionModuleWebRoot)"
+          DestinationFiles="@(_SectionModuleWebRoot->'$(PublishDir)wwwroot\_content\%(Section)\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

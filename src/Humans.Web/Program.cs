@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -472,6 +473,20 @@ mvcBuilder.ConfigureApplicationPartManager(apm =>
 mvcBuilder.ConfigureApplicationPartManager(apm =>
     apm.FeatureProviders.Add(new SectionViewComponentFeatureProvider()));
 
+// A section Shell loads as a module is outside its reference graph, so MVC's default part discovery never sees its
+// controllers or compiled views.
+mvcBuilder.ConfigureApplicationPartManager(apm =>
+{
+    var known = apm.ApplicationParts.OfType<AssemblyPart>().Select(p => p.Assembly).ToHashSet();
+    foreach (var assembly in SectionDiscoveryExtensions.SectionAssemblies().Where(a => !known.Contains(a)))
+    {
+        foreach (var part in ApplicationPartFactory.GetApplicationPartFactory(assembly).GetApplicationParts(assembly))
+        {
+            apm.ApplicationParts.Add(part);
+        }
+    }
+});
+
 // DevLoginController depends on DevPersonaSeeder (non-Production only); exclude in Prod so
 // ValidateOnBuild passes and /dev/login/* 404s cleanly. Must be added after
 // SectionControllerFeatureProvider above, which is what puts the internal controller in the
@@ -660,6 +675,18 @@ app.UseStaticFiles(new StaticFileOptions
             ctx.Context.Response.Headers.CacheControl = "no-cache";
     },
 });
+
+// In a build (not a publish), a module's wwwroot is in no static web assets manifest; the build copies it to _content.
+var moduleContent = Path.Combine(AppContext.BaseDirectory, "_content");
+if (Directory.Exists(moduleContent))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(moduleContent),
+        RequestPath = "/_content",
+        OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache",
+    });
+}
 
 // Serve .well-known directory (blocked by default since it starts with a dot)
 if (app.Environment.IsDevelopment())

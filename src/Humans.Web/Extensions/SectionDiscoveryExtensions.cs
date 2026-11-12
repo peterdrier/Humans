@@ -217,11 +217,16 @@ public static class SectionDiscoveryExtensions
     /// </remarks>
     public static IReadOnlyList<Assembly> SectionAssemblies()
     {
-        var candidates = DependencyContext.Default?.RuntimeLibraries
+        var referenced = DependencyContext.Default?.RuntimeLibraries
             .Where(l => l.Name.StartsWith("Humans.", StringComparison.Ordinal))
-            .Select(l => TryLoad(l.Name))
-            .OfType<Assembly>()
-            ?? [Assembly.GetExecutingAssembly()];
+            .Select(l => l.Name)
+            ?? [Assembly.GetExecutingAssembly().GetName().Name!];
+
+        var candidates = referenced
+            .Concat(SectionModuleLoader.DiscoveredAssemblyNames())
+            .Distinct(StringComparer.Ordinal)
+            .Select(TryLoad)
+            .OfType<Assembly>();
 
         return [.. candidates.Where(a => SectionEntryPoints(a).Any())];
     }
