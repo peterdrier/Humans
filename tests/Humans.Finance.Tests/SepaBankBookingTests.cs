@@ -671,8 +671,13 @@ public class SepaBankBookingTests
 
         await MakeService().BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
 
-        // Once before posting (to judge), once after (so the member stops reading as owed).
-        await _holded.Received(2).SyncAccountLedgerAsync(Account, Arg.Any<CancellationToken>());
+        Received.InOrder(() =>
+        {
+            _ = _write.PayPurchaseDocumentAsync("oldest", 12m, "treasury-1", LineDate, Tag,
+                Arg.Any<CancellationToken>());
+            _ = _write.PayPurchaseDocumentAsync("middle", 18m, "treasury-1", LineDate, Tag,
+                Arg.Any<CancellationToken>());
+        });
         await _write.DidNotReceive().PayPurchaseDocumentAsync(
             "newest", Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<string>(),
             Arg.Any<CancellationToken>());
