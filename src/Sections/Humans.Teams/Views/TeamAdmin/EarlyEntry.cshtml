@@ -46,7 +46,14 @@
                                             <option value="">Select an event</option>
                                             @foreach (var item in Model.Events)
                                             {
-                                                <option value="@item.Id" selected="@(item.Id == grant.EventSettingsId)">@item.EventName (@item.GateOpeningDate.ToInvariantDate())</option>
+                                                @if (item.Id == grant.EventSettingsId)
+                                                {
+                                                    <option value="@item.Id" selected>@item.EventName (@item.GateOpeningDate.ToInvariantDate())</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@item.Id">@item.EventName (@item.GateOpeningDate.ToInvariantDate())</option>
+                                                }
                                             }
                                         </select>
                                     </div>
@@ -91,7 +98,14 @@
                     <option value="">Select an event</option>
                     @foreach (var item in Model.Events)
                     {
-                        <option value="@item.Id" selected="@(item.Id == Model.ActiveEventSettingsId)">@item.EventName (@item.GateOpeningDate.ToInvariantDate())</option>
+                        @if (item.Id == Model.ActiveEventSettingsId)
+                        {
+                            <option value="@item.Id" selected>@item.EventName (@item.GateOpeningDate.ToInvariantDate())</option>
+                        }
+                        else
+                        {
+                            <option value="@item.Id">@item.EventName (@item.GateOpeningDate.ToInvariantDate())</option>
+                        }
                     }
                 </select>
             </div>

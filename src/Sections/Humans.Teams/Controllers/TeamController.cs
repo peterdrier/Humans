@@ -655,6 +655,7 @@ internal sealed class TeamController(
             model.IsSystemTeam = result.Team.IsSystemTeam;
             model.GoogleGroupEmail = result.Team.GoogleGroupEmail;
             ModelState.Remove(nameof(model.ConfirmGroupReactivation));
+            ModelState.Remove(nameof(model.InactiveGroupResourceId));
             ModelState.AddModelError(nameof(model.GoogleGroupPrefix), result.GroupWarning!);
             await PopulateEligibleParentsAsync(model, id);
             return View(model);

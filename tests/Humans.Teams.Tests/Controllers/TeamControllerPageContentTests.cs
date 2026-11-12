@@ -719,7 +719,11 @@ public class TeamControllerPageContentTests
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
             Url = Substitute.For<IUrlHelper>()
         };
-        var model = new EditTeamViewModel { Id = teamId, Name = "Alpha", IsActive = true };
+        // A previous confirmation round posted another group's resource ID; the hidden input must not echo it back.
+        var staleResourceId = Guid.NewGuid();
+        var model = new EditTeamViewModel { Id = teamId, Name = "Alpha", IsActive = true, InactiveGroupResourceId = staleResourceId };
+        controller.ModelState.SetModelValue(nameof(model.InactiveGroupResourceId), staleResourceId, staleResourceId.ToString());
+        controller.ModelState.MarkFieldValid(nameof(model.InactiveGroupResourceId));
 
         var result = await controller.EditTeam(teamId, model);
 
@@ -727,6 +731,7 @@ public class TeamControllerPageContentTests
         model.InactiveGroupResourceId.Should().Be(inactiveResourceId);
         model.ConfirmGroupReactivation.Should().BeFalse();
         controller.ModelState.Should().NotContainKey(nameof(model.ConfirmGroupReactivation));
+        controller.ModelState.Should().NotContainKey(nameof(model.InactiveGroupResourceId));
         model.Slug.Should().Be("alpha");
         controller.ModelState.Values.SelectMany(entry => entry.Errors).Should().ContainSingle()
             .Which.ErrorMessage.Should().Be(warning);
