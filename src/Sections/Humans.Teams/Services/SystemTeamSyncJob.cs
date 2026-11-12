@@ -48,9 +48,6 @@ internal sealed class SystemTeamSyncJob(
     private ITeamResourceService TeamResourceService =>
         serviceProvider.GetRequiredService<ITeamResourceService>();
 
-    private IMembershipCalculator MembershipCalculator =>
-        serviceProvider.GetRequiredService<IMembershipCalculator>();
-
     private IConsentService ConsentService =>
         serviceProvider.GetRequiredService<IConsentService>();
 
@@ -188,7 +185,7 @@ internal sealed class SystemTeamSyncJob(
             .Select(u => u.Id)
             .ToList();
 
-        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
             candidateIds, SystemTeamIds.Volunteers, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -215,7 +212,7 @@ internal sealed class SystemTeamSyncJob(
             .Distinct()
             .ToList();
 
-        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
             leadUserIds, SystemTeamIds.Coordinators, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -238,7 +235,7 @@ internal sealed class SystemTeamSyncJob(
         var boardMemberIds = await RoleAssignmentService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, cancellationToken);
 
-        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
             boardMemberIds, SystemTeamIds.Board, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
@@ -277,7 +274,7 @@ internal sealed class SystemTeamSyncJob(
             .ToHashSet();
         var userIds = applicationUserIds.Where(activeSet.Contains).ToList();
 
-        var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
+        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
             userIds, teamId, cancellationToken);
         var eligibleUserIds = eligibleSet.ToList();
 
@@ -323,7 +320,7 @@ internal sealed class SystemTeamSyncJob(
 
         var isEligible = info is { HasRequiredNameFields: true, IsSuspended: false }
             && !(await ConsentService.GetConsentReviewAsync(userId, cancellationToken)).IsRejected
-            && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
+            && await ConsentService.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
@@ -344,7 +341,7 @@ internal sealed class SystemTeamSyncJob(
             .Any(t => t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator));
 
         var isEligible = isCoordinatorAnywhere
-            && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);
+            && await ConsentService.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
@@ -372,7 +369,7 @@ internal sealed class SystemTeamSyncJob(
         var isEligible = hasApprovedApp
             && info is { Profile: not null, IsSuspended: false }
             && (await ConsentService.GetConsentReviewAsync(userId, cancellationToken)).IsApproved
-            && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
+            && await ConsentService.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);

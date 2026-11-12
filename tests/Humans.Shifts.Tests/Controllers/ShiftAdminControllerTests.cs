@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Cantina.Contracts;
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -1118,7 +1119,7 @@ public class ShiftAdminControllerTests
             _userService,
             authorization ?? Substitute.For<IAuthorizationService>(),
             Substitute.For<IClock>(),
-            new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IMembershipCalculator>(), _userService, Substitute.For<ICantinaService>(), _teamService),
+            new ShiftAdminPageBuilder(_shiftMgmt, Substitute.For<IConsentService>(), _userService, Substitute.For<ICantinaService>(), _teamService),
             new ShiftVolunteerSearchBuilder(_burnSettings, _userService, Substitute.For<ICantinaService>(), _shiftView, _signupService, _tracking),
             _rotaMessenger,
             _logger,

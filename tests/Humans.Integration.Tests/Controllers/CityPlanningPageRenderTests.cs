@@ -32,6 +32,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     public async Task Every_city_planning_page_renders_its_own_copy_with_tag_helpers_applied()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         foreach (var (url, copy) in Pages)
@@ -52,6 +53,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
     {
         // An unbound <vc:> ships as inert markup, so the emitted modal id is the proof.
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var html = await (await Client.GetAsync("/CityPlanning/BarrioMap/Admin", ct)).Content.ReadAsStringAsync(ct);
@@ -67,6 +69,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
         // Only Spanish proves the satellites shipped. HtmlEncoder escapes non-ASCII ("colocación" becomes
         // "colocaci&#xF3;n"), so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
@@ -86,7 +89,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
         var html = await response.Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("Admin del Mapa de Barrios");   // CityPlanning_Admin_Title
-        html.Should().Contain("Fase de Colocaci");            // CityPlanning_Admin_PlacementPhaseCard
+        html.Should().Contain("Ver Mapa");                    // CityPlanning_Admin_ViewMap
         html.Should().NotContain("Barrio Map Admin");
     }
 
@@ -96,6 +99,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
         // An RCL asset comes from the static-web-assets manifest; a file provider that can't see it emits the bare src
         // with no ?v= rather than failing.
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var expectations = new (string Url, string Asset)[]
@@ -132,6 +136,7 @@ public class CityPlanningPageRenderTests(HumansTestDatabase database) : Integrat
         // Shell's Camp Details is the one outside reader of CityPlanning_* keys and the section's _PlacementHelpModal,
         // found by name across parts. A raw key wouldn't throw.
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var listHtml = await (await Client.GetAsync("/Camp", ct)).Content.ReadAsStringAsync(ct);

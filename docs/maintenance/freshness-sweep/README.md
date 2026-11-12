@@ -1,9 +1,3 @@
----
-name: freshness-sweep
-description: "Refresh drift-prone documentation against current code. Reads docs/architecture/freshness-catalog.yml, diffs against the last sweep's upstream/main anchor, regenerates mechanical entries, processes editorial markers, and opens one PR per sweep with a report file."
-argument-hint: "[--full] [--interactive] [--since <ref>] [--scope <pattern>]"
----
-
 # Freshness Sweep
 
 See `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md` for full design.
@@ -17,6 +11,16 @@ See `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md` for full desig
 | `--interactive` | stop at each question; default accumulates in report |
 | `--since <ref>` | override anchor (debugging) |
 | `--scope <glob>` | only mechanical entries whose `id` matches; editorial unaffected |
+
+## Unattended runs
+
+The maintenance dispatcher starts the sweep as an unattended run. Never merge, never force-push. `origin` (peterdrier/Humans) gets the push, the PR and any issues; `upstream` (nobodies-collective/Humans) is read-only, used only for the diff anchor.
+
+1. If `git remote get-url upstream` fails, run `git remote add upstream https://github.com/nobodies-collective/Humans.git`.
+2. If peterdrier/Humans has 10 or more open PRs, don't sweep: say so in one line and stop. A skipped week is harmless; the next sweep diffs from the last anchor.
+3. Run every phase through opening the PR. If nothing needs sweeping, say so in one line and stop. Wherever a phase says to ask Peter and wait (Phase 5.5 steps 3a and 5, Phase 7.5), don't wait: list each item as a numbered one-line decision under `## Needs Peter` in the PR body and leave the affected content unchanged.
+4. Once the PR exists, run the `pd:spend` skill for this session and post its report as a PR comment whose first line is `**Freshness sweep cost** (pd:spend)`.
+5. Tend the PR yourself under `.claude/steward.md`. Stop 3 hours after PR creation or after 3 review rounds, whichever comes first, then unsubscribe. Report only the PR link, the Needs Peter list, and anything that blocks.
 
 ## Phase 0: Capture repo root
 

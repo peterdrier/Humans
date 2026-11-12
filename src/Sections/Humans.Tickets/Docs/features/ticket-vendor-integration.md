@@ -119,4 +119,3 @@ The TicketTailor "after checkout" redirect URL points at this route.
 ## Related Features
 
 - [22. Campaigns](../../../Humans.Campaigns/Docs/features/Campaigns-feature.md) — discount code distribution and redemption tracking
-- [23. Membership Status](../../../Humans.Governance/Docs/features/membership-status.md) — "Who Hasn't Bought?" uses active volunteer status

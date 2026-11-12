@@ -4,7 +4,7 @@ The queue for an unattended sprint run. [`plan-sprint`](../../.claude/skills/pla
 (local, Peter-gated) writes one of these to `peterdrier/Humans`; a routine fires a cloud session
 that works it via [`execute-sprint`](../../.claude/skills/execute-sprint/SKILL.md).
 
-Modelled on [`section-doctor`](../../.claude/skills/section-doctor/SKILL.md) — escalate via
+Modelled on [`section-doctor`](../../docs/maintenance/section-doctor/README.md) — escalate via
 Needs-Peter, one PR per batch. Deviate only with a reason.
 
 ## Issue shape

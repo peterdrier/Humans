@@ -193,8 +193,8 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **EarlyEntry:** Teams implements `IEarlyEntryProvider` for the roster and reads `EarlyEntryRoles`.
 - **Tickets.Contracts:** `ITicketService.FindCurrentEventAttendeeByBarcodeAsync` for the early-entry ticket lookup.
 - **Camps.Contracts:** `ICampLeadDirectory` for Barrio Leads.
-- **Governance.Contracts:** `IGovernanceService` and `IMembershipCalculator` for the tier teams.
-- **Consent:** `IConsentService` for the Volunteers and tier-team consent-review gate.
+- **Governance.Contracts:** `IGovernanceService` for the tier teams.
+- **Consent:** `IConsentService` for the system teams' required-consents check and the consent-review gate.
 - **Settings:** `ISettingsService` for the active event on the team page, the early-entry event picker, event validation and the active-event roster filter. Grants store an event ID without a cross-section EF relationship.
 - **Issues:** Teams implements `IIssueQueueOwner` for its `Teams` issue queue.
 - **Base (`Humans.Base.Gdpr`):** `IUserDataContributor` (export and erasure).

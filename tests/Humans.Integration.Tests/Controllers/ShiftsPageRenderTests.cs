@@ -1,11 +1,9 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
-using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -36,7 +34,6 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
         ("/Shifts", "Shifts"),
         ("/Shifts/Mine", "Shifts"),
         ("/Shifts/Summary", "Summary"),
-        ("/Shifts/Settings", "Settings"),
         ("/Shifts/OrphanSignups", "Orphan"),
         ("/Shifts/Dashboard", "Dashboard"),
         ("/Shifts/Dashboard/PostEventStats", "Stats"),
@@ -52,21 +49,8 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
     /// </summary>
     private async Task SeedActiveBurnAsync()
     {
+        var eventId = await Factory.SeedActiveEventAsync();
         using var scope = Factory.Services.CreateScope();
-        var eventId = Guid.NewGuid();
-        await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
-            new EventSettingsInfo(
-                Id: eventId,
-                EventName: "Render Test Burn",
-                Year: 2026,
-                TimeZoneId: "Europe/Madrid",
-                GateOpeningDate: new LocalDate(2026, 7, 1),
-                BuildStartOffset: -14,
-                EventEndOffset: 6,
-                StrikeEndOffset: 9,
-                EarlyEntryCapacity: new Dictionary<int, int>(),
-                BarriosEarlyEntryAllocation: null,
-                EarlyEntryClose: null));
         await scope.ServiceProvider.GetRequiredService<IShiftSeeding>()
             .SetShiftBrowsingOpenAsync(eventId, isOpen: true);
     }
@@ -246,7 +230,6 @@ public class ShiftsPageRenderTests(HumansTestDatabase database) : IntegrationTes
                      "/Shifts/Dashboard",
                      "/Shifts/Admin/Workload",
                      "/Shifts/Dashboard/VolunteerTracking",
-                     "/Shifts/Settings",
                  })
         {
             var response = await Client.GetAsync(url, ct);

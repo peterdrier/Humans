@@ -6,7 +6,7 @@ opens one PR per run containing all substantive fixes. Ledger-only and test-only
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
 A separate Claude cloud routine currently runs at 08:00 UTC using
-[`/debt-review`](../../.claude/skills/debt-review/SKILL.md): per-commit keep/repair/revert,
+[`/debt-review`](../../docs/maintenance/debt-review/README.md): per-commit keep/repair/revert,
 bot findings, follow-up issues, then stewards the PR inline (3-round ceiling).
 The nightly timer starts at 00:00 UTC, so a full 12-hour run can publish after
 that review slot. Review scheduling is separate from this systemd timer.

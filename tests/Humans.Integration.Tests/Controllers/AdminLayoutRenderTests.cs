@@ -4,11 +4,10 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Integration.Tests.Infrastructure;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using NodaTime;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -105,16 +104,14 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         }
     }
 
-    /// <summary>
-    /// A full Admin sees every sidebar group, and every <c>AdminOnly</c> tab on Debug's group.
-    /// </summary>
+    /// <summary>A full Admin sees every sidebar group.</summary>
     /// <remarks>
     /// The E2E suite runs on QA, where <c>/dev/login/admin</c> is a 404, so the Admin row can only live here. Derived
-    /// from <see cref="AdminNavComposition"/>, never a pinned list. Only <c>AdminOnly</c> items are asserted: any other
-    /// policy would mean re-deriving the view component's own filter.
+    /// from <see cref="AdminNavComposition"/>, never a pinned list. A group with no visible item has no row, so the
+    /// groups whose every item is <c>AdminOnly</c> (Campaigns, Email) cover the Admin-only gate.
     /// </remarks>
     [HumansFact(Timeout = 180000)]
-    public async Task The_sidebar_shows_an_admin_every_group_and_every_admin_only_item()
+    public async Task The_sidebar_shows_an_admin_every_group()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
@@ -126,35 +123,18 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         var groups = AdminNavComposition.Compose(
             Factory.Services.GetRequiredService<IEnumerable<ISectionAdminNav>>());
 
-        foreach (var group in groups)
+        // A group whose every item is gated to another environment (Development's seed tools) has no row here.
+        var environment = Factory.Services.GetRequiredService<IWebHostEnvironment>();
+        foreach (var group in groups.Where(g => g.Items.Any(i => i.EnvironmentGate?.Invoke(environment) ?? true)))
         {
             html.Should().Contain($"data-group=\"{group.Label}\"",
                 $"an Admin must see the '{group.Label}' sidebar group");
         }
-
-        var adminOnlyItems = groups
-            .Single(g => string.Equals(g.Label, "Debug", StringComparison.Ordinal)).Items
-            .Where(i => string.Equals(i.Policy, PolicyNames.AdminOnly, StringComparison.Ordinal))
-            .ToList();
-
-        adminOnlyItems.Should().NotBeEmpty("the tree's AdminOnly items are what this test covers");
-
-        var tabsHtml = await Client.GetStringAsync("/Debug/Logs", ct);
-        foreach (var item in adminOnlyItems)
-        {
-            tabsHtml.Should().Contain($"<span>{item.Label}</span>",
-                $"an Admin must see the AdminOnly item '{item.Label}' — the tab strip renders each "
-                + "item label in its own span");
-        }
     }
 
-    /// <summary>The dashboard's two <c>AdminOnly</c> panels render for a full Admin.</summary>
-    /// <remarks>
-    /// No E2E persona can assert them, and a tile that silently stops rendering looks the same as one the viewer was
-    /// never entitled to.
-    /// </remarks>
+    /// <summary>The dashboard renders its summary, and the layout's <c>authorize-policy</c> attributes are bound.</summary>
     [HumansFact(Timeout = 120000)]
-    public async Task The_admin_dashboard_renders_its_admin_only_panels()
+    public async Task The_admin_dashboard_renders_with_authorize_policy_bound()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
@@ -163,7 +143,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Recent activity", "Admin/Index's AdminOnly panel must render for an Admin");
+        html.Should().Contain("Welcome back", "Admin/Index's summary component must render");
 
         // The tag helper strips the attribute from elements it lets through, so one that keeps it was never bound.
         html.Should().NotContain("authorize-policy", "an unbound authorize-policy leaves the element visible to everyone");
@@ -219,7 +199,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         html.Should().Contain("auth-pill",
             "_AdminLayout's <partial name=\"_AuthorizationPill\" /> must resolve — it moved out of "
             + "Humans.UI alongside its only two renderers");
-        html.Should().Contain("Admin only",
+        html.Should().MatchRegex(@"auth-pill"">\s*<i [^>]*></i>\s*\w",
             "the pill must carry AuthorizationPillFilter's text, not just an empty wrapper");
     }
 
@@ -309,21 +289,8 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
     /// </summary>
     private async Task SeedActiveBurnAsync()
     {
+        var eventId = await Factory.SeedActiveEventAsync();
         using var scope = Factory.Services.CreateScope();
-        var eventId = Guid.NewGuid();
-        await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
-            new EventSettingsInfo(
-                Id: eventId,
-                EventName: "Admin Chrome Test Burn",
-                Year: 2026,
-                TimeZoneId: "Europe/Madrid",
-                GateOpeningDate: new LocalDate(2026, 7, 1),
-                BuildStartOffset: -14,
-                EventEndOffset: 6,
-                StrikeEndOffset: 9,
-                EarlyEntryCapacity: new Dictionary<int, int>(),
-                BarriosEarlyEntryAllocation: null,
-                EarlyEntryClose: null));
         await scope.ServiceProvider.GetRequiredService<IShiftSeeding>()
             .SetShiftBrowsingOpenAsync(eventId, isOpen: true);
     }

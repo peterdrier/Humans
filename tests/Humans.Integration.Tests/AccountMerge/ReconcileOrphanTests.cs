@@ -49,8 +49,8 @@ public class ReconcileOrphanTests(HumansTestDatabase database)
         {
             Id = adminId,
             DisplayName = "Test Admin",
-            Email = $"admin-{adminId:N}@test.local",
-            UserName = $"admin-{adminId:N}@test.local",
+            Email = $"admin-{adminId:N}@example.test",
+            UserName = $"admin-{adminId:N}@example.test",
             CreatedAt = now,
         };
         var result = await um.CreateAsync(admin);

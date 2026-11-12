@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Application.Services.Users;
@@ -14,7 +15,6 @@ using Humans.Cantina.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
@@ -304,8 +304,8 @@ public sealed class Section :
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var logger = services.GetRequiredService<ILogger<Section>>();
         var profile = (await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct))?.Profile;
-        var isVolunteerMember = (await services.GetRequiredService<IMembershipCalculator>()
-            .GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
+        var isVolunteerMember = (await services.GetRequiredService<ITeamService>().GetTeamAsync(SystemTeamIds.Volunteers, ct))
+            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
         var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, profile, userId, ct) };
 

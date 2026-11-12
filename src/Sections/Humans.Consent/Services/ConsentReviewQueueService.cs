@@ -10,7 +10,6 @@ internal sealed class ConsentReviewQueueService(
     IConsentService consentService,
     IConsentWrite consentWrite,
     IGovernanceService governanceService,
-    IMembershipCalculator membershipCalculator,
     ILogger<ConsentReviewQueueService> logger) : IConsentReviewQueueService
 {
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
@@ -27,10 +26,10 @@ internal sealed class ConsentReviewQueueService(
         var consentProgress = new Dictionary<Guid, ConsentProgressInfo>();
         foreach (var userId in allUserIds)
         {
-            var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+            var progress = await consentService.GetConsentProgressAsync(userId, ct);
             consentProgress[userId] = new ConsentProgressInfo(
-                snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
-                snapshot.RequiredConsentCount);
+                progress.RequiredCount - progress.PendingCount,
+                progress.RequiredCount);
         }
 
         var tiers = await governanceService.GetMembershipTiersAsync(ct);
@@ -67,7 +66,7 @@ internal sealed class ConsentReviewQueueService(
 
         var review = await consentService.GetConsentReviewAsync(userId, ct);
 
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+        var progress = await consentService.GetConsentProgressAsync(userId, ct);
 
         var pendingApp = await governanceService.GetSubmittedApplicationForUserAsync(userId, ct);
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
@@ -82,8 +81,8 @@ internal sealed class ConsentReviewQueueService(
                 review.Status,
                 review.Notes,
                 profile.CreatedAt),
-            snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
-            snapshot.RequiredConsentCount,
+            progress.RequiredCount - progress.PendingCount,
+            progress.RequiredCount,
             pendingApp?.Motivation);
     }
 

@@ -1,10 +1,10 @@
+using Humans.Consent.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 
@@ -15,7 +15,7 @@ namespace Humans.Users.Services;
 /// </summary>
 internal sealed class NonCompliantMemberSuspension(
     IUserManagement userService,
-    IMembershipCalculator membershipCalculator,
+    IConsentService consentService,
     IEmailService emailService,
     UsersEmails emailMessages,
     INotificationEmitter notificationService,
@@ -33,8 +33,8 @@ internal sealed class NonCompliantMemberSuspension(
 
     public async Task SuspendNonCompliantAsync(CancellationToken cancellationToken = default)
     {
-        var usersToSuspend = await membershipCalculator
-            .GetUsersRequiringStatusUpdateAsync(cancellationToken);
+        var usersToSuspend = await consentService
+            .GetUsersPastConsentDeadlineAsync(ct: cancellationToken);
 
         if (usersToSuspend.Count == 0)
         {

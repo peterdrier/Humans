@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Xunit;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -23,7 +24,7 @@ namespace Humans.Users.Tests.Services;
 public class NonCompliantMemberSuspensionTests : IDisposable
 {
     private readonly IUserManagement _userService;
-    private readonly IMembershipCalculator _membershipCalculator;
+    private readonly IConsentService _consentService;
     private readonly IEmailService _emailService;
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly INotificationEmitter _notificationService;
@@ -37,7 +38,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public NonCompliantMemberSuspensionTests()
     {
         _userService = Substitute.For<IUserManagement>();
-        _membershipCalculator = Substitute.For<IMembershipCalculator>();
+        _consentService = Substitute.For<IConsentService>();
         _emailService = Substitute.For<IEmailService>();
         _notificationService = Substitute.For<INotificationEmitter>();
         _auditLogService = Substitute.For<IAuditLogService>();
@@ -46,7 +47,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         var logger = Substitute.For<ILogger<NonCompliantMemberSuspension>>();
 
         _sut = new NonCompliantMemberSuspension(
-            _userService, _membershipCalculator,
+            _userService, _consentService,
             _emailService, _emailMessages, _notificationService, _auditLogService,
             _metrics, logger);
     }
@@ -64,12 +65,12 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task Job_RecordsOneSuccessForEveryCompletedSweep(bool hasCandidates, bool changesUser)
     {
         var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(hasCandidates ? new List<Guid> { user.Id } : []);
         StubSuspendSucceeds(changesUser ? [user.Id] : []);
         var metrics = Substitute.For<IHumansMetrics>();
         var sweep = new NonCompliantMemberSuspension(
-            _userService, _membershipCalculator, _emailService, _emailMessages, _notificationService,
+            _userService, _consentService, _emailService, _emailMessages, _notificationService,
             _auditLogService, metrics, Substitute.For<ILogger<NonCompliantMemberSuspension>>());
         var job = new SuspendNonCompliantMembersJob(
             sweep, metrics, Substitute.For<ILogger<SuspendNonCompliantMembersJob>>(), _clock);
@@ -85,7 +86,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task ExecuteAsync_SuspendsNonCompliantUser()
     {
         var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
@@ -100,7 +101,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task ExecuteAsync_PreparationFailure_DoesNotPersistSuspensions()
     {
         var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
         var failure = new IOException("Directory unavailable");
@@ -123,7 +124,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     {
         var users = new[] { SetupUser(), SetupUser(), SetupUser() };
         var ids = users.Select(user => user.Id).ToList();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(ids);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -146,7 +147,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     [HumansFact]
     public async Task ExecuteAsync_NoUsersToSuspend_DoesNothing()
     {
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
         await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
@@ -163,7 +164,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     {
         // Profile service reports zero mutations — job should not send email.
         var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
 
         _userService.SuspendProfilesForMissingConsentAsync(
@@ -181,7 +182,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task ExecuteAsync_MissingUserMetadataStillAuditsTheCommittedSuspension()
     {
         var userId = Guid.NewGuid();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { userId });
 
         // User service says it suspended the user, but the prepared lookup returns
@@ -212,7 +213,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task ExecuteAsync_SendsSuspensionEmail()
     {
         var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
@@ -234,7 +235,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             { [user.Id] = user.ToUserInfo() with { PreferredLanguage = "de" } }));
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
@@ -254,7 +255,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task ExecuteAsync_SendsInAppNotification()
     {
         var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 
@@ -278,7 +279,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task ExecuteAsync_LogsAuditEntry()
     {
         var user = SetupUser();
-        _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
+        _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
 

@@ -46,7 +46,6 @@
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <!-- IMembershipCalculator: MyGoogleResourcesViewComponent owns its own volunteer gate. -->
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />

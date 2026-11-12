@@ -1,3 +1,5 @@
+using Humans.Base.Constants;
+using Humans.Consent.Contracts;
 using System.Diagnostics.Metrics;
 using Humans.Base.Hosting;
 using Humans.Governance.Contracts;
@@ -46,17 +48,17 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
+        var consentService = scope.ServiceProvider.GetRequiredService<IConsentService>();
         var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IGovernanceManagement>();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
         var allUserIds = userInfos.Select(u => u.Id).ToList();
 
-        var usersWithAllConsents = await membershipCalc.GetUsersWithAllRequiredConsentsAsync(allUserIds);
+        var usersWithAllConsents = await consentService.GetUsersWithAllRequiredConsentsForTeamAsync(allUserIds, SystemTeamIds.Volunteers);
         var pendingConsents = allUserIds.Count - usersWithAllConsents.Count;
 
-        var usersRequiringUpdate = await membershipCalc.GetUsersRequiringStatusUpdateAsync();
+        var usersRequiringUpdate = await consentService.GetUsersPastConsentDeadlineAsync();
         var consentDeadlineApproaching = usersRequiringUpdate.Count;
 
         var today = scope.ServiceProvider.GetRequiredService<IClock>().GetCurrentInstant().InUtc().Date;

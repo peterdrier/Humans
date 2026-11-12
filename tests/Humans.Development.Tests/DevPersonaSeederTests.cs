@@ -42,7 +42,7 @@ public class DevPersonaSeederTests
     private readonly ICampSeeding _campSeeding = Substitute.For<ICampSeeding>();
     private readonly ICampRoleSeeding _campRoles = Substitute.For<ICampRoleSeeding>();
     private readonly IConsentSubmission _consents = Substitute.For<IConsentSubmission>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly IConsentService _consentReads = Substitute.For<IConsentService>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 7, 13, 12, 0));
 
@@ -72,7 +72,7 @@ public class DevPersonaSeederTests
         _campSeeding,
         _campRoles,
         _consents,
-        _membershipCalculator,
+        _consentReads,
         _humanLifecycle,
         _clock,
         Options.Create(new CityPlanningOptions()),
@@ -92,12 +92,8 @@ public class DevPersonaSeederTests
                 firstName: "Dev",
                 lastName: "Board"));
 
-    private static MembershipSnapshot Snapshot(params Guid[] missingVersionIds) => new(
-        MembershipStatus.Active,
-        IsVolunteerMember: true,
-        RequiredConsentCount: missingVersionIds.Length,
-        PendingConsentCount: missingVersionIds.Length,
-        MissingConsentVersionIds: missingVersionIds);
+    private static ConsentProgress Snapshot(params Guid[] missingVersionIds) =>
+        new(missingVersionIds.Length, missingVersionIds);
 
     [HumansFact]
     public async Task EnsureActiveAsync_MissingConsents_SubmitsEachThroughConsentServiceAndRestores()
@@ -107,7 +103,7 @@ public class DevPersonaSeederTests
         var v2 = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Suspended)));
-        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+        _consentReads.GetConsentProgressAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Snapshot(v1, v2));
         _consents.SubmitConsentAsync(userId, Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConsentSubmitResult(true));
@@ -136,7 +132,7 @@ public class DevPersonaSeederTests
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Suspended)));
-        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+        _consentReads.GetConsentProgressAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Snapshot());
         _humanLifecycle.RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
@@ -158,7 +154,7 @@ public class DevPersonaSeederTests
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Active)));
-        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+        _consentReads.GetConsentProgressAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Snapshot());
         _humanLifecycle.RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
@@ -177,7 +173,7 @@ public class DevPersonaSeederTests
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Suspended)));
-        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+        _consentReads.GetConsentProgressAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Snapshot());
         _humanLifecycle.RestoreConsentSuspensionAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(false, "NotFound"));
@@ -202,7 +198,7 @@ public class DevPersonaSeederTests
 
         await BuildSut().EnsureActiveAsync(profileless);
 
-        await _membershipCalculator.DidNotReceive().GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _consentReads.DidNotReceive().GetConsentProgressAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _consents.DidNotReceive().SubmitConsentAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _humanLifecycle.DidNotReceive().RestoreConsentSuspensionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -215,7 +211,7 @@ public class DevPersonaSeederTests
         var userId = DevPersonaSeeder.PersonaGuid("board");
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(NamedUserInfo(userId, UserState.Suspended)));
-        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+        _consentReads.GetConsentProgressAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Snapshot(Guid.NewGuid()));
         _consents.SubmitConsentAsync(userId, Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConsentSubmitResult(true));

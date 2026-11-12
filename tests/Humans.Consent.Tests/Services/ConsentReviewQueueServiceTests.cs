@@ -17,7 +17,6 @@ public sealed class ConsentReviewQueueServiceTests
     private readonly IConsentWrite _consentWrite = Substitute.For<IConsentWrite>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IGovernanceService _governance = Substitute.For<IGovernanceService>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
 
     public ConsentReviewQueueServiceTests()
@@ -40,7 +39,6 @@ public sealed class ConsentReviewQueueServiceTests
             _consentService,
             _consentWrite,
             _governance,
-            _membershipCalculator,
             NullLogger<ConsentReviewQueueService>.Instance);
 
     [HumansFact]
@@ -262,13 +260,8 @@ public sealed class ConsentReviewQueueServiceTests
         _governance.GetUserIdsWithPendingApplicationAsync(
                 Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
-        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(
-                Status: MembershipStatus.Pending,
-                IsVolunteerMember: false,
-                RequiredConsentCount: 0,
-                PendingConsentCount: 0,
-                MissingConsentVersionIds: []));
+        _consentService.GetConsentProgressAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentProgress(0, []));
     }
 
     private static UserInfo ToUserInfo(User user, ProfileInfo profile) =>

@@ -686,7 +686,7 @@ def cmd_review_pack(a):
     top = git("rev-parse", "--show-toplevel")
     with open(os.path.join(pack, "brief.md"), "w", encoding="utf-8") as f:
         f.write(f"# Review: {a.what}\n\nSection: {a.section}\nFinding: {a.finding or '(see prompt)'}\n\n"
-                f"Rules: `{top}/.claude/skills/section-doctor/threads/review.md`.\n"
+                f"Rules: `{top}/docs/maintenance/section-doctor/threads/review.md`.\n"
                 f"Read in this order: `diff.patch`, `blast.md`, `heads.md`; then the target shape at\n"
                 f"`{top}/src/Sections/Humans.{a.section}/Docs/health.md` (load-bearing weirdness) and\n"
                 f"`{top}/docs/architecture/code-review-rules.md` for the shape the change collapses into.\n")

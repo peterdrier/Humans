@@ -24,7 +24,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, "Test Team A");
-        var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         var start = Instant.FromUtc(2026, 5, 1, 17, 0);
         var end = Instant.FromUtc(2026, 5, 1, 18, 0);
@@ -62,7 +62,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var userId = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         await CreateAsync(svc, new CreateCalendarEventDto(
             "Inside", null, null, null, team.Id,
@@ -97,7 +97,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
 
         var a = await SeedTeamAsync(db, $"A-{Guid.NewGuid():N}");
         var b = await SeedTeamAsync(db, $"B-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         await CreateAsync(svc, new CreateCalendarEventDto(
             "A-evt", null, null, null, a.Id,
@@ -128,7 +128,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "DoomedEvent", null, null, null, team.Id,
@@ -155,7 +155,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         // Tuesday 24 March 2026 19:00 Madrid (CET, UTC+1) = 18:00 UTC.
         // After Madrid DST flip on 29 Mar 2026, 19:00 Madrid (CEST, UTC+2) = 17:00 UTC.
@@ -195,7 +195,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         await CreateAsync(svc, new CreateCalendarEventDto(
             "Old", null, null, null, team.Id,
@@ -223,7 +223,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
@@ -256,7 +256,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
         var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
         var first = new LocalDateTime(2026, 5, 5, 19, 0).InZoneLeniently(zone).ToInstant();
@@ -299,7 +299,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
@@ -327,7 +327,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         var result = await svc.CreateEventWithResultAsync(new CreateCalendarEventDto(
             "Bad", null, null, null, team.Id,
@@ -338,7 +338,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
+        result.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
     }
 
     [HumansFact]
@@ -349,7 +349,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "Original", null, null, null, team.Id,
@@ -365,7 +365,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
             RecurrenceTimezone: "Europe/Madrid"), uid, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
+        result.ErrorMessage.Should().Be("Calendar_InvalidTimedRecurrence");
     }
 
     [HumansFact]
@@ -377,7 +377,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         var db = scope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
-        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@test.local");
+        var uid = await SeedUserAsync(scope, $"calsvc-{Guid.NewGuid():N}@example.test");
 
         var ev = await CreateAsync(svc, new CreateCalendarEventDto(
             "ToDelete", null, null, null, team.Id,
@@ -398,7 +398,7 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         return result.Event!;
     }
 
-    private static async Task<Team> SeedTeamAsync(TeamsDbContext db, string name)
+    private async Task<Team> SeedTeamAsync(TeamsDbContext db, string name)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var team = new Team
@@ -412,6 +412,8 @@ public class CalendarServiceTests(HumansTestDatabase database) : IntegrationTest
         };
         db.Teams.Add(team);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        // The row went in behind the Teams cache, which the calendar's owning-team check reads.
+        Factory.Services.GetRequiredService<Humans.Teams.Services.CachingTeamService>().InvalidateActiveTeamsCache();
         return team;
     }
 
