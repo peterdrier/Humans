@@ -6,17 +6,12 @@
     static decimal Kb(long bytes) => Math.Round(bytes / 1024m, 1);
 }
 
-<div class="page-head">
-    <div>
-        <h1 class="title">Database</h1>
-        <p class="sub" title="@s.FullVersion">@s.DatabaseName · PostgreSQL @s.ServerVersion</p>
-    </div>
-    <div class="d-flex align-items-center gap-3">
-        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
-            <i class="fa-solid fa-arrow-left me-1"></i>Admin
-        </a>
-    </div>
-</div>
+<page-header title="Database" variant="compact">
+    <page-header-subtitle><span title="@s.FullVersion">@s.DatabaseName · PostgreSQL @s.ServerVersion</span></page-header-subtitle>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Admin
+    </a>
+</page-header>
 
 <div class="stats">
     <div class="stat">

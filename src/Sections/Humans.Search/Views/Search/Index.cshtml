@@ -23,7 +23,9 @@
         count > 0 && (!Model.Filter.HasValue || Model.Filter == type);
 }
 
-<h2><i class="fa-solid fa-magnifying-glass me-2"></i>@Localizer["Search_GlobalTitle"]</h2>
+<page-header>
+    <page-header-title><i class="fa-solid fa-magnifying-glass me-2"></i>@Localizer["Search_GlobalTitle"]</page-header-title>
+</page-header>
 
 <form method="get" class="mb-4" asp-action="Index" asp-controller="Search">
     @if (Model.Filter.HasValue)

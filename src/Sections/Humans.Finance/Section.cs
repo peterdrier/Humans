@@ -78,7 +78,6 @@ public sealed class Section :
         services.AddScoped<IEmailPreviewContributor, FinanceEmailPreviews>();
 
         services.AddScoped<CashFlowService>();
-        services.AddScoped<CreditorMatchService>();
         services.AddScoped<FinanceOverviewService>();
         services.AddScoped<PleoBooking>();
         // Both outlive a request: the run keeps going after the page is left, and its holds must span runs.
