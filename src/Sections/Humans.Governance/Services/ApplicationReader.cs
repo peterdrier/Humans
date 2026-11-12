@@ -53,7 +53,6 @@ internal sealed class ApplicationReader(
             SignificantContribution: application.SignificantContribution,
             RoleUnderstanding: application.RoleUnderstanding,
             SubmittedAt: application.SubmittedAt,
-            ReviewStartedAt: application.ReviewStartedAt,
             ResolvedAt: application.ResolvedAt,
             ReviewedByUserId: application.ReviewedByUserId,
             ReviewNotes: application.ReviewNotes,
@@ -124,7 +123,6 @@ internal sealed class ApplicationReader(
             RoleUnderstanding: application.RoleUnderstanding,
             Language: application.Language,
             SubmittedAt: application.SubmittedAt,
-            ReviewStartedAt: application.ReviewStartedAt,
             ReviewedByUserId: application.ReviewedByUserId,
             ReviewNotes: application.ReviewNotes,
             History: history);

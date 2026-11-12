@@ -64,7 +64,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | Language | string? (10) | UI language at submission (ISO 639-1 code) |
 | SubmittedAt | Instant | When submitted |
 | UpdatedAt | Instant | Last update |
-| ReviewStartedAt | Instant? | When review began (currently unused — no controller path triggers it) |
+| ReviewStartedAt | Instant? | Obsolete: last written 2026-02-20 when the UnderReview state was removed; nothing reads it |
 | ResolvedAt | Instant? | When resolved (approved/rejected/withdrawn) |
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |

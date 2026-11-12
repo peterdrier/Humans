@@ -88,7 +88,6 @@
   <data name="Governance_Create_Step4" xml:space="preserve"><value>You'll receive an email once a decision is made</value></data>
   <data name="Governance_ApplicationDetail_Details" xml:space="preserve"><value>Details</value></data>
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve"><value>Application Information</value></data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve"><value>Review Started</value></data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve"><value>Reviewed By</value></data>
   <data name="Governance_ApplicationDetail_YourMotivation" xml:space="preserve"><value>Your Motivation</value></data>
   <data name="Governance_ApplicationDetail_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>

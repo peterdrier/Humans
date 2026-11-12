@@ -197,9 +197,6 @@
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
     <value>Aanvraaginformatie</value>
   </data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
-    <value>Beoordeling gestart</value>
-  </data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
     <value>Beoordeeld door</value>
   </data>

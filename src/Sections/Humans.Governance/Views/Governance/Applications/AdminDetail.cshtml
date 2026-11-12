@@ -45,11 +45,6 @@
                         <dd class="col-7">@Model.Language.ToDisplayLanguageName()</dd>
                     }
 
-                    @if (Model.ReviewStartedAt.HasValue)
-                    {
-                        <dt class="col-5">@Localizer["Governance_ApplicationDetail_ReviewStarted"]</dt>
-                        <dd class="col-7">@Model.ReviewStartedAt.ToDate()</dd>
-                    }
 
                     @if (Model.ReviewedByUserId is { } reviewerId)
                     {

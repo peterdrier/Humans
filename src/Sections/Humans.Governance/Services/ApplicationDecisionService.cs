@@ -133,7 +133,12 @@ internal sealed class ApplicationDecisionService(
         // Resolve the Board before the write so nothing awaitable sits between commit and audit.
         var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
         var approved = application.Status == ApplicationStatus.Approved;
-        var tierGrant = approved ? new MembershipTierRecord
+        // Downgrades happen only at term expiry: an in-term higher tier stays, and the expiry job
+        // falls back to this approval when it ends.
+        var keepsHigherTier = approved && application.MembershipTier == MembershipTier.Colaborador
+            && await repository.HasActiveApprovedTierAsync(
+                application.UserId, MembershipTier.Asociado, clock.GetCurrentInstant().InUtc().Date, cancellationToken);
+        var tierGrant = approved && !keepsHigherTier ? new MembershipTierRecord
         {
             UserId = application.UserId,
             Tier = application.MembershipTier,
@@ -150,7 +155,9 @@ internal sealed class ApplicationDecisionService(
             approved ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,
             AuditEntityTypes.Application,
             application.Id,
-            $"{application.MembershipTier} application {decision}",
+            keepsHigherTier
+                ? $"{application.MembershipTier} application {decision}; Asociado tier kept until its term ends"
+                : $"{application.MembershipTier} application {decision}",
             reviewerUserId);
 
         metrics.RecordApplicationProcessed(decision);

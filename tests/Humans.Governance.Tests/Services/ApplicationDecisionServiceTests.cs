@@ -755,6 +755,45 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ApproveAsync_LowerTierKeepsTheInTermHigherTier()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var asociadoExpiry = new LocalDate(2027, 12, 31);
+        var asociado = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
+        asociado.Approve(Guid.NewGuid(), null, Clock);
+        asociado.TermExpiresAt = asociadoExpiry;
+        var asociadoApp = asociado.Id;
+        GovernanceDb.MembershipTiers.Add(new MembershipTierRecord
+        {
+            UserId = userId,
+            Tier = MembershipTier.Asociado,
+            GrantedAt = Clock.GetCurrentInstant() - Duration.FromDays(30),
+            ExpiresAt = asociadoExpiry,
+            GrantedByApplicationId = asociadoApp,
+        });
+        await SaveAllAsync(ct);
+        ClearAllTrackers();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        await SeedBoardVoteAsync(app.Id);
+
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, ct);
+
+        ClearAllTrackers();
+        (await GovernanceDb.Applications.SingleAsync(a => a.Id == app.Id, ct)).Status.Should().Be(ApplicationStatus.Approved);
+        var row = await GovernanceDb.MembershipTiers.SingleAsync(ct);
+        row.Tier.Should().Be(MembershipTier.Asociado);
+        row.ExpiresAt.Should().Be(asociadoExpiry);
+        row.GrantedByApplicationId.Should().Be(asociadoApp);
+        await AuditLog.Received(1).LogAsync(
+            GovernanceAuditActions.TierApplicationApproved,
+            AuditEntityTypes.Application,
+            app.Id,
+            "Colaborador application approved; Asociado tier kept until its term ends",
+            Arg.Any<Guid>());
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_DeletesBoardVotes()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());

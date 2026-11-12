@@ -197,9 +197,6 @@
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
     <value>Informació de la sol·licitud</value>
   </data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
-    <value>Revisió iniciada</value>
-  </data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
     <value>Revisada per</value>
   </data>
