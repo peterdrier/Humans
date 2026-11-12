@@ -144,6 +144,10 @@ public class FinanceOverviewServiceTests
         CreditorMatchVm.For(recon, 40000001).Should().BeEquivalentTo(
             new CreditorMatchVm(50m, -30m, 10m, -10m, 1, 1, 1, 1));
         CreditorMatchVm.For(recon, 40000001)!.Warnings.Should().HaveCount(4);
+        // A second member on the same account: the ledger split is the account's, their Missing line still counts.
+        var shared = member with { UserId = Guid.NewGuid(), MissingLines = 2 };
+        CreditorMatchVm.For(recon with { Members = [member, shared] }, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 3, 1, 1, 1));
         // No member, but an expense purchase nobody claims.
         CreditorMatchVm.For(recon, 40000009).Should().BeEquivalentTo(new CreditorMatchVm(0m, 0m, 7m, 0m, 0, 1, 0, 0));
         CreditorMatchVm.For(recon, 40000002).Should().BeNull("the recon has nothing on the account");

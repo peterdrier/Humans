@@ -22,19 +22,23 @@ internal sealed record CreditorMatchVm(
     {
         if (!recon.IsAvailable) return null;
         var orphans = recon.Orphans.Where(o => o.AccountNum == supplierAccountNum).ToList();
-        if (recon.Members.FirstOrDefault(m => m.SupplierAccountNum == supplierAccountNum) is not { } member)
+        // Two members bound to one account each get a row: the ledger split is the account's, the lines are theirs.
+        var members = recon.Members.Where(m => m.SupplierAccountNum == supplierAccountNum).ToList();
+        if (members.Count == 0)
             return orphans.Count == 0
                 ? null
                 : new CreditorMatchVm(0m, 0m, orphans.Sum(o => o.Amount), 0m, 0, orphans.Count, 0, 0);
 
+        var member = members[0];
+        var users = members.Select(m => m.UserId).ToHashSet();
         return new CreditorMatchVm(
             -member.ExpensePurchases,
             -member.SepaPaid,
             -member.UnclaimedPurchases,
             -member.OtherTotal,
-            member.MissingLines,
+            members.Sum(m => m.MissingLines),
             member.UnclaimedPurchaseCount,
-            recon.Lines.Count(l => l.CreditorUserId == member.UserId && l.Status == ExpenseReconLineStatus.Duplicated),
+            recon.Lines.Count(l => users.Contains(l.CreditorUserId) && l.Status == ExpenseReconLineStatus.Duplicated),
             member.UnmatchedTransfers.Count);
     }
 
