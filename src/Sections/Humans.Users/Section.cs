@@ -134,8 +134,6 @@ public sealed class Section :
 
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
-        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
-
         services.AddScoped<ProfileService>();
         services.AddScoped<MedicalConditionsService>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
@@ -293,9 +291,6 @@ public sealed class Section :
 
         options.AddPolicy(UsersPolicies.MedicalDataViewer, policy =>
             policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
-
-        options.AddPolicy(UsersPolicies.UsersAdminOnly, policy =>
-            policy.AddRequirements(new HumanAdminOnlyRequirement()));
     }
 
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(

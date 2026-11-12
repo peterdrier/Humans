@@ -14,10 +14,4 @@ public static class UsersPolicies
     /// (<c>POST /Profile/{id}/Medical/Reveal</c>). Every reveal is audited, which is what lets Board in.
     /// </summary>
     public const string MedicalDataViewer = "UsersMedicalDataViewer";
-
-    /// <summary>
-    /// Users Admin who is neither Admin nor Board: drives the standalone "Humans" nav link for a viewer the admin shell
-    /// would otherwise not lead to the human list.
-    /// </summary>
-    public const string UsersAdminOnly = "UsersAdminOnly";
 }

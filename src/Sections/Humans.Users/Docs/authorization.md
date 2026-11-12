@@ -2,7 +2,7 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `ProfileController` (own profile), `ProfileEmailsController` (email grids), `ProfileViewController` (others' profiles, picture, popovers, search) — all `[Route("Profile")]` | Class | `[Authorize]` (authenticated) | — |
+| `ProfileController` (own profile), `ProfileEmailsController` (email grids), `ProfileViewController` (others' profiles, picture, popovers) — all `[Route("Profile")]` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileController` / `ProfileEmailsController` own-profile actions (`Index`, `Me`, `Me/Edit`, `Me/Medical`, `Me/Emails/*`, `Me/LinkedAccounts/Unlink`) | Action | `[Authorize]` (authenticated) | `[AllowBeforeActiveMembership]` — own-profile maintenance stays reachable before Active; `ProfileViewController` has none |
 | `ProfileEmailsController.VerifyEmail` (`Me/Emails/Verify`) | Action | `AllowAnonymous` | Override |
 | `ProfileViewController.Picture` | Action | `AllowAnonymous` | Override |
@@ -27,6 +27,5 @@
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
 | `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`View`: self, UsersAdmin, Admin, Board; `Edit`: self, UsersAdmin, Admin) | `Guid` (target user id) | `Authorization/UserEmailAuthorizationHandler.cs` (registered in `Section.cs`) |
-| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | none (role check: UsersAdmin but not Admin/Board) | `Authorization/HumanAdminOnlyHandler.cs` (registered in `Section.cs`; backs `UsersPolicies.UsersAdminOnly`, which has no `[Authorize(Policy=...)]` call site yet) |
 
 Email self-access compares the resolved actor's surviving id with the exact target id; it never expands credential ownership to merged-away ids. A missing actor has no self grant. Role grants do not require an actor lookup.

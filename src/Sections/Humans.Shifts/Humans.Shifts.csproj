@@ -17,8 +17,7 @@
     <!--
       AuthorizationPolicyTests builds its own ServiceCollection rather than the full
       Section.Register graph, so it registers IsAnyTeamManagerOrCoordinatorHandler
-      directly (backs PolicyNames.ShiftDepartmentManager) — same shape as
-      Humans.Users.csproj's grant for HumanAdminOnlyHandler.
+      directly (backs PolicyNames.ShiftDepartmentManager).
     -->
     <InternalsVisibleTo Include="Humans.Web.Tests" />
   </ItemGroup>

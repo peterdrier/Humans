@@ -28,7 +28,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
@@ -62,7 +61,6 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddSingleton<IClock>(SystemClock.Instance);
         // Section-contributed policies: their handlers come from each Section.Register, so register them here.
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
-        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
         // AnyAdminRole derives from the sections' ISectionRoles through Auth's RoleCatalog.
         foreach (var roles in SectionDiscoveryExtensions.DiscoverImplementations<ISectionRoles>())
             services.AddSingleton(roles);
@@ -226,15 +224,6 @@ public class AuthorizationPolicyTests : IDisposable
         PolicyNames.ScannerAccess,
         PolicyNames.GateAdmit
     ];
-
-    public static TheoryData<string[], bool> UsersAdminOnlyCases => new()
-    {
-        { [UsersRoles.UsersAdmin], true },
-        { [UsersRoles.UsersAdmin, RoleNames.Admin], false },
-        { [UsersRoles.UsersAdmin, RoleNames.Board], false },
-        { [RoleNames.Admin], false },
-        { [], false },
-    };
 
     [HumansTheory]
     [MemberData(nameof(RolePolicyCases))]
@@ -602,18 +591,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    [HumansTheory]
-    [MemberData(nameof(UsersAdminOnlyCases))]
-    public async Task UsersAdminOnly_matches_expected_role_combinations(string[] roles, bool expected)
-    {
-        var user = roles.Length == 0
-            ? CreateAuthenticatedUser()
-            : CreateUserWithRoles(roles);
-        var result = await _authorizationService.AuthorizeAsync(user, UsersPolicies.UsersAdminOnly);
-
-        result.Succeeded.Should().Be(expected);
-    }
-
     [HumansFact]
     public async Task UnknownPolicy_ThrowsInvalidOperationException()
     {
@@ -648,17 +625,6 @@ public class AuthorizationPolicyTests : IDisposable
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
-        var identity = new ClaimsIdentity(claims, "TestAuth");
-        return new ClaimsPrincipal(identity);
-    }
-
-    private static ClaimsPrincipal CreateAuthenticatedUser()
-    {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-            new(ClaimTypes.Name, "testuser@example.com")
-        };
         var identity = new ClaimsIdentity(claims, "TestAuth");
         return new ClaimsPrincipal(identity);
     }

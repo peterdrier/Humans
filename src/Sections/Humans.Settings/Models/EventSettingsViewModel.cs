@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Humans.Settings.Models;
 
-internal sealed class EventSettingsViewModel : IValidatableObject
+internal sealed class EventSettingsViewModel
 {
     [BindRequired]
     public Guid? Id { get; set; }
@@ -21,15 +21,10 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 
     [BindRequired]
     public int BuildStartOffset { get; set; } = -25;
-    [Range(0, int.MaxValue, ErrorMessage = "Event end must be on or after gate-opening day.")]
     [BindRequired]
     public int EventEndOffset { get; set; } = 6;
     [BindRequired]
     public int StrikeEndOffset { get; set; } = 9;
-
-
-
-
 
     [BindRequired]
     public string EarlyEntryCapacityJson { get; set; } = "{}";
@@ -48,24 +43,6 @@ internal sealed class EventSettingsViewModel : IValidatableObject
     /// <summary>Maps to Active/Inactive only; this form never withdraws a cycle.</summary>
     [BindRequired]
     public bool IsActive { get; set; }
-
-    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-    {
-        if (StrikeEndOffset < EventEndOffset)
-        {
-            yield return new ValidationResult(
-                "Strike end must be on or after event end.",
-                [nameof(StrikeEndOffset), nameof(EventEndOffset)]);
-        }
-
-        if (EarlyEntryStartOffset is { } eeStartOffset
-            && (eeStartOffset < BuildStartOffset || eeStartOffset >= 0))
-        {
-            yield return new ValidationResult(
-                "Early entry start offset must be between build start and 0 (exclusive).",
-                [nameof(EarlyEntryStartOffset)]);
-        }
-    }
 }
 
 internal sealed record EventSettingsFormError(string FieldName, string Message);

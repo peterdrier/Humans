@@ -9,7 +9,7 @@
     <InternalsVisibleTo Include="Humans.Users.Tests" />
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
-    <!-- Shell-level tests over the moved controllers. -->
+    <!-- Shell-level tests over this section's controllers and policies. -->
     <InternalsVisibleTo Include="Humans.Web.Tests" />
     <!--
       DeletionConfirmationLeavesNoOutboxRowTests runs this section's deletion job and its
@@ -19,9 +19,8 @@
     -->
     <InternalsVisibleTo Include="Humans.Email.Tests" />
     <!--
-      Three unmoved sections' harnesses seed this section's rows through an in-memory
-      UsersDbContext (Teams' two-way pattern). Each drops out at the lane
-      that stops its harness building another section's context directly.
+      These harnesses seed this section's rows through an in-memory UsersDbContext; each
+      grant goes when its harness stops building another section's context directly.
     -->
     <InternalsVisibleTo Include="Humans.Camps.Tests" />
     <InternalsVisibleTo Include="Humans.Shifts.Tests" />
@@ -31,15 +30,12 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
     <Using Include="Microsoft.Extensions.Logging" />
     <!--
-      The six Profile-side entities are internal here rather than public on the leaf
-      (nobodies-collective/Humans#1051); forty files across the section name one. Global, as in
-      Humans.Camps — the precedent this section's entity layout follows.
+      The Profile-side entities are internal to this section and named across it: a global using.
     -->
     <Using Include="Humans.Users.Domain" />
   </ItemGroup>
@@ -48,36 +44,11 @@
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
-    <!--
-      Humans.Interfaces above now carries what the deleted Humans.Domain used to supply here:
-      RoleNames, the shared value objects, and the enums that keep the Humans.Base.Enums
-      namespace because more than one section names or persists them. G5 lane 3b finished the
-      job — GoogleEmailStatus, MembershipTier and MessageCategory went to
-      Humans.Users.Contracts (this section's own vocabulary, each named by a public leaf type),
-      joining ContactSource, LanguageProficiency, ParticipationSource and ParticipationStatus
-      which left in lane 4b-2l for the same reason. MembershipStatus is Governance's and sits
-      on its leaf.
-    -->
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <!--
-      Outbound section references, all acyclic — none of these names a Humans.Users
-      type. Note the reverse direction is sanctioned and
-      deliberate: consumers reference *this* project for IUserService's write surface
-      (Peter, 2026-08-14). IUserService itself sits on Humans.Users.Contracts, not here —
-      seven Base files inject it and Humans.Users references Base, so a section-resident
-      IUserService is a cycle (a consumer in Base forces
-      Humans.<Section>.Contracts). No consumer needed a new ProjectReference.
-        AuditLog      — every write path records an audit entry.
-        Auth          — role assignment on provisioning and merge.
-        Consent       — profile completeness gates on the consent state.
-        Email         — verification, unsubscribe and merge-notification mail.
-        Gdpr          — AccountDeletionService drives IGdprService erasure.
-        Notifications — merge requests and email problems notify the human.
-        Onboarding    — profile editing reports onboarding progress.
-        Shifts        — participation backfill reads the burn settings.
-        Teams         — account merge folds team memberships.
-        Tickets       — participation is derived from ticket sync.
+      Outbound section references, all acyclic: none of them names a Humans.Users type.
+      Docs/Users.md, Cross-Section Dependencies, says what each one is for.
     -->
     <!--
       Views/Profile/Index.cshtml renders <vc:my-camps />, whose MyCampsViewComponent is
@@ -89,21 +60,15 @@
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- ProfileController injects IAuditViewerService and AdminDetail.cshtml renders
-         <vc:audit-log>; both moved out of Humans.Application / Humans.UI into the AuditLog
-         section in G5 lane 4b-2h (nobodies-collective/Humans#866). AuditLog reaches back only
-         to Humans.Users.Contracts, never to this project — no cycle. -->
+         <vc:audit-log>. AuditLog reaches back only to Humans.Users.Contracts: no cycle. -->
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!--
-      Both added at G5 lane 4b-2d with the body of SuspendNonCompliantMembersJob:
-      Governance for IMembershipCalculator (who is now non-compliant) and
-      GoogleIntegration for IGoogleSyncService (drop the suspended human from their
-      teams' Drive/Groups). Both edges are acyclic: neither names a Humans.Users type.
-      Note that Humans.Governance.Contracts gained a reference to Humans.Users.Contracts at
-      G5 lane 3b (MembershipTier followed the deleted Humans.Domain to its owner) — still
-      acyclic, since the *leaf* is not this section project.
+      SuspendNonCompliantMembersJob: Governance for IMembershipCalculator (who is now
+      non-compliant) and GoogleIntegration for IGoogleSyncService (drop the suspended human
+      from their teams' Drive/Groups). Acyclic: neither names a Humans.Users type.
     -->
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
@@ -117,8 +82,8 @@
       Razor compile time off @addTagHelper *, Humans.Shifts, and ShiftSignupsViewComponent +
       ShiftSignupsViewMode live in the section's Contracts/ *folder*, not in
       Humans.Shifts.Contracts. Views/Profile/Edit.cshtml's IStringLocalizer<ShiftsResource> for
-      the two shift-preference strings rides along on the same reference — the Users resx carve
-      (nobodies-collective/Humans#1050) left them in Shifts rather than duplicate the copy.
+      the two shift-preference strings rides along on the same reference rather than duplicating
+      the copy.
       Acyclic — Humans.Shifts names nothing in Humans.Users. Drops out only when the view
       component moves to the leaf.
     -->
@@ -133,9 +98,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Contracts/ProcessAccountDeletionsJob.cs and Contracts/SuspendNonCompliantMembersJob.cs —
-         [DisableConcurrentExecution] and IRecurringJob, since G5 lane 5b-4. Package, not
-         project, so no cycle is possible; it was already arriving transitively. -->
+    <!-- Jobs/ProcessAccountDeletionsJob.cs and Jobs/SuspendNonCompliantMembersJob.cs:
+         [DisableConcurrentExecution] and IRecurringJob. Package, not project, so no cycle. -->
     <PackageReference Include="Hangfire.Core" />
     <!-- Helpers/ProfilePictureProcessor.cs — profile-picture resize/orient on upload. -->
     <PackageReference Include="Magick.NET-Q8-AnyCPU" />
