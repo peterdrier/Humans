@@ -255,6 +255,8 @@ public class CachingUserServiceTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var user = SampleUser();
         user.BurnerName = "Before";
+        user.FirstName = "Legal";
+        user.LastName = "Name";
         user.State = suspend ? UserState.Active : UserState.Suspended;
         var profile = SampleProfile(user.Id, "Before");
         var original = UserInfoFactory.Create(user, [], [], profile, [], [], []);
@@ -290,6 +292,7 @@ public class CachingUserServiceTests
         refreshed!.State.Should().Be(expectedState);
         refreshed.BurnerName.Should().Be("After");
         refreshed.PreferredLanguage.Should().Be("es");
+        refreshed.FullName.Should().Be("Legal Name");
         refreshed.IsFake.Should().BeTrue();
         refreshed.Profile.Should().BeEquivalentTo(original.Profile);
     }
