@@ -37,10 +37,3 @@ public interface IGovernanceService : IApplicationService
     /// <summary>Non-Volunteer members only; an absent id means <see cref="MembershipTier.Volunteer"/>.</summary>
     Task<IReadOnlyDictionary<Guid, MembershipTier>> GetMembershipTiersAsync(CancellationToken ct = default);
 }
-
-public sealed record ApplicationAdminStats(
-    int Total,
-    int Approved,
-    int Rejected,
-    int ColaboradorApplied,
-    int AsociadoApplied);

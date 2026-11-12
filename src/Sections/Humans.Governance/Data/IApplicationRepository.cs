@@ -1,5 +1,6 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.Governance.Contracts;
+using Humans.Governance.Services.Dtos;
 using Humans.Governance.Domain;
 using NodaTime;
 using MemberApplication = Humans.Governance.Domain.Application;
@@ -10,9 +11,7 @@ internal interface IApplicationRepository : IRepository
 {
     Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Ordered by <c>SubmittedAt</c> descending, with <c>StateHistory</c>.
-    /// </summary>
+    /// <summary>With <c>StateHistory</c>; unordered, the caller orders for display.</summary>
     Task<IReadOnlyList<MemberApplication>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>

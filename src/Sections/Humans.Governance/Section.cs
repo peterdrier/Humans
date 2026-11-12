@@ -206,7 +206,7 @@ public sealed class Section :
         yield return new RecurringJobDescriptor(
             "governance-term-renewal-reminder", typeof(TermRenewalReminderJob), "0 5 * * 1");
 
-        // Tier term expiry. Five minutes after the midnight UTC system-team sync, which has
+        // Tier term expiry. Five minutes after the hourly system-team sync's midnight run, which has
         // already dropped the lapsed members from their team; the sync reads the dated
         // approvals, so it never waits on this.
         yield return new RecurringJobDescriptor(

@@ -55,7 +55,7 @@ Sources: Ley Orgánica 1/2002 reguladora del Derecho de Asociación; the associa
 
 Admin-only for the first votes because they are live tests; once the process has run once or twice, opening moves to `BoardOrAdmin` (a policy constant change, no redesign).
 
-- Opening snapshots the **roster**: every current Asociado and every active Board role holder (official, one row per person, Board members are de facto Asociados whatever their profile tier says) plus the indicative audience (Colaboradores and/or all active Volunteers) as of that instant. The roster is the legal record of who was entitled to vote and the denominator for turnout. It never changes afterwards; members approved, expired, suspended or erased during the vote keep or lose nothing on the roster, only their ability to log in.
+- Opening snapshots the **roster**: every current Asociado and every active Board role holder (official, one row per person, Board members are de facto Asociados whatever their recorded membership tier says) plus the indicative audience (Colaboradores and/or all active Volunteers) as of that instant. The roster is the legal record of who was entitled to vote and the denominator for turnout. It never changes afterwards; members approved, expired, suspended or erased during the vote keep or lose nothing on the roster, only their ability to log in.
 - Each roster member is emailed in their preferred language with the title, the closing time, whether their ballot is official or indicative, and a link to the ballot page. Category `System` (operational, never marketing).
 - Audit entry `AssemblyVoteOpened` with roster counts.
 
@@ -114,7 +114,7 @@ The hourly sweep reports recipient delivery failures after attempting the remain
 
 ## Why not Surveys
 
-Daniel's Surveys section already carries an **Asociado vote** mode with ranked-choice counting (nobodies-collective/Humans#1151, #1157, #1585). It was the right tool for the 2027 event-date decision and stays. It is the wrong base for binding association votes, for reasons that are structural, not cosmetic:
+Daniel's Surveys section already carries an **Asociado vote** mode with ranked-choice counting (nobodies-collective/Humans#1151, nobodies-collective/Humans#1157, peterdrier/Humans#1585). It was the right tool for the 2027 event-date decision and stays. It is the wrong base for binding association votes, for reasons that are structural, not cosmetic:
 
 1. **Opposite privacy contract.** Surveys' load-bearing invariant is *unlinkability*: Asociado ballots store no `UserId`, no completion timestamp, and "individual response submissions cannot be audit-logged". Binding votes require the reverse: every ballot attributable, every change audited, the member able to see their own history, and the Board able to inspect ballots after close. You cannot hold "never link" and "always link and audit" as invariants of one section; whichever branch is the exception becomes an untested path through the other's privacy guarantees.
 2. **Changeable ballots.** Surveys' CompletionTracked tier cannot resume or amend because there is no link to resume from. Statutes-compliant remote voting during a live assembly needs "change your vote until the chair closes it".
@@ -169,14 +169,14 @@ All tables in `GovernanceDbContext`, prefix `assembly_`.
 
 ### AssemblyVoteRoster
 
-**Table:** `assembly_vote_roster`. Written once at open, never updated except by erasure.
+**Table:** `assembly_vote_roster`. Membership written once at open; afterwards only the `NotifiedAt` / `ReminderSentAt` delivery stamps change (`ReminderSentAt` is cleared on extension), plus the erasure tombstone.
 
 | Property | Type | Notes |
 |---|---|---|
 | Id | Guid | PK |
 | VoteId | Guid | FK |
 | UserId | Guid? | bare FK → User, no nav; null after Art. 17 erasure |
-| Tier | MembershipTier | profile tier at open |
+| Tier | MembershipTier | tier at open, from active approved terms (Board role holders recorded as Asociado, Volunteers-team members as Volunteer) |
 | IsBoardMember | bool | held the Board role at open |
 | IsOfficial | bool | Asociado or Board member at open |
 | NotifiedAt | Instant? | open email queued |
@@ -288,7 +288,7 @@ Navigation: a `ISectionNav` entry ("Votes", `Nav_*` SharedResource key, visible 
 | Admin | everything Board can, plus open, stop, extend, cancel, peek | see the tally before close without an audit trail |
 | Automation (lapse job) | close a lapsed vote and audit it, send the T-24h reminder and audit the batch | anything else |
 
-Board members are de facto Asociados: they are on the official roster whether or not their profile tier says Asociado, with one ballot like anyone else.
+Board members are de facto Asociados: they are on the official roster whether or not their recorded membership tier says Asociado, with one ballot like anyone else.
 
 ## Invariants
 
@@ -327,7 +327,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 - **Mail reachability:** null, empty and whitespace-only notification addresses are skipped. Opening and reminder rows stay unstamped, allowing later sweeps to retry after an address becomes available.
 
 - **Reminder:** 24h before `ClosesAt`, the clock and the vote both re-read per recipient, one email to roster members with no ballot (`GovernanceEmails.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats for one deadline — and the stamp is written only while the vote still closes at the time the email named, so an extension landing mid-send leaves the row unstamped for the next sweep rather than standing for a deadline the member was never told; sent by the same hourly job as the lapse sweep. An accepted extension clears the stamps written up to that moment, so the roster is reminded once more when the new deadline comes into range; a later stamp is left alone, because a sweep still running reads the new deadline per recipient and is announcing that one already. Decided 2026-09-10: keep.
-- **GDPR export:** `IUserDataContributor` contributes the member's roster rows, current ballots and history under a new export key it declares as `AssemblyVoteService.AssemblyVotes`. Actor-side data (drafted/opened/closed votes, peeks) goes in a second slice, `AssemblyVoteService.AssemblyVoteActions`, and is declared as retained: the acta names the closer and the results page publishes the early-view list.
+- **GDPR export:** `IUserDataContributor` contributes the member's roster rows, current ballots and history under a new export key it declares as `AssemblyVoteDataExport.AssemblyVotes`. Actor-side data (drafted/opened/closed votes, peeks) goes in a second slice, `AssemblyVoteDataExport.AssemblyVoteActions`, and is declared as retained: the acta names the closer and the results page publishes the early-view list.
 - **Duplicate accounts:** a merge leaves assembly-vote roster rows and ballots exactly where they are. One human enrolled on a roster twice, and casting two ballots, is a defect in the vote itself, and re-pointing or collapsing the rows would destroy the only record that it happened. Nothing becomes unreachable, because every member-facing read walks the chain instead: `AssemblyVoteMemberWorkflow.EffectiveRosterAsync` resolves the viewer to their own roster row or to one left on an account merged into theirs — a row that already carries a ballot wins over every other candidate, the viewer's own included, so a human holding two rows on one vote amends the ballot they cast rather than casting a second, and rows are considered in id order so two reads never disagree. So the survivor of a merge can still see the vote, cast and amend the ballot the frozen roster granted them; and the GDPR export unions `UserInfo.MergedUserIds`, the same chain erasure already follows. Mail follows the same chain: `RecipientsAsync` resolves every roster row's user id through `GetUserInfosAsync`, groups the rows by the resolved human, and mails once — so a row left on a tombstone reaches the survivor, and a human holding two rows on one vote gets one email with both rows stamped.
 - **Art. 17 erasure:** roster `UserId` → null (tombstone keeps counts and the stored result valid); ballot and history rows are retained unlinked, because the vote is a legal record of the association (Art. 17(3)(b) / (e)). Declared as partial retention in the section's `ErasureDeclaration`.
 - **Account merge (`IUserMerge`):** roster rows and ballots do **not** re-FK from source to target — they record who was entitled when the vote opened and what that entitlement produced, not who holds the account today. Every vote the merged-away account was rostered on gets an audit entry naming that id, so the Board can see the merge found the row and left it standing. The vote's own actor columns (`CreatedByUserId`, `OpenedByUserId`, `ClosedByUserId`) and `assembly_vote_peeks.AdminUserId` do move, so the acta and the published peek list keep naming the surviving human instead of a tombstone.
@@ -377,4 +377,4 @@ Anything not listed is the implementer's call within this spec.
 
 - [Board voting](board-voting.md), [Membership tiers](membership-tiers.md), [Governance invariants](../Governance.md)
 - Surveys secret-ballot mode: [ranked-choice-voting.md](../../../Humans.Surveys/Docs/features/ranked-choice-voting.md)
-- nobodies-collective/Humans#86 (original ask), nobodies-collective/Humans#1151 and #1157 (Surveys RCV), peterdrier/Humans#1585 (unlinkable Asociado ballots)
+- nobodies-collective/Humans#86 (original ask), nobodies-collective/Humans#1151 and nobodies-collective/Humans#1157 (Surveys RCV), peterdrier/Humans#1585 (unlinkable Asociado ballots)

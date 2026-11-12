@@ -24,7 +24,7 @@ internal sealed class AssemblyVoteRosterBuilder(
     /// </summary>
     /// <remarks>
     /// Board members are de facto Asociados and sit on the official roster whatever their
-    /// profile tier says. A person reachable through more than one source gets exactly one
+    /// recorded membership tier says. A person reachable through more than one source gets exactly one
     /// row, official if any source made them official.
     /// </remarks>
     internal async Task<List<AssemblyVoteRoster>> BuildRosterAsync(
