@@ -384,9 +384,6 @@ internal sealed class SepaBankBooking(
         }
     }
 
-    /// <summary>An undated pending outgoing line fails the read closed (it could be a SEPA rival) for
-    /// <see cref="StuckLineSkipAfterRuns"/> − 1 runs. The run that reaches the threshold skips it, reads the rest and
-    /// audits once; later runs skip it with a warning until it reads again.</summary>
     private async Task RefreshIdleFeedAsync(CancellationToken ct)
     {
         var syncedAt = (await holded.GetBankMovementsAsync(sepa.Value.TreasuryAccountId, Today(), Today(), ct))
@@ -402,6 +399,9 @@ internal sealed class SepaBankBooking(
         }
     }
 
+    /// <summary>An undated pending outgoing line fails the read closed (it could be a SEPA rival) for
+    /// <see cref="StuckLineSkipAfterRuns"/> − 1 runs. The run that reaches the threshold skips it, reads the rest and
+    /// audits once; later runs skip it with a warning until it reads again.</summary>
     private async Task<IReadOnlyList<HoldedBankMovementDto>> ReadSweepFeedAsync(
         LocalDate from, CancellationToken ct)
     {
