@@ -164,7 +164,6 @@ public class HoldedFinanceServiceTests
         var controller = new FinanceController(_users, service, service, _holded,
             Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
-            new CreditorMatchService(_holded, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>()),
             new FinanceOverviewService(_holded, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),

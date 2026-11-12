@@ -126,6 +126,31 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
+    public void CreditorMatch_IsTheAccountsSliceOfTheExpenseRecon()
+    {
+        var user = Guid.NewGuid();
+        var transfer = new ExpenseReconOpenTransfer(Guid.NewGuid(), "f.xml", Instant.FromUtc(2026, 1, 1, 0, 0), 5m);
+        var member = new ExpenseReconMember(user, "M", 40000001, -20m, -50m, 30m, -10m, MissingLines: 1,
+            UnclaimedPurchaseCount: 1, [transfer], [new(new LocalDate(2026, 1, 2), 9, "entry", null, 10m)],
+            ExpenseReconMemberStatus.Off, []);
+        var duplicated = new ExpenseReconLine(Guid.NewGuid(), null, user, "M", "d", 10m, new LocalDate(2026, 1, 1), "",
+            ExpenseReconLineStatus.Duplicated, null, 40000001, 1, null, [2], 10m);
+        var orphan = new ExpenseReconOrphan(40000009, 3, new LocalDate(2026, 1, 3), "ER: x", 7m,
+            ExpenseReconOrphanKind.UnboundContact);
+        var recon = new ExpenseReconReport(null, Instant.FromUtc(2026, 1, 4, 0, 0), null, [], [duplicated], [orphan],
+            [member], new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0));
+
+        // The member's side: positive is owed to the member.
+        CreditorMatchVm.For(recon, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 1, 1, 1, 1));
+        CreditorMatchVm.For(recon, 40000001)!.Warnings.Should().HaveCount(4);
+        // No member, but an expense purchase nobody claims.
+        CreditorMatchVm.For(recon, 40000009).Should().BeEquivalentTo(new CreditorMatchVm(0m, 0m, 7m, 0m, 0, 1, 0, 0));
+        CreditorMatchVm.For(recon, 40000002).Should().BeNull("the recon has nothing on the account");
+        CreditorMatchVm.For(recon with { UnavailableReason = "never synced" }, 40000001).Should().BeNull();
+    }
+
+    [HumansFact]
     public void BuildBudget_ComparesExpenseCategoriesOnly()
     {
         var yearId = Guid.NewGuid();
