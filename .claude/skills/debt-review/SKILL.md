@@ -1,6 +1,6 @@
 ---
 name: debt-review
-description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>). Judges every commit GOOD / REPAIR / REVERT, triages the bot review findings through /fix, lands one round-1 commit, files follow-up issues, then stewards the PR itself with a 3-round ceiling. Also opens at most one flagged ⚠️ DESTRUCTIVE drop PR a night for a retirement already on production; Peter merges it. Run by the 08:00 UTC cloud routine; also '/debt-review', '/debt-review 1789'."
+description: "Review, repair and steward the nightly Codex debt-sweep PR (branch codex/daily-debt/<date>): judge each commit, triage bot findings through /fix, file follow-ups. Run by the 08:00 UTC cloud routine; also '/debt-review [PR]'."
 argument-hint: "(none — today's codex/daily-debt PR) | 1789"
 ---
 
@@ -151,7 +151,7 @@ that already has an open PR, and list it in the summary. Open nothing while
 [`event-deploy-freeze`](../../../memory/process/event-deploy-freeze.md) applies.
 
 Open **at most one drop PR a night**, for the oldest due issue, following the standing-approval
-path in [`no-drops-until-prod-verified`](../../../memory/architecture/no-drops-until-prod-verified.md):
+path in [`destructive-drops-need-approval`](../../../memory/architecture/destructive-drops-need-approval.md):
 
 - Branch `db-drop/<issue>` off `origin/main`, separate from the debt PR.
 - Delete what the issue lists: the frozen properties and mappings, the `Legacy*` enums, the

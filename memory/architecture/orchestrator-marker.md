@@ -1,29 +1,32 @@
 ---
-name: Orchestrators own no tables and carry IOrchestrator (sibling of IApplicationService)
+name: orchestrator-marker
 description: An Orchestrator coordinates ≥2 sections, owns no tables or a repository. `IOrchestrator` is a sibling of `IApplicationService`, never a child — a table owner is a Section.
 ---
 
-Role vocabulary: [`CONTEXT.md`](../../CONTEXT.md) (Section / Crosscut / Orchestrator).
+An **Orchestrator** exists because an action genuinely crosses sections (GDPR export fanning out to
+every contributor; Onboarding walking a person through profile, consent and shifts). It coordinates
+sections through their public interfaces and holds only coordination logic. Vocabulary:
+[`CONTEXT.md`](../../CONTEXT.md).
 
-An **Orchestrator** exists because an action genuinely crosses multiple sections — GDPR export fans out to every `IUserDataContributor`; Onboarding sets up user/profile + gets the person into shifts + runs consent sign-offs. It coordinates sections through their public service interfaces and holds only coordination logic.
+- **It owns no tables and injects no repository.** The moment a service owns a table it is a Section,
+  however much it coordinates (`AgentService` owns `agent_*`, so it is a Section).
+- **`IOrchestrator` is a sibling of `IApplicationService`, never a child.** `IApplicationService`
+  grants own-lane repository access, the one capability an orchestrator must not have. A type carries
+  one or the other.
+- **Width is a cost.** The number of sections it touches is a liability to minimize.
+- **Homed ≠ owns.** An orchestrator may sit in a section's namespace for wiring convenience and still
+  own no lane.
 
-**The bright line: an Orchestrator owns no tables, and therefore injects no repository.** The moment a service owns a table / injects an `I*Repository`, it is a **Section**, not an Orchestrator — no matter how much it coordinates. (`AgentService` is labelled "orchestrator" in `Agent.md` but owns `agent_*` and injects `IAgentRepository`; by this rule it is a Section. The label is wrong.)
+**Enforcement** (marker in `Humans.Base.Interfaces`):
+- **HUM0026:** an `IOrchestrator` may not inject an `I*Repository`, a section DbContext or an
+  `IDbContextFactory<T>`. No grandfathering: a violation means the marker is wrong or the access belongs
+  in the owning section's service.
+- **HUM0027:** `IOrchestrator` xor `IApplicationService`.
 
-**Marker — `IOrchestrator` is a SIBLING of `IApplicationService`, never a child.** `IApplicationService` grants own-lane repository access; an Orchestrator is banned from any repository, so inheriting it would hand over the exact capability the orchestrator must not have. A service is one or the other, not both.
+`IInvalidator` and `IFanout` are capability markers that sit beside the role markers
+([`crosscut-purity`](crosscut-purity.md)).
 
-**Width is a cost.** The number of sections an Orchestrator touches is a liability to minimize, not a feature.
-
-**Homed ≠ owns.** An Orchestrator may be *homed* in a section's namespace for controller-wiring convenience while *owning* no lane. Code location is not table ownership.
-
-**Enforcement (built — SP1, PR #805).** Marker `IOrchestrator` lives in `Humans.Base.Interfaces` as a sibling of `IApplicationService`. Two analyzers run in the `Humans.Application` compilation:
-
-- **HUM0026 — Error.** A type implementing `IOrchestrator` may not inject any `I*Repository`, section DbContext, or `IDbContextFactory<TContext>`. No grandfather machinery; a violation means the role marker is wrong (relocate the access into the owning section's Section service).
-- **HUM0027 — Error.** A type may carry `IOrchestrator` xor `IApplicationService`, never both. The role axis is exclusive — `IApplicationService` grants own-lane repository access, which an orchestrator is banned from.
-
-**Capability marker, sibling of role markers.** `IInvalidator` (the cache-invalidator family, HUM0028 ratchet) and `IFanout` (terminology only, no analyzer) co-exist alongside `IOrchestrator` / `IApplicationService` on a per-type basis. See [[crosscut-purity]] for the sibling rule on keeping crosscuts pure.
-
-**Roster (SP1 settle).** `IGdprService`, `IEarlyEntryService`, `IOnboardingService`, `IHumanLifecycleService`, `IAccountDeletionService` carry `IOrchestrator` and no longer carry `IApplicationService`. `AgentService` is **not** an orchestrator — it owns `agent_*` and injects `IAgentRepository`, so it remains a Section. The `Agent.md` "orchestrator" label on it is wrong.
-
-`ISearchService` joined the roster in nobodies-collective#987 — the G0 audit (#980) found it still carrying `IApplicationService` despite matching this definition verbatim and being classified "Orchestrator" in the frozen inventory alongside Gdpr; neither analyzer catches an orchestrator-shaped `IApplicationService` (see the Enforcement gap note below), so this went undetected until a hand audit found it.
-
-**Enforcement gap — no analyzer flags an orchestrator-shaped `IApplicationService`.** HUM0026/HUM0027 only fire once a type carries `IOrchestrator`; neither rule inspects an `IApplicationService` implementer's shape (no repository/DbContext injected) to suggest it should carry `IOrchestrator` instead. Deliberately not closed: plenty of legitimate `IApplicationService` implementers inject zero repositories by design — same-section façades that compose sibling same-section services (`GoogleAdminService`: seven service-interface params, zero repos, homed and used only within GoogleIntegration) and external-API adapters with no in-repo dependency at all (`TicketTailorService`, `StripeService`: `HttpClient`/`IOptions`/`ILogger`, no section calls whatsoever). The actual distinguishing signal — "coordinates ≥2 sections as its *primary purpose*, owning nothing itself" vs. "is this section's own internal composition" — is a semantic judgment about a type's role, not something constructor-parameter shape alone determines; a purely shape-based rule would flag both of those false positives. Catch the next instance by G0-style audit, not a build-time rule.
+**Known gap, deliberately open:** no analyzer flags an orchestrator-shaped `IApplicationService`.
+Plenty of legitimate services inject no repository (same-section façades, external-API adapters), and
+"coordinates sections as its primary purpose" is a judgment about role, not constructor shape. Catch
+these by audit.

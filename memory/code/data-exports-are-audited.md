@@ -1,6 +1,6 @@
 ---
 name: data-exports-are-audited
-description: HARD RULE. Every bulk export/download of personal data (CSV, file) writes an audit entry (actor, what, row count) and carries the narrowest role — never a silent GET; adding one is a decision for Peter first.
+description: "HARD RULE. Every bulk export or download of personal data writes an audit entry (actor, what, row count) and carries the narrowest role; adding one is Peter's decision first."
 type: code
 ---
 

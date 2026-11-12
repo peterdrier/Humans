@@ -123,7 +123,7 @@ UserEmail
 ├── UserId: Guid (FK → User)
 ├── Email: string (256)
 ├── IsVerified: bool
-├── IsPrimary: bool (exactly one per user; DB column keeps the legacy name IsNotificationTarget per no-drops-until-prod-verified)
+├── IsPrimary: bool (exactly one per user; DB column keeps the legacy name IsNotificationTarget per destructive-drops-need-approval)
 ├── Visibility: ContactFieldVisibility? (null = hidden)
 ├── VerificationSentAt: Instant? (rate limiting)
 ├── CreatedAt: Instant
@@ -137,7 +137,7 @@ UserEmail
 - The Google sync target is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync` (Users decomposition commit 15; `UserInfo.GoogleEmail` and the `IsGoogle` flag are retired).
 - `UserInfo.PrimaryEmail` — the `UserEmail` row flagged `IsPrimary = true`; used for system notification emails.
 
-The `GoogleEmail` column is retained on disk as an EF shadow property pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`.
+The `GoogleEmail` column is retained on disk as an EF shadow property pending a deferred column-drop PR per `memory/architecture/destructive-drops-need-approval.md`.
 
 ## Verification Flow
 

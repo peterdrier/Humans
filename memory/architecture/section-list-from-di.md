@@ -1,36 +1,33 @@
 ---
-name: The section list comes from DI — don't hand-maintain another one
-description: Before hand-writing a list of section names — in code, in a doc, or in a skill's ledger — inject `ISectionCatalog` or glob `src/Sections/Humans.*`. A deliberate subset publishes `ISectionAnnotations` so drift shows.
+name: section-list-from-di
+description: "Before hand-writing a list of section names in code, a doc or a skill ledger: inject `ISectionCatalog` or glob `src/Sections/Humans.*` instead."
 ---
 
-**Don't hand-maintain a list of section names.** `ISectionCatalog` is a singleton in `Humans.Base.Interfaces`, built by `SectionCatalogBuilder` from the same dependency-graph walk that registers the sections, so it cannot drift from what the app runs. Inject it. It carries, per section, everything derived from the assembly: `IsActive`, `DependsOn`, `Seams`, `DbContexts`, `ServiceInterfaces`, `Repositories`, `HasContracts`, `HasResources`. `TryResolve` canonicalizes casing, which is what you want before building a path, a cache key or a stored column value.
+**Never hand-maintain a list of section names.**
 
-**Why:** separate copies of the section list existed before nobodies-collective/Humans#1509 — `IssueSectionRouting.AllKnownSections`, `AgentSectionKeys.Canonical`, `GuideFiles.Sections` — and some had already fallen behind renames without anything noticing: `Profiles` merged into Users at #866, `Legal` became Consent at the 2026-08-03 freeze. Nothing fails when a list goes stale — a routing table keyed by string keeps routing under the old name, and an agent key that names no section just dead-ends into the community FAQ — so drift stays invisible for years.
+**In code:** inject `ISectionCatalog` (`Humans.Base.Interfaces`). It is built from the same
+dependency-graph walk that registers the sections, so it cannot drift, and carries what is derived from
+each assembly (dependencies, seams, DbContexts, service interfaces, repositories). `TryResolve`
+canonicalizes casing; use it before building a path, cache key or stored value.
 
-**How to apply:**
+- A **deliberate subset** (the agent's user-facing keys, the sections with an issue queue) stays owned
+  by its section and is not derived from the catalog. It publishes an `ISectionAnnotations`
+  contribution; an entry naming no discovered section lands in `UnmatchedAnnotations`, is logged at
+  startup and shows on `/Debug/Sections`.
+- Drift is a **warning, never a startup failure**: throwing would make a section rename un-shippable.
+- Validate a stored section string against the list that owns the *behaviour* (e.g.
+  `IssueSectionRouting` for an issue queue), not against the catalog.
 
-- New code that needs to know what sections exist → inject `ISectionCatalog`. Never a new const list.
-- A list that is a **deliberate subset** — the agent's user-facing keys, the sections that have an issue queue — stays owned by its section. The catalog does not replace it and must not be used to derive it: `IsKnown` answers "is this a section", not "may this section be named here".
-- Any such subset publishes an `ISectionAnnotations` contribution (an explicit `ISectionAnnotations.Annotations()` on the section's `Section` class, one `SectionAnnotation` per entry). An entry naming no discovered section lands in `ISectionCatalog.UnmatchedAnnotations`, is logged at startup and is shown at `/Debug/Sections`.
-- Drift is a **warning, never a startup failure**. Nothing fails at runtime on a stale entry, and throwing would make a section rename un-shippable.
-- Validating a stored section string → validate against the list that owns the *behaviour* (`IssueSectionRouting` for an issue's queue), not against the catalog. The set of sections and the set of queues are not the same set.
+**In docs, skills and scripts:** glob `src/Sections/Humans.*`. There is no app-wide roster in prose
+either. Peter: *"sections are independent, we shouldn't have app wide listings of them. the skills need
+to be able to discover them dynamically."*
 
-## Docs and skill ledgers: same rule, no catalog
+- A section missing from a repo-wide ledger is that ledger's design, not a finding. Don't add the row,
+  don't raise it ([`no-tests-for-absences`](no-tests-for-absences.md)).
+- A ledger row carrying state the glob cannot derive (a last-swept date, an opt-out) is a deliberate
+  subset and keeps its row.
 
-Sections are independent, so there is no app-wide roster of them in prose either. Do not add a
-section row to `docs/architecture/freshness-catalog.yml`, `docs/architecture/dependency-graph.md`,
-or any other repo-wide listing just because a section exists and is missing from it — a missing row
-is not a defect, and filling one in is not maintenance. Peter, 2026-09-16: "sections are
-independent, we shouldn't have app wide listings of them. the skills need to be able to discover
-them dynamically. `/sections/Humans.*/foo` definitely do not add."
+**Why:** hand-kept copies fell behind section renames and nothing failed: a routing table kept routing
+under the old name for years.
 
-**How to apply:**
-- A skill or script that needs every section → glob `src/Sections/Humans.*` (and the per-section
-  path under it, e.g. `src/Sections/Humans.*/Docs/<Section>.md`). Never a checked-in name list.
-- Noticed a section absent from a repo-wide ledger → that is the ledger's design, not a finding.
-  Don't add the row, don't raise it ([`no-tests-for-absences`](no-tests-for-absences.md) covers
-  why absence is not a question).
-- A ledger row that *carries state* the glob cannot derive — a last-swept date, an opt-out — is a
-  deliberate subset and keeps its row; it is the bare "this section exists" roster that is banned.
-
-**Related:** [`design-rules.md`, *Crosscuts, orchestrators and fan-out*](../../docs/architecture/design-rules.md) (the seam table), [`base-ui-registries-are-section-populated`](base-ui-registries-are-section-populated.md), [`no-tests-for-absences`](no-tests-for-absences.md).
+**Related:** [`base-ui-registries-are-section-populated`](base-ui-registries-are-section-populated.md)

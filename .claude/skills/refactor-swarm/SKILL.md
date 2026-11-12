@@ -1,6 +1,6 @@
 ---
 name: refactor-swarm
-description: "Run multiple Reforge-guided section-refactor lanes in parallel, each in its own worktree/branch off origin/main, with a score-blind adversarial review panel gating every commit, one draft PR per section. Use when the user wants to reduce Reforge surface/internal score across several sections at once via architecturally-correct deletions (dead surface, entity-leak removal, cross-section consumers moved onto the public contract) — not by relocation, parameter bags, or accessibility-dodging. Wraps the per-lane process in .codex/skills/humans-refactor. Triggers: 'refactor swarm', 'parallel section refactors', 'run reforge refactor on Users/Tickets/...', 'burn down surface score across sections'. Has an intensity dial (light|standard|deep) and a workflow|solo execution mode to trade token burn against autonomy per unit of output."
+description: "Run several Reforge-guided section-refactor lanes in parallel, one worktree and draft PR per section, each commit gated by a score-blind review panel. Use for 'refactor swarm', 'parallel section refactors', or burning down surface score across sections."
 argument-hint: "[sections...] [--intensity=light|standard|deep] [--mode=workflow|solo] [--lanes=N] [--cross-section]"
 ---
 

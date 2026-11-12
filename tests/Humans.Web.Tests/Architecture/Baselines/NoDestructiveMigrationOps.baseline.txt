@@ -1,4 +1,4 @@
-# Baseline: no destructive migration ops in Up() (memory/architecture/no-drops-until-prod-verified.md)
+# Baseline: no destructive migration ops in Up() (memory/architecture/destructive-drops-need-approval.md)
 # One locator per line: relative/path.cs:stable-key
 # Stable keys only — line numbers and other line-volatile diagnostics
 # are deliberately omitted so unrelated edits don't churn this file in git.
@@ -223,7 +223,7 @@ src/Sections/Humans.CityPlanning/Data/Migrations/20261104165348_DropCityPlanning
 # or writes them now.
 # Approval: production GET https://humans.nobodies.team/api/data-migrations read 2026-11-03, quoted
 # in peterdrier/Humans#2261: {"key":"shifts.build-sub-periods","pending":0,"done":true}, the
-# standing approval in no-drops-until-prod-verified; and Peter, 2026-11-04, project thread
+# standing approval in destructive-drops-need-approval; and Peter, 2026-11-04, project thread
 # ("fix A-E"). Down() re-adds the four as integer NOT NULL DEFAULT 0, so rollback runs but the
 # values come back as 0.
 src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSubPeriodOffsets.cs:DropColumn(name=FinishingWeekendStartOffset,table=settings_event)#1
@@ -239,7 +239,7 @@ src/Sections/Humans.Settings/Data/Migrations/20261104163039_DropSettingsEventSub
 # was the erasure line that nulled it, deleted in this PR.
 # Approval: production GET https://humans.nobodies.team/api/data-migrations read 2026-11-03, quoted
 # in peterdrier/Humans#2261: {"key":"finance.iban-to-payment-details","pending":0,"done":true},
-# the standing approval in no-drops-until-prod-verified; and Peter, 2026-11-04, project thread
+# the standing approval in destructive-drops-need-approval; and Peter, 2026-11-04, project thread
 # ("fix A-E").
 src/Sections/Humans.Users/Data/Migrations/20261104164406_DropUsersLegacyStorage.cs:DropColumn(name=Iban,table=profiles)#1
 
@@ -343,7 +343,7 @@ src/Sections/Humans.Finance/Data/Migrations/20261104170024_DropHoldedCategoryMap
 # shadow mappings.
 # Approval: production /api/data-migrations reading 2026-11-05, recorded in peterdrier/Humans#2322:
 # google.workspace-identities "pending":0,"done":true — the standing approval in
-# memory/architecture/no-drops-until-prod-verified.md ("Standing approval: a data migration
+# memory/architecture/destructive-drops-need-approval.md ("Standing approval: a data migration
 # reporting done").
 src/Sections/Humans.Users/Data/Migrations/20261107081416_DropUserEmailsLegacyGoogleColumns.cs:DropColumn(name=GoogleEmailStatus,table=user_emails)#1
 src/Sections/Humans.Users/Data/Migrations/20261107081416_DropUserEmailsLegacyGoogleColumns.cs:DropColumn(name=IsGoogle,table=user_emails)#1
@@ -357,7 +357,7 @@ src/Sections/Humans.Users/Data/Migrations/20261107081416_DropUserEmailsLegacyGoo
 # entity property, its mapping and its seed value.
 # Approval: production /api/data-migrations reading 2026-11-05, recorded in peterdrier/Humans#2322:
 # camps.event-ids "pending":0,"done":true — the standing approval in
-# memory/architecture/no-drops-until-prod-verified.md ("Standing approval: a data migration
+# memory/architecture/destructive-drops-need-approval.md ("Standing approval: a data migration
 # reporting done").
 # Down() caveat: EF re-adds the column as jsonb NOT NULL DEFAULT '', which Postgres rejects, so a
 # rollback re-adds it by hand (accepted shape, peterdrier/Humans#1379).

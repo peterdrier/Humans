@@ -22,4 +22,4 @@ description: Use NodaTime types (`Instant`/`LocalDate`/`ZonedDateTime`), not `Da
 
 **Why:** NodaTime provides safer time handling. Prevents timezone bugs, ensures consistent server behavior across deployments, simplifies testing.
 
-**Related:** [`time-parsing-standardization`](time-parsing-standardization.md), [`datetime-display-formatting`](datetime-display-formatting.md).
+**Related:** [`time-parsing-standardization`](time-parsing-standardization.md), [`datetime-format-single-home`](../architecture/datetime-format-single-home.md).

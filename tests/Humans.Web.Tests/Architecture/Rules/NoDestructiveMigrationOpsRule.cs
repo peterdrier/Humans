@@ -6,7 +6,7 @@ namespace Humans.Web.Tests.Architecture.Rules;
 
 /// <summary>
 /// Drops in a migration's <c>Up()</c> ship only once the baseline carries their approval
-/// (<c>memory/architecture/no-drops-until-prod-verified.md</c>). Keys include the <c>name:</c> and <c>table:</c>
+/// (<c>memory/architecture/destructive-drops-need-approval.md</c>). Keys include the <c>name:</c> and <c>table:</c>
 /// arguments, so same-named columns on different tables stay distinct without line numbers.
 /// </summary>
 public class NoDestructiveMigrationOpsRule
@@ -99,7 +99,7 @@ public class NoDestructiveMigrationOpsRule
                    + "line, or a 'Pre-existing:' line for drops that shipped before this rule, "
                    + "and that block must name the dropped column and table exactly — an entry "
                    + "cannot borrow a neighbouring group's approval. See memory/architecture/"
-                   + "no-drops-until-prod-verified.md. Uncovered: {1}",
+                   + "destructive-drops-need-approval.md. Uncovered: {1}",
             BaselinePath, string.Join(", ", unapproved));
     }
 

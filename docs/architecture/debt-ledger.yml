@@ -85,7 +85,7 @@ themes:
       [Obsolete] any more; removed. Order.Label and User.GoogleEmailStatus became
       EF shadow properties (same pattern as users.GoogleEmail), so no code can
       reference them and the model snapshot is unchanged; their columns drop
-      under no-drops-until-prod-verified. Left: ContactFieldType.Email
+      under destructive-drops-need-approval. Left: ContactFieldType.Email
       (ProfileApiController, ProfileViewModel; legacy contact rows still
       render) and UserService's GDPR export of the two dead users flags
       (retire with the USERS-12/13 column drop).

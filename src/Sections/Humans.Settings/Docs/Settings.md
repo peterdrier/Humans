@@ -86,7 +86,7 @@ cycles and of which one is active.
 | CreatedAt / UpdatedAt | Instant | Stamped by the repository upsert |
 
 **Indexes / constraints:** PKs only — every row rule below is service-enforced
-(`memory/architecture/no-db-check-constraints.md`).
+(`memory/architecture/db-enforcement-minimal.md`).
 
 Own `SettingsDbContext`, migrations under `Data/Migrations/`, history table
 named by `SectionMigrationsHistory.TableFor`.

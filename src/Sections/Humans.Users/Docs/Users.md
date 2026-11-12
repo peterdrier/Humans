@@ -75,7 +75,7 @@ Extends `IdentityUser<Guid>` with project-specific columns.
 | State | UserState | Lifecycle state and the single source of truth for access, suspension included (`Bare`, `Active`, `DeletePending`, `Suspended`, `Rejected`, `Deleted`, `Merged`, `AdminSuspended`). Required string column (`HasConversion<string>()`, physical default `Bare`); written at each transition and never derived on read. The full app is reachable only when `State == Active`. |
 | MarkedFakeAt | Instant? | Set once when the account is not a real person (the gate terminal, dev personas); null for every member. Read as `UserInfo.IsFake`. Orthogonal to `State`, so a fake account still moves through the same states. Written only by `IUserWrite.MarkFakeAsync`, idempotent, audited once (`UsersAuditActions.AccountMarkedFake`). Queues and counts of people skip fake accounts by reading `IsFake`. |
 
-**Shadow columns (no C# property):** `users.GoogleEmail` is kept on disk as an EF shadow property (`UserConfiguration.cs`); no production code reads or writes it any more (nobodies-collective/Humans#1102 retired the last reader) and the column drop is deferred to a later PR per `memory/architecture/no-drops-until-prod-verified.md`. The Workspace identity read path is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync`. Display sorting is alphabetical on `Email`. Analyzer `HUM0001` (`UserEmailLegacyFieldAnalyzer`) rejects any reference to the legacy properties (`User.GoogleEmail`, `UserEmail.IsOAuth`, `UserEmail.DisplayOrder`).
+**Shadow columns (no C# property):** `users.GoogleEmail` is kept on disk as an EF shadow property (`UserConfiguration.cs`); no production code reads or writes it any more (nobodies-collective/Humans#1102 retired the last reader) and the column drop is deferred to a later PR per `memory/architecture/destructive-drops-need-approval.md`. The Workspace identity read path is GoogleIntegration's `IGoogleIntegrationService.GetWorkspaceIdentityAsync`. Display sorting is alphabetical on `Email`. Analyzer `HUM0001` (`UserEmailLegacyFieldAnalyzer`) rejects any reference to the legacy properties (`User.GoogleEmail`, `UserEmail.IsOAuth`, `UserEmail.DisplayOrder`).
 
 **Profile-adjacent fields** — `ContactSource`, `ExternalSourceId` — are also described under [Part 2 — Profiles](#user-identity-extension) because `CachingUserService` stitches them into `UserInfo`. The canonical field table is here; Part 2 describes `UserInfo` projection semantics.
 
@@ -353,7 +353,7 @@ User is owned by the **Users/Identity** section; the properties below are the pr
 
 #### Google email preference
 
-`User` has no `GoogleEmail` property; the `users.GoogleEmail` column is an EF shadow property (`UserConfiguration.cs`) kept pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. `UserInfo.GoogleEmail` is gone (Users decomposition commit 15): the Google Workspace address is `IGoogleIntegrationService.GetWorkspaceIdentityAsync`; `UserInfo.PrimaryEmail` is the contact address.
+`User` has no `GoogleEmail` property; the `users.GoogleEmail` column is an EF shadow property (`UserConfiguration.cs`) kept pending a deferred column-drop PR per `memory/architecture/destructive-drops-need-approval.md`. `UserInfo.GoogleEmail` is gone (Users decomposition commit 15): the Google Workspace address is `IGoogleIntegrationService.GetWorkspaceIdentityAsync`; `UserInfo.PrimaryEmail` is the contact address.
 
 Google sync status is GoogleIntegration's (`google_workspace_identities.Status`).
 
@@ -523,7 +523,7 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 
 ### Frozen legacy (awaiting drop)
 
-These columns await separate schema drops. A registered data migration's production `done` reading is standing approval under `memory/architecture/no-drops-until-prod-verified.md`. Production reported `google.workspace-identities`, `pending: 0, done: true` on 2026-11-05; `user_emails.IsGoogle` / `GoogleEmailStatus` are dropped (`DropUserEmailsLegacyGoogleColumns`). Schema drops remain separate feature work under policy D9, outside the debt ledger.
+These columns await separate schema drops. A registered data migration's production `done` reading is standing approval under `memory/architecture/destructive-drops-need-approval.md`. Production reported `google.workspace-identities`, `pending: 0, done: true` on 2026-11-05; `user_emails.IsGoogle` / `GoogleEmailStatus` are dropped (`DropUserEmailsLegacyGoogleColumns`). Schema drops remain separate feature work under policy D9, outside the debt ledger.
 
 | Legacy object | Replaced by | Migration key |
 |---|---|---|

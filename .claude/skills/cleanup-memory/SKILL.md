@@ -8,7 +8,7 @@ argument-hint: "[external] [repo] [report-only]"
 
 Two surfaces:
 - **External** — `~/.claude/projects/<slug>/memory/` (per-machine; never hardcode the path)
-- **Repo** — `memory/`, `CLAUDE.md`, `docs/architecture/design-rules.md`, `docs/architecture/code-review-rules.md`, `docs/sections/`
+- **Repo** — `memory/`, `AGENTS.md`, `REVIEW.md`, `.claude/` (skills, agents, hooks, checklists), `docs/architecture/design-rules.md`, `docs/architecture/code-review-rules.md`, `src/Sections/*/Docs/<Section>.md`
 
 Repo `memory/` is the source of truth for durable project rules (syncs via git). External holds only about-Peter / user-pref entries and active-PR working state. Read `memory/META.md` before working.
 
@@ -82,7 +82,7 @@ If a repo atom is weaker than the external version (drops a constraint or "why")
 
 ### Files in Scope
 
-`memory/INDEX.md`, `memory/META.md`, `memory/**/*.md`, `CLAUDE.md`, `docs/architecture/design-rules.md`, `docs/architecture/code-review-rules.md`, `docs/architecture/coding-rules.md`, `docs/sections/*.md`
+`memory/INDEX.md`, `memory/META.md`, `memory/**/*.md`, `AGENTS.md`, `REVIEW.md`, `.claude/**` (skill descriptions, agents, hook scripts and the text they print), `docs/architecture/design-rules.md`, `docs/architecture/code-review-rules.md`, `docs/architecture/coding-rules.md`, `src/Sections/*/Docs/<Section>.md`
 
 ### Checks
 
@@ -90,18 +90,19 @@ Each finding: severity (BLOCK / IMPORTANT / NIT), location, what's wrong, propos
 
 1. **Dead INDEX entries.** Every `memory/INDEX.md` line → verify file exists. Missing → BLOCK.
 2. **Orphan atoms.** Every `memory/<bucket>/*.md` → verify INDEX entry exists. Missing → BLOCK.
-3. **Description sanity.** Each atom needs non-empty `description:` frontmatter (BLOCK if missing). INDEX one-liner must share at least one substantive noun with the atom's description — catches drift. Do NOT flag wording differences; by design the INDEX line is a tighter compression.
+3. **Description sanity.** Each atom needs non-empty `description:` frontmatter (BLOCK if missing). The INDEX line is the atom's description verbatim (`memory/META.md`); regenerate the INDEX from the atoms rather than hand-reconciling drift.
 4. **Bucket misplacement.** Atom lives under wrong bucket (`architecture/`, `code/`, `process/`, `product/`) per `META.md` definitions → IMPORTANT.
-5. **Content duplication.** Same-bucket pairs (and likely cross-bucket conflicts) with substantive overlap → IMPORTANT, propose merge or split.
+5. **Content duplication.** Two or more atoms, or an atom plus a skill, hook or doc, stating the same rule → IMPORTANT. Merge into one atom and leave one-line pointers everywhere else; a rule restated in many places drifts and reads as many rules.
+5a. **Stale code references.** Grep atoms and `.claude/**` for project, namespace and path names, and check each still exists in `src/`/`tests/` → IMPORTANT.
 6. **Atom vs constitution drift.** For each atom, check against `docs/architecture/design-rules.md`:
    - Consistent → fine
    - Conflicts → BLOCK
    - Strictly redundant (verbatim, no new "why"/"how to apply") → NIT, propose deletion or 1-line pointer
-7. **CLAUDE.md bloat.** Target ~80 lines (per `memory/META.md`). Over by >20% → IMPORTANT. Candidates to atomize: bulleted rules under "Critical:"/"Important:"/"Rule:" headings, detailed concept sections for narrow tasks. Keep: architecture overview, build commands, terminology, git workflow basics.
+7. **AGENTS.md bloat.** It is paid on every turn (`CLAUDE.md` only imports it). Flag anything that does not apply to every conversation, and any rule stated there in more than one sentence when an atom already carries it → IMPORTANT.
 8. **Stale stub.** `docs/architecture/coding-rules.md` should be a redirect-only stub to `memory/INDEX.md`. Any crept-in content → IMPORTANT.
 9. **Stale cross-references.** Grep for `coding-rules.md` references pointing at it for substantive content → IMPORTANT.
 10. **Atom size.** Atoms >80 lines are narrative, not a rule: split them, or move section facts to the owning `Docs/<Section>.md` → NIT.
-11. **Section invariants alignment.** Each `docs/sections/*.md` — dead citations to atoms or design-rules sections → IMPORTANT.
+11. **Section invariants alignment.** Each `src/Sections/*/Docs/<Section>.md` — dead citations to atoms or design-rules sections → IMPORTANT.
 
 ### Outputs
 
@@ -122,5 +123,5 @@ Consolidated report grouped by severity → present to Peter → apply approved 
 ## What This Skill Is NOT
 
 - Not for inventing new rules — use `memory/process/rules-maintenance.md`
-- Not a CLAUDE.md rewrite — Phase 2 finds candidates; the rewrite is a separate focused PR
+- Not an AGENTS.md rewrite — Phase 2 finds candidates; the rewrite is a separate focused PR
 - Not a doc-freshness sweep — that's `/freshness-sweep`
