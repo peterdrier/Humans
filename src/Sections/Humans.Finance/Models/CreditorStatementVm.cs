@@ -5,12 +5,14 @@ namespace Humans.Finance.Models;
 
 /// <summary>Flipped from Holded's sign: positive means the organisation owes the member. <see cref="ExpenseReports"/>
 /// are the reports booked to this account, to check the ledger against; <see cref="SepaTransfers"/> are the transfers our
-/// SEPA files sent to it, newest first.</summary>
+/// SEPA files sent to it, newest first. <see cref="Match"/> is null when the reconciliation is unavailable
+/// (<see cref="MatchUnavailable"/> says why) or has nothing on this account.</summary>
 internal sealed record CreditorStatementVm(
     CreditorLedger Ledger,
     IReadOnlyList<CreditorStatementLineVm> Lines,
     IReadOnlyList<ExpenseReportDto> ExpenseReports,
-    CreditorMatchVm Match,
+    CreditorMatchVm? Match,
+    string? MatchUnavailable,
     IReadOnlyList<SepaPayoutTransferRow> SepaTransfers)
 {
     public decimal OwedBalance => -Ledger.Balance;

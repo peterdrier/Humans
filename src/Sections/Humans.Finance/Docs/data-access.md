@@ -83,12 +83,6 @@ No repository, no tables. Runs one `/Finance/Sepa` booking at a time through
 `IFinanceAdminService` in its own scope off the request, and holds the current/last
 run for the page. Injected by `FinanceController` only.
 
-### CreditorMatchService (Scoped, section-internal)
-
-No repository, no tables, no cache. Matches Holded creditor ledger lines against
-expense reports for `/Finance` via `IHoldedService.GetLedgerLinesAsync` and
-`IExpenseReportService.GetReviewQueueAsync`. Injected by `FinanceController` only.
-
 ### Service (Scoped)
 
 Repository: `IHoldedRepository`.
