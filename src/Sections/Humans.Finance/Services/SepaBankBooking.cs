@@ -58,9 +58,6 @@ internal sealed class SepaBankBooking(
     /// <see cref="GenerationSlackDays"/> further back (<see cref="FeedFrom"/>).</summary>
     internal const int FeedWindowDays = 90;
 
-    /// <summary>With no transfer open the sweep still reads the feed once it is this old, so /Finance's count of
-    /// unreconciled Sabadell lines is at most a day behind.</summary>
-    private static readonly Duration IdleFeedRefreshAfter = Duration.FromHours(20);
 
     /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
     private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
@@ -286,11 +283,10 @@ internal sealed class SepaBankBooking(
         var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var pending = rows.Where(r => r.ReconcilePending).ToList();
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
-        if (pending.Count == 0 && unbooked.Count == 0)
-        {
-            await RefreshIdleFeedAsync(ct);
-            return;
-        }
+        // The sweep runs every two hours, so exactly one run a day lands in this band. That run reads the whole window
+        // whatever is open, so /Finance's count of unreconciled Sabadell lines is at most a day behind.
+        var nightRun = clock.GetCurrentInstant().InZone(MadridZone).Hour is 3 or 4;
+        if (pending.Count == 0 && unbooked.Count == 0 && !nightRun) return;
 
         // Every reconcile-pending row's bank line must lie inside the window read. A pending row's lower bound is its
         // own first payable day with no floor, or a row aging out would never see a later reconcile. Both bounds key off
@@ -300,6 +296,7 @@ internal sealed class SepaBankBooking(
         if (matchFrom < floor) matchFrom = floor;
         var pendingFrom = pending.Select(matching.FirstPayableDate).DefaultIfEmpty(matchFrom).Min();
         var from = pendingFrom < matchFrom ? pendingFrom : matchFrom;
+        if (nightRun && floor < from) from = floor;
 
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
@@ -381,21 +378,6 @@ internal sealed class SepaBankBooking(
                     "SEPA sweep: booking transfer {TransferId} against line {MovementId} threw.",
                     matches[0].TransferId, m.Id);
             }
-        }
-    }
-
-    private async Task RefreshIdleFeedAsync(CancellationToken ct)
-    {
-        var syncedAt = (await holded.GetBankMovementsAsync(sepa.Value.TreasuryAccountId, Today(), Today(), ct))
-            .LastSyncAt;
-        if (syncedAt is { } at && clock.GetCurrentInstant() - at < IdleFeedRefreshAfter) return;
-        try
-        {
-            await ReadSweepFeedAsync(FeedFrom(GenerationSlackDays), ct);
-        }
-        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
-        {
-            logger.LogWarning("The daily Sabadell bank-feed refresh failed. {Reason}", ex.Message);
         }
     }
 

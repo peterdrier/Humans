@@ -1008,21 +1008,20 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_NothingUnbooked_RefreshesTheFeedOnlyOnceItIsADayOld()
+    public async Task Sweep_NothingUnbooked_ReadsTheFeedOnlyOnTheNightRun()
     {
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId,
             reconciledAt: FixedNow));
-        var mirrorAge = Duration.FromHours(1);
-        _holded.GetBankMovementsAsync(
-                Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
-            .Returns(_ => new HoldedBankMovementMirror(FixedNow - mirrorAge, []));
 
         await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
         await _holded.DidNotReceiveWithAnyArgs().SyncBankMovementsAsync(default!, default, default, default, default);
 
-        mirrorAge = Duration.FromHours(21);
+        // 03:17 in Madrid: the one run a day that reads the whole window, open transfers or not.
+        _clock.Reset(Instant.FromUtc(2026, 5, 2, 1, 17));
         await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
-        await _holded.ReceivedWithAnyArgs(1).SyncBankMovementsAsync(default!, default, default, default, default);
+        await _holded.Received(1).SyncBankMovementsAsync(
+            "treasury-1", new LocalDate(2026, 5, 2).PlusDays(-90 - IFinanceAdminService.DefaultSepaMatchToleranceDays),
+            new LocalDate(2026, 5, 2), Arg.Any<IReadOnlySet<string>?>(), Arg.Any<CancellationToken>());
         await AssertNothingPostedAsync();
     }
 
