@@ -65,7 +65,7 @@ internal sealed class SurveyInvitationDelivery(
         var existingParticipation = participationRows.ToDictionary(invitation => invitation.UserId);
 
         var users = await userService.GetUserInfosAsync(netNew, ct);
-        var invitationsCreated = 0;
+        var invitationsProcessed = 0;
         var emailsQueued = 0;
         var failed = 0;
 
@@ -100,7 +100,7 @@ internal sealed class SurveyInvitationDelivery(
                 };
                 await repo.AddInvitationAndSaveAsync(inv, sendCt);
             }
-            invitationsCreated++;
+            invitationsProcessed++;
 
             try
             {
@@ -139,9 +139,9 @@ internal sealed class SurveyInvitationDelivery(
         }
 
         await auditLog.LogAsync(SurveysAuditActions.SurveyInvitesSent, AuditEntityTypes.Survey, surveyId,
-            $"Sent {invitationsCreated} invitation(s)", actorUserId);
+            $"Processed {invitationsProcessed} invitation(s); {emailsQueued} email(s) queued, {failed} failed.", actorUserId);
 
-        return new SendResult(invitationsCreated, emailsQueued, failed);
+        return new SendResult(invitationsProcessed, emailsQueued, failed);
     }
 
     /// <summary>

@@ -180,8 +180,11 @@ public class AttendeeContactImportServicePlanTests
         decision.AttendeeName.Should().Be("Fresh Face");
     }
 
-    [HumansFact]
-    public async Task Plan_MultipleAttendeesSameEmail_CollapseToOneDecisionWithGroup()
+    [HumansTheory]
+    [Xunit.InlineData("buyer@x.com", "BUYER@x.com")]
+    [Xunit.InlineData("buyer@gmail.com", "BUYER@googlemail.com")]
+    [Xunit.InlineData("buyer@googlemail.com", "buyer@gmail.com")]
+    public async Task Plan_MultipleAttendeesSameEmail_CollapseToOneDecisionWithGroup(string email, string alternate)
     {
         var harness = new PlanHarness();
         var leadId = Guid.NewGuid();
@@ -191,7 +194,7 @@ public class AttendeeContactImportServicePlanTests
         {
             Id = leadId,
             VendorTicketId = "tkt_1",
-            AttendeeEmail = "buyer@x.com",
+            AttendeeEmail = email,
             AttendeeName = "Sara Smith",
             Status = TicketAttendeeStatus.Valid,
         });
@@ -199,7 +202,7 @@ public class AttendeeContactImportServicePlanTests
         {
             Id = extra1,
             VendorTicketId = "tkt_2",
-            AttendeeEmail = "buyer@x.com",
+            AttendeeEmail = email,
             AttendeeName = "Sara S.",
             Status = TicketAttendeeStatus.Valid,
         });
@@ -207,8 +210,8 @@ public class AttendeeContactImportServicePlanTests
         {
             Id = extra2,
             VendorTicketId = "tkt_3",
-            // Case-insensitive grouping: trim + casefold should still group.
-            AttendeeEmail = "BUYER@x.com",
+            // The lookup treats case and gmail/googlemail domain variants as the same address.
+            AttendeeEmail = alternate,
             AttendeeName = "Sara Smith",
             Status = TicketAttendeeStatus.Valid,
         });

@@ -115,36 +115,19 @@ internal sealed class VolunteerTrackingController(
             return RedirectToAction(nameof(Index));
         }
 
-        var parsedStart = TryParseLocalDate(startDate);
-        var parsedEnd = TryParseLocalDate(endDate);
-        var (activeStart, activeEnd) = ShiftFilterResolver.Resolve(period, parsedStart, parsedEnd);
-
-        // Build with a sub-period narrows to it; any period uses its window; otherwise explicit dates, else the
-        // whole event, Build through Strike.
-        LocalDate rangeStart, rangeEnd;
-        if (period == ShiftPeriod.Build && subPeriod.HasValue)
+        if (!ModelState.IsValid)
         {
-            var (startOffset, endExclusive) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, eventSettings);
-            rangeStart = eventSettings.GateOpeningDate.PlusDays(startOffset);
-            rangeEnd = eventSettings.GateOpeningDate.PlusDays(endExclusive - 1);
+            logger.LogWarning("Rejected malformed volunteer tracking export query");
+            return BadRequest(ModelState);
         }
-        else if (period.HasValue)
+        var range = ShiftFilterResolver.ResolveExportRange(eventSettings, startDate, endDate, period, subPeriod);
+        if (range is null)
         {
-            (rangeStart, rangeEnd) = ShiftFilterResolver.ResolvePeriodRange(period.Value, eventSettings);
+            logger.LogWarning("Rejected volunteer tracking export date range {StartDate} through {EndDate}, period {Period}",
+                startDate, endDate, period);
+            return BadRequest("Enter a complete, valid export date range within the supported calendar.");
         }
-        else if (activeStart.HasValue && activeEnd.HasValue)
-        {
-            (rangeStart, rangeEnd) = (activeStart.Value, activeEnd.Value);
-        }
-        else
-        {
-            (rangeStart, rangeEnd) = ShiftFilterResolver.ResolvePeriodRange(null, eventSettings);
-        }
-        // HTML5 validation blocks this, but the action is reachable directly.
-        if (rangeEnd < rangeStart)
-        {
-            (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
-        }
+        var (rangeStart, rangeEnd) = range.Value;
 
         var actorInfo = await GetCurrentUserInfoAsync(ct);
         if (actorInfo is null) return Unauthorized();
@@ -163,13 +146,6 @@ internal sealed class VolunteerTrackingController(
         var model = await exportService.BuildAsync(request, ct);
         var result = xlsxBuilder.Build(model);
         return File(result.Content, result.ContentType, result.FileName);
-    }
-
-    private static LocalDate? TryParseLocalDate(string? input)
-    {
-        if (string.IsNullOrWhiteSpace(input)) return null;
-        var parsed = LocalDatePattern.Iso.Parse(input);
-        return parsed.Success ? parsed.Value : null;
     }
 
     [HttpPost("SetCampSetup")]

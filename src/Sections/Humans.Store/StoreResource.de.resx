@@ -125,4 +125,5 @@
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(unbekannt)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Bestellung des Camps</value></data>
   <data name="Store_PaymentPrecision" xml:space="preserve"><value>Gib einen Betrag mit höchstens zwei Nachkommastellen ein.</value></data>
+  <data name="Store_PaymentAboveCheckoutLimit" xml:space="preserve"><value>Der Zahlungsbetrag darf {0:0.00} EUR pro Zahlung nicht überschreiten. Bezahle den Restbetrag in einer weiteren Zahlung.</value></data>
 </root>

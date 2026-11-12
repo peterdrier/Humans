@@ -1222,7 +1222,7 @@ public class AgentServiceTests
         var abuse = new AgentAbuseDetector();
         var snapshots = Substitute.For<IAgentUserSnapshotProvider>();
         snapshots.LoadAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(
-            new AgentUserSnapshot(Guid.NewGuid(), "Test User", "es", "Volunteer", true,
+            new AgentUserSnapshot(Guid.NewGuid(), "Test User", "es", "Volunteer", UserState.Active,
                 [],
                 [],
                 [],

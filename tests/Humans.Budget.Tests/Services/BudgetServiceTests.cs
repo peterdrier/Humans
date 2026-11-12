@@ -2374,6 +2374,76 @@ public sealed class BudgetServiceTests
         summary.ExpenseSlices.Select(sl => sl.Name).Should().BeEquivalentTo(["Ops", "VAT Liability"]);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SummaryPages_OrderCategoriesBeforeSynthesizedSlices(bool adminPage)
+    {
+        using var culture = new CultureScope("en");
+        BudgetGroupDetail Group(string name, int sortOrder)
+        {
+            var id = Guid.NewGuid();
+            return new(id, _yearId, name, sortOrder, false, false, false, null,
+                [new BudgetCategoryDetail(Guid.NewGuid(), id, "Ops", -10m, ExpenditureType.OpEx, null, 0, [])]);
+        }
+        var first = Group("First", 0);
+        BudgetCategoryDetail Category(string name, decimal amount, int vatRate)
+        {
+            var id = Guid.NewGuid();
+            return new(id, first.Id, name, amount, ExpenditureType.OpEx, null, 0,
+                [new BudgetLineItemDetail(Guid.NewGuid(), id, "Line", amount, null, null,
+                    new LocalDate(2026, 5, 1), vatRate, false, false, 0)]);
+        }
+        var smallIncome = Category("VAT Credit", 10m, 0);
+        var largeIncome = Category("Large income", 1210m, 10);
+        var smallExpense = Category("VAT Liability", -12.1m, 21);
+        var largeExpense = Category("Travel", -242m, 21);
+        first = first with { Categories = [.. first.Categories, smallIncome, smallExpense, largeIncome, largeExpense] };
+        var year = new BudgetYearDetail(_yearId, "2026", "Budget", BudgetYearStatus.Active, false,
+            [Group("Last", 2), first, Group("Middle", 1)]);
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(year);
+        budget.GetYearByIdAsync(_yearId, Arg.Any<CancellationToken>()).Returns(year);
+        budget.GetAllYearsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns([]);
+        budget.GetEffectiveCoordinatorTeamIdsAsync(viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        budget.ComputeBudgetSummaryWithBuffers(Arg.Any<IReadOnlyList<BudgetGroupDetail>>())
+            .Returns(call => _service.ComputeBudgetSummaryWithBuffers(call.Arg<IReadOnlyList<BudgetGroupDetail>>()));
+
+        IReadOnlyList<BudgetSliceResult> slices;
+        IReadOnlyList<BudgetSliceResult> incomeSlices;
+        if (adminPage)
+        {
+            var view = (await admin.YearDetail(_yearId)).Should().BeOfType<ViewResult>().Subject;
+            var model = view.Model.Should().BeOfType<FinanceOverviewViewModel>().Subject;
+            slices = model.ExpenseSlices;
+            incomeSlices = model.IncomeSlices;
+        }
+        else
+        {
+            var users = Substitute.For<IUserService>();
+            users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = viewerId }, [], [], null));
+            var auth = Substitute.For<IAuthorizationService>();
+            auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+                .Returns(AuthorizationResult.Success());
+            var controller = new BudgetController(budget, auth, users,
+                Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
+            { ControllerContext = admin.ControllerContext, TempData = admin.TempData, Url = admin.Url };
+            var view = (await controller.Summary()).Should().BeOfType<ViewResult>().Subject;
+            var model = view.Model.Should().BeOfType<BudgetSummaryViewModel>().Subject;
+            slices = model.ExpenseSlices;
+            incomeSlices = model.IncomeSlices;
+        }
+
+        incomeSlices.Select(slice => slice.BudgetCategoryId).Should().Equal(largeIncome.Id, smallIncome.Id, null);
+        incomeSlices.Select(slice => slice.Name).Should().Equal("Large income", "VAT Credit", "VAT Credit");
+        slices.Take(2).Select(slice => slice.BudgetCategoryId).Should().Equal(largeExpense.Id, smallExpense.Id);
+        slices.Skip(2).Should().OnlyContain(slice => slice.BudgetCategoryId == null);
+        slices.Select(slice => slice.Name).Should().Equal(
+            "Travel", "VAT Liability", "VAT Liability", "Cash Reserves (90%)", "Spanish Taxes (10%)",
+            "First Buffer", "Middle Buffer", "Last Buffer");
+    }
+
     [HumansFact]
     public void ComputeBudgetSummaryWithBuffers_localizes_generated_labels()
     {

@@ -125,4 +125,5 @@
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(desconegut)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Comanda del campament</value></data>
   <data name="Store_PaymentPrecision" xml:space="preserve"><value>Introdueix un import amb un màxim de dos decimals.</value></data>
+  <data name="Store_PaymentAboveCheckoutLimit" xml:space="preserve"><value>L’import del pagament no pot superar els {0:0.00} EUR per operació. Paga el saldo restant en una altra operació.</value></data>
 </root>

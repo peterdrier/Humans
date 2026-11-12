@@ -23,7 +23,8 @@ Question cards can be inserted after any existing card and moved up or down with
 posted DOM order becomes the persisted order within that page.
 
 Information items are never required and cannot be branching sources. They must contain Markdown or
-at least one image. Image labels and alt text must contain authored text.
+at least one image. Image labels and alt text must contain authored text. An existing image identity
+may appear only once across the survey; repeated references are refused before saving.
 
 The builder posts as `multipart/form-data`. It explicitly warns:
 

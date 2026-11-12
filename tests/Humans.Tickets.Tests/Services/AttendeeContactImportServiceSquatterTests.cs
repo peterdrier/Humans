@@ -10,6 +10,48 @@ namespace Humans.Tickets.Tests.Services;
 
 public class AttendeeContactImportServiceSquatterTests
 {
+    [HumansFact]
+    public async Task Squatter_DomainAliases_ReplaceOnceAndAttachEveryAttendee()
+    {
+        var harness = new PlanHarness();
+        var ownerId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        var newUserId = Guid.NewGuid();
+        var attendees = new[] { "victim@gmail.com", "victim@googlemail.com" }
+            .Select((email, i) => new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                VendorTicketId = $"tkt_{i}",
+                VendorEventId = "evt_active",
+                AttendeeEmail = email,
+                AttendeeName = "Victim",
+                Status = TicketAttendeeStatus.Valid,
+            }).ToList();
+        foreach (var attendee in attendees) harness.AddUnmatched(attendee);
+        harness.UserEmails.FindByAddressAsync(Arg.Any<string>(), true, true, Arg.Any<CancellationToken>()).Returns([]);
+        harness.UserEmails.FindByAddressAsync(Arg.Any<string>(), true, false, Arg.Any<CancellationToken>())
+            .Returns([UserEmailFixtures.Row(ownerId, "victim@gmail.com", verified: false, id: emailId)]);
+        var replacements = 0;
+        harness.Provisioning.ReplaceUnverifiedEmailAndProvisionAsync(ownerId, emailId, Arg.Any<string>(),
+                Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+            .Returns(_ => ++replacements == 1
+                ? new AccountProvisioningResult(newUserId, Created: true)
+                : throw new InvalidOperationException("The unverified replacement plan is stale."));
+        var service = harness.Service;
+        var plan = await service.BuildPlanAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var result = await service.ApplyAsync(plan, attendees.Select(a => a.Id).ToHashSet(), Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Errors.Should().Be(0);
+        result.TotalAttempted.Should().Be(1);
+        result.UnverifiedRowsDeletedAndUserCreated.Should().Be(1);
+        replacements.Should().Be(1);
+        attendees.Should().OnlyContain(a => a.MatchedUserId == newUserId);
+        await harness.TicketRepo.Received(1).UpsertAttendeesAsync(
+            Arg.Is<IReadOnlyList<TicketAttendee>>(rows => rows.Count == 2), Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]

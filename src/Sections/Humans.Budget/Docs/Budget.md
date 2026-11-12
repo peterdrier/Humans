@@ -202,6 +202,8 @@ Stored as string via `HasConversion<string>()`.
 - Authorization’s effective-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - The admin year list and the overview, no-active-year and audit-log year choices order year identifiers descending using ordinal comparison. Repository and service year lists impose no display order.
+- Year graph reads impose no group display order. Tree views sort groups themselves; member and admin summary controllers sort them by `SortOrder` before calculation so equal-valued category slices and appended group buffers retain that order.
+- Summary slices retain their source `BudgetCategoryId`; synthesized VAT, reserves, taxes and buffers have none. Calculations impose no amount order. Member and admin summary controllers order authored categories by descending amount, followed by synthesized slices in their original composition order, without identifying a slice by its localized name.
 
 - Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. After selecting the active ID, the repository reuses its year-by-id hydration path for groups, categories, line items and ticketing projections. Year-by-id retains archived years for historical report labels.
 

@@ -50,6 +50,55 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ExecuteAsync_CommittedErasureFinishesConfirmationBeforeObservingCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([first, second]);
+        _accountDeletionService.AnonymizeExpiredAccountAsync(first, Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return (AnonymizedAccountSummary?)new AnonymizedAccountSummary("erased@example.com", "Erased Person", "en");
+            });
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
+
+        var run = () => _job.ExecuteAsync(cancellation.Token);
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(message => message.DoNotPersist
+                && string.Equals(message.RecipientEmail, "erased@example.com", StringComparison.Ordinal)), CancellationToken.None);
+        await _accountDeletionService.DidNotReceive().AnonymizeExpiredAccountAsync(second, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_RequestedCancellationPropagatesWithoutAnAccountFailureAggregate()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([userId]);
+        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return await Task.FromException<AnonymizedAccountSummary?>(new OperationCanceledException(cancellation.Token));
+            });
+
+        var run = () => _job.ExecuteAsync(cancellation.Token);
+
+        var failure = await run.Should().ThrowAsync<OperationCanceledException>();
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+    }
+
+    [HumansFact]
     public async Task ConfirmationFailure_DoesNotLogErasedIdentityOrExceptionContents()
     {
         var userId = Guid.NewGuid();

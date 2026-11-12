@@ -9,6 +9,64 @@ public class GuideSegmenterTests
     private static GuideSegment Scoped(string markdown, string role) =>
         GuideTestRoles.Segmenter.Segment(markdown).Segments.Single(s => string.Equals(s.Role, role, StringComparison.Ordinal));
 
+    [HumansTheory]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(3)]
+    public void Segment_IndentedRoleHeading_RemainsRestricted(int spaces)
+    {
+        var input = $"Public intro.\n\n{new string(' ', spaces)}## As a Board member / Admin\n\nRestricted guidance.";
+        Markdig.Markdown.ToHtml(input).Should().Contain("<h2>As a Board member / Admin</h2>");
+
+        var filtered = GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(input), GuideRoleContext.Anonymous);
+
+        filtered.Should().Contain("Public intro.").And.NotContain("Restricted guidance.");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(3)]
+    public void Segment_IndentedPlainHeading_EndsTheRoleBlock(int spaces)
+    {
+        var input = $"## As a Board member / Admin\n\nRestricted guidance.\n\n{new string(' ', spaces)}## Related\n\nPublic guidance.";
+        Markdig.Markdown.ToHtml(input).Should().Contain("<h2>Related</h2>");
+
+        var filtered = GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(input), GuideRoleContext.Anonymous);
+
+        filtered.Should().Contain("Public guidance.").And.NotContain("Restricted guidance.");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData('\u00a0')]
+    [Xunit.InlineData('\u2003')]
+    public void Segment_NonAsciiSpaceAfterHashes_DoesNotEndTheRoleBlock(char separator)
+    {
+        var input = $"## As a Board member / Admin\n\nRestricted guidance.\n\n##{separator}Example\n\nRestricted tail.";
+        Markdig.Markdown.ToHtml(input).Should().Contain($"<p>##{separator}Example</p>");
+
+        GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(input), GuideRoleContext.Anonymous)
+            .Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void Segment_EmptyH2_EndsTheRoleBlock()
+    {
+        const string input = "## As a Board member / Admin\n\nRestricted guidance.\n\n##\n\nPublic guidance.";
+        Markdig.Markdown.ToHtml(input).Should().Contain("<h2></h2>");
+
+        GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(input), GuideRoleContext.Anonymous)
+            .Should().Contain("Public guidance.").And.NotContain("Restricted guidance.");
+    }
+
+    [HumansFact]
+    public void Segment_FourSpaceIndentedRoleText_IsAnUnscopedCodeExample()
+    {
+        const string input = "    ## As a Board member / Admin\n    Sample text.";
+        Markdig.Markdown.ToHtml(input).Should().Contain("<pre><code>");
+
+        GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(input), GuideRoleContext.Anonymous)
+            .Should().Be(input);
+    }
+
     [HumansFact]
     public void Segment_VolunteerBlock_CarriesTheVolunteerRole()
     {
@@ -215,6 +273,24 @@ public class GuideSegmenterTests
             + "anonymous included — GuideFilter can only drop segments that carry a role");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("<!--", "-->", "Example")]
+    [Xunit.InlineData("<!--", "-->", "As a Volunteer")]
+    [Xunit.InlineData("<pre>", "</pre>", "Example")]
+    [Xunit.InlineData("<pre>", "</pre>", "As a Volunteer")]
+    public void Segment_HeadingTextInsideHtmlBlock_DoesNotExposeRestrictedTail(string open, string close, string sample)
+    {
+        var input = $"## As a Board member / Admin\n\nRestricted intro.\n\n{open}\n## {sample}\n{close}\n\nRestricted tail.\n\n## Related\n\nPublic tail.";
+        Markdig.Markdown.ToHtml(input).Should().NotContain($"<h2>{sample}</h2>").And.Contain("<h2>Related</h2>");
+
+        var document = GuideTestRoles.Segmenter.Segment(input);
+        var filtered = GuideFilter.Apply(document, GuideRoleContext.Anonymous);
+
+        filtered.Should().Contain("Public tail.").And.NotContain("Restricted intro.").And.NotContain("Restricted tail.");
+        document.Segments.Should().HaveCount(2);
+        document.Segments[0].Markdown.Should().Contain($"{open}\n## {sample}\n{close}");
+    }
+
     [HumansFact]
     public void Segment_FencedH2InsideRoleBlock_DoesNotEndTheBlock()
     {
@@ -379,7 +455,7 @@ public class GuideSegmenterTests
     }
 
     private static readonly Regex AnyRoleHeading = new(
-        @"^##\s+As\s+an?\s",
+        @"^ {0,3}##[ \t]+As\s+an?\s",
         RegexOptions.IgnoreCase | RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(250));
 

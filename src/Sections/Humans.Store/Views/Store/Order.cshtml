@@ -3,6 +3,7 @@
     ViewData["Title"] = Localizer["Store_OrderTitle", Model.Order.CounterpartyDisplayName].Value;
     var order = Model.Order;
     var isTeamOrder = order.CounterpartyType == OrderCounterpartyType.Team;
+    var checkoutMaximum = Math.Min(order.BalanceEur, StoreStripePayments.MaximumCheckoutAmountEur);
     var pendingTotal = order.Payments
         .Where(p => p.Status == PaymentStatus.Pending)
         .Sum(p => p.AmountEur);
@@ -289,9 +290,9 @@ else
                 <div class="col-md-4">
                     <label class="form-label">@Localizer["Store_AmountToPay"]</label>
                     <input type="number" name="amountEur" class="form-control"
-                           min="0.01" max="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                           min="0.01" max="@checkoutMaximum.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                            step="0.01"
-                           value="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
+                           value="@checkoutMaximum.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary">@Localizer["Store_PayWithStripe"]</button>

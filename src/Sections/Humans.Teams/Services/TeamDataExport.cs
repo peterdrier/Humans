@@ -70,6 +70,7 @@ internal sealed class TeamDataExport(ITeamRepository repo, IServiceProvider serv
 
         var earlyEntrySlice = new UserDataSlice(TeamEarlyEntry, eeGrants.Select(g => new
         {
+            g.EventSettingsId,
             TeamName = GetTeamName(g.TeamId),
             g.ProjectName,
             EntryDate = g.EntryDate.ToInvariantDate(),

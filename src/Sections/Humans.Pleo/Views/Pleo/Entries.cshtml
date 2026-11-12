@@ -97,7 +97,7 @@
     Func<PleoEntryRow, IHtmlContent> familyCell = @<text>@item.Family<span class="text-muted">@(item.SubFamily is null ? "" : $" / {item.SubFamily}")</span></text>;
     Func<PleoEntryRow, IHtmlContent> amountCell = @<text>
         @(item.AmountEur is { } eur ? eur.ToSignedEuro() : "—")
-        @if (item.Currency != "EUR")
+        @if (!string.IsNullOrWhiteSpace(item.Currency) && item.Currency != "EUR")
         {
             <div class="small text-muted">@((item.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @item.Currency</div>
         }

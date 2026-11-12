@@ -48,4 +48,7 @@
   <data name="Search_MinChars" xml:space="preserve">
     <value>Voer minstens 2 tekens in om te zoeken.</value>
   </data>
+  <data name="Search_Unavailable" xml:space="preserve">
+    <value>Zoeken is niet beschikbaar. Probeer het opnieuw.</value>
+  </data>
 </root>

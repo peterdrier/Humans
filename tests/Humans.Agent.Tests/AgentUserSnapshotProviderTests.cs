@@ -17,6 +17,22 @@ namespace Humans.Agent.Tests;
 
 public class AgentUserSnapshotProviderTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Active)]
+    [Xunit.InlineData(UserState.Suspended)]
+    [Xunit.InlineData(UserState.AdminSuspended)]
+    public async Task LoadAsync_context_reports_account_state_independently_of_consent_review(UserState state)
+    {
+        var userId = Guid.NewGuid();
+        var provider = MakeProvider(userId, null, [], state: state);
+
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var context = new AgentPromptAssembler().BuildUserContextTail(snapshot);
+
+        context.Should().Contain($"AccountState: {state}");
+        context.Should().NotContain("ApprovedFlag:");
+    }
+
     [HumansFact]
     public async Task LoadAsync_collapses_block_signups_into_one_entry_with_date_range_and_day_count()
     {
@@ -144,14 +160,24 @@ public class AgentUserSnapshotProviderTests
         EventSettingsInfo? activeEvent,
         IReadOnlyList<ShiftSignupSummary> signups,
         IReadOnlyList<Guid>? openTicketIds = null,
-        IReadOnlyList<TeamMembership>? teamMemberships = null)
+        IReadOnlyList<TeamMembership>? teamMemberships = null,
+        UserState state = UserState.Bare)
     {
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(
                 UserInfo.Create(
-                    new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" },
-                    [], [], profile: null)));
+                    new User
+                    {
+                        Id = userId,
+                        DisplayName = "T",
+                        PreferredLanguage = "es",
+                        State = state,
+                        BurnerName = "T",
+                        FirstName = "Test",
+                        LastName = "Member"
+                    },
+                    [], [], profile: state == UserState.Bare ? null : UserFixtures.Profile())));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
