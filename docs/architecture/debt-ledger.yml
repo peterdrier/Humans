@@ -163,7 +163,7 @@ themes:
 inbox:
   - added: 2026-11-12
     id: CENTRAL-110
-    what: "Humans.Governance's Section.cs declares the access-matrix entries 'Board Dashboard' (dashboard, audit log) and 'Admin Tools' (configuration status, sync settings, email outbox, background jobs, all humans list, role assignments, legal documents). None of those features is Governance's; each row belongs to the section or shell that owns the feature. Found by the Governance section-doctor run."
+    what: "Humans.Governance ships the 'Admin' and 'Board' help guides and glossaries (Docs/help/Admin.*, Docs/help/Board.*), which describe the Admin frame and a Board dashboard that is not Governance's (audit log, email outbox, sync settings, role assignments, legal documents, Hangfire). Their access-matrix rows moved to the owning sections in peterdrier/Humans#2383; the help content belongs with them. Found by the Governance section-doctor run."
     review: panel
   - added: 2026-11-06
     id: CENTRAL-109
