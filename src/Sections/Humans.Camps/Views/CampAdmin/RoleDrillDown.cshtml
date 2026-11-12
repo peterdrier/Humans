@@ -9,14 +9,12 @@
     <span>@Model.RoleName</span>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="mb-1">@Model.RoleName <small class="text-muted">— @Model.Event.EventName</small></h1>
-        @if (!string.IsNullOrWhiteSpace(Model.Description))
-        {
-            <p class="text-muted mb-0">@Html.SanitizedMarkdown(Model.Description)</p>
-        }
-    </div>
+<page-header>
+    <page-header-title>@Model.RoleName <small class="text-muted">— @Model.Event.EventName</small></page-header-title>
+    @if (!string.IsNullOrWhiteSpace(Model.Description))
+    {
+        <page-header-subtitle>@Html.SanitizedMarkdown(Model.Description)</page-header-subtitle>
+    }
     <form asp-controller="CampAdmin" asp-action="RolesDrillDown" asp-route-slug="@Model.RouteKey" method="get" class="d-flex gap-2 align-items-center">
         <label for="eventSettingsId" class="form-label mb-0 text-nowrap">Event</label>
         <select id="eventSettingsId" name="eventSettingsId" class="form-select form-select-sm js-auto-submit" style="max-width: 220px;">
@@ -34,7 +32,7 @@
         </select>
         <noscript><button type="submit" class="btn btn-outline-primary btn-sm">Show</button></noscript>
     </form>
-</div>
+</page-header>
 
 
 <div class="card mb-3">
