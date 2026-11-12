@@ -113,10 +113,8 @@ public class ExpensesPageRenderTests(HumansTestDatabase database) : IntegrationT
 
         html.Should().NotContain("Expenses_", "the queue must resolve its own resource set");
 
-        // The middle crumb is the owning section, not the sidebar's "Money" group, which never answered "where am I".
-        var crumb = CrumbOf(html);
-        crumb.Should().Contain("Expenses").And.Contain("Review");
-        crumb.Should().NotContain("Money");
+        // Coordinators share the queue, so it stays on the member layout for everyone (docs/sections/admin-shell.md).
+        html.Should().NotContain("class=\"crumb\"");
 
         html.Should().Contain(DepartmentName, "the department column is what the queue is filtered by");
         html.Should().Contain("Coordinator endorsed", "rows are grouped under a localized status heading");
@@ -192,15 +190,6 @@ public class ExpensesPageRenderTests(HumansTestDatabase database) : IntegrationT
         html.Should().Contain("Cuenta");                // Expenses_HoldedAccount
         html.Should().Contain("Enviado por");           // Expenses_ColSubmittedBy
         html.Should().NotContain("Expenses_");
-    }
-
-    /// <summary>The admin shell's breadcrumb strip, <c>_AdminLayout</c>'s <c>div.crumb</c>.</summary>
-    private static string CrumbOf(string html)
-    {
-        var start = html.IndexOf("class=\"crumb\"", StringComparison.Ordinal);
-        start.Should().BeGreaterThan(-1, "the admin shell renders a breadcrumb strip");
-        var end = html.IndexOf("</div>", start, StringComparison.Ordinal);
-        return html[start..end];
     }
 
     private static string? ExtractAntiForgeryToken(string html)

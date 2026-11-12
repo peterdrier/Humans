@@ -10,8 +10,6 @@ using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Integration.Tests.Infrastructure;
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Data;
-using Humans.Shifts.Domain;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
@@ -42,7 +40,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var token = $"Zqx{Guid.NewGuid():N}"[..12];
-        var seeded = await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
+        var eventId = await Factory.SeedActiveEventAsync();
+        var seeded = await SeedOneRowPerBucketAsync(token, 0, eventId, Factory.Services, ct);
 
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         var response = await Client.GetAsync($"/Search?q={token}", ct);
@@ -75,7 +74,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var token = $"Zqx{Guid.NewGuid():N}"[..12];
-        await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
+        var eventId = await Factory.SeedActiveEventAsync();
+        await SeedOneRowPerBucketAsync(token, 0, eventId, Factory.Services, ct);
 
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         var response = await Client.GetAsync("/Debug/WidgetGallery", ct);
@@ -99,7 +99,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var token = $"Zqx{Guid.NewGuid():N}"[..12];
-        await SeedOneRowPerBucketAsync(token, 0, Factory.Services, ct);
+        var eventId = await Factory.SeedActiveEventAsync();
+        await SeedOneRowPerBucketAsync(token, 0, eventId, Factory.Services, ct);
 
         var counter = new DbCommandCounter();
         // Replace the factory outright: Program.cs's UseSerilog swaps ILoggerFactory and drops added providers. Scoped to
@@ -117,8 +118,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
 
         var oneRowPerBucket = await MeasureSearchAsync(counter, client, token, ct);
 
-        await SeedOneRowPerBucketAsync(token, 1, counted.Services, ct);
-        await SeedOneRowPerBucketAsync(token, 2, counted.Services, ct);
+        await SeedOneRowPerBucketAsync(token, 1, eventId, counted.Services, ct);
+        await SeedOneRowPerBucketAsync(token, 2, eventId, counted.Services, ct);
         var threeRowsPerBucket = await MeasureSearchAsync(counter, client, token, ct);
 
         threeRowsPerBucket.Should().Be(oneRowPerBucket,
@@ -172,7 +173,7 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
     /// asserts on.
     /// </summary>
     private static async Task<SeededRows> SeedOneRowPerBucketAsync(
-        string token, int index, IServiceProvider rootServices, CancellationToken ct)
+        string token, int index, Guid eventId, IServiceProvider rootServices, CancellationToken ct)
     {
         var suffix = index == 0 ? string.Empty : $" {index}";
         var slugSuffix = index == 0 ? string.Empty : $"-{index}";
@@ -194,7 +195,6 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         await teamsDb.SaveChangesAsync(ct);
 
         var campsDb = sp.GetRequiredService<CampsDbContext>();
-        var publicYear = (await campsDb.CampSettings.AsNoTracking().FirstAsync(ct)).PublicYear;
         var camp = new Camp
         {
             Id = Guid.NewGuid(),
@@ -209,7 +209,8 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         {
             Id = Guid.NewGuid(),
             CampId = camp.Id,
-            Year = publicYear,
+            EventSettingsId = eventId,
+            Year = HumansWebApplicationFactory.ActiveEventYear,
             Name = $"{token} Camp{suffix}",
             Status = CampSeasonStatus.Active,
             CreatedAt = now,
@@ -217,54 +218,18 @@ public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : Integ
         });
         await campsDb.SaveChangesAsync(ct);
 
-        var shiftsDb = sp.GetRequiredService<ShiftsDbContext>();
-        var eventSettings = await shiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ct);
-        if (eventSettings is null)
-        {
-            eventSettings = new EventSettings
-            {
-                Id = Guid.NewGuid(),
-                EventName = $"{token} Burn",
-                Year = publicYear,
-                TimeZoneId = "Europe/Madrid",
-                GateOpeningDate = new LocalDate(publicYear, 7, 1),
-                BuildStartOffset = -10,
-                EventEndOffset = 6,
-                StrikeEndOffset = 8,
-                IsActive = true,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            shiftsDb.EventSettings.Add(eventSettings);
-        }
-        var rota = new Rota
-        {
-            Id = Guid.NewGuid(),
-            EventSettingsId = eventSettings.Id,
-            TeamId = team.Id,
-            Name = $"{token} Rota{suffix}",
-            Priority = ShiftPriority.Normal,
-            Policy = SignupPolicy.Public,
-            Period = RotaPeriod.Event,
-            IsVisibleToVolunteers = true,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-        shiftsDb.Rotas.Add(rota);
-        // A rota with no shifts is invisible to every rota-listing read, so the gallery card would be untestable.
-        shiftsDb.Shifts.Add(new Shift
-        {
-            Id = Guid.NewGuid(),
-            RotaId = rota.Id,
-            DayOffset = 0,
-            StartTime = new LocalTime(10, 0),
-            Duration = Duration.FromHours(4),
-            MinVolunteers = 1,
-            MaxVolunteers = 4,
-            CreatedAt = now,
-            UpdatedAt = now,
-        });
-        await shiftsDb.SaveChangesAsync(ct);
+        // Through Shifts' own verbs: a rota hangs off the section's knobs row for the event, and a rota with no shifts
+        // is invisible to every rota-listing read, so the gallery card would be untestable.
+        sp.GetRequiredService<CachingTeamService>().InvalidateActiveTeamsCache();
+        var shiftSeeding = sp.GetRequiredService<IShiftSeeding>();
+        await shiftSeeding.SetShiftBrowsingOpenAsync(eventId, isOpen: true);
+        var rotaId = await shiftSeeding.CreateRotaAsync(new CreateRotaInput(
+            team.Id, eventId, $"{token} Rota{suffix}", ShiftPriority.Normal, SignupPolicy.Public, RotaPeriod.Event,
+            IsVisibleToVolunteers: true));
+        var shift = await shiftSeeding.CreateShiftAsync(new CreateShiftInput(
+            rotaId, team.Id, Description: null, DayOffset: 0, new LocalTime(10, 0), DurationHours: 4,
+            MinVolunteers: 1, MaxVolunteers: 4, AdminOnly: false, IsAllDay: false));
+        shift.Succeeded.Should().BeTrue(shift.Message);
 
         await using var eventsDb = await sp
             .GetRequiredService<IDbContextFactory<EventGuideDbContext>>()
