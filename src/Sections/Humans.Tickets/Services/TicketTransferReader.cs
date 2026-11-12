@@ -54,7 +54,7 @@ internal sealed class TicketTransferReader(
             AttendeeName: attendee.AttendeeName,
             VendorTicketId: attendee.VendorTicketId,
             ReceiverUserId: receiverUserId,
-            ReceiverLegalName: receiverInfo.Profile!.FullName,
+            ReceiverLegalName: receiverInfo.FullName,
             ReceiverEmail: receiverEmail);
     }
 

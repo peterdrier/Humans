@@ -633,6 +633,8 @@ public class CachingUserServiceTests
         {
             Id = userId,
             BurnerName = "Octa",
+            FirstName = "Eight",
+            LastName = "Tables",
             PreferredLanguage = "es",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
@@ -709,9 +711,9 @@ public class CachingUserServiceTests
             l.Provider == "Google" && l.ProviderKey == "ext-key-1");
         result.Profile.Should().NotBeNull();
         result.Profile!.Id.Should().Be(profileId);
-        result.Profile.BurnerName.Should().Be("Octa");
-        result.Profile.FirstName.Should().Be("Eight");
-        result.Profile.LastName.Should().Be("Tables");
+        result.FirstName.Should().Be("Eight");
+        result.LastName.Should().Be("Tables");
+        result.FullName.Should().Be("Eight Tables");
         result.Profile.BirthdayDay.Should().Be(4);
         result.Profile.BirthdayMonth.Should().Be(7);
         result.Profile.ContactFields.Should().ContainSingle(c =>
@@ -1183,7 +1185,14 @@ public class CachingUserServiceTests
 
     private static UserInfo UserInfoFor(Guid userId, Profile? profile) =>
         UserInfoFactory.Create(
-            new User { Id = userId, BurnerName = profile?.BurnerName, PreferredLanguage = "en" },
+            new User
+            {
+                Id = userId,
+                BurnerName = profile?.BurnerName,
+                FirstName = profile?.FirstName,
+                LastName = profile?.LastName,
+                PreferredLanguage = "en",
+            },
             userEmails: [],
             externalLogins: [],
             profile: profile,
@@ -1276,8 +1285,7 @@ public class CachingUserServiceTests
         refreshed.Should().NotBeNull();
         refreshed.BurnerName.Should().Be("New Burner");
         refreshed.Profile.Should().NotBeNull();
-        refreshed.Profile!.BurnerName.Should().Be("New Burner");
-        refreshed.Profile.ProfilePictureContentType.Should().Be("image/png");
+        refreshed.Profile!.ProfilePictureContentType.Should().Be("image/png");
     }
 
     [HumansTheory]
@@ -1467,9 +1475,9 @@ public class CachingUserServiceTests
         var source = await sut.GetUserInfoAsync(sourceUserId, Xunit.TestContext.Current.CancellationToken);
         var target = await sut.GetUserInfoAsync(targetUserId, Xunit.TestContext.Current.CancellationToken);
         source!.Profile.Should().NotBeNull();
-        source.Profile!.FirstName.Should().Be("Merged");
+        source.FirstName.Should().Be("Merged");
         target!.Profile.Should().NotBeNull();
-        target.Profile!.BurnerName.Should().Be("Target Burner");
+        target.BurnerName.Should().Be("Target Burner");
     }
 
     /// <summary>Row builder for chain tests: a plain row, a merge tombstone, or a GDPR-erased row.</summary>

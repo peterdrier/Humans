@@ -314,16 +314,16 @@ public sealed class Section :
 
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var logger = services.GetRequiredService<ILogger<Section>>();
-        var profile = (await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct))?.Profile;
+        var info = await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct);
         var isVolunteerMember = (await services.GetRequiredService<ITeamService>().GetTeamAsync(SystemTeamIds.Volunteers, ct))
             is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
-        var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, profile, userId, ct) };
+        var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, info, userId, ct) };
 
         if (!isVolunteerMember)
         {
             var review = await services.GetRequiredService<IConsentService>().GetConsentReviewAsync(userId, ct);
-            entries.Add(ConsentCheckEntry(localizer, profile is not null && review.Status == ConsentCheckStatus.Cleared));
+            entries.Add(ConsentCheckEntry(localizer, info?.Profile is not null && review.Status == ConsentCheckStatus.Cleared));
         }
 
         var medical = await MedicalEntryAsync(services, localizer, logger, userId, ct);
@@ -338,11 +338,11 @@ public sealed class Section :
     private static async ValueTask<ThingsToDoEntry> ProfileEntryAsync(
         IServiceProvider services,
         IStringLocalizer<SharedResource> localizer,
-        ProfileInfo? profile,
+        UserInfo? info,
         Guid userId, CancellationToken ct)
     {
         var shiftUser = await services.GetRequiredService<IShiftView>().GetUserAsync(userId, ct);
-        var percent = ProfileCompletion.ComputePercent(profile, shiftUser.TagPreferences.Count > 0);
+        var percent = ProfileCompletion.ComputePercent(info, shiftUser.TagPreferences.Count > 0);
 
         // Hidden or derived required fields can cap real completion around 90–95%, so 80% is
         // "complete enough" and the nudge stops shouting at people who can't push it higher.

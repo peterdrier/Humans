@@ -39,7 +39,7 @@ internal sealed record UserDebugRow(
         MarketingOptedOut: marketingOptedOut,
         DisplayName: info.BurnerName,
         BurnerName: info.BurnerName,
-        LegalName: info.Profile?.FullName ?? string.Empty,
+        LegalName: info.FullName,
         HasName: info.Profile is null ? null : info.HasRequiredNameFields,
         HasConsent: info.Profile is null
             ? null

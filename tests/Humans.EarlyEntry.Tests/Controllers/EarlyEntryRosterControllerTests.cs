@@ -120,11 +120,8 @@ public class EarlyEntryRosterControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId, string burner, string first, string last) =>
         UserInfo.Create(
-            user: new User { Id = userId, DisplayName = burner, PreferredLanguage = "en", CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0) },
+            user: new User { Id = userId, DisplayName = burner, PreferredLanguage = "en", CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0), BurnerName = burner, FirstName = first, LastName = last },
             userEmails: [],
             externalLogins: [],
-            profile: UserFixtures.Profile(
-                burnerName: burner,
-                firstName: first,
-                lastName: last));
+            profile: UserFixtures.Profile());
 }

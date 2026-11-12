@@ -80,10 +80,9 @@ internal sealed class EmailProvisioningService(
             if (existing is not null)
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
 
-            // Real name from profile, not display/burner name.
-            var profile = user.Profile;
-            var firstName = profile?.FirstName;
-            var lastName = profile?.LastName;
+            // Legal name, not burner name.
+            var firstName = user.FirstName;
+            var lastName = user.LastName;
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: "Cannot provision account: the human must have a first and last name in their profile.");
 

@@ -183,8 +183,8 @@ internal sealed class ApplicationReader(
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
             UserId: application.UserId,
-            FirstName: profile?.FirstName ?? string.Empty,
-            LastName: profile?.LastName ?? string.Empty,
+            FirstName: applicantInfo?.FirstName ?? string.Empty,
+            LastName: applicantInfo?.LastName ?? string.Empty,
             MembershipTier: application.MembershipTier,
             Status: application.Status,
             Motivation: application.Motivation,

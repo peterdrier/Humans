@@ -85,12 +85,9 @@ public class DevPersonaSeederTests
 
     private static UserInfo NamedUserInfo(Guid userId, UserState state) =>
         UserInfo.Create(
-            new User { Id = userId, DisplayName = "Dev Board", State = state },
+            new User { Id = userId, DisplayName = "Dev Board", State = state, BurnerName = "Dev Board", FirstName = "Dev", LastName = "Board" },
             [], [],
-            profile: UserFixtures.Profile(
-                burnerName: "Dev Board",
-                firstName: "Dev",
-                lastName: "Board"));
+            profile: UserFixtures.Profile());
 
     private static ConsentProgress Snapshot(params Guid[] missingVersionIds) =>
         new(missingVersionIds.Length, missingVersionIds);

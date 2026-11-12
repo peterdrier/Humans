@@ -1425,13 +1425,10 @@ public class SurveyServiceTests
     private UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
     {
         _tiers[id] = tier;
-        var profile = UserFixtures.Profile(
-            burnerName: "Voter",
-            firstName: "Eligible",
-            lastName: "Human");
+        var profile = UserFixtures.Profile();
         return new UserInfo(
             Id: id,
-            BurnerName: profile.BurnerName,
+            BurnerName: "Voter",
             IsGdprAnonymized: false,
             PreferredLanguage: "en",
             FallbackPictureUrl: null,

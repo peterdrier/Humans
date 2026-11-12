@@ -154,16 +154,16 @@ internal sealed class ExpenseReportTransitions(
 
         // The payee is the report's owner, never whoever pressed Submit, or an on-behalf submit pays the wrong
         // account.
-        var profile = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.Profile;
+        var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
         if (await finance.GetIbanAsync(report.SubmitterUserId, ct) is not { Length: > 0 } payeeIban)
             return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsIban");
 
         // Financial records use the legal name, not BurnerName.
-        if (string.IsNullOrWhiteSpace(profile?.FirstName) || string.IsNullOrWhiteSpace(profile.LastName))
+        if (string.IsNullOrWhiteSpace(submitter?.FirstName) || string.IsNullOrWhiteSpace(submitter.LastName))
         {
             return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsFirstAndLastName");
         }
-        var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
+        var legalName = submitter.FullName;
 
         var now = clock.GetCurrentInstant();
         if (report.PreapprovalGrantId is not { } grantId)

@@ -221,13 +221,13 @@ public class OnboardingWidgetControllerNamesTests
                 State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
                     ? UserState.Bare
                     : UserState.Active,
+                BurnerName = burner,
+                FirstName = first,
+                LastName = last,
             },
             userEmails: [],
             externalLogins: [],
             profile: UserFixtures.Profile(
-                burnerName: burner,
-                firstName: first,
-                lastName: last,
                 city: city,
                 bio: bio));
 
