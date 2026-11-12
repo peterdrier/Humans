@@ -10,6 +10,18 @@
 
 Colaborador and Asociado tier applications, Board voting workflow, term lifecycle, and the association's binding assembly votes. **Not** volunteer onboarding — that lives under `src/Sections/Humans.Onboarding/Docs/Onboarding.md` and is explicitly a separate track.
 
+## Purpose
+
+Governance is where the association decides things about itself on the record: who becomes a Colaborador or Asociado, for how long, and what the Asociados vote on. It also answers, for the rest of the app, "is this person in good standing?"
+
+**What good looks like.** Every decision has a recorded owner, date and reason. A member can see their own standing and history without asking anyone. A binding vote cannot be read early without leaving a trace, cannot change after it closes, and can be checked by hand from the published result.
+
+**Deliberate choices.** Individual Board positions are destroyed at decision time; only the collective note survives. Electorates are frozen at open. Votes are never recounted. No caching where a cache could leak a tally.
+
+**Out of scope.** Volunteer admission (Onboarding), consent records (Consent), team membership (Teams), proxy votes, quorum, PDF minutes.
+
+## Overview
+
 The `humans.asociados` gauge counts distinct humans with active approved Asociado terms on the current UTC date, including terms expiring today. Colaborador approvals, expired terms, and duplicate renewals do not inflate it.
 
 The Governance page’s tier totals and Colaborador prompts use active approved terms, not cached profile tiers or historical approvals. A human with both commitments counts in each tier. The application-history page uses the same active-term rule for its Colaborador prompt.
