@@ -203,6 +203,13 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
   settings repairs reach that summary; corrected-drift counts include only acknowledged repairs.
   Notification faults remain best-effort errors, including independent cancellation from their
   detached dependency. Per-resource mutation boundaries and failure isolation remain service-owned.
+- **Drive cancellation follows the operation boundary.** Requested read cancellation and
+  iteration checkpoints propagate. A read timeout while the caller token remains live uses
+  the existing path fallback or resource-error diff. Cancellation from a detached permission
+  mutation remains a fault even during shutdown: the resource records an error rather than
+  success. Detached status persistence and inheritance-repair cancellation also remain faults
+  with their original exceptions preserved. Permission planning, retry timing and successful
+  removal notifications are unchanged.
 - **Maintenance observes cancellation between repairs.** Folder-path refresh and inherited-access enforcement propagate requested cancellation from metadata reads and stop before the next resource, while independent read failures remain isolated per resource. Inheritance and group-settings repairs check cancellation before starting, then finish their remote write and audit independently of shutdown.
 - **Cancelled health probes propagate cancellation.** A stopped Google credential/API probe is never reported as an authentication failure; credential-free instances still report degraded. The per-probe SDK client is disposed after every outcome.
 - **Drive Activity reads remain cancellable.** Activity queries and Directory identity lookups pass their caller token through the shared credential loader and Google API read. A cancelled identity lookup propagates cancellation instead of returning an unresolved person.

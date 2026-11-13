@@ -66,7 +66,15 @@ internal sealed class GoogleDriveFolderMaintenance(
     {
         cancellationToken.ThrowIfCancellationRequested();
         // A started inheritance repair must finish before shutdown can stop the next resource.
-        var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, CancellationToken.None);
+        GoogleClientError? error;
+        try
+        {
+            error = await drivePermissions.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, CancellationToken.None);
+        }
+        catch (OperationCanceledException ex)
+        {
+            throw new InvalidOperationException("Failed to update the Drive inheritance restriction.", ex);
+        }
         if (error is not null)
         {
             logger.LogWarning(

@@ -1514,6 +1514,19 @@ public sealed class GoogleWorkspaceSyncServiceTests
     }
 
     [HumansFact]
+    public async Task Shutdown_DetachedInheritanceRepairCancellationRemainsAFault()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var failure = new OperationCanceledException("Inheritance write stopped");
+        _drivePermissions.SetInheritedPermissionsDisabledAsync("folder", true, CancellationToken.None)
+            .Returns(async Task<GoogleClientError?> (_) => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => _syncService.SetInheritedPermissionsDisabledAsync("folder", true, shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+    }
+
+    [HumansFact]
     public async Task SetInheritedPermissionsDisabledAsync_PreCanceledCallerDoesNotMutate()
     {
         using var cancellation = new CancellationTokenSource();
