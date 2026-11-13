@@ -1,6 +1,6 @@
 ---
 name: cancellation-token-propagation
-description: Never pass a request-scoped `CancellationToken` into an outbound call mutating a third party — read-only GETs may keep it. HUM0033 + `[ExternalWrite]` enforce this.
+description: Never pass a request-scoped `CancellationToken` into an outbound call mutating a third party — read-only GETs may keep it. Hangfire job tokens are live process-lifetime tokens. HUM0033 + `[ExternalWrite]` enforce this.
 ---
 
 Never hand a **request-scoped** cancellation token (`HttpContext.RequestAborted`, a controller action's
@@ -21,9 +21,10 @@ and no compensation for.
   when an argument makes one call a preview: `[HttpGet]` may pass the request token,
   `[HttpPost]`/`[HttpPut]`/`[HttpDelete]`/`[HttpPatch]` may not.
 - **Long-running admin writes belong in Hangfire**, enqueued with `CancellationToken.None`.
-- **Hangfire jobs are already non-cancellable here:** every registration and enqueue passes a literal
-  `CancellationToken.None`, so a job's token is never live. Don't write "honour the job token" logic
-  without checking a real token is passed.
+- **Hangfire job tokens are live:** Hangfire 1.8.25 (`CoreBackgroundJobPerformer.SubstituteArguments`)
+  replaces every queued `CancellationToken`, literal `None` included, with the server's shutdown token.
+  Treat it as process-lifetime: keep it on reads, check it between units of work, and finish a started
+  remote mutation (and its local bookkeeping) with `CancellationToken.None`.
 - **A paid query is not a write.** A call that costs money but mutates nothing remote (translation) stays
   cancellable. Integrity first, cost second.
 - **Irreversible multi-step writes detach inside the service too:** once step 1 has committed at the

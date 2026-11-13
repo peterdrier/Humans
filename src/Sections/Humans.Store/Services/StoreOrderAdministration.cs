@@ -16,6 +16,8 @@ internal sealed class StoreOrderAdministration(
 {
     public async Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, StoreOrderReader orderReader, CancellationToken ct = default)
     {
+        // Checkout creation and webhook recording must finish before deletion checks their retained state.
+        using var mutation = await StoreStripePayments.StripePaymentLock.AcquireAsync(logger, ct);
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
 
@@ -30,6 +32,10 @@ internal sealed class StoreOrderAdministration(
         if (order.Payments.Count > 0)
             return RefuseAdminMutation(orderId, actorUserId,
                 $"Order {orderId} has payments recorded; an order with payments cannot be deleted.");
+
+        if (order.HasCheckoutAttempt)
+            return RefuseAdminMutation(orderId, actorUserId,
+                $"Order {orderId} has an unresolved Stripe checkout; wait for its completion or expiry before deleting it.");
 
         var currentPrices = await orderReader.LoadCurrentPricesAsync(order.Year, ct);
         var balance = BalanceCalculator.Compute(order, currentPrices).BalanceEur;

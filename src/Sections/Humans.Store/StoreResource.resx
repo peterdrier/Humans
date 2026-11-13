@@ -170,4 +170,5 @@
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(unknown)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Camp order</value></data>
   <data name="Store_PaymentPrecision" xml:space="preserve"><value>Enter an amount with no more than two decimal places.</value></data>
+  <data name="Store_PaymentAboveCheckoutLimit" xml:space="preserve"><value>Payment amount cannot exceed EUR {0:0.00} per checkout. Pay the remaining balance in another checkout.</value></data>
 </root>

@@ -16,12 +16,123 @@ namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteAudienceSyncServiceTests
 {
+    public enum AudienceWrite
+    {
+        CreateGroup,
+        BulkImport,
+        Assign,
+        Unassign
+    }
+
     private static readonly Instant SyncedAt = Instant.FromUtc(2026, 8, 21, 9, 0);
 
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _emails = Substitute.For<IUserEmailService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IMailerLiteRepository _repository = InMemoryMailerLiteRepository.New();
+
+    [HumansTheory]
+    [InlineData(AudienceWrite.CreateGroup)]
+    [InlineData(AudienceWrite.BulkImport)]
+    [InlineData(AudienceWrite.Assign)]
+    [InlineData(AudienceWrite.Unassign)]
+    public async Task SyncAllAsync_CancelledDuringWrites_FinishesAudienceStateAndAuditBeforeStopping(
+        AudienceWrite cancelledDuring)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var existingUser = Guid.NewGuid();
+        var newUser = Guid.NewGuid();
+        var audience = NewAudience("a-aud", "Humans - A", [existingUser, newUser]);
+        var next = NewAudience("b-aud", "Humans - B", []);
+        var createsGroup = cancelledDuring == AudienceWrite.CreateGroup;
+        SetupEmails((existingUser, "existing@example.com"), (newUser, "new@example.com"));
+        SetupGroups(createsGroup ? [] : [Group("g1", "Humans - A")]);
+        SetupSubscribers(Subscriber("existing", "existing@example.com", "active"),
+            Subscriber("obsolete", "obsolete@example.com", "active", createsGroup ? [] : ["g1"]));
+
+        async Task ObserveWriteAsync(AudienceWrite operation, CancellationToken token)
+        {
+            if (cancelledDuring == operation)
+                await shutdown.CancelAsync();
+            token.ThrowIfCancellationRequested();
+        }
+
+        _ml.CreateGroupAsync("Humans - A", Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await ObserveWriteAsync(AudienceWrite.CreateGroup, call.ArgAt<CancellationToken>(1));
+            return Group("g1", "Humans - A");
+        });
+        _ml.BulkImportSubscribersToGroupAsync("g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                await ObserveWriteAsync(AudienceWrite.BulkImport, call.ArgAt<CancellationToken>(2));
+                return new BulkImportResult(1, 0, 0, 0);
+            });
+        _ml.AssignSubscriberToGroupAsync("existing", "g1", Arg.Any<CancellationToken>()).Returns(async call =>
+            await ObserveWriteAsync(AudienceWrite.Assign, call.ArgAt<CancellationToken>(2)));
+        _ml.UnassignSubscriberFromGroupAsync("obsolete", "g1", Arg.Any<CancellationToken>()).Returns(async call =>
+            await ObserveWriteAsync(AudienceWrite.Unassign, call.ArgAt<CancellationToken>(2)));
+
+        var act = () => NewService(audience, next).SyncAllAsync(ct: shutdown.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var state = await _repository.GetSyncStateAsync(audience.Key, TestContext.Current.CancellationToken);
+        state.Should().NotBeNull();
+        state!.Created.Should().Be(1);
+        state.Assigned.Should().Be(1);
+        state.Unassigned.Should().Be(createsGroup ? 0 : 1);
+        state.Errors.Should().Be(0);
+        await _ml.Received(1).BulkImportSubscribersToGroupAsync("g1", Arg.Any<IReadOnlyList<string>>(), CancellationToken.None);
+        await _ml.Received(1).AssignSubscriberToGroupAsync("existing", "g1", CancellationToken.None);
+        await _ml.Received(createsGroup ? 0 : 1).UnassignSubscriberFromGroupAsync("obsolete", "g1", CancellationToken.None);
+        if (createsGroup)
+            await _ml.Received(1).CreateGroupAsync("Humans - A", CancellationToken.None);
+        await _audit.Received(1).LogAsync(MailerLiteAuditActions.MailerLiteAudienceSyncCompleted,
+            "MailerLiteAudience", state.Id, Arg.Any<string>(), nameof(MailerLiteAudienceSyncService));
+        await next.DidNotReceiveWithAnyArgs().ComputeMemberUserIdsAsync(default);
+        (await _repository.GetSyncStateAsync(next.Key, TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SyncAllAsync_CancelledAtEndOfPreflight_DoesNotStartWrites()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var user = Guid.NewGuid();
+        var audience = NewAudience("a-aud", "Humans - A", [user]);
+        SetupEmails((user, "new@example.com"));
+        SetupSubscribers();
+        _ml.ListGroupsAsync(shutdown.Token).Returns(async _ =>
+        {
+            await shutdown.CancelAsync();
+            return (IReadOnlyList<MailerLiteGroup>)[];
+        });
+
+        var act = () => NewService(audience).SyncAllAsync(ct: shutdown.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _ml.DidNotReceiveWithAnyArgs().CreateGroupAsync(default!);
+        await _ml.DidNotReceiveWithAnyArgs().BulkImportSubscribersToGroupAsync(default!, default!);
+        (await _repository.GetSyncStatesAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SyncAllAsync_UnrelatedPreflightTimeout_StillAttemptsNextAudience()
+    {
+        using var lifetime = new CancellationTokenSource();
+        var first = NewAudience("a-aud", "Humans - A", []);
+        var next = NewAudience("b-aud", "Humans - B", []);
+        first.ComputeMemberUserIdsAsync(lifetime.Token)
+            .Returns(Task.FromException<IReadOnlySet<Guid>>(new OperationCanceledException(lifetime.Token)));
+        SetupEmailsEmpty();
+        SetupGroups(Group("g2", "Humans - B"));
+        SetupSubscribers();
+
+        var results = await NewService(first, next).SyncAllAsync(ct: lifetime.Token);
+
+        results.Should().ContainSingle().Which.Key.Should().Be(next.Key);
+        await next.Received(1).ComputeMemberUserIdsAsync(lifetime.Token);
+    }
 
     [HumansFact]
     public async Task SyncAsync_NewUserNotInML_BulkImportsAndAssigns()

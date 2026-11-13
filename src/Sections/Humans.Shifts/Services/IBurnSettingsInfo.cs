@@ -1,12 +1,11 @@
 using NodaTime;
 
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.Services;
 
 /// <summary>
-/// Implemented by the Shifts entity and by <see cref="BurnSettingsInfo"/>, so calendar helpers take either without
-/// the entity leaking across the boundary.
+/// Implemented by the Shifts entity and by <see cref="BurnSettingsInfo"/>, so calendar helpers take either.
 /// </summary>
-public interface IBurnSettingsInfo
+internal interface IBurnSettingsInfo
 {
     /// <summary>IANA, e.g. "Europe/Madrid".</summary>
     string TimeZoneId { get; }

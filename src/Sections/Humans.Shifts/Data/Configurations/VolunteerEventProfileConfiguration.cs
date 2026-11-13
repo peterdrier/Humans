@@ -10,7 +10,7 @@ internal sealed class VolunteerEventProfileConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<VolunteerEventProfile> builder)
     {
-        builder.ToTable("volunteer_event_profiles");
+        builder.ToTable("shift_volunteer_event_profiles");
         builder.HasKey(v => v.Id);
 
         builder.HasIndex(v => v.UserId).IsUnique();

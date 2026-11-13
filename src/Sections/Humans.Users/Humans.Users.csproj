@@ -54,8 +54,7 @@
       Views/Profile/Index.cshtml renders <vc:my-camps />, whose MyCampsViewComponent is
       public in Humans.Camps/Contracts/ but whose tag helper Razor only generates from
       the declaring assembly — @addTagHelper needs the assembly, not its Contracts leaf.
-      Same shape as the Humans.Shifts reference below. Acyclic — Humans.Camps names
-      nothing in Humans.Users.
+      Acyclic — Humans.Camps names nothing in Humans.Users.
     -->
     <ProjectReference Include="..\Humans.Camps\Humans.Camps.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
@@ -76,18 +75,6 @@
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
-    <!--
-      The section project, not its Contracts leaf, because Views/Profile/Index.cshtml and
-      Views/UsersAdmin/AdminDetail.cshtml render <vc:shift-signups>: the tag helper binds at
-      Razor compile time off @addTagHelper *, Humans.Shifts, and ShiftSignupsViewComponent +
-      ShiftSignupsViewMode live in the section's Contracts/ *folder*, not in
-      Humans.Shifts.Contracts. Views/Profile/Edit.cshtml's IStringLocalizer<ShiftsResource> for
-      the two shift-preference strings rides along on the same reference rather than duplicating
-      the copy.
-      Acyclic — Humans.Shifts names nothing in Humans.Users. Drops out only when the view
-      component moves to the leaf.
-    -->
-    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <!--
       Humans.Cantina: ICantinaService (Contracts/ folder), read by SectionThingsToDo to pair the
       medical prompt with the dietary nudge. Acyclic: Cantina references Users.Contracts only.

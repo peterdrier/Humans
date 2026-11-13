@@ -53,10 +53,11 @@ cached in-memory from GitHub. No migrations, no new tables.
    `ITeamService` (team coordinator) and `ICampLeadDirectory` (camp lead).
 3. `GuideContentService` gets the page's cached `GuideDocument` — its ordered
    role-scoped segments — fetching and segmenting every stem in
-   `GuideFiles.All` on cache miss.
+   `GuideFiles.All` on cache miss. Segment boundaries use the renderer's shared Markdig pipeline, so heading examples inside code or HTML cannot change a block's audience.
 4. `GuideFilter` drops the segments the user can't see and joins what remains.
 5. `GuideRenderer` renders that markdown through Markdig and rewrites its
    links; the HTML goes inside `_GuideLayout.cshtml` with the sidebar. Concrete app paths in inline code become links only when outside an existing link or code block; explicit link destinations are preserved.
+   Browser network URLs with slash/backslash authority prefixes retain external-link/image behavior; backslashes in code examples do not become app links.
 
 ### Refreshing from GitHub (Admin)
 

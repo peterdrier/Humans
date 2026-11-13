@@ -21,6 +21,15 @@ public class GuideRendererTests
         new GuideHtmlPostprocessor());
 
     [HumansFact]
+    public void Render_AttributedAppPathCode_IsLinked()
+    {
+        var html = CreateRenderer().Render("`/Profile/Me`{.route}");
+
+        html.Should().Contain("href=\"/Profile/Me\"");
+        html.Should().Contain("<code class=\"route\">/Profile/Me</code>");
+    }
+
+    [HumansFact]
     public void Render_SiblingMdLink_RewrittenToGuideRoute()
     {
         const string markdown = "See [Profiles](Profiles.md) for details.";

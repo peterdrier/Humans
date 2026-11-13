@@ -172,7 +172,7 @@ archived account and the survivor.
 | `ConsentReview` | `ConsentReviewService` | Array of `{ UserId, Status, CheckedAt, Notes, IsApproved, RejectionReason, RejectedAt }` — the Consent Coordinator's review rows for every id in the merge chain (survivor first); null when none. Erasure keeps status, dates, approval and reviewer ids and erases the notes and the rejection reason. |
 | `TeamMemberships` | `CachingTeamService` | Array of `{ TeamName, Role, JoinedAt, LeftAt, TeamRoles[] }`. |
 | `TeamJoinRequests` | `CachingTeamService` | Array of `{ TeamName, Status, Message, ReviewNotes, RequestedAt, ResolvedAt, StateHistory[] }` (`StateHistory` entries are `{ Status, ChangedAt, Notes }`). |
-| `TeamEarlyEntry` | `CachingTeamService` | Array of `{ TeamName, ProjectName, EntryDate, GrantedAt }` — the user's team early-entry grants. |
+| `TeamEarlyEntry` | `CachingTeamService` | Array of `{ EventSettingsId, TeamName, ProjectName, EntryDate, GrantedAt }` — the user's team early-entry grants. |
 | `RoleAssignments` | `RoleAssignmentService` | Array of `{ RoleName, ValidFrom, ValidTo }`. |
 | `ShiftSignups` | `ShiftSignupService` | Array of `{ EventName, Department, RotaName, DayOffset, IsAllDay, Status, Enrolled, StatusReason, CreatedAt, UpdatedAt, ReviewedAt }`. |
 | `VolunteerEventProfiles` | `ShiftSignupService` | Array of `{ Skills, Quirks, Languages, CreatedAt, UpdatedAt }` per-event profile records (dietary data is exported in `DietaryProfile`, medical in `Profile`). |
@@ -316,8 +316,8 @@ that check can't: it discovers contributors by reflection over the same section
 assemblies the runtime composes itself from, and requires no category be
 claimed twice across the whole roster and no retention be left unexplained.
 
-Append-only entities per `design-rules.md`, *Append-only entities* (`consent_records`, `audit_log`,
-`budget_audit_logs`, `camp_polygon_histories`, `application_state_history`,
+Append-only entities per `design-rules.md`, *Append-only entities* (`consent_records`, `audit_log_entries`,
+`budget_audit_logs`, `city_camp_polygon_history`, `governance_application_state_history`,
 `team_join_request_state_history`) are not deleted — foreign keys are nulled or
 the row is re-pointed at the anonymized user rather than a separate tombstone
 user. The lawful basis for each retained category lives in the owning

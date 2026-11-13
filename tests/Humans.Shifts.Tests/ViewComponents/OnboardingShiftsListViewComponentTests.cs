@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
@@ -63,6 +64,23 @@ public sealed class OnboardingShiftsListViewComponentTests
         model.EventSettings.Should().BeSameAs(Event);
         model.UrgencyRankedRotas.Single(r => r.Rota.Id == locked.Rota.Id).EarlyEntrySignupsClosed.Should().BeTrue();
         model.UrgencyRankedRotas.Single(r => r.Rota.Id == open.Rota.Id).EarlyEntrySignupsClosed.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Unordered_browse_rows_preserve_ranked_rota_and_equal_time_shift_ties()
+    {
+        _burnSettings.GetByIdAsync(Event.Id, Arg.Any<CancellationToken>()).Returns(Event);
+        var low = UrgentShiftFixtures.Urgent(urgencyScore: 1);
+        var other = UrgentShiftFixtures.Urgent(urgencyScore: 10);
+        var high = UrgentShiftFixtures.Urgent(
+            shift: UrgentShiftFixtures.Shift(rotaId: low.Rota.Id), rota: low.Rota, urgencyScore: 10);
+
+        var result = await _sut.InvokeAsync(Event.Id, [low, other, high], [], new Dictionary<Guid, SignupStatus>());
+
+        var model = result.Should().BeOfType<ViewViewComponentResult>()
+            .Which.ViewData!.Model.Should().BeOfType<ShiftBrowseViewModel>().Subject;
+        model.UrgencyRankedRotas.Select(r => r.Rota.Id).Should().Equal(other.Rota.Id, low.Rota.Id);
+        model.UrgencyRankedRotas[1].Shifts.Select(s => s.Shift.Id).Should().Equal(high.Shift.Id, low.Shift.Id);
     }
 
     [HumansFact]

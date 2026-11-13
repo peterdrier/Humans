@@ -1,14 +1,13 @@
+using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Humans.Shifts.Services;
 
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.ViewComponents;
 
-/// <summary>
-/// Public, under <c>Contracts/</c>, so the tag helper is generated; the model it builds and the partial it renders
-/// stay internal.
-/// </summary>
-public sealed class VolunteerBuildStripViewComponent(
+/// <summary>Rendered by type (<c>Component.InvokeAsync</c>), so it can stay internal.</summary>
+internal sealed class VolunteerBuildStripViewComponent(
     IVolunteerTrackingService tracking,
     IUserService userService,
     ILogger<VolunteerBuildStripViewComponent> logger) : ViewComponent

@@ -1,7 +1,7 @@
-namespace Humans.Shifts.Contracts;
+namespace Humans.Shifts.Services;
 
 /// <summary>Derived per shift on read, never stored.</summary>
-public enum BuildSubPeriod
+internal enum BuildSubPeriod
 {
     /// <summary>FirstCrewStartOffset ≤ DayOffset &lt; SetupWeekStartOffset.</summary>
     FirstCrew = 0,

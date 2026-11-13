@@ -59,7 +59,7 @@ namespace Humans.Finance.Data.Migrations
                     b.HasIndex("HoldedAccountNumber")
                         .IsUnique();
 
-                    b.ToTable("holded_category_map", (string)null);
+                    b.ToTable("finance_holded_category_maps", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Finance.Domain.HoldedCreditorContact", b =>
@@ -97,7 +97,7 @@ namespace Humans.Finance.Data.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("holded_creditor_contacts", (string)null);
+                    b.ToTable("finance_holded_creditor_contacts", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Finance.Domain.HoldedDocSyncState", b =>
@@ -125,7 +125,7 @@ namespace Humans.Finance.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("holded_doc_sync_state", (string)null);
+                    b.ToTable("finance_holded_doc_sync_states", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Finance.Domain.HoldedExpenseDoc", b =>
@@ -217,7 +217,7 @@ namespace Humans.Finance.Data.Migrations
 
                     b.HasIndex("MatchStatus");
 
-                    b.ToTable("holded_expense_docs", (string)null);
+                    b.ToTable("finance_holded_expense_docs", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Finance.Domain.HoldedManagedAccount", b =>
@@ -256,7 +256,7 @@ namespace Humans.Finance.Data.Migrations
                     b.HasIndex("HoldedAccountNumber")
                         .IsUnique();
 
-                    b.ToTable("holded_managed_accounts", (string)null);
+                    b.ToTable("finance_holded_managed_accounts", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Finance.Domain.PaymentDetails", b =>
@@ -306,7 +306,7 @@ namespace Humans.Finance.Data.Migrations
 
                     b.HasIndex("GeneratedAt");
 
-                    b.ToTable("sepa_payout_files", (string)null);
+                    b.ToTable("finance_sepa_payout_files", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Finance.Domain.SepaPayoutTransfer", b =>
@@ -374,7 +374,7 @@ namespace Humans.Finance.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("sepa_payout_transfers", (string)null);
+                    b.ToTable("finance_sepa_payout_transfers", (string)null);
                 });
 #pragma warning restore 612, 618
         }

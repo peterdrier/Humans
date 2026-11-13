@@ -126,6 +126,35 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
+    public void CreditorMatch_IsTheAccountsSliceOfTheExpenseRecon()
+    {
+        var user = Guid.NewGuid();
+        var transfer = new ExpenseReconOpenTransfer(Guid.NewGuid(), "f.xml", Instant.FromUtc(2026, 1, 1, 0, 0), 5m);
+        var member = new ExpenseReconMember(user, "M", 40000001, -20m, -50m, 30m, -10m, MissingLines: 1,
+            UnclaimedPurchaseCount: 1, [transfer], [new(new LocalDate(2026, 1, 2), 9, "entry", null, 10m)],
+            ExpenseReconMemberStatus.Off, []);
+        var duplicated = new ExpenseReconLine(Guid.NewGuid(), null, user, "M", "d", 10m, new LocalDate(2026, 1, 1), "",
+            ExpenseReconLineStatus.Duplicated, null, 40000001, 1, null, [2], 10m);
+        var orphan = new ExpenseReconOrphan(40000009, 3, new LocalDate(2026, 1, 3), "ER: x", 7m,
+            ExpenseReconOrphanKind.UnboundContact);
+        var recon = new ExpenseReconReport(null, Instant.FromUtc(2026, 1, 4, 0, 0), null, [], [duplicated], [orphan],
+            [member], new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0));
+
+        // The member's side: positive is owed to the member.
+        CreditorMatchVm.For(recon, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 1, 1, 1, 1));
+        CreditorMatchVm.For(recon, 40000001)!.Warnings.Should().HaveCount(4);
+        // A second member on the same account: the ledger split is the account's, their Missing line still counts.
+        var shared = member with { UserId = Guid.NewGuid(), MissingLines = 2 };
+        CreditorMatchVm.For(recon with { Members = [member, shared] }, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 3, 1, 1, 1));
+        // No member, but an expense purchase nobody claims.
+        CreditorMatchVm.For(recon, 40000009).Should().BeEquivalentTo(new CreditorMatchVm(0m, 0m, 7m, 0m, 0, 1, 0, 0));
+        CreditorMatchVm.For(recon, 40000002).Should().BeNull("the recon has nothing on the account");
+        CreditorMatchVm.For(recon with { UnavailableReason = "never synced" }, 40000001).Should().BeNull();
+    }
+
+    [HumansFact]
     public void BuildBudget_ComparesExpenseCategoriesOnly()
     {
         var yearId = Guid.NewGuid();
@@ -141,6 +170,27 @@ public class FinanceOverviewServiceTests
         budget.Planned.Should().Be(300m);
         budget.Spent.Should().Be(130m);
         budget.OverBudget.Should().ContainSingle().Which.Should().Be(new FinanceOverBudgetVm(sound.Id, "Sound", 30m));
+    }
+
+    [HumansFact]
+    public void BuildBudget_UsesGroupSortOrderToBreakEqualOverBudgetTies()
+    {
+        var yearId = Guid.NewGuid();
+        var groups = Enumerable.Range(0, 4).Select(sortOrder =>
+        {
+            var id = Guid.NewGuid();
+            return new BudgetGroupDetail(id, yearId, $"Group {sortOrder}", sortOrder, false, false, false, null,
+                [Category(id, $"Category {sortOrder}", -100m)]);
+        }).ToList();
+        var year = new BudgetYearDetail(yearId, "2026", "2026", BudgetYearStatus.Active, false,
+            groups.AsEnumerable().Reverse().ToList());
+        var actuals = groups.Select(group => new CategoryActualRow(
+            group.Categories[0].Id, group.SortOrder == 3 ? 150m : 125m, [])).ToList();
+
+        var budget = FinanceOverviewService.BuildBudget(year, actuals);
+
+        budget.OverBudget.Select(row => row.CategoryId).Should().Equal(
+            groups[3].Categories[0].Id, groups[0].Categories[0].Id, groups[1].Categories[0].Id);
     }
 
     private static CreditorAccountRow Row(int num, decimal owed, IReadOnlyList<CreditorContactBinding> bindings,

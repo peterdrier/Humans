@@ -178,7 +178,7 @@ internal sealed class CampaignWaveDelivery(
             }
         }
 
-        return new CampaignSendWaveResult(true, SentCount: grantedUserIds.Count);
+        return new CampaignSendWaveResult(true, SentCount: grantedUserIds.Count, EnqueueFailedCount: failedCount);
     }
 
     public async Task ResendToGrantAsync(Guid actorUserId, Guid grantId, CancellationToken ct = default)

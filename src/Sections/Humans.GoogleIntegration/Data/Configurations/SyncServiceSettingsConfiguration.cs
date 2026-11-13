@@ -11,7 +11,7 @@ internal sealed class SyncServiceSettingsConfiguration : IEntityTypeConfiguratio
 
     public void Configure(EntityTypeBuilder<SyncServiceSettings> builder)
     {
-        builder.ToTable("sync_service_settings");
+        builder.ToTable("google_sync_service_settings");
 
         builder.HasKey(s => s.Id);
 

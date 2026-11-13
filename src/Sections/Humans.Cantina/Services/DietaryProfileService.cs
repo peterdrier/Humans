@@ -114,7 +114,7 @@ internal sealed class DietaryProfileService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>The legacy <c>profiles</c> food columns are erased by Users' profile erasure, which still owns them.</summary>
+    /// <summary>The legacy <c>user_profiles</c> food columns are erased by Users' profile erasure, which still owns them.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         await repo.DeleteAsync(userId, ct);
 }

@@ -33,7 +33,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 ## Data Model
 
-### PreapprovalProgram — `pre_programs`
+### PreapprovalProgram — `preapproval_programs`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -53,7 +53,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 Index: `Status`.
 
-### ProgramManager — `pre_program_managers`
+### ProgramManager — `preapproval_program_managers`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -62,7 +62,7 @@ Index: `Status`.
 | AddedByUserId | Guid | |
 | AddedAt | Instant | |
 
-### PreapprovalGrant — `pre_grants`
+### PreapprovalGrant — `preapproval_grants`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -80,7 +80,7 @@ Index: `Status`.
 
 Indexes: `(ProgramId, Status)`, `BeneficiaryUserId`, `ExpenseReportId`.
 
-### ReminderSent — `pre_reminders_sent`
+### ReminderSent — `preapproval_sent_reminders`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -149,7 +149,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   edit one row.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
   for it (a rejected report resubmitting). Release and consume need the holding report. A
-  refusal leaves the grant unchanged; a successful claim returns the booking stamp.
+  refusal leaves the grant unchanged; a successful claim returns the grant as booked.
 - Audit and notices for a grant change never undo it. Expenses' transitions hand theirs back to
   run after its transaction commits (discarded on rollback); every other change runs them after
   its own save, unaffected by the browser disconnecting. Failures are logged.
@@ -163,9 +163,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   never falls back to another amount, and a bad bulk selection never issues a partial batch.
 - The program form needs explicit kind, status and application choices; a missing one
   redisplays the form before anything changes.
-- The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
+- The reminder job sends and writes `preapproval_sent_reminders` rows keyed `(GrantId, Kind,
   ClaimBy)`; it never touches a grant. A moved deadline reminds again (`ReminderTests`).
-- Table names start with `pre_`. The section's migrations are immutable once shipped.
+- Table names start with `preapproval_`. The section's migrations are immutable once shipped.
 
 ## Negative Access Rules
 
@@ -181,7 +181,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   its deadline.
 - Expenses **cannot** claim a grant that is Revoked, Consumed, Claimed by another report, or
   Open past its deadline; it **cannot** release or consume a grant its report does not hold.
-- The reminder job **cannot** change any row but `pre_reminders_sent`.
+- The reminder job **cannot** change any row but `preapproval_sent_reminders`.
 
 ## Triggers
 
@@ -238,7 +238,7 @@ Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in
 The scoped internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion, shared by grant management and deadline reminders. Ordinary delivery failures remain best-effort. `PreapprovalDeadlineReminders` owns reminder selection, transactional delivery and sent stamps, then audits after commit. The recurring job calls this component directly; it does not resolve grant management.
 
 **Owning services:** `PreapprovalDeadlineReminders` (internal reminder pass), `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
-**Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
+**Owned tables:** `preapproval_programs`, `preapproval_program_managers`, `preapproval_grants`, `preapproval_sent_reminders`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
 
 ### Public contract

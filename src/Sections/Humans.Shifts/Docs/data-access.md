@@ -182,10 +182,8 @@ Both cache instances are surfaced on `/Debug/CacheStats`.
 No repository, no tables. Reads through the section's `EventCalendarResolver`, which composes
 `ISettingsService`'s event dates with Shifts' own build sub-periods.
 
-Read-only adapter exposing the composed `BurnSettingsInfo` DTO at the
-section boundary. Exposes `IBurnSettingsService` for cross-section
-consumers that need active-event metadata without coupling to the full
-shifts surface. No cache (single active row, cold path).
+Read-only adapter exposing the composed `BurnSettingsInfo` DTO to the
+section's own pages. Section-internal. No cache (single active row, cold path).
 
 ### RotaCoordinatorMessageService (Scoped)
 

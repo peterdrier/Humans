@@ -52,6 +52,7 @@ internal sealed class ProcessAccountDeletionsJob(
 
             foreach (var userId in dueUserIds)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     var summary = await accountDeletionService.AnonymizeExpiredAccountAsync(
@@ -74,8 +75,8 @@ internal sealed class ProcessAccountDeletionsJob(
 
                     if (!string.IsNullOrWhiteSpace(summary.OriginalEmail))
                     {
-                        // Sent without an outbox row, so a transport failure is terminal; the
-                        // erasure already succeeded and must not be reported as failed or retried.
+                        // Erasure has committed: finish confirmation independently of shutdown.
+                        // No outbox row is kept, so a transport failure remains terminal.
                         try
                         {
                             await emailService.SendAsync(emailMessages.AccountDeleted(
@@ -84,7 +85,7 @@ internal sealed class ProcessAccountDeletionsJob(
                                 summary.OriginalBurnerName,
                                 summary.PreferredLanguage.IsSupportedCultureCode()
                                     ? summary.PreferredLanguage : CultureCatalog.DefaultCultureCode),
-                                cancellationToken);
+                                CancellationToken.None);
                         }
                         catch (Exception ex)
                         {
@@ -104,6 +105,10 @@ internal sealed class ProcessAccountDeletionsJob(
                     logger.LogInformation(
                         "Successfully anonymized account {UserId}",
                         userId);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {

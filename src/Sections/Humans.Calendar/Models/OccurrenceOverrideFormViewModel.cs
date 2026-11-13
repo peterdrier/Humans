@@ -33,7 +33,8 @@ internal sealed class OccurrenceOverrideFormViewModel
 
     /// <summary>
     /// False when an all-day field carries a time of day (the post didn't come from the form) or its inclusive end
-    /// can't advance to an exclusive date. The caller re-renders rather than saving.
+    /// can't advance to an exclusive date, or a timed field can't map to a supported instant.
+    /// The caller re-renders rather than saving.
     /// </summary>
     public bool TryBuildOverride(DateTimeZone zone, out OverrideOccurrenceDto dto)
     {
@@ -41,13 +42,20 @@ internal sealed class OccurrenceOverrideFormViewModel
         if (OverrideStartDateLocal?.TimeOfDay > TimeSpan.Zero || OverrideEndDateLocal?.TimeOfDay > TimeSpan.Zero
             || (OverrideEndDateLocal is { } inclusiveEnd && LocalDate.FromDateTime(inclusiveEnd) == LocalDate.MaxIsoValue))
             return false;
-        dto = new(
-            OverrideStartLocal is { } start ? LocalDateTime.FromDateTime(start).InZoneLeniently(zone).ToInstant() : null,
-            OverrideEndLocal is { } end ? LocalDateTime.FromDateTime(end).InZoneLeniently(zone).ToInstant() : null,
-            OverrideTitle, OverrideDescription, OverrideLocation, OverrideLocationUrl,
-            OverrideStartDateLocal is { } date ? LocalDate.FromDateTime(date) : null,
-            OverrideEndDateLocal is { } last ? LocalDate.FromDateTime(last).PlusDays(1) : null);
-        return true;
+        try
+        {
+            dto = new(
+                OverrideStartLocal is { } start ? LocalDateTime.FromDateTime(start).InZoneLeniently(zone).ToInstant() : null,
+                OverrideEndLocal is { } end ? LocalDateTime.FromDateTime(end).InZoneLeniently(zone).ToInstant() : null,
+                OverrideTitle, OverrideDescription, OverrideLocation, OverrideLocationUrl,
+                OverrideStartDateLocal is { } date ? LocalDate.FromDateTime(date) : null,
+                OverrideEndDateLocal is { } last ? LocalDate.FromDateTime(last).PlusDays(1) : null);
+            return true;
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
     }
 
     public static LocalDate? TryParseOriginalDate(string s)

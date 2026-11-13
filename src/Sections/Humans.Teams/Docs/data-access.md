@@ -47,6 +47,9 @@ cantina-style). `ITeamRepository` has an EE-grant surface
 `FindEarlyEntryGrantForMutationAsync`, `Add/Update/RemoveEarlyEntryGrantAsync`,
 `ReassignEarlyEntryGrantsAsync`, `RemoveEarlyEntryGrantsForUserAsync`),
 backed by the `team_early_entry_grants` table that `TeamRepository` owns.
+`TeamEarlyEntry` reads event metadata through `ISettingsService`: writes require
+a known non-Deleted event, and the provider contributes only grants bound to
+the active event id. Legacy null bindings remain visible for operator review.
 `TeamService` contributes a GDPR slice
 under the export key declared as `TeamService.TeamEarlyEntry`; the
 `IUserMerge` path reassigns grants across the merge.

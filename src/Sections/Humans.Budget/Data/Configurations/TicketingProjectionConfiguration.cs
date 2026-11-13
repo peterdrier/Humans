@@ -8,7 +8,7 @@ internal sealed class TicketingProjectionConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<TicketingProjection> builder)
     {
-        builder.ToTable("ticketing_projections");
+        builder.ToTable("budget_ticketing_projections");
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.InitialSalesCount).IsRequired();

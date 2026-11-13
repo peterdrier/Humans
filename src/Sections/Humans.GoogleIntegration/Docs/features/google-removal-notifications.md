@@ -20,7 +20,7 @@ When Google Workspace sync removes a user's email address from a Google Group or
 
 This silence drives support load — *"why am I no longer in the team mailing list?"* — and hides mistakes: when sync removes someone in error, neither the user nor a coordinator finds out until access is missed.
 
-This feature notifies the address that was removed whenever Google sync deletes a Group membership or a Drive permission, with copy that distinguishes "you lost access" from "an old address got tidied up."
+This feature notifies the address that was removed whenever Google sync deletes a Group membership or a Drive permission, with copy that distinguishes "you lost access" from "an old address got tidied up." Reconciliation completes the successful-removal log and notification enqueue with the same detached token as the remote mutation; job cancellation is checked before the next member or permission.
 
 Tracked in: peterdrier/Humans#639. Initial implementation: peterdrier/Humans#404.
 
@@ -127,7 +127,7 @@ The notification is **always** post-delete, never pre-delete — we don't tell u
 
 - [`google-integration.md`](google-integration.md) — sync architecture, group orchestrator, Drive gateway methods, sync modes
 - [`email-outbox.md`](../../../Humans.Email/Docs/features/email-outbox.md) — outbox infrastructure, `MessageCategory`, branded-template composition
-- [`profiles.md`](../../../Humans.Users/Docs/features/profiles.md) — `UserEmail` rows, email rotation flows (the Google identity is GoogleIntegration's `google_workspace_identities`)
+- [`user_profiles.md`](../../../Humans.Users/Docs/features/profiles.md) — `UserEmail` rows, email rotation flows (the Google identity is GoogleIntegration's `google_workspace_identities`)
 - [`src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md`](../GoogleIntegration.md) — section invariants, cross-section dependencies
 
 ## Open Follow-ups

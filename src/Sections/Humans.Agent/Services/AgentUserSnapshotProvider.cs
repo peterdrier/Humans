@@ -29,7 +29,6 @@ internal sealed class AgentUserSnapshotProvider(
         var user = await users.GetUserInfoAsync(userId, cancellationToken);
         if (user is not null)
             userId = user.Id; // roles, teams, consents and tickets are keyed by the live id
-        var profile = user?.Profile;
         var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
         var teamMemberships = (await teams.GetTeamsAsync(cancellationToken)).Values
             .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
@@ -42,7 +41,6 @@ internal sealed class AgentUserSnapshotProvider(
         var openTickets = ticketHoldings.OpenTicketOrderIds;
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
         var tier = await governance.GetMembershipTierAsync(userId, cancellationToken);
-        var review = await consents.GetConsentReviewAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles
             .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
@@ -53,7 +51,7 @@ internal sealed class AgentUserSnapshotProvider(
             DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: tier.ToString(),
-            IsApproved: profile is not null && review.IsApproved,
+            AccountState: user?.State,
             RoleAssignments: roleAssignments,
             Teams: teamMemberships,
             PendingConsentDocs: pendingDocs,

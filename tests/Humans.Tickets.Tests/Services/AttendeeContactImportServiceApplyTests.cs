@@ -254,8 +254,11 @@ public class AttendeeContactImportServiceApplyTests
         unselected.MatchedUserId.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task Apply_GroupedDecision_FansMatchedUserIdToAllGroupAttendees()
+    [HumansTheory]
+    [Xunit.InlineData("buyer@x.com", "buyer@x.com")]
+    [Xunit.InlineData("buyer@gmail.com", "BUYER@googlemail.com")]
+    [Xunit.InlineData("buyer@googlemail.com", "buyer@gmail.com")]
+    public async Task Apply_GroupedDecision_FansMatchedUserIdToAllGroupAttendees(string email, string alternate)
     {
         var harness = new ApplyHarness();
         var leadId = Guid.NewGuid();
@@ -266,7 +269,7 @@ public class AttendeeContactImportServiceApplyTests
             Id = leadId,
             VendorTicketId = "tkt_1",
             VendorEventId = "evt_active",
-            AttendeeEmail = "buyer@x.com",
+            AttendeeEmail = email,
             Status = TicketAttendeeStatus.Valid,
         };
         var extra = new TicketAttendee
@@ -274,19 +277,19 @@ public class AttendeeContactImportServiceApplyTests
             Id = extraId,
             VendorTicketId = "tkt_2",
             VendorEventId = "evt_active",
-            AttendeeEmail = "buyer@x.com",
+            AttendeeEmail = alternate,
             Status = TicketAttendeeStatus.Valid,
         };
         harness.WithUnmatched(lead);
         harness.WithUnmatched(extra);
         harness.WithActiveYear(2026);
         harness.Provisioning.FindOrCreateUserByEmailAsync(
-                "buyer@x.com", "Sara Smith", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+                email, "Sara Smith", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(newUserId, true));
 
         var plan = new AttendeeImportPlan([
             new AttendeeImportDecision(
-                leadId, "buyer@x.com", "Sara Smith", "tkt_1",
+                leadId, email, "Sara Smith", "tkt_1",
                 AttendeeImportOutcome.CreateNewUser,
                 TargetUserId: null,
                 UnverifiedEmailIdToDelete: null,
@@ -305,7 +308,7 @@ public class AttendeeContactImportServiceApplyTests
 
         // Provisioning runs once even though two attendees share the email.
         await harness.Provisioning.Received(1).FindOrCreateUserByEmailAsync(
-            "buyer@x.com", "Sara Smith", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
+            email, "Sara Smith", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
 
         // Upsert receives both rows so DB is updated for every grouped attendee.
         await harness.TicketRepo.Received(1)

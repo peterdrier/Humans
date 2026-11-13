@@ -125,6 +125,43 @@ public class ServiceTests
         result.Counterparties.Should().BeEmpty();
     }
 
+    public enum IndexAudience { Lead, Privileged }
+
+    [HumansTheory]
+    [InlineData(IndexAudience.Lead)]
+    [InlineData(IndexAudience.Privileged)]
+    public async Task Index_includes_every_eligible_camp_season_in_the_catalog_year(IndexAudience audience)
+    {
+        var userId = Guid.NewGuid();
+        var first = MakeCampInfo(Guid.NewGuid(), Guid.NewGuid(), "Spring", userId);
+        var spring = first.Seasons[0];
+        var autumn = MakeCampInfo(first.Id, Guid.NewGuid(), "Autumn", userId).Seasons[0];
+        var unowned = MakeCampInfo(first.Id, Guid.NewGuid(), "Unowned", Guid.NewGuid()).Seasons[0];
+        var historical = spring with { Id = Guid.NewGuid(), Year = 2025 };
+        first = first with { Seasons = [historical, spring, autumn, unowned] };
+        var second = MakeCampInfo(Guid.NewGuid(), Guid.NewGuid(), "Second camp", userId);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([first, second]);
+        _repo.GetOrdersForCampSeasonsWithLinesAndPaymentsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IReadOnlyCollection<Guid>>().Select(id => new Order
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = id,
+                Year = 2026
+            }).ToList());
+
+        var data = audience == IndexAudience.Privileged
+            ? await _service.GetAllCounterpartiesIndexDataAsync(TestContext.Current.CancellationToken)
+            : await _service.GetIndexDataAsync(userId, TestContext.Current.CancellationToken);
+
+        Guid[] expected = audience == IndexAudience.Privileged
+            ? [spring.Id, autumn.Id, unowned.Id, second.Seasons[0].Id]
+            : [spring.Id, autumn.Id, second.Seasons[0].Id];
+        data.Counterparties.Select(c => c.CounterpartyId).Should().BeEquivalentTo(expected);
+        data.Counterparties.Should().OnlyContain(c => c.Orders.Count == 1
+            && c.Orders[0].CampSeasonId == c.CounterpartyId);
+    }
+
     [HumansFact]
     public async Task GetIndexDataAsync_selects_highest_balance_camp_order_with_live_prices()
     {
@@ -1658,13 +1695,39 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData("1000000")]
+    [InlineData("9999999999.99")]
+    [InlineData("79228162514264337593543950335")]
+    public async Task CheckoutMoney_rejects_amounts_above_Stripes_EUR_limit_before_calling_it(string text)
+    {
+        var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
+        var order = MakeOrderDto(balanceEur: amount);
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order { Id = order.Id });
+        _stripeService.CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(OpenSession("cs_oversized", "https://stripe.test/oversized"));
+
+        var result = await _service.CreateStripeCheckoutSessionAsync(order, amount,
+            "https://humans.test/order", TestContext.Current.CancellationToken);
+
+        result.ErrorKey.Should().Be("Store_PaymentAboveCheckoutLimit");
+        result.MaximumAmount.Should().Be(999_999.99m);
+        result.SessionUrl.Should().BeNull();
+        await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
+            default!, default!, default, default!);
+        await _repo.DidNotReceiveWithAnyArgs().GetOrderByIdAsync(default);
+    }
+
+    [HumansTheory]
     [InlineData("0.50")]
     [InlineData("1.2300")]
     [InlineData("10.00")]
+    [InlineData("999999.99")]
     public async Task CheckoutMoney_passes_exact_cent_amounts_to_Stripe(string text)
     {
         var amount = decimal.Parse(text, CultureInfo.InvariantCulture);
-        var order = MakeOrderDto(balanceEur: 10m);
+        var order = MakeOrderDto(balanceEur: Math.Max(10m, amount));
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new Order { Id = order.Id });
         _stripeService.CreateCheckoutSessionAsync(order.Id, amount, Arg.Any<string>(), Arg.Any<string>(),
@@ -1765,6 +1828,99 @@ public class ServiceTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
         await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+    }
+
+    [HumansFact]
+    public async Task Checkout_attempt_blocks_order_deletion_until_expiry_in_service_and_projection()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            CheckoutAttemptId = Guid.NewGuid(),
+            CheckoutSessionId = "cs_pending",
+            CheckoutAmountEur = 20m
+        };
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        var before = (await _service.GetOrderAsync(order.Id, ct))!;
+        var refusal = await _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), ct);
+
+        refusal.Succeeded.Should().BeFalse();
+        before.IsDeletable.Should().BeFalse();
+        await _repo.DidNotReceive().DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_expired", StoreCheckoutEventKind.CheckoutSessionExpired,
+            new StoreCheckoutSessionData("cs_pending", order.Id, null, 20m, Status: "expired")), ct);
+
+        (await _service.GetOrderAsync(order.Id, ct))!.IsDeletable.Should().BeTrue();
+        (await _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), ct)).Succeeded.Should().BeTrue();
+        await _repo.Received(1).DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Order_deletion_waits_for_checkout_creation_before_checking_attempt_state()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var product = MakeProduct(price: 20m, vat: 0m);
+        var order = new Order { Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), Year = 2026 };
+        order.Lines.Add(new OrderLine
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            ProductId = product.Id,
+            Qty = 1,
+            UnitPriceSnapshot = 20m,
+            VatRateSnapshot = 0m
+        });
+        var deleted = false;
+        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => deleted ? null : order);
+        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ => deleted ? null : order);
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([product]);
+        _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([product]);
+        _repo.DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            deleted = true;
+            return Task.CompletedTask;
+        });
+        _stripeService.IsStoreCheckoutConfigured.Returns(true);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _stripeService.CreateCheckoutSessionAsync(order.Id, 20m, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(async _ =>
+            {
+                entered.TrySetResult();
+                await release.Task.WaitAsync(ct);
+                return OpenSession("cs_new", "https://stripe.test/session");
+            });
+        var quote = (await _service.GetOrderAsync(order.Id, ct))!;
+        quote.BalanceEur.Should().Be(20m);
+        var opening = _service.CreateStripeCheckoutSessionAsync(quote, 20m, "https://humans.test/order", ct);
+        await entered.Task.WaitAsync(ct);
+        order.Lines.Clear();
+        var deleting = _service.DeleteOrderAsync(order.Id, Guid.NewGuid(), ct);
+        try
+        {
+            deleting.IsCompleted.Should().BeFalse();
+        }
+        finally
+        {
+            release.TrySetResult();
+            await opening;
+        }
+
+        (await deleting).Succeeded.Should().BeFalse();
+        deleted.Should().BeFalse();
+        order.CheckoutSessionId.Should().Be("cs_new");
+        await _repo.DidNotReceive().DeleteOrderAsync(order.Id, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

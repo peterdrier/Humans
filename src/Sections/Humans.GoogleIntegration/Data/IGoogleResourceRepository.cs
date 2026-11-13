@@ -52,17 +52,18 @@ internal interface IGoogleResourceRepository : IRepository
 
     /// <summary>
     /// Legacy rows hold the group email instead of the numeric id in <see cref="GoogleResource.GoogleId"/>, so
-    /// callers pass both candidates.
+    /// callers pass both candidates. A canonical URL also identifies a numeric-ID row during team-prefix recovery.
     /// </summary>
     Task<GoogleResource?> FindInactiveGroupByCandidatesAsync(
         Guid teamId,
         string googleNumericId,
         string normalizedGroupEmail,
+        string? normalizedGroupUrl = null,
         CancellationToken ct = default);
 
     Task AddAsync(GoogleResource resource, CancellationToken ct = default);
 
-    /// <summary>Reactivates an inactive row and clears its error. Null if the row is missing.</summary>
+    /// <summary>Reactivates a row and optionally deactivates a previous same-team/type row in one save. Null if the target is missing.</summary>
     Task<GoogleResource?> ReactivateAsync(
         Guid resourceId,
         string name,
@@ -70,6 +71,7 @@ internal interface IGoogleResourceRepository : IRepository
         Instant lastSyncedAt,
         string? newGoogleId,
         DrivePermissionLevel? newPermissionLevel,
+        Guid? deactivateResourceId = null,
         CancellationToken ct = default);
 
     Task UnlinkAsync(Guid resourceId, CancellationToken ct = default);

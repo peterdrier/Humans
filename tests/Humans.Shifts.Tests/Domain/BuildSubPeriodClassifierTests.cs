@@ -27,17 +27,17 @@ public class BuildSubPeriodClassifierTests
         EarlyEntryClose: null, IsShiftBrowsingOpen: false);
 
     [HumansTheory]
-    [InlineData(-25, BuildSubPeriod.FirstCrew)]
-    [InlineData(-17, BuildSubPeriod.FirstCrew)]
-    [InlineData(-16, BuildSubPeriod.SetupWeek)]
-    [InlineData(-10, BuildSubPeriod.SetupWeek)]
-    [InlineData(-9, BuildSubPeriod.PreEventWeek)]
-    [InlineData(-5, BuildSubPeriod.PreEventWeek)]
-    [InlineData(-4, BuildSubPeriod.FinishingWeekend)]
-    [InlineData(-1, BuildSubPeriod.FinishingWeekend)]
-    public void Classify_returns_expected_subperiod(int dayOffset, BuildSubPeriod expected)
+    [InlineData(-25, nameof(BuildSubPeriod.FirstCrew))]
+    [InlineData(-17, nameof(BuildSubPeriod.FirstCrew))]
+    [InlineData(-16, nameof(BuildSubPeriod.SetupWeek))]
+    [InlineData(-10, nameof(BuildSubPeriod.SetupWeek))]
+    [InlineData(-9, nameof(BuildSubPeriod.PreEventWeek))]
+    [InlineData(-5, nameof(BuildSubPeriod.PreEventWeek))]
+    [InlineData(-4, nameof(BuildSubPeriod.FinishingWeekend))]
+    [InlineData(-1, nameof(BuildSubPeriod.FinishingWeekend))]
+    public void Classify_returns_expected_subperiod(int dayOffset, string expected)
     {
-        BuildSubPeriodClassifier.Classify(dayOffset, DefaultSettings()).Should().Be(expected);
+        BuildSubPeriodClassifier.Classify(dayOffset, DefaultSettings()).Should().Be(Enum.Parse<BuildSubPeriod>(expected));
     }
 
     [HumansTheory]
@@ -58,13 +58,13 @@ public class BuildSubPeriodClassifierTests
     }
 
     [HumansTheory]
-    [InlineData(BuildSubPeriod.FirstCrew, -25, -16)]
-    [InlineData(BuildSubPeriod.SetupWeek, -16, -9)]
-    [InlineData(BuildSubPeriod.PreEventWeek, -9, -4)]
-    [InlineData(BuildSubPeriod.FinishingWeekend, -4, 0)]
-    public void BoundsFor_returns_half_open_range(BuildSubPeriod sub, int expectedStart, int expectedEnd)
+    [InlineData(nameof(BuildSubPeriod.FirstCrew), -25, -16)]
+    [InlineData(nameof(BuildSubPeriod.SetupWeek), -16, -9)]
+    [InlineData(nameof(BuildSubPeriod.PreEventWeek), -9, -4)]
+    [InlineData(nameof(BuildSubPeriod.FinishingWeekend), -4, 0)]
+    public void BoundsFor_returns_half_open_range(string sub, int expectedStart, int expectedEnd)
     {
-        var (start, end) = BuildSubPeriodClassifier.BoundsFor(sub, DefaultSettings());
+        var (start, end) = BuildSubPeriodClassifier.BoundsFor(Enum.Parse<BuildSubPeriod>(sub), DefaultSettings());
         start.Should().Be(expectedStart);
         end.Should().Be(expectedEnd);
     }

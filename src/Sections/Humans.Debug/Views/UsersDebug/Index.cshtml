@@ -14,12 +14,11 @@
     string Tri(bool? value) => value is null ? "—" : value.Value ? "Yes" : "No";
 }
 
-<div class="page-head">
-    <h1 class="title">All users (debug)</h1>
-    <p class="sub">
+<page-header title="All users (debug)" variant="compact">
+    <page-header-subtitle>
         @Model.TotalCount users · page @Model.Page of @Model.TotalPages · all fields read from the in-memory UserInfo cache
-    </p>
-</div>
+    </page-header-subtitle>
+</page-header>
 
 <div class="card">
     <div class="card-body p-0">

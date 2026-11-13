@@ -1,6 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Settings.Contracts;
 using Humans.Teams.Services;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -71,6 +72,20 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var write = scope.ServiceProvider.GetRequiredService<ITeamManagementService>();
+        var eventId = Guid.NewGuid();
+        await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
+            new EventSettingsInfo(
+                Id: eventId,
+                EventName: "Early Entry Render Test Burn",
+                Year: entryDate.Year,
+                TimeZoneId: "Europe/Madrid",
+                GateOpeningDate: entryDate.PlusDays(1),
+                BuildStartOffset: -14,
+                EventEndOffset: 6,
+                StrikeEndOffset: 9,
+                EarlyEntryCapacity: new Dictionary<int, int>(),
+                BarriosEarlyEntryAllocation: null,
+                EarlyEntryClose: null), ct);
 
         // A fresh team: the flag flip below is a real write, and the seeded system teams are shared.
         var team = await write.CreateTeamAsync(
@@ -82,6 +97,7 @@ public class EarlyEntryPageRenderTests(HumansTestDatabase database) : Integratio
             team.Id, team.Name, team.Description, team.RequiresApproval, isActive: true,
             earlyEntryEnabled: true, cancellationToken: ct);
 
-        await write.AddEarlyEntryGrantAsync(team.Id, userId, entryDate, projectName, userId, ct);
+        var result = await write.AddEarlyEntryGrantAsync(team.Id, userId, entryDate, projectName, userId, eventId, ct);
+        result.Refusal.Should().BeNull();
     }
 }

@@ -12,6 +12,13 @@ namespace Humans.Shifts.Services;
 /// </summary>
 internal interface IShiftSignupService : IShiftSignupSeeding, IApplicationService
 {
+    /// <summary>No-show entries with review timestamps, without display ordering.</summary>
+    Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>One atomic save; returns each cancelled signup so the caller can audit them one by one.</summary>
+    Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
+        Guid userId, string reason, CancellationToken ct = default);
+
     /// <summary>Re-validates invariants.</summary>
     Task<SignupResult> ApproveAsync(Guid signupId, Guid reviewerUserId);
 

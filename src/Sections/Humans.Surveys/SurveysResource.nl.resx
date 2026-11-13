@@ -414,5 +414,6 @@
   <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Elke keuzevraag moet minstens één optie hebben.</value></data>
   <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Optiewaarden in een keuzevraag mogen niet leeg zijn.</value></data>
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Optiewaarden binnen een keuzevraag moeten uniek zijn.</value></data>
+  <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Elke vraag, antwoordoptie en afbeelding mag maar één keer in een enquête voorkomen.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>Het minimum van de beoordeling mag niet hoger zijn dan het maximum.</value></data>
 </root>

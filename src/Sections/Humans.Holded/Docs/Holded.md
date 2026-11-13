@@ -36,7 +36,9 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
   identities (including expense-account, contact and sales-document IDs) and amounts (including the pending balance on approved purchases), complete pagination, typed write responses, the `unconfirmed:`
   references, the 429 policy with fractional HTTP-date waits) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
-  depends on one consequence: no short or fabricated page ever reaches replace semantics.
+  depends on one consequence: no short or fabricated page ever reaches replace semantics. An unreadable
+  contact fails the complete pull before replacement; the existing mirror remains intact with an Error sync
+  state. Live find-or-create contact writes also stop rather than treating an unreadable contact as absent.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
@@ -190,7 +192,7 @@ it wrote.
 
 - `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too); `GetChartSyncedAtAsync` says when.
 
-- Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits.
+- Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits. Both 4xx diagnostics and successful paged responses missing `items` mask decoded JSON strings (including escaped separators); plain-text bodies use the same IBAN formatter. Pager previews truncate only after masking. `HoldedPermanentException.ResponseBody` retains the untouched body for existing business checks.
 
 - Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
 
