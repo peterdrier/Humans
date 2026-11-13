@@ -4,10 +4,6 @@ version: 1
 next_id: 30
 inbox:
   - added: 2026-11-06
-    id: USERS-24
-    what: "ProfileEmailsController.UnlinkLinkedAccount decides the last-sign-in-method rule for an orphan login (no verified address left) itself, calls UserManager.RemoveLoginAsync directly and audits; BuildLinkedAccountsAsync writes the same orphan rule a second time for CanUnlink. The rule is a fact IUserEmailService.UnlinkAsync already owns for row-backed logins; the orphan branch belongs there too. Found by section-doctor controller-intent read."
-    review: panel
-  - added: 2026-11-06
     id: USERS-25
     what: "ProfileEmailsController sequences side effects after email mutations: the verification mail after AddEmailAsync (self and admin paths) and an audit write after SetPrimary, SetVisibility, Delete, AddVerified and DeleteById (and ProfileAdminController's orphan delete). Which consequences follow a change is a fact; the service methods should send and audit, as ClearPrimary and Unlink already do. Found by section-doctor controller-intent read."
     review: panel

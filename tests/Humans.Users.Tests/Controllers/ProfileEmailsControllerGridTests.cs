@@ -997,174 +997,37 @@ public class ProfileEmailsControllerGridTests
             CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
 
-    [HumansFact]
-    public async Task UnlinkLinkedAccount_RoutesToUnlinkAsync_WhenMatchingUserEmailExists()
-    {
-        // Dashboard surfaces an AspNetUserLogins row; controller looks up the
-        // matching UserEmail row by (Provider, ProviderKey) and delegates to
-        // UserEmailService.UnlinkAsync — which preserves the two-store
-        // consistency invariant (RemoveLoginAsync + UserEmail row delete).
-        var rowId = Guid.NewGuid();
-        const string provider = "Google";
-        const string providerKey = "google-sub-123";
-
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo> { new(provider, providerKey, "Google") });
-
-        _userEmailService.GetEntitiesByUserIdAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([
-                Snapshot(_userId, rowId, "a@example.com", isVerified: true, provider, providerKey),
-                // A second verified plain row so the auth-method invariant
-                // passes (unlinking removes the Google row; magic-link still
-                // works on the remaining verified row).
-                Snapshot(_userId, Guid.NewGuid(), "b@example.com", isVerified: true, null, null),
-            ]);
-
-        _userEmailService.UnlinkAsync(_userId, rowId, _userId, Arg.Any<CancellationToken>())
-            .Returns(new UnlinkEmailResult(true));
-
-        var result = await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
-
-        await _userEmailService.Received(1).UnlinkAsync(
-            _userId, rowId, _userId, Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be("Emails");
-    }
-
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task UnlinkLinkedAccount_RefusalIsLocalizedAndKeepsLogin(bool lastSignInMethod)
+    public async Task UnlinkLinkedAccount_DelegatesProviderIdentityAndLocalizesResult(bool succeeds)
     {
-        var rowId = Guid.NewGuid();
-        const string provider = "Google";
-        const string providerKey = "google-sub-only";
+        _userEmailService.UnlinkAsync(_userId, null, _userId, Arg.Any<CancellationToken>(), "Google", "key")
+            .Returns(new UnlinkEmailResult(succeeds,
+                succeeds ? null : "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"));
 
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo> { new(provider, providerKey, "Google") });
-
-        _userEmailService.GetEntitiesByUserIdAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([
-                Snapshot(_userId, rowId, "only@example.com", isVerified: true, provider, providerKey),
-            ]);
-        _userEmailService.UnlinkAsync(_userId, rowId, _userId, Arg.Any<CancellationToken>())
-            .Returns(lastSignInMethod
-                ? Task.FromResult(new UnlinkEmailResult(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"))
-                : Task.FromException<UnlinkEmailResult>(new InvalidOperationException("Private unlink operation diagnostic")));
-
-        if (!lastSignInMethod)
-        {
-            Func<Task> act = async () => await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
-            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Private unlink operation diagnostic");
-            _controller.TempData.Should().BeEmpty();
-            await _userManager.DidNotReceive().RemoveLoginAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
-            return;
-        }
-
-        var result = await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
-
-        _controller.TempData["ErrorMessage"].Should().Be("Users_LinkedAccounts_UnlinkBlockedLastSignInMethod");
-
-        // The Identity login row must remain untouched — the service refused
-        // before any mutation, and the controller never bypasses it.
-        await _userEmailService.Received(1).UnlinkAsync(
-            _userId, rowId, _userId, Arg.Any<CancellationToken>());
-        await _userManager.DidNotReceive().RemoveLoginAsync(
-            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be("Emails");
-    }
-
-    [HumansFact]
-    public async Task UnlinkLinkedAccount_BlocksOrphanRemoval_WhenNoVerifiedEmailRemains()
-    {
-        // Orphan branch of the invariant: the login has no UserEmail row, so
-        // UnlinkAsync's service-side guard never runs. With zero verified
-        // emails the orphan login may be the user's only sign-in path — the
-        // controller must refuse before RemoveLoginAsync.
-        const string provider = "Google";
-        const string providerKey = "google-sub-orphan";
-
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo> { new(provider, providerKey, "Google") });
-
-        _userEmailService.GetEntitiesByUserIdAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([
-                Snapshot(_userId, Guid.NewGuid(), "unverified@example.com", isVerified: false, null, null),
-            ]);
-
-        var result = await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
-
-        await _userManager.DidNotReceive().RemoveLoginAsync(
-            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
-        await _userEmailService.DidNotReceive().UnlinkAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be("Emails");
-    }
-
-    [HumansFact]
-    public async Task UnlinkLinkedAccount_AllowsWhenOtherVerifiedEmailRemains()
-    {
-        // Boundary of the invariant: the user's OAuth-tagged row is the
-        // only verified row that carries an OAuth tag, but there's a second
-        // plain verified row. Magic-link still works after unlink → allowed.
-        var rowId = Guid.NewGuid();
-        const string provider = "Google";
-        const string providerKey = "google-sub-tagged";
-
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo> { new(provider, providerKey, "Google") });
-
-        _userEmailService.GetEntitiesByUserIdAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns([
-                Snapshot(_userId, rowId, "tagged@example.com", isVerified: true, provider, providerKey),
-                Snapshot(_userId, Guid.NewGuid(), "plain@example.com", isVerified: true, null, null),
-            ]);
-
-        _userEmailService.UnlinkAsync(_userId, rowId, _userId, Arg.Any<CancellationToken>())
-            .Returns(new UnlinkEmailResult(true));
-
-        var result = await _controller.UnlinkLinkedAccount(provider, providerKey, TestContext.Current.CancellationToken);
+        var result = await _controller.UnlinkLinkedAccount("Google", "key", TestContext.Current.CancellationToken);
 
         await _userEmailService.Received(1).UnlinkAsync(
-            _userId, rowId, _userId, Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be("Emails");
+            _userId, null, _userId, Arg.Any<CancellationToken>(), "Google", "key");
+        _controller.TempData[succeeds ? "SuccessMessage" : "ErrorMessage"].Should().Be(
+            succeeds ? "Users_EmailGrid_UnlinkSuccess" : "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod");
+        await _userManager.DidNotReceive().RemoveLoginAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Emails");
     }
 
     [HumansFact]
     public async Task UnlinkLinkedAccount_AuthorizationFails_ReturnsForbid()
     {
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo> { new("Google", "k", "Google") });
         _authorizationService.AuthorizeAsync(
-            Arg.Any<ClaimsPrincipal>(),
-            Arg.Any<object?>(),
-            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
 
-        var result = await _controller.UnlinkLinkedAccount("Google", "k", TestContext.Current.CancellationToken);
+        var result = await _controller.UnlinkLinkedAccount("Google", "key", TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
         await _userEmailService.DidNotReceive().UnlinkAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task UnlinkLinkedAccount_NoMatchingLogin_FailsSoft_NoUnlink()
-    {
-        // Dashboard is stale (or request is forged): the user has no
-        // AspNetUserLogins row for the posted (provider, key). Fail soft —
-        // redirect with an error, never call the service.
-        _userManager.GetLoginsAsync(Arg.Any<User>())
-            .Returns(new List<UserLoginInfo>());
-
-        var result = await _controller.UnlinkLinkedAccount("Google", "stale-key", TestContext.Current.CancellationToken);
-
-        await _userEmailService.DidNotReceive().UnlinkAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be("Emails");
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>(),
+            Arg.Any<string?>(), Arg.Any<string?>());
     }
 }

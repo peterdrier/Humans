@@ -1343,10 +1343,8 @@ public class UserEmailServiceTests
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
             .Returns(IdentityResult.Success);
 
-        // After RemoveAsync, the helper sees only the secondary (mock simulates
-        // the post-removal state).
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { secondary });
+            .Returns(new List<UserEmail> { googleRow, secondary }, new List<UserEmail> { secondary });
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1389,7 +1387,7 @@ public class UserEmailServiceTests
             .Returns(IdentityResult.Success);
 
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { primary });
+            .Returns(new List<UserEmail> { googleRow, primary }, new List<UserEmail> { primary });
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1439,6 +1437,70 @@ public class UserEmailServiceTests
             Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_ProviderIdentity_ResolvesAndRemovesMatchingEmailRow()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        var linked = new UserEmail
+        {
+            Id = Guid.NewGuid(), UserId = userId, Email = "linked@example.com",
+            IsVerified = true, Provider = "Google", ProviderKey = "key"
+        };
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([linked, new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = true }]);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.GetLoginsAsync(user).Returns(new List<UserLoginInfo> { new("Google", "key", "Google") });
+        _userManager.RemoveLoginAsync(user, "Google", "key").Returns(IdentityResult.Success);
+        _userService.RemoveUserEmailAsync(userId, linked.Id, Arg.Any<UserEmailRemoveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _service.UnlinkAsync(userId, null, userId,
+            Xunit.TestContext.Current.CancellationToken, "Google", "key");
+
+        result.Succeeded.Should().BeTrue();
+        await _userService.Received(1).RemoveUserEmailAsync(userId, linked.Id,
+            Arg.Is<UserEmailRemoveCommand>(command => command.Mode == UserEmailRemovalMode.ProviderLinkedEmail), CancellationToken.None);
+        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, linked.Email, CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, true, false)]
+    [Xunit.InlineData(true, true, true)]
+    [Xunit.InlineData(true, true, false)]
+    [Xunit.InlineData(true, false, false)]
+    public async Task UnlinkAsync_OrphanLogin_RequiresVerifiedEmailAndExistingLogin(
+        bool verified, bool hasLogin, bool removalFails)
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = verified }]);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.GetLoginsAsync(user).Returns(hasLogin
+            ? new List<UserLoginInfo> { new("Google", "key", "Google") } : []);
+        _userManager.RemoveLoginAsync(user, "Google", "key").Returns(removalFails
+            ? IdentityResult.Failed(new IdentityError { Code = "failed" }) : IdentityResult.Success);
+
+        var result = await _service.UnlinkAsync(userId, null, actorId,
+            Xunit.TestContext.Current.CancellationToken, "Google", "key");
+
+        result.Succeeded.Should().Be(verified && hasLogin && !removalFails);
+        if (!verified || !hasLogin)
+            await _userManager.DidNotReceive().RemoveLoginAsync(user, "Google", "key");
+        await _userService.DidNotReceive().RemoveUserEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UserEmailRemoveCommand>(), Arg.Any<CancellationToken>());
+        if (result.Succeeded)
+            await _auditLogService.Received(1).LogAsync(UsersAuditActions.UserEmailUnlinked,
+                nameof(User), userId, Arg.Is<string>(message => message.Contains("orphan Google")), actorId,
+                relatedEntityId: null, relatedEntityType: null);
+        else
+            await _auditLogService.DidNotReceive().LogAsync(
+                Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // VerifyEmailAsync must load the pending row by the Id passed in (it matches the token's

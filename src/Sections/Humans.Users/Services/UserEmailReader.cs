@@ -38,7 +38,7 @@ internal sealed class UserEmailReader(
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
             IsMergePending: mergePendingSet.Contains(e.Id),
             CanUnlink: !string.IsNullOrEmpty(e.Provider) && !string.IsNullOrEmpty(e.ProviderKey)
-                && verifiedCount - (e.IsVerified ? 1 : 0) >= 1
+                && UserEmailService.CanUnlink(verifiedCount, e.IsVerified)
         )).ToList();
     }
 

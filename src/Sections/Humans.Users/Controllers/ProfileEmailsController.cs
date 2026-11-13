@@ -347,7 +347,7 @@ internal sealed class ProfileEmailsController(
         return message.ResourceNotFound ? sharedLocalizer[key].Value : message.Value;
     }
 
-    private void SetEmailUnlinkedResult(UnlinkEmailResult result, Guid userId, Guid emailId, Guid actorId)
+    private void SetEmailUnlinkedResult(UnlinkEmailResult result, Guid userId, Guid? emailId, Guid actorId)
     {
         if (!result.Succeeded || result.ErrorKey is not null)
             logger.LogWarning("Email unlink refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
@@ -388,58 +388,8 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        // Stale page or forged request: fail soft.
-        var logins = await userManager.GetLoginsAsync(user);
-        var hasLogin = logins.Any(l =>
-            string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
-            && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal));
-        if (!hasLogin)
-        {
-            SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
-            return RedirectToAction(nameof(Emails));
-        }
-
-        // UnlinkAsync keeps the login and email rows in sync and refuses removing the last verified sign-in method.
-        // An orphan login falls back to RemoveLoginAsync.
-        var rawRows = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
-        var matching = rawRows.FirstOrDefault(r =>
-            string.Equals(r.Provider, provider, StringComparison.Ordinal)
-            && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        if (matching is not null)
-        {
-            var result = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
-            SetEmailUnlinkedResult(result, user.Id, matching.Id, user.Id);
-        }
-        else
-        {
-            // Orphan login: UnlinkAsync's guard can't see it, so enforce the invariant here. With no verified
-            // email this login may be the only way in.
-            if (rawRows.Count(r => r.IsVerified) < 1)
-            {
-                SetError(localizer["Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
-                return RedirectToAction(nameof(Emails));
-            }
-
-            var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
-            if (removeLogin.Succeeded)
-            {
-                await auditLogService.LogAsync(
-                    UsersAuditActions.UserEmailUnlinked,
-                    nameof(User), user.Id,
-                    $"Unlinked orphan {provider} login (no matching UserEmail row)",
-                    user.Id);
-                SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
-            }
-            else
-            {
-                logger.LogWarning(
-                    "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
-                    user.Id, provider,
-                    string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-                SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
-            }
-        }
+        var result = await userEmailService.UnlinkAsync(user.Id, null, user.Id, ct, provider, providerKey);
+        SetEmailUnlinkedResult(result, user.Id, null, user.Id);
 
         return RedirectToAction(nameof(Emails));
     }

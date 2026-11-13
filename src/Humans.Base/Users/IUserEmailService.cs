@@ -150,15 +150,18 @@ public interface IUserEmailService
     Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
-    /// Removes the login row and the email row of a provider-attached address. Refuses when it would leave
+    /// Removes a provider login and its matching email row, if present. Pass a null email id and the
+    /// provider/key to resolve a login, including one without an email row. Refuses when it would leave
     /// <paramref name="userId"/> (the target, not <paramref name="actorUserId"/>) with no verified email: magic
     /// link needs one too, so that would be a full lockout.
     /// </summary>
     Task<UnlinkEmailResult> UnlinkAsync(
         Guid userId,
-        Guid userEmailId,
+        Guid? userEmailId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? provider = null,
+        string? providerKey = null);
 
     /// <summary>
     /// The one OAuth-callback path that mutates email rows, after the login row points at <paramref name="userId"/>.
