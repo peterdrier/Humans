@@ -6,7 +6,6 @@ using Humans.Base.Controllers;
 using System.Globalization;
 using System.Web;
 using Humans.Users.Authorization;
-using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,8 +13,6 @@ using Microsoft.Extensions.Localization;
 using Humans.Base.Constants;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
-using Humans.Email.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base;
@@ -30,10 +27,7 @@ namespace Humans.Users.Controllers;
 internal sealed class ProfileEmailsController(
     IUserManagement userService,
     UserManager<User> userManager,
-    IEmailService emailService,
-    UsersEmails emailMessages,
     IUserEmailService userEmailService,
-    IAuditLogService auditLogService,
     ILogger<ProfileEmailsController> logger,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
@@ -74,42 +68,20 @@ internal sealed class ProfileEmailsController(
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
-        var result = await userEmailService.AddEmailAsync(user.Id, model.NewEmail);
+        // Verification can send mail; a browser disconnect must not interrupt the workflow.
+        var result = await userEmailService.AddEmailAsync(user.Id, model.NewEmail, CancellationToken.None, user.Id);
         if (result.ErrorKey is { } errorKey)
         {
             ModelState.AddModelError(nameof(model.NewEmail), LocalizeEmailRefusal(errorKey));
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
-        await SendAddedEmailVerificationAsync(user, model.NewEmail, result);
         logger.LogInformation(
             "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
             model.NewEmail.Trim(), user.Id, result.IsConflict);
         SetAddedEmailFlash(model.NewEmail, result.IsConflict);
 
         return RedirectToAction(nameof(Emails));
-    }
-
-    private async Task SendAddedEmailVerificationAsync(User user, string email, AddEmailResult result)
-    {
-        var trimmedEmail = email.Trim();
-        var verificationUrl = Url.Action(
-            nameof(VerifyEmail),
-            "ProfileEmails",
-            new { userId = user.Id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
-            Request.Scheme);
-
-        var info = await _userService.GetUserInfoAsync(user.Id);
-
-        var message = emailMessages.EmailVerification(
-            user.Id,
-            trimmedEmail,
-            info?.BurnerName ?? string.Empty,
-            verificationUrl!,
-            result.IsConflict,
-            user.PreferredLanguage.IsSupportedCultureCode()
-                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode);
-        await emailService.SendAsync(message);
     }
 
     private void SetAddedEmailFlash(string email, bool isConflict)
@@ -202,7 +174,7 @@ internal sealed class ProfileEmailsController(
 
         var parsedVisibility = ParseEmailVisibility(visibility);
 
-        var result = await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+        var result = await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility, actorUserId: user.Id);
         if (!result.Succeeded)
         {
             logger.LogWarning("Email SetEmailVisibility refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
@@ -210,7 +182,6 @@ internal sealed class ProfileEmailsController(
             SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
             return RedirectToAction(nameof(Emails));
         }
-        await LogSelfEmailVisibilityChangedAsync(user.Id, emailId, parsedVisibility);
         SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
 
         return RedirectToAction(nameof(Emails));
@@ -222,17 +193,6 @@ internal sealed class ProfileEmailsController(
             ? parsed
             : null;
 
-    private Task LogSelfEmailVisibilityChangedAsync(
-        Guid userId,
-        Guid emailId,
-        ContactFieldVisibility? visibility) =>
-        auditLogService.LogAsync(
-            UsersAuditActions.UserEmailVisibilityChanged,
-            nameof(User), userId,
-            $"Changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
-            userId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/Delete")]
     [ValidateAntiForgeryToken]
     [AllowBeforeActiveMembership]
@@ -246,10 +206,9 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
+        var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId, actorUserId: user.Id);
         if (deleted.Succeeded)
         {
-            await LogSelfEmailDeletedAsync(user.Id, emailId);
             SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
         }
         else
@@ -261,14 +220,6 @@ internal sealed class ProfileEmailsController(
         return RedirectToAction(nameof(Emails));
     }
 
-    private Task LogSelfEmailDeletedAsync(Guid userId, Guid emailId) =>
-        auditLogService.LogAsync(
-            UsersAuditActions.UserEmailDeleted,
-            nameof(User), userId,
-            $"Deleted email row {emailId}",
-            userId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/ClearPrimary")]
     [ValidateAntiForgeryToken]
     [AllowBeforeActiveMembership]
@@ -436,7 +387,7 @@ internal sealed class ProfileEmailsController(
     private async Task SetPrimaryEmailAsync(
         Guid userId, Guid emailId, Guid actorId, bool isAdminContext, CancellationToken ct)
     {
-        var result = await userEmailService.SetPrimaryAsync(userId, emailId, ct);
+        var result = await userEmailService.SetPrimaryAsync(userId, emailId, ct, actorId);
         if (!result.Succeeded)
         {
             logger.LogWarning("Email {Operation} refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
@@ -444,13 +395,6 @@ internal sealed class ProfileEmailsController(
             SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
             return;
         }
-        // SetPrimaryAsync takes no actor, so the controller audits.
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailPrimarySet,
-            nameof(User), userId,
-            isAdminContext ? $"Admin set primary email row {emailId}" : $"Set primary email row {emailId}",
-            actorId,
-            relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
         SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
     }
 
@@ -494,7 +438,8 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        var result = await userEmailService.AddEmailAsync(id, email, ct);
+        // Verification can send mail; a browser disconnect must not interrupt the workflow.
+        var result = await userEmailService.AddEmailAsync(id, email, CancellationToken.None, actor.Id);
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Admin email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
@@ -503,32 +448,8 @@ internal sealed class ProfileEmailsController(
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
-        // The address committed: finish its audit and verification queueing even after a disconnect.
-        await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
-
-        return RedirectToAction(nameof(AdminEmails), new { id });
-    }
-
-    private async Task SendAdminAddedEmailVerificationAsync(
-        Guid userId,
-        User targetUser,
-        string email,
-        AddEmailResult result,
-        Guid actorId)
-    {
-        var trimmedEmail = email.Trim();
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailAdded,
-            nameof(User), userId,
-            $"Admin added pending email {trimmedEmail} for user {userId} (conflict: {result.IsConflict})",
-            actorId);
-
-        await SendAddedEmailVerificationAsync(targetUser, email, result);
-        logger.LogInformation(
-            "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
-            trimmedEmail, userId, result.IsConflict);
-
         SetSuccess(localizer["Users_EmailGrid_AdminAddSentVerification"].Value);
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
     // Admin recovery: a verified row without a verification email.
     [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
@@ -561,7 +482,7 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        var result = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+        var result = await userEmailService.AddVerifiedEmailAsync(userId, email, ct, actor.Id);
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Admin verified email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
@@ -570,29 +491,19 @@ internal sealed class ProfileEmailsController(
         }
         else
         {
-            await ReportVerifiedEmailAddAsync(result.Added, userId, email, actor.Id);
+            ReportVerifiedEmailAdd(result.Added, email);
         }
 
         return RedirectToAction(nameof(AdminEmails), new { id = userId });
     }
 
-    private async Task ReportVerifiedEmailAddAsync(
-        bool inserted,
-        Guid userId,
-        string email,
-        Guid actorUserId)
+    private void ReportVerifiedEmailAdd(bool inserted, string email)
     {
         if (!inserted)
         {
             SetInfo($"Email {email} already exists on this user — no change.");
             return;
         }
-
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailAdded,
-            nameof(User), userId,
-            $"Admin added pre-verified email {email} for user {userId} (no verification flow)",
-            actorUserId);
 
         SetSuccess($"Verified email {email} added.");
     }
@@ -659,13 +570,13 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct);
-        await SetAdminEmailDeletedResultAsync(id, emailId, actor.Id, deleted);
+        var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct, actor.Id);
+        SetAdminEmailDeletedResult(id, emailId, actor.Id, deleted);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    private async Task SetAdminEmailDeletedResultAsync(Guid userId, Guid emailId, Guid actorId, DeleteEmailResult deleted)
+    private void SetAdminEmailDeletedResult(Guid userId, Guid emailId, Guid actorId, DeleteEmailResult deleted)
     {
         if (!deleted.Succeeded)
         {
@@ -675,13 +586,6 @@ internal sealed class ProfileEmailsController(
             return;
         }
 
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailDeleted,
-            nameof(User), userId,
-            $"Admin deleted email row {emailId}",
-            actorId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
         SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
     }
     [HttpPost("{id:guid}/Admin/Emails/SetVisibility")]
@@ -697,7 +601,7 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        var result = await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+        var result = await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct, actor.Id);
         if (!result.Succeeded)
         {
             logger.LogWarning("Email AdminSetVisibility refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
@@ -705,25 +609,9 @@ internal sealed class ProfileEmailsController(
             SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
-        await SetAdminEmailVisibilityChangedResultAsync(id, emailId, actor.Id, visibility);
+        SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
-    }
-
-    private async Task SetAdminEmailVisibilityChangedResultAsync(
-        Guid userId,
-        Guid emailId,
-        Guid actorId,
-        ContactFieldVisibility? visibility)
-    {
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailVisibilityChanged,
-            nameof(User), userId,
-            $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
-            actorId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
-        SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
     }
 
     private Task<EmailsViewModel> BuildEmailsViewModelAsync(

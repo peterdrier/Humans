@@ -15,8 +15,7 @@ internal sealed class ProfileAdminController(
     IUserService userService,
     IEmailProblemsService emailProblems,
     IUserEmailService userEmails,
-    IUserManagement users,
-    IAuditLogService audit) : HumansControllerBase(userService)
+    IUserManagement users) : HumansControllerBase(userService)
 {
     [HttpGet("EmailProblems")]
     public async Task<IActionResult> EmailProblems(CancellationToken ct)
@@ -42,13 +41,9 @@ internal sealed class ProfileAdminController(
         var (error, currentUser) = await RequireCurrentUserAsync(ct);
         if (error is not null) return error;
 
-        var deleted = await userEmails.DeleteByIdAsync(emailId, ct);
+        var deleted = await userEmails.DeleteByIdAsync(emailId, ct, currentUser.Id);
         if (deleted)
         {
-            await audit.LogAsync(
-                UsersAuditActions.OrphanUserEmailDeleted, nameof(UserEmail), emailId,
-                $"Orphan UserEmail row {emailId} deleted by EmailProblems action",
-                currentUser.Id);
             SetSuccess("Orphan email row deleted.");
         }
         else

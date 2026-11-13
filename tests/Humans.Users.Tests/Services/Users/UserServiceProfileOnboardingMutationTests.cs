@@ -1,4 +1,7 @@
 using AwesomeAssertions;
+using Humans.Base.Configuration;
+using Humans.Email.Contracts;
+using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
@@ -783,7 +786,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
         manager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
         manager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("verification-token");
-        var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>()).Build();
+        var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>())
+            .With(Substitute.For<IEmailService>()).With(TestUsersEmails.Create())
+            .With(Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl })).Build();
         UserEmailService BuildEmailService() => new(
             repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, services,
             NullLogger<UserEmailService>.Instance);

@@ -24,7 +24,6 @@ public class ProfileAdminControllerTests
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IUserManagement _users = Substitute.For<IUserManagement>();
-    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
     public ProfileAdminControllerTests()
@@ -44,8 +43,7 @@ public class ProfileAdminControllerTests
             _users,
             _emailProblems,
             _userEmails,
-            _users,
-            _audit);
+            _users);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString())
@@ -89,7 +87,6 @@ public class ProfileAdminControllerTests
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();
         _userEmails.ReceivedCalls().Should().BeEmpty();
-        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -117,18 +114,14 @@ public class ProfileAdminControllerTests
     }
 
     [HumansFact]
-    public async Task DeleteOrphanEmail_RowExists_AuditsAndRedirects()
+    public async Task DeleteOrphanEmail_RowExists_PassesActorAndRedirects()
     {
         var emailId = Guid.NewGuid();
-        _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>()).Returns(true);
+        _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>(), _adminUserId).Returns(true);
 
         var result = await BuildController().DeleteOrphanEmail(emailId, Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(
-            UsersAuditActions.OrphanUserEmailDeleted,
-            nameof(UserEmail), emailId,
-            Arg.Any<string>(),
-            _adminUserId);
+        await _userEmails.Received(1).DeleteByIdAsync(emailId, Arg.Any<CancellationToken>(), _adminUserId);
         result.Should().BeOfType<RedirectToActionResult>();
     }
 
@@ -136,13 +129,10 @@ public class ProfileAdminControllerTests
     public async Task DeleteOrphanEmail_RowGone_NoAudit()
     {
         var emailId = Guid.NewGuid();
-        _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>()).Returns(false);
+        _userEmails.DeleteByIdAsync(emailId, Arg.Any<CancellationToken>(), _adminUserId).Returns(false);
 
         var result = await BuildController().DeleteOrphanEmail(emailId, Xunit.TestContext.Current.CancellationToken);
 
-        await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>());
         result.Should().BeOfType<RedirectToActionResult>();
     }
 
