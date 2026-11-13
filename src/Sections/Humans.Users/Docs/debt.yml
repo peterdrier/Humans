@@ -2,12 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 30
-inbox:
-  - added: 2026-11-06
-    id: USERS-28
-    what: "The same rule is written twice across the section's controllers and view models: 'suspended people are hidden' (ProfileViewController.ViewProfile, UsersController Birthdays and Map); 'initial setup' (ProfileController.Edit and ProfileEditViewModelBuilder); 'coordinator or privileged approver' two ways in ProfileViewController; the effective email fallback two ways (AdminHumanDetailViewModelBuilder vs HumanSummaryViewComponent); the team-membership projection (HumanSummaryViewComponent vs ProfileViewController.Popover). One computed property each on UserInfo / the owning read. Found by section-doctor controller-intent read."
-    review: panel
-  - added: 2026-11-06
-    id: USERS-29
-    what: "No test in tests/Humans.Users.Tests pins three health.md invariants: Users' own views reveal MedicalConditions only to the owner (Medical page) and behind ShiftsPolicies.MedicalDataViewer elsewhere; every Users IUserMerge.ReassignAsync is idempotent (run twice, same result); a non-Active viewer is walled from /Profile/{id} by MembershipRequiredFilter. Found by section-doctor tests read."
-    review: light
+inbox: []

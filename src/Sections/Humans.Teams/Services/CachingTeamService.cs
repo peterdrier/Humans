@@ -163,7 +163,12 @@ internal sealed class CachingTeamService(
 
             result.Add(new UserTeamMembershipInfo(
                 membership.TeamMemberId, team.Team.Id, team.Team.Name, team.Team.Slug, team.Team.IsSystemTeam,
-                membership.Role, membership.JoinedAt));
+                membership.Role, membership.JoinedAt)
+            {
+                IsActive = team.Team.IsActive,
+                IsHidden = team.Team.IsHidden,
+                SystemTeamType = team.Team.SystemTeamType
+            });
         }
 
         return result;

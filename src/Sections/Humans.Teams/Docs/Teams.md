@@ -218,6 +218,9 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 `Humans.Teams.Contracts` carries `ITeamService` (cross-section reads, `TeamInfo` / `TeamSearchHit` / `UserTeamMembershipInfo` projections only), `ITeamWrite` (the writes other sections make: Google Group prefix, member role, Google resync, permanent delete, the account-deletion hook and the system-team bulk apply), `ISystemTeamSync`, and `ITeamSeeding` for the dev fixture seeders. The internal `ITeamManagementService` carries the rest of the section's surface. `HumansTeamControllerBase` is public in the section project, not the leaf, because it derives from Base's `HumansControllerBase`.
 
+`GetUserTeamMembershipsAsync` returns active memberships, including those on inactive teams. Each `UserTeamMembershipInfo` carries the owning team's active/hidden flags and system-team type in both direct and cached reads. Its `IsProfileMembership` predicate selects active teams other than Volunteers for profile and Agent summaries; hidden memberships remain in that projection for the caller's existing rendering rules.
+
+
 ### Migrated (A)
 
 - **Repository:** `ITeamRepository` / `TeamRepository` owns every Teams table; only `TeamService` and its internal workflow owners call it.

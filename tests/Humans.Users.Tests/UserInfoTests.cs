@@ -16,6 +16,24 @@ public class UserInfoTests
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
 
+    [HumansTheory]
+    [InlineData(UserState.Active, true, true, false)]
+    [InlineData(UserState.Bare, true, true, true)]
+    [InlineData(UserState.Suspended, true, false, false)]
+    [InlineData(UserState.AdminSuspended, true, false, false)]
+    [InlineData(UserState.Rejected, true, true, false)]
+    [InlineData(UserState.Active, false, false, true)]
+    public void ProfileReadPredicates_PreserveBrowsingAndSetupRules(
+        UserState state, bool hasProfile, bool browsable, bool needsSetup)
+    {
+        var user = MinimalUser();
+        user.State = state;
+        var info = UserInfoFactory.Create(user, [], [], hasProfile ? NamedProfile(user.Id, "Name") : null, [], [], []);
+
+        info.IsProfileBrowsable.Should().Be(browsable);
+        info.NeedsProfileSetup.Should().Be(needsSetup);
+    }
+
     // User.BurnerName is the sole source: no Profile.BurnerName or legacy-DisplayName fallback.
 
     [HumansFact]

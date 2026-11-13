@@ -34,18 +34,15 @@ public sealed class HumanSummaryViewComponent(
             return View("Default", new ProfileSummaryViewModel
             {
                 UserId = userId,
-                Email = info.PrimaryEmail
-                    ?? info.UserEmails.FirstOrDefault(e => e.IsVerified)?.Email,
+                Email = info.Email,
                 PreferredLanguage = info.PreferredLanguage,
                 HasProfile = false,
             });
         }
 
-        var memberships = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+        var memberships = (await teamService.GetUserTeamMembershipsAsync(userId, ct))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
             .ToList();
 
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);

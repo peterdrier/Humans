@@ -405,6 +405,28 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         carolTeams.Should().BeEquivalentTo([t3.Id]);
     }
 
+    [HumansTheory]
+    [InlineData(true, SystemTeamType.None, true)]
+    [InlineData(true, SystemTeamType.Volunteers, false)]
+    [InlineData(true, SystemTeamType.Board, true)]
+    [InlineData(false, SystemTeamType.None, false)]
+    public async Task GetUserTeamsAsync_CachedReadCarriesTeamFactsForProfileProjection(bool active, SystemTeamType type, bool expected)
+    {
+        var user = SeedUser("Alice");
+        var team = SeedTeam("Alpha", type, isActive: active);
+        team.IsHidden = true;
+        SeedTeamMember(team.Id, user.Id);
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+
+        var membership = (await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken)).Single();
+
+        membership.TeamName.Should().Be("Alpha");
+        membership.IsActive.Should().Be(active);
+        membership.IsHidden.Should().BeTrue();
+        membership.SystemTeamType.Should().Be(type);
+        membership.IsProfileMembership.Should().Be(expected);
+    }
+
     [HumansFact]
     public async Task GetUserTeamsAsync_WarmCache_DoesNotCallInnerService()
     {

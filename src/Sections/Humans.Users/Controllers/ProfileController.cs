@@ -122,7 +122,7 @@ internal sealed class ProfileController(
         model.UserId = user.Id;
         model.HasCustomProfilePicture = user.Profile?.HasCustomPicture == true;
         model.ContactFields = ProfileEditViewModelBuilder.BuildLegacyContactFields(user.Profile);
-        model.IsInitialSetup = user.Profile is null || user.State == UserState.Bare;
+        model.IsInitialSetup = user.NeedsProfileSetup;
 
         if (!ModelState.IsValid)
         {

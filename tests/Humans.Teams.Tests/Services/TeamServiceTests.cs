@@ -2638,17 +2638,26 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result[0].TeamId.Should().Be(teamA.Id);
     }
 
-    [HumansFact]
-    public async Task GetUserTeamsAsync_IncludesTeamNavigation()
+    [HumansTheory]
+    [InlineData(true, SystemTeamType.None, true)]
+    [InlineData(true, SystemTeamType.Volunteers, false)]
+    [InlineData(true, SystemTeamType.Board, true)]
+    [InlineData(false, SystemTeamType.None, false)]
+    public async Task GetUserTeamsAsync_CarriesTeamFactsForProfileProjection(bool active, SystemTeamType type, bool expected)
     {
         var user = SeedUser();
-        var team = SeedTeam("Alpha");
+        var team = SeedTeam("Alpha", type, isActive: active);
+        team.IsHidden = true;
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken);
+        var membership = (await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken)).Single();
 
-        result.Single().TeamName.Should().Be("Alpha");
+        membership.TeamName.Should().Be("Alpha");
+        membership.IsActive.Should().Be(active);
+        membership.IsHidden.Should().BeTrue();
+        membership.SystemTeamType.Should().Be(type);
+        membership.IsProfileMembership.Should().Be(expected);
     }
 
     [HumansFact]
