@@ -188,4 +188,4 @@ Settled decisions. Later runs should stop re-litigating these.
 |---|---|---|---|
 | 1 | 2026-09-03 | First doctoring: the nightly sweep could skip in silence and a numberless account became account 0; the general-ledger page's own summary asserted the opposite sign convention to the one it renders | peterdrier/Humans#1583 |
 | 2 | 2026-10-28 | The docs still called the GDPR export of mirrored creditor lines undecided after Finance shipped it; connector rules lived in two docs; a dead list field and a create-only "upsert" | peterdrier/Humans#2177 |
-| 3 | 2026-11-13 | The docs narrated the single-mirror refactor instead of stating its rules and listed a fraction of who calls what; two doc comments contradicted their code; six contract members have never had a caller | pending |
+| 3 | 2026-11-13 | The docs narrated the single-mirror refactor instead of stating its rules and listed a fraction of who calls what; two doc comments contradicted their code; six contract members have never had a caller | peterdrier/Humans#2411 |
