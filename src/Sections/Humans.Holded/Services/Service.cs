@@ -88,7 +88,6 @@ internal sealed class Service(
     public Task SyncChartAsync(CancellationToken ct = default) =>
         MirrorSync.SyncChartAsync(ct);
 
-
     public Task<bool> SyncLedgerAsync(bool full = false, CancellationToken ct = default) =>
         MirrorSync.SyncLedgerAsync(full, ct);
 
@@ -164,8 +163,6 @@ internal sealed class Service(
     public Task<bool> SyncContactsAsync(CancellationToken ct = default) =>
         MirrorSync.SyncContactsAsync(ct);
 
-
-
     // Holded has no stable per-document page; its purchase list opens one from this fragment.
     private static string PurchaseDocUrl(string id) => $"https://app.holded.com/expenses/list#open:purchase-{id}";
 
@@ -238,14 +235,8 @@ internal sealed class Service(
     public Task<HoldedEntry?> GetEntryViewAsync(int entryNumber, CancellationToken ct = default) =>
         accountReader.GetEntryViewAsync(entryNumber, ct);
 
-
     private Task DrainCallLogAsync(CancellationToken ct) =>
         MirrorSync.DrainCallLogAsync(ct);
-
-
-
-
-
 
     private static HoldedLedgerLineInfo ToInfo(HoldedLedgerLine l) => new(
         l.EntryNumber, l.Line, l.AccountNum, l.Date, l.Type, l.Description, l.Debit, l.Credit,
