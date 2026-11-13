@@ -21,9 +21,10 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   (`items[].account`); tags are never written (dead v1 workaround). Only the single GET
   (`GetPurchaseDocumentAsync`) returns `notes` (null when absent or blank) — the v2 list never
   does (verified live 2026-10-21) — which is how Finance confirms a document the push wrote
-  twice before deleting it; `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
-  two deletes, used only by Finance: both by its duplicate removal, and the contact delete also
-  to retract a creditor contact minted by a run that lost the member's binding race.
+  twice before deleting it. `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
+  two deletes, reached through `IHoldedWrite` by Finance only: both by its duplicate removal, and
+  the contact delete also to retract a creditor contact minted by a run that lost the member's
+  binding race.
 - A **Sales Document** is the org's outgoing revenue record, in two kinds behind one
   `HoldedSalesDocumentKind`: a full `invoice` (identified contact required) and a
   `sales-receipt` (*factura simplificada*, no contact). They share one payload shape and one
@@ -45,9 +46,12 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 
 - Contact creation accepts no custom user id: Holded v2 cannot write it. Finance keeps the user-to-contact binding locally.
 - Connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata; consumers use document totals, the draft flag and bank reconciliation status.
-- `HoldedClient` remains the typed-client entry point. Its internal operation clients share one
-  `HoldedTransport`, which owns every HTTP send, Bearer authorization, retry, cursor page walk,
-  call-meter record and timed-operation log. The metered endpoint names remain the public operation names.
+- Every HTTP send goes through `HoldedTransport`, which owns Bearer authorization, retry, the
+  cursor page walk, the call-meter record and the timed-operation log. The metered endpoint name is
+  the operation's method name.
+- An error message never carries an IBAN: 4xx bodies and the preview of a page without `items`
+  are masked (JSON strings decoded first, plain text through the same IBAN formatter) before
+  truncation. `HoldedPermanentException.ResponseBody` keeps the raw body for business checks.
 - 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
   GETs. HTTP-date waits retain their fractional remaining seconds and round up to the delay's millisecond
   precision, so a future retry date is never rounded down to an immediate retry; past dates still retry immediately. Every write, including a bodyless sales-approval POST,
@@ -123,7 +127,7 @@ section's `Section.cs`.
 `HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over
 one `HoldedTransport`. Operation clients own their wire payloads, parsing and endpoint-specific
 failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
-options. They add no interfaces or DI registrations, and the client contract stays unchanged.
+options.
 
 **Consumers outside the section:** none, and none can compile: every other section calls only
 `IHoldedService` and `IHoldedWrite`.

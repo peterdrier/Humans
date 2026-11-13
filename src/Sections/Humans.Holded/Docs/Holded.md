@@ -33,20 +33,19 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **Replace semantics**: a sweep is the truth for its window — cached lines the sweep no longer
   returns are deleted (an empty fetch still deletes). Never append-only: a line Holded deleted
   or reclassified would linger forever.
-- **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
-  identities (including expense-account, contact and sales-document IDs) and amounts (including the pending balance on approved purchases), complete pagination, typed write responses, the `unconfirmed:`
-  references, the 429 policy with fractional HTTP-date waits) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
-  depends on one consequence: no short or fabricated page ever reaches replace semantics. An unreadable
-  contact fails the complete pull before replacement; the existing mirror remains intact with an Error sync
-  state. Live find-or-create contact writes also stop rather than treating an unreadable contact as absent.
+- **The connector fails closed.** Its read and write rules live in
+  [`Holded-connector.md`](Holded-connector.md). The mirror depends on one consequence: no short or
+  fabricated page ever reaches replace semantics, so a failed pull leaves the last good mirror and
+  an `Error` sync state, and a find-or-create write stops rather than reading an unreadable
+  contact as absent.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
-
-- Ledger, purchase-document, bank-feed and contact syncs share one failure-state persistence path: mark `Error`, bound the message to 2000 UTF-16 code units without splitting a surrogate pair, and timestamp/save independently of request cancellation. A failed error-state save logs the sync kind without replacing the original exception; each caller still releases its own sync gate.
-
-- **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
+- **A failed sync** of any kind marks its state `Error` with the message (cut to the column's
+  2000 characters) and saves that even when the request was cancelled; the original exception
+  still propagates and the gate is released. A sync its caller cancelled logs a warning without a
+  stack; any other failure logs an error.
 
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)
 
@@ -76,7 +75,7 @@ under Accounts. Each page does one thing.
   sync kind the last run, status, count and error, mirror counts (lines, entries, non-archived
   accounts), the number of accounts where mirror ≠ Holded (linked to `/Holded/Accounts?mismatched=true`),
   and the Sync now / Full resync buttons with the full resync's cost estimate (one call per 200
-  lines plus the chart; 42 today).
+  lines plus the chart).
 - `/Holded/Accounts` — the chart grouped by PGC group (English group name from the leading digit,
   not Holded's Spanish `group` string), and within each group by PGC subgroup (first two digits,
   English name from `PgcAccountNames`; 40 suppliers, 41 creditors, 44 debtors, 47 public
@@ -142,7 +141,7 @@ is safe to repeat, and returns an outcome, never a Holded id.
   40000000–41999999, whatever their type (hand-made contacts are `supplier`), else POST; returns
   `supplier_record.num`. Never PUTs a contact. No `custom_id` lookup until a live write confirms
   v2's create stores it.
-- `EnsurePurchaseDocumentAsync` — contact by account number (live contacts list); document by
+- `EnsurePurchaseDocumentAsync` (no caller yet) — contact by account number (live contacts list); document by
   contact + description + total + notes (list, then GET for notes); else created with the line's
   `account` = the chart mirror's Holded id for the expense account number (the same id
   `expenses-accounts` uses). Notes are the document's Humans key and must name one expense line, or
@@ -152,7 +151,7 @@ is safe to repeat, and returns an outcome, never a Holded id.
 - `EnsureExpenseAccountAsync` — chart mirror by number, else Holded's live `expenses-accounts` list,
   else POST; the chart mirror is refreshed whenever it lacked the number. Returns the account's Holded
   id (what a caller that books to it stores) and whether it was created.
-- `DeletePurchaseDocumentAsync` — finds the document live (contact, description, total, date);
+- `DeletePurchaseDocumentAsync` (no caller yet) — finds the document live (contact, description, total, date);
   refuses when its notes differ or it carries a payment; deletes, then runs the trailing ledger sync
   (an older document's lines leave the mirror at the nightly balance check's re-pull).
 - `PostJournalEntryAsync` — the client's ledger-entry post behind the face; not idempotent, the
@@ -180,7 +179,7 @@ it wrote.
 | Actor | Capabilities |
 |-------|--------------|
 | Finance admin / Admin | Everything above (`FinancePolicies.Manage`). |
-| Board | Read the summary, accounts, statements, entries and calls; trigger no sync (`FinancePolicies.Read`). |
+| Board | Read the summary, accounts, statements, entries, purchases and calls; trigger no sync (`FinancePolicies.Read`). |
 | Other sections | Read via `IHoldedService`; write via `IHoldedWrite`; trigger sync (nightly job). |
 | Any human | None directly. |
 
@@ -192,8 +191,6 @@ it wrote.
 
 - `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too); `GetChartSyncedAtAsync` says when.
 
-- Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits. Both 4xx diagnostics and successful paged responses missing `items` mask decoded JSON strings (including escaped separators); plain-text bodies use the same IBAN formatter. Pager previews truncate only after masking. `HoldedPermanentException.ResponseBody` retains the untouched body for existing business checks.
-
 - Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
 
 - Nightly sweep = one trailing **45-day** window anchored on *now* (accounting-date filter ⇒
@@ -204,12 +201,12 @@ it wrote.
   reliable incremental key). Notes need one GET per doc: only docs the mirror has no notes for,
   newest first, at most 50 a run; a transient failure ends that run's fetching and never fails the
   sync. A failed list records `Error` on the `PurchaseDocs` state and keeps the last good mirror.
-- Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
-  so, never queued (single-server deployment).
+- Each sync kind is serialized by its own non-blocking in-process gate; a second caller is
+  skipped and told so, never queued (single-server deployment).
 - `SyncAccountLedgerAsync(accountNum)` re-pulls one account's whole history (inception to today) and replaces
   only that account's mirrored lines, under the same gate (false when a sweep holds it). Sync states are
-  untouched. Finance calls it on 57200003 before and after a Pleo booking run, so its "already in Holded"
-  judgement is Holded's own current ledger.
+  untouched. Finance's Pleo and SEPA bookings and Expenses' report publishing call it before posting onto
+  an account, so their "already in Holded" judgement is Holded's own current ledger.
 - Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
   chart, purchase documents, contacts, bank movements, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
@@ -256,22 +253,26 @@ it wrote.
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (this section's own connector). Finance's `FinancePolicies` constants only.
-- Inbound: Finance (creditor statuses/statements, the purchase mirror for actuals and recon, the contact and bank-feed mirrors for creditors and SEPA, and their syncs, via `IHoldedService`; the 57200003 re-pull and journal entries for Pleo booking via `IHoldedService.SyncAccountLedgerAsync` and `IHoldedWrite.PostJournalEntryAsync`); Expenses (contact mirror plus purchase-document create/approve/attachment writes for publishing reports); Store (chart mirror plus contact and sales-document writes for invoices); Workgroups (chart mirror for the expense-account picker); Backdoor (purchase-document reads for the finance read API); the nightly job.
+- Outbound: Finance's `FinancePolicies` constants only (`Humans.Finance.Contracts`).
+- Inbound:
+  - Finance: every mirror and its sync through `IHoldedService` (creditors, actuals, recon, SEPA,
+    Pleo), and through `IHoldedWrite` creditor contacts, expense accounts, contact and duplicate
+    deletes, payments, bank-line reconciles and journal entries.
+  - Expenses: the contact mirror, the account re-pull, creditor contacts and the purchase-document
+    create, attach and approve writes.
+  - Store: the chart mirror, contact creation and the sales-document writes.
+  - Workgroups: the chart mirror for the expense-account picker.
+  - Backdoor: the purchase-document mirror for the finance read API.
 
 ## Architecture
 
-Internal `HoldedAccountReader` owns account-list, statement and journal-entry projections, including shared balance rows, display signs and counterparties. The summary reuses its account rows. `Service` retains synchronization, reconciliation, metering and existing contract entry points; mirror reads, ordering and raw-sign reconciliation are unchanged.
-
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
 **Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`, `HoldedContactMirror`, `HoldedBankMovementMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the DTOs both carry. The connector itself, `IHoldedClient` (`Services/`), is internal (see [`Holded-connector.md`](Holded-connector.md))
-Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
 
-**Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The internal client contract and typed-client registration are unchanged.
+**Inside:** `Service` serves the reads and the admin screen and forwards each sync to `HoldedMirrorSync`,
+which owns the gates, replacement, reconciliation, failure state and call-log drain. `HoldedAccountReader`
+builds balances, account rows, statements and entries. `HoldedWrite` is the write face. The connector is
+described in [`Holded-connector.md`](Holded-connector.md).
 **Owned tables:** those above
-**Target shape:** [`health.md`](health.md); the single-mirror design is
-the 2026-10-30 Holded section-flow record (phase 1 built the reads and
-pages; phase 2 moved every outside caller off `IHoldedClient`). Historical design record:
+**Target shape:** [`health.md`](health.md). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
-
-Internal `HoldedMirrorSync` owns chart/ledger/account/document/note/contact/bank mirror synchronization, shared gates, reconciliation, call-log persistence and failure reporting. `Service` retains its read APIs and forwards sync entry points; the existing `HoldedAccountReader` owns the balance query shared with reconciliation. Sync budgets, window conversion, request order, gates, replacement semantics, timestamps, cancellation, error preservation and logger category are unchanged. Summary reads reuse call-log draining and the same Madrid timezone; no public contract, job signature or DI registration is added.

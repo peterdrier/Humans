@@ -10,7 +10,7 @@ the single-service convention several other sections use). **DbContext:**
 `IHoldedMirrorRepository`) injects `IDbContextFactory<HoldedDbContext>`
 directly. Owns `HoldedLedgerLines`,
 `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`, `HoldedPurchaseDocs`,
-`HoldedBankMovements`.
+`HoldedContacts`, `HoldedBankMovements`.
 
 This is the **ledger mirror**: it sweeps Holded's daybook journal into
 `HoldedLedgerLines` with replace semantics (a fetched window is the
@@ -20,9 +20,8 @@ are reflected, not just appended), refreshes the chart-of-accounts cache
 every sync (a drifted account gets one targeted full-history re-pull,
 capped per run and rotated by day), and drains the connector's
 API-call log (`HoldedApiCalls`, metering against `HoldedSectionOptions.MonthlyCallBudget`).
-All cross-section reads of ledger data go through Finance (creditor
-balances and statements, which Expenses reads in turn) and are served from
-this cache — no per-page Holded API calls.
+Every cross-section read is served from this cache, through
+`IHoldedService` — no per-page Holded API calls.
 
 ### HoldedService (Scoped — class name `Service`, implements `IHoldedService` + `IHoldedAdminService`)
 
@@ -43,17 +42,13 @@ No cross-section service calls — `IHoldedClient` (this section's own connector
 (section-internal in-process call-log buffer drained into `HoldedApiCalls`)
 are its only outbound
 dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly
-call-budget display. Implements `IHoldedService` (the ledger-read
-surface consumed cross-section by Finance's `Service` —
-`GetLedgerLinesAsync`, `GetAccountBalancesAsync`; also `IsConfigured`,
-`GetEntryAsync`, `GetPurchaseLinesAsync`, `GetOpenDocumentAmountsAsync`,
-`GetSumsByAccountAsync`, `GetChartAsync`, `GetChartSyncedAtAsync`, `SyncChartAsync`,
-`GetPurchaseDocumentsAsync`, `SyncPurchaseDocumentsAsync`, `SyncPurchaseDocumentNotesAsync`, `GetContactsAsync` and `SyncContactsAsync`
-for Finance, Expenses and Store) and `IHoldedAdminService` (the `/Holded` pages — summary,
-accounts, calls by month, account statements, entries). No
-`IMemoryCache`. In-process `SemaphoreSlim` gates serialize
-`SyncLedgerAsync`, `SyncPurchaseDocumentsAsync` and `SyncContactsAsync` runs (the nightly Hangfire job and an admin-triggered
-sync can otherwise race the replace-window).
+call-budget display. Implements `IHoldedService` (the mirror reads and syncs other
+sections call; [`Holded.md`](Holded.md) lists who calls what) and `IHoldedAdminService` (the
+`/Holded` pages — summary, accounts, calls by month, account statements, entries). No
+`IMemoryCache`. Syncs run in the internal `HoldedMirrorSync`, where one in-process
+`SemaphoreSlim` gate per sync kind (ledger, purchase documents, contacts, bank movements)
+serializes runs: the nightly Hangfire job and an admin-triggered sync can otherwise race the
+replace window.
 
 ### HoldedWrite (Scoped — implements `IHoldedWrite`)
 
