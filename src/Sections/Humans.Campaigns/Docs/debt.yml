@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 6
-inbox:
-  - added: 2026-11-13
-    id: CMPGN-5
-    what: "TicketSyncService passes the complete order-code snapshot on every sync, but CampaignRepository.MarkGrantsRedeemedAsync selects only currently unredeemed grants. Replaying one order can therefore mark another grant with the same shared code redeemed on each run. Preserve redemption counts across repeated snapshots; found while auditing Tickets shutdown/retry behavior."
-    review: panel
+inbox: []
