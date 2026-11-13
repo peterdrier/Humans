@@ -7,18 +7,18 @@ using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
-using static Humans.Finance.Services.HoldedCreditorBindings;
-using static Humans.Finance.Services.HoldedCreditorReader;
+using static Humans.Finance.Services.CreditorBindings;
+using static Humans.Finance.Services.CreditorReader;
 using static Humans.Finance.Services.SepaText;
 
 namespace Humans.Finance.Services;
 
 internal sealed class HoldedDuplicateReview(
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
     IExpenseHoldedBookingService expenses,
-    HoldedCreditorReader creditorReader,
+    CreditorReader creditorReader,
     IAuditLogService audit,
     ILogger<Service> logger) : IApplicationService
 {

@@ -36,7 +36,7 @@ public class HoldedFinanceServiceTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 5, 1, 12, 0);
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IHoldedFeed _feed = Substitute.For<IHoldedFeed>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = TestContacts.Holded();
@@ -1752,7 +1752,7 @@ public class HoldedFinanceServiceTests
         await _write.Received(1).EnsureExpenseAccountAsync(
             Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         var row = _repo.ReceivedCalls()
-            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IFinanceRepository.AddCategoryMapAsync), StringComparison.Ordinal))
             .Select(c => (HoldedCategoryMap)c.GetArguments()[0]!)
             .Should().ContainSingle().Subject;
         row.BudgetCategoryId.Should().Be(catA);          // "Alpha" sorts first
@@ -1776,7 +1776,7 @@ public class HoldedFinanceServiceTests
 
         created.Should().Be(2);
         var numbers = _repo.ReceivedCalls()
-            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IFinanceRepository.AddCategoryMapAsync), StringComparison.Ordinal))
             .Select(c => ((HoldedCategoryMap)c.GetArguments()[0]!).HoldedAccountNumber);
         numbers.Should().Equal(6290010, 6290011);
         // Provisioning is additive: the repository has no map-delete method and none is called.

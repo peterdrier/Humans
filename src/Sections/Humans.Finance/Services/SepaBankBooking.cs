@@ -17,7 +17,7 @@ using static Humans.Finance.Services.SepaBankMatching;
 namespace Humans.Finance.Services;
 
 internal sealed class SepaBankBooking(
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
     IClock clock,
@@ -859,7 +859,7 @@ internal sealed class SepaBankBooking(
                         "A Holded purchase-document sync is running — try again in a minute. Nothing was posted.");
                 open = OpenDocs((await holded.GetPurchaseDocumentsAsync(ct)).Docs
                         .Where(d => string.Equals(d.ContactId, binding.HoldedContactId, StringComparison.Ordinal))
-                        .Select(HoldedCreditorReader.ToListItem)
+                        .Select(CreditorReader.ToListItem)
                         .ToList())
                     // Oldest first: the money the member has been owed longest clears first.
                     .OrderBy(d => d.Date)
