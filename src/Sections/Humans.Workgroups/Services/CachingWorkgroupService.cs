@@ -64,9 +64,8 @@ internal sealed class CachingWorkgroupService(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
-        bool asAdmin = false,
         CancellationToken ct = default) =>
-        MutateAsync(inner => inner.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, asAdmin, ct));
+        MutateAsync(inner => inner.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, ct));
 
     public Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default) =>
@@ -80,9 +79,15 @@ internal sealed class CachingWorkgroupService(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
-        bool asAdmin = false,
         CancellationToken ct = default) =>
-        MutateAsync(inner => inner.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, asAdmin, ct));
+        MutateAsync(inner => inner.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, ct));
+
+    public Task<WorkgroupMutationResult> AppointCoordinatorsAsync(
+        Guid workgroupId,
+        Guid actorUserId,
+        IReadOnlyList<Guid> coordinatorUserIds,
+        CancellationToken ct = default) =>
+        MutateAsync(inner => inner.AppointCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, ct));
 
     public Task<WorkgroupMutationResult<Guid>> CreateMeetingAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default) =>

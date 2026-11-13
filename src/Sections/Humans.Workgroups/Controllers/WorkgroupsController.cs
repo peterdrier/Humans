@@ -122,7 +122,7 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Leave(string slug, Guid? replacementCoordinatorUserId, CancellationToken ct) =>
         ActAsync(slug,
-            (id, userId) => workgroups.LeaveAsync(id, userId, replacementCoordinatorUserId, asAdmin: false, ct),
+            (id, userId) => workgroups.LeaveAsync(id, userId, replacementCoordinatorUserId, ct),
             "Workgroups_Left", ct, memberOnly: false);
 
     [HttpPost("{slug}/RequestStatus")]
@@ -190,7 +190,7 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Coordinators(string slug, Guid?[] coordinatorUserIds, CancellationToken ct) =>
         ActAsync(slug,
-            (id, userId) => workgroups.SetCoordinatorsAsync(id, userId, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: false, ct),
+            (id, userId) => workgroups.SetCoordinatorsAsync(id, userId, coordinatorUserIds.OfType<Guid>().ToArray(), ct),
             "Workgroups_CoordinatorsSaved", ct);
 
     [HttpGet("{slug}/Meetings/Create")]

@@ -39,14 +39,12 @@ internal interface IWorkgroupService : IApplicationService
         Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Leaves the group. The last coordinator must name a replacement first; a
-    /// <c>BoardOrAdmin</c> caller may override that with <paramref name="asAdmin"/>.
+    /// Leaves an Active group. The last coordinator must name a replacement first.
     /// </summary>
     Task<WorkgroupMutationResult> LeaveAsync(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
-        bool asAdmin = false,
         CancellationToken ct = default);
 
     /// <summary>
@@ -59,13 +57,19 @@ internal interface IWorkgroupService : IApplicationService
         Guid workgroupId, Guid actorUserId, WorkgroupRegisterEdit edit, CancellationToken ct = default);
 
     /// <summary>
-    /// One or two coordinators. Members hand over among themselves; <paramref name="asAdmin"/> lets the Board override.
+    /// One or two coordinators selected by members of an Active group.
     /// </summary>
     Task<WorkgroupMutationResult> SetCoordinatorsAsync(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
-        bool asAdmin = false,
+        CancellationToken ct = default);
+
+    /// <summary>One or two coordinators appointed through the Board/Admin route, including on frozen groups.</summary>
+    Task<WorkgroupMutationResult> AppointCoordinatorsAsync(
+        Guid workgroupId,
+        Guid actorUserId,
+        IReadOnlyList<Guid> coordinatorUserIds,
         CancellationToken ct = default);
 
     Task<WorkgroupMutationResult<Guid>> CreateMeetingAsync(

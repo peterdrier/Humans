@@ -6,7 +6,6 @@ using Humans.Users.Contracts;
 using Humans.Workgroups.Data;
 using Humans.Workgroups.Domain;
 using NodaTime;
-using static Humans.Workgroups.Services.WorkgroupAccess;
 using static Humans.Workgroups.Services.WorkgroupJournal;
 using static Humans.Workgroups.Services.WorkgroupRegisterReader;
 
@@ -128,14 +127,11 @@ internal sealed class WorkgroupMembership(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
-        bool asAdmin = false,
         CancellationToken ct = default)
     {
-        var workgroupResult = await access.RequireAsync(workgroupId, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
-        if (!asAdmin && RequireAcceptsMemberWork(workgroup) is { } stateRefusal)
-            return new(Refusal: stateRefusal);
 
         var leaving = workgroup.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
         if (leaving is null) return new(Refusal: new(WorkgroupErrorKeys.NotAMember));
@@ -157,8 +153,6 @@ internal sealed class WorkgroupMembership(
         WorkgroupMember? promoted = null;
         if (leaving.Role == WorkgroupMemberRole.Coordinator && remainingCoordinators.Count == 0)
         {
-            // The last coordinator names a successor. An admin may override, leaving the group coordinatorless on
-            // purpose so the Secretary can appoint someone.
             if (replacementCoordinatorUserId is { } replacementId)
             {
                 promoted = workgroup.Members
@@ -167,7 +161,7 @@ internal sealed class WorkgroupMembership(
                 promoted.Role = WorkgroupMemberRole.Coordinator;
                 changed.Add(promoted);
             }
-            else if (!asAdmin)
+            else
             {
                 return new(Refusal: new(WorkgroupErrorKeys.LastCoordinatorNeedsReplacement));
             }
@@ -198,16 +192,30 @@ internal sealed class WorkgroupMembership(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
-        bool asAdmin = false,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(coordinatorUserIds);
-        var workgroupResult = await access.RequireAsync(workgroupId, ct);
-        if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
-        var workgroup = workgroupResult.Value!;
-        if (!asAdmin && RequireAcceptsMemberWork(workgroup) is { } stateRefusal)
-            return new(Refusal: stateRefusal);
+        var result = await access.RequireActiveAsync(workgroupId, ct);
+        return result.Refusal is { } refusal ? new(Refusal: refusal)
+            : await ApplyCoordinatorsAsync(result.Value!, actorUserId, coordinatorUserIds, actorUserId, ct);
+    }
 
+    internal async Task<WorkgroupMutationResult> AppointCoordinatorsAsync(
+        Guid workgroupId,
+        Guid actorUserId,
+        IReadOnlyList<Guid> coordinatorUserIds,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(coordinatorUserIds);
+        var result = await access.RequireAsync(workgroupId, ct);
+        return result.Refusal is { } refusal ? new(Refusal: refusal)
+            : await ApplyCoordinatorsAsync(result.Value!, actorUserId, coordinatorUserIds, null, ct);
+    }
+
+    private async Task<WorkgroupMutationResult> ApplyCoordinatorsAsync(
+        Workgroup workgroup, Guid actorUserId, IReadOnlyList<Guid> coordinatorUserIds,
+        Guid? logAuthorUserId, CancellationToken ct)
+    {
         var wanted = coordinatorUserIds.Distinct().ToList();
         if (wanted.Count is < 1 or > 2)
             return new(Refusal: new(WorkgroupErrorKeys.CoordinatorCount));
@@ -236,7 +244,7 @@ internal sealed class WorkgroupMembership(
         var names = await NamesOfAsync(wanted, ct);
         await repository.UpdateMembersAsync(changed, ct,
             [SystemEntry(workgroup.Id, WorkgroupLogKind.CoordinatorChanged, now,
-                string.Join(", ", names), authorUserId: asAdmin ? null : actorUserId)]);
+                string.Join(", ", names), authorUserId: logAuthorUserId)]);
         ct = CancellationToken.None;
         await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged, workgroup,
             $"Coordinators set to {string.Join(", ", names)}", actorUserId);

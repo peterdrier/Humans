@@ -131,9 +131,8 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
-        bool asAdmin = false,
         CancellationToken ct = default) =>
-        Membership.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, asAdmin, ct);
+        Membership.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, ct);
 
     public async Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default)
@@ -201,9 +200,15 @@ internal sealed partial class WorkgroupService(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
-        bool asAdmin = false,
         CancellationToken ct = default) =>
-        Membership.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, asAdmin, ct);
+        Membership.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, ct);
+
+    public Task<WorkgroupMutationResult> AppointCoordinatorsAsync(
+        Guid workgroupId,
+        Guid actorUserId,
+        IReadOnlyList<Guid> coordinatorUserIds,
+        CancellationToken ct = default) =>
+        Membership.AppointCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, ct);
 
     public Task<WorkgroupMutationResult<Guid>> CreateMeetingAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default) =>

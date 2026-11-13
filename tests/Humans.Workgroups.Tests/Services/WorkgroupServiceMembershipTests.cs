@@ -76,12 +76,13 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [InlineData("leave")]
     [InlineData("handover")]
     [InlineData("coordinators")]
+    [InlineData("appoint")]
     public async Task Membership_LogSaveFailure_LeavesRosterUnchanged(string action)
     {
         var group = await SeedWorkgroupAsync();
         var coordinator = group.Members.Single().UserId;
         var member = SeedUser("Member");
-        if (action is "approve" or "leave" or "handover" or "coordinators")
+        if (action is "approve" or "leave" or "handover" or "coordinators" or "appoint")
             await AddMemberAsync(group.Id, member, isPending: string.Equals(action, "approve", StringComparison.Ordinal));
         await using var beforeDb = OpenContext();
         var before = await beforeDb.Members.AsNoTracking().Where(m => m.WorkgroupId == group.Id)
@@ -96,6 +97,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             "approve" => () => service.ApproveMemberAsync(group.Id, coordinator, member, ct: Ct),
             "leave" => () => service.LeaveAsync(group.Id, member, null, ct: Ct),
             "handover" => () => service.LeaveAsync(group.Id, coordinator, member, ct: Ct),
+            "appoint" => () => service.AppointCoordinatorsAsync(group.Id, coordinator, [member], ct: Ct),
             _ => () => service.SetCoordinatorsAsync(group.Id, coordinator, [member], ct: Ct)
         };
 
@@ -126,6 +128,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [InlineData("leave")]
     [InlineData("handover")]
     [InlineData("coordinators")]
+    [InlineData("appoint")]
     public async Task Membership_CommittedWriteFinishesAfterRequestCancellation(string action)
     {
         var group = await SeedWorkgroupAsync();
@@ -161,6 +164,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             "join" => () => service.JoinAsync(group.Id, member, cancellation.Token),
             "leave" => () => service.LeaveAsync(group.Id, member, null, ct: cancellation.Token),
             "handover" => () => service.LeaveAsync(group.Id, coordinator, member, ct: cancellation.Token),
+            "appoint" => () => service.AppointCoordinatorsAsync(group.Id, coordinator, [member], ct: cancellation.Token),
             _ => () => service.SetCoordinatorsAsync(group.Id, coordinator, [member], ct: cancellation.Token)
         };
 
@@ -177,7 +181,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
             await GoogleSync.DidNotReceive().RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         }
-        else if (string.Equals(action, "coordinators", StringComparison.Ordinal))
+        else if (action is "coordinators" or "appoint")
         {
             AuditLog.ReceivedCalls().Should().ContainSingle();
             Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
@@ -196,6 +200,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
     [InlineData("leave")]
     [InlineData("handover")]
     [InlineData("coordinators")]
+    [InlineData("appoint")]
     public async Task Membership_NamePreparationFailure_LeavesMembersAndLogUnchanged(string action)
     {
         var group = await SeedWorkgroupAsync();
@@ -215,6 +220,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         {
             "leave" => () => service.LeaveAsync(group.Id, member, null, ct: Ct),
             "handover" => () => service.LeaveAsync(group.Id, coordinator, member, ct: Ct),
+            "appoint" => () => service.AppointCoordinatorsAsync(group.Id, coordinator, [member], ct: Ct),
             _ => () => service.SetCoordinatorsAsync(group.Id, coordinator, [member], ct: Ct)
         };
 
@@ -265,20 +271,43 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             .Should().Be(WorkgroupErrorKeys.CoordinatorsMustBeMembers);
     }
 
-    [HumansFact]
-    public async Task SetCoordinators_TwoCurrentMembers_Succeeds()
+    [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task CoordinatorChanges_PreserveStateRulesAndLogAttribution(bool appointment, bool active)
     {
-        var workgroup = await SeedWorkgroupAsync();
+        var status = active ? WorkgroupStatus.Active : WorkgroupStatus.Dormant;
+        var workgroup = await SeedWorkgroupAsync(status: status);
         var coordinator = workgroup.Members.Single().UserId;
         var second = SeedUser("Second");
         await AddMemberAsync(workgroup.Id, second);
+        var actor = appointment ? SeedUser("Secretary") : coordinator;
+        var service = NewService();
 
-        await NewService().SetCoordinatorsAsync(workgroup.Id, coordinator, [coordinator, second], ct: Ct);
+        var result = appointment
+            ? await service.AppointCoordinatorsAsync(workgroup.Id, actor, [coordinator, second], Ct)
+            : await service.SetCoordinatorsAsync(workgroup.Id, actor, [coordinator, second], Ct);
 
         await using var ctx = OpenContext();
         var members = await ctx.Members.Where(m => m.WorkgroupId == workgroup.Id).ToListAsync(Ct);
+        if (!appointment && status == WorkgroupStatus.Dormant)
+        {
+            result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.Frozen);
+            members.Single(m => m.UserId == second).Role.Should().Be(WorkgroupMemberRole.Member);
+            (await ctx.LogEntries.AnyAsync(Ct)).Should().BeFalse();
+            AuditLog.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        result.Refusal.Should().BeNull();
         members.Where(m => m.Role == WorkgroupMemberRole.Coordinator).Select(m => m.UserId)
             .Should().BeEquivalentTo([coordinator, second]);
+        var log = await ctx.LogEntries.SingleAsync(Ct);
+        log.Kind.Should().Be(WorkgroupLogKind.CoordinatorChanged);
+        log.AuthorUserId.Should().Be(appointment ? null : actor);
+        await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupCoordinatorsChanged,
+            Arg.Any<string>(), workgroup.Id, Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -307,19 +336,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var members = await ctx.Members.Where(m => m.WorkgroupId == workgroup.Id).ToListAsync(Ct);
         members.Single(m => m.UserId == coordinator).LeftAt.Should().NotBeNull();
         members.Single(m => m.UserId == replacement).Role.Should().Be(WorkgroupMemberRole.Coordinator);
-    }
-
-    [HumansFact]
-    public async Task Leave_AsTheLastCoordinator_AsAdmin_OverridesAndLeavesItCoordinatorless()
-    {
-        var workgroup = await SeedWorkgroupAsync();
-        var coordinator = workgroup.Members.Single().UserId;
-
-        await NewService().LeaveAsync(workgroup.Id, coordinator, null, asAdmin: true, ct: Ct);
-
-        await using var ctx = OpenContext();
-        var members = await ctx.Members.Where(m => m.WorkgroupId == workgroup.Id).ToListAsync(Ct);
-        members.Single().LeftAt.Should().NotBeNull();
     }
 
     [HumansFact]
