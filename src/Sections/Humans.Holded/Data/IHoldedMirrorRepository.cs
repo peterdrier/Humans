@@ -12,9 +12,11 @@ internal interface IHoldedMirrorRepository : IRepository
     Task ReplaceLedgerWindowAsync(Instant from, Instant to, int? accountNum,
         IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default);
 
-    /// <summary>Every mirrored line on one account.</summary>
+    /// <summary>One account's lines, optionally narrowed to a date window (inclusive <paramref name="from"/>,
+    /// exclusive <paramref name="toExclusive"/>) and one <c>type</c>.</summary>
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, CancellationToken ct = default);
+        int accountNum, Instant? from = null, Instant? toExclusive = null, string? type = null,
+        CancellationToken ct = default);
 
     /// <summary>Every line of the given entries, on any account.</summary>
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByEntryNumbersAsync(
@@ -22,6 +24,11 @@ internal interface IHoldedMirrorRepository : IRepository
 
     /// <summary>Σdebit, Σcredit and line count per account over the whole mirror, grouped in the database.</summary>
     Task<IReadOnlyList<HoldedAccountTotals>> GetAccountTotalsAsync(CancellationToken ct = default);
+
+    /// <summary>Σdebit and Σcredit per (account, type) for accounts in [<paramref name="fromAccount"/>,
+    /// <paramref name="toAccount"/>].</summary>
+    Task<IReadOnlyList<HoldedAccountTypeTotals>> GetAccountTypeTotalsAsync(
+        int fromAccount, int toAccount, CancellationToken ct = default);
 
     /// <summary>Σdebit − Σcredit per account over [<paramref name="from"/>, <paramref name="toExclusive"/>).
     /// Accounts with no line in the window are absent.</summary>
@@ -71,3 +78,5 @@ internal sealed record HoldedAccountTotals(int AccountNum, decimal Debit, decima
 {
     public decimal Balance => Debit - Credit;
 }
+
+internal sealed record HoldedAccountTypeTotals(int AccountNum, string? Type, decimal Debit, decimal Credit);

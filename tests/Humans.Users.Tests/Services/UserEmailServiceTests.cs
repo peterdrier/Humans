@@ -1317,6 +1317,22 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task DeleteEmailAsync_WithoutActor_LeavesAuditToTransactionalCaller()
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail { Id = rowId, UserId = userId, Email = "pending@example.com" };
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>()).Returns(row);
+        _userService.RemoveUserEmailAsync(userId, rowId, Arg.Any<UserEmailRemoveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _service.DeleteEmailAsync(userId, rowId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task AddEmailAsync_OwnerRefusal_DoesNotGenerateVerificationToken()
     {
         var userId = Guid.NewGuid();

@@ -26,67 +26,44 @@ class QuotaPolicyTests(unittest.TestCase):
             "primary": {"usedPercent": 0, "windowDurationMins": 300} if secondary else week,
             "secondary": week if secondary else None}}}
 
-    def test_one_and_half_days_allows_eighteen_percent_exactly(self):
+    def test_one_and_half_days_allows_thirty_percent_exactly(self):
         for secondary in (False, True):
-            self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(18, secondary=secondary), 1000000))
-            self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(18.01, secondary=secondary), 1000000))
+            self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(30, secondary=secondary), 1000000))
+            self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(31, secondary=secondary), 1000000))
 
     def test_window_start_and_end_and_reset_rollover(self):
         self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(0, 7), 1000000))
-        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(0.01, 7), 1000000))
-        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(12, 7), 1000000))
-        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(83.8, 0.01), 1000000))
-        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(83.9, 0.01), 1000000))
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(12, 7), 1000000))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(13, 7), 1000000))
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(83, 0.01), 1000000))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(85, 0.01), 1000000))
         self.assertIn("stale", run_goal.quota_stop_reason(self.snapshot(0, 0), 1000000))
 
-    def test_reported_post_reset_usage_cannot_borrow_the_next_day(self):
-        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(0.08, 6.9925), 1000000))
-        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(1, 6.9925), 1000000))
+    def test_reported_post_reset_stop_gets_daily_allowance(self):
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(1, 6.9925), 1000000))
 
-    def test_cutoff_is_recomputed_at_each_round_boundary(self):
+    def test_cutoff_stays_fixed_until_weekly_reset(self):
         policy = {}
-        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(0, 7), 1000000, policy))
-        self.assertIsNone(run_goal.quota_stop_reason(
-            self.snapshot(6, 7), 1000000 + 43200, policy))
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(12, 7), 1000000, policy))
+        # Advancing half a day must not release more quota during this run.
         self.assertIn("cutoff", run_goal.quota_stop_reason(
-            self.snapshot(6.01, 7), 1000000 + 43200, policy))
+            self.snapshot(13, 7), 1000000 + 43200, policy))
+        self.assertIsNone(run_goal.quota_stop_reason(
+            self.snapshot(12, 7), 1000000 + 43200, policy))
 
-    def test_weekly_reset_stops_the_run_instead_of_releasing_reset_credits(self):
+    def test_weekly_reset_replaces_previous_runs_cutoff(self):
         policy = {}
-        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(18), 1000000, policy))
-        original_reset = policy["reset"]
-        self.assertIn("reset changed", run_goal.quota_stop_reason(
-            self.snapshot(0, 12.5), 1000000 + 5.5 * 86400, policy))
-        self.assertEqual(policy["reset"], original_reset)
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(30), 1000000, policy))
+        self.assertIsNone(run_goal.quota_stop_reason(
+            self.snapshot(12, 12.5), 1000000 + 5.5 * 86400, policy))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(
+            self.snapshot(13, 12.5), 1000000 + 5.5 * 86400, policy))
 
-    def test_reset_rounding_jitter_does_not_end_the_run(self):
-        policy = {}
-        snapshot = self.snapshot(0)
-        reset = snapshot["rateLimitsByLimitId"]["codex"]["primary"]["resetsAt"]
-        self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
-        for offset in (1, -1, 0, 1):
-            snapshot["rateLimitsByLimitId"]["codex"]["primary"]["resetsAt"] = reset + offset
-            self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
-        self.assertEqual(policy["reset"], reset)
-
-    def test_reset_rounding_jitter_cannot_extend_the_earliest_expiry(self):
-        policy = {}
-        snapshot = self.snapshot(0, 0.01)
-        window = snapshot["rateLimitsByLimitId"]["codex"]["primary"]
-        reset = window["resetsAt"]
-        self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
-        window["resetsAt"] = reset - 1
-        self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
-        window["resetsAt"] = reset + 1
-        reason = run_goal.quota_stop_reason(snapshot, reset - 1, policy)
-        self.assertIsNotNone(reason)
-        self.assertIn("reset reached", reason)
-
-    def test_new_run_uses_elapsed_days_and_keeps_the_weekly_reserve(self):
-        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(12, 6), 1000000, {}))
-        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(12.01, 6), 1000000, {}))
-        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(72, 1), 1000000, {}))
-        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(72.01, 1), 1000000, {}))
+    def test_new_run_releases_next_day_and_keeps_weekly_reserve(self):
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(24, 6), 1000000, {}))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(25, 6), 1000000, {}))
+        self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(84, 1), 1000000, {}))
+        self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(85, 1), 1000000, {}))
 
     def test_missing_malformed_and_other_exhausted_window(self):
         self.assertIn("unavailable", run_goal.quota_stop_reason({}, 1000000))
@@ -522,13 +499,8 @@ for line in sys.stdin:
             print(json.dumps({"id": request["id"], "error": {"code": -32000, "message": "fixture quota unavailable"}}), flush=True)
             continue
         used = 31 if scenario == "quota-skip" or quota_reads > (2 if scenario == "quota-continue" else 1) else 0
-        reset = weekly_reset
-        if scenario == "quota-reset-after-round":
-            used = 0
-            if quota_reads > 1:
-                reset += 86400
         result = {"rateLimits": {"primary": {"usedPercent": used, "windowDurationMins": 10080,
-                  "resetsAt": reset}}}
+                  "resetsAt": weekly_reset}}}
     elif method == "thread/start":
         assert params["sandbox"] == "danger-full-access"
         assert params["approvalPolicy"] == "never"
@@ -664,21 +636,6 @@ for line in sys.stdin:
         self.assertIn("weekly quota cutoff", body)
         self.assertNotIn("--draft", published[0])
         self.assertEqual(len(self.git(self.clone, "log", "--oneline", "origin/main..HEAD").splitlines()), 1)
-
-    def test_quota_reset_stops_next_round_but_validates_completed_work(self):
-        self.env["IGNORE_QUOTA_CUTOFF"] = "0"
-        self.clock.write_text(str(int(time.time())))
-        result, calls, published = self.run_scenario("quota-reset-after-round")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(len(published), 1)
-        self.assertEqual([x[1] for x in calls if x[0] == "dotnet"], ["build", "test"])
-        requests = [json.loads(x) for x in (self.root / "requests.jsonl").read_text().splitlines()]
-        self.assertEqual(sum(x["method"] == "turn/start" for x in requests), 1)
-        self.assertEqual(sum(x["method"] == "account/rateLimits/read" for x in requests), 2)
-        body = (self.root / "pr-body").read_text()
-        self.assertIn("Cumulative fixes: 1", body)
-        self.assertIn("weekly quota reset changed", body)
-        self.assertNotIn("--draft", published[0])
 
     def test_quota_allows_next_round_in_same_thread_then_stops(self):
         self.env["IGNORE_QUOTA_CUTOFF"] = "0"

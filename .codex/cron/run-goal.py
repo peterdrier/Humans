@@ -9,7 +9,7 @@ import time
 
 
 def quota_stop_reason(result, now, policy=None):
-    """Check elapsed-week usage at round boundaries; stop when the weekly reset changes."""
+    """Check live usage against the run's fixed allowance, renewed on weekly reset."""
     if not isinstance(result, dict):
         return "weekly quota invalid"
     buckets = result.get("rateLimitsByLimitId")
@@ -45,16 +45,11 @@ def quota_stop_reason(result, now, policy=None):
             not now < reset <= now + 7 * 86400):
         return "weekly quota invalid or stale"
     elapsed_days = 7 - (reset - now) / 86400
-    if policy is not None:
-        if "reset" in policy:
-            # Live reset timestamps can vary by a rounding second within the same week.
-            if abs(policy["reset"] - reset) > 1:
-                return "weekly quota reset changed; stop before consuming reset credits"
-            if now >= policy.get("expires", policy["reset"]):
-                return "weekly quota reset reached; stop before consuming reset credits"
-        policy.setdefault("reset", reset)
-        policy["expires"] = min(policy.get("expires", reset), reset)
-    minimum = max(16, 100 - 12 * elapsed_days)
+    if policy is None:
+        policy = {}
+    if policy.get("reset") != reset:
+        policy.update(reset=reset, minimum=max(16, 100 - 12 * (elapsed_days + 1)))
+    minimum = policy["minimum"]
     remaining = 100 - used
     print(f"Weekly quota: {remaining:g}% remaining; cutoff {minimum:.2f}%; "
           f"reset {reset}; elapsed {elapsed_days:.3f} days", flush=True)

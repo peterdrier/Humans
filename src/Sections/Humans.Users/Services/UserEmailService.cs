@@ -138,8 +138,10 @@ internal sealed class UserEmailService(
         if (removed)
         {
             await GoogleIdentity.ClearIfAddressAsync(userId, email.Email, CancellationToken.None);
-            await LogEmailChangeAsync(UsersAuditActions.UserEmailDeleted, userId, emailId,
-                $"Deleted email row {emailId}", actorUserId);
+            // Without an actor the caller is transactional provisioning, which audits after its commit.
+            if (actorUserId.HasValue)
+                await LogEmailChangeAsync(UsersAuditActions.UserEmailDeleted, userId, emailId,
+                    $"Deleted email row {emailId}", actorUserId);
         }
         return new DeleteEmailResult(removed);
     }

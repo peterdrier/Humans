@@ -73,6 +73,49 @@ public sealed class HoldedWriteTests
     }
 
     [HumansFact]
+    public async Task EnsurePurchaseDocument_creates_on_the_mirrored_expense_account_attaches_and_approves()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await _repo.UpsertAccountsAsync(
+            [new HoldedAccount { Number = 62900128, HoldedId = "acc-629", Name = "Camp" }], Now, ct);
+        _client.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("d1");
+        _client.GetPurchaseDocumentAsync("d1", Arg.Any<CancellationToken>()).Returns(new HoldedPurchaseDocumentDto
+        {
+            Id = "d1",
+            DocNumber = "C-1",
+            Subtotal = 50m,
+            Tax = 0m,
+            Total = 50m,
+            PaymentsTotal = 0m,
+            PaymentsPending = 50m,
+        });
+        var attachment = new HoldedAttachmentInput { FileName = "r.pdf", ContentType = "application/pdf", Content = Stream.Null };
+
+        var outcome = await _write.EnsurePurchaseDocumentAsync(
+            41000012, 62900128, "Expense report 7", 50m, Date, "humans:report:7", attachment, false, ct);
+
+        outcome.Should().Be(new HoldedPurchaseDocumentOutcome(Created: true, Attached: true, Approved: true, "C-1"));
+        await _client.Received(1).CreatePurchaseDocumentAsync(
+            Arg.Is<HoldedPurchaseDocumentInput>(i => i.ContactId == "c1" && i.Lines.Single().AccountId == "acc-629"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EnsurePurchaseDocument_finds_the_existing_document_and_writes_nothing_more()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        DocumentExists("humans:report:7");
+
+        var outcome = await _write.EnsurePurchaseDocumentAsync(
+            41000012, 62900128, "Expense report 7", 50m, Date, "humans:report:7", null, true, ct);
+
+        outcome.Should().Be(new HoldedPurchaseDocumentOutcome(false, false, false, "C-1"));
+        await _client.DidNotReceive().CreatePurchaseDocumentAsync(
+            Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task EnsureExpenseAccount_creates_only_a_number_missing_from_the_mirror_and_from_Holded()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

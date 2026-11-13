@@ -24,8 +24,6 @@ namespace Humans.Email.Tests.Services;
 
 public class EmailOutboxProcessorTests : IDisposable
 {
-    public enum DeliveryOutcome { Sent, Failed, TestAddress }
-
     private readonly DbContextOptions<EmailDbContext> _options;
     private readonly EmailDbContext _dbContext;
     private readonly IEmailTransport _transport;
@@ -342,13 +340,13 @@ public class EmailOutboxProcessorTests : IDisposable
     }
 
     [HumansTheory]
-    [InlineData(DeliveryOutcome.Sent)]
-    [InlineData(DeliveryOutcome.Failed)]
-    [InlineData(DeliveryOutcome.TestAddress)]
-    public async Task ScheduledDrain_RecordsOutcomeSaveCancellationAsFailureDuringShutdown(DeliveryOutcome outcome)
+    [InlineData("sent")]
+    [InlineData("failed")]
+    [InlineData("test-address")]
+    public async Task ScheduledDrain_RecordsOutcomeSaveCancellationAsFailureDuringShutdown(string outcome)
     {
         var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
-        if (outcome == DeliveryOutcome.TestAddress) message.RecipientEmail = "test@localhost";
+        if (string.Equals(outcome, "test-address", StringComparison.Ordinal)) message.RecipientEmail = "test@localhost";
         using var shutdown = new CancellationTokenSource();
         var failure = new OperationCanceledException("Outcome save timed out");
         var smtpFailure = new IOException("SMTP rejected the message");
@@ -360,7 +358,7 @@ public class EmailOutboxProcessorTests : IDisposable
             await shutdown.CancelAsync();
             throw failure;
         }
-        if (outcome == DeliveryOutcome.Failed)
+        if (string.Equals(outcome, "failed", StringComparison.Ordinal))
         {
             _transport.SendAsync(
                     Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -385,7 +383,7 @@ public class EmailOutboxProcessorTests : IDisposable
         _metrics.DidNotReceive().RecordJobRun("process_email_outbox", "success");
         _metrics.DidNotReceive().RecordEmailSent(Arg.Any<string>());
         _metrics.DidNotReceive().RecordEmailFailed(Arg.Any<string>());
-        if (outcome == DeliveryOutcome.Failed)
+        if (string.Equals(outcome, "failed", StringComparison.Ordinal))
         {
             logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == smtpFailure);
         }
@@ -393,7 +391,7 @@ public class EmailOutboxProcessorTests : IDisposable
         {
             await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default, default);
         }
-        if (outcome == DeliveryOutcome.TestAddress)
+        if (string.Equals(outcome, "test-address", StringComparison.Ordinal))
         {
             await _transport.DidNotReceiveWithAnyArgs().SendAsync(
                 default!, default, default!, default!, default, default, default, default);
