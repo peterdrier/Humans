@@ -72,7 +72,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 ## Routing
 
-`TeamController` (`[Route("Teams")]`) serves the member-facing and TeamsAdmin pages. `TeamAdminController` (`[Route("Teams/{slug}")]`) serves per-team management through `HumansTeamControllerBase`. `TeamMessageController` serves send as team. A team's Google resources page is GoogleIntegration's (`/Google/Teams/{slug}/Resources`); the team page and the Members page link to it.
+`TeamController` (`[Route("Teams")]`) serves the member-facing and TeamsAdmin pages. `TeamAdminController` (`[Route("Teams/{slug}")]`) serves per-team management through `HumansTeamControllerBase`. `TeamMessageController` serves send as team. A team's Google resources page is Google's (`/Google/Teams/{slug}/Resources`); the team page and the Members page link to it.
 
 | Route | Method | Controller | Auth |
 |-------|--------|------------|------|
@@ -153,7 +153,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - Slugs are unique across `Slug` and `CustomSlug` and both resolve. A rename regenerates the slug unless the new one is reserved or taken, in which case the old URL stays.
 - An early-entry grant is created only while its team has `EarlyEntryEnabled`. Turning the flag off, or deactivating the team, keeps the grants but drops them from the roster. Every grant mutation is audited (`EarlyEntryGranted`, `EarlyEntryUpdated`, `EarlyEntryRevoked`); removing an absent grant is a no-op.
 - Early-entry add/edit requires an explicit event: empty, unknown or Deleted events are refused before writes; Inactive events remain valid for planning. Add defaults to the active event, while edit uses the stored event. Legacy grants stay visible with a review warning until an operator selects an event and saves; the nullable-column migration performs no backfill. Add/edit audit text names the event, and the `TeamEarlyEntry` GDPR slice includes `EventSettingsId`; erasure and merge cover all events. Reactivated teams contribute kept grants only when their selected event is active.
-- Editing a prefix that matches a previously unlinked Google group redisplays an unchecked reactivation confirmation. Confirmation is tied to that archived resource ID; a changed target requires fresh confirmation. Confirming restores the resource through Manage; leaving it unchecked keeps the link pending. GoogleIntegration reuses the archived row and retires only its selected previous group link in one save, preserving other manually linked groups.
+- Editing a prefix that matches a previously unlinked Google group redisplays an unchecked reactivation confirmation. Confirmation is tied to that archived resource ID; a changed target requires fresh confirmation. Confirming restores the resource through Manage; leaving it unchecked keeps the link pending. Google reuses the archived row and retires only its selected previous group link in one save, preserving other manually linked groups.
 - Teams owns its access rule for send as team (`TeamMessageOptionsProvider`): an active team the viewer coordinates, whose Google Group is linked, active, synced at least once and error-free. The recipient must accept facilitated messages and cannot be the sender. Each message is audited `FacilitatedMessageSent`; the audit names the team and never its address.
 - Expected refusals (missing record, no permission, validation) return a result before anything is written or audited, and log at Warning without a stack. Unexpected failures propagate.
 - Mutations of the cached team graph invalidate the whole cache, even when the inner call throws after writing. Pending join-request reads bypass the cache.
@@ -173,7 +173,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 ## Triggers
 
 - When a join request is approved, or a coordinator adds a member, the membership is created and the human gets a welcome email and an inbox notice. Coordinators get a notice for every new request and direct join. Notices and emails go in the recipient's saved language, falling back to English, and finish after the membership commits; a notice failure never undoes the membership.
-- When a member is added, the Google outbox event grants their Drive and Group access, including the parent's resources for a sub-team add. Removals wait for GoogleIntegration's daily reconciliation.
+- When a member is added, the Google outbox event grants their Drive and Group access, including the parent's resources for a sub-team add. Removals wait for Google's daily reconciliation.
 - When a department's management-role assignment changes, or a team moves into or out of being an active department, the affected humans' Coordinators system-team membership is recalculated. Sub-team manager changes do not touch the Coordinators system team.
 - The system-team sync runs hourly (Hangfire `teams-system-sync`) and on demand from the sections whose facts it reads. It recomputes Volunteers (approved, unsuspended, consents signed, not rejected by the Consent Coordinator), Coordinators, Board, Asociados and Colaboradors (approved tiers with active terms), and Barrio Leads (active camp leads), reconciles `TeamMember.Role` against management assignments, audits every committed change before Google provisioning, and ends with a Google Group reconciliation pass when Workspace credentials are configured. It sends no "added to team" email for hidden teams.
 - When an account merge is accepted, Teams ends the source's non-system memberships, adds the survivor where needed, moves role assignments, join requests and early-entry grants to the survivor (a source Pending request colliding with a survivor Pending request for the same team is dropped), and reconciles both humans' Coordinators membership.
@@ -187,7 +187,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Notifications.Contracts:** `INotificationEmitter` for the sources in `TeamsNotificationSources`.
 - **Users.Contracts:** `IUserService` for member display data, account resolution and the sync's person reads.
 - **Auth:** `IRoleAssignmentService` for role holders, `IAdminAuthorizationService` for actor checks.
-- **GoogleIntegration:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.
+- **Google:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.
 - **Shifts.Contracts:** `IShiftService` for the team page's shifts card and pending-shift counts.
 - **Email.Contracts:** `IEmailService`, `IEmailMessageFactory` and `ICommunicationPreferenceService` for send as team and the welcome email; Teams owns its templates (`TeamsEmails`, previewed through `TeamsEmailPreviews`).
 - **EarlyEntry:** Teams implements `IEarlyEntryProvider` for the roster and reads `EarlyEntryRoles`.
@@ -203,7 +203,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 - **Search:** renders team hits with `<vc:teams-search-result>`.
 - **Budget, Expenses:** coordinator scoping (`GetEffectiveBudgetCoordinatorTeamIdsAsync`, `IsUserCoordinatorOfTeamAsync`); Budget's dev seeder uses `ITeamSeeding`.
-- **Onboarding, Governance, Auth, Camps, GoogleIntegration, Development:** call `ISystemTeamSync` after the facts they own change.
+- **Onboarding, Governance, Auth, Camps, Google, Development:** call `ISystemTeamSync` after the facts they own change.
 - **Users:** account deletion calls `RevokeAllMembershipsAsync`; account merge reaches `IUserMerge.ReassignAsync`; profiles read team memberships.
 - **Shifts:** `ShiftAdminController` derives from `HumansTeamControllerBase`; shift authorization reads `GetUserCoordinatedTeamIdsAsync`.
 - **Agent, Calendar, Campaigns, CityPlanning, Consent, Debug, Guide, Notifications, Store, Surveys, Tickets, the Shell:** read `ITeamService` / `TeamInfo`.

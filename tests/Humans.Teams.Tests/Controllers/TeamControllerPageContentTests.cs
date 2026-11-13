@@ -11,7 +11,7 @@ using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Configuration;
 using Humans.Base.Enums;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Controllers;
 using Humans.Teams.Models;

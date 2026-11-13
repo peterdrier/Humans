@@ -1,16 +1,16 @@
 ---
 name: vendor-connectors-own-sections
-description: HARD RULE. Vendor connector sections (Holded, MailerLite, GoogleIntegration) are never merged into their consumer sections — vendors can be swapped; never re-export a vendor's wire DTO.
+description: HARD RULE. Vendor connector sections (Holded, MailerLite, Google) are never merged into their consumer sections — vendors can be swapped; never re-export a vendor's wire DTO.
 ---
 
 A section wrapping an external vendor (Holded, MailerLite, Stripe, Google Workspace via
-GoogleIntegration) stays its own section, even when one app section is its only consumer.
+Google) stays its own section, even when one app section is its only consumer.
 
 **Why:** Peter: *"that's an external vendor which could change … vendors don't get merged with app code
 ever."* Folding the connector into its consumer welds a replaceable surface into domain code.
 
 **The shape:** the connector owns its typed client, proxies what the app needs and caches vendor
-responses as necessary. GoogleIntegration is the reference.
+responses as necessary. Google is the reference.
 
 **How to apply:**
 - A new vendor integration gets its own section, consumed through its interface.

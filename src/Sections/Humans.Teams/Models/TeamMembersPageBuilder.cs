@@ -1,5 +1,5 @@
 using Humans.Base.Extensions;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
 using Humans.Users.Contracts;

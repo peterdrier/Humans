@@ -56,6 +56,8 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        // The uncached row source: browse reads see the seeded database directly.
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     [HumansFact]

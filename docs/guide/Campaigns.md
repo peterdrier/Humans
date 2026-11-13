@@ -81,5 +81,5 @@ When a campaign is done, mark it Completed. No further waves can be sent.
 
 ## Related sections
 
-- [Profiles](Profiles.md) — the My Codes list lives on your profile; Communication Preferences shows `Campaign Codes` locked on (the legacy `UnsubscribedFromCampaigns` flag is retained for GDPR export but is not read by any active gate)
+- [Profiles](Profiles.md) — the My Codes list lives on your profile; Communication Preferences shows `Campaign Codes` locked on
 - [Teams](Teams.md) — a wave targets one team; everyone who has not left it is eligible

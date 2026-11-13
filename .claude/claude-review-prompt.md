@@ -141,7 +141,7 @@ Product constraints, not code shape. A PR that works against one is a
 - **Google service account authenticates as itself** — no domain-wide
   delegation or impersonation (`google-service-account-bare-auth`).
 - **Vendor connector sections stay separate** — Holded, MailerLite and
-  GoogleIntegration are never merged into their consumers
+  Google are never merged into their consumers
   (`vendor-connectors-own-sections`).
 
 ## Budget

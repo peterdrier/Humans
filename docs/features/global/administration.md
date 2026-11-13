@@ -3,7 +3,7 @@
   src/Sections/Humans.Users/Controllers/UsersAdminAccountMergesController.cs
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
-  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Google/Controllers/GoogleController.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
@@ -430,7 +430,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 | `barrios` | Camps | `CampsPolicies.Manage` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |
 | `shifts` | Shifts | `AdminOnly` | `/Shifts/Settings` (no nav item existed; inline links now point at the tab) |
 | `agent` | Agent | `AdminOnly` | `/Agent/Admin/Settings` (nav item removed) |
-| `google-sync` | GoogleIntegration | `AdminOnly` | `/Google/SyncSettings` (nav item removed) |
+| `google-sync` | Google | `AdminOnly` | `/Google/SyncSettings` (nav item removed) |
 | `email` | Email | `AdminOnly` | Pause/resume moved from `EmailOutbox`'s own controls |
 | `event` | Settings | `AdminOnly` | `/Settings/Admin` GET (nav item retained, repointed at `/Settings#event`) |
 

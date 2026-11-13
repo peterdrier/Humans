@@ -10,7 +10,7 @@ internal static class AdminHumanListAssembler
     /// <summary>Members whose Google identity sync was rejected.</summary>
     public const string GoogleRejectedFilter = "googlerejected";
 
-    // googleRejectedUserIds is read from GoogleIntegration by the caller only for GoogleRejectedFilter.
+    // googleRejectedUserIds is read from Google by the caller only for GoogleRejectedFilter.
     public static IReadOnlyList<AdminHumanRow> Assemble(
         IReadOnlyCollection<UserInfo> allUsers,
         IReadOnlyDictionary<Guid, string> notificationEmailsByUserId,

@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Helpers;
@@ -109,7 +109,7 @@ public class UserEmailServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IGoogleIntegrationWrite _googleIdentity = Substitute.For<IGoogleIntegrationWrite>();
+    private readonly IGoogleWrite _googleIdentity = Substitute.For<IGoogleWrite>();
     private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 

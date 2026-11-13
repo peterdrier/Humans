@@ -42,7 +42,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 
 namespace Humans.Users.Tests.Controllers;
 

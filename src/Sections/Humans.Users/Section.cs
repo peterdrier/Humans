@@ -257,6 +257,8 @@ public sealed class Section :
 
     internal const string ProfileNamesKey = "users.profile-names-to-user-row";
 
+    internal const string ProfileChildrenUserIdKey = "users.profile-children-user-id";
+
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
         new(LegacyIdentityEmailsKey, SectionName,
@@ -267,7 +269,25 @@ public sealed class Section :
             "Copy burner, first and last name from the profile onto the users row where the row lacks them",
             "The profile save's second copy of the names, then the three name columns on profiles",
             ProfileNamesStatusAsync, ApplyProfileNamesAsync),
+        new(ProfileChildrenUserIdKey, SectionName,
+            "Stamp the owning user id onto contact fields, profile languages and volunteer history",
+            "The ProfileId key on user_contact_fields, user_profile_languages and user_volunteer_history_entries",
+            ProfileChildrenStatusAsync, ApplyProfileChildrenAsync),
     ];
+
+    private static async Task<DataMigrationStatus> ProfileChildrenStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["User", "Contact fields", "Languages", "Volunteer history"],
+            [.. (await sp.GetRequiredService<ProfileService>().GetProfileChildRowsWithoutUserAsync(ct))
+                .Select(r => (IReadOnlyList<string>)
+                [
+                    r.UserId.ToString(),
+                    r.ContactFields.ToString(CultureInfo.InvariantCulture),
+                    r.Languages.ToString(CultureInfo.InvariantCulture),
+                    r.VolunteerHistory.ToString(CultureInfo.InvariantCulture),
+                ])]);
+
+    private static Task<int> ApplyProfileChildrenAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
+        sp.GetRequiredService<ProfileService>().FillProfileChildUserIdsAsync(ct);
 
     private static async Task<DataMigrationStatus> ProfileNamesStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Users row (burner / first / last)", "Profile (burner / first / last)"],

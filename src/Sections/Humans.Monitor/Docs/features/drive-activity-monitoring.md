@@ -3,7 +3,7 @@
   src/Sections/Humans.Monitor/Jobs/DriveActivityMonitorJob.cs
   src/Sections/Humans.Monitor/Section.cs
   src/Sections/Humans.Monitor/Controllers/MonitorController.cs
-  src/Sections/Humans.GoogleIntegration/Services/Workspace/GoogleDriveActivityClient.cs
+  src/Sections/Humans.Google/Services/Workspace/GoogleDriveActivityClient.cs
   src/Sections/Humans.AuditLog/Section.cs
   src/Sections/Humans.AuditLog/Controllers/AuditLogController.cs
   src/Sections/Humans.AuditLog/Views/AuditLog/Index.cshtml
@@ -63,7 +63,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 
 ### Ownership
 
-- `GoogleIntegrationAuditActions.AnomalousPermissionDetected` audit action definition (`Alert: true`, quick filter "Anomalous Permissions"; stored as a string, no migration needed) — `src/Sections/Humans.GoogleIntegration/Contracts/`
+- `GoogleAuditActions.AnomalousPermissionDetected` audit action definition (`Alert: true`, quick filter "Anomalous Permissions"; stored as a string, no migration needed) — `src/Sections/Humans.Google/Contracts/`
 - `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method, and its implementation `DriveActivityMonitorService` using Google Drive Activity API v2 — `src/Sections/Humans.Monitor/Contracts/` and `Services/`
 - `DriveActivityMonitorJob` - Hangfire background job wrapper — `src/Sections/Humans.Monitor/Jobs/`
 - `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering — `src/Sections/Humans.AuditLog/Controllers/`
@@ -77,7 +77,7 @@ Registered unconditionally in `Humans.Monitor`'s `Section.cs`:
 
 ### NuGet Package
 
-`Google.Apis.DriveActivity.v2` added to `Directory.Packages.props` and referenced from `Humans.GoogleIntegration.csproj` — the connector implementation (`GoogleDriveActivityClient`) lives in the GoogleIntegration section; Monitor consumes it cross-section via `IGoogleDriveActivityClient`.
+`Google.Apis.DriveActivity.v2` added to `Directory.Packages.props` and referenced from `Humans.Google.csproj` — the connector implementation (`GoogleDriveActivityClient`) lives in the Google section; Monitor consumes it cross-section via `IGoogleDriveActivityClient`.
 
 ## Drive Activity API Integration
 
@@ -111,7 +111,7 @@ The Drive Activity API identifies actors as:
 
 ### Service Account Email Extraction
 
-Monitor asks `IGoogleDriveActivityClient` for the service account email and client id. The GoogleIntegration connector (`GoogleDriveActivityClient`) reads `client_email` and `client_id` from the service-account key itself. Monitor seeds its resolver with `people/{client_id}` so service-account actors resolve to the account email.
+Monitor asks `IGoogleDriveActivityClient` for the service account email and client id. The Google connector (`GoogleDriveActivityClient`) reads `client_email` and `client_id` from the service-account key itself. Monitor seeds its resolver with `people/{client_id}` so service-account actors resolve to the account email.
 
 ## Data Model
 
@@ -123,7 +123,7 @@ Uses the existing `AuditLogEntry` entity. No new tables or migrations required.
 |-------|-------|
 | Action | `AnomalousPermissionDetected` |
 | EntityType | `GoogleResource` |
-| EntityId | GoogleResource.Id (from DB) |
+| EntityId | TeamGoogleResource.Id (from DB) |
 | Description | Human-readable: "Anomalous permission change on '{name}' by {actor}: {details}" |
 | ActorUserId | `null` (system job) |
 
@@ -167,12 +167,12 @@ Quick filters are declared by each section's audit action definitions; the set t
 
 ## Limitations
 
-- **Drive folders only:** Google Groups do not support the Drive Activity API. Group membership changes are reconciled by GoogleIntegration's group sync, not by this monitor.
+- **Drive folders only:** Google Groups do not support the Drive Activity API. Group membership changes are reconciled by Google's group sync, not by this monitor.
 - **Lookback marker:** Each run covers activity since the last successful run (`DriveActivityMonitor:LastRunAt`); the 24-hour window applies only before a marker exists. Activity from before the first successful run may be missed.
 - **Actor identification:** The Drive Activity API may not always provide the actor's email (e.g., for external users). In such cases, the actor is logged as "unknown actor".
 
 ## Related Features
 
-- [F-07: Google Integration](../../../Humans.GoogleIntegration/Docs/features/google-integration.md) - Manages the resources being monitored
+- [F-07: Google](../../../Humans.Google/Docs/features/google-integration.md) - Manages the resources being monitored
 - [F-08: Background Jobs](../../../../../docs/features/global/background-jobs.md) - Job scheduling
 - [F-12: Audit Log](../../../Humans.AuditLog/Docs/features/audit-log.md) - Audit log infrastructure

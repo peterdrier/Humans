@@ -29,7 +29,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `AuthDbContext` | `RoleAssignments` (own project, `src/Sections/Humans.Auth/`) |
 > | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes`, `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`, `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`, `governance_membership_tiers` (own project, `src/Sections/Humans.Governance/`) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`) |
-> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog`, `google_workspace_identities` (own project, `src/Sections/Humans.GoogleIntegration/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
+> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog`, `google_workspace_identities` (own project, `src/Sections/Humans.Google/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`) |
 > | `CampsDbContext` | `Camps`, `CampSeasons`, `CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`, `CampRoleDefinitions`, `CampRoleAssignments` (own project, `src/Sections/Humans.Camps/`) |
@@ -136,7 +136,7 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 | Table | Owning Section | Routed via |
 |-------|----------------|--------|
-| **GoogleSyncOutboxEvents** | Google Integration | `TeamService` appends via `IGoogleSyncOutboxService` inside a `TransactionScope`. |
+| **GoogleSyncOutboxEvents** | Google | `TeamService` appends via `IGoogleSyncOutboxService` inside a `TransactionScope`. |
 | **EventSettings** (`shift_event_settings`, the Shifts per-event knobs) | Shifts | `ShiftRepository`. |
 | **ShiftSignups** | Shifts | `ShiftRepository`. |
 | **Settings** (`settings_system_values`, `settings_events`) | Settings | Single owner `Repository`; consumers route through `ISettingsService`. `settings_events` is the app-wide event calendar every event-facing section reads (Shifts via `EventCalendarResolver`). |
@@ -281,7 +281,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `IUserService`, `ITicketService`, `IShiftView`, `IGovernanceService` and
     `IConsentService` for
     audience resolution and display-name stitching — never a foreign
-    repository. `IGoogleTranslationService` (GoogleIntegration section)
+    repository. `IGoogleTranslationService` (Google section)
     is the translation bridge for the admin pre-fill helper. No
     cross-section table reads. There is no public `ISurveyService` contract — no other
     section consumes one; the section's outbound contracts are the

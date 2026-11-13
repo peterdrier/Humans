@@ -87,6 +87,9 @@ internal sealed class ContactFieldService(
         var toAdd = new List<ContactField>();
         var toUpdate = new List<ContactField>();
 
+        // Also the cache key: resolved before committing, so a failed lookup can't skip the refresh.
+        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
+
         foreach (var dto in fields)
         {
             ContactField field;
@@ -102,6 +105,7 @@ internal sealed class ContactFieldService(
                 {
                     Id = Guid.NewGuid(),
                     ProfileId = profileId,
+                    UserId = ownerUserId,
                     CreatedAt = now
                 };
                 toAdd.Add(field);
@@ -115,8 +119,6 @@ internal sealed class ContactFieldService(
             field.UpdatedAt = now;
         }
 
-        // Resolve the cache key before committing; a failed lookup must not skip refresh.
-        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
         try
         {
             await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);

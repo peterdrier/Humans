@@ -159,6 +159,6 @@ The shapes imply exactly today's layout:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-08-28 | First doctor pass — section is young (nobodies-collective/Humans#1104) and close to target; drift is at the edges: a Contracts csproj comment naming consumers two moves stale, a dead GoogleIntegration reference, cloned clock-rule comments claiming callers that are not there yet | peterdrier/Humans#1560 |
+| 1 | 2026-08-28 | First doctor pass — section is young (nobodies-collective/Humans#1104) and close to target; drift is at the edges: a Contracts csproj comment naming consumers two moves stale, a dead Google reference, cloned clock-rule comments claiming callers that are not there yet | peterdrier/Humans#1560 |
 | 2 | 2026-09-21 | Second pass after the peterdrier/Humans#1628 + nobodies-collective/Humans#1631 rebuild — structure matches target; the drift is the comments the rebuild left behind, all claiming the pre-cutover world | peterdrier/Humans#1778 |
 | 3 | 2026-11-11 | The section became the register of every event cycle (list, make-active, global timezone, no overlaps); docs had not followed, the form re-checked rules the save owns, and the read-only tab inverted an empty strike window | peterdrier/Humans#2372 |

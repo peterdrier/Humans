@@ -343,7 +343,7 @@ public sealed class TableOwnershipRuleTests
                 }
             }
 
-            namespace Humans.GoogleIntegration.Data
+            namespace Humans.Google.Data
             {
                 public sealed class DriveActivityMonitorRepository : Humans.Base.Interfaces.Repositories.IRepository
                 {

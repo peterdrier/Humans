@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Teams/**
   src/Humans.Base/Constants/SystemTeamIds.cs
-  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Google/Controllers/GoogleController.cs
 -->
 <!-- freshness:flag-on-change
   Team directory, join/leave/approval flow, sub-team scoping, role slots, public team page editing, system-team sync, and Teams Admin actions. Review when team views, services, entities, or system-team constants change.
@@ -56,7 +56,7 @@ On a team detail page you can see other active humans on the team. Basic profile
 
 ### Your team's resources
 
-Joining a team automatically gives you access to the team's `@nobodies.team` group email and (where set up) its Shared Drive folder. Find the Drive folder via Teams → your team → Resources. Don't share Drive links directly with people who aren't on the team — add them through Humans so access is tracked, and so it goes away cleanly when their role ends. Email setup is covered in [Email](Email.md); the sync mechanics are in [GoogleIntegration](GoogleIntegration.md).
+Joining a team automatically gives you access to the team's `@nobodies.team` group email and (where set up) its Shared Drive folder. Find the Drive folder via Teams → your team → Resources. Don't share Drive links directly with people who aren't on the team — add them through Humans so access is tracked, and so it goes away cleanly when their role ends. Email setup is covered in [Email](Email.md); the sync mechanics are in [Google](Google.md).
 
 ### When and where you arrive on site (2026)
 
@@ -104,7 +104,7 @@ At `/Teams/{slug}/Roles` you define named roles (e.g., "Social Media Lead"), set
 
 ### Manage Google Group and Drive (departments only)
 
-Department coordinators manage the linked Google Group membership and Shared Drive folder permissions. Sub-team managers cannot — Google resources live at the department level and roll up automatically. See [Email](Email.md) for the human-facing side and [GoogleIntegration](GoogleIntegration.md) for sync mechanics.
+Department coordinators manage the linked Google Group membership and Shared Drive folder permissions. Sub-team managers cannot — Google resources live at the department level and roll up automatically. See [Email](Email.md) for the human-facing side and [Google](Google.md) for sync mechanics.
 
 > **Don't share Drive links directly with people who aren't on your team in Humans.** It creates ungoverned access and a GDPR problem. Add them through Humans and Drive access follows automatically; remove them and it's revoked overnight.
 
@@ -161,6 +161,6 @@ Admins view per-service sync mode at `/Settings#google-sync` and trigger an imme
 - [Profiles](Profiles.md) — team membership feeds profile cards and visibility.
 - [Shifts](Shifts.md) — rotas are owned by a department or sub-team; coordinator/manager status drives shift management.
 - [Camps](Camps.md) — camps are team-owned; team membership feeds camp planning.
-- [GoogleIntegration](GoogleIntegration.md) — how team membership maps to Google Groups and Shared Drive folders.
+- [Google](Google.md) — how team membership maps to Google Groups and Shared Drive folders.
 - [Governance](Governance.md) — Board and tier roles feed the Board and Colaborador/Asociado system teams.
 - [Glossary](Glossary.md#coordinator) — coordinator, manager, department, sub-team, system team definitions.

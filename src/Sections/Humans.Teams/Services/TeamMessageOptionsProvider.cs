@@ -1,5 +1,5 @@
 using Humans.Base.Constants;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 
 namespace Humans.Teams.Services;
@@ -39,7 +39,7 @@ internal sealed class TeamMessageOptionsProvider(
             .ToList();
     }
 
-    // Url is the one field both GoogleIntegration write paths store the same way and key their duplicate checks on.
+    // Url is the one field both Google write paths store the same way and key their duplicate checks on.
     // Name differs per path and GoogleId is Google's numeric id, so neither identifies the group on every row.
     private static string GroupUrl(string prefix) =>
         $"https://groups.google.com/a/{DomainConstants.GoogleGroupDomain}/g/{prefix}";

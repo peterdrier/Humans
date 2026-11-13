@@ -66,11 +66,11 @@
     <ProjectReference Include="..\Humans.Gdpr\Humans.Gdpr.csproj" />
     <!--
       Governance for the tier and application reads on the profile pages, and
-      GoogleIntegration for IGoogleSyncService (SuspendNonCompliantMembersJob drops the
+      Google for IGoogleSyncService (SuspendNonCompliantMembersJob drops the
       suspended human from their teams' Drive/Groups). Acyclic: neither names a Humans.Users type.
     -->
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />

@@ -50,7 +50,7 @@ public class MembershipRequiredFilterTests
     private static readonly Type MyDataControllerType = SectionControllerType("Humans.Consent", "MyDataController");
     private static readonly Type CantinaProfileControllerType = SectionControllerType("Humans.Cantina", "CantinaProfileController");
     private static readonly Type TicketParticipationControllerType = SectionControllerType("Humans.Tickets", "TicketParticipationController");
-    private static readonly Type WorkspaceIdentityControllerType = SectionControllerType("Humans.GoogleIntegration", "WorkspaceIdentityController");
+    private static readonly Type WorkspaceIdentityControllerType = SectionControllerType("Humans.Google", "WorkspaceIdentityController");
 
     private static Type GdprControllerType(string name) => SectionControllerType("Humans.Gdpr", name);
 

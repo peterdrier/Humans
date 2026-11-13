@@ -39,6 +39,7 @@ public class SectionDataMigrationsTests
         [
             Section.LegacyIdentityEmailsKey,
             Section.ProfileNamesKey,
+            Section.ProfileChildrenUserIdKey,
         ]);
         migrations.Should().OnlyContain(m => string.Equals(m.Section, "Users", StringComparison.Ordinal) && m.Key.StartsWith("users.", StringComparison.Ordinal));
         migrations.Should().OnlyContain(m => !string.IsNullOrWhiteSpace(m.Title) && !string.IsNullOrWhiteSpace(m.Retires));

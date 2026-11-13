@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
@@ -114,8 +114,8 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d =>
                 d.Contains("Sensitive-Drive", StringComparison.Ordinal) &&
@@ -155,8 +155,8 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("resolved@example.com", StringComparison.Ordinal)),
             JobName);
@@ -216,8 +216,8 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d =>
                 d.Contains("people/99", StringComparison.Ordinal) &&
@@ -250,8 +250,8 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("userinfo@example.com", StringComparison.Ordinal)),
             JobName);
@@ -283,8 +283,8 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("people/42", StringComparison.Ordinal)),
             JobName);
@@ -318,8 +318,8 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d =>
                 d.Contains("people/42", StringComparison.Ordinal) &&
@@ -416,8 +416,8 @@ public class DriveActivityMonitorServiceTests
         // Partial failure → marker not advanced, but the anomaly is still audited.
         await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             ok.Id,
             Arg.Any<string>(),
             JobName);
@@ -463,8 +463,8 @@ public class DriveActivityMonitorServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("added writer", StringComparison.Ordinal)),
             JobName);

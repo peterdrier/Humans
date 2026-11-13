@@ -429,8 +429,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         dayOff.GetProperty("DayOffset").GetInt32().Should().Be(-3);
         dayOff.GetProperty("Reason").GetString().Should().Be("Rest");
         dayOff.GetProperty("MarkedAt").GetString().Should().Be("2026-06-15T12:00:00Z");
-        service.ErasureDeclaration.Should().ContainKey("VolunteerBuildStatuses");
-        service.ErasureDeclaration["VolunteerBuildStatuses"].Should().BeNull();
+        ShiftSignupService.Erasure.Should().ContainKey("VolunteerBuildStatuses");
+        ShiftSignupService.Erasure["VolunteerBuildStatuses"].Should().BeNull();
     }
 
     [HumansTheory]

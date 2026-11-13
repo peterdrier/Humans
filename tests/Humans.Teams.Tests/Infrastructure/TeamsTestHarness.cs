@@ -15,7 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.GoogleIntegration.Data;
+using Humans.Google.Data;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 
@@ -42,8 +42,8 @@ public abstract class TeamsTestHarness : IDisposable
     private protected TestDbContextFactory<AuthDbContext> AuthDbFactory => _authDb.Value.Factory;
 
     private readonly Lazy<SectionDb<GoogleIntegrationDbContext>> _googleIntegrationDb;
-    private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
-    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
+    private protected GoogleIntegrationDbContext GoogleDb => _googleIntegrationDb.Value.Context;
+    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleDbFactory => _googleIntegrationDb.Value.Factory;
 
     private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
     private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
