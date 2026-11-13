@@ -63,7 +63,8 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
             Read(false, call.Arg<CancellationToken>());
             return true;
         });
-        var context = new AuthorizationHandlerContext([new PreapprovalsAccessRequirement()], Principal(userId), null);
+        IAuthorizationRequirement requirement = atManager ? new ManagesPreapprovalsRequirement() : new PreapprovalsAccessRequirement();
+        var context = new AuthorizationHandlerContext([requirement], Principal(userId), null);
         var handler = new PreapprovalsPolicyHandler(preapprovals, http);
         Func<Task> authorize = () => handler.HandleAsync(context);
         await authorize.Should().ThrowAsync<OperationCanceledException>();
