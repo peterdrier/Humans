@@ -1,3 +1,4 @@
+using Humans.Shifts.Services.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Resources;
@@ -2586,26 +2587,27 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnershipProbe_PropagatesCancellationToTheRepository(bool block)
+    public async Task OwnershipProbe_FindsTheSignupAndItsTeamInTheRotaRows(bool block)
     {
-        using var request = new CancellationTokenSource();
-        var id = Guid.NewGuid();
-        var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetTeamProbeAsync(id, scope, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Task.FromResult<ShiftSignup?>(null);
-        });
-        var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt,
+        var teamId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        var signup = new ShiftAdminSignup(Guid.NewGuid(), Guid.NewGuid(), blockId, SignupStatus.Pending, default);
+        var rota = new RotaInfo(Guid.NewGuid(), Guid.NewGuid(), teamId, "Gate", null, null,
+            ShiftPriority.Normal, SignupPolicy.Public, RotaPeriod.Event, true, []);
+        var shift = new ShiftInfo(Guid.NewGuid(), rota.Id, null, 0, new LocalTime(10, 0), 4, 1, 2, false, false, false);
+        var rows = Substitute.For<IShiftRotaRows>();
+        rows.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
+            .Returns([new ShiftAdminRota(rota, [new ShiftAdminShift(shift, [signup])])]);
+        var service = new ShiftSignupService(Substitute.For<IShiftManagementRepository>(),
+            Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt,
             NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
-            new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
-        await request.CancelAsync();
+            new ServiceLocatorBuilder().With(rows).Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
 
-        Func<Task> action = async () => await service.GetTeamProbeAsync(id, scope, request.Token);
+        var probe = await service.GetTeamProbeAsync(block ? blockId : signup.Id, scope, TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<OperationCanceledException>();
-        await repo.Received(1).GetTeamProbeAsync(id, scope, request.Token);
+        probe.Should().Be(new ShiftSignupTeamProbe(signup.Id, shift.Id, teamId));
+        (await service.GetTeamProbeAsync(Guid.NewGuid(), scope, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]

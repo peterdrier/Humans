@@ -19,9 +19,6 @@ internal partial interface IShiftManagementRepository
         Guid? eventSettingsId = null,
         CancellationToken ct = default);
 
-    Task<ShiftSignup?> GetTeamProbeAsync(
-        Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default);
-
     /// <summary>Includes the shift's sibling signups, for capacity checks.</summary>
     Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default);
 
