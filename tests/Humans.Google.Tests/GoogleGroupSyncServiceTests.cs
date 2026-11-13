@@ -667,12 +667,12 @@ public sealed class GoogleGroupSyncServiceTests
                 GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(403, "member does not have a Google account")));
         _userService.GetByEmailOrAlternateAsync("alice@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(new User
+            .Returns(UserInfoFixtures.FromUser(new User
             {
                 Id = userId,
                 DisplayName = "Alice",
                 CreatedAt = _clock.GetCurrentInstant()
-            }.ToUserInfo());
+            }));
 
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
@@ -703,12 +703,12 @@ public sealed class GoogleGroupSyncServiceTests
                 GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(400, "Error(4002): Membership cannot be created since precondition check failed.")));
         _userService.GetByEmailOrAlternateAsync("alice@external.test", Arg.Any<CancellationToken>())
-            .Returns(new User
+            .Returns(UserInfoFixtures.FromUser(new User
             {
                 Id = userId,
                 DisplayName = "Alice",
                 CreatedAt = _clock.GetCurrentInstant()
-            }.ToUserInfo());
+            }));
 
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
@@ -1106,8 +1106,7 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
                 {
-                    [archived] = new User { Id = survivor, DisplayName = "Survivor", CreatedAt = _clock.GetCurrentInstant() }
-                        .ToUserInfo(),
+                    [archived] = UserInfoFixtures.FromUser(new User { Id = survivor, DisplayName = "Survivor", CreatedAt = _clock.GetCurrentInstant() }),
                 }));
         StubGroup("team@nobodies.team", "group-1");
 
@@ -1150,7 +1149,7 @@ public sealed class GoogleGroupSyncServiceTests
                     .Where(kv => requested.Contains(kv.Key))
                     .ToDictionary(
                         kv => kv.Key,
-                        kv => kv.Value.ToUserInfo(profile: _profilesByUserId.GetValueOrDefault(kv.Key)));
+                        kv => UserInfoFixtures.FromUser(kv.Value, profile: _profilesByUserId.GetValueOrDefault(kv.Key)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 

@@ -19,8 +19,8 @@ public class UsersAudienceServiceTests
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>
         {
             UserInfoStubHelpers.FromEntities(new User { Id = attendeeId }, new Profile { UserId = attendeeId }),
-            new User { Id = buyerId }.ToUserInfo(),
-            new User { Id = Guid.NewGuid() }.ToUserInfo(),
+            UserInfoFixtures.FromUser(new User { Id = buyerId }),
+            UserInfoFixtures.FromUser(new User { Id = Guid.NewGuid() }),
         });
         var tickets = Substitute.For<ITicketService>();
         tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(new List<TicketOrderInfo>

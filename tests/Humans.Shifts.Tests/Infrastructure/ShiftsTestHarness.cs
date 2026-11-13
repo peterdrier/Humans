@@ -194,7 +194,7 @@ public abstract class ShiftsTestHarness : IDisposable
                 IReadOnlyDictionary<Guid, UserInfo> dict = Db.Users
                     .Where(u => ids.Contains(u.Id))
                     .ToList()
-                    .ToDictionary(u => u.Id, u => u.ToUserInfo());
+                    .ToDictionary(u => u.Id, u => UserInfoFixtures.FromUser(u));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
@@ -203,7 +203,7 @@ public abstract class ShiftsTestHarness : IDisposable
             {
                 var id = callInfo.Arg<Guid>();
                 var user = await Db.Users.FirstOrDefaultAsync(u => u.Id == id, callInfo.Arg<CancellationToken>());
-                return user?.ToUserInfo();
+                return user is null ? null : UserInfoFixtures.FromUser(user);
             });
 
         return svc;

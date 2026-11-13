@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
@@ -199,7 +200,7 @@ internal sealed class Service(
             return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await EventZoneToday.TodayInEventZoneAsync(settingsService, clock, ct);
+        var today = clock.TodayIn((await settingsService.GetActiveEventSettingsAsync(ct))?.TimeZone ?? DateTimeZone.Utc);
         var deadlinePassed = today > product.OrderableUntil;
 
         var line = new OrderLine
@@ -237,7 +238,7 @@ internal sealed class Service(
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await EventZoneToday.TodayInEventZoneAsync(settingsService, clock, ct);
+        var today = clock.TodayIn((await settingsService.GetActiveEventSettingsAsync(ct))?.TimeZone ?? DateTimeZone.Utc);
         var deadlinePassed = today > ctx.ProductOrderableUntil;
 
         await repo.RemoveLineAsync(lineId, ct);

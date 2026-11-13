@@ -185,7 +185,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
             MergedToUserId = Guid.NewGuid(),
         };
-        AddInfo(ghostUser.ToUserInfo());
+        AddInfo(UserInfoFixtures.FromUser(ghostUser));
 
         var orphanEmailId = Guid.NewGuid();
         SetOrphans(new UserEmailOrphan(mergedId, orphanEmailId, "leftover@merged.local"));

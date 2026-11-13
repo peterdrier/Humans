@@ -12,8 +12,8 @@ internal static class UserInfoFixtures
     /// The one test-side <see cref="User"/> to <see cref="UserInfo"/> projection: the user's emails (or
     /// <paramref name="userEmails"/>), no external logins. Section tests share it instead of keeping copies.
     /// </summary>
-    public static UserInfo ToUserInfo(
-        this User user,
+    public static UserInfo FromUser(
+        User user,
         IReadOnlyList<UserEmail>? userEmails = null,
         ProfileInfo? profile = null) =>
         UserInfo.Create(user, userEmails ?? user.UserEmails?.ToList() ?? [], [], profile);

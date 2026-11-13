@@ -23,7 +23,7 @@ public static class UserFixtures
 
     /// <summary>A named user with a profile. <c>UserInfo.BurnerName</c> reads <c>User.BurnerName</c>, so it is seeded there.</summary>
     public static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User") =>
-        new User { Id = userId, PreferredLanguage = "en", BurnerName = displayName }.ToUserInfo([], profile ?? Profile());
+        UserInfoFixtures.FromUser(new User { Id = userId, PreferredLanguage = "en", BurnerName = displayName }, [], profile ?? Profile());
 
     public static ProfileInfo Profile(
         Guid? id = null,

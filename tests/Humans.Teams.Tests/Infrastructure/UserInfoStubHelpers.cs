@@ -14,7 +14,7 @@ namespace Humans.Teams.Tests.Infrastructure;
 internal static class UserInfoStubHelpers
 {
     /// <summary>
-    /// <see cref="UserInfoFixtures.ToUserInfo"/> for a Users <c>Profile</c> entity, which the shared fixture
+    /// <see cref="UserInfoFixtures.FromUser"/> for a Users <c>Profile</c> entity, which the shared fixture
     /// can't see.
     /// </summary>
     public static UserInfo FromEntities(User user, Profile? profile) =>

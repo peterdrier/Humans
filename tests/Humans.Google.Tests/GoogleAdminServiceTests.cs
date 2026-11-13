@@ -168,7 +168,7 @@ public class GoogleAdminServiceTests
         var testUser = new User { Id = userId, DisplayName = "Test User" };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
+                new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(testUser) }));
 
         var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -245,7 +245,7 @@ public class GoogleAdminServiceTests
         var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo> { [verifiedUserId] = verifiedUser.ToUserInfo() }));
+                new Dictionary<Guid, UserInfo> { [verifiedUserId] = UserInfoFixtures.FromUser(verifiedUser) }));
 
         var result = await _service.GetWorkspaceAccountListAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -416,12 +416,12 @@ public class GoogleAdminServiceTests
             .Returns([]);
         _userService.GetByEmailOrAlternateAsync(
                 "test@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(new User
+            .Returns(UserInfoFixtures.FromUser(new User
             {
                 Id = ownerId,
                 Email = "x@example.com",
                 DisplayName = "X",
-            }.ToUserInfo());
+            }));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "test", "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
@@ -903,7 +903,7 @@ public class GoogleAdminServiceTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, DisplayName = "Test User" }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = userId, DisplayName = "Test User" }));
         _userEmailService.FindByAddressAsync(Arg.Any<string>(), false, false, Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -944,7 +944,7 @@ public class GoogleAdminServiceTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, DisplayName = "Test" }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = userId, DisplayName = "Test" }));
         _userEmailService.FindByAddressAsync(
                 "alice@nobodies.team", false, false, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(Guid.NewGuid(), "alice@nobodies.team")]);

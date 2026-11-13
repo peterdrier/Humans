@@ -11,7 +11,7 @@ namespace Humans.Tickets.Tests.Services;
 public sealed class VerifiedEmailLookupTests
 {
     private static UserInfo UserWith(Guid id, params (string Email, bool Verified)[] emails) =>
-        new User { Id = id, DisplayName = id.ToString() }.ToUserInfo(
+        UserInfoFixtures.FromUser(new User { Id = id, DisplayName = id.ToString() }, 
             emails.Select(e => new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = e.Email, IsVerified = e.Verified }).ToList());
 
     [HumansFact]

@@ -53,7 +53,7 @@ public class HasShiftAudienceTests
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(viewsByUser.Keys
-                .Select(id => new User { Id = id }.ToUserInfo())
+                .Select(id => UserInfoFixtures.FromUser(new User { Id = id }))
                 .ToList());
 
         var shiftView = Substitute.For<IShiftView>();

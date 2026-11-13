@@ -92,7 +92,7 @@ public abstract class TicketsTestHarness : IDisposable
     }
 
     private UserInfo UserInfoFor(User user) =>
-        user.ToUserInfo(Db.UserEmails.Where(e => e.UserId == user.Id).ToList());
+        UserInfoFixtures.FromUser(user, Db.UserEmails.Where(e => e.UserId == user.Id).ToList());
 
     public void Dispose()
     {

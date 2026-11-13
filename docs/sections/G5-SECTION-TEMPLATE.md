@@ -1512,7 +1512,7 @@ Git Bash.)
      `StubGetUserInfosFromDb` overloads over an in-memory `HumansDbContext`, so sharing it would
      push `InternalsVisibleTo` on `HumansDbContext` into every section test project. The section
      copied the projection (proven: Governance). Later split as described: the pure projection is
-     now `UserInfoFixtures.ToUserInfo` in `tests/Humans.Testing/`, and only the DbContext stubs stay local.
+     now `UserInfoFixtures.FromUser` in `tests/Humans.Testing/`, and only the DbContext stubs stay local.
    - **An enum that turns `internal` breaks every `[InlineData]` theory that names it, and the
      fix is a `[Fact]`.** `InternalsVisibleTo` makes the type *visible* to the test project but
      a `public` test method still cannot take an `internal` parameter — CS0051. Making the test

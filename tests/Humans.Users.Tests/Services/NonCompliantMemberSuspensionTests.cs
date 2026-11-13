@@ -128,7 +128,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(ids);
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                users.ToDictionary(user => user.Id, user => user.ToUserInfo())));
+                users.ToDictionary(user => user.Id, user => UserInfoFixtures.FromUser(user))));
         StubSuspendSucceeds(ids.Take(2).ToList());
 
         await _sut.SuspendNonCompliantAsync(TestContext.Current.CancellationToken);
@@ -234,7 +234,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         var user = SetupUser();
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
-            { [user.Id] = user.ToUserInfo() with { PreferredLanguage = "de" } }));
+            { [user.Id] = UserInfoFixtures.FromUser(user) with { PreferredLanguage = "de" } }));
         _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
@@ -314,7 +314,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo() }));
+                new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(user) }));
 
         return user;
     }

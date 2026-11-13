@@ -3040,13 +3040,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var invalidations = cache.BulkInvalidations;
         team.Name = "Changed outside the cached snapshot";
         await SaveAllAsync(ct);
-        var replacement = new User
+        var replacement = UserInfoFixtures.FromUser(new User
         {
             Id = merged ? Guid.NewGuid() : user.Id,
             BurnerName = "Updated Human",
             Email = "updated@example.test",
             ProfilePictureUrl = "/updated-photo.png",
-        }.ToUserInfo();
+        });
         // Users keys its merge-resolved read by the requested id, even when the value is a survivor.
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = replacement });

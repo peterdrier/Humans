@@ -978,7 +978,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             IsPrimary = true,
             IsVerified = true,
         };
-        return user.ToUserInfo([ue]);
+        return UserInfoFixtures.FromUser(user, [ue]);
     }
 
     /// <summary>
