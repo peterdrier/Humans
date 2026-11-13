@@ -85,14 +85,17 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
     Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default);
 
-    /// <summary>A null <paramref name="maxAmount"/> leaves the report uncapped.</summary>
+    /// <summary>A null cap uses the grant ceiling on pre-approved reports and leaves other reports uncapped. The caller authorizes the reviewer.</summary>
+    /// <remarks><paramref name="auditReviewerLabel"/> records review context in audit text only.</remarks>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
-        CancellationToken ct = default);
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default, string? auditReviewerLabel = null);
 
+    /// <summary>The caller authorizes the reviewer; the repository enforces Submitted status.</summary>
+    /// <remarks><paramref name="auditReviewerLabel"/> records review context in audit text only.</remarks>
     Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
-        CancellationToken ct = default);
+        Guid reportId, Guid coordinatorUserId, string reason,
+        CancellationToken ct = default, string? auditReviewerLabel = null);
 
     /// <summary>
     /// The line stays but leaves <c>Total</c> and <c>Payable</c> and is never pushed. The cap is untouched. Open to

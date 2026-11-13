@@ -354,7 +354,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task Endorse_PreapprovedReport_ByAnyoneButItsProgramsManager_IsRefused()
+    public async Task ReviewQueues_ExcludePreapprovedReportsOutsideTheViewersPrograms()
     {
         var submitter = Guid.NewGuid();
         var grant = MakeGrant();
@@ -365,11 +365,6 @@ public sealed partial class ExpenseReportServiceTests
             .Returns(UserInfo.Create(new User { Id = otherManager }, [], [], null));
         ManageGrant(otherManager, MakeGrant());
 
-        var endorse = await _sut.CoordinatorEndorseWithResultAsync(reportId, otherManager, false, null, TestContext.Current.CancellationToken);
-        var reject = await _sut.CoordinatorRejectWithResultAsync(reportId, otherManager, false, "No", TestContext.Current.CancellationToken);
-
-        endorse.Error!.OperatorMessage.Should().Contain("not a manager");
-        reject.Succeeded.Should().BeFalse();
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
         (await _sut.GetReviewQueueAsync(otherManager, isFinanceAdmin: false, TestContext.Current.CancellationToken)).Should().BeEmpty();
         (await _sut.GetCoordinatorQueueAsync(otherManager, TestContext.Current.CancellationToken)).Should().BeEmpty();
@@ -393,10 +388,10 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.GetReviewQueueAsync(manager, isFinanceAdmin: false, TestContext.Current.CancellationToken))
             .Should().ContainSingle(r => r.Id == reportId);
 
-        var over = await _sut.CoordinatorEndorseWithResultAsync(reportId, manager, false, 151m, TestContext.Current.CancellationToken);
+        var over = await _sut.CoordinatorEndorseWithResultAsync(reportId, manager, 151m, TestContext.Current.CancellationToken);
         over.Error!.OperatorMessage.Should().Contain("cannot exceed the pre-approved 150.00");
 
-        (await _sut.CoordinatorEndorseWithResultAsync(reportId, manager, false, null, TestContext.Current.CancellationToken))
+        (await _sut.CoordinatorEndorseWithResultAsync(reportId, manager, null, TestContext.Current.CancellationToken))
             .Succeeded.Should().BeTrue();
         var endorsed = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         endorsed!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
@@ -417,7 +412,7 @@ public sealed partial class ExpenseReportServiceTests
         var manager = Guid.NewGuid();
         ManageGrant(manager, grant);
 
-        (await _sut.CoordinatorRejectWithResultAsync(reportId, manager, false, "Receipt unreadable", TestContext.Current.CancellationToken))
+        (await _sut.CoordinatorRejectWithResultAsync(reportId, manager, "Receipt unreadable", TestContext.Current.CancellationToken))
             .Succeeded.Should().BeTrue();
 
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Draft);

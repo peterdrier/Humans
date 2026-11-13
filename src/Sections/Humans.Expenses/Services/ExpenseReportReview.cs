@@ -17,14 +17,11 @@ internal sealed class ExpenseReportReview(
     private const int DeclineReasonMaxLength = 1000;
 
     internal async Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
-        CancellationToken ct = default)
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default, string? auditReviewerLabel = null)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
-
-        if (!actorIsFinanceAdmin && await reportAccess.GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-            return refusal;
 
         var cap = await reportAccess.ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
         if (cap.Refusal is { } capRefusal) return capRefusal;
@@ -37,7 +34,7 @@ internal sealed class ExpenseReportReview(
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseEndorse,
             AuditEntityTypes.Report, reportId,
-            ReviewerLabel(report, actorIsFinanceAdmin)
+            (auditReviewerLabel ?? ReviewerLabel(report, false))
                 + " endorsed expense report." + ExpenseReportAudit.MaxAmountDetail(maxAmount),
             coordinatorUserId);
 
@@ -46,14 +43,11 @@ internal sealed class ExpenseReportReview(
     }
 
     internal async Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
-        CancellationToken ct = default)
+        Guid reportId, Guid coordinatorUserId, string reason,
+        CancellationToken ct = default, string? auditReviewerLabel = null)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
-
-        if (!actorIsFinanceAdmin && await reportAccess.GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-            return refusal;
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.CoordinatorRejectAsync(reportId, coordinatorUserId, reason, now, ct);
@@ -62,7 +56,7 @@ internal sealed class ExpenseReportReview(
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseCoordinatorReject,
             AuditEntityTypes.Report, reportId,
-            $"{ReviewerLabel(report, actorIsFinanceAdmin)} rejected expense report: {reason}",
+            $"{(auditReviewerLabel ?? ReviewerLabel(report, false))} rejected expense report: {reason}",
             coordinatorUserId);
 
         return ExpenseMutationResult.Success;

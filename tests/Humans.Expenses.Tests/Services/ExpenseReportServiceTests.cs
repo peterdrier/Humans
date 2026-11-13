@@ -2790,34 +2790,12 @@ public sealed partial class ExpenseReportServiceTests
 
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        var ok = (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, null, TestContext.Current.CancellationToken)).Succeeded;
+        var ok = (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, null, TestContext.Current.CancellationToken)).Succeeded;
         ok.Should().BeTrue();
 
         var loaded = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
         loaded.CoordinatorEndorsedByUserId.Should().Be(coordinator);
-    }
-
-    [HumansFact]
-    public async Task CoordinatorEndorseAsync_IsRefused_OnAReportOutsideTheBudget()
-    {
-        // An account with no budget-category mapping has no coordinator: the report goes
-        // straight to Finance, and nobody can endorse it on the way.
-        SetupActiveYear();
-        var submitter = Guid.NewGuid();
-        var reportId = (await _sut.CreateDraftAsync(submitter, submitter, OtherAccountNumber, null, ct: TestContext.Current.CancellationToken)).ReportId!.Value;
-        await using (var ctx = new ExpensesDbContext(_expensesOptions))
-        {
-            var tracked = await ctx.ExpenseReports.SingleAsync(r => r.Id == reportId, TestContext.Current.CancellationToken);
-            tracked.Status = ExpenseReportStatus.Submitted;
-            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
-        }
-
-        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, Guid.NewGuid(), false, null, TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.Error!.OperatorMessage.Should().Contain("not booked to a budget category");
-        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
     }
 
     [HumansTheory]
@@ -2900,24 +2878,6 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task CoordinatorEndorseAsync_Throws_WhenNotCoordinator()
-    {
-        var (_, category) = SetupActiveYear();
-        var reportId = Guid.NewGuid();
-        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
-            ExpenseReportStatus.Submitted);
-
-        var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
-        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
-            Arg.Any<CancellationToken>()).Returns(false);
-
-        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, nonCoordinator, false, null, TestContext.Current.CancellationToken);
-        result.Succeeded.Should().BeFalse();
-        result.Error!.OperatorMessage.Should().Be("Actor is not a coordinator of the category's team.");
-    }
-
-    [HumansFact]
     public async Task CoordinatorEndorseAsync_ByAFinanceAdminWhoIsNotTheCoordinator_Endorses()
     {
         var (_, category) = SetupActiveYear();
@@ -2928,7 +2888,7 @@ public sealed partial class ExpenseReportServiceTests
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, financeAdmin,
             Arg.Any<CancellationToken>()).Returns(false);
 
-        var ok = (await _sut.CoordinatorEndorseWithResultAsync(reportId, financeAdmin, true, null, TestContext.Current.CancellationToken)).Succeeded;
+        var ok = (await _sut.CoordinatorEndorseWithResultAsync(reportId, financeAdmin, null, TestContext.Current.CancellationToken, auditReviewerLabel: "Finance admin")).Succeeded;
 
         ok.Should().BeTrue();
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!
@@ -2949,7 +2909,7 @@ public sealed partial class ExpenseReportServiceTests
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, financeAdmin,
             Arg.Any<CancellationToken>()).Returns(false);
 
-        var ok = (await _sut.CoordinatorRejectWithResultAsync(reportId, financeAdmin, true, "Missing invoice", TestContext.Current.CancellationToken)).Succeeded;
+        var ok = (await _sut.CoordinatorRejectWithResultAsync(reportId, financeAdmin, "Missing invoice", TestContext.Current.CancellationToken, auditReviewerLabel: "Finance admin")).Succeeded;
 
         ok.Should().BeTrue();
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!
@@ -2966,7 +2926,7 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, null, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, null, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         await AuditLog.Received(1).LogAsync(
             ExpensesAuditActions.ExpenseEndorse,
@@ -2985,30 +2945,12 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, null, TestContext.Current.CancellationToken);
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, null, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Error.Should().BeNull();
         var loaded = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
-    }
-
-    [HumansFact]
-    public async Task CoordinatorEndorseWithResultAsync_ReturnsFailure_WhenNotCoordinator()
-    {
-        var (_, category) = SetupActiveYear();
-        var reportId = Guid.NewGuid();
-        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
-            ExpenseReportStatus.Submitted);
-        var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
-        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
-            Arg.Any<CancellationToken>()).Returns(false);
-
-        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, nonCoordinator, false, null, TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.Error!.OperatorMessage.Should().Contain("not a coordinator");
     }
 
     [HumansFact]
@@ -3021,7 +2963,7 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        var ok = (await _sut.CoordinatorRejectWithResultAsync(reportId, coordinator, false, "Missing invoice", TestContext.Current.CancellationToken)).Succeeded;
+        var ok = (await _sut.CoordinatorRejectWithResultAsync(reportId, coordinator, "Missing invoice", TestContext.Current.CancellationToken)).Succeeded;
         ok.Should().BeTrue();
 
         var loaded = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
@@ -3045,30 +2987,12 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        var result = await _sut.CoordinatorRejectWithResultAsync(reportId, coordinator, false, "Missing invoice", TestContext.Current.CancellationToken);
+        var result = await _sut.CoordinatorRejectWithResultAsync(reportId, coordinator, "Missing invoice", TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Error.Should().BeNull();
         var loaded = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
-    }
-
-    [HumansFact]
-    public async Task CoordinatorRejectWithResultAsync_ReturnsFailure_WhenNotCoordinator()
-    {
-        var (_, category) = SetupActiveYear();
-        var reportId = Guid.NewGuid();
-        await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
-            ExpenseReportStatus.Submitted);
-        var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
-        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
-            Arg.Any<CancellationToken>()).Returns(false);
-
-        var result = await _sut.CoordinatorRejectWithResultAsync(reportId, nonCoordinator, false, "Missing invoice", TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        result.Error!.OperatorMessage.Should().Contain("not a coordinator");
     }
 
     [HumansFact]
@@ -3081,7 +3005,7 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
 
-        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         var loaded = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
         loaded!.MaxAmount.Should().Be(40m);
@@ -3096,7 +3020,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
-        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         (await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, 25m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
@@ -3113,7 +3037,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
-        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         (await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
@@ -3419,7 +3343,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
             ExpenseReportStatus.Submitted);
         SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
-        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, false, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator, 40m, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         var ok = (await _sut.FinanceRejectWithResultAsync(reportId, Guid.NewGuid(), "Wrong category", TestContext.Current.CancellationToken)).Succeeded;
 
@@ -3619,7 +3543,7 @@ public sealed partial class ExpenseReportServiceTests
             "Draft" => () => _sut.CreateDraftAsync(actor, actor, CategoryAccountNumber, null, ct: request.Token),
             "PinnedYear" => () => _sut.UpdateDraftWithResultAsync(reportId, actor, true,
                 CategoryAccountNumber, "changed", ct: request.Token),
-            _ => () => _sut.CoordinatorEndorseWithResultAsync(reportId, actor, false, null, request.Token),
+            _ => () => _sut.DeclineLineWithResultAsync(reportId, actor, false, Guid.NewGuid(), "Missing receipt", request.Token),
         };
         await mutate.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
@@ -4692,7 +4616,7 @@ public sealed partial class ExpenseReportServiceTests
 
         var result = approve
             ? await _sut.ApproveWithResultAsync(id, Guid.NewGuid(), null, amount, ct)
-            : await _sut.CoordinatorEndorseWithResultAsync(id, Guid.NewGuid(), true, amount, ct);
+            : await _sut.CoordinatorEndorseWithResultAsync(id, Guid.NewGuid(), amount, ct, auditReviewerLabel: "Finance admin");
 
         result.Succeeded.Should().Be(expectedSuccess);
         var loaded = (await _sut.GetAsync(id, ct))!;

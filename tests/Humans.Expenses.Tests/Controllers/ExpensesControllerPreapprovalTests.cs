@@ -384,6 +384,47 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("Endorse", false, true)]
+    [Xunit.InlineData("Reject", false, true)]
+    [Xunit.InlineData("Endorse", true, true)]
+    [Xunit.InlineData("Reject", true, true)]
+    [Xunit.InlineData("Endorse", false, false)]
+    [Xunit.InlineData("Reject", false, false)]
+    public async Task FirstReview_AuthorizesBeforeMutation_AndPassesFinanceContextOnlyForAudit(
+        string action, bool financeAccess, bool permitted)
+    {
+        var report = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid() };
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
+            .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _reports.CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(ExpenseMutationResult.Success);
+        var controller = Build();
+
+        var result = string.Equals(action, "Endorse", StringComparison.Ordinal)
+            ? await controller.Endorse(report.Id, new EndorseInputModel())
+            : await controller.CoordinatorReject(report.Id, new CoordinatorRejectInputModel { Reason = "Missing invoice" });
+
+        if (!permitted)
+        {
+            result.Should().BeOfType<ForbidResult>();
+            await _reports.DidNotReceiveWithAnyArgs().CoordinatorEndorseWithResultAsync(default, default, null);
+            await _reports.DidNotReceiveWithAnyArgs().CoordinatorRejectWithResultAsync(default, default, "");
+            return;
+        }
+        result.Should().BeOfType<RedirectToActionResult>();
+        var label = financeAccess ? "Finance admin" : null;
+        if (string.Equals(action, "Endorse", StringComparison.Ordinal))
+            await _reports.Received(1).CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, CancellationToken.None, label);
+        else
+            await _reports.Received(1).CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", CancellationToken.None, label);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task Review_LoadsQueueWideHoldedFailuresOnlyForFinance(bool financeAccess)

@@ -628,7 +628,7 @@ internal sealed class ExpensesController(
         }
 
         var result = await service.CoordinatorEndorseWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), input.MaxAmount);
+            id, user.Id, input.MaxAmount, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportEndorsed"], localizer["Expenses_Flash_EndorseFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -648,7 +648,7 @@ internal sealed class ExpensesController(
         }
 
         var result = await service.CoordinatorRejectWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), input.Reason);
+            id, user.Id, input.Reason, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportRejected"], localizer["Expenses_Flash_RejectFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });

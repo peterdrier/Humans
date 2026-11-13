@@ -271,15 +271,15 @@ internal sealed class ExpenseReportService(
     }
 
     public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Review.CoordinatorEndorseWithResultAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, maxAmount, ct),
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default, string? auditReviewerLabel = null) =>
+        RunMutationAsync(ct, () => Review.CoordinatorEndorseWithResultAsync(reportId, coordinatorUserId, maxAmount, ct, auditReviewerLabel),
             "Error endorsing expense report {ReportId}", reportId);
 
     public Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Review.CoordinatorRejectWithResultAsync(reportId, coordinatorUserId, actorIsFinanceAdmin, reason, ct),
+        Guid reportId, Guid coordinatorUserId, string reason,
+        CancellationToken ct = default, string? auditReviewerLabel = null) =>
+        RunMutationAsync(ct, () => Review.CoordinatorRejectWithResultAsync(reportId, coordinatorUserId, reason, ct, auditReviewerLabel),
             "Error coordinator-rejecting expense report {ReportId}", reportId);
 
     public Task<ExpenseMutationResult> DeclineLineWithResultAsync(
