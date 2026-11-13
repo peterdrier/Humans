@@ -302,11 +302,11 @@ internal sealed class TeamService(
 
     public Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
-        bool isPublic = true, bool canToggleManagement = true, int? estimatedHours = null,
+        List<SlotPriority> priorities, int sortOrder, bool? isManagement, RolePeriod period, Guid actorUserId,
+        bool isPublic = true, int? estimatedHours = null,
         CancellationToken cancellationToken = default) =>
         RoleDefinitions.UpdateRoleDefinitionAsync(roleDefinitionId, name, description, slotCount, priorities,
-            sortOrder, isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken);
+            sortOrder, isManagement, period, actorUserId, isPublic, estimatedHours, cancellationToken);
 
     public Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>

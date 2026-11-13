@@ -4,10 +4,6 @@ version: 1
 next_id: 18
 inbox:
   - added: 2026-11-10
-    id: TEAMS-12
-    what: "TeamAdminController.EditRole computes TeamsPolicies.Manage and passes it into UpdateRoleDefinitionAsync as canToggleManagement, so the service trusts a controller-made privilege flag (design-rules.md, Authorization: no isPrivileged booleans). Found by section-doctor's controller-intent thread."
-    review: panel
-  - added: 2026-11-10
     id: TEAMS-13
     what: "The rule that a join-request rejection needs a reason lives only in TeamAdminController.RejectRequest; TeamJoining's rejection path accepts an empty reason. Found by section-doctor's controller-intent thread."
     review: panel

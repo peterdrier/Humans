@@ -2340,7 +2340,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_CanToggleManagementFalse_PreservesIsManagement()
+    public async Task UpdateRoleDefinitionAsync_OmittedManagementChange_PreservesExistingValue()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -2351,8 +2351,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await _service.UpdateRoleDefinitionAsync(
             def.Id, def.Name, null, 1, [SlotPriority.None], 0,
-            isManagement: false, RolePeriod.YearRound, actor.Id,
-            canToggleManagement: false, cancellationToken: TestContext.Current.CancellationToken);
+            isManagement: null, RolePeriod.YearRound, actor.Id,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         ClearAllTrackers();
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id, TestContext.Current.CancellationToken);

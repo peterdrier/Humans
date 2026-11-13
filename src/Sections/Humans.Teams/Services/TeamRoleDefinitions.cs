@@ -75,9 +75,8 @@ internal sealed class TeamRoleDefinitions(
 
     internal async Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
+        List<SlotPriority> priorities, int sortOrder, bool? isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
-        bool canToggleManagement = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default)
     {
@@ -93,8 +92,7 @@ internal sealed class TeamRoleDefinitions(
         if (RoleCapacityRefusal(slotCount, priorities, estimatedHours) is { } prioritiesRefusal)
             return new(Refusal: prioritiesRefusal);
 
-        if (!canToggleManagement)
-            isManagement = definition.IsManagement;
+        var managementValue = isManagement ?? definition.IsManagement;
 
         if (slotCount < definition.Assignments.Count
             || definition.Assignments.Any(assignment => assignment.SlotIndex >= slotCount))
@@ -110,7 +108,7 @@ internal sealed class TeamRoleDefinitions(
                 return new(Refusal: $"A role definition with name '{name}' already exists for this team");
         }
 
-        if (isManagement && !definition.IsManagement)
+        if (managementValue && !definition.IsManagement)
         {
             var existingManagement = await repo.OtherRoleHasIsManagementAsync(
                 definition.TeamId, roleDefinitionId, cancellationToken);
@@ -125,10 +123,10 @@ internal sealed class TeamRoleDefinitions(
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
 
-        var managementChanged = definition.IsManagement != isManagement;
+        var managementChanged = definition.IsManagement != managementValue;
 
         definition.IsPublic = isPublic;
-        definition.IsManagement = isManagement;
+        definition.IsManagement = managementValue;
         definition.Period = period;
         definition.UpdatedAt = clock.GetCurrentInstant();
 

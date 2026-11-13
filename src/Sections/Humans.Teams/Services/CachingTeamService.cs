@@ -360,16 +360,15 @@ internal sealed class CachingTeamService(
         int slotCount,
         List<SlotPriority> priorities,
         int sortOrder,
-        bool isManagement,
+        bool? isManagement,
         RolePeriod period,
         Guid actorUserId,
         bool isPublic = true,
-        bool canToggleManagement = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UpdateRoleDefinitionAsync(
             roleDefinitionId, name, description, slotCount, priorities, sortOrder,
-            isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken), static result => result.Succeeded);
+            isManagement, period, actorUserId, isPublic, estimatedHours, cancellationToken), static result => result.Succeeded);
 
     public Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId,

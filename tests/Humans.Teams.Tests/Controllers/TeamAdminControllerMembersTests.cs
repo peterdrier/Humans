@@ -543,6 +543,53 @@ public class TeamAdminControllerMembersTests
             || string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.UpdateRoleDefinitionAsync), StringComparison.Ordinal));
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task EditRole_OnlyManagementPolicyAllowsSupplyingManagementChange(bool authorized, bool requested)
+    {
+        var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        teams.UpdateRoleDefinitionAsync(default, default!, default, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(new TeamRoleDefinitionMutationResult());
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Manage)
+            .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.EditRole(team.Slug, roleId, new EditRoleDefinitionModel
+        {
+            Name = "Updated", SlotCount = 1, Priorities = ["None"], IsManagement = requested, EstimatedHours = 7
+        });
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await teams.Received(1).UpdateRoleDefinitionAsync(roleId, "Updated", null, 1,
+            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : (bool?)null,
+            RolePeriod.YearRound, userId, true, 7, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ProvisionEmail_ShowsCredentialRecoveryWarningForCommittedAccount()
     {

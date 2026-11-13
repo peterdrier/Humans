@@ -233,11 +233,11 @@ internal interface ITeamManagementService : ITeamManagement
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>A null management value leaves that field unchanged; the controller authorizes supplied changes.</summary>
     Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
+        List<SlotPriority> priorities, int sortOrder, bool? isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
-        bool canToggleManagement = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 

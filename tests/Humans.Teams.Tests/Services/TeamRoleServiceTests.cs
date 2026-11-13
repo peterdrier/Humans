@@ -355,7 +355,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_WhenCallerCannotToggleManagement_PreservesExistingValue()
+    public async Task UpdateRoleDefinitionAsync_OmittedManagementChange_PreservesExistingValue()
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -365,8 +365,8 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var result = await _service.UpdateRoleDefinitionAsync(
             role.Id, "Lead", null, 1,
-            [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
-            canToggleManagement: false, cancellationToken: Xunit.TestContext.Current.CancellationToken);
+            [SlotPriority.Critical], 0, null, RolePeriod.YearRound, admin.Id,
+            cancellationToken: Xunit.TestContext.Current.CancellationToken);
 
         result.Definition!.IsManagement.Should().BeTrue();
     }

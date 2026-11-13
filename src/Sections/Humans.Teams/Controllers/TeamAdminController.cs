@@ -398,14 +398,15 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
+        bool? managementChange = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded
+            ? model.IsManagement : null;
         var priorities = ParseRolePriorities(model.Priorities);
         var result = priorities is null
             ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
             : await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
-                model.IsPublic, canToggleManagement, model.EstimatedHours);
+                priorities, model.SortOrder, managementChange, model.Period, user.Id,
+                model.IsPublic, model.EstimatedHours);
 
         if (result.Refusal is { } refusal)
         {
