@@ -50,17 +50,13 @@ public sealed class ProfileCardViewComponentTests
             UserInfo.Create(new User { Id = targetId, FirstName = "Private name" }, [], [], UserFixtures.Profile()));
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(viewerExists
             ? UserInfo.Create(new User { Id = survivorId }, [], [], null) : null);
-        var roles = Substitute.For<IRoleAssignmentService>();
-        roles.IsUserBoardMemberAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivorIsBoard);
-        roles.IsUserBoardMemberAsync(cookieId, Arg.Any<CancellationToken>()).Returns(!survivorIsBoard);
         var contacts = Substitute.For<IContactFieldService>();
         contacts.GetViewerAccessLevelAsync(targetId, survivorId, Arg.Any<CancellationToken>())
-            .Returns(ContactFieldVisibility.CoordinatorsAndBoard);
+            .Returns((ContactFieldVisibility.CoordinatorsAndBoard, survivorIsBoard, false));
         var emails = Substitute.For<IUserEmailService>();
         var teams = Substitute.For<ITeamService>();
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
-        var component = new ProfileCardViewComponent(users, contacts, emails, teams, roles,
-            Substitute.For<ICommunicationPreferenceService>())
+        var component = new ProfileCardViewComponent(users, contacts, emails, teams)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -84,7 +80,6 @@ public sealed class ProfileCardViewComponentTests
             result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
             contacts.ReceivedCalls().Should().BeEmpty();
             emails.ReceivedCalls().Should().BeEmpty();
-            roles.ReceivedCalls().Should().BeEmpty();
             return;
         }
 
@@ -95,7 +90,8 @@ public sealed class ProfileCardViewComponentTests
         await contacts.Received(1).GetVisibleContactFieldsAsync(targetId, survivorId, Arg.Any<CancellationToken>());
         await emails.Received(1).GetVisibleEmailsAsync(targetId,
             ContactFieldVisibility.CoordinatorsAndBoard, Arg.Any<CancellationToken>());
-        await roles.DidNotReceive().IsUserBoardMemberAsync(cookieId, Arg.Any<CancellationToken>());
+        await contacts.Received(1).GetViewerAccessLevelAsync(targetId, survivorId,
+            Arg.Any<CancellationToken>(), ProfileCardViewMode.Public);
     }
 
     [HumansTheory]
@@ -139,8 +135,7 @@ public sealed class ProfileCardViewComponentTests
             [child.Id] = child
         });
         var component = new ProfileCardViewComponent(
-            users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(), teams,
-            Substitute.For<IRoleAssignmentService>(), Substitute.For<ICommunicationPreferenceService>())
+            users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(), teams)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -175,8 +170,7 @@ public sealed class ProfileCardViewComponentTests
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
         var component = new ProfileCardViewComponent(
             users, Substitute.For<IContactFieldService>(), Substitute.For<IUserEmailService>(),
-            Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
-            Substitute.For<ICommunicationPreferenceService>())
+            Substitute.For<ITeamService>())
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -207,10 +201,12 @@ public sealed class ProfileCardViewComponentTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var url = Substitute.For<IUrlHelper>();
         url.Action(Arg.Any<UrlActionContext>()).Returns("/old-picture-projection");
-        var preferences = Substitute.For<ICommunicationPreferenceService>();
-        preferences.AcceptsFacilitatedMessagesAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
-        var component = new ProfileCardViewComponent(users, Substitute.For<IContactFieldService>(),
-            Substitute.For<IUserEmailService>(), teams, Substitute.For<IRoleAssignmentService>(), preferences)
+        var contacts = Substitute.For<IContactFieldService>();
+        contacts.GetViewerAccessLevelAsync(userId, userId, Arg.Any<CancellationToken>(), viewMode)
+            .Returns((ContactFieldVisibility.BoardOnly, viewMode != ProfileCardViewMode.Public,
+                viewMode != ProfileCardViewMode.Self));
+        var component = new ProfileCardViewComponent(users, contacts,
+            Substitute.For<IUserEmailService>(), teams)
         {
             Url = url,
             ViewComponentContext = new ViewComponentContext

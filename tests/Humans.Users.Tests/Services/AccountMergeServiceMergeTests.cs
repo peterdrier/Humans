@@ -1,3 +1,4 @@
+using Humans.Email.Contracts;
 using System.Transactions;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -190,7 +191,7 @@ public class AccountMergeServiceMergeTests
         if (lostAcknowledgement) writeOptions.AddInterceptors(new LostContactMergeAcknowledgement(failure));
         var contacts = new ContactFieldService(new UserRepository(new TestDbContextFactory(writeOptions.Options), _clock),
             cache, Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(), cache,
-            _clock, NullLogger<ContactFieldService>.Instance, Substitute.For<IStringLocalizer<UsersResource>>());
+            _clock, NullLogger<ContactFieldService>.Instance, Substitute.For<IStringLocalizer<UsersResource>>(), Substitute.For<IUserEmailService>(), Substitute.For<ICommunicationPreferenceService>());
         var later = Substitute.For<IUserMerge>();
         later.ReassignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(failure));

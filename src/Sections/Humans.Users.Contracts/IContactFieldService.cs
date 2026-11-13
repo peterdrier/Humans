@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 
 namespace Humans.Users.Contracts;
 
@@ -7,7 +8,8 @@ public interface IContactFieldService
     Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
         Guid userId,
         Guid viewerUserId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        ProfileCardViewMode viewMode = ProfileCardViewMode.Public);
 
     /// <summary>Every field, for the owner's editor.</summary>
     Task<IReadOnlyList<ContactFieldEditDto>> GetAllContactFieldsAsync(
@@ -25,8 +27,14 @@ public interface IContactFieldService
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null);
 
-    Task<ContactFieldVisibility> GetViewerAccessLevelAsync(
+    /// <summary>
+    /// Profile contact scope, private-field visibility and message-button eligibility for the supplied
+    /// rendering context. Self/Admin contexts are supplied only by their already-authorized hosts.
+    /// Public legal names require Board membership, even when the viewer is the owner.
+    /// </summary>
+    Task<(ContactFieldVisibility AccessLevel, bool CanViewLegalName, bool CanSendMessage)> GetViewerAccessLevelAsync(
         Guid ownerUserId,
         Guid viewerUserId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        ProfileCardViewMode viewMode = ProfileCardViewMode.Public);
 }

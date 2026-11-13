@@ -4,10 +4,6 @@ version: 1
 next_id: 30
 inbox:
   - added: 2026-11-06
-    id: USERS-27
-    what: "ProfileCardViewComponent computes who may see legal names (Board member) and which contact access level applies (self/admin view = BoardOnly) instead of reading both from IContactFieldService; that is GDPR visibility, a fact, worked out in a view component. Its CanSendMessage predicate is likewise computed beside ICommunicationPreferenceService. Found by section-doctor controller-intent read."
-    review: panel
-  - added: 2026-11-06
     id: USERS-28
     what: "The same rule is written twice across the section's controllers and view models: 'suspended people are hidden' (ProfileViewController.ViewProfile, UsersController Birthdays and Map); 'initial setup' (ProfileController.Edit and ProfileEditViewModelBuilder); 'coordinator or privileged approver' two ways in ProfileViewController; the effective email fallback two ways (AdminHumanDetailViewModelBuilder vs HumanSummaryViewComponent); the team-membership projection (HumanSummaryViewComponent vs ProfileViewController.Popover). One computed property each on UserInfo / the owning read. Found by section-doctor controller-intent read."
     review: panel

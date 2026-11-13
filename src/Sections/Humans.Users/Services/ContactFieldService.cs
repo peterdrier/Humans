@@ -1,4 +1,5 @@
 using Humans.Users.Helpers;
+using Humans.Email.Contracts;
 using Humans.Base.Extensions;
 using Microsoft.Extensions.Localization;
 using Humans.Auth.Contracts;
@@ -19,19 +20,23 @@ internal sealed class ContactFieldService(
     IUserInfoSliceRefresher userInfoRefresher,
     IClock clock,
     ILogger<ContactFieldService> logger,
-    IStringLocalizer<UsersResource> localizer) : IContactFieldService, IUserMerge
+    IStringLocalizer<UsersResource> localizer,
+    IUserEmailService userEmailService,
+    ICommunicationPreferenceService communicationPreferences) : IContactFieldService, IUserMerge
 {
     public async Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
         Guid userId,
         Guid viewerUserId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        ProfileCardViewMode viewMode = ProfileCardViewMode.Public)
     {
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         if (info?.Profile is null)
             return [];
 
-        var accessLevel = await GetViewerAccessLevelAsync(
-            info.Id, viewerUserId, cancellationToken);
+        var accessLevel = viewMode == ProfileCardViewMode.Public
+            ? (await GetViewerAccessCoreAsync(info.Id, viewerUserId, cancellationToken)).AccessLevel
+            : ContactFieldVisibility.BoardOnly;
         var allowedVisibilities = ContactFieldVisibilityRules.GetAllowedVisibilities(accessLevel);
 
         return info.Profile.ContactFields
@@ -164,16 +169,26 @@ internal sealed class ContactFieldService(
         return null;
     }
 
-    public async Task<ContactFieldVisibility> GetViewerAccessLevelAsync(
-        Guid ownerUserId,
-        Guid viewerUserId,
-        CancellationToken cancellationToken = default)
+    public async Task<(ContactFieldVisibility AccessLevel, bool CanViewLegalName, bool CanSendMessage)> GetViewerAccessLevelAsync(
+        Guid ownerUserId, Guid viewerUserId, CancellationToken cancellationToken = default,
+        ProfileCardViewMode viewMode = ProfileCardViewMode.Public)
     {
-        if (ownerUserId == viewerUserId)
-            return ContactFieldVisibility.BoardOnly;
+        var access = viewMode == ProfileCardViewMode.Public
+            ? await GetViewerAccessCoreAsync(ownerUserId, viewerUserId, cancellationToken)
+            : (AccessLevel: ContactFieldVisibility.BoardOnly, CanViewLegalName: true);
+        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(ownerUserId, access.AccessLevel, cancellationToken);
+        var canSendMessage = viewMode != ProfileCardViewMode.Self
+            && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
+            && await communicationPreferences.AcceptsFacilitatedMessagesAsync(ownerUserId, cancellationToken);
+        return (access.AccessLevel, access.CanViewLegalName, canSendMessage);
+    }
 
-        if (await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken))
-            return ContactFieldVisibility.BoardOnly;
+    private async Task<(ContactFieldVisibility AccessLevel, bool CanViewLegalName)> GetViewerAccessCoreAsync(
+        Guid ownerUserId, Guid viewerUserId, CancellationToken cancellationToken)
+    {
+        var isBoard = await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken);
+        if (ownerUserId == viewerUserId || isBoard)
+            return (ContactFieldVisibility.BoardOnly, isBoard);
 
         // Permissions belong to this viewer, not to the scoped service instance.
         var allTeams = (await teamService.GetTeamsAsync(cancellationToken)).Values;
@@ -182,7 +197,7 @@ internal sealed class ContactFieldService(
             .Where(x => x.Membership is not null)
             .ToList();
         if (viewerMemberships.Any(x => x.Membership!.Role == TeamMemberRole.Coordinator))
-            return ContactFieldVisibility.CoordinatorsAndBoard;
+            return (ContactFieldVisibility.CoordinatorsAndBoard, false);
 
         var viewerTeamIds = viewerMemberships
             .Where(x => x.TeamInfo.SystemTeamType != SystemTeamType.Volunteers)
@@ -196,9 +211,9 @@ internal sealed class ContactFieldService(
             .Select(t => t.Id);
 
         if (viewerTeamIds.Overlaps(ownerTeamIds))
-            return ContactFieldVisibility.MyTeams;
+            return (ContactFieldVisibility.MyTeams, false);
 
-        return ContactFieldVisibility.AllActiveProfiles;
+        return (ContactFieldVisibility.AllActiveProfiles, false);
     }
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
