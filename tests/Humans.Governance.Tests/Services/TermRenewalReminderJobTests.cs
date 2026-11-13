@@ -44,6 +44,8 @@ public sealed class TermRenewalReminderJobTests
 
         await job.ExecuteAsync(CancellationToken.None);
 
+        await applications.Received(1).GetExpiringApplicationsNeedingReminderAsync(
+            new LocalDate(2026, 3, 1), new LocalDate(2026, 5, 30), CancellationToken.None);
         var notice = notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         notice[0].Should().Be(GovernanceNotificationSources.TermRenewalReminder);
         ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(liveId);

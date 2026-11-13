@@ -24,7 +24,6 @@ internal sealed class TermRenewalReminderJob(
     IClock clock) : IRecurringJob
 {
     private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
-    private const int ReminderDaysBeforeExpiry = 90;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
@@ -33,7 +32,7 @@ internal sealed class TermRenewalReminderJob(
         try
         {
             var today = clock.GetCurrentInstant().InUtc().Date;
-            var reminderThreshold = today.PlusDays(ReminderDaysBeforeExpiry);
+            var reminderThreshold = TermExpiryCalculator.GetRenewalThreshold(today);
 
             var expiringApplications = await applicationDecisionService
                 .GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, cancellationToken);
