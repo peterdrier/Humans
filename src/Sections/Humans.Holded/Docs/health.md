@@ -45,7 +45,7 @@ lines with who the money moved to or from.
 | 7 | *Record that money moved.* | `IHoldedWrite` | `PayPurchaseDocumentAsync`, `ReconcileBankMovementAsync`, `PostJournalEntryAsync` |
 | 8 | *Book money we are owed.* | `IHoldedWrite` | `FindSalesDocumentsByTagAsync`, `IssueSalesDocumentAsync`, `ApproveSalesDocumentAsync` |
 | 9 | *Who is the counterparty?* | `IHoldedWrite` | `EnsureCreditorContactAsync`, `CreateContactAsync`, `DeleteContactAsync` |
-| 10 | *Show the copies and the meter.* | `IHoldedAdminService` + `/Holded/*` | `GetSummaryAsync`, `GetAccountsPageAsync`, `GetAccountStatementAsync`, `GetEntryViewAsync`, `GetCallsByMonthAsync` |
+| 10 | *Show the copies and the meter.* | `IHoldedAdminService` + `/Holded/*` | `GetSummaryAsync`, `RefreshUsageAsync`, `SyncNowAsync`, `GetAccountsPageAsync`, `GetAccountStatementAsync`, `GetEntryViewAsync`, `GetCallsByMonthAsync` |
 | 11 | *Can we call Holded at all?* | `IHoldedService` | `IsConfigured` |
 
 Shapes 1–5 are the mirror, 6–9 the write face, 10 the admin screen. Every shape sits on the
@@ -67,7 +67,7 @@ Contracts/                      what other sections may hold
   IHoldedWrite                  shapes 6–9: every write another section makes, plus its outcome records
   mirror and write DTOs         what those interfaces carry; nothing else
   HoldedApiException            transient vs permanent, the one failure vocabulary callers catch
-Services/Service                IHoldedService reads + IHoldedAdminService; forwards syncs
+Services/Service                IHoldedService reads + IHoldedAdminService; forwards syncs, runs Sync now
 Services/HoldedMirrorSync       every sync: gates, replace, reconcile, failure state, call-log drain
 Services/HoldedAccountReader    balances, account rows, statements and entries for the screen
 Services/HoldedWrite            the write face over the connector and the chart mirror
@@ -105,8 +105,10 @@ Stated so a violation is recognisable; each names the line that enforces it.
 2. **The trailing window is anchored on now**, never on the newest cached line: the API filters
    on accounting date, so a late entry dated into a closed month must still be reachable.
    `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:88`
-3. **Mirror reads never call Holded.** `Service`'s read members reach only the repository.
-   `src/Sections/Humans.Holded/Services/Service.cs:35`
+3. **Mirror reads never call Holded**, and no page load does: `Service`'s read members reach only
+   the repository, and the usage meter is a stored reading refreshed on request.
+   `src/Sections/Humans.Holded/Services/Service.cs:35`,
+   `src/Sections/Humans.Holded/Services/Service.cs:173`
 4. **Reconciliation compares the raw `Debit − Credit` sign**; the association's-POV flip is
    applied after the verdict and only for display.
    `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:403`,
@@ -179,6 +181,8 @@ Settled decisions. Later runs should stop re-litigating these.
 - **The 45-day window is a quota choice**: reconciliation catches anything older.
 - **The payment id is read off the document, not the POST**, which answers `{"status":"paid"}`
   and nothing else.
+- **The usage reading is a `holded_sync_states` row** (kind `Usage`, count in `LastCount`), not
+  its own table; its period is the Madrid month of the read, since Holded reports the current month.
 - **`HoldedMirrorSync` is built per call** and its gates are static: the gates, not the
   instance, carry the one-at-a-time rule.
 

@@ -10,7 +10,8 @@
 
 Holded (the company) is a SaaS vendor that holds the association's accounting books and records.
 This section is our interface and conduit to that vendor. It keeps its jobs apart:
-it keeps a cached copy of the book so no page ever waits on Holded, and it is the one connector
+it keeps cached copies of the book, purchase documents, contacts and bank feed so no page ever
+waits on Holded, and it is the one connector
 other sections use to book, pay and invoice. Holded's API has quotas, so keeping that cache
 current and metering every call against the allowance is part of the job.
 
@@ -57,7 +58,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 | `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced), notes, doc + line tags, first line's booked account |
 | `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
 | `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
-| `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `BankMovements`), lazy-created |
+| `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `BankMovements`), plus `Usage`: the month's call count as last read (`LastCount`) and when (`LastSyncAt`); lazy-created |
 
 Sentinel table is `holded_accounts` — created by this baseline alone, so its existence proves
 the baseline ran. (`holded_ledger_lines` could not carry that proof: the historical chain and
@@ -70,8 +71,9 @@ Every page under `/Holded` reads the mirror. Summary, Accounts, Purchases and AP
 group's items, so the admin shell renders them as the tab strip; an account's or entry's page sits
 under Accounts. Each page does one thing.
 
-- `/Holded` — summary: configured or not (`IsConfigured`), live API usage as one line (GET
-  /usage, skipped when not configured; budget = `Holded:MonthlyCallBudget`, default 2000), per
+- `/Holded` — summary: configured or not (`IsConfigured`), the stored API usage reading as one
+  line with when it was read and a refresh button (one GET /usage, `FinancePolicies.Manage`;
+  loading the page never calls Holded; budget = `Holded:MonthlyCallBudget`, default 2000), per
   sync kind the last run, status, count and error, mirror counts (lines, entries, non-archived
   accounts), the number of accounts where mirror ≠ Holded (linked to `/Holded/Accounts?mismatched=true`),
   and the Sync now / Full resync buttons with the full resync's cost estimate (one call per 200
@@ -248,7 +250,7 @@ it wrote.
 
 - `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, `SyncContactsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. A failed document or contact pull still lets the ledger sweep run, then fails the job.
 - `HoldedMirrorCatchUp` (hosted service): at boot, with an API key and a purchase-document or contact mirror that has never synced (a fresh deployment), enqueues one `HoldedSyncJob` instead of leaving Finance's actuals empty until 03:00. Catch-up read or enqueue failures log a warning and let the app boot; scheduled and manual sync remain available. Requested startup cancellation propagates.
-- `/Holded` buttons: `SyncNow` (purchase docs, contacts, then incremental ledger + reconcile; each runs whatever the other did, and a failure names which), `FullSync` (ledger).
+- `/Holded` buttons: `SyncNow` (the admin service's `SyncNowAsync`: purchase docs, contacts, then incremental ledger + reconcile; each runs whatever the others did, and a failure names which), `FullSync` (ledger), `RefreshUsage` (one GET /usage into the `Usage` state row; a failure keeps the last reading and marks it).
 - Finance's `POST /Finance/HoldedSync/Run` ("Sync Now" on its unmatched queue) calls `SyncPurchaseDocumentsAsync`.
 
 ## Cross-Section Dependencies
