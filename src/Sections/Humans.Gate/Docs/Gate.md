@@ -287,8 +287,8 @@ vendor check-in backfill page lives outside the kiosk folder and gets it from th
 `GateTerminal` system account (no roles/teams) sees only this kiosk; on the device, Edge Assigned
 Access removes browser chrome too.
 **Static assets:** `wwwroot/css/gate/` and `wwwroot/js/gate/` ship with the RCL and are served
-at `/_content/Humans.Gate/…`. `GatePageRenderTests` (in the local-only
-`Humans.Integration.Tests`, self-skipped under CI) asserts both the `?v=` cache-buster and a
+at `/_content/Humans.Gate/…`. `GatePageRenderTests` (in
+`Humans.Integration.Tests`, a PR check) asserts both the `?v=` cache-buster and a
 200 on each file.
 **Status:** attendance-gateway posture signed off by Peter: a gate admit is the check-in of record
 and writes the Attended participation row directly (see Tickets under Cross-Section Dependencies).
