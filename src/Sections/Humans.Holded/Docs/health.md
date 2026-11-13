@@ -12,197 +12,175 @@ is the work.
 
 ## 1. What the section does
 
-Keeps a local copy of the association's accounting book so nothing else has to ask Holded for it,
-and owns the one piece of software that talks to Holded at all.
+It is the association's only line to its accounting vendor. Nothing else in the system talks to
+Holded; everything else asks this section.
 
-The section is not one job:
+It does two jobs:
 
-- **The book-keeper's copy.** Every night it asks Holded what happened in the daybook lately,
-  writes that down, and then checks its own arithmetic against Holded's account totals. Where the
-  two disagree it re-reads that account's whole history once and reports what still will not
-  reconcile. Nothing else in the system ever waits on Holded to show a balance.
-- **The telephone to Holded.** Creating supplier invoices, paying them, issuing customer invoices
-  and receipts, keeping counterparty records, listing the chart of accounts. Other parts of the
-  system do the deciding; this section does the talking, and counts the calls because the plan
-  only allows so many a month.
+- **Keeps copies.** The book (every journal line and the chart of accounts), every purchase
+  document, every contact, and the bank feed of the windows someone asked for are copied locally,
+  so a page never waits on Holded and a balance never costs a call. Every night it refreshes the
+  documents, the contacts and the recent part of the book, then checks its own arithmetic against
+  Holded's account totals and re-reads whatever does not agree.
+- **Writes for others.** Other parts of the system decide; this section books supplier documents
+  and their attachments, pays them, ticks bank lines as settled, posts journal entries, issues
+  customer invoices and receipts, and creates or removes contacts and expense accounts. It hands
+  back outcomes, not Holded's internal ids, except the one payment id a later bank tick must name.
 
-It also shows a finance admin one screen: how much of the month's call allowance is gone, when
-each sync last ran, which accounts do not reconcile, and — for any account — every line on it and
-who the money moved to or from.
+Every call is counted, because the plan allows only so many a month. A finance admin (and the
+Board, read-only) gets one screen: the month's call usage, when each copy last refreshed, which
+accounts disagree with Holded, the chart, the purchase documents, and any account's or entry's
+lines with who the money moved to or from.
 
 ## 2. The shapes
 
 | # | Question the caller is asking | Answered by | Members |
 |---|---|---|---|
-| 1 | *What does the book say about this account?* | `IHoldedService` (mirror reads) | `GetLedgerLinesAsync`, `GetAccountBalancesAsync` |
-| 2 | *Make the copy current.* | `IHoldedService` / `IHoldedNightlySync` | `SyncLedgerAsync`, `RunAsync` |
-| 3 | *Show me the mirror's own state.* | `IHoldedAdminService` + `GET /Holded` | `GetOverviewAsync` |
-| 4 | *Show me one slice of the book.* | `IHoldedAdminService` + `GET /Holded/Accounts/{n}`, `GET /Holded/Entries/{n}` | `GetAccountStatementAsync`, `GetEntryAsync` |
-| 5 | *Book a cost we owe.* | `IHoldedClient` | `CreatePurchaseDocumentAsync`, `ApprovePurchaseDocumentAsync`, `DeletePurchaseDocumentAsync`, `UploadAttachmentAsync` |
-| 6 | *Book money we are owed.* | `IHoldedClient` | `CreateSalesDocumentAsync`, `ApproveSalesDocumentAsync` |
-| 7 | *Read a document back.* | `IHoldedClient` | `GetPurchaseDocumentAsync`, `GetSalesDocumentAsync`, `ListPurchaseDocumentsAsync`, `FindSalesDocumentIdsByTagAsync` |
-| 8 | *Record that money moved.* | `IHoldedClient` | `PayPurchaseDocumentAsync`, `PostLedgerEntryAsync` |
-| 9 | *What did the bank see, and which documents does a line settle?* | `IHoldedClient` | `ListBankMovementsAsync`, `ReconcileBankMovementAsync` |
-| 10 | *Who is the counterparty?* | `IHoldedClient` | `CreateContactAsync`, `GetContactAsync`, `ListContactsAsync`, `DeleteContactAsync` |
-| 11 | *What accounts exist to book to?* | `IHoldedClient` | `ListAccountingAccountsAsync`, `ListExpenseAccountsAsync`, `CreateExpenseAccountAsync` |
-| 12 | *What raw journal lines are in this window?* | `IHoldedClient` | `ListLedgerEntriesAsync` |
-| 13 | *Can we call Holded, and how much have we spent?* | `IHoldedClient` | `IsConfigured`, `GetUsageAsync` |
+| 1 | *What does the book say?* | `IHoldedService` | `GetLedgerLinesAsync`, `GetAccountBalancesAsync`, `GetEntryAsync`, `GetLedgerSyncedAtAsync` |
+| 2 | *What accounts exist to book to?* | `IHoldedService` | `GetChartAsync`, `SyncChartAsync` |
+| 3 | *What documents, contacts and bank lines does Holded hold?* | `IHoldedService` | `GetPurchaseDocumentsAsync`, `GetContactsAsync`, `GetBankMovementsAsync` |
+| 4 | *Make a copy current before I act on it.* | `IHoldedService` | `SyncLedgerAsync`, `SyncAccountLedgerAsync`, `SyncPurchaseDocumentsAsync`, `SyncPurchaseDocumentNotesAsync`, `SyncContactsAsync`, `SyncBankMovementsAsync` |
+| 5 | *Make every copy current tonight.* | `IHoldedNightlySync` + `HoldedSyncJob`, `HoldedMirrorCatchUp` | `RunAsync` |
+| 6 | *Book a cost we owe.* | `IHoldedWrite` | `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachmentAsync`, `EnsurePurchaseDocumentApprovedAsync`, `DeletePurchaseDocumentByIdAsync`, `EnsureExpenseAccountAsync` |
+| 7 | *Record that money moved.* | `IHoldedWrite` | `PayPurchaseDocumentAsync`, `ReconcileBankMovementAsync`, `PostJournalEntryAsync` |
+| 8 | *Book money we are owed.* | `IHoldedWrite` | `FindSalesDocumentsByTagAsync`, `IssueSalesDocumentAsync`, `ApproveSalesDocumentAsync` |
+| 9 | *Who is the counterparty?* | `IHoldedWrite` | `EnsureCreditorContactAsync`, `CreateContactAsync`, `DeleteContactAsync` |
+| 10 | *Show the copies and the meter.* | `IHoldedAdminService` + `/Holded/*` | `GetSummaryAsync`, `GetAccountsPageAsync`, `GetAccountStatementAsync`, `GetEntryViewAsync`, `GetCallsByMonthAsync` |
+| 11 | *Can we call Holded at all?* | `IHoldedService` | `IsConfigured` |
 
-Shapes 1–4 are the mirror; 5–13 are the connector. They share a project and nothing else: the
-mirror is the connector's only in-section caller (shape 12 and part of 11 and 13), and shapes 5–10
-exist for Finance, Expenses, Store and Workgroups. Shape 9 is the one connector read that is deliberately not
-mirrored: Finance's SEPA booking reads the bank feed live over a bounded window. That is the
-section's one real seam.
+Shapes 1–5 are the mirror, 6–9 the write face, 10 the admin screen. Every shape sits on the
+internal connector, `IHoldedClient`, which no other section can reach.
+
+Built with no caller yet (the single-mirror phase 1 added them ahead of phase 2's adopters):
+`IHoldedWrite.EnsurePurchaseDocumentAsync`, `IHoldedWrite.DeletePurchaseDocumentAsync` (the
+match-and-refuse delete), `IHoldedService.GetPurchaseLinesAsync`,
+`IHoldedService.GetOpenDocumentAmountsAsync`, `IHoldedService.GetSumsByAccountAsync` and
+`IHoldedService.GetChartSyncedAtAsync`. They are surface without a shape until a caller arrives.
 
 ## 3. Structure
 
 Written fresh from the shapes, not from today's folders.
 
 ```
-Contracts/                    what other sections may hold
-  Holded DTOs                   the shapes the service and writes carry
-  IHoldedService                shapes 1–2 — the mirror's cross-section read
-  HoldedApiException            the connector's transient-vs-permanent failure classification
-Services/IHoldedClient          shapes 5–13 — the telephone; internal, only this section dials it
-Services/HoldedClient           the existing typed-client contract facade; composes the operation clients
-Services/Holded*Client          purchases, sales, contacts, accounting and treasury: payloads and parsing
-Services/HoldedTransport        one shared retry, auth, timing, metering and cursor-pagination pipeline
-Services/HoldedJson             shared wire-value readers and null-omitting serialization options
-Services/Service                shapes 1–4: sweep, reconcile, and the read models
-Services/HoldedCallLog          the in-process meter the client fills and Service drains
-Services/HoldedNightlySync      shape 2's body: this section's sweep (Finance runs its own doc sync)
-Services/IHoldedNightlySync     shape 2 — the nightly body, internal: only the job calls it
-Jobs/HoldedSyncJob              the Hangfire shim over it; Section (ISectionJobs) names it and the cron
+Contracts/                      what other sections may hold
+  IHoldedService                shapes 1–4 and 11: mirror reads and the syncs a caller may run first
+  IHoldedWrite                  shapes 6–9: every write another section makes, plus its outcome records
+  mirror and write DTOs         what those two carry; nothing else
+  HoldedApiException            transient vs permanent, the one failure vocabulary callers catch
+Services/Service                IHoldedService reads + IHoldedAdminService; forwards syncs
+Services/HoldedMirrorSync       every sync: gates, replace, reconcile, failure state, call-log drain
+Services/HoldedAccountReader    balances, account rows, statements and entries for the screen
+Services/HoldedWrite            the write face over the connector and the chart mirror
+Services/IHoldedClient          the connector, internal
+Services/HoldedClient           facade over the operation clients
+Services/Holded*Client          purchases, sales, contacts, accounting, treasury: payloads and parsing
+Services/HoldedTransport        auth, 429 policy, cursor paging, metering, timing
+Services/HoldedJson             wire-value readers and the null-omitting serializer options
+Services/HoldedCallLog          in-process call meter, drained to holded_api_calls
+Services/HoldedNightlySync      shape 5's body
+Jobs/                           the Hangfire shim and the boot catch-up
 Data/Repository                 the only code that touches HoldedDbContext
-Domain/                         the mirrored tables; internal, and they stay internal
-Controllers/HoldedController    translation only, no arithmetic
-Models/HoldedAdminModels        the admin screen's vocabulary, every type internal
-Views/Holded/                   all read-only, all admin
+Domain/                         the mirrored tables, internal
+Controllers/HoldedController    translation and display order only
+Models/HoldedAdminModels        the screen's vocabulary, internal
+Views/Holded/                   read-only pages plus the two sync buttons
 ```
 
-Structural facts the layout should make obvious and currently does not:
+Structural facts the layout should make obvious:
 
-- **`IHoldedClient` is a leaf, not a section service.** It has no repository, no invariant of the
-  mirror's, and never touches `HoldedDbContext`. It is internal: every other section reads the mirrors
-  through `IHoldedService` and writes through `IHoldedWrite`.
-- **`Models/HoldedAdminModels.cs` must stay internal.** The moment one type escapes, the admin
-  screen becomes a cross-section contract.
+- **The connector is a leaf.** `IHoldedClient` holds no table and no mirror invariant; it is
+  internal so the compiler, not review, keeps every other section off Holded's API.
+- **Connector-only DTOs do not belong in `Contracts/`.** The usage, expense-account, purchase
+  read and payment-detail DTOs and `HoldedClientOptions` cross no section boundary; their place
+  in the public folder is debt, not design (`Docs/debt.yml`).
+- **`Models/HoldedAdminModels.cs` stays internal.** One escaped type makes the screen a contract.
 
 ## 4. Invariants
 
 Stated so a violation is recognisable; each names the line that enforces it.
 
-1. **A sweep is the truth for its window.** After `ReplaceLedgerWindowAsync(from, to, account,
-   rows)` the mirror holds exactly `rows` inside `[from, to]` for that account — an empty `rows`
-   deletes, it does not no-op. `src/Sections/Humans.Holded/Data/Repository.cs:51`
-2. **The sweep window is anchored on now**, never on the newest cached line: the API filters on
-   accounting date, so a late-posted entry dated into a closed month must still be reachable.
-   `src/Sections/Humans.Holded/Services/Service.cs:76`
-3. **Reads never call Holded.** `GetLedgerLinesAsync`, `GetAccountBalancesAsync`,
-   `GetAccountStatementAsync` and `GetEntryAsync` touch the repository only.
-   `src/Sections/Humans.Holded/Services/Service.cs:41`
-4. **Reconciliation compares the raw `Debit − Credit` convention**, before any display flip.
-   A page shows the association's POV; the ✓/✗ never does.
-   `src/Sections/Humans.Holded/Services/Service.cs:380`
-5. **One sweep at a time, and the loser is told.** The gate is non-blocking; `SyncLedgerAsync`
-   returns `false` rather than queueing, and every caller reports that distinctly from success.
-   `src/Sections/Humans.Holded/Services/Service.cs:56`
-6. **A short read is never allowed to become a delete.** Pagination that cannot be completed —
-   a missing `items` array, `has_more` with no cursor, the page cap — throws; it never returns
-   the prefix it has. `HoldedTransport.GetPagedAsync`
-7. **An identity or amount field Holded did not send fails the page.** No manufactured `0`
-   reaches the mirror: on a ledger window a fabricated line overwrites a real cached one; on the
-   chart, whose upsert is additive, it creates a phantom account instead.
-   `HoldedJson.ReadRequiredInt` / `ReadRequiredString` / `ReadRequiredDecimalV2`
-8. **The connector never clears a Holded field it was not asked to clear** — every payload omits
-   its nulls. `HoldedJson.OmitNulls`
-9. **Only `Repository` touches `HoldedDbContext`**, and this section reads no other section's
-   tables — Finance's doc-sync row arrives through `IFinanceService`, in the controller.
-   `src/Humans.Analyzers/Internal/Rules/DbContextOwnershipRule.cs:8`
+1. **A sweep is the truth for its window.** After `ReplaceLedgerWindowAsync` the mirror holds
+   exactly the fetched rows inside the window (optionally one account); an empty fetch deletes,
+   it does not no-op. `src/Sections/Humans.Holded/Data/Repository.cs:53`
+2. **The trailing window is anchored on now**, never on the newest cached line: the API filters
+   on accounting date, so a late entry dated into a closed month must still be reachable.
+   `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:89`
+3. **Mirror reads never call Holded.** `Service`'s read members reach only the repository.
+   `src/Sections/Humans.Holded/Services/Service.cs:35`
+4. **Reconciliation compares the raw `Debit − Credit` sign**; the association's-POV flip is
+   applied after the verdict and only for display.
+   `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:404`,
+   `src/Sections/Humans.Holded/Services/HoldedAccountReader.cs:159`
+5. **One sync of a kind at a time, and the loser is told.** Each gate is non-blocking; a second
+   caller gets `false`, never a queue. `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:69`
+6. **A short read never becomes a delete.** A page without `items`, a null item, `has_more`
+   without a cursor, a repeated cursor or the page cap throws; the prefix is never returned.
+   `src/Sections/Humans.Holded/Services/HoldedTransport.cs:70`
+7. **A missing identity or amount fails the page**, never a manufactured `0`.
+   `src/Sections/Humans.Holded/Services/HoldedJson.cs:49`
+8. **No payload clears a Holded field it was not asked to clear**: every write serializes with
+   nulls omitted. `src/Sections/Humans.Holded/Services/HoldedJson.cs:16`
+9. **A failed sync keeps the last good copy and stamp**: the error path writes status, message
+   and time, never `LastSyncAt`. `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:463`
+10. **A posted payment never throws**: once the POST may have landed, an unreadable id comes back
+    as `unconfirmed:{documentId}`. `src/Sections/Humans.Holded/Services/HoldedPurchasesClient.cs:209`
+11. **Contacts are created, never updated**: v2's PUT is a full replacement that mints a second
+    creditor account. `src/Sections/Humans.Holded/Services/HoldedContactsClient.cs:31`
+12. **Only `Repository` touches `HoldedDbContext`.**
+    `src/Humans.Analyzers/Internal/Rules/DbContextOwnershipRule.cs:8`
 
 ### Negative access
 
-- `/Holded/*` is `FinanceAdmin` or `Admin` only — every route, the POSTs included, and those
-  additionally require the antiforgery token.
-  `src/Sections/Humans.Holded/Controllers/HoldedController.cs:13`
-- Nothing outside this section may hold a `HoldedDbContext`, a `HoldedLedgerLine` or any other
-  `Domain/` entity; `HoldedLedgerLineInfo` is the only ledger shape that crosses the boundary.
-  `src/Sections/Humans.Holded/Domain/HoldedLedgerLine.cs:9`
+- `/Holded/*` reads need `FinancePolicies.Read` (Finance Admin, Board, Admin); the two sync
+  POSTs need `FinancePolicies.Manage` (never Board) and an antiforgery token.
+  `src/Sections/Humans.Holded/Controllers/HoldedController.cs:13`,
+  `src/Sections/Humans.Holded/Controllers/HoldedController.cs:80`
+- No other section can call Holded's API: the connector is internal.
+  `src/Sections/Humans.Holded/Services/IHoldedClient.cs:6`
 
 ### Personal data
 
-Nothing here is keyed by member, so the section holds no consent gate and no erasure path of its
-own. It is not free of personal data: a creditor account's name is the member's and the lines on
-it are their reimbursement history. Finance's GDPR contributor exports those lines as its
-`CreditorLedger` slice, read through `IHoldedService.GetLedgerLinesAsync`
-(`src/Sections/Humans.Finance/Services/Service.cs:783`). Not a licence to add member-linked
-columns here.
+Nothing is keyed by member, so there is no consent gate and no erasure path here. The contact
+mirror and creditor-account lines are personal data reachable through Finance's member→creditor
+binding; Finance's GDPR contributor exports them.
 
 ## 5. Seams
 
-Specified-but-unbuilt. Not to be built by a doctor run; recorded because items touching these
-callers are shaped by them.
+Specified-but-unbuilt. Not to be built by a doctor run.
 
-- **The connector wants to be its own section.** It is the whole of shapes 5–13, has no table,
-  no invariant of the mirror's, and its cross-section callers (Finance, Expenses, Store, Workgroups) do not
-  care about the ledger at all. Splitting it would leave `Humans.Holded` a genuinely small
-  mirror. Nothing has decided this; the cost is a project split plus a rename across every
-  calling section.
-- **A bank-movement mirror.** If a reconciliation panel ever needs the bank feed without a live
-  call, a bank-movements mirror table would land here (design record).
+- **The connector as its own section.** It has no table and no mirror invariant; splitting it
+  would leave a small mirror section. Nothing has decided this.
+- **The uncalled members in §2.** Either phase 2's adopters arrive or the members go; Peter's call.
 
 ## 6. Deliberately not done
 
-- **No caching decorator.** Every read is already a mirror read; a second cache in front of the
-  first buys nothing and adds an invalidation problem.
-- **No retry/backoff library.** One 429 retry, GETs only, is the whole policy — a content-bearing
-  request cannot be replayed without knowing whether Holded applied it, and that judgment does not
-  generalise into a policy object.
-- **No per-endpoint client interfaces.** `IHoldedClient` is wide because the Holded API is wide.
-  Splitting it by shape group would multiply DI registrations and test doubles to hide a length
-  no reader is confused by.
-- **No contact update.** v2's contact PUT is a full replacement that resets `supplier_record`
-  and mints a second creditor account, so the connector only creates contacts.
-- **No `Debit`/`Credit` columns on any `/Holded` page.** Peter's call: a single signed amount in
-  the association's POV is the thing a reader can act on. Bookkeeping sign lives in the data and
-  in reconciliation, never on screen.
-- **No abstraction over the sales-document kinds** beyond the path segment. They differ in
-  one string; a strategy would be a class per string.
+- **No caching decorator.** Every read is already a mirror read.
+- **No retry library.** One 429 retry, content-free GETs only: a write cannot be replayed without
+  knowing whether Holded applied it.
+- **No per-endpoint client interfaces.** The operation clients split the code; one internal
+  interface is the seam tests fake.
+- **No contact update**, for invariant 11's reason.
+- **No Debit/Credit columns on any `/Holded` page.** One signed amount in the association's POV.
+- **No localization.** `/Holded` is a finance-admin screen.
 
 ## Load-bearing weirdness
 
 Settled decisions. Later runs should stop re-litigating these.
 
-- **`holded_accounts` is the migration sentinel, not `holded_ledger_lines`.** The ledger table
-  predates the section split — the historical chain and pre-split Finance both created it — so it
-  cannot prove this baseline ran. Documented in `Section.cs`; do not "simplify" it.
-- **`HOLDED_API_KEY_V2`, not `HOLDED_API_KEY`.** A v2 key is rejected by the v1 API, so the names
-  must differ while both builds can coexist.
-- **The call budget is config, not Holded's `limit`.** `GET /usage`'s `limit` is the
-  billable-overage ceiling (2,000,000), not the plan allowance (~2,000). The screen shows both on
-  purpose.
-- **PGC group names come from the account number's leading digit**, never from Holded's own
-  `group` string, which is free-text Spanish.
-- **`ToAssociationPov` flips groups 6–9 and nothing else**, and it is display-only.
-- **A standing reconciliation mismatch is reportable state, not a failure.** Holded's own chart
-  totals exclude unconfirmed entries, so some accounts legitimately never reconcile.
-- **The 45-day window is a quota choice, not a correctness one.** Reconciliation is what catches
-  anything older; widening the window buys nothing and costs calls.
-- **`PayPurchaseDocumentAsync` reads the payment id off the document, not the POST.** The POST
-  answers `{"status":"paid"}` and nothing else (verified live 2026-10-18), so the id is the
-  `payments_detail` entry that is new after the POST and matches amount, date and treasury
-  account. When the re-read fails or no single entry matches it returns `unconfirmed:{docId}`
-  rather than throwing: the money moved, and losing the reference would cause a second payment.
-- **Contact lists fail closed, like the other mirror inputs.** An unreadable contact prevents
-  replacement and live contact matching: skipping it could delete a cached row or permit duplicate creation.
-  The chart fails the page as well — Peter's ruling of 2026-09-10 against skip-and-log
-  (peterdrier/Humans#1583, item 1). Holded documents an account's `number` as a non-nullable
-  integer and a live read of the chart returned none without one, so the numberless account is a
-  test fixture rather than an observed incident. The cost of skipping is the decisive part:
-  `ListAccountingAccountsAsync` runs first in `RefreshAccountsAndReconcileAsync`, so a skip would
-  let that pass report a completed refresh *and* reconciliation having silently dropped an
-  account. A blocked nightly is the louder failure, and the one we keep. `UpsertAccountsAsync`
-  being additive — it never deletes an omitted account — argues the other way and did not carry it.
+- **`holded_accounts` is the migration sentinel, not `holded_ledger_lines`**: the ledger table
+  predates the section split, so it cannot prove this baseline ran.
+- **`HOLDED_API_KEY_V2`, not `HOLDED_API_KEY`**: the v1 API rejects a v2 key.
+- **The call budget is config, not Holded's `limit`**: `GET /usage`'s `limit` is the
+  billable-overage ceiling, not the plan allowance.
+- **PGC group names come from the account number's leading digit**, never Holded's free-text
+  Spanish `group`.
+- **A standing reconciliation mismatch is reportable state, not a failure**: Holded's chart
+  totals exclude unconfirmed entries.
+- **The 45-day window is a quota choice**: reconciliation catches anything older.
+- **The payment id is read off the document, not the POST**, which answers `{"status":"paid"}`
+  and nothing else.
+- **`HoldedMirrorSync` is built per call** and its gates are static: the gates, not the
+  instance, carry the one-at-a-time rule.
 
 ## History
 
