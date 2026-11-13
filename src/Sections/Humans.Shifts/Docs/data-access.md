@@ -41,8 +41,8 @@ section's only `IUserMerge`, running the three inner merges in their old order.
 | `Shifts.Rota` (`TrackedCache`) | rota id | `ShiftAdminRota`: rota, its shifts and every signup, all events | at startup, under the refresh lock | after every rota, shift or signup write, in `finally`, under the refresh lock; user-wide writes, merge, erasure and event deletion reload every rota |
 
 Reads come from the inner `IShiftRotaRows` (`ShiftManagementService.GetRotaRowsAsync` →
-`IShiftManagementRepository.GetRotaRowsAsync`). Readers still use the inner services;
-they move onto `IShiftRotaRows` one area at a time.
+`IShiftManagementRepository.GetRotaRowsAsync`). `ShiftBrowseReader` (browse and urgent shifts)
+reads the cached rows; the other readers move onto `IShiftRotaRows` one area at a time.
 
 ### ShiftManagementService (Scoped, keyed inner of CachingShiftService)
 
