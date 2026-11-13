@@ -56,8 +56,77 @@ public class BackdoorFinanceControllerTests
         _sut = new BackdoorFinanceController(_expenses, _finance, _holded, _budget, _auth, _users);
     }
 
-    /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
-    /// on this controller.</summary>
+    [HumansFact]
+    public async Task MergedSubmitter_ListRestoresMaskedPayeeWithoutLoadingPushState()
+    {
+        using var request = new CancellationTokenSource();
+        var survivor = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        SetPrincipal(survivor);
+        SetFinanceAdmin(false);
+        var viewer = UserInfo.Create(new User { Id = survivor }, [], [], null) with { MergedUserIds = [archived] };
+        _users.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(viewer);
+        var report = Report(submitterUserId: archived);
+        SetCanView(true, report);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
+
+        var json = Emitted(await _sut.ExpenseReports(null, null, request.Token));
+
+        json.Should().Contain(@"""payeeName"":""Ana Torres""").And.Contain(@"""payeeIbanMasked"":""ES79****789""");
+        json.Should().Contain(@"""syncState"":null").And.Contain(@"""holdedContactId"":null");
+        json.Should().NotContain("ES7921000813610123456789");
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
+        await _users.Received(1).GetUserInfoAsync(survivor, request.Token);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task MergedSubmitter_DetailRetainsPaymentAndFinanceFieldSeparation(bool financeAccess)
+    {
+        using var request = new CancellationTokenSource();
+        var survivor = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        SetPrincipal(survivor);
+        SetFinanceAdmin(financeAccess);
+        var viewer = UserInfo.Create(new User { Id = survivor }, [], [], null) with { MergedUserIds = [archived] };
+        _users.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>()).Returns(viewer);
+        _users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(viewer);
+        var report = Report(submitterUserId: archived) with { HoldedContactId = "contact" };
+        SetCanView(true, report);
+        _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
+
+        var json = Emitted(await _sut.ExpenseReport(report.Id, request.Token));
+
+        json.Should().Contain(@"""payeeName"":""Ana Torres""").And.Contain(@"""payeeIbanMasked"":""ES79****789""");
+        json.Should().Contain(@"""registeredInHolded"":true").And.Contain(@"""owedToMember"":100");
+        json.Should().Contain(financeAccess ? @"""holdedContactId"":""contact""" : @"""holdedContactId"":null");
+        json.Should().Contain(financeAccess ? @"""syncState"":""Pushed""" : @"""syncState"":null");
+        json.Should().NotContain("ES7921000813610123456789");
+        await _expenses.Received(1).GetHoldedTimelineAsync(report, request.Token);
+        await _users.Received(1).GetUserInfoAsync(survivor, request.Token);
+    }
+
+    [HumansFact]
+    public async Task MissingViewer_DetailDoesNotInferFinancialOwnershipFromTheCookie()
+    {
+        var actor = Guid.NewGuid();
+        SetPrincipal(actor);
+        SetFinanceAdmin(false);
+        _users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        var report = Report(submitterUserId: actor);
+        SetCanView(true, report);
+        _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
+
+        var json = Emitted(await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken));
+
+        json.Should().Contain(@"""payeeName"":null").And.Contain(@"""payeeIbanMasked"":null");
+        json.Should().Contain(@"""registeredInHolded"":null");
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
+    }
+
     [HumansFact]
     public async Task ExpenseReports_AuthorizesCandidatesBeforeProjectingNamesAndTimelines()
     {
@@ -100,8 +169,8 @@ public class BackdoorFinanceControllerTests
 
         Emitted(await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken)).Should().Be("[]");
     }
-
-
+    /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
+    /// on this controller.</summary>
     [HumansFact]
     public void Every_action_is_HttpGet_only()
     {
@@ -146,7 +215,7 @@ public class BackdoorFinanceControllerTests
         _sut.OnResultExecuting(new ResultExecutingContext(
             new ActionContext(_sut.HttpContext, new RouteData(), new ActionDescriptor()), [], result, _sut));
 
-    private void SetQueueViewer(Guid userId, params ExpenseReportDto[] reports)
+    private void SetReportViewer(Guid userId, params ExpenseReportDto[] reports)
     {
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
         foreach (var report in reports) SetCanView(true, report);
@@ -212,7 +281,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(false);
         var report = Report(submitterUserId: userId);
         _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
-        SetQueueViewer(userId, report);
+        SetReportViewer(userId, report);
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -231,7 +300,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(false);
         var report = Report(submitterUserId: userId);
         _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
-        SetQueueViewer(userId, report);
+        SetReportViewer(userId, report);
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -290,7 +359,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(false);
         var report = Report();
         _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
-        SetQueueViewer(userId, report);
+        SetReportViewer(userId, report);
         SetActiveCategory(report);
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
@@ -369,7 +438,7 @@ public class BackdoorFinanceControllerTests
             ],
         };
         _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
-        SetCanView(true, report);
+        SetReportViewer(userId, report);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
@@ -436,7 +505,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(false);
         var report = Report(submitterUserId: userId) with { Lines = [LineWithHoldedDoc("d1")] };
         _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
-        SetCanView(true, report);
+        SetReportViewer(userId, report);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
 
         var result = await _sut.ExpenseReport(report.Id, Xunit.TestContext.Current.CancellationToken);
@@ -906,7 +975,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(false);
         var report = Report(submitterUserId: userId) with { Note = Tainted };
         _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
-        SetQueueViewer(userId, report);
+        SetReportViewer(userId, report);
         var keys = Substitute.For<IBackdoorApiKeyService>();
         keys.ResolveOwnerAsync("key", Arg.Any<CancellationToken>()).Returns(new BackdoorKeyOwner(userId, []));
 
