@@ -31,6 +31,87 @@ public class MailerLiteAudienceSyncServiceTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IMailerLiteRepository _repository = InMemoryMailerLiteRepository.New();
 
+    public enum DetachedFailure { CreateGroup, Summary }
+
+    [HumansTheory]
+    [InlineData(DetachedFailure.CreateGroup, false)]
+    [InlineData(DetachedFailure.CreateGroup, true)]
+    [InlineData(DetachedFailure.Summary, false)]
+    [InlineData(DetachedFailure.Summary, true)]
+    public async Task Detached_timeouts_remain_failures_when_shutdown_also_begins(DetachedFailure stage, bool shutdownRequested)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var audience = NewAudience("a-aud", "Humans - A", []);
+        SetupEmailsEmpty();
+        SetupSubscribers();
+        SetupGroups(stage == DetachedFailure.CreateGroup ? [] : [Group("g1", "Humans - A")]);
+        var timeout = new TaskCanceledException("Detached dependency timed out");
+        _ml.CreateGroupAsync("Humans - A", CancellationToken.None).Returns(async Task<MailerLiteGroup> (_) =>
+        {
+            if (shutdownRequested) await shutdown.CancelAsync();
+            throw timeout;
+        });
+        var repository = Substitute.For<IMailerLiteRepository>();
+        repository.UpsertSyncStateAsync(Arg.Any<MailerLiteSyncState>(), CancellationToken.None)
+            .Returns(async Task<MailerLiteSyncState> (_) =>
+            {
+                if (shutdownRequested) await shutdown.CancelAsync();
+                throw timeout;
+            });
+        var service = new MailerLiteAudienceSyncService(_ml, _emails, _audit, repository, new FakeClock(SyncedAt),
+            [audience], NullLogger<MailerLiteAudienceSyncService>.Instance);
+
+        var error = await Record.ExceptionAsync(() => service.SyncAsync(audience, ct: shutdown.Token));
+        if (shutdownRequested)
+            error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(timeout);
+        else
+            error.Should().BeSameAs(timeout, "admin calls must retain their existing timeout feedback");
+    }
+
+    public enum PriorFailure { Preflight, Operation, OperationAtBoundary }
+
+    [HumansTheory]
+    [InlineData(PriorFailure.Preflight)]
+    [InlineData(PriorFailure.Operation)]
+    [InlineData(PriorFailure.OperationAtBoundary)]
+    public async Task Interrupted_sweep_keeps_prior_audience_and_operation_failures(PriorFailure stage)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var user = Guid.NewGuid();
+        var first = NewAudience("a-aud", "Humans - A", [user]);
+        var next = NewAudience("b-aud", "Humans - B", []);
+        SetupEmails((user, "member@example.com"));
+        SetupGroups(Group("g1", "Humans - A"));
+        SetupSubscribers(Subscriber("s1", "member@example.com", "active"));
+        var failure = new IOException("Earlier audience failed");
+        var canceled = new OperationCanceledException(shutdown.Token);
+        if (stage == PriorFailure.Preflight)
+            first.ComputeMemberUserIdsAsync(shutdown.Token).Returns(Task.FromException<IReadOnlySet<Guid>>(failure));
+        _ml.AssignSubscriberToGroupAsync("s1", "g1", CancellationToken.None).Returns(async _ =>
+        {
+            if (stage == PriorFailure.OperationAtBoundary) await shutdown.CancelAsync();
+            throw failure;
+        });
+        next.ComputeMemberUserIdsAsync(shutdown.Token).Returns(async Task<IReadOnlySet<Guid>> (_) =>
+        {
+            await shutdown.CancelAsync();
+            throw canceled;
+        });
+
+        var action = () => NewService(first, next).SyncAllAsync(ct: shutdown.Token);
+        var error = await action.Should().ThrowAsync<AggregateException>();
+        if (stage == PriorFailure.Preflight)
+            error.Which.InnerExceptions.Should().Equal(failure, canceled);
+        else
+        {
+            error.Which.Message.Should().Contain("1 subscriber operation");
+            var state = await _repository.GetSyncStateAsync(first.Key, TestContext.Current.CancellationToken);
+            state!.Errors.Should().Be(1);
+        }
+        if (stage == PriorFailure.OperationAtBoundary)
+            await next.DidNotReceiveWithAnyArgs().ComputeMemberUserIdsAsync(default);
+    }
+
     [HumansTheory]
     [InlineData(AudienceWrite.CreateGroup)]
     [InlineData(AudienceWrite.BulkImport)]
