@@ -632,8 +632,10 @@ public class TeamAdminControllerMembersTests
             RolePeriod.YearRound, userId, true, 7, Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ProvisionEmail_ShowsCredentialRecoveryWarningForCommittedAccount()
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProvisionEmail_PassesTeamScopeAndShowsCommittedAccountWarning(bool memberInControllerSnapshot)
     {
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
@@ -643,7 +645,9 @@ public class TeamAdminControllerMembersTests
             UserInfo.Create(new User { Id = actorId }, [], [], null));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue,
-            [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]);
+            memberInControllerSnapshot
+                ? [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]
+                : []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
         var authorization = Substitute.For<IAuthorizationService>();
@@ -651,7 +655,7 @@ public class TeamAdminControllerMembersTests
             .Returns(AuthorizationResult.Success());
         var provisioning = Substitute.For<IEmailProvisioningService>();
         const string warning = "Account created; ask an admin to reset the password.";
-        provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId)
+        provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId, team.Id)
             .Returns(new EmailProvisioningResult(true, "person@nobodies.team", "personal@example.org", WarningMessage: warning));
         var http = new DefaultHttpContext
         {
@@ -669,6 +673,7 @@ public class TeamAdminControllerMembersTests
         var result = await controller.ProvisionEmail(team.Slug, targetId, "person");
 
         result.Should().BeOfType<RedirectToActionResult>();
+        await provisioning.Received(1).ProvisionNobodiesEmailAsync(targetId, "person", actorId, team.Id);
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
         await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();

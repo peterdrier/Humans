@@ -211,14 +211,8 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        if (team.Members.All(m => m.UserId != userId))
-        {
-            SetError("That human is not a member of this team.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
         var result = await emailProvisioningService.ProvisionNobodiesEmailAsync(
-            userId, emailPrefix, user.Id);
+            userId, emailPrefix, user.Id, team.Id);
 
         if (!result.Success)
         {
