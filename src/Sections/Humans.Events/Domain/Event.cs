@@ -78,9 +78,6 @@ internal sealed class Event
     public bool IsInEvent(Guid? eventSettingsId) =>
         eventSettingsId is null || EventSettingsId == eventSettingsId;
 
-    /// <inheritdoc cref="IsEditableBySubmitter(EventStatus, bool)"/>
-    public bool CanBeEditedBySubmitter => IsEditableBySubmitter(Status, CampId is not null);
-
     /// <inheritdoc cref="IsWithdrawableBySubmitter(EventStatus, bool)"/>
     public bool CanBeWithdrawnBySubmitter => IsWithdrawableBySubmitter(Status, CampId is not null);
 

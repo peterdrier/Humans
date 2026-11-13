@@ -227,7 +227,7 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 - Global-search result rows pass browser cancellation to the approved-event lookup; approved-only visibility and missing-result behavior are unchanged.
 
 - `Event.Resubmit` owns re-queue transitions for individual edits and bulk uploads: pending events retain their submission time; approved edits become pending with a fresh submission time. The internal `EventBulkImporter` validates the entire CSV before applying changed rows; template rendering and row validation retain their existing helpers.
-- Individual and camp submitter edits check `CanBeEditedBySubmitter` before changing fields. Every permitted status is accepted by `UpdateAndResubmitAsync`; the controllers call it directly without exception-message classification.
+- Individual and camp submitter edits check `EventInfo.CanEdit`, which uses `Event.IsEditableBySubmitter`, before changing fields. Every permitted status is accepted by `UpdateAndResubmitAsync`; the controllers call it directly without exception-message classification.
 
 
 - GDPR export projection is prepared by `EventPersonalData`; the `Events` slice key, field names, ordering, requested-account preference selection, merge-chain reads and cancellation are unchanged.
