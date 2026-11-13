@@ -134,6 +134,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 ## Architecture
 
 **Owning services:** `AuditLogService` (write + raw queries) and `AuditViewerService` (read+render), both `Humans.AuditLog.Services`, plus the singleton `AuditActionRegistry` (also registered as an `IHostedService` so it is built at startup). Verbs and flags come from the `AuditActionDefinition` on each `AuditEvent`, which backs both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
+**Append failures:** user and background-job writes remain best-effort. A failed save logs Error with the exception and the attempted entry's ID, action, subject, timestamp, actor, related entity and description (including the job name). Only a successful save emits the informational audit-success log.
 **Owned tables:** `audit_log`
 **Status:** G5 — own project `src/Sections/Humans.AuditLog`, cross-section surface in its `Contracts/` folder (nobodies-collective/Humans#866).
 
