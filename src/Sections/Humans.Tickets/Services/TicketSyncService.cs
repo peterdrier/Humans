@@ -41,18 +41,19 @@ internal sealed class TicketSyncService(
             ?? throw new InvalidOperationException("TicketSyncState seed row missing");
 
         var now = clock.GetCurrentInstant();
+        var previousCursor = syncState.LastSyncAt;
+        var previousError = syncState.LastError;
 
         syncState.SyncStatus = TicketSyncStatus.Running;
         syncState.StatusChangedAt = now;
         syncState.VendorEventId = eventId;
-        await ticketRepository.PersistSyncStateAsync(syncState, ct);
-
         try
         {
-            // A sync finishes or defers to the next run; it is never abandoned mid-pagination because the caller left.
-            var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
-            var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
-            var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
+            await ticketRepository.PersistSyncStateAsync(syncState, ct);
+
+            var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
+            var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
+            var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, ct);
 
             var emailLookup = await BuildEmailLookupAsync(ct);
 
@@ -145,6 +146,23 @@ internal sealed class TicketSyncService(
 
             return result;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Ticket sync cancelled for event {EventId}; keeping the retry cursor", eventId);
+            try
+            {
+                // A state save may commit before cancellation is reported. Keep the old vendor cursor so the
+                // next run reloads every interrupted update.
+                syncState.LastSyncAt = previousCursor;
+                syncState.LastError = previousError;
+                await DeferSyncAsync(syncState);
+            }
+            catch (Exception saveEx)
+            {
+                logger.LogError(saveEx, "Failed to defer cancelled ticket sync for event {EventId}", eventId);
+            }
+            throw;
+        }
         catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
         {
             logger.LogWarning(
@@ -155,8 +173,7 @@ internal sealed class TicketSyncService(
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            // Transient: an inner TimeoutException is HttpClient's own timeout signal. A genuine cancellation carries
-            // none and falls through to the Error handler below.
+            // The caller token is still active: an inner TimeoutException is HttpClient's own timeout signal.
             logger.LogWarning(
                 "Ticket sync: TicketTailor request timed out for event {EventId}, will retry next run",
                 eventId);
@@ -358,6 +375,10 @@ internal sealed class TicketSyncService(
                 order.WithheldTax = details.WithheldTax;
                 updated.Add(order);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogWarning(
@@ -412,7 +433,7 @@ internal sealed class TicketSyncService(
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 
