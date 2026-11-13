@@ -53,7 +53,7 @@ public sealed class Section :
                     opts.CreditorIban = flat;
             });
 
-        services.AddScoped<IHoldedRepository, Repository>();
+        services.AddScoped<IFinanceRepository, Repository>();
         // Sweep failure counts must outlive scoped requests and jobs.
         services.AddSingleton(sp => new TrackedCache<string, Dictionary<string, int>>(
             "Finance.SepaStuckBankLines", warmOnStartup: false,

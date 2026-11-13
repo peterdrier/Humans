@@ -6,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Finance.Data;
 
-internal interface IHoldedRepository : IRepository
+internal interface IFinanceRepository : IRepository
 {
     Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default);
     Task AddCategoryMapAsync(HoldedCategoryMap row, CancellationToken ct = default);

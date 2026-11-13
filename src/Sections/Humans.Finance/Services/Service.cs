@@ -1,4 +1,4 @@
-using static Humans.Finance.Services.HoldedCreditorReader;
+using static Humans.Finance.Services.CreditorReader;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Base.Caching;
@@ -18,12 +18,12 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using static Humans.Finance.Services.SepaText;
-using static Humans.Finance.Services.HoldedCreditorBindings;
+using static Humans.Finance.Services.CreditorBindings;
 
 namespace Humans.Finance.Services;
 
 internal sealed class Service(
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IBudgetService budget,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
@@ -49,17 +49,17 @@ internal sealed class Service(
     internal const string CreditorLedger = FinancePersonalData.CreditorLedger;
     internal const string HoldedCreditorContacts = FinancePersonalData.HoldedCreditorContacts;
 
-    internal const string HoldedExpenseAccount = HoldedCategoryAccounts.HoldedExpenseAccount;
+    internal const string HoldedExpenseAccount = CategoryAccounts.HoldedExpenseAccount;
 
     internal const string PurchaseMirrorUnavailable = HoldedDuplicateReview.PurchaseMirrorUnavailable;
 
-    internal const string ContactListUnavailable = HoldedCreditorReader.ContactListUnavailable;
+    internal const string ContactListUnavailable = CreditorReader.ContactListUnavailable;
     private FinancePersonalData PersonalData => new(repo, users, CreditorReader, creditorBindings, logger);
     private SepaPayoutGeneration PayoutGeneration => new(repo, holded, CreditorReader, clock, audit, sepa, payoutEmails, logger);
     private HoldedDuplicateReview DuplicateReview => new(repo, holded, holdedWrite, expenses, CreditorReader, audit, logger);
-    private HoldedCreditorReader CreditorReader => new(repo, holded, expenses, booking, logger);
-    private readonly HoldedCreditorBindings creditorBindings = new(repo, holded, holdedWrite, clock, audit, logger);
-    private readonly HoldedCategoryAccounts categoryAccounts = new(repo, holded, holdedWrite, budget, clock, audit, logger);
+    private CreditorReader CreditorReader => new(repo, holded, expenses, booking, logger);
+    private readonly CreditorBindings creditorBindings = new(repo, holded, holdedWrite, clock, audit, logger);
+    private readonly CategoryAccounts categoryAccounts = new(repo, holded, holdedWrite, budget, clock, audit, logger);
     private readonly SepaBankBooking booking = new(repo, holded, holdedWrite, clock, bookingState, audit, sepa, logger);
     private readonly SepaPayoutEmails payoutEmails = new(users, emailService, emails, logger);
 

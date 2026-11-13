@@ -6,7 +6,7 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `Humans.Finance.Services`). **DbContext:**
 `FinanceDbContext`.
 `Repository` (`src/Sections/Humans.Finance/Data/Repository.cs`, implements
-`IHoldedRepository`) injects `IDbContextFactory<FinanceDbContext>` directly
+`IFinanceRepository`) injects `IDbContextFactory<FinanceDbContext>` directly
 — a distinct context from `ExpensesDbContext` and from
 `HoldedDbContext`. Owns
 `HoldedCategoryMap`, `HoldedCreditorContacts`,
@@ -30,7 +30,7 @@ collision guard).
 
 ### SepaBankBooking (section-internal)
 
-Composed by `Service` using `IHoldedRepository`, `IHoldedService`, `IHoldedWrite`, `IClock`,
+Composed by `Service` using `IFinanceRepository`, `IHoldedService`, `IHoldedWrite`, `IClock`,
 a singleton `TrackedCache<string, Dictionary<string, int>>` for sweep failure
 counts, `IAuditLogService` and `IOptions<SepaOptions>`. Owns the manual
 and scheduled bank-booking workflow: reads creditor bindings and payout rows,
@@ -38,9 +38,9 @@ updates booking/payment-reference/reconciliation columns on `SepaPayoutTransfers
 and calls Holded through its contract. Its shared booking gate covers all entry
 points. No provisioning, Budget or email dependency.
 
-### HoldedCategoryAccounts (section-internal, composed by `Service`)
+### CategoryAccounts (section-internal, composed by `Service`)
 
-Repository: `IHoldedRepository` (shared with its owner). Provisions Holded expense accounts for
+Repository: `IFinanceRepository` (shared with its owner). Provisions Holded expense accounts for
 the active budget year's categories and records the mapping; not DI-registered.
 
 | Table | R/W |
@@ -85,7 +85,7 @@ run for the page. Injected by `FinanceController` only.
 
 ### Service (Scoped)
 
-Repository: `IHoldedRepository`.
+Repository: `IFinanceRepository`.
 
 | Table | R/W |
 |-------|-----|

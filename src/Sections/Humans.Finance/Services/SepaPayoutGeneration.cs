@@ -12,15 +12,15 @@ using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using static Humans.Finance.Services.HoldedCreditorReader;
+using static Humans.Finance.Services.CreditorReader;
 using static Humans.Finance.Services.SepaText;
 
 namespace Humans.Finance.Services;
 
 internal sealed class SepaPayoutGeneration(
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IHoldedService holded,
-    HoldedCreditorReader creditorReader,
+    CreditorReader creditorReader,
     IClock clock,
     IAuditLogService audit,
     IOptions<SepaOptions> sepa,
