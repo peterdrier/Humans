@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Humans.Governance.Services;
 using System.Globalization;
 using AwesomeAssertions;
@@ -19,6 +20,132 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class TermRenewalReminderJobTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("Applications")]
+    [Xunit.InlineData("Pending")]
+    [Xunit.InlineData("Applicants")]
+    public async Task ReminderShutdown_PropagatesInitialReadCancellation(string boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var run = new ReminderRun();
+        var failure = new OperationCanceledException(shutdown.Token);
+        if (string.Equals(boundary, "Applications", StringComparison.Ordinal))
+            run.Applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), shutdown.Token)
+                .Returns(async Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> (_) =>
+                { await shutdown.CancelAsync(); throw failure; });
+        else if (string.Equals(boundary, "Pending", StringComparison.Ordinal))
+            run.Applications.GetPendingApplicationUserTiersAsync(shutdown.Token)
+                .Returns(async Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> (_) =>
+                { await shutdown.CancelAsync(); throw failure; });
+        else
+            run.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
+                .Returns(async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> (_) =>
+                { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => run.Job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeSameAs(failure);
+        await run.Email.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        run.Metrics.DidNotReceive().RecordJobRun("term_renewal_reminder", "success");
+        run.Metrics.DidNotReceive().RecordJobRun("term_renewal_reminder", "failure");
+        run.Logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
+        run.Logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Email")]
+    [Xunit.InlineData("Stamp")]
+    [Xunit.InlineData("Notice")]
+    public async Task ReminderShutdown_FinishesStartedRecipientBeforeStopping(string boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var run = new ReminderRun();
+        run.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (string.Equals(boundary, "Email", StringComparison.Ordinal)) await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+        run.Applications.MarkRenewalReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                if (string.Equals(boundary, "Stamp", StringComparison.Ordinal)) await shutdown.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            });
+        run.Notices.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>()).Returns(async call =>
+            {
+                if (string.Equals(boundary, "Notice", StringComparison.Ordinal)) await shutdown.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            });
+
+        var error = await Xunit.Record.ExceptionAsync(() => run.Job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeAssignableTo<OperationCanceledException>();
+        await run.Email.Received(1).SendAsync(Arg.Is<EmailMessage>(message =>
+            message.UserId == run.First.UserId && message.DeliveryId == run.First.Id), CancellationToken.None);
+        await run.Email.DidNotReceive().SendAsync(Arg.Is<EmailMessage>(message => message.UserId == run.Next.UserId),
+            Arg.Any<CancellationToken>());
+        await run.Applications.Received(1).MarkRenewalReminderSentAsync(run.First.Id, run.Now, CancellationToken.None);
+        await run.Applications.DidNotReceive().MarkRenewalReminderSentAsync(run.Next.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+        var notice = run.Notices.ReceivedCalls().Should().ContainSingle().Which.GetArguments();
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(run.First.UserId);
+        notice[^1].Should().Be(CancellationToken.None);
+        run.Metrics.DidNotReceive().RecordJobRun("term_renewal_reminder", "success");
+        run.Metrics.DidNotReceive().RecordJobRun("term_renewal_reminder", "failure");
+        run.Logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+    }
+
+    [HumansFact]
+    public async Task ReminderShutdown_RetainsEarlierDeliveryFailures()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var run = new ReminderRun();
+        var failure = new IOException("Email enqueue failed");
+        run.Email.SendAsync(Arg.Is<EmailMessage>(message => message.UserId == run.First.UserId), Arg.Any<CancellationToken>())
+            .Returns(async call => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => run.Job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
+        await run.Email.DidNotReceive().SendAsync(Arg.Is<EmailMessage>(message => message.UserId == run.Next.UserId),
+            Arg.Any<CancellationToken>());
+        run.Metrics.Received(1).RecordJobRun("term_renewal_reminder", "failure");
+        run.Metrics.DidNotReceive().RecordJobRun("term_renewal_reminder", "success");
+    }
+
+    private sealed class ReminderRun
+    {
+        public IGovernanceManagement Applications { get; } = Substitute.For<IGovernanceManagement>();
+        public IUserService Users { get; } = Substitute.For<IUserService>();
+        public IEmailService Email { get; } = Substitute.For<IEmailService>();
+        public INotificationEmitter Notices { get; } = Substitute.For<INotificationEmitter>();
+        public IHumansMetrics Metrics { get; } = Substitute.For<IHumansMetrics>();
+        public CapturingLogger<TermRenewalReminderJob> Logger { get; } = new();
+        public Instant Now { get; } = Instant.FromUtc(2026, 3, 1, 12, 0);
+        public ApplicationRenewalReminderCandidate First { get; }
+        public ApplicationRenewalReminderCandidate Next { get; }
+        public TermRenewalReminderJob Job { get; }
+
+        public ReminderRun()
+        {
+            First = new(Guid.NewGuid(), Guid.NewGuid(), MembershipTier.Colaborador, Now, new LocalDate(2026, 5, 20));
+            Next = First with { Id = Guid.NewGuid(), UserId = Guid.NewGuid() };
+            Applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([First, Next]));
+            Applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
+            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(new Dictionary<Guid, UserInfo>
+                {
+                    [First.UserId] = new User { Id = First.UserId, BurnerName = "First", Email = "first@example.com" }.ToUserInfo(),
+                    [Next.UserId] = new User { Id = Next.UserId, BurnerName = "Next", Email = "next@example.com" }.ToUserInfo()
+                });
+            Job = new(Applications, Users, Email, TestGovernanceEmails.Create(), Notices, Metrics, Logger, new FakeClock(Now));
+        }
+    }
+
     [HumansFact]
     public async Task ExecuteAsync_RoutesMergedApplicantsNoticeToTheLiveRecipient()
     {
