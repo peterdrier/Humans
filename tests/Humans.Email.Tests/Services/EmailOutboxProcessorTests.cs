@@ -84,6 +84,49 @@ public class EmailOutboxProcessorTests : IDisposable
         _metrics.DidNotReceive().RecordJobRun("process_email_outbox", failed ? "success" : "failure");
     }
 
+    [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task ScheduledOutboxJobs_DistinguishShutdownFromUnrelatedCancellation(bool cleanup, bool shutdown)
+    {
+        using var jobCancellation = new CancellationTokenSource();
+        using var dependencyCancellation = new CancellationTokenSource();
+        await dependencyCancellation.CancelAsync();
+        if (shutdown) await jobCancellation.CancelAsync();
+        var failure = new OperationCanceledException(shutdown ? jobCancellation.Token : dependencyCancellation.Token);
+        var processor = Substitute.For<IEmailOutboxProcessor>();
+        processor.ProcessQueuedAsync(jobCancellation.Token).ThrowsAsync(failure);
+        var retention = Substitute.For<IEmailOutboxRetention>();
+        retention.PurgeExpiredAsync(jobCancellation.Token).ThrowsAsync(failure);
+        var logger = new CapturingLogger<CleanupEmailOutboxJob>();
+        IRecurringJob job = cleanup
+            ? new CleanupEmailOutboxJob(retention, _metrics, logger)
+            : new ProcessEmailOutboxJob(processor, _metrics);
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(jobCancellation.Token));
+
+        error.Should().BeSameAs(failure);
+        var name = cleanup ? "cleanup_email_outbox" : "process_email_outbox";
+        _metrics.DidNotReceive().RecordJobRun(name, "success");
+        if (shutdown)
+        {
+            _metrics.DidNotReceive().RecordJobRun(name, "failure");
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+            if (cleanup)
+            {
+                var warning = logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning).Which;
+                warning.Exception.Should().BeNull();
+            }
+        }
+        else
+        {
+            _metrics.Received(1).RecordJobRun(name, "failure");
+            if (cleanup) logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+        }
+    }
+
     [HumansFact(Timeout = 10000)]
     public async Task ProcessQueuedAsync_ProcessesQueuedMessages()
     {
