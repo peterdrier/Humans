@@ -4,10 +4,6 @@ version: 1
 next_id: 18
 inbox:
   - added: 2026-11-10
-    id: TEAMS-14
-    what: "Early-entry edit and remove rely on TeamAdminController's EarlyEntryEnabled check; TeamEarlyEntry guards the flag only on add. Found by section-doctor's controller-intent thread."
-    review: panel
-  - added: 2026-11-10
     id: TEAMS-15
     what: "TeamAdminController.ProvisionEmail checks that the target is a member of the team itself; no service owns that rule. Found by section-doctor's controller-intent thread."
     review: panel

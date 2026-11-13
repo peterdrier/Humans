@@ -509,7 +509,7 @@ internal sealed class TeamService(
     public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default) =>
         EarlyEntry.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, eventSettingsId, ct);
 
-    public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<TeamEarlyEntryMutationResult> RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default) =>
         EarlyEntry.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct);
 
     private Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct) =>

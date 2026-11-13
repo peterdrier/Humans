@@ -290,11 +290,11 @@ internal interface ITeamManagementService : ITeamManagement
     /// <summary>Returns a refusal unless the team has <see cref="Team.EarlyEntryEnabled"/> and the person and selected event are available.</summary>
     Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default);
 
-    /// <summary>A grant on another team counts as not found.</summary>
+    /// <summary>Requires early entry enabled. A grant on another team counts as not found.</summary>
     Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default);
 
-    /// <summary>Idempotent. A grant on another team counts as not found.</summary>
-    Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Requires early entry enabled for an existing grant. Absent grants, including another team's, are a successful no-op.</summary>
+    Task<TeamEarlyEntryMutationResult> RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
 }
 
 internal sealed record TeamRoleReconciliationMembership(

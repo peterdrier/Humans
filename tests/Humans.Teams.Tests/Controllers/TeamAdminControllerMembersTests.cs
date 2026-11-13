@@ -337,6 +337,7 @@ public class TeamAdminControllerMembersTests
     [InlineData("unassign", false)]
     [InlineData("add", false)]
     [InlineData("edit", false)]
+    [InlineData("remove", false)]
     public async Task TeamMutation_RefusalFeedbackAndDependencyFailures(string operation, bool dependencyFailure)
     {
         var actorId = Guid.NewGuid();
@@ -369,7 +370,7 @@ public class TeamAdminControllerMembersTests
         teams.EditEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
         teams.RemoveEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
-            .Returns(_ => throw failure);
+            .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
         teams.AssignToRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
             .Returns(_ => dependencyFailure ? throw failure : new TeamRoleAssignmentMutationResult(Refusal: "Expected refusal"));
         teams.UnassignFromRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())

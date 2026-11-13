@@ -695,8 +695,14 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
-        await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
-        SetSuccess("Early entry revoked.");
+        var result = await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Early entry removal refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", grantId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
+            SetSuccess("Early entry revoked.");
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
