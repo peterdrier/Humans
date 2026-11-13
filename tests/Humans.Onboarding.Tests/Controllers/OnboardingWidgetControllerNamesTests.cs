@@ -1,3 +1,8 @@
+using AwesomeAssertions;
+using Humans.Base;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
@@ -18,6 +23,42 @@ namespace Humans.Onboarding.Tests.Controllers;
 
 public class OnboardingWidgetControllerNamesTests
 {
+    [HumansFact]
+    public void Names_ValidationUsesTheCurrentSupportedCulture()
+    {
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        foreach (var culture in CultureCatalog.SupportedCultureCodes)
+        {
+            using var cultureScope = new CultureScope(culture);
+            foreach (var tooLong in new[] { false, true })
+            {
+                var name = tooLong ? new string('x', 101) : string.Empty;
+                var model = new NamesViewModel { BurnerName = name, FirstName = name, LastName = name };
+                var context = new ActionContext
+                {
+                    HttpContext = new DefaultHttpContext { RequestServices = services },
+                };
+                validator.Validate(context, null, string.Empty, model);
+
+                var expected = tooLong ? localizer["Validation_MaxLength", string.Empty, 100]
+                    : localizer["Validation_Required"];
+                expected.ResourceNotFound.Should().BeFalse();
+                context.ModelState.ErrorCount.Should().Be(3);
+                foreach (var field in new[] { nameof(model.BurnerName), nameof(model.FirstName), nameof(model.LastName) })
+                {
+                    context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                        .Should().Be(expected.Value, $"{field} must use the {culture} validation message");
+                }
+            }
+        }
+    }
+
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
