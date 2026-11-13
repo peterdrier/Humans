@@ -56,7 +56,7 @@ The shapes imply a section with no data layer at all:
   the class exists only so Shell discovers the assembly.
 - **Docs** — the invariant doc, the authorization table, and one feature spec per
   telemetry screen that has non-obvious capture rules (client stats, HTTP errors).
-- **No resx, no Contracts project, no tests of the views** beyond the local-only render
+- **No resx, no Contracts project, no tests of the views** beyond the render
   walk in `Humans.Integration.Tests`.
 
 ## 4. Invariants
