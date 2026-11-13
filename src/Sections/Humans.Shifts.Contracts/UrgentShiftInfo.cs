@@ -42,7 +42,10 @@ public sealed record ShiftInfo(
     int MaxVolunteers,
     bool AdminOnly,
     bool IsAllDay,
-    bool IsEarlyEntry);
+    bool IsEarlyEntry)
+{
+    public Duration Duration => Duration.FromHours(DurationHours);
+}
 
 /// <summary>Member names match <c>Rota</c>'s so the rota partials bind unchanged.</summary>
 public sealed record RotaInfo(

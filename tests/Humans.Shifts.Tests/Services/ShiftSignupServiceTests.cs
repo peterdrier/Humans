@@ -85,7 +85,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         _teamService = Substitute.For<ITeamService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
+            .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_teamService)
@@ -397,7 +397,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = target, EventSettingsId = secondEvent.Id },
             new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSettingsId = firstEvent.Id, Notes = "Other human" });
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        var info = UserInfoStubHelpers.MakeUserInfo(target) with { MergedUserIds = [source] };
+        var info = UserFixtures.MakeUserInfo(target) with { MergedUserIds = [source] };
         _users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(info);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
@@ -621,7 +621,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(state is { } actualState
-                ? UserInfoStubHelpers.MakeUserInfo(userId) with { State = actualState }
+                ? UserFixtures.MakeUserInfo(userId) with { State = actualState }
                 : null);
         await SaveAllAsync(TestContext.Current.CancellationToken);
         await _views.PrimeRotaAsync(rota.Id, shift);
@@ -656,7 +656,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(userId) with { State = UserState.Active });
+            .Returns(UserFixtures.MakeUserInfo(userId) with { State = UserState.Active });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(inputId, shift.Id);
@@ -1246,7 +1246,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         var targetId = Guid.NewGuid();
         UserInfo? target = string.Equals(kind, "missing", StringComparison.Ordinal) ? null
-            : UserInfoStubHelpers.MakeUserInfo(targetId) with
+            : UserFixtures.MakeUserInfo(targetId) with
             {
                 State = string.Equals(kind, "deleted", StringComparison.Ordinal) ? UserState.Deleted : UserState.Merged,
                 MergedAt = Clock.GetCurrentInstant(),
@@ -1278,7 +1278,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var sourceId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         _users.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(
-            UserInfoStubHelpers.MakeUserInfo(survivorId) with { State = UserState.Bare });
+            UserFixtures.MakeUserInfo(survivorId) with { State = UserState.Bare });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = range
@@ -1298,7 +1298,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
         _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
+            .Returns(UserFixtures.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
@@ -1375,11 +1375,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         var volunteerId = Guid.NewGuid();
         _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { PreferredLanguage = "es" });
+            .Returns(UserFixtures.MakeUserInfo(volunteerId) with { PreferredLanguage = "es" });
         if (lookupFailure)
             _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
                 // Identity validation succeeds; the later best-effort language lookup fails.
-                .Returns(new ValueTask<UserInfo?>(UserInfoStubHelpers.MakeUserInfo(volunteerId)),
+                .Returns(new ValueTask<UserInfo?>(UserFixtures.MakeUserInfo(volunteerId)),
                     ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -1646,7 +1646,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(userId) with { State = UserState.Active });
+            .Returns(UserFixtures.MakeUserInfo(userId) with { State = UserState.Active });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(inputId, rota.Id, -3, -1);
@@ -2211,7 +2211,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
         _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
+            .Returns(UserFixtures.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);

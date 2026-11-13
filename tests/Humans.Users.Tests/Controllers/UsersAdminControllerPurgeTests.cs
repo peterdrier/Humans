@@ -44,14 +44,14 @@ public class UsersAdminControllerPurgeTests
     {
         _environment.EnvironmentName.Returns("Development");
         _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = _adminUserId, PreferredLanguage = "en" }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _adminUserId, PreferredLanguage = "en" })));
         _localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();
             return new LocalizedString(key, key);
         });
         _userService.GetRawUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = _adminUserId, PreferredLanguage = "en" }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _adminUserId, PreferredLanguage = "en" })));
     }
 
     private UsersAdminController BuildController()
@@ -114,7 +114,7 @@ public class UsersAdminControllerPurgeTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User { Id = _adminUserId }.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _adminUserId }));
         });
         _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -123,7 +123,7 @@ public class UsersAdminControllerPurgeTests
                 call.Arg<CancellationToken>().Should().Be(request.Token);
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             }
-            return new ValueTask<UserInfo?>(new User { Id = targetId }.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = targetId }));
         });
         var controller = BuildController();
         controller.HttpContext.RequestAborted = request.Token;
@@ -149,9 +149,8 @@ public class UsersAdminControllerPurgeTests
     public async Task AdminList_SearchIgnoresWhitespaceForAccountsWithoutProfiles(string search)
     {
         var userId = Guid.NewGuid();
-        var target = new User { Id = userId, BurnerName = "Bare Human", CreatedAt = Instant.FromUtc(2026, 5, 1, 0, 0) }
-            .ToUserInfo([new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "member@example.org", IsVerified = true, IsPrimary = true }]);
-        var other = new User { Id = Guid.NewGuid(), BurnerName = "Someone Else" }.ToUserInfo();
+        var target = UserInfoFixtures.FromUser(new User { Id = userId, BurnerName = "Bare Human", CreatedAt = Instant.FromUtc(2026, 5, 1, 0, 0) }, [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "member@example.org", IsVerified = true, IsPrimary = true }]);
+        var other = UserInfoFixtures.FromUser(new User { Id = Guid.NewGuid(), BurnerName = "Someone Else" });
         // The ordinary person matcher excludes accounts with no profile; the admin fallback owns these rows.
         PersonSearchMatcher.Match(target, search, PersonSearchFields.AdminAll).Should().BeNull();
         _userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new[] { target, other });

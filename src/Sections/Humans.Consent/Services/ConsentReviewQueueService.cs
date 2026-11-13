@@ -45,12 +45,12 @@ internal sealed class ConsentReviewQueueService(
         ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
 
         var flagged = all
-            .Where(u => u.IsConsentCheckFlagged(ReviewOf(u)))
+            .Where(u => ReviewOf(u).IsConsentCheckFlagged(u))
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
         var pending = all
-            .Where(u => u.NeedsConsentReview(ReviewOf(u)) && !u.IsConsentCheckFlagged(ReviewOf(u)))
+            .Where(u => ReviewOf(u).NeedsConsentReview(u) && !ReviewOf(u).IsConsentCheckFlagged(u))
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 

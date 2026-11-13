@@ -388,7 +388,7 @@
                                             @{
                                                 var shiftLabel = shift.IsAllDay
                                                     ? "All day"
-                                                    : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)shift.GetDuration().TotalMinutes).ToTime()}";
+                                                    : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToTime()}";
                                             }
                                             @shiftLabel
                                             @if (shift.AdminOnly) { <span class="badge bg-dark">Admin Only</span> }

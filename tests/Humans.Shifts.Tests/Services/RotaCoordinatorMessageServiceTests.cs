@@ -322,7 +322,7 @@ public sealed class RotaCoordinatorMessageServiceTests
                 new Dictionary<Guid, UserInfo>
                 {
                     [withEmail] = MakeUserInfoWithEmail(withEmail, "with@example.com", "WithEmail"),
-                    [noEmail] = UserInfoStubHelpers.MakeUserInfo(noEmail, displayName: "NoEmail"),
+                    [noEmail] = UserFixtures.MakeUserInfo(noEmail, displayName: "NoEmail"),
                 }));
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
@@ -978,7 +978,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             IsPrimary = true,
             IsVerified = true,
         };
-        return user.ToUserInfo([ue]);
+        return UserInfoFixtures.FromUser(user, [ue]);
     }
 
     /// <summary>

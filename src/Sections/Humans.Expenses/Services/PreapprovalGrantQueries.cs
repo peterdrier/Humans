@@ -9,12 +9,12 @@ namespace Humans.Expenses.Services;
 internal static class PreapprovalGrantQueries
 {
     internal static async Task<GrantOption?> GetGrantAsync(
-        this IPreapprovalService preapprovals, Guid grantId, CancellationToken ct) =>
+        IPreapprovalService preapprovals, Guid grantId, CancellationToken ct) =>
         (await preapprovals.GetGrantsAsync(ct)).FirstOrDefault(g => g.Id == grantId);
 
     /// <summary>The grants this person may file an expense against today.</summary>
     internal static async Task<IReadOnlyList<GrantOption>> ListClaimableAsync(
-        this IPreapprovalService preapprovals, IReadOnlyCollection<Guid> personIds, CancellationToken ct) =>
+        IPreapprovalService preapprovals, IReadOnlyCollection<Guid> personIds, CancellationToken ct) =>
         (await preapprovals.GetGrantsAsync(ct))
             .Where(g => g.ClaimableToday && personIds.Contains(g.HolderUserId))
             .ToList();
@@ -24,7 +24,7 @@ internal static class PreapprovalGrantQueries
     /// reach every program by role, which this does not count.
     /// </summary>
     internal static async Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(
-        this IPreapprovalService preapprovals, IReadOnlyCollection<Guid> personIds, CancellationToken ct) =>
+        IPreapprovalService preapprovals, IReadOnlyCollection<Guid> personIds, CancellationToken ct) =>
         (await preapprovals.GetGrantsAsync(ct))
             .Where(g => g.ManagerUserIds.Any(personIds.Contains))
             .Select(g => g.Id)

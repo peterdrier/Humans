@@ -35,7 +35,7 @@ internal sealed class ExpensePageBuilder(
 
         var coordinatorQueue = await service.GetCoordinatorQueueAsync(userId, ct);
         var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
-        var openGrants = (await preapprovals.ListClaimableAsync(viewer.AllUserIds, ct))
+        var openGrants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct))
             .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 
         // Own account only. GetCreditorLedgerAsync returns null both for "not bound" and "bound, nothing cached

@@ -175,7 +175,7 @@ public sealed class Section :
         var users = sp.GetRequiredService<IUserService>();
         var reviews = await sp.GetRequiredService<IConsentService>().GetConsentReviewsAsync();
         var count = (await users.GetAllUserInfosAsync()).Count(u =>
-            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
+            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u));
         return count > 0 ? count : null;
     }
 

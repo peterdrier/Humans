@@ -41,7 +41,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     public ShiftSignupServiceAutoConfirmIgnoresConsentTests()
         : base(TestNow)
     {
-        _userInfo = UserInfoStubHelpers.MakeUserInfo(_userId) with
+        _userInfo = UserFixtures.MakeUserInfo(_userId) with
         {
             State = UserState.Active,
             BurnerName = "New Human",

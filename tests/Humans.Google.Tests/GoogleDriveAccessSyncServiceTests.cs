@@ -1432,7 +1432,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         foreach (var u in users)
         {
             var user = new User { Id = u.UserId, DisplayName = u.DisplayName, CreatedAt = _now };
-            _usersById[u.UserId] = user.ToUserInfo();
+            _usersById[u.UserId] = UserInfoFixtures.FromUser(user);
         }
 
         WireUserLookups(users.Select(u => (u.UserId, u.Email)).ToArray());
@@ -1441,7 +1441,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
     private void StubUsersWithNoEmail(Guid userId)
     {
         var user = new User { Id = userId, DisplayName = "NoEmail", CreatedAt = _now };
-        _usersById[userId] = user.ToUserInfo();
+        _usersById[userId] = UserInfoFixtures.FromUser(user);
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>

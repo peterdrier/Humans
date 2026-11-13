@@ -58,30 +58,6 @@ public static class ConfigurationExtensions
         return value!;
     }
 
-    /// <summary>For settings read through <c>Environment.GetEnvironmentVariable()</c> rather than IConfiguration.</summary>
-    public static string? RegisterEnvironmentVariable(
-        this ConfigurationRegistry registry,
-        string envVarName,
-        string section,
-        bool isSensitive = true,
-        ConfigurationImportance importance = ConfigurationImportance.Optional)
-    {
-        var value = Environment.GetEnvironmentVariable(envVarName);
-        var isSet = !string.IsNullOrEmpty(value);
-
-        registry.Register(new ConfigurationEntry
-        {
-            Section = section,
-            Key = $"{envVarName} (env)",
-            IsSensitive = isSensitive,
-            Importance = importance,
-            IsSet = isSet,
-            Value = value
-        });
-
-        return value;
-    }
-
     private static string? GetSetting(
         IConfiguration configuration,
         ConfigurationRegistry registry,

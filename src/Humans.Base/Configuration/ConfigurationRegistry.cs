@@ -24,6 +24,29 @@ public sealed class ConfigurationRegistry
             });
     }
 
+    /// <summary>For settings read through <c>Environment.GetEnvironmentVariable()</c> rather than IConfiguration.</summary>
+    public string? RegisterEnvironmentVariable(
+        string envVarName,
+        string section,
+        bool isSensitive = true,
+        ConfigurationImportance importance = ConfigurationImportance.Optional)
+    {
+        var value = Environment.GetEnvironmentVariable(envVarName);
+        var isSet = !string.IsNullOrEmpty(value);
+
+        Register(new ConfigurationEntry
+        {
+            Section = section,
+            Key = $"{envVarName} (env)",
+            IsSensitive = isSensitive,
+            Importance = importance,
+            IsSet = isSet,
+            Value = value
+        });
+
+        return value;
+    }
+
     /// <summary>Ordered by section, then key.</summary>
     public IReadOnlyList<ConfigurationEntry> GetAll()
     {

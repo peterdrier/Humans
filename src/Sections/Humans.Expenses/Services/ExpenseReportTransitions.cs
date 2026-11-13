@@ -91,7 +91,7 @@ internal sealed class ExpenseReportTransitions(
         // A rejected draft still holds (Claimed) the grant it was submitted against. Dropping or swapping it
         // releases that claim in the same transaction. A grant revoked meanwhile is left behind.
         var released = report.PreapprovalGrantId is { } held && held != preapprovalGrantId
-            && (await preapprovals.GetGrantAsync(held, ct))?.Status == GrantStatus.Claimed
+            && (await PreapprovalGrantQueries.GetGrantAsync(preapprovals, held, ct))?.Status == GrantStatus.Claimed
             ? held
             : (Guid?)null;
         if (released is { } releasedId)
@@ -232,7 +232,7 @@ internal sealed class ExpenseReportTransitions(
         // A held pre-approval goes back to the member. A grant revoked while pending is no longer held and is left
         // alone, so the withdrawal still goes through.
         var heldGrant = report.PreapprovalGrantId is { } grantId
-            ? await preapprovals.GetGrantAsync(grantId, ct)
+            ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct)
             : null;
         var releasesGrant = heldGrant?.Status == GrantStatus.Claimed;
         if (!releasesGrant)
@@ -383,7 +383,7 @@ internal sealed class ExpenseReportTransitions(
 
     private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
     {
-        var grant = await preapprovals.GetGrantAsync(grantId, ct);
+        var grant = await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct);
         switch (grant?.Status)
         {
             case GrantStatus.Revoked:

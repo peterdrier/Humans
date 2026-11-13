@@ -49,7 +49,7 @@ public sealed class TicketTransferService_OnwardTransferTests
                 var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids.ToDictionary(
                     id => id,
-                    id => new User { Id = id, DisplayName = id.ToString() }.ToUserInfo());
+                    id => UserInfoFixtures.FromUser(new User { Id = id, DisplayName = id.ToString() }));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
     }

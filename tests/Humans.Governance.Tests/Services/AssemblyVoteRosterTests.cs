@@ -166,7 +166,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([active, suspended]));
         var map = new Dictionary<Guid, UserInfo>
         {
-            [active] = new User
+            [active] = UserInfoFixtures.FromUser(new User
             {
                 Id = active,
                 DisplayName = "Active",
@@ -174,8 +174,8 @@ public sealed class AssemblyVoteRosterTests : IDisposable
                 Email = "a@x.com",
                 PreferredLanguage = "en",
                 State = UserState.Active
-            }.ToUserInfo(),
-            [suspended] = new User
+            }),
+            [suspended] = UserInfoFixtures.FromUser(new User
             {
                 Id = suspended,
                 DisplayName = "Suspended",
@@ -183,7 +183,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
                 Email = "s@x.com",
                 PreferredLanguage = "en",
                 State = UserState.Suspended
-            }.ToUserInfo()
+            })
         };
         _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map));

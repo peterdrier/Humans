@@ -47,13 +47,14 @@ public sealed class HumanSummaryViewComponentTests
             ProfilePictureContentType = "image/jpeg",
             UpdatedAt = at,
         };
-        var info = new User
+        var user = new User
         {
             Id = userId,
             BurnerName = "Sparkle",
             State = UserState.Suspended,
             PreferredLanguage = "es",
-        }.ToUserInfo(profile: profile);
+        };
+        var info = UserInfoStubHelpers.FromEntities(user, profile);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         var teams = Substitute.For<ITeamService>();

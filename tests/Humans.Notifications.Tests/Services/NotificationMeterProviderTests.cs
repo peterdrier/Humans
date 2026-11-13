@@ -169,11 +169,11 @@ public class NotificationMeterProviderTests : IDisposable
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<NotificationsResource>>();
         var userId = Guid.NewGuid();
-        var users = MakeNeedsConsentReview(1).Append(new User
+        var users = MakeNeedsConsentReview(1).Append(UserInfoFixtures.FromUser(new User
         {
             Id = Guid.NewGuid(),
             DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
-        }.ToUserInfo()).ToList();
+        })).ToList();
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(3);
@@ -293,7 +293,7 @@ public class NotificationMeterProviderTests : IDisposable
             new User { Id = Guid.NewGuid(), DeletionRequestedAt = Instant.FromUtc(2026, 4, 2, 0, 0) },
         };
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(usersForDeletion.Select(u => u.ToUserInfo()).ToList()));
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(usersForDeletion.Select(u => UserInfoFixtures.FromUser(u)).ToList()));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(5);
         var pendingTeamId = Guid.NewGuid();
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
