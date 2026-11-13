@@ -128,7 +128,7 @@ The entity carries `TargetUser`, `SourceUser`, and `ResolvedByUser` navigation p
 - `user_claims` (was `AspNetUserClaims`)
 - `user_logins` (was `AspNetUserLogins`)
 - `user_tokens` (was `AspNetUserTokens`)
-- `roles` (was `AspNetRoles`) — ASP.NET Identity creates the table because `IdentityDbContext<User, IdentityRole<Guid>, Guid>` is used. Authorization itself does **not** read this table — role membership is computed from `role_assignments` by `RoleAssignmentClaimsTransformation` (see [Auth.md](../../Humans.Auth/Docs/Auth.md)).
+- `roles` (was `AspNetRoles`) — ASP.NET Identity creates the table because `IdentityDbContext<User, IdentityRole<Guid>, Guid>` is used. Authorization itself does **not** read this table — role membership is computed from `auth_role_assignments` by `RoleAssignmentClaimsTransformation` (see [Auth.md](../../Humans.Auth/Docs/Auth.md)).
 - `user_roles` (was `AspNetUserRoles`) — same rationale; not used by the runtime authorization path.
 - `role_claims` (was `AspNetRoleClaims`) — same rationale.
 
@@ -572,7 +572,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/api/profiles/burner-name-count` | Live burner-name collision count, excluding the caller ([spec](features/burner-name-collision-warning.md)) |
 | `/api/profiles/by-userid/{userId}` | Profile lookup by user id |
 | `/Users/Admin` | Admin list of all humans; `AdminAll` searches burner/legal names, public fields and admin-only emails/contact fields. Search ignores surrounding whitespace, including the fallback for accounts without profiles |
-| `/Auth/Admin/Roles` | System-wide role-assignment roster, filterable by role (`UsersPolicies.Read`) — served by Auth's `RoleAssignmentsController` (`role_assignments` is Auth's); Auth adds the sidebar entry to the Users admin group |
+| `/Auth/Admin/Roles` | System-wide role-assignment roster, filterable by role (`UsersPolicies.Read`) — served by Auth's `RoleAssignmentsController` (`auth_role_assignments` is Auth's); Auth adds the sidebar entry to the Users admin group |
 | `/Users/Admin/{id}` | Admin detail view; the read-only Communication preferences card is Email's `AdminDetail` user part (Users decomposition commit 14); the Google Sync and @nobodies.team cards are GoogleIntegration's `AdminDetailSidebar` user part (commit 15) |
 | `/Email/Admin/{id}/Outbox` | Admin view of person's outbox — served by Email's `MemberOutboxController`; the card linking to it is Email's `AdminDetail` user part |
 | `/Users/Admin/{id}/Suspend`, `/Users/Admin/{id}/Unsuspend` | POST — suspend / unsuspend member |

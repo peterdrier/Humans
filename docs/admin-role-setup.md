@@ -1,6 +1,6 @@
 # Adding Admin Users
 
-Admin roles are managed through the `role_assignments` table with temporal assignments (ValidFrom/ValidTo).
+Admin roles are managed through the `auth_role_assignments` table with temporal assignments (ValidFrom/ValidTo).
 
 ## Prerequisites
 

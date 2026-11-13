@@ -68,7 +68,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     [HumansFact]
     public async Task AssignRoleAsync_EvictsRowCache_AndWritesAudit()
     {
-        // The row cache is a Singleton holding every role_assignments row; a write
+        // The row cache is a Singleton holding every auth_role_assignments row; a write
         // that skips the eviction leaves every reader on stale roles until restart.
         var userId = Guid.NewGuid();
         var assignerId = Guid.NewGuid();
