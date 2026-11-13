@@ -21,7 +21,3 @@ inbox:
     id: GOV-17
     what: "Views/_ViewImports.cshtml says the Application_* keys stay in SharedResource because ProfileController renders the same tier-application form during profile setup; profile setup now only links to /Governance/Applications/Create, and no view outside Governance reads Application_* keys. Move them to GovernanceResource (all cultures) or correct the comment. Found by section-doctor."
     review: panel
-  - added: 2026-11-12
-    id: GOV-18
-    what: "IApplicationRepository.GetAdminStatsAsync returns the ApplicationAdminStats DTO; design-rules.md says repositories return entities, never DTOs. Build the stats in ApplicationReader from repository reads. Found by section-doctor (reviewer note)."
-    review: light

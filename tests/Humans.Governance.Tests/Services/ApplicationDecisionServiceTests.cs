@@ -578,6 +578,35 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         (await _service.GetSubmittedApplicationForUserAsync(userId, ct)).Should().BeNull();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetAdminStatsAsync_CountsApplicationsAndExcludesWithdrawnAcrossTiers(bool populated)
+    {
+        if (populated)
+        {
+            var applicantId = Guid.NewGuid();
+            await SeedSubmittedApplicationAsync(applicantId);
+            var approvedColaborador = await SeedSubmittedApplicationAsync(applicantId);
+            approvedColaborador.Approve(Guid.NewGuid(), null, Clock);
+            var approvedAsociado = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
+            approvedAsociado.Approve(Guid.NewGuid(), null, Clock);
+            var rejected = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
+            rejected.Reject(Guid.NewGuid(), "Reason", Clock);
+            var withdrawnColaborador = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+            withdrawnColaborador.Withdraw(Clock);
+            var withdrawnAsociado = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
+            withdrawnAsociado.Withdraw(Clock);
+            await SaveAllAsync(TestContext.Current.CancellationToken);
+        }
+
+        var result = await _service.GetAdminStatsAsync(TestContext.Current.CancellationToken);
+
+        result.Should().Be(populated
+            ? new ApplicationAdminStats(4, 2, 1, 2, 2)
+            : new ApplicationAdminStats(0, 0, 0, 0, 0));
+    }
+
     [HumansFact]
     public async Task ApproveAsync_SubmittedApplication_SetsApproved()
     {
