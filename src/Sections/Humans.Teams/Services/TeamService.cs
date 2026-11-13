@@ -261,7 +261,7 @@ internal sealed class TeamService(
         Joining.ApproveJoinRequestAsync(requestId, approverUserId, notes, cancellationToken);
 
     public Task<TeamJoinReviewResult> RejectJoinRequestAsync(
-        Guid requestId, Guid approverUserId, string reason, CancellationToken cancellationToken = default) =>
+        Guid requestId, Guid approverUserId, string? reason, CancellationToken cancellationToken = default) =>
         Joining.RejectJoinRequestAsync(requestId, approverUserId, reason, cancellationToken);
 
     public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(

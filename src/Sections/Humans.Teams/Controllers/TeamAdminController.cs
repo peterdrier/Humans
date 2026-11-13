@@ -83,13 +83,7 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        if (string.IsNullOrWhiteSpace(model.Notes))
-        {
-            SetError(localizer["Teams_TeamAdmin_ProvideRejectionReason"].Value);
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
-        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes!);
+        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Teams_TeamAdmin_RequestRejected"].Value);
@@ -97,8 +91,8 @@ internal sealed class TeamAdminController(
         else
         {
             logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}",
-                requestId, team.Id, user.Id, result.Refusal);
-            SetError(result.Refusal!);
+                requestId, team.Id, user.Id, result.ErrorKey ?? result.Refusal);
+            SetError(result.ErrorKey is { } errorKey ? localizer[errorKey].Value : result.Refusal!);
         }
 
         return RedirectToAction(nameof(Members), new { slug });

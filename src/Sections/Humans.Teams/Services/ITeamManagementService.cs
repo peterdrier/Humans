@@ -177,7 +177,7 @@ internal interface ITeamManagementService : ITeamManagement
     Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
-        string reason,
+        string? reason,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
@@ -337,9 +337,9 @@ internal sealed record TeamJoinResult(TeamJoinOutcome? Outcome = null, string? E
 internal sealed record TeamJoinRequestResult(TeamJoinRequest? Request = null, string? ErrorKey = null);
 internal sealed record TeamDirectJoinResult(TeamMember? Member = null, string? ErrorKey = null);
 
-internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? Refusal = null)
+internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? Refusal = null, string? ErrorKey = null)
 {
-    public bool Succeeded => Refusal is null;
+    public bool Succeeded => Refusal is null && ErrorKey is null;
 }
 
 internal sealed record TeamDeactivationResult(string? Refusal = null)

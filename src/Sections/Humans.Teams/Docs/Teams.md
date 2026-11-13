@@ -172,6 +172,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 ## Triggers
 
+- Rejecting a join request requires a nonblank reason in `TeamJoining`, including direct service calls. A missing, empty or whitespace reason returns the existing localized refusal key before reading or changing the request; no review metadata, rejection audit or notification is emitted. The controller only formats the result. Approval notes remain optional.
 - When a join request is approved, or a coordinator adds a member, the membership is created and the human gets a welcome email and an inbox notice. Coordinators get a notice for every new request and direct join. Notices and emails go in the recipient's saved language, falling back to English, and finish after the membership commits; a notice failure never undoes the membership.
 - When a member is added, the Google outbox event grants their Drive and Group access, including the parent's resources for a sub-team add. Removals wait for GoogleIntegration's daily reconciliation.
 - When a department's management-role assignment changes, or a team moves into or out of being an active department, the affected humans' Coordinators system-team membership is recalculated. Sub-team manager changes do not touch the Coordinators system team.

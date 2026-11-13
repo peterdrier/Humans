@@ -1804,6 +1804,33 @@ public sealed class TeamServiceTests : TeamsTestHarness
             target.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task RejectJoinRequestAsync_BlankReason_RefusesWithoutSideEffects(string? reason)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(ct);
+
+        var result = await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, reason, ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Teams_TeamAdmin_ProvideRejectionReason");
+        var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id, ct);
+        stored.Status.Should().Be(TeamJoinRequestStatus.Pending);
+        stored.ReviewNotes.Should().BeNull();
+        stored.ReviewedByUserId.Should().BeNull();
+        stored.ResolvedAt.Should().BeNull();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task RejectJoinRequestAsync_RequestNotFound_ReturnsRefusal()
     {

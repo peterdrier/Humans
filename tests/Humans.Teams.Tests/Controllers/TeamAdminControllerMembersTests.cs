@@ -220,6 +220,47 @@ public class TeamAdminControllerMembersTests
         controller.TempData.Should().NotContainKey("SuccessMessage");
     }
 
+    [HumansFact]
+    public async Task RejectRequest_ServiceReasonRefusal_UsesExistingLocalizedFeedback()
+    {
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        teams.RejectJoinRequestAsync(requestId, userId, null)
+            .Returns(new TeamJoinReviewResult(ErrorKey: "Teams_TeamAdmin_ProvideRejectionReason"));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        localizer["Teams_TeamAdmin_ProvideRejectionReason"].Returns(
+            new LocalizedString("Teams_TeamAdmin_ProvideRejectionReason", "Translated reason required"));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            localizer, Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.RejectRequest(team.Slug, requestId, new ApproveRejectRequestModel());
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Members");
+        controller.TempData["ErrorMessage"].Should().Be("Translated reason required");
+        controller.TempData.Should().NotContainKey("SuccessMessage");
+        await teams.Received(1).RejectJoinRequestAsync(requestId, userId, null);
+    }
+
     [HumansTheory]
     [InlineData(true, 2000)]
     [InlineData(false, 2000)]
