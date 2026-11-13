@@ -253,7 +253,6 @@ public sealed class HoldedPublicReadsTests
         var summary = await _service.GetSummaryAsync(ct);
 
         summary.IsConfigured.Should().BeFalse();
-        summary.ApiReachable.Should().BeFalse();
         summary.LedgerLineCount.Should().Be(2);
         summary.EntryCount.Should().Be(1);
         summary.AccountCount.Should().Be(2, "an account only seen on a line still counts");

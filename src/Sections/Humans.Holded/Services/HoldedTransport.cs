@@ -49,6 +49,7 @@ internal sealed class HoldedTransport
         string pathAndQuery, int pageSafetyCap, CancellationToken ct,
         [CallerMemberName] string caller = "")
     {
+        var endpoint = pathAndQuery.Split('?', 2)[0];
         var items = new List<JsonNode>();
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
         string? cursor = null;
@@ -71,14 +72,14 @@ internal sealed class HoldedTransport
                 {
                     var preview = MaskDiagnosticBody(root?.ToJsonString() ?? "null");
                     throw new HoldedTransientException(
-                        $"Holded returned a 200 without a valid items array for {pathAndQuery.Split('?', 2)[0]} " +
+                        $"Holded returned a 200 without a valid items array for {endpoint} " +
                         $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
                 }
                 foreach (var n in itemsArr)
                 {
                     if (n is null)
                         throw new HoldedPermanentException(
-                            $"Holded page for {pathAndQuery.Split('?', 2)[0]} contains a null item.");
+                            $"Holded page for {endpoint} contains a null item.");
                     items.Add(n);
                 }
 
@@ -89,10 +90,10 @@ internal sealed class HoldedTransport
                 if (!hasMore) return items;
                 if (string.IsNullOrEmpty(cursor))
                     throw new HoldedTransientException(
-                        $"Holded page for {pathAndQuery.Split('?', 2)[0]} claims has_more but carries no cursor.");
+                        $"Holded page for {endpoint} claims has_more but carries no cursor.");
                 if (!seenCursors.Add(cursor))
                     throw new HoldedTransientException(
-                        $"Holded page for {pathAndQuery.Split('?', 2)[0]} carries a repeated cursor.");
+                        $"Holded page for {endpoint} carries a repeated cursor.");
             }
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -102,10 +103,9 @@ internal sealed class HoldedTransport
             // would fail instead of warning and the SEPA sweep would abort. Normalized here, where every paged
             // endpoint shares it.
             throw new HoldedPermanentException(
-                $"Holded page for {pathAndQuery.Split('?', 2)[0]} could not be read.", ex);
+                $"Holded page for {endpoint} could not be read.", ex);
         }
 
-        var endpoint = pathAndQuery.Split('?', 2)[0];
         throw new HoldedTransientException(
             $"Holded cursor pagination for {endpoint} hit the {pageSafetyCap}-page safety cap.");
     }

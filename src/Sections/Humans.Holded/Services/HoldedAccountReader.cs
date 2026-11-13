@@ -187,5 +187,4 @@ internal sealed class HoldedAccountReader(IHoldedMirrorRepository repo) : IAppli
         accountsByNumber.TryGetValue(largest.AccountNum, out var account);
         return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }
-
 }

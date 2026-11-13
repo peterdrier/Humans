@@ -88,7 +88,6 @@ internal sealed class Service(
     public Task SyncChartAsync(CancellationToken ct = default) =>
         MirrorSync.SyncChartAsync(ct);
 
-
     public Task<bool> SyncLedgerAsync(bool full = false, CancellationToken ct = default) =>
         MirrorSync.SyncLedgerAsync(full, ct);
 
@@ -164,31 +163,17 @@ internal sealed class Service(
     public Task<bool> SyncContactsAsync(CancellationToken ct = default) =>
         MirrorSync.SyncContactsAsync(ct);
 
-
-
     // Holded has no stable per-document page; its purchase list opens one from this fragment.
     private static string PurchaseDocUrl(string id) => $"https://app.holded.com/expenses/list#open:purchase-{id}";
 
     public async Task<HoldedSummary> GetSummaryAsync(CancellationToken ct = default)
     {
-        // Drain first: the usage call below then shows up on the next load, so the meter reports itself.
         await DrainCallLogAsync(ct);
 
-        HoldedUsageDto? usage = null;
-        if (client.IsConfigured)
-        {
-            try
-            {
-                usage = await client.GetUsageAsync(ct);
-            }
-            catch (HoldedApiException ex)
-            {
-                // Holded down, key revoked: the page says "unreachable" and still renders the mirror.
-                logger.LogWarning(ex, "Holded usage lookup failed; rendering /Holded from the mirror only");
-            }
-        }
-
-        var syncStates = (await repo.GetSyncStatesAsync(ct))
+        var states = await repo.GetSyncStatesAsync(ct);
+        var usage = states.FirstOrDefault(s => s.Kind == HoldedSyncKind.Usage);
+        var syncStates = states
+            .Where(s => s.Kind != HoldedSyncKind.Usage)
             .Select(s => new HoldedSyncStateRow(
                 s.Kind.ToString(), s.SyncStatus.ToString(), s.LastSyncAt, s.LastError, s.LastCount))
             .ToList();
@@ -198,8 +183,7 @@ internal sealed class Service(
 
         return new HoldedSummary(
             IsConfigured: client.IsConfigured,
-            ApiReachable: usage is not null,
-            Usage: usage,
+            Usage: usage is null ? null : ToReading(usage),
             MonthlyCallBudget: options.Value.MonthlyCallBudget,
             SyncStates: syncStates,
             LedgerLineCount: lineCount,
@@ -215,7 +199,7 @@ internal sealed class Service(
         return (await repo.GetApiCallsAsync(ct))
             .GroupBy(c =>
             {
-                var d = c.CalledAt.InZone(HoldedMirrorSync.MadridZone).Date;
+                var d = c.CalledAt.InZone(HoldedJson.MadridZone).Date;
                 return (d.Year, d.Month);
             })
             .Select(m => new HoldedMonthlyCalls(
@@ -238,14 +222,50 @@ internal sealed class Service(
     public Task<HoldedEntry?> GetEntryViewAsync(int entryNumber, CancellationToken ct = default) =>
         accountReader.GetEntryViewAsync(entryNumber, ct);
 
+    // The period is the Madrid month of the read: Holded reports the current month.
+    private static HoldedUsageReading ToReading(HoldedSyncState s)
+    {
+        var month = s.LastSyncAt?.InZone(HoldedJson.MadridZone).Date;
+        return new HoldedUsageReading(
+            s.LastCount, month is { } d ? $"{d.Year:D4}-{d.Month:D2}" : null, s.LastSyncAt,
+            s.SyncStatus == HoldedSyncStatus.Error ? s.LastError : null);
+    }
+
+    public Task<bool> RefreshUsageAsync(CancellationToken ct = default) =>
+        MirrorSync.RefreshUsageAsync(ct);
+
+    public async Task<HoldedSyncNowResult> SyncNowAsync(CancellationToken ct = default)
+    {
+        var docs = await TrySyncAsync("purchase documents", () => SyncPurchaseDocumentsAsync(ct), ct);
+        var contacts = await TrySyncAsync("contacts", () => SyncContactsAsync(ct), ct);
+        var ledger = await TrySyncAsync("ledger", () => SyncLedgerAsync(full: false, ct), ct);
+        var outcomes = new[] { docs, contacts, ledger };
+        return new HoldedSyncNowResult(
+            outcomes.Where(o => o.Ran is null).Select(o => o.Name).ToList(),
+            outcomes.All(o => o.Ran == true));
+    }
+
+    /// <summary>Ran is null when the sync threw.</summary>
+    private async Task<(string Name, bool? Ran)> TrySyncAsync(string name, Func<Task<bool>> sync, CancellationToken ct)
+    {
+        try
+        {
+            return (name, await sync());
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Manual Holded {Sync} sync cancelled by the caller", name);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Manual Holded {Sync} sync failed", name);
+            return (name, null);
+        }
+    }
 
     private Task DrainCallLogAsync(CancellationToken ct) =>
         MirrorSync.DrainCallLogAsync(ct);
-
-
-
-
-
 
     private static HoldedLedgerLineInfo ToInfo(HoldedLedgerLine l) => new(
         l.EntryNumber, l.Line, l.AccountNum, l.Date, l.Type, l.Description, l.Debit, l.Credit,

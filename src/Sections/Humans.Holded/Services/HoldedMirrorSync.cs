@@ -3,6 +3,7 @@ using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
 using NodaTime;
+using static Humans.Holded.Services.HoldedJson;
 
 namespace Humans.Holded.Services;
 
@@ -14,8 +15,6 @@ internal sealed class HoldedMirrorSync(
     ILogger<Service> logger,
     HoldedAccountReader accountReader) : IApplicationService
 {
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
     /// <summary>Before the org existed; the full sweep's fixed floor.</summary>
     private static readonly LocalDate LedgerInception = new(2020, 1, 1);
 
@@ -33,7 +32,7 @@ internal sealed class HoldedMirrorSync(
     // in-process gate is enough.
     private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
 
-    // Same reasoning, its own gate: the two syncs write different tables.
+    // Same reasoning, one gate per sync: each writes its own table.
     private static readonly SemaphoreSlim PurchaseDocSyncGate = new(1, 1);
     private static readonly SemaphoreSlim ContactSyncGate = new(1, 1);
     private static readonly SemaphoreSlim BankMovementSyncGate = new(1, 1);
@@ -485,6 +484,35 @@ internal sealed class HoldedMirrorSync(
     /// <summary>Local midnight of the start date. Rows dated before it are outside the sweep and must survive.</summary>
     internal static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();
+
+    /// <summary>Reads the month's call count into the Usage state row. A Holded failure is recorded on the row and
+    /// answers false; the last good reading and its stamp stay.</summary>
+    public async Task<bool> RefreshUsageAsync(CancellationToken ct)
+    {
+        var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Usage, ct);
+        try
+        {
+            var usage = await client.GetUsageAsync(ct);
+            var now = clock.GetCurrentInstant();
+            state.SyncStatus = HoldedSyncStatus.Idle;
+            state.LastSyncAt = now;
+            state.StatusChangedAt = now;
+            state.LastCount = (int)Math.Min(usage.Usage, int.MaxValue);
+            state.LastError = null;
+            await repo.SaveSyncStateAsync(state, ct);
+            return true;
+        }
+        catch (HoldedApiException ex)
+        {
+            logger.LogWarning(ex, "Holded usage refresh failed");
+            await PersistSyncFailureAsync(state, ex);
+            return false;
+        }
+        finally
+        {
+            await DrainCallLogAsync(CancellationToken.None);
+        }
+    }
 
     private static HoldedLedgerLine ToEntity(HoldedLedgerLineDto l, Instant now) => new()
     {

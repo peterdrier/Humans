@@ -33,7 +33,8 @@ public sealed record HoldedContactDto
 {
     public required string Id { get; init; }
     public string? Name { get; init; }
-    /// <summary>supplier_record.num — the 400000xx supplier account number, or null if not yet assigned.</summary>
+    /// <summary>supplier_record.num — the contact's ledger account (40xxxxxx supplier, 41xxxxxx creditor), or null if not yet
+    /// assigned.</summary>
     public int? SupplierAccountNum { get; init; }
 
     public string? TradeName { get; init; }
