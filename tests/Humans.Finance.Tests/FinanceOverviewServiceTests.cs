@@ -115,17 +115,26 @@ public class FinanceOverviewServiceTests
         (owed with { Unavailable = "contacts unreadable" }).Total.Should().BeNull("an unknown creditor total is not zero");
 
         var recon = new ExpenseReconReport(null, null, null, [], [], [], [], new ExpenseReconTotals(0, 0, 0, 2, 0, 0m, 1, 0));
+        var sent = new SepaPayoutTransferRow(
+            Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUtc(2026, 3, 1, 9, 0), Guid.NewGuid(), Guid.NewGuid(),
+            40000002, null, "Ana", "ES**1234", 30m, null, null, null, null, null, null, null);
+        var pending = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "p", 5m, new LocalDate(2026, 1, 1),
+            "Queued", ExpenseReconLineStatus.Pending, null, null, null, null, [], 0m);
         var work = FinanceOverviewService.BuildWork([], [.. rows,
-            Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon);
+            Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon with { Lines = [pending] },
+            [sent, sent with { CandidateBankMovementId = "m1" }, sent with { BookedAt = sent.GeneratedAt },
+                sent with { WithdrawnAt = sent.GeneratedAt }]);
         work.ReadyToPay.Should().Be(1);
         work.ReadyToPayAmount.Should().Be(50m);
-        work.AwaitingBooking.Should().Be(1);
+        work.PushingToHolded.Should().Be(1);
+        work.AwaitingBankLine.Should().Be(1);
+        work.TransfersToBook.Should().Be(1);
         work.Problems.Should().Be(4);
 
         // The recon already names 40000004's doubled purchase: the account is not counted again.
         var line = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "d", 10m, new LocalDate(2026, 1, 1), "",
             ExpenseReconLineStatus.Duplicated, null, 40000004, 1, null, [2], 10m);
-        FinanceOverviewService.BuildWork([], rows, recon with { Lines = [line] }).Problems.Should().Be(3);
+        FinanceOverviewService.BuildWork([], rows, recon with { Lines = [line] }, []).Problems.Should().Be(3);
     }
 
     [HumansFact]

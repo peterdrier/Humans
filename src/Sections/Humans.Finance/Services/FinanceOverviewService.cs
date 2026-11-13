@@ -12,11 +12,12 @@ using NodaTime;
 namespace Humans.Finance.Services;
 
 /// <summary>/Finance's figures, composed from the pages that own each one: balances from the Holded ledger mirror,
-/// creditors and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
+/// creditors, SEPA transfers and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
 /// the Pleo wallet from Pleo. Owns no tables.</summary>
 internal sealed class FinanceOverviewService(
     IHoldedService holded,
     IFinanceService finance,
+    IFinanceAdminService financeAdmin,
     IExpenseReportService expenseReports,
     IBudgetService budget,
     CashFlowService cashFlow,
@@ -44,7 +45,8 @@ internal sealed class FinanceOverviewService(
         var (creditors, _, creditorsUnavailable) = await finance.ListCreditorAccountsAsync(ct);
         var recon = await finance.GetExpenseReconAsync(null, ct);
         var queue = await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
-        var (transfers, _) = await finance.GetSepaTransfersAsync(ct);
+        // Paired over the bank-feed mirror as it stands: no Holded call.
+        var (transfers, _, _, _, _) = await financeAdmin.GetSepaPayoutsAsync(ct: ct);
 
         var year = await budget.GetActiveYearAsync(ct);
         FinanceBudgetVm? budgetVm = null;
@@ -64,7 +66,7 @@ internal sealed class FinanceOverviewService(
             syncedAt,
             ledger,
             BuildOwed(creditors, ledger?.TaxesOwed) with { Unavailable = creditorsUnavailable },
-            BuildWork(queue, creditors, recon) with { CreditorsUnavailable = creditorsUnavailable },
+            BuildWork(queue, creditors, recon, transfers) with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
             income,
@@ -227,12 +229,16 @@ internal sealed class FinanceOverviewService(
         .Select(t => new FinanceSepaTransferVm(t.UserId, t.FileName, t.GeneratedAt, t.Amount))
         .ToList();
 
-    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning.</summary>
+    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning. An
+    /// open transfer either has a Sabadell line paired to it, so it can be booked, or is still waiting for one.</summary>
     internal static FinanceWorkVm BuildWork(
         IReadOnlyList<ExpenseReportDto> queue,
         IReadOnlyList<CreditorAccountRow> creditors,
-        ExpenseReconReport recon)
+        ExpenseReconReport recon,
+        IReadOnlyList<SepaPayoutTransferRow> transfers)
     {
+        var open = transfers.Where(t => !t.IsBooked && !t.IsWithdrawn).ToList();
+        var withBankLine = open.Count(t => t.CandidateBankMovementId is { Length: > 0 });
         var submitted = queue.Where(r => r.Status == ExpenseReportStatus.Submitted).ToList();
         var endorsed = queue.Where(r => r.Status == ExpenseReportStatus.CoordinatorEndorsed).ToList();
         var ready = creditors
@@ -255,7 +261,9 @@ internal sealed class FinanceOverviewService(
             endorsed.Min(r => r.CoordinatorEndorsedAt),
             ready.Count,
             ready.Sum(r => r.OwedToMember),
-            creditors.Count(r => r.PendingPayoutFileName is not null),
+            recon.IsAvailable ? recon.Lines.Count(l => l.Status == ExpenseReconLineStatus.Pending) : null,
+            open.Count - withBankLine,
+            withBankLine,
             reconProblems is { } p ? p + duplicates : null,
             duplicates,
             reconProblems);
