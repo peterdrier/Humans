@@ -311,36 +311,47 @@ internal sealed class SepaBankBooking(
         // nor is a file a Process run got part-way through: linking it would make the line `partial`.
         foreach (var group in pending.GroupBy(r => r.HoldedBankMovementId!, StringComparer.Ordinal))
         {
-            var line = byId[group.Key].FirstOrDefault();
-            if (line is null) continue;
-            Instant? at = IsReconciled(line) ? clock.GetCurrentInstant() : null;
-            var fileStillOpen = rows.Any(r => !r.IsBooked && group.Any(g => g.FileId == r.FileId));
-            if (at is null && IsUntouched(line) && !fileStillOpen)
+            ct.ThrowIfCancellationRequested();
+            // Finish the bank-line reconcile and every transfer stamp once this unit starts.
+            var completionCt = CancellationToken.None;
+            try
             {
-                var refs = group.SelectMany(r => PaymentRefs(r.HoldedPaymentRefs)).ToList();
-                if (refs.Count > 0)
+                var line = byId[group.Key].FirstOrDefault();
+                if (line is null) continue;
+                Instant? at = IsReconciled(line) ? clock.GetCurrentInstant() : null;
+                var fileStillOpen = rows.Any(r => !r.IsBooked && group.Any(g => g.FileId == r.FileId));
+                if (at is null && IsUntouched(line) && !fileStillOpen)
                 {
-                    logger.LogInformation(
-                        "SEPA sweep: re-issuing the reconcile of Sabadell line {MovementId} against "
-                        + "{Count} payment(s) of {Rows} transfer(s).", line.Id, refs.Count, group.Count());
-                    at = await TryReconcileAsync(line.Id, line.Date, refs, incomplete: true, ct);
+                    var refs = group.SelectMany(r => PaymentRefs(r.HoldedPaymentRefs)).ToList();
+                    if (refs.Count > 0)
+                    {
+                        logger.LogInformation(
+                            "SEPA sweep: re-issuing the reconcile of Sabadell line {MovementId} against "
+                            + "{Count} payment(s) of {Rows} transfer(s).", line.Id, refs.Count, group.Count());
+                        at = await TryReconcileAsync(line.Id, line.Date, refs, incomplete: true, completionCt);
+                    }
+                }
+                if (at is null) continue;
+
+                foreach (var row in group)
+                {
+                    await repo.MarkSepaTransferReconciledAsync(row.TransferId, at.Value, completionCt);
+                    await audit.LogAsync(
+                        FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
+                        $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
+                        + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
+                        SepaBookingJobName, row.UserId, AuditSubjectTypes.User);
                 }
             }
-            if (at is null) continue;
-
-            foreach (var row in group)
+            catch (OperationCanceledException ex)
             {
-                await repo.MarkSepaTransferReconciledAsync(row.TransferId, at.Value, ct);
-                await audit.LogAsync(
-                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
-                    $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
-                    + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    SepaBookingJobName, row.UserId, AuditSubjectTypes.User);
+                throw new InvalidOperationException(ex.Message, ex);
             }
         }
 
         foreach (var m in movements.Where(NeedsAMatch))
         {
+            ct.ThrowIfCancellationRequested();
             if (rows.Any(r => string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
                 continue;
 
@@ -365,6 +376,11 @@ internal sealed class SepaBankBooking(
                     logger.LogWarning(
                         "SEPA sweep: transfer {TransferId} was not booked against line {MovementId}: {Reason}",
                         matches[0].TransferId, m.Id, result.Message);
+            }
+            catch (OperationCanceledException ex)
+            {
+                // Booking already uses None; its dependency failures are not job shutdown.
+                throw new InvalidOperationException(ex.Message, ex);
             }
             catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
             {

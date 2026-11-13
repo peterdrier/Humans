@@ -269,6 +269,12 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 - Holded provisioning POSTs require an explicit account-block start and one/all choice. Missing fields and binding errors return HTTP 400 and a Warning after actor resolution, before planning or creating accounts. Missing actors retain Challenge; explicit false add-all flags remain valid.
 
+- The SEPA booking sweep retains shutdown cancellation on payout and bank-feed reads and checks it before
+  each reconciliation group and booking candidate. Once a bank-line reconciliation starts, its vendor call,
+  chunk fallback, verification read, transfer stamps and audits finish independently of shutdown. Existing
+  booking commands keep their detached write boundary. Cancellation from either started unit is a dependency
+  fault with its original cause; shutdown stops the next unit. Matching, payment references, amounts and
+  handled-refusal policy are unchanged.
 - The SEPA payout list forwards request cancellation through payout loading and member-name lookup.
 - Provisioning-plan, expense-account and category-map reads retain caller cancellation through the active Budget year lookup.
 

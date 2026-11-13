@@ -517,6 +517,141 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
+    public async Task Sweep_shutdown_finishes_started_reconcile_chunks_and_their_stamp()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var refs = string.Join(",", Enumerable.Range(1, 70).Select(i => "pay-" + i));
+        SeedRows(Row(TransferId, _userId, amount: 700m, bookedAt: FixedNow, movementId: MovementId, paymentRefs: refs));
+        var reads = 0;
+        _feed.ListBankMovementsAsync(Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new List<HoldedBankMovementDto> { Movement(amount: -700m, status: reads++ == 0 ? "pending" : "reconciled") };
+        });
+        var sent = new List<int>();
+        _write.ReconcileBankMovementAsync("treasury-1", MovementId, Arg.Any<IReadOnlyList<HoldedReconcileDocumentRef>>(),
+                Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var size = call.Arg<IReadOnlyList<HoldedReconcileDocumentRef>>().Count;
+            sent.Add(size);
+            await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (size > 50) throw new HoldedPermanentException(400, "too many", "Holded refused");
+        });
+
+        var action = () => MakeService().RunSepaBookingSweepAsync(shutdown.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        sent.Should().Equal(70, 50, 20);
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(TransferId, FixedNow, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task Sweep_shutdown_finishes_one_reconciled_group_before_stopping_the_next()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var second = Guid.NewGuid();
+        var later = Guid.NewGuid();
+        SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId),
+            Row(second, Guid.NewGuid(), bookedAt: FixedNow, movementId: MovementId),
+            Row(later, Guid.NewGuid(), bookedAt: FixedNow, movementId: "later"));
+        SeedMovements(Movement(status: "reconciled"), Movement(id: "later", status: "reconciled"));
+        _repo.MarkSepaTransferReconciledAsync(TransferId, FixedNow, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+
+        var action = () => MakeService().RunSepaBookingSweepAsync(shutdown.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(TransferId, FixedNow, CancellationToken.None);
+        await _repo.Received(1).MarkSepaTransferReconciledAsync(second, FixedNow, CancellationToken.None);
+        await _repo.DidNotReceive().MarkSepaTransferReconciledAsync(later, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Sweep_shutdown_after_feed_selection_does_not_start_booking()
+    {
+        using var shutdown = new CancellationTokenSource();
+        _feed.ListBankMovementsAsync(Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(async Task<IReadOnlyList<HoldedBankMovementDto>> (_) => { await shutdown.CancelAsync(); return [Movement()]; });
+
+        var action = () => MakeService().RunSepaBookingSweepAsync(shutdown.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.DidNotReceiveWithAnyArgs().GetSepaTransferAsync(default);
+        await _write.DidNotReceiveWithAnyArgs().PostJournalEntryAsync(default, default, default, default, default!);
+    }
+
+    [HumansFact]
+    public async Task Sweep_shutdown_finishes_a_started_booking_before_stopping_the_next()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var second = Guid.NewGuid();
+        var secondUser = Guid.NewGuid();
+        SeedRows(Row(TransferId, _userId), Row(second, secondUser, account: 40000007, amount: 45m));
+        SeedTransfer(45m, id: second, userId: secondUser, account: 40000007);
+        SeedBinding(secondUser, account: 40000007);
+        SeedOwed(30m, (40000007, 45m));
+        SeedMovements(Movement(), Movement(id: "mov-2", amount: -45m, description: "TRANSF 40000007 - NCA - BO"));
+        _repo.SaveSepaTransferBookingAsync(TransferId, FixedNow, null, MovementId, Arg.Any<Instant?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+
+        var action = () => MakeService().RunSepaBookingSweepAsync(shutdown.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        await _repo.Received(1).SaveSepaTransferBookingAsync(TransferId, FixedNow, null, MovementId,
+            Arg.Any<Instant?>(), Arg.Any<string?>(), CancellationToken.None);
+        await _repo.DidNotReceive().GetSepaTransferAsync(second, Arg.Any<CancellationToken>());
+    }
+
+    public enum SweepUnitFailure { ReconcileWrite, ReconcileStamp, Booking }
+
+    [HumansTheory]
+    [InlineData(SweepUnitFailure.ReconcileWrite)]
+    [InlineData(SweepUnitFailure.ReconcileStamp)]
+    [InlineData(SweepUnitFailure.Booking)]
+    public async Task Sweep_detached_unit_cancellation_is_a_failure(SweepUnitFailure stage)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var canceled = new OperationCanceledException("Detached unit failed");
+        async Task FailAsync() { await shutdown.CancelAsync(); throw canceled; }
+        if (stage != SweepUnitFailure.Booking)
+            SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId, paymentRefs: "pay-1"));
+        if (stage == SweepUnitFailure.ReconcileWrite)
+            _write.ReconcileBankMovementAsync("treasury-1", MovementId,
+                Arg.Any<IReadOnlyList<HoldedReconcileDocumentRef>>(), Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
+        else if (stage == SweepUnitFailure.ReconcileStamp)
+        {
+            SeedMovements(Movement(status: "reconciled"));
+            _repo.MarkSepaTransferReconciledAsync(TransferId, FixedNow, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
+        }
+        else
+            _repo.GetSepaTransferAsync(TransferId, CancellationToken.None).Returns(async Task<SepaPayoutTransfer?> (_) =>
+            { await shutdown.CancelAsync(); throw canceled; });
+
+        var action = () => MakeService().RunSepaBookingSweepAsync(shutdown.Token);
+        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.InnerException.Should().BeSameAs(canceled);
+    }
+
+    [HumansFact]
+    public async Task Sweep_feed_cancellation_remains_caller_cancellation()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var canceled = new OperationCanceledException(shutdown.Token);
+        _feed.ListBankMovementsAsync(Arg.Any<string>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate>(),
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns(async Task<IReadOnlyList<HoldedBankMovementDto>> (_) => { await shutdown.CancelAsync(); throw canceled; });
+
+        var observed = await Record.ExceptionAsync(() => MakeService().RunSepaBookingSweepAsync(shutdown.Token));
+        observed.Should().BeSameAs(canceled);
+        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!);
+    }
+
+    [HumansFact]
     public async Task Sweep_ReconcilePendingRow_WithALongList_ReissuesThroughTheSameChunkedPath()
     {
         // The sweep's re-issue is the same call as the booking's: one call first, chunks when Holded
