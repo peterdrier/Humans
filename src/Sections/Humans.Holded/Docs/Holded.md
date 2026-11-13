@@ -46,6 +46,15 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 
 - Ledger, purchase-document, bank-feed and contact syncs share one failure-state persistence path: mark `Error`, bound the message to 2000 UTF-16 code units without splitting a surrogate pair, and timestamp/save independently of request cancellation. A failed error-state save logs the sync kind without replacing the original exception; each caller still releases its own sync gate.
 
+- Ledger, purchase-document and contact startup saves are inside their failure guards. Vendor reads and atomic
+  mirror replacements retain cancellation, with checkpoints before replacements and reconciliation phases.
+  After a completed mirror phase, its outcome save and consumed call-log records finish independently of
+  cancellation. This includes chart upserts, bank feeds and targeted ledger pulls. Cancellation from detached
+  outcome or call-log persistence is a genuine failure with the original exception as its cause.
+- Ledger reconciliation remains cancellable after its initial window commits: completed window updates stay
+  cached, the interrupted run records `Error`, and its last-success timestamp does not advance. It does not
+  claim that the entire mirror stayed unchanged or that reconciliation completed.
+
 - **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
 
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)
