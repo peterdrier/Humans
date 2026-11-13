@@ -167,6 +167,15 @@
         </a>
     </div>
     <div class="col-md-4 col-lg">
+        <a asp-action="ExpenseRecon" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Pushing to Holded</div>
+                <div class="fs-3 fw-bold">@(work.PushingToHolded?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.PushingToHolded is null ? "Expense recon unavailable" : "Approved expense lines not in the ledger yet")</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
         <a asp-action="Creditors" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
                 <div class="text-muted small text-uppercase">Ready to pay</div>
@@ -178,9 +187,18 @@
     <div class="col-md-4 col-lg">
         <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
+                <div class="text-muted small text-uppercase">Waiting for bank line</div>
+                <div class="fs-3 fw-bold">@(work.AwaitingBankLine?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.AwaitingBankLine is null ? "Bank feed unavailable" : "Transfers sent, no Sabadell line in Holded yet")</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
+        <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
                 <div class="text-muted small text-uppercase">Transfers to book</div>
-                <div class="fs-3 fw-bold">@(work.CreditorsUnavailable is null ? work.AwaitingBooking.ToString() : "—")</div>
-                <div class="text-muted small">Accounts with a SEPA transfer not booked yet</div>
+                <div class="fs-3 fw-bold @(work.TransfersToBook > 0 ? "text-warning" : "")">@(work.TransfersToBook?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.TransfersToBook is null ? "Bank feed unavailable" : "Sabadell line found, not booked yet")</div>
             </div>
         </a>
     </div>

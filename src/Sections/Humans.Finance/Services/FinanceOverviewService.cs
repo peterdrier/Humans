@@ -12,11 +12,12 @@ using NodaTime;
 namespace Humans.Finance.Services;
 
 /// <summary>/Finance's figures, composed from the pages that own each one: balances from the Holded ledger mirror,
-/// creditors and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
+/// creditors, SEPA transfers and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
 /// the Pleo wallet from Pleo. Owns no tables.</summary>
 internal sealed class FinanceOverviewService(
     IHoldedService holded,
     IFinanceService finance,
+    IFinanceAdminService financeAdmin,
     IExpenseReportService expenseReports,
     IBudgetService budget,
     CashFlowService cashFlow,
@@ -44,7 +45,8 @@ internal sealed class FinanceOverviewService(
         var (creditors, _, creditorsUnavailable) = await finance.ListCreditorAccountsAsync(ct);
         var recon = await finance.GetExpenseReconAsync(null, ct);
         var queue = await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
-        var (transfers, _) = await finance.GetSepaTransfersAsync(ct);
+        // Paired over the bank-feed mirror as it stands: no Holded call.
+        var (transfers, sepaUnavailable, _, bankFeedError, _) = await financeAdmin.GetSepaPayoutsAsync(ct: ct);
 
         var year = await budget.GetActiveYearAsync(ct);
         FinanceBudgetVm? budgetVm = null;
@@ -60,11 +62,12 @@ internal sealed class FinanceOverviewService(
             income = BuildIncome(year, budget.ComputeBudgetSummary(year.Groups), ticketSales);
         }
 
+        var work = BuildWork(queue, creditors, recon, transfers, sepaUnavailable ?? bankFeedError);
         return new FinanceOverviewVm(
             syncedAt,
             ledger,
             BuildOwed(creditors, ledger?.TaxesOwed) with { Unavailable = creditorsUnavailable },
-            BuildWork(queue, creditors, recon) with { CreditorsUnavailable = creditorsUnavailable },
+            work with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
             income,
@@ -227,12 +230,20 @@ internal sealed class FinanceOverviewService(
         .Select(t => new FinanceSepaTransferVm(t.UserId, t.FileName, t.GeneratedAt, t.Amount))
         .ToList();
 
-    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning.</summary>
+    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning. An
+    /// open transfer either has a Sabadell line paired to it (its own, or one debiting its whole file), so it can be
+    /// booked, or is still waiting for one; <paramref name="pairingUnavailable"/> is why that could not be told.</summary>
     internal static FinanceWorkVm BuildWork(
         IReadOnlyList<ExpenseReportDto> queue,
         IReadOnlyList<CreditorAccountRow> creditors,
-        ExpenseReconReport recon)
+        ExpenseReconReport recon,
+        IReadOnlyList<SepaPayoutTransferRow> transfers,
+        string? pairingUnavailable = null)
     {
+        var open = transfers.Where(t => !t.IsBooked && !t.IsWithdrawn).ToList();
+        // Unpaired rows say nothing about the bank: with any transfer open, the split is unknown, not zero.
+        var paired = pairingUnavailable is null || open.Count == 0;
+        var withBankLine = open.Count(t => t.CandidateBankMovementId is { Length: > 0 } || t.BatchLine is not null);
         var submitted = queue.Where(r => r.Status == ExpenseReportStatus.Submitted).ToList();
         var endorsed = queue.Where(r => r.Status == ExpenseReportStatus.CoordinatorEndorsed).ToList();
         var ready = creditors
@@ -255,7 +266,9 @@ internal sealed class FinanceOverviewService(
             endorsed.Min(r => r.CoordinatorEndorsedAt),
             ready.Count,
             ready.Sum(r => r.OwedToMember),
-            creditors.Count(r => r.PendingPayoutFileName is not null),
+            recon.IsAvailable ? recon.Lines.Count(l => l.Status == ExpenseReconLineStatus.Pending) : null,
+            paired ? open.Count - withBankLine : null,
+            paired ? withBankLine : null,
             reconProblems is { } p ? p + duplicates : null,
             duplicates,
             reconProblems);

@@ -72,8 +72,10 @@ internal sealed record FinanceOwedVm(
     public decimal? Total => Unavailable is null && Taxes is { } t ? Members + Suppliers + t : null;
 }
 
-/// <summary><see cref="Problems"/> is null when the expense recon is unavailable. <see cref="DuplicateAccounts"/>
-/// counts only accounts with duplicate documents that the recon does not already report.</summary>
+/// <summary>The reimbursement pipeline in order. <see cref="Problems"/> and <see cref="PushingToHolded"/> are null
+/// when the expense recon is unavailable, <see cref="AwaitingBankLine"/> and
+/// <see cref="TransfersToBook"/> when open transfers could not be paired with the bank feed. <see cref="DuplicateAccounts"/> counts only accounts with duplicate documents
+/// that the recon does not already report.</summary>
 internal sealed record FinanceWorkVm(
     int AwaitingCoordinator,
     Instant? OldestAwaitingCoordinator,
@@ -81,7 +83,9 @@ internal sealed record FinanceWorkVm(
     Instant? OldestAwaitingFinance,
     int ReadyToPay,
     decimal ReadyToPayAmount,
-    int AwaitingBooking,
+    int? PushingToHolded,
+    int? AwaitingBankLine,
+    int? TransfersToBook,
     int? Problems,
     int DuplicateAccounts,
     int? ReconProblems,
