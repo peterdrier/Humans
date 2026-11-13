@@ -53,8 +53,9 @@ remaining percentage is `100 - 12 * elapsed_days_since_weekly_reset`, recomputed
 at each boundary. Immediately after reset, no usage is allowed; at 1.5 days,
 stop below 82% remaining. Unused allowance carries forward within the week,
 leaving 16% at its end. All account usage, including interactive work, counts.
-The run records the first weekly reset timestamp and stops new work if it changes,
-so fresh reset credits cannot automatically extend the run. Missing, invalid,
+The run records the weekly reset timestamp, tolerating its observed one-second
+reporting jitter. It stops at the earliest recorded expiry or a change beyond
+that rounding tolerance, so fresh reset credits cannot automatically extend the run. Missing, invalid,
 stale or failed quota reads stop new work. Another exhausted returned window
 also stops work. Completed fixes still pass through validation and publication.
 

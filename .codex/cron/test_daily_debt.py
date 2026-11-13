@@ -59,6 +59,29 @@ class QuotaPolicyTests(unittest.TestCase):
             self.snapshot(0, 12.5), 1000000 + 5.5 * 86400, policy))
         self.assertEqual(policy["reset"], original_reset)
 
+    def test_reset_rounding_jitter_does_not_end_the_run(self):
+        policy = {}
+        snapshot = self.snapshot(0)
+        reset = snapshot["rateLimitsByLimitId"]["codex"]["primary"]["resetsAt"]
+        self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
+        for offset in (1, -1, 0, 1):
+            snapshot["rateLimitsByLimitId"]["codex"]["primary"]["resetsAt"] = reset + offset
+            self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
+        self.assertEqual(policy["reset"], reset)
+
+    def test_reset_rounding_jitter_cannot_extend_the_earliest_expiry(self):
+        policy = {}
+        snapshot = self.snapshot(0, 0.01)
+        window = snapshot["rateLimitsByLimitId"]["codex"]["primary"]
+        reset = window["resetsAt"]
+        self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
+        window["resetsAt"] = reset - 1
+        self.assertIsNone(run_goal.quota_stop_reason(snapshot, 1000000, policy))
+        window["resetsAt"] = reset + 1
+        reason = run_goal.quota_stop_reason(snapshot, reset - 1, policy)
+        self.assertIsNotNone(reason)
+        self.assertIn("reset reached", reason)
+
     def test_new_run_uses_elapsed_days_and_keeps_the_weekly_reserve(self):
         self.assertIsNone(run_goal.quota_stop_reason(self.snapshot(12, 6), 1000000, {}))
         self.assertIn("cutoff", run_goal.quota_stop_reason(self.snapshot(12.01, 6), 1000000, {}))

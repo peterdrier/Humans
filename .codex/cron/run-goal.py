@@ -46,9 +46,14 @@ def quota_stop_reason(result, now, policy=None):
         return "weekly quota invalid or stale"
     elapsed_days = 7 - (reset - now) / 86400
     if policy is not None:
-        if "reset" in policy and policy["reset"] != reset:
-            return "weekly quota reset changed; stop before consuming reset credits"
-        policy["reset"] = reset
+        if "reset" in policy:
+            # Live reset timestamps can vary by a rounding second within the same week.
+            if abs(policy["reset"] - reset) > 1:
+                return "weekly quota reset changed; stop before consuming reset credits"
+            if now >= policy.get("expires", policy["reset"]):
+                return "weekly quota reset reached; stop before consuming reset credits"
+        policy.setdefault("reset", reset)
+        policy["expires"] = min(policy.get("expires", reset), reset)
     minimum = max(16, 100 - 12 * elapsed_days)
     remaining = 100 - used
     print(f"Weekly quota: {remaining:g}% remaining; cutoff {minimum:.2f}%; "
