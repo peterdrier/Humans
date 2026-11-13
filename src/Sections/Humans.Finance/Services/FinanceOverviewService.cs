@@ -62,12 +62,12 @@ internal sealed class FinanceOverviewService(
             income = BuildIncome(year, budget.ComputeBudgetSummary(year.Groups), ticketSales);
         }
 
+        var work = BuildWork(queue, creditors, recon, transfers, sepaUnavailable ?? bankFeedError);
         return new FinanceOverviewVm(
             syncedAt,
             ledger,
             BuildOwed(creditors, ledger?.TaxesOwed) with { Unavailable = creditorsUnavailable },
-            BuildWork(queue, creditors, recon, transfers, sepaUnavailable ?? bankFeedError)
-                with { CreditorsUnavailable = creditorsUnavailable },
+            work with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
             income,
