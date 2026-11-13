@@ -39,7 +39,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 - A **User** is the ASP.NET Core Identity aggregate for every human in the system. Authenticates via Google OAuth or magic link. The entity extends `IdentityUser<Guid>`.
 - **Account Provisioning** creates new `User` rows from an OAuth login (`ExternalLoginService.CompleteExternalLoginAsync`, dispatched from `AccountController.ExternalLoginCallback`), a magic-link signup (`AccountController.CompleteSignup`), or an import (`AccountProvisioningService.FindOrCreateUserByEmailAsync` for ticket / MailerLite contacts). All three paths look up an existing user across `UserEmail` records and `User.Email` (with gmail/googlemail equivalence) before creating a new row. Magic-link completion validates trimmed burner, first and last names against their 256-character limit before any user/email/profile mutation, including interrupted-signup recovery. The Shell validates before redeeming the token and redisplays field errors with all entered values; the form carries matching maxlength limits.
 - **Communication preferences and unsubscribe** are Email's (`email_communication_preferences`): `ICommunicationPreferenceService`, the unsubscribe tokens, `/Email/Unsubscribe/*`, `/Email/Guest/CommunicationPreferences*` and `/Email/CommunicationPreferences*`.
-- **Event Participation** is Tickets' (`tickets_event_participations`).
+- **Event Participation** is Tickets' (`ticket_event_participations`).
 - **Account deletion** is a 30-day grace period: `User.DeletionRequestedAt` + `DeletionScheduledFor` are stamped when a user requests deletion (with optional `DeletionEligibleAfter` for ticket-holder event holds). `ProcessAccountDeletionsJob` runs daily and calls `IAccountDeletionService.AnonymizeExpiredAccountAsync` for each due user. That job and `SuspendNonCompliantMembersJob` live in `Humans.Users/Jobs/` and are registered and scheduled by concrete type from Users' own `Section.cs` through the Shell's Hangfire scheduler. Those call sites are inside the section, so `ProcessAccountDeletionsJob` is `internal sealed`; `SuspendNonCompliantMembersJob` is still `public` and has no caller outside Users either.
 - Identity sub-tables (renamed to `users`, `user_claims`, `user_logins`, `user_tokens`, `roles`, `user_roles` per Postgres convention in `UsersDbContext.OnModelCreating`) are managed by ASP.NET Identity's `UserManager<User>` / `SignInManager<User>`. Only Users injects those framework services; other sections use `IUserSignInService`.
 
@@ -102,7 +102,7 @@ Tracks pending and resolved merges between duplicate accounts. `AccountMergeServ
 
 The pending-merge guard for email additions compares literal addresses case-insensitively, including the supplied Gmail/Googlemail alias. Only pending requests targeting that human block an addition; underscores and percent signs are ordinary email characters.
 
-**Table:** `account_merge_requests`
+**Table:** `user_account_merge_requests`
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -300,12 +300,12 @@ A lazy per-key cache miss cannot republish its old result after an intervening c
 
 The internal `UserDataExport` owns account/profile export collection, merge-chain traversal, retained merged-profile collection and JSON shaping. `UserService` retains the existing contributor contract, slice-name constants, erasure declaration and deletion paths. Export keys, legacy preference flags and profile-field inclusion remain unchanged.
 
-**Owning services:** `UserService`, `AccountProvisioningService`, `AccountDeletionService`, `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector; `AccountMergeService` is backed by `IAccountMergeRepository` for `account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder, kept out of `AccountController` per HUM0031; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
-**Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `account_merge_requests`.
+**Owning services:** `UserService`, `AccountProvisioningService`, `AccountDeletionService`, `AccountMergeService` + `DuplicateAccountService` (the one ordered merge engine and the stateless duplicate detector; `AccountMergeService` is backed by `IAccountMergeRepository` for `user_account_merge_requests` and contributes the `AccountMergeRequests` GDPR slice), `ExternalLoginService` (the OAuth-callback decision ladder, kept out of `AccountController` per HUM0031; sole caller of `IUserEmailService.ReconcileOAuthIdentityAsync`) — all in `Humans.Users/Services/`.
+**Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `user_account_merge_requests`.
 
 - `UserService`, `AccountProvisioningService` live in `Humans.Users/Services/` and never import `Microsoft.EntityFrameworkCore`. `AccountProvisioningService` does inject `UserManager<User>` per the *Service ownership* exception (Identity owns the password hash / security stamp surface).
 - `IUserRepository` (impl `Humans.Users/Data/Repositories/UserRepository.cs`) owns the SQL surface for `users`. Its `IUserRepository.UserEmails.cs` partial is the surface for `UserEmail` (the Profiles half's table, read/written from the Users half for lookup + OAuth-email lock-step).
-- **Caching decorator.** `CachingUserService` (Singleton, `Humans.Users/Data/`) owns a `ConcurrentDictionary<Guid, UserInfo>` of the unified read-model spanning the contributing tables (`users`, `user_emails`, AspNet `user_logins`, `profiles`, `contact_fields`, `profile_languages`, `volunteer_history_entries`). Dict hits are served synchronously; a cache miss refills via the inner Scoped `UserService` (keyed `"user-inner"`); writes through `IUserService` refresh the affected entry (sign-in `LastLoginAt` flows through `IUserWrite.RecordLoginAsync`, whose decorator refreshes the entry directly); Identity-machinery writes that bypass the service surface (`UserManager.UpdateAsync`, OAuth `UserEmail` row creation) are caught by `UserInfoSaveChangesInterceptor` (EF `SaveChangesInterceptor`, registered on both the scoped and factory contexts) and routed through the section-internal `IUserInfoSliceRefresher`. Every contributing table is Users-owned, so no other section signals the cache. `CachingUserService` itself implements `IHostedService` (via `TrackedCache`) and populates the dict at startup; load-all reads call `EnsureWarmed` / `EnsureWarmedAsync` and recover transparently if startup warmup hasn't completed. `UserInfo` is the single cache — there is no separate profile cache (`Docs/health.md`).
+- **Caching decorator.** `CachingUserService` (Singleton, `Humans.Users/Data/`) owns a `ConcurrentDictionary<Guid, UserInfo>` of the unified read-model spanning the contributing tables (`users`, `user_emails`, AspNet `user_logins`, `user_profiles`, `user_contact_fields`, `user_profile_languages`, `user_volunteer_history_entries`). Dict hits are served synchronously; a cache miss refills via the inner Scoped `UserService` (keyed `"user-inner"`); writes through `IUserService` refresh the affected entry (sign-in `LastLoginAt` flows through `IUserWrite.RecordLoginAsync`, whose decorator refreshes the entry directly); Identity-machinery writes that bypass the service surface (`UserManager.UpdateAsync`, OAuth `UserEmail` row creation) are caught by `UserInfoSaveChangesInterceptor` (EF `SaveChangesInterceptor`, registered on both the scoped and factory contexts) and routed through the section-internal `IUserInfoSliceRefresher`. Every contributing table is Users-owned, so no other section signals the cache. `CachingUserService` itself implements `IHostedService` (via `TrackedCache`) and populates the dict at startup; load-all reads call `EnsureWarmed` / `EnsureWarmedAsync` and recover transparently if startup warmup hasn't completed. `UserInfo` is the single cache — there is no separate profile cache (`Docs/health.md`).
 - **Read/write interface split.** **Public contract.** `IUserService` (`GetUserInfoAsync`, `GetUserInfosAsync`, `GetAllUserInfosAsync`, `SearchUsersAsync`, `GetByEmailOrAlternateAsync`, `GetRawUserInfoAsync`, `GetAllRawUserInfosAsync`) in `Humans.Base` (`Users/`, namespace `Humans.Users.Contracts`) is the cross-section read surface — only `UserInfo` / `HumanSearchResult` projections plus Guid primitives, no EF entities. `IUserWrite` (on the `Humans.Users.Contracts` leaf) carries only the writes another section calls (language, login stamp, the fake-account marker, rejection, user deletion). `IUserMerge`, the account-merge seam every data-owning section implements, sits in `Humans.Base` beside `IUserService`, so implementing it costs no Users reference. The internal `IUserManagement : IUserService, IUserWrite, IUserMerge` in `Humans.Users.Services` adds the section-only half of the write funnel — profile saves, deletion fields, `UserEmail` storage commands, the merge tombstone, the email-problems reads, the accounts-due-for-anonymization read; all three faces resolve to the same `CachingUserService` singleton. Neither interface carries the `IApplicationService` marker; analyzers key on the implementing class. See [`memory/architecture/section-public-contract.md`](../../../../memory/architecture/section-public-contract.md).
 - The UserInfo interceptor completes its post-commit cache refresh without request cancellation, so an aborted request cannot turn a committed save into cancellation and skip its following audit.
 - **Identity framework surface** — `AccountController` lives in `Humans.Web/Controllers/` (the Shell), not in this section, and signs in through `IUserSignInService`, as do the Development section's dev-login controller and Tickets' gate-terminal seeder. Account-creating seeders use `IAccountProvisioningService.CreateAccountAsync`. There is no `AuthController` or `ManageController` class — magic-link orchestration lives in `IMagicLinkService` (Auth section) and account self-management lives across `AccountController` and Profile views. Non-controller code routes through `IUserService`.
@@ -339,8 +339,8 @@ Everything else that once sat on `User`, `Profile` and `UserEmail` now belongs t
 - **Visibility Levels** determine who can see each contact field: BoardOnly (most restrictive), CoordinatorsAndBoard, MyTeams (shared team members), or AllActiveProfiles (least restrictive).
 - **Membership Tier** (Volunteer, Colaborador, Asociado) is Governance's; Users reads it through `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` (popover, human summary, admin detail, duplicate accounts). **Communication Preferences** are Email's (see `Humans.Email/Docs/Email.md`).
 - **UserEmail** is a per-user email address record. A user has one "login" email plus zero-or-more verified additional addresses; one of them may be flagged as the notification target.
-- **CV Entries** (sub-aggregate of Profile, table `volunteer_history_entries`) record volunteer involvement history.
-- **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes. Profile cards, summaries and both initial and dynamically added language options display language names in the viewer's UI culture across all supported cultures; stored ISO codes and proficiency values stay unchanged.
+- **CV Entries** (sub-aggregate of Profile, table `user_volunteer_history_entries`) record volunteer involvement history.
+- **Profile Languages** (sub-aggregate of Profile, table `user_profile_languages`) record self-assessed proficiency in ISO 639-1 language codes. Profile cards, summaries and both initial and dynamically added language options display language names in the viewer's UI culture across all supported cultures; stored ISO codes and proficiency values stay unchanged.
 - **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Admins act on candidates from the unified **Account Merges** page (`/Users/Admin/AccountMerges`).
 - **Email Problems** scans every UserEmail invariant violation (multi/zero IsPrimary, unverified rows, cross-user collisions, orphan rows, ghost AspNetUserLogins). Reads source-of-truth via `IUserService.GetAllUserInfosAsync` (the `UserInfo` cache). Read-only admin surface with deep-links into the per-user `/Profile/{userId}/Admin/Emails` diagnostic for orphan/ghost remediation; the cross-user merge action shares its kernel with `IAccountMergeService.AcceptAsync`.
 - **Account Merge** consolidates two accounts into one, transferring all associated data (emails, contact fields, CV entries, role assignments, memberships) to the surviving account.
@@ -372,7 +372,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 ### Profile
 
-**Table:** `profiles`
+**Table:** `user_profiles`
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
@@ -408,7 +408,7 @@ A contact is identified by `ContactSource != null && LastLoginAt == null`. When 
 
 ### ContactField
 
-**Table:** `contact_fields`
+**Table:** `user_contact_fields`
 
 Contact fields allow humans to share different types of contact information with per-field visibility controls. Default labels use the viewer's current culture, including legacy email fields; custom Other labels are preserved verbatim. Profile cards and contact lookup details receive the same localized labels.
 
@@ -491,7 +491,7 @@ No shadow columns (`IsOAuth` and `DisplayOrder` are gone from the table; `HUM000
 
 ### VolunteerHistoryEntry (CV Entry)
 
-**Table:** `volunteer_history_entries`
+**Table:** `user_volunteer_history_entries`
 
 Sub-aggregate of Profile — no separate service. Written through `IProfileEditorService.SaveProfileAsync` (which calls `IUserManagement.SaveProfileAsync` to persist fields and CV together); read via `UserInfo.VolunteerHistory`.
 
@@ -508,7 +508,7 @@ Sub-aggregate of Profile — no separate service. Written through `IProfileEdito
 
 ### ProfileLanguage
 
-**Table:** `profile_languages`
+**Table:** `user_profile_languages`
 
 Sub-aggregate of Profile — no separate service. Records languages spoken with self-assessed proficiency.
 
@@ -597,7 +597,7 @@ Users' one-off copies are **data migrations** (`ISectionDataMigrations`, impleme
 | Key | Copies | Per-row audit |
 |-----|--------|---------------|
 | `users.legacy-identity-emails` | A verified `UserEmail` row from the legacy `User.Email` Identity column, via `IEmailProblemsService.BackfillLegacyIdentityEmailsAsync` (the Email Problems page still lists these rows and links to the migration); a row the add refuses is skipped, logged, and stays listed | `LegacyIdentityEmailBackfilled` |
-| `users.profile-names-to-user-row` | `BurnerName`/`FirstName`/`LastName` from the profile onto every users row that lacks a name its profile holds; a blank profile name never counts and is never copied, so a stub profile can't erase a seeded name. Production `done` is the proof every users row holds the names, which gates stopping the profile-side write and dropping the three `profiles` name columns (nobodies-collective/Humans#1098) | none (the screen's `DataMigrationApplied` entry) |
+| `users.profile-names-to-user-row` | `BurnerName`/`FirstName`/`LastName` from the profile onto every users row that lacks a name its profile holds; a blank profile name never counts and is never copied, so a stub profile can't erase a seeded name. Production `done` is the proof every users row holds the names, which gates stopping the profile-side write and dropping the three `user_profiles` name columns (nobodies-collective/Humans#1098) | none (the screen's `DataMigrationApplied` entry) |
 
 The legacy-email scan and migration share the same eligibility selection: a non-tombstone with a nonempty legacy address and no case-insensitive matching verified `UserEmail`. Profile-less accounts remain eligible.
 
@@ -725,7 +725,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 ## Architecture
 
 **Owning services:** `ProfileService` (`IProfilePictureService` — read-only pictures and migration snapshots), `ProfileEditorService` (`IProfileEditorService` — validates and orchestrates profile-edit saves, delegating the actual persist to `IUserService`), `ContactFieldService`, `UserEmailService`, `EmailProblemsService`. Account merge and duplicate detection are Part 1's (`AccountMergeService`, `DuplicateAccountService`).
-**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `volunteer_history_entries`, `profile_languages`
+**Owned tables:** `user_profiles`, `user_contact_fields`, `user_emails`, `user_volunteer_history_entries`, `user_profile_languages`
 `IUserRepository` owns the live persistence paths via `DbContext`. The retired preference repository is removed. Repositories are Singleton, using `IDbContextFactory<UsersDbContext>` and short-lived contexts per method.
 - **Caching.** Profile field storage (save, medical conditions, volunteer history, anonymize) is on `UserService`; readers get the single unified `UserInfo` projection served by `CachingUserService` (Singleton, `Humans.Users/Data/`) — see Part 1's caching-decorator bullet. There is no separate profile-only cache or warmup service (`Docs/health.md`).
 - **`UserInfo` is canonical.** Cross-section email projections use the resolved snapshot for living humans or the exact raw snapshot for per-account erasure. Derived properties `PrimaryEmail` and `AllVerifiedEmails` are the email read sites (the Google Workspace address is GoogleIntegration's `IGoogleIntegrationService`); `CachingUserService` populates them from already-loaded `UserEmail` rows (no new repo lookups). The lifecycle marker is the stored `User.State`, surfaced as the non-nullable `UserInfo.State`; `ProfileInfo` carries no state at all.

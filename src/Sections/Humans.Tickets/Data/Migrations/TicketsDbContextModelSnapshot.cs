@@ -55,7 +55,7 @@ namespace Humans.Tickets.Data.Migrations
                     b.HasIndex("UserId", "Year")
                         .IsUnique();
 
-                    b.ToTable("tickets_event_participations", (string)null);
+                    b.ToTable("ticket_event_participations", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Tickets.Domain.TicketAttendee", b =>
@@ -278,7 +278,7 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ticket_sync_state", (string)null);
+                    b.ToTable("ticket_sync_states", (string)null);
 
                     b.HasData(
                         new

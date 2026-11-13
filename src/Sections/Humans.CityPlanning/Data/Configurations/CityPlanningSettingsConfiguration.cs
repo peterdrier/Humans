@@ -8,7 +8,7 @@ internal sealed class CityPlanningSettingsConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<CityPlanningSettings> builder)
     {
-        builder.ToTable("city_planning_settings");
+        builder.ToTable("city_settings");
 
         builder.HasIndex(s => s.Year).IsUnique();
 

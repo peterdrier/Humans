@@ -8,7 +8,7 @@ internal sealed class AssemblyVotePeekConfiguration : IEntityTypeConfiguration<A
 {
     public void Configure(EntityTypeBuilder<AssemblyVotePeek> builder)
     {
-        builder.ToTable("assembly_vote_peeks");
+        builder.ToTable("governance_assembly_vote_peeks");
 
         builder.HasKey(p => p.Id);
 

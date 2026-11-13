@@ -414,7 +414,7 @@ Not on the `/Admin` dashboard itself (that renders only the tile strip and secti
 
 | Action | Link | Notes |
 |--------|------|-------|
-| Event settings | `/Settings#event` | The app-wide event values in `settings_event`, POSTed to `/Settings/Admin` (no GET) — every section reads the calendar from here now; a blank id mints a new cycle (nobodies-collective/Humans#1631). `/Shifts/Settings` is knobs-only (`IsShiftBrowsingOpen`, caps, reminder lead time) |
+| Event settings | `/Settings#event` | The app-wide event values in `settings_events`, POSTed to `/Settings/Admin` (no GET) — every section reads the calendar from here now; a blank id mints a new cycle (nobodies-collective/Humans#1631). `/Shifts/Settings` is knobs-only (`IsShiftBrowsingOpen`, caps, reminder lead time) |
 
 Both live at `/Settings/Admin/*`, not `/Admin/Settings` — top-level `/Admin/*` is frozen and new admin pages belong to their section (`memory/architecture/no-admin-url-section.md`).
 

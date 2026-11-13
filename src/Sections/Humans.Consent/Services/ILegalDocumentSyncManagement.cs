@@ -4,7 +4,7 @@ using NodaTime;
 
 namespace Humans.Consent.Services;
 
-/// <summary>Sole writer for <c>legal_documents</c> and <c>document_versions</c>; the admin writes are on the same instance.</summary>
+/// <summary>Sole writer for <c>consent_legal_documents</c> and <c>consent_document_versions</c>; the admin writes are on the same instance.</summary>
 internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
 {
     /// <summary>Across all teams.</summary>

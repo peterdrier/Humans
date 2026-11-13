@@ -9,7 +9,7 @@ internal sealed class HoldedExpenseOutboxEventConfiguration
 {
     public void Configure(EntityTypeBuilder<HoldedExpenseOutboxEvent> b)
     {
-        b.ToTable("holded_expense_outbox_events");
+        b.ToTable("expense_holded_outbox_events");
         b.HasKey(x => x.Id);
 
         b.Property(x => x.EventType)

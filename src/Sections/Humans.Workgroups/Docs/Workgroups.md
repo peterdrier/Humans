@@ -256,7 +256,7 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 ### Settings
 
-`workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
+`workgroup_settings` owns the root Drive folder id: one row (`Id = 1`),
 `RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
 through the Workgroups repository and audits the actor. A save is refused unless
 the service account can read the folder (`IGoogleSyncService.IsFolderReachableAsync`),
@@ -540,7 +540,7 @@ The internal `WorkgroupDataExport` owns all six GDPR export slices, including re
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)
 **Owned tables:** `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
 `MyWorkgroupsViewComponent` supplies the member-dashboard list and passes

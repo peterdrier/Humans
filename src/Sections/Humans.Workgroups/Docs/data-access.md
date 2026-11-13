@@ -20,7 +20,7 @@ migrations under `Data/Migrations/`. `WorkgroupRepository`
 (`src/Sections/Humans.Workgroups/Data/WorkgroupRepository.cs`, `internal`) injects
 `IDbContextFactory<WorkgroupsDbContext>` directly, one context per call, `AsNoTracking`
 on reads. Owns its seven tables: `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`.
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_settings`.
 
 Every cross-section reference (`AppliedByUserId`, `UserId`, `CreatedByUserId`,
 `UpdatedByUserId`, `AuthorUserId`, `RespondedByUserId`, `HiddenByUserId`,

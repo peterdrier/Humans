@@ -18,7 +18,7 @@ namespace Humans.AuditLog.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -93,7 +93,7 @@ namespace Humans.AuditLog.Data.Migrations
 
                     b.HasIndex("RelatedEntityType", "RelatedEntityId");
 
-                    b.ToTable("audit_log", (string)null);
+                    b.ToTable("audit_log_entries", (string)null);
                 });
 #pragma warning restore 612, 618
         }

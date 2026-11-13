@@ -33,7 +33,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 ## Data Model
 
-### PreapprovalProgram — `pre_programs`
+### PreapprovalProgram — `preapproval_programs`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -53,7 +53,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 Index: `Status`.
 
-### ProgramManager — `pre_program_managers`
+### ProgramManager — `preapproval_program_managers`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -62,7 +62,7 @@ Index: `Status`.
 | AddedByUserId | Guid | |
 | AddedAt | Instant | |
 
-### PreapprovalGrant — `pre_grants`
+### PreapprovalGrant — `preapproval_grants`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -80,7 +80,7 @@ Index: `Status`.
 
 Indexes: `(ProgramId, Status)`, `BeneficiaryUserId`, `ExpenseReportId`.
 
-### ReminderSent — `pre_reminders_sent`
+### ReminderSent — `preapproval_sent_reminders`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -158,7 +158,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Grant admin actions reject invalid form binding with 400 after identity, program permission
   and grant ownership checks. Malformed amounts never fall back to a program/request amount,
   and malformed bulk selections never issue grants to only the valid subset.
-- The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
+- The reminder job sends and writes `preapproval_sent_reminders` rows keyed `(GrantId, Kind,
   ClaimBy)`; it never touches a grant. The marker transaction commits before the independently persisted, best-effort reminder audit is attempted. A moved deadline reminds again (`ReminderTests`).
 - Table names start with `pre_`. The section's migrations are immutable once shipped.
 
@@ -176,7 +176,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   its deadline.
 - Expenses **cannot** claim a grant that is Revoked, Consumed, Claimed by another report, or
   Open past its deadline; it **cannot** release or consume a grant its report does not hold.
-- The reminder job **cannot** change any row but `pre_reminders_sent`.
+- The reminder job **cannot** change any row but `preapproval_sent_reminders`.
 
 ## Triggers
 
@@ -231,7 +231,7 @@ Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in
 The scoped internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion, shared by grant management and deadline reminders. Ordinary delivery failures remain best-effort. `PreapprovalDeadlineReminders` owns reminder selection, transactional delivery and sent stamps, then audits after commit. The recurring job calls this component directly; it does not resolve grant management. Reminder windows, Madrid dates, source keys, audit identity, failure aggregation and retry behavior are unchanged.
 
 **Owning services:** `PreapprovalDeadlineReminders` (internal reminder pass), `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
-**Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
+**Owned tables:** `preapproval_programs`, `preapproval_program_managers`, `preapproval_grants`, `preapproval_sent_reminders`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
 
 ### Public contract

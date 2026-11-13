@@ -33,13 +33,13 @@ Event shifts, rotas, signups, range blocks, event settings, general availability
 
 ### EventSettings
 
-Shifts' own per-event knobs, keyed by the `settings_event` id Settings mints: `IsShiftBrowsingOpen`, and the build sub-period starts `SubPeriodFirstCrewStart`, `SubPeriodSetupWeekStart`, `SubPeriodPreEventWeekStart`, `SubPeriodFinishingWeekendStart` (nullable). Edited at `/Settings#shifts` (peterdrier/Humans#1634).
+Shifts' own per-event knobs, keyed by the `settings_events` id Settings mints: `IsShiftBrowsingOpen`, and the build sub-period starts `SubPeriodFirstCrewStart`, `SubPeriodSetupWeekStart`, `SubPeriodPreEventWeekStart`, `SubPeriodFinishingWeekendStart` (nullable). Edited at `/Settings#shifts` (peterdrier/Humans#1634).
 
 **The app-wide calendar columns (EventName, Year, TimeZoneId, GateOpeningDate, every offset including the four build sub-period boundaries, EarlyEntryCapacity, BarriosEarlyEntryAllocation, EarlyEntryClose) and `IsActive` are fully dead as of nobodies-collective/Humans#1631.** No Shifts code reads or writes them — Settings (`ISettingsService`, `Humans.Settings.Contracts`) is the calendar's sole source of truth and owns "which cycle is active"; Shifts internals resolve the calendar per-rota via `Rota.EventSettingsId`, or the active id for active-event paths, through an internal `EventCalendarResolver`. The columns are not dropped — that's a separate, Peter-approved follow-up (`memory/architecture/no-column-drops-for-decoupling.md`) — so they still exist in the table and take their C# defaults on insert. A row here is created on demand: the first rota or knob edit against an event id Settings knows about creates its knobs row; `CreateRotaAsync`/`UpdateAsync` no longer enforce single-active (that invariant moved to Settings' `SaveEventSettingsAsync`).
 
 The build period's four named sub-phases are Shifts-owned: the nullable `SubPeriod*Start` columns (the old `FirstCrewStartOffset`-style int columns are dead calendar copies). `EventCalendarResolver` composes the existing `BurnSettingsInfo` from Settings' global dates and Shifts' sub-periods and browsing switch. Missing local values use Shifts' defaults (-25/-16/-9/-4); creating a knob row persists those defaults. Settings' DTO and calendar interface carry no sub-periods after production reported `shifts.build-sub-periods` done on 2026-11-03; its copy migration and fallback are retired. Offsets are inclusive starts; the next sub-period's start is the exclusive end; the knobs form requires `FirstCrew < Set-up week < Pre-event week < Finishing weekend < 0`. Build start remains Settings-owned and can move independently: days before the first crew start classify as no sub-period. `BuildSubPeriodClassifier` takes Shifts' `IBurnSettingsInfo`; absolute-time helpers take the global `IEventSettingsInfo`.
 
-**Table:** `event_settings`
+**Table:** `shift_event_settings`
 
 Aggregate-local navs: `EventSettings.Rotas`.
 
@@ -47,7 +47,7 @@ Aggregate-local navs: `EventSettings.Rotas`.
 
 Shift container, belongs to department + event. Has `Period` (Build/Event/Strike/All), `Priority` (Normal/Important/Essential — feeds urgency scoring with weights 1×/3×/6×), `Policy` (Public/RequireApproval), optional `Description`, optional `PracticalInfo` (max 2000 chars, markdown), and `IsVisibleToVolunteers` (default true).
 
-**Table:** `rotas`
+**Table:** `shift_rotas`
 
 Aggregate-local navs: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`. Cross-domain nav to `Team` is stripped from the entity; `TeamId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992). Team display data resolves through `ITeamService`.
 
@@ -80,7 +80,7 @@ Aggregate-local navs: `ShiftSignup.Shift`. Cross-domain navs to `User` (voluntee
 
 Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Unique on `(UserId, EventSettingsId)`.
 
-**Table:** `general_availability`
+**Table:** `shift_general_availabilities`
 
 `UserId` is a bare Guid column with no navigation property and no FK constraint.
 
@@ -100,7 +100,7 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 
 The GDPR `VolunteerBuildStatuses` export includes camp-setup dates, notes, change timestamps and day-off offsets/reasons/timestamps across all events and the requested human's merge identities, even without signups or availability. Other humans' rows are excluded. The erasure declaration names the slice; the existing tracking erasure deletes these rows.
 
-**Table:** `volunteer_build_statuses`
+**Table:** `shift_volunteer_build_statuses`
 
 **Indices:** PK on `Id`; unique on `(UserId, EventSettingsId)` (one row per volunteer per event).
 
@@ -118,18 +118,18 @@ All mutations route through `IVolunteerTrackingRepository`, and `VolunteerTracki
 
 Per-user shift-matching profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages` (jsonb lists). Unique on `UserId`. The columns `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, `MedicalConditions` are unused (food answers live in Cantina, medical on `Profile`) and await a post-prod-soak drop.
 
-**Table:** `volunteer_event_profiles`
+**Table:** `shift_volunteer_event_profiles`
 
 `UserId` is a bare Guid column with no navigation property and no FK constraint, so no DB-level cascade delete applies; account deletion goes through `CancelActiveSignupsForUserAsync` and the GDPR path.
 
 ### EventParticipation (owned by Tickets)
 
-Event participation (`tickets_event_participations`) is owned by Tickets — see [`Tickets.md`](../../Humans.Tickets/Docs/Tickets.md) for field-level detail. Shifts reads it through `ITicketService.GetAllParticipationsAsync` (volunteer tracking's ticketed/attended cohort) and never writes it.
+Event participation (`ticket_event_participations`) is owned by Tickets — see [`Tickets.md`](../../Humans.Tickets/Docs/Tickets.md) for field-level detail. Shifts reads it through `ITicketService.GetAllParticipationsAsync` (volunteer tracking's ticketed/attended cohort) and never writes it.
 
 ### Shift tag tables
 
-- `shift_tags` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Many-to-many with rotas via the `rota_shift_tags` join table. Seeded with 8 initial values in `ShiftTagConfiguration`. Name column is unique (`IX_shift_tags_name_unique`).
-- `volunteer_tag_preferences` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Unique on `(UserId, ShiftTagId)`. Cross-domain `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992); section-local FK to `ShiftTag`.
+- `shift_tags` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Many-to-many with rotas via the `shift_rota_tags` join table. Seeded with 8 initial values in `ShiftTagConfiguration`. Name column is unique (`IX_shift_tags_name_unique`).
+- `shift_volunteer_tag_preferences` — read/written by `ShiftManagementService` via `IShiftManagementRepository`. Unique on `(UserId, ShiftTagId)`. Cross-domain `UserId` is a bare Guid column with no FK constraint (nobodies-collective/Humans#992); section-local FK to `ShiftTag`.
 
 New-rota and rota-edit tag pickers disable their creation controls while saving. A refused, redirected or failed save shows operator feedback and retains the typed tag name and prior selection for retry; only a successful response selects the returned tag and clears the draft.
 
@@ -463,7 +463,7 @@ coordinator or a privileged signup approver and never on one's own profile; on t
 ## Architecture
 
 **Owning services:** `ShiftManagementService`, `ShiftSignupService`, `VolunteerTrackingService`, `BurnSettingsService` (cross-section read DTO supplier — maps the Settings calendar plus this section's own knobs row to `BurnSettingsInfo`, issue nobodies-collective/Humans#719), `WorkloadService` (read-only aggregations, no DbSet writes)
-**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings` (app-wide calendar columns + `IsActive` dead, nobodies-collective/Humans#1631 — see Data Model), `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `tickets_event_participations` is owned by Tickets (see Data Model); Shifts only reads it via `ITicketService`.
+**Owned tables:** `shift_rotas`, `shifts`, `shift_signups`, `shift_event_settings` (app-wide calendar columns + `IsActive` dead, nobodies-collective/Humans#1631 — see Data Model), `shift_general_availabilities`, `shift_volunteer_event_profiles`, `shift_volunteer_build_statuses`, `shift_tags`, `shift_volunteer_tag_preferences`, `shift_rota_tags` (join table). `ticket_event_participations` is owned by Tickets (see Data Model); Shifts only reads it via `ITicketService`.
 **Status:** (A) Fully migrated. The services live in `Humans.Shifts.Services` and route through `IShiftManagementRepository` / `IVolunteerTrackingRepository`. Cross-section links on Shifts-owned entities are bare Guid columns: no navigation property, no FK constraint.
 
 - Services live in `src/Sections/Humans.Shifts/Services/` (`Humans.Shifts.Services`) and never import `Microsoft.EntityFrameworkCore`.
@@ -484,9 +484,9 @@ coordinator or a privileged signup approver and never on one's own profile; on t
 - **Volunteer tracking read owner.** Internal `VolunteerTrackingReport` owns the coordinator heatmap and personal build-strip projections, including participation filtering, cohort membership, cell precedence and gap counts. `VolunteerTrackingService` delegates those reads and retains audited availability, camp-setup and day-off mutations and merge reassignment. The two projections keep their distinct rules; repository ownership, cancellation and DI registration stay unchanged.
 
 - **Personal-data read owner.** Internal `ShiftSignupPersonalData` owns per-user signup summaries, no-show history, personal calendar items and the five signup, profile, availability, build-status and tag-preference slices, including historical team/event names and retained build statuses across merged identities. `ShiftSignupService` remains the registered contributor and owns erasure and signup transitions. Calendar inclusion/status labels, event-calendar lookups, history ordering, slice keys, lazy Teams resolution and cancellation are unchanged; no DI registration or public contract is added.
-- **`IShiftManagementRepository`** (impl: `ShiftRepository`) — owns `rotas`, `shifts`, `event_settings`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags`, `volunteer_event_profiles`, and `shift_signups`. Signup state-machine reads/writes are declared on the signup-focused partial (`IShiftManagementRepository.Signups.cs`) of this single interface. The signup partial also carries the Build-period gap/export reads `GetEligibleBuildSignupsAsync` and `GetConfirmedShiftsInRangeAsync`, which `VolunteerTrackingService` and `VolunteerTrackingExportService` use. The GDPR contributor's `volunteer_event_profiles` read is `GetVolunteerEventProfilesByUserIdsAsync`.
+- **`IShiftManagementRepository`** (impl: `ShiftRepository`) — owns `shift_rotas`, `shifts`, `shift_event_settings`, `shift_tags`, `shift_volunteer_tag_preferences`, `shift_rota_tags`, `shift_volunteer_event_profiles`, and `shift_signups`. Signup state-machine reads/writes are declared on the signup-focused partial (`IShiftManagementRepository.Signups.cs`) of this single interface. The signup partial also carries the Build-period gap/export reads `GetEligibleBuildSignupsAsync` and `GetConfirmedShiftsInRangeAsync`, which `VolunteerTrackingService` and `VolunteerTrackingExportService` use. The GDPR contributor's `shift_volunteer_event_profiles` read is `GetVolunteerEventProfilesByUserIdsAsync`.
   - Aggregate-local navs: `Rota.Shifts`, `Rota.EventSettings`, `Rota.Tags`, `Shift.Rota`, `Shift.ShiftSignups` (read-side, capacity counts), `EventSettings.Rotas`, `ShiftSignup.Shift` (read-only projection chain).
-- **`IVolunteerTrackingRepository`** (impl: `VolunteerTrackingRepository`) — owns `general_availability` and `volunteer_build_statuses` and **only** those two tables; each Shifts table has exactly one repository owner.
+- **`IVolunteerTrackingRepository`** (impl: `VolunteerTrackingRepository`) — owns `shift_general_availabilities` and `shift_volunteer_build_statuses` and **only** those two tables; each Shifts table has exactly one repository owner.
 
 ### Touch-and-clean guidance
 

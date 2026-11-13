@@ -10,9 +10,9 @@ injects `IDbContextFactory<EventGuideDbContext>`
 directly. Owns `Events`,
 `EventGuideSettings`, `EventCategories`, `EventVenues`,
 `EventModerationActions`, `EventPreferences`, `EventFavourites`. The
-edition settings row is Settings' `settings_event` table (on
+edition settings row is Settings' `settings_events` table (on
 `SettingsDbContext`, read only through `ISettingsService`; Shifts' similarly-named
-`event_settings` is a different table Events never reads) and
+`shift_event_settings` is a different table Events never reads) and
 event participation is **Tickets-owned** (lives on `TicketsDbContext` —
 see [Tickets](../../Humans.Tickets/Docs/data-access.md)); `EventGuideDbContext`
 deliberately excludes both

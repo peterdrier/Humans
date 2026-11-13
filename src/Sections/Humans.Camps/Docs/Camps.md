@@ -38,7 +38,7 @@ Core entity: contact info, slug, flags.
 
 ### CampSeason
 
-Per-event season data (name, blurbs, community info, placement), retaining `Year` for year-based consumers. `EeSlotCount` (int, default 0) tracks the Early Entry slot cap for the season; managed by CampsAdmin. `EventSettingsId` (Guid?, bare id of Settings' `settings_event` row) is stamped from the explicitly selected event on creation. Season reads key on that stored id: one season per camp per event (unique `(CampId, EventSettingsId)`), and a year can hold several events. Unassigned legacy seasons retain null in `CampSeasonInfo` and are excluded from event-specific membership, duplicate-season checks and name-lock updates. They remain available to historical and GDPR reads. New camps register for the selected open event.
+Per-event season data (name, blurbs, community info, placement), retaining `Year` for year-based consumers. `EeSlotCount` (int, default 0) tracks the Early Entry slot cap for the season; managed by CampsAdmin. `EventSettingsId` (Guid?, bare id of Settings' `settings_events` row) is stamped from the explicitly selected event on creation. Season reads key on that stored id: one season per camp per event (unique `(CampId, EventSettingsId)`), and a year can hold several events. Unassigned legacy seasons retain null in `CampSeasonInfo` and are excluded from event-specific membership, duplicate-season checks and name-lock updates. They remain available to historical and GDPR reads. New camps register for the selected open event.
 
 **Table:** `camp_seasons`
 
@@ -312,7 +312,7 @@ Admin season opening, name-lock-date changes and EE slot-cap updates require the
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — lead and assignee display names (stitched in memory; `CampRoleAssignment.AssignedByUserId` is scalar-only).
 - **Tickets:** `ITicketService.GetParticipationsAsync` (project reference to `Humans.Tickets.Contracts`) — whether a member has already entered the event (a participation for the season's year with status `Attended`), which keeps a consumed Early Entry slot on removal.
 - **Admin:** Camp settings management is restricted to CampsAdmin and Admin (resource-based auth handler).
-- **City Planning:** CampSeason is the anchor for `camp_polygons`; City Planning reads camp data via `ICampService` but writes its own tables only.
+- **City Planning:** CampSeason is the anchor for `city_camp_polygons`; City Planning reads camp data via `ICampService` but writes its own tables only.
 - **Containers:** `Camp` is read by the Containers section via FK (`Container.CampId → camps.Id`) and via the cross-section read surface `ICampService` (`GetCampsForYearAsync`, `GetCampBySlugAsync`, etc.) for display; lead checks are answered in-memory off the returned `CampInfo` (`CampInfo.IsLead`). Containers are year-agnostic and have no `CampSeasonId`. Camps does not depend on Containers — this is a downstream dependency only.
 - **Events:** the camp detail view renders `<vc:camp-parts camp-id>` (this section's own `CampPartsViewComponent`, `Humans.Camps.Contracts.ICampPart` seam, nobodies-collective/Humans#1815), which fans out over every active section's `ICampPart` contributor and invokes each declared component `Type` by `CampPartArgs(CampId)`. Events contributes its `EventsCardViewComponent` (reads `IEventService`) to list the camp's approved events with per-row favourite toggles — auth-gated at the call site, auto-hides when empty or when the Events feature is off. Web-layer view composition only; Camps services do not depend on Events, and this section references no contributor.
 - **Camps internal — `CampRoleService` ↔ `CampService`:** `CampRoleService` calls the narrow camp-side port `ICampRoleCampAccess` (settings, member-status lookup, compliance season list) for camp/season lookup and active-membership verification, while `CampService` persists membership-removal role cascades directly in its atomic membership save. It does not inject `ICampManagement` and never touches the cache: `ICampRoleService` resolves to `CachingCampService`, which drops the `CampInfo` projection after each role write that changed a row. Both services live within the Camps section.
@@ -359,7 +359,7 @@ Admin season opening, name-lock-date changes and EE slot-cap updates require the
 
 ### Touch-and-clean guidance
 
-- Lead authority is `CampRoleAssignment` only. Historical `audit_log` rows still carry `CampLeadAdded` / `CampLeadRemoved`; nothing declares them any more, so they render with their bare name.
+- Lead authority is `CampRoleAssignment` only. Historical `audit_log_entries` rows still carry `CampLeadAdded` / `CampLeadRemoved`; nothing declares them any more, so they render with their bare name.
 - `CampMemberConfiguration.cs` lives in
   `src/Sections/Humans.Camps/Data/Configurations/` with the rest of the Camps entity configuration.
 
