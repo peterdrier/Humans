@@ -649,3 +649,15 @@ src/Sections/Humans.Users/Data/Migrations/20261112195826_RenameTablesToSectionPr
 # Keys (name on table):
 #   PK_workgroups_settings on workgroups_settings
 src/Sections/Humans.Workgroups/Data/Migrations/20261112195832_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_workgroups_settings,table=workgroups_settings)#1
+
+# users.UnsubscribedFromCampaigns and users.SuppressScheduleChangeEmails (bool) — the March 2026
+# campaign opt-out and shift schedule-change opt-out flags (USERS-12 and USERS-13 in
+# peterdrier/Humans#2156), superseded by per-category communication preferences.
+# Evidence: pickaxe over full history (git log -S on both names): the only writers were the
+# profile settings form and the campaign unsubscribe endpoint, both removed in 2334b6395
+# (2026-03-24); no data migration ever copied the values. Since then the only reader was the
+# Users Art. 15 export, removed in this PR.
+# Approval: Peter, 2026-11-12, project thread decision card ("Drop them as they are"), after being
+# told the values were never migrated.
+src/Sections/Humans.Users/Data/Migrations/20261113002956_DropUsersDeadEmailFlags.cs:DropColumn(name=SuppressScheduleChangeEmails,table=users)#1
+src/Sections/Humans.Users/Data/Migrations/20261113002956_DropUsersDeadEmailFlags.cs:DropColumn(name=UnsubscribedFromCampaigns,table=users)#1

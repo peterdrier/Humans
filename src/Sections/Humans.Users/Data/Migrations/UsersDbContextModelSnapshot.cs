@@ -141,13 +141,7 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Bare");
 
-                    b.Property<bool>("SuppressScheduleChangeEmails")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("UnsubscribedFromCampaigns")
                         .HasColumnType("boolean");
 
                     b.Property<string>("UserName")
