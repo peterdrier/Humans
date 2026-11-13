@@ -1395,7 +1395,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(
-                allUsers.Select(u => UserInfoFixtures.FromUser(u, 
+                allUsers.Select(u => UserInfoFixtures.FromUser(u,
                     profile: UserFixtures.Profile())).ToList()));
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())

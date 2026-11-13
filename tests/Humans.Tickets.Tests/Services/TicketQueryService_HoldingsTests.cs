@@ -241,7 +241,7 @@ public sealed class TicketQueryService_HoldingsTests
     }
 
     private static UserInfo UserWithVerifiedEmail(Guid id, string email) =>
-        UserInfoFixtures.FromUser(new User { Id = id, DisplayName = id.ToString() }, 
+        UserInfoFixtures.FromUser(new User { Id = id, DisplayName = id.ToString() },
             [new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true }]);
 
     [HumansFact]

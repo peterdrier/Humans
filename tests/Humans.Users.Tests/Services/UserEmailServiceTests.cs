@@ -1943,7 +1943,7 @@ public class UserEmailServiceTests
     public async Task GetNotificationTargetEmailsAsync_UsesCanonicalEmail(bool hasPrimary, string? address)
     {
         var id = Guid.NewGuid();
-        var user = UserInfoFixtures.FromUser(new User { Id = id, Email = hasPrimary ? "login@example.org" : address }, 
+        var user = UserInfoFixtures.FromUser(new User { Id = id, Email = hasPrimary ? "login@example.org" : address },
             hasPrimary
                 ? [new UserEmail { UserId = id, Email = address!, IsVerified = true, IsPrimary = true }]
                 : []);
