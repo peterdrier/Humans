@@ -28,7 +28,7 @@ internal sealed class RoleAssignmentService(
 {
     internal const string RoleAssignments = "RoleAssignments";
 
-    // role_assignments.Notes is varchar(2000).
+    // auth_role_assignments.Notes is varchar(2000).
     internal const int MaxNotesLength = 2000;
 
     private static readonly ResourceManager NoticeResources = new(typeof(AuthResource));

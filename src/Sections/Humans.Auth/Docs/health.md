@@ -68,7 +68,7 @@ the section implements rather than surface it publishes, and that is the right p
 
 Written fresh from the shapes above, not from today's tree.
 
-- **The repository is the section's only SQL surface.** `role_assignments` is the section's only
+- **The repository is the section's only SQL surface.** `auth_role_assignments` is the section's only
   data. The repository exposes exactly the queries the shapes need — no method exists for a
   caller that does not exist.
 - **The service holds the invariants.** Temporal overlap, the ended/not-yet-active guard, the
@@ -90,7 +90,7 @@ Written fresh from the shapes above, not from today's tree.
   `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
   sign-in (through Users' `IUserSignInService`) and the cookie and external-auth handlers the Shell
   configures in `Program.cs`, and the actions that do more than render or challenge provision
-  users through `Humans.Users`. None of them writes `role_assignments`. That is a deliberate
+  users through `Humans.Users`. None of them writes `auth_role_assignments`. That is a deliberate
   boundary, not an unfinished move.
 - **S6 does not belong on a role-assignment contract — and is gone.** The cache-flush verbs
   sat on `IRoleAssignmentWrite` so Users' `AccountMergeService` could poke Auth's caches after
@@ -155,7 +155,7 @@ Reserved, not ranked, not built:
 
 ## 6. Deliberately not done
 
-- **No FK constraint and no navigation property from `role_assignments` to `users`.** The
+- **No FK constraint and no navigation property from `auth_role_assignments` to `users`.** The
   columns are bare `Guid`s on purpose — a nav would couple Auth's schema to Users' schema and
   is the coupling the architecture exists to prevent. Display names are stitched in memory.
 - **No per-row cache invalidation.** Writes are rare; a wholesale flush is cheaper to reason

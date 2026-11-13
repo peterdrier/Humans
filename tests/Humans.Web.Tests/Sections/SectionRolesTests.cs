@@ -26,7 +26,7 @@ public class SectionRolesTests
     private static readonly RoleCatalog Catalog = new(Contributors);
 
     /// <summary>
-    /// Every name a role_assignments row has ever been stored under, on QA or production. Nothing is ever removed
+    /// Every name an auth_role_assignments row has ever been stored under, on QA or production. Nothing is ever removed
     /// from this list: a rename adds the new name here and the old one to the role's <c>FormerNames</c>, so the
     /// stored rows keep resolving until the <c>auth.role-renames</c> data migration rewrites them.
     /// </summary>

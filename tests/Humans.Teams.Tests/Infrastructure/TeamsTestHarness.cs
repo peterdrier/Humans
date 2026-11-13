@@ -238,7 +238,7 @@ public abstract class TeamsTestHarness : IDisposable
             CreatedAt = Clock.GetCurrentInstant(),
             CreatedByUserId = Guid.NewGuid()
         };
-        // Unlike the Db seeders above, this one saves: role_assignments sits in its own
+        // Unlike the Db seeders above, this one saves: auth_role_assignments sits in its own
         // context, so a caller's Db.SaveChangesAsync() would never reach it.
         AuthDb.RoleAssignments.Add(ra);
         AuthDb.SaveChanges();

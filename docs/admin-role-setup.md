@@ -1,6 +1,6 @@
 # Adding Admin Users
 
-Admin roles are managed through the `role_assignments` table with temporal assignments (ValidFrom/ValidTo).
+Admin roles are managed through the `auth_role_assignments` table with temporal assignments (ValidFrom/ValidTo).
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ SELECT "Id", "Email", "DisplayName" FROM users WHERE "Email" = 'user@nobodies.te
 ### 2. Check for existing role assignments
 
 ```sql
-SELECT "Id", "RoleName", "ValidFrom", "ValidTo" FROM role_assignments WHERE "UserId" = '<user-id>';
+SELECT "Id", "RoleName", "ValidFrom", "ValidTo" FROM auth_role_assignments WHERE "UserId" = '<user-id>';
 ```
 
 ### 3. Insert the Admin role assignment

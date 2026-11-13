@@ -6,7 +6,7 @@ using NodaTime;
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Caches every <c>role_assignments</c> row. <c>RoleAssignmentService</c> clears it right after each repository
+/// Caches every <c>auth_role_assignments</c> row. <c>RoleAssignmentService</c> clears it right after each repository
 /// write (merge and erasure included, which bypass this decorator), because the Board team sync inside
 /// Assign/End must read the new rows. This decorator also evicts after successful or uncertain writes;
 /// explicit refusals and zero-row revocations preserve the warmed snapshot.
