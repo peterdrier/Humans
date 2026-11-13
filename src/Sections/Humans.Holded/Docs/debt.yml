@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 4
-inbox:
-  - added: 2026-11-13
-    id: HOLDED-3
-    what: "HoldedNightlySync.RunAsync captures document/contact failures but rethrows only after the ledger phase. Caller cancellation from a later contact or ledger phase exits before that rethrow, hiding an earlier genuine failure as shutdown alone. Preserve accumulated phase failures through cancellation while retaining independent phase attempts. Found during HOLDED-2 composition review after the mirror-state batch froze; orchestration failure semantics require a separate batch."
-    review: light
+inbox: []
