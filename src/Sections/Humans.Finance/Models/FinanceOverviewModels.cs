@@ -73,7 +73,8 @@ internal sealed record FinanceOwedVm(
 }
 
 /// <summary>The reimbursement pipeline in order. <see cref="Problems"/> and <see cref="PushingToHolded"/> are null
-/// when the expense recon is unavailable. <see cref="DuplicateAccounts"/> counts only accounts with duplicate documents
+/// when the expense recon is unavailable, <see cref="AwaitingBankLine"/> and
+/// <see cref="TransfersToBook"/> when open transfers could not be paired with the bank feed. <see cref="DuplicateAccounts"/> counts only accounts with duplicate documents
 /// that the recon does not already report.</summary>
 internal sealed record FinanceWorkVm(
     int AwaitingCoordinator,
@@ -83,8 +84,8 @@ internal sealed record FinanceWorkVm(
     int ReadyToPay,
     decimal ReadyToPayAmount,
     int? PushingToHolded,
-    int AwaitingBankLine,
-    int TransfersToBook,
+    int? AwaitingBankLine,
+    int? TransfersToBook,
     int? Problems,
     int DuplicateAccounts,
     int? ReconProblems,

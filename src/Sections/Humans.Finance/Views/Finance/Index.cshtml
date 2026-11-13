@@ -188,8 +188,8 @@
         <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
                 <div class="text-muted small text-uppercase">Waiting for bank line</div>
-                <div class="fs-3 fw-bold">@work.AwaitingBankLine</div>
-                <div class="text-muted small">Transfers sent, no Sabadell line in Holded yet</div>
+                <div class="fs-3 fw-bold">@(work.AwaitingBankLine?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.AwaitingBankLine is null ? "Bank feed unavailable" : "Transfers sent, no Sabadell line in Holded yet")</div>
             </div>
         </a>
     </div>
@@ -197,8 +197,8 @@
         <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
                 <div class="text-muted small text-uppercase">Transfers to book</div>
-                <div class="fs-3 fw-bold @(work.TransfersToBook > 0 ? "text-warning" : "")">@work.TransfersToBook</div>
-                <div class="text-muted small">Sabadell line found, not booked yet</div>
+                <div class="fs-3 fw-bold @(work.TransfersToBook > 0 ? "text-warning" : "")">@(work.TransfersToBook?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.TransfersToBook is null ? "Bank feed unavailable" : "Sabadell line found, not booked yet")</div>
             </div>
         </a>
     </div>

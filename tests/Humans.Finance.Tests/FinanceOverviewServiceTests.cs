@@ -137,6 +137,10 @@ public class FinanceOverviewServiceTests
         var line = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "d", 10m, new LocalDate(2026, 1, 1), "",
             ExpenseReconLineStatus.Duplicated, null, 40000004, 1, null, [2], 10m);
         FinanceOverviewService.BuildWork([], rows, recon with { Lines = [line] }, []).Problems.Should().Be(3);
+
+        // An unreadable bank feed leaves the split unknown while a transfer is open, never zero.
+        FinanceOverviewService.BuildWork([], rows, recon, [sent], "feed unreadable").TransfersToBook.Should().BeNull();
+        FinanceOverviewService.BuildWork([], rows, recon, [], "feed unreadable").TransfersToBook.Should().Be(0);
     }
 
     [HumansFact]

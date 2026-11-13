@@ -46,7 +46,7 @@ internal sealed class FinanceOverviewService(
         var recon = await finance.GetExpenseReconAsync(null, ct);
         var queue = await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
         // Paired over the bank-feed mirror as it stands: no Holded call.
-        var (transfers, _, _, _, _) = await financeAdmin.GetSepaPayoutsAsync(ct: ct);
+        var (transfers, sepaUnavailable, _, bankFeedError, _) = await financeAdmin.GetSepaPayoutsAsync(ct: ct);
 
         var year = await budget.GetActiveYearAsync(ct);
         FinanceBudgetVm? budgetVm = null;
@@ -66,7 +66,8 @@ internal sealed class FinanceOverviewService(
             syncedAt,
             ledger,
             BuildOwed(creditors, ledger?.TaxesOwed) with { Unavailable = creditorsUnavailable },
-            BuildWork(queue, creditors, recon, transfers) with { CreditorsUnavailable = creditorsUnavailable },
+            BuildWork(queue, creditors, recon, transfers, sepaUnavailable ?? bankFeedError)
+                with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
             income,
@@ -231,14 +232,17 @@ internal sealed class FinanceOverviewService(
 
     /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning. An
     /// open transfer either has a Sabadell line paired to it (its own, or one debiting its whole file), so it can be
-    /// booked, or is still waiting for one.</summary>
+    /// booked, or is still waiting for one; <paramref name="pairingUnavailable"/> is why that could not be told.</summary>
     internal static FinanceWorkVm BuildWork(
         IReadOnlyList<ExpenseReportDto> queue,
         IReadOnlyList<CreditorAccountRow> creditors,
         ExpenseReconReport recon,
-        IReadOnlyList<SepaPayoutTransferRow> transfers)
+        IReadOnlyList<SepaPayoutTransferRow> transfers,
+        string? pairingUnavailable = null)
     {
         var open = transfers.Where(t => !t.IsBooked && !t.IsWithdrawn).ToList();
+        // Unpaired rows say nothing about the bank: with any transfer open, the split is unknown, not zero.
+        var paired = pairingUnavailable is null || open.Count == 0;
         var withBankLine = open.Count(t => t.CandidateBankMovementId is { Length: > 0 } || t.BatchLine is not null);
         var submitted = queue.Where(r => r.Status == ExpenseReportStatus.Submitted).ToList();
         var endorsed = queue.Where(r => r.Status == ExpenseReportStatus.CoordinatorEndorsed).ToList();
@@ -263,8 +267,8 @@ internal sealed class FinanceOverviewService(
             ready.Count,
             ready.Sum(r => r.OwedToMember),
             recon.IsAvailable ? recon.Lines.Count(l => l.Status == ExpenseReconLineStatus.Pending) : null,
-            open.Count - withBankLine,
-            withBankLine,
+            paired ? open.Count - withBankLine : null,
+            paired ? withBankLine : null,
             reconProblems is { } p ? p + duplicates : null,
             duplicates,
             reconProblems);
