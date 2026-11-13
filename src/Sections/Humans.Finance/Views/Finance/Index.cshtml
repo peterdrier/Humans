@@ -85,46 +85,67 @@
     <div class="col-lg-6 d-flex flex-column gap-3">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-baseline">
-                <span>What we owe</span>
-                @if (owed.Total is { } owedTotal)
+                <span>Position</span>
+                @if (Model.NetPosition is { } net)
                 {
-                    <span class="fs-5 fw-bold text-danger">@owedTotal.ToEuro()</span>
+                    <span class="fs-5 fw-bold @(net < 0m ? "text-danger" : "text-success")">@net.ToEuro()</span>
                 }
             </div>
-            @if (owed.Unavailable is { } owedUnavailable)
-            {
-                <div class="card-body text-danger small">
-                    <i class="fa-solid fa-circle-exclamation me-1"></i>@owedUnavailable
-                </div>
-            }
-            else
-            {
             <table class="table table-sm mb-0">
                 <tbody>
-                    <tr>
-                        <td class="ps-3">
-                            <a asp-action="Creditors">Members awaiting reimbursement</a>
-                            <div class="small text-muted">@owed.MemberAccounts account@(owed.MemberAccounts == 1 ? "" : "s")@(owed.InSepaFiles > 0m ? " · " + owed.InSepaFiles.ToEuro() + " already in SEPA files, not booked yet" : "")</div>
-                        </td>
-                        <td class="text-end pe-3">@owed.Members.ToEuro()</td>
+                    <tr class="fw-bold">
+                        <td class="ps-3">Cash on hand</td>
+                        <td class="text-end pe-3">@(ledger?.CashTotal.ToEuro() ?? "—")</td>
                     </tr>
-                    <tr>
-                        <td class="ps-3">
-                            <a asp-action="Creditors">Suppliers</a>
-                            <div class="small text-muted">@owed.SupplierAccounts account@(owed.SupplierAccounts == 1 ? "" : "s") with a balance owed</div>
-                        </td>
-                        <td class="text-end pe-3">@owed.Suppliers.ToEuro()</td>
+                    <tr class="fw-bold">
+                        <td class="ps-3">Plus owed to us</td>
+                        <td class="text-end pe-3">@(ledger?.ReceivablesTotal.ToEuro() ?? "—")</td>
                     </tr>
-                    <tr>
-                        <td class="ps-3">
-                            Taxes owed to Hacienda
-                            <div class="small text-muted">VAT payable and IRPF withheld (475)</div>
-                        </td>
-                        <td class="text-end pe-3">@(owed.Taxes?.ToEuro() ?? "—")</td>
+                    @foreach (var r in ledger?.Receivables ?? [])
+                    {
+                        <tr><td class="ps-4">@r.Name</td><td class="text-end pe-3 @(r.Amount == 0m ? "text-muted" : "")">@r.Amount.ToEuro()</td></tr>
+                    }
+                    <tr class="fw-bold">
+                        <td class="ps-3">Less what we owe</td>
+                        <td class="text-end pe-3">@(owed.Total is { } owedTotal ? (-owedTotal).ToEuro() : "—")</td>
                     </tr>
-                    <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@(owed.Total?.ToEuro() ?? "—")</td></tr>
+                    @if (owed.Unavailable is { } owedUnavailable)
+                    {
+                        <tr><td colspan="2" class="ps-4 text-danger small"><i class="fa-solid fa-circle-exclamation me-1"></i>@owedUnavailable</td></tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <a asp-action="Creditors">Members awaiting reimbursement</a>
+                                <div class="small text-muted">@owed.MemberAccounts account@(owed.MemberAccounts == 1 ? "" : "s")@(owed.InSepaFiles > 0m ? " · " + owed.InSepaFiles.ToEuro() + " already in SEPA files, not booked yet" : "")</div>
+                            </td>
+                            <td class="text-end pe-3">@owed.Members.ToEuro()</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">
+                                <a asp-action="Creditors">Suppliers</a>
+                                <div class="small text-muted">@owed.SupplierAccounts account@(owed.SupplierAccounts == 1 ? "" : "s") with a balance owed</div>
+                            </td>
+                            <td class="text-end pe-3">@owed.Suppliers.ToEuro()</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">
+                                Taxes owed to Hacienda
+                                <div class="small text-muted">VAT payable and IRPF withheld (475)</div>
+                            </td>
+                            <td class="text-end pe-3">@(owed.Taxes?.ToEuro() ?? "—")</td>
+                        </tr>
+                    }
+                    <tr class="fw-bold">
+                        <td class="ps-3">Net position</td>
+                        <td class="text-end pe-3 @(Model.NetPosition < 0m ? "text-danger" : Model.NetPosition > 0m ? "text-success" : "")">@(Model.NetPosition?.ToEuro() ?? "—")</td>
+                    </tr>
                 </tbody>
             </table>
+            @if (ledger is null)
+            {
+                <div class="card-footer small text-muted">The Holded ledger mirror has never synced.</div>
             }
         </div>
 
@@ -223,53 +244,7 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-            <div class="card-header">Owed to us</div>
-            @if (ledger is null)
-            {
-                <div class="card-body text-muted">The Holded ledger mirror has never synced.</div>
-            }
-            else
-            {
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        @foreach (var r in ledger.Receivables)
-                        {
-                            <tr><td class="ps-3">@r.Name</td><td class="text-end pe-3 @(r.Amount == 0m ? "text-muted" : "")">@r.Amount.ToEuro()</td></tr>
-                        }
-                        <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@ledger.ReceivablesTotal.ToEuro()</td></tr>
-                    </tbody>
-                </table>
-            }
-        </div>
-    </div>
-
-    <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-            <div class="card-header">Net position</div>
-            @if (ledger is null || owed.Total is null)
-            {
-                <div class="card-body text-muted">Needs the Holded ledger mirror.</div>
-            }
-            else
-            {
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr><td class="ps-3">Cash on hand</td><td class="text-end pe-3">@ledger.CashTotal.ToEuro()</td></tr>
-                        <tr><td class="ps-3">Plus owed to us</td><td class="text-end pe-3">@ledger.ReceivablesTotal.ToEuro()</td></tr>
-                        <tr><td class="ps-3">Less what we owe</td><td class="text-end pe-3">@((-owed.Total.Value).ToEuro())</td></tr>
-                        <tr class="fw-bold">
-                            <td class="ps-3">Net position</td>
-                            <td class="text-end pe-3 @(Model.NetPosition < 0m ? "text-danger" : "text-success")">@Model.NetPosition.ToEuro()</td>
-                        </tr>
-                    </tbody>
-                </table>
-            }
-        </div>
-    </div>
-
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Budget vs actual@(Model.Budget is { } by ? " · " + by.YearName : "")</div>
             @if (Model.Budget is not { } b)
@@ -304,7 +279,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Runway</div>
             @if (Model.Runway is not { } rw)
@@ -325,7 +300,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Tax calendar</div>
             @if (ledger is null)
@@ -352,7 +327,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Income this year</div>
             @if (Model.Income is not { } inc)
