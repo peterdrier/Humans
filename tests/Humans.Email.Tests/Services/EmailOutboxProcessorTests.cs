@@ -339,6 +339,106 @@ public class EmailOutboxProcessorTests : IDisposable
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), CancellationToken.None);
     }
 
+    [HumansTheory]
+    [InlineData("sent")]
+    [InlineData("failed")]
+    [InlineData("test-address")]
+    public async Task ScheduledDrain_RecordsOutcomeSaveCancellationAsFailureDuringShutdown(string outcome)
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        if (string.Equals(outcome, "test-address", StringComparison.Ordinal)) message.RecipientEmail = "test@localhost";
+        using var shutdown = new CancellationTokenSource();
+        var failure = new OperationCanceledException("Outcome save timed out");
+        var smtpFailure = new IOException("SMTP rejected the message");
+        var repo = Substitute.For<IEmailOutboxRepository>();
+        repo.GetProcessingBatchAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<int>(), shutdown.Token)
+            .Returns([message]);
+        async Task<bool> FailSaveAsync()
+        {
+            await shutdown.CancelAsync();
+            throw failure;
+        }
+        if (string.Equals(outcome, "failed", StringComparison.Ordinal))
+        {
+            _transport.SendAsync(
+                    Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(),
+                    Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), CancellationToken.None)
+                .ThrowsAsync(smtpFailure);
+            repo.MarkFailedAsync(message.Id, Arg.Any<Instant>(), smtpFailure.Message, Arg.Any<Instant>(), CancellationToken.None)
+                .Returns(_ => FailSaveAsync());
+        }
+        else
+        {
+            repo.MarkSentAsync(message.Id, Arg.Any<Instant>(), CancellationToken.None).Returns(_ => FailSaveAsync());
+        }
+        var logger = new CapturingLogger<EmailOutboxProcessor>();
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
+            repo, _outboxService, _transport, _metrics, _meters, _clock, _settings, logger));
+        var scheduled = new ProcessEmailOutboxJob(processor, _metrics);
+
+        var error = await Record.ExceptionAsync(() => scheduled.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+        _metrics.Received(1).RecordJobRun("process_email_outbox", "failure");
+        _metrics.DidNotReceive().RecordJobRun("process_email_outbox", "success");
+        _metrics.DidNotReceive().RecordEmailSent(Arg.Any<string>());
+        _metrics.DidNotReceive().RecordEmailFailed(Arg.Any<string>());
+        if (string.Equals(outcome, "failed", StringComparison.Ordinal))
+        {
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == smtpFailure);
+        }
+        else
+        {
+            await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default, default);
+        }
+        if (string.Equals(outcome, "test-address", StringComparison.Ordinal))
+        {
+            await _transport.DidNotReceiveWithAnyArgs().SendAsync(
+                default!, default, default!, default!, default, default, default, default);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScheduledDrain_PreservesShutdownDuringThrottleAndPendingCount(bool pendingCount)
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        using var shutdown = new CancellationTokenSource();
+        var failure = new OperationCanceledException(shutdown.Token);
+        var repo = Substitute.For<IEmailOutboxRepository>();
+        repo.GetProcessingBatchAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<int>(), shutdown.Token)
+            .Returns([message]);
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
+            repo, _outboxService, _transport, _metrics, _meters, _clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance));
+        if (pendingCount)
+        {
+            repo.GetPendingCountAsync(_settings.Value.OutboxMaxRetries, shutdown.Token).Returns(async Task<int> (_) =>
+            {
+                await shutdown.CancelAsync();
+                throw failure;
+            });
+        }
+        else
+        {
+            processor.ThrottleDelayAsync = async (_, token) =>
+            {
+                token.Should().Be(shutdown.Token);
+                await shutdown.CancelAsync();
+                throw failure;
+            };
+        }
+        var scheduled = new ProcessEmailOutboxJob(processor, _metrics);
+
+        var error = await Record.ExceptionAsync(() => scheduled.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeSameAs(failure);
+        await repo.Received(1).MarkSentAsync(message.Id, Arg.Any<Instant>(), CancellationToken.None);
+        await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default, default);
+        _metrics.DidNotReceive().RecordJobRun("process_email_outbox", Arg.Any<string>());
+    }
+
     [HumansFact]
     public async Task ProcessQueuedAsync_CancelledAfterPickup_StartsNoDeliveryAttempt()
     {
