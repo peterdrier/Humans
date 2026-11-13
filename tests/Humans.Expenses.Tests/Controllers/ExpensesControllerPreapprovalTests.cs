@@ -170,7 +170,7 @@ public sealed class ExpensesControllerPreapprovalTests
             .Returns(ExpenseMutationResult.Success);
         using var content = new MemoryStream([1, 2, 3]);
         var upload = new FormFile(content, 0, content.Length, "file", "receipt.pdf")
-            { Headers = new HeaderDictionary(), ContentType = "application/pdf" };
+        { Headers = new HeaderDictionary(), ContentType = "application/pdf" };
         var controller = Build();
 
         var result = action switch

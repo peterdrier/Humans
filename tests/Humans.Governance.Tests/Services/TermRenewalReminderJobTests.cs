@@ -21,19 +21,19 @@ namespace Humans.Governance.Tests.Services;
 public sealed class TermRenewalReminderJobTests
 {
     [HumansTheory]
-    [Xunit.InlineData("Applications")]
-    [Xunit.InlineData("Pending")]
-    [Xunit.InlineData("Applicants")]
-    public async Task ReminderShutdown_PropagatesInitialReadCancellation(string boundary)
+    [Xunit.InlineData(ReminderReadBoundary.Applications)]
+    [Xunit.InlineData(ReminderReadBoundary.Pending)]
+    [Xunit.InlineData(ReminderReadBoundary.Applicants)]
+    public async Task ReminderShutdown_PropagatesInitialReadCancellation(ReminderReadBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var run = new ReminderRun();
         var failure = new OperationCanceledException(shutdown.Token);
-        if (string.Equals(boundary, "Applications", StringComparison.Ordinal))
+        if (boundary == ReminderReadBoundary.Applications)
             run.Applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), shutdown.Token)
                 .Returns(async Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> (_) =>
                 { await shutdown.CancelAsync(); throw failure; });
-        else if (string.Equals(boundary, "Pending", StringComparison.Ordinal))
+        else if (boundary == ReminderReadBoundary.Pending)
             run.Applications.GetPendingApplicationUserTiersAsync(shutdown.Token)
                 .Returns(async Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> (_) =>
                 { await shutdown.CancelAsync(); throw failure; });
@@ -53,22 +53,22 @@ public sealed class TermRenewalReminderJobTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Email")]
-    [Xunit.InlineData("Stamp")]
-    [Xunit.InlineData("Notice")]
-    public async Task ReminderShutdown_FinishesStartedRecipientBeforeStopping(string boundary)
+    [Xunit.InlineData(ReminderSendBoundary.Email)]
+    [Xunit.InlineData(ReminderSendBoundary.Stamp)]
+    [Xunit.InlineData(ReminderSendBoundary.Notice)]
+    public async Task ReminderShutdown_FinishesStartedRecipientBeforeStopping(ReminderSendBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var run = new ReminderRun();
         run.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
         {
-            if (string.Equals(boundary, "Email", StringComparison.Ordinal)) await shutdown.CancelAsync();
+            if (boundary == ReminderSendBoundary.Email) await shutdown.CancelAsync();
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
         });
         run.Applications.MarkRenewalReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
-                if (string.Equals(boundary, "Stamp", StringComparison.Ordinal)) await shutdown.CancelAsync();
+                if (boundary == ReminderSendBoundary.Stamp) await shutdown.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             });
         run.Notices.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
@@ -76,7 +76,7 @@ public sealed class TermRenewalReminderJobTests
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>()).Returns(async call =>
             {
-                if (string.Equals(boundary, "Notice", StringComparison.Ordinal)) await shutdown.CancelAsync();
+                if (boundary == ReminderSendBoundary.Notice) await shutdown.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             });
 
@@ -351,3 +351,7 @@ public sealed class TermRenewalReminderJobTests
         CultureInfo.CurrentUICulture.Name.Should().Be("fr");
     }
 }
+
+public enum ReminderReadBoundary { Applications, Pending, Applicants }
+
+public enum ReminderSendBoundary { Email, Stamp, Notice }

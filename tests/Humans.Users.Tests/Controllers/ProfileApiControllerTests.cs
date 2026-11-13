@@ -203,7 +203,7 @@ public class ProfileApiControllerTests
             .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns((ContactFieldVisibility.AllActiveProfiles, false, false));
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
 
         _userEmailService.GetVisibleEmailsAsync(targetUserId,
                 ContactFieldVisibility.AllActiveProfiles, Arg.Any<CancellationToken>())
@@ -238,7 +238,7 @@ public class ProfileApiControllerTests
             .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns((ContactFieldVisibility.AllActiveProfiles, false, false));
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -272,7 +272,7 @@ public class ProfileApiControllerTests
             .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns((ContactFieldVisibility.AllActiveProfiles, false, false));
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _contactFieldService.GetVisibleContactFieldsAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
@@ -299,7 +299,7 @@ public class ProfileApiControllerTests
             .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns((ContactFieldVisibility.AllActiveProfiles, false, false));
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -342,7 +342,7 @@ public class ProfileApiControllerTests
             ]);
 
         _contactFieldService.GetViewerAccessLevelAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((ContactFieldVisibility.AllActiveProfiles, false, false));
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _contactFieldService.GetVisibleContactFieldsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -373,7 +373,7 @@ public class ProfileApiControllerTests
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(resolvedUserId, targetProfileId, burnerName: "Friend")));
         _contactFieldService.GetViewerAccessLevelAsync(resolvedUserId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns((ContactFieldVisibility.AllActiveProfiles, false, false));
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(resolvedUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([]);
         _contactFieldService.GetVisibleContactFieldsAsync(resolvedUserId, viewer.Id, Arg.Any<CancellationToken>())
@@ -467,7 +467,7 @@ public class ProfileApiControllerTests
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, burnerName: "Davey")));
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns((ContactFieldVisibility.AllActiveProfiles, false, false));
+            .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
             .Returns([
                 new UserEmailDto(Guid.NewGuid(), "shared@example.com",

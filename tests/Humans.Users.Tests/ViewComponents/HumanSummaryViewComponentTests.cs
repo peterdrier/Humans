@@ -67,7 +67,9 @@ public sealed class HumanSummaryViewComponentTests
                 .Select(t => new UserTeamMembershipInfo(t.Members[0].TeamMemberId, t.Id, t.Name, t.Slug,
                     t.IsSystemTeam, t.Members[0].Role, at)
                 {
-                    IsActive = t.IsActive, IsHidden = t.IsHidden, SystemTeamType = t.SystemTeamType
+                    IsActive = t.IsActive,
+                    IsHidden = t.IsHidden,
+                    SystemTeamType = t.SystemTeamType
                 }).ToList());
         var governance = Substitute.For<IGovernanceService>();
         governance.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Asociado);

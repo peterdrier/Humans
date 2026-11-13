@@ -118,15 +118,15 @@ public class EventsControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("SettingsInvalid", "Options")]
-    [Xunit.InlineData("SettingsMissing", "Edition")]
-    [Xunit.InlineData("SettingsMissing", "Options")]
-    [Xunit.InlineData("SettingsRefused", "Options")]
-    [Xunit.InlineData("CreateCategory", "Slug")]
-    [Xunit.InlineData("EditCategory", "Category")]
-    [Xunit.InlineData("EditCategory", "Slug")]
-    [Xunit.InlineData("EditVenue", "Venue")]
-    public async Task Admin_form_reads_observe_request_cancellation_before_writes(string action, string boundary)
+    [Xunit.InlineData(AdminFormAction.SettingsInvalid, AdminFormRead.Options)]
+    [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Edition)]
+    [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Options)]
+    [Xunit.InlineData(AdminFormAction.SettingsRefused, AdminFormRead.Options)]
+    [Xunit.InlineData(AdminFormAction.CreateCategory, AdminFormRead.Slug)]
+    [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Category)]
+    [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Slug)]
+    [Xunit.InlineData(AdminFormAction.EditVenue, AdminFormRead.Venue)]
+    public async Task Admin_form_reads_observe_request_cancellation_before_writes(AdminFormAction action, AdminFormRead boundary)
     {
         using var request = new CancellationTokenSource();
         var controller = new EventsAdminController(_guide,
@@ -136,10 +136,10 @@ public class EventsControllerTests
         };
         controller.HttpContext.RequestAborted = request.Token;
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
-        if (string.Equals(action, "SettingsInvalid", StringComparison.Ordinal)) controller.ModelState.AddModelError("MaxPrintSlots", "Required");
-        async Task<T> ReadAsync<T>(T value, string current, CancellationToken ct)
+        if (action == AdminFormAction.SettingsInvalid) controller.ModelState.AddModelError("MaxPrintSlots", "Required");
+        async Task<T> ReadAsync<T>(T value, AdminFormRead current, CancellationToken ct)
         {
-            if (string.Equals(current, boundary, StringComparison.Ordinal))
+            if (current == boundary)
             {
                 await request.CancelAsync();
                 ct.Should().Be(request.Token);
@@ -150,20 +150,20 @@ public class EventsControllerTests
         var id = Guid.NewGuid();
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<EventSettingsInfo?>(string.Equals(action, "SettingsMissing", StringComparison.Ordinal) ? null : burn, "Edition", call.Arg<CancellationToken>()));
+            ReadAsync<EventSettingsInfo?>(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
         _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<EventSettingsInfo>>([burn], "Options", call.Arg<CancellationToken>()));
+            ReadAsync<IReadOnlyList<EventSettingsInfo>>([burn], AdminFormRead.Options, call.Arg<CancellationToken>()));
         _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), "Category", call.Arg<CancellationToken>()));
+            ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), AdminFormRead.Category, call.Arg<CancellationToken>()));
         _guide.CategorySlugExistsAsync("category", Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync(false, "Slug", call.Arg<CancellationToken>()));
+            ReadAsync(false, AdminFormRead.Slug, call.Arg<CancellationToken>()));
         _guide.GetVenueAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<EventVenueView?>(new(id, "Venue", null, null, 0, true), "Venue", call.Arg<CancellationToken>()));
+            ReadAsync<EventVenueView?>(new(id, "Venue", null, null, 0, true), AdminFormRead.Venue, call.Arg<CancellationToken>()));
         Func<Task<IActionResult>> invoke = () => action switch
         {
-            "CreateCategory" => controller.CreateCategory(new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
-            "EditCategory" => controller.EditCategory(id, new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
-            "EditVenue" => controller.EditVenue(id, new GuideVenueFormViewModel { Name = "Venue" }),
+            AdminFormAction.CreateCategory => controller.CreateCategory(new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
+            AdminFormAction.EditCategory => controller.EditCategory(id, new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
+            AdminFormAction.EditVenue => controller.EditVenue(id, new GuideVenueFormViewModel { Name = "Venue" }),
             _ => controller.SaveSettings(new GuideSettingsViewModel { EventSettingsId = burn.Id })
         };
 
@@ -171,7 +171,7 @@ public class EventsControllerTests
         var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
             nameof(IEventManagement.SaveGuideSettingsAsync) or nameof(IEventManagement.CreateCategoryAsync)
             or nameof(IEventManagement.UpdateCategoryAsync) or nameof(IEventManagement.UpdateVenueAsync)).ToList();
-        if (string.Equals(action, "SettingsRefused", StringComparison.Ordinal))
+        if (action == AdminFormAction.SettingsRefused)
         {
             writes.Should().ContainSingle().Which.GetArguments()[^1].Should().Be(CancellationToken.None);
         }
@@ -1211,14 +1211,14 @@ public class EventsControllerTests
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(false, false, "Events_VenueUnavailable")]
     [Xunit.InlineData(true, false, "Events_VenueUnavailable")]
-    [Xunit.InlineData(false, false, "Events_CategoryUnavailable", "Categories")]
-    [Xunit.InlineData(true, false, "Events_CategoryUnavailable", "Categories")]
-    [Xunit.InlineData(false, true, "Events_CategoryUnavailable", "Categories")]
-    [Xunit.InlineData(true, true, "Events_CategoryUnavailable", "Categories")]
-    [Xunit.InlineData(false, false, "Events_VenueUnavailable", "Venues")]
-    [Xunit.InlineData(true, false, "Events_VenueUnavailable", "Venues")]
+    [Xunit.InlineData(false, false, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(true, false, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(false, true, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(true, true, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(false, false, "Events_VenueUnavailable", OptionsRead.Venues)]
+    [Xunit.InlineData(true, false, "Events_VenueUnavailable", OptionsRead.Venues)]
     public async Task SelectionRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(
-        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable", string? cancelAt = null)
+        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable", OptionsRead? cancelAt = null)
     {
         var field = string.Equals(refusalKey, "Events_VenueUnavailable", StringComparison.Ordinal) ? "VenueId" : "CategoryId";
         var userId = Guid.NewGuid();
@@ -1238,16 +1238,16 @@ public class EventsControllerTests
         controller.Url = Substitute.For<IUrlHelper>();
         using var request = new CancellationTokenSource();
         controller.HttpContext.RequestAborted = request.Token;
-        async Task<IReadOnlyList<T>> ReadOptionsAsync<T>(CancellationToken ct, string boundary)
+        async Task<IReadOnlyList<T>> ReadOptionsAsync<T>(CancellationToken ct, OptionsRead boundary)
         {
-            if (string.Equals(cancelAt, boundary, StringComparison.Ordinal)) await request.CancelAsync();
+            if (cancelAt == boundary) await request.CancelAsync();
             ct.ThrowIfCancellationRequested();
             return [];
         }
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadOptionsAsync<EventCategoryView>(call.Arg<CancellationToken>(), "Categories"));
+            ReadOptionsAsync<EventCategoryView>(call.Arg<CancellationToken>(), OptionsRead.Categories));
         _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadOptionsAsync<EventVenueView>(call.Arg<CancellationToken>(), "Venues"));
+            ReadOptionsAsync<EventVenueView>(call.Arg<CancellationToken>(), OptionsRead.Venues));
         object model;
         Func<Task<IActionResult>> invoke;
         if (barrio)
@@ -1450,3 +1450,9 @@ public class EventsControllerTests
             profile: profile);
     }
 }
+
+public enum AdminFormAction { SettingsInvalid, SettingsMissing, SettingsRefused, CreateCategory, EditCategory, EditVenue }
+
+public enum AdminFormRead { Edition, Options, Category, Slug, Venue }
+
+public enum OptionsRead { Categories, Venues }

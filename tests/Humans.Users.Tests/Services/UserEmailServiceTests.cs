@@ -1596,8 +1596,12 @@ public class UserEmailServiceTests
         var user = new User { Id = userId };
         var linked = new UserEmail
         {
-            Id = Guid.NewGuid(), UserId = userId, Email = "linked@example.com",
-            IsVerified = true, Provider = "Google", ProviderKey = "key"
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "linked@example.com",
+            IsVerified = true,
+            Provider = "Google",
+            ProviderKey = "key"
         };
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns([linked, new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = true }]);

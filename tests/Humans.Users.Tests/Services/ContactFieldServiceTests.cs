@@ -1,4 +1,3 @@
-using Humans.Email.Contracts;
 using Xunit;
 using Humans.Users.Data;
 using Humans.Base.Extensions;
@@ -28,8 +27,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IUserManagement _userService;
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
-    private readonly IUserEmailService _emails = Substitute.For<IUserEmailService>();
-    private readonly ICommunicationPreferenceService _preferences = Substitute.For<ICommunicationPreferenceService>();
     private readonly ContactFieldService _service;
 
     public ContactFieldServiceTests()
@@ -46,7 +43,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             _userInfoRefresher,
             Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
-                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)), _emails, _preferences);
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
     }
 
     [HumansTheory]
@@ -58,9 +55,13 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var profile = await CreateProfileAsync(Guid.NewGuid());
         var existing = new ContactField
         {
-            Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = ContactFieldType.Phone,
-            Value = "+34 612345678", Visibility = ContactFieldVisibility.BoardOnly,
-            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            ProfileId = profile.Id,
+            FieldType = ContactFieldType.Phone,
+            Value = "+34 612345678",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
         };
         Db.ContactFields.Add(existing);
         await Db.SaveChangesAsync(ct);
@@ -120,7 +121,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var service = new ContactFieldService(new UserRepository(new TestDbContextFactory(options), Clock),
             cache, _teamService, _roleAssignmentService, cache, Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
-                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)), _emails, _preferences);
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
         var save = () => service.SaveContactFieldsAsync(profile.Id,
             [new(field.Id, field.FieldType, null, "+34 622222222", ContactFieldVisibility.BoardOnly, 0)], cancellation.Token);
 
@@ -178,70 +179,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
                 new Dictionary<Guid, TeamInfo>()));
     }
 
-    [HumansTheory]
-    [InlineData(ProfileCardViewMode.Public, false, false, ContactFieldVisibility.AllActiveProfiles, false)]
-    [InlineData(ProfileCardViewMode.Public, false, true, ContactFieldVisibility.BoardOnly, true)]
-    [InlineData(ProfileCardViewMode.Public, true, false, ContactFieldVisibility.BoardOnly, false)]
-    [InlineData(ProfileCardViewMode.Self, true, false, ContactFieldVisibility.BoardOnly, true)]
-    [InlineData(ProfileCardViewMode.Admin, false, false, ContactFieldVisibility.BoardOnly, true)]
-    public async Task ViewerAccess_PreservesPrivateFieldAndContactRulesForEachRenderingContext(
-        ProfileCardViewMode mode, bool ownsProfile, bool isBoard,
-        ContactFieldVisibility expectedScope, bool canViewLegalName)
-    {
-        var ownerId = Guid.NewGuid();
-        var viewerId = ownsProfile ? ownerId : Guid.NewGuid();
-        var ct = TestContext.Current.CancellationToken;
-        SetupEmptyTeams();
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, ct).Returns(isBoard);
-        _emails.GetVisibleEmailsAsync(ownerId, Arg.Any<ContactFieldVisibility>(), ct).Returns([]);
-        _preferences.AcceptsFacilitatedMessagesAsync(ownerId, ct).Returns(true);
-
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, ct, mode);
-
-        result.AccessLevel.Should().Be(expectedScope);
-        result.CanViewLegalName.Should().Be(canViewLegalName);
-        result.CanSendMessage.Should().Be(mode != ProfileCardViewMode.Self);
-        await _emails.Received(1).GetVisibleEmailsAsync(ownerId, expectedScope, ct);
-    }
-
-    [HumansTheory]
-    [InlineData(ProfileCardViewMode.Public, true, true, false)]
-    [InlineData(ProfileCardViewMode.Public, false, false, false)]
-    [InlineData(ProfileCardViewMode.Public, false, true, true)]
-    [InlineData(ProfileCardViewMode.Admin, true, true, false)]
-    public async Task ViewerAccess_MessageEligibilityUsesPublishedAddressAndRecipientPreference(
-        ProfileCardViewMode mode, bool publicAddress, bool acceptsMessages, bool expected)
-    {
-        var ownerId = Guid.NewGuid();
-        var viewerId = Guid.NewGuid();
-        var ct = TestContext.Current.CancellationToken;
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, ct).Returns(true);
-        _emails.GetVisibleEmailsAsync(ownerId, ContactFieldVisibility.BoardOnly, ct).Returns([
-            new UserEmailDto(Guid.NewGuid(), "visible@example.com", true, null, null, true,
-                publicAddress ? ContactFieldVisibility.AllActiveProfiles : ContactFieldVisibility.BoardOnly)
-        ]);
-        _preferences.AcceptsFacilitatedMessagesAsync(ownerId, ct).Returns(acceptsMessages);
-
-        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, ct, mode);
-
-        result.CanSendMessage.Should().Be(expected);
-        if (publicAddress)
-            await _preferences.DidNotReceive().AcceptsFacilitatedMessagesAsync(ownerId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansTheory]
-    [InlineData(ProfileCardViewMode.Self)]
-    [InlineData(ProfileCardViewMode.Admin)]
-    public async Task VisibleContacts_UsesFullScopeForAuthorizedSelfAndAdminHosts(ProfileCardViewMode mode)
-    {
-        var ownerId = Guid.NewGuid();
-        StubUserInfo(ownerId, await CreateProfileWithFieldsAsync(ownerId));
-
-        var fields = await _service.GetVisibleContactFieldsAsync(ownerId, Guid.NewGuid(), TestContext.Current.CancellationToken, mode);
-
-        fields.Should().HaveCount(4);
-    }
-
     #region GetViewerAccessLevelAsync Tests
 
     [HumansFact]
@@ -251,7 +188,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         var result = await _service.GetViewerAccessLevelAsync(userId, userId, TestContext.Current.CancellationToken);
 
-        result.AccessLevel.Should().Be(ContactFieldVisibility.BoardOnly);
+        result.Should().Be(ContactFieldVisibility.BoardOnly);
     }
 
     [HumansFact]
@@ -264,7 +201,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
 
-        result.AccessLevel.Should().Be(ContactFieldVisibility.BoardOnly);
+        result.Should().Be(ContactFieldVisibility.BoardOnly);
     }
 
     [HumansFact]
@@ -278,7 +215,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
 
-        result.AccessLevel.Should().Be(ContactFieldVisibility.CoordinatorsAndBoard);
+        result.Should().Be(ContactFieldVisibility.CoordinatorsAndBoard);
     }
 
     [HumansFact]
@@ -296,7 +233,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
 
-        result.AccessLevel.Should().Be(ContactFieldVisibility.MyTeams);
+        result.Should().Be(ContactFieldVisibility.MyTeams);
     }
 
     [HumansFact]
@@ -313,7 +250,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
 
-        result.AccessLevel.Should().Be(ContactFieldVisibility.AllActiveProfiles);
+        result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
     }
 
     [HumansFact]
@@ -333,7 +270,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
 
         // Should NOT return MyTeams since Volunteers doesn't count
-        result.AccessLevel.Should().Be(ContactFieldVisibility.AllActiveProfiles);
+        result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
     }
 
     [HumansFact]
@@ -355,7 +292,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
 
-        result.AccessLevel.Should().Be(ContactFieldVisibility.MyTeams);
+        result.Should().Be(ContactFieldVisibility.MyTeams);
     }
 
     #endregion
@@ -755,7 +692,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             repository, _userService, _teamService, _roleAssignmentService,
             Substitute.For<IUserInfoSliceRefresher>(), Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
-                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)), _emails, _preferences);
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
 
         var act = () => service.SaveContactFieldsAsync(profile.Id,
             [new(field.Id, field.FieldType, null, field.Value, ContactFieldVisibility.BoardOnly, 0)], ct);

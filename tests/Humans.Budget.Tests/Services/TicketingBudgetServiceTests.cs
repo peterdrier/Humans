@@ -39,9 +39,9 @@ public class TicketingBudgetServiceTests
         new(_ticketService, _budgetService, _clock, NullLogger<TicketingBudgetService>.Instance);
 
     [HumansTheory]
-    [InlineData("Year")]
-    [InlineData("Sync")]
-    public async Task TicketingSyncJob_PropagatesShutdownAtEveryBoundary(string boundary)
+    [InlineData(SyncBoundary.Year)]
+    [InlineData(SyncBoundary.Sync)]
+    public async Task TicketingSyncJob_PropagatesShutdownAtEveryBoundary(SyncBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var logger = new CapturingLogger<TicketingBudgetSyncJob>();
@@ -50,7 +50,7 @@ public class TicketingBudgetServiceTests
         _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             shutdown.Cancel();
-            if (string.Equals(boundary, "Year", StringComparison.Ordinal))
+            if (boundary == SyncBoundary.Year)
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return year;
         });
@@ -67,7 +67,7 @@ public class TicketingBudgetServiceTests
         _ = _budgetService.Received(1).GetActiveYearAsync(shutdown.Token);
         logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error
             || entry.Message.Contains("completed", StringComparison.OrdinalIgnoreCase));
-        if (string.Equals(boundary, "Year", StringComparison.Ordinal))
+        if (boundary == SyncBoundary.Year)
             await bridge.DidNotReceiveWithAnyArgs().SyncActualsAsync(default, default);
         else
         {
@@ -97,33 +97,33 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansTheory]
-    [InlineData("Year")]
-    [InlineData("Orders")]
-    [InlineData("Save")]
-    public async Task SyncActuals_CancellationStopsAtTheReadOrAtomicSave(string boundary)
+    [InlineData(SyncBoundary.Year)]
+    [InlineData(SyncBoundary.Orders)]
+    [InlineData(SyncBoundary.Save)]
+    public async Task SyncActuals_CancellationStopsAtTheReadOrAtomicSave(SyncBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, []);
-        void Read(string name, CancellationToken token)
+        void Read(SyncBoundary name, CancellationToken token)
         {
-            if (!string.Equals(name, boundary, StringComparison.Ordinal)) return;
+            if (name != boundary) return;
             shutdown.Cancel();
             token.ThrowIfCancellationRequested();
         }
         _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("Year", call.Arg<CancellationToken>());
+            Read(SyncBoundary.Year, call.Arg<CancellationToken>());
             return year;
         });
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("Orders", call.Arg<CancellationToken>());
+            Read(SyncBoundary.Orders, call.Arg<CancellationToken>());
             return (IReadOnlyList<TicketOrderInfo>)[BuildOrder(Instant.FromUtc(2026, 3, 2, 8, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid)];
         });
         _budgetService.SyncTicketingActualsAsync(_yearId, Arg.Any<IReadOnlyList<TicketingWeeklyActuals>>(), null,
             Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("Save", call.Arg<CancellationToken>());
+            Read(SyncBoundary.Save, call.Arg<CancellationToken>());
             return 1;
         });
         var logger = new CapturingLogger<TicketingBudgetService>();
@@ -134,9 +134,9 @@ public class TicketingBudgetServiceTests
         error.Should().BeOfType<OperationCanceledException>().Which.CancellationToken.Should().Be(shutdown.Token);
         _ = _budgetService.Received(1).GetActiveYearAsync(shutdown.Token);
         logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
-        if (!string.Equals(boundary, "Save", StringComparison.Ordinal))
+        if (boundary != SyncBoundary.Save)
             await _budgetService.DidNotReceiveWithAnyArgs().SyncTicketingActualsAsync(default, default!, default);
-        if (!string.Equals(boundary, "Year", StringComparison.Ordinal))
+        if (boundary != SyncBoundary.Year)
             logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
     }
 
@@ -557,3 +557,5 @@ public class TicketingBudgetServiceTests
             ApplicationFee: applicationFee);
     }
 }
+
+public enum SyncBoundary { Year, Sync, Orders, Save }

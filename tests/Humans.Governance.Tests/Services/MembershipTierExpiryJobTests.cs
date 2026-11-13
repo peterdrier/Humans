@@ -32,20 +32,20 @@ public sealed class MembershipTierExpiryJobTests
             .Returns(Task.FromResult<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>(rows));
 
     [HumansTheory]
-    [Xunit.InlineData("Shutdown")]
-    [Xunit.InlineData("DependencyCancellation")]
-    [Xunit.InlineData("Fault")]
-    public async Task ExpiryJob_DistinguishesShutdownFromFaults(string kind)
+    [Xunit.InlineData(ExpiryFailureKind.Shutdown)]
+    [Xunit.InlineData(ExpiryFailureKind.DependencyCancellation)]
+    [Xunit.InlineData(ExpiryFailureKind.Fault)]
+    public async Task ExpiryJob_DistinguishesShutdownFromFaults(ExpiryFailureKind kind)
     {
         using var shutdown = new CancellationTokenSource();
-        var failure = string.Equals(kind, "Fault", StringComparison.Ordinal)
+        var failure = kind == ExpiryFailureKind.Fault
             ? (Exception)new IOException("Tier expiry unavailable")
-            : new OperationCanceledException(string.Equals(kind, "Shutdown", StringComparison.Ordinal)
+            : new OperationCanceledException(kind == ExpiryFailureKind.Shutdown
                 ? shutdown.Token : new CancellationToken(true));
         _governance.ExpireMembershipTiersAsync(MembershipTier.Asociado, Today, shutdown.Token)
             .Returns(async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> (_) =>
             {
-                if (string.Equals(kind, "Shutdown", StringComparison.Ordinal)) await shutdown.CancelAsync();
+                if (kind == ExpiryFailureKind.Shutdown) await shutdown.CancelAsync();
                 throw failure;
             });
         var metrics = Substitute.For<IHumansMetrics>();
@@ -57,7 +57,7 @@ public sealed class MembershipTierExpiryJobTests
 
         error.Should().BeSameAs(failure);
         metrics.DidNotReceive().RecordJobRun("membership_tier_expiry", "success");
-        if (string.Equals(kind, "Shutdown", StringComparison.Ordinal))
+        if (kind == ExpiryFailureKind.Shutdown)
         {
             metrics.DidNotReceive().RecordJobRun("membership_tier_expiry", "failure");
             logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
@@ -105,3 +105,5 @@ public sealed class MembershipTierExpiryJobTests
 
     }
 }
+
+public enum ExpiryFailureKind { Shutdown, DependencyCancellation, Fault }

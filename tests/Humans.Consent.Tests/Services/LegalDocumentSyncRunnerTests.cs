@@ -28,17 +28,17 @@ namespace Humans.Consent.Tests.Services;
 public sealed class LegalDocumentSyncRunnerTests
 {
     [HumansTheory]
-    [InlineData("Shutdown")]
-    [InlineData("Dependency")]
-    [InlineData("Fault")]
-    public async Task ConsentShutdown_SyncJobDistinguishesCancellationFromFaults(string kind)
+    [InlineData(SyncJobFailureKind.Shutdown)]
+    [InlineData(SyncJobFailureKind.Dependency)]
+    [InlineData(SyncJobFailureKind.Fault)]
+    public async Task ConsentShutdown_SyncJobDistinguishesCancellationFromFaults(SyncJobFailureKind kind)
     {
         using var shutdown = new CancellationTokenSource();
-        var failure = kind is "Fault" ? (Exception)new IOException("Sync failed")
-            : new OperationCanceledException(kind is "Shutdown" ? shutdown.Token : new CancellationToken(true));
+        var failure = kind is SyncJobFailureKind.Fault ? (Exception)new IOException("Sync failed")
+            : new OperationCanceledException(kind is SyncJobFailureKind.Shutdown ? shutdown.Token : new CancellationToken(true));
         var runner = Substitute.For<ILegalDocumentSyncRunner>();
         runner.SyncAndNotifyAsync(shutdown.Token).Returns(async _ =>
-        { if (kind is "Shutdown") await shutdown.CancelAsync(); throw failure; });
+        { if (kind is SyncJobFailureKind.Shutdown) await shutdown.CancelAsync(); throw failure; });
         var metrics = Substitute.For<IHumansMetrics>();
         var logger = new CapturingLogger<SyncLegalDocumentsJob>();
         var job = new SyncLegalDocumentsJob(runner, metrics, logger, new FakeClock(Instant.FromUtc(2026, 10, 2, 4, 0)));
@@ -47,7 +47,7 @@ public sealed class LegalDocumentSyncRunnerTests
 
         error.Should().BeSameAs(failure);
         metrics.DidNotReceive().RecordJobRun("sync_legal_documents", "success");
-        if (kind is "Shutdown")
+        if (kind is SyncJobFailureKind.Shutdown)
         {
             metrics.DidNotReceive().RecordJobRun("sync_legal_documents", "failure");
             logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
@@ -102,17 +102,17 @@ public sealed class LegalDocumentSyncRunnerTests
     }
 
     [HumansTheory]
-    [InlineData("Publication")]
-    [InlineData("Team")]
-    [InlineData("Email")]
-    [InlineData("Completion")]
-    public async Task ConsentShutdown_PreservesFailuresCollectedBeforeCancellation(string boundary)
+    [InlineData(SyncFailureBoundary.Publication)]
+    [InlineData(SyncFailureBoundary.Team)]
+    [InlineData(SyncFailureBoundary.Email)]
+    [InlineData(SyncFailureBoundary.Completion)]
+    public async Task ConsentShutdown_PreservesFailuresCollectedBeforeCancellation(SyncFailureBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
-        var run = new SyncRun(singleRecipient: boundary is "Completion");
-        Exception failure = boundary is "Completion" ? new OperationCanceledException("Completion dependency stopped")
+        var run = new SyncRun(singleRecipient: boundary is SyncFailureBoundary.Completion);
+        Exception failure = boundary is SyncFailureBoundary.Completion ? new OperationCanceledException("Completion dependency stopped")
             : new IOException("Document dependency failed");
-        if (boundary is "Publication")
+        if (boundary is SyncFailureBoundary.Publication)
             run.Sync.SyncAllDocumentsAsync(shutdown.Token, Arg.Any<ICollection<Exception>?>())
                 .Returns(async Task<IReadOnlyList<LegalDocument>> (call) =>
                 {
@@ -122,7 +122,7 @@ public sealed class LegalDocumentSyncRunnerTests
                 });
         else
         {
-            if (boundary is "Team")
+            if (boundary is SyncFailureBoundary.Team)
             {
                 var broken = MakeDocument("Broken team", true);
                 broken.CurrentVersion!.PendingReConsentBatchId = run.BatchId;
@@ -132,17 +132,17 @@ public sealed class LegalDocumentSyncRunnerTests
             run.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
             {
                 await shutdown.CancelAsync();
-                if (boundary is "Email") throw failure;
+                if (boundary is SyncFailureBoundary.Email) throw failure;
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             });
-            if (boundary is "Completion")
+            if (boundary is SyncFailureBoundary.Completion)
                 run.Documents.CompleteReConsentBatchAsync(run.BatchId, CancellationToken.None).Returns(Task.FromException(failure));
         }
 
         var error = await Record.ExceptionAsync(() => run.Runner.SyncAndNotifyAsync(shutdown.Token));
 
         error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
-        if (boundary is "Completion") await run.Documents.Received(1).CompleteReConsentBatchAsync(run.BatchId, CancellationToken.None);
+        if (boundary is SyncFailureBoundary.Completion) await run.Documents.Received(1).CompleteReConsentBatchAsync(run.BatchId, CancellationToken.None);
         else await run.Documents.DidNotReceiveWithAnyArgs().CompleteReConsentBatchAsync(default);
     }
 
@@ -311,3 +311,7 @@ public sealed class LegalDocumentSyncRunnerTests
         return document;
     }
 }
+
+public enum SyncJobFailureKind { Shutdown, Dependency, Fault }
+
+public enum SyncFailureBoundary { Publication, Team, Email, Completion }

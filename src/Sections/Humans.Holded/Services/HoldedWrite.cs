@@ -182,16 +182,16 @@ internal sealed class HoldedWrite(
     private async Task<HoldedContactDto?> FindContactByAccountAsync(int accountNum, CancellationToken ct) =>
         (await client.ListContactsAsync(ct)).FirstOrDefault(c => c.SupplierAccountNum == accountNum);
 
-    /// <summary>The list carries no notes, so each candidate on contact, description, total (and date when given)
+    /// <summary>The list carries no notes, so each candidate on contact, description, total and date
     /// is read in full.</summary>
     private async Task<List<(string Id, HoldedPurchaseDocumentDto Doc)>> FindDocumentAsync(
-        string contactId, string description, decimal amount, LocalDate? date, CancellationToken ct)
+        string contactId, string description, decimal amount, LocalDate date, CancellationToken ct)
     {
         var candidates = (await client.ListPurchaseDocumentsAsync(ct))
             .Where(d => string.Equals(d.ContactId, contactId, StringComparison.Ordinal)
                 && string.Equals(d.Description, description, StringComparison.Ordinal)
                 && d.Total == amount
-                && (date is null || d.Date.InZone(MadridZone).Date == date))
+                && d.Date.InZone(MadridZone).Date == date)
             .ToList();
         var docs = new List<(string, HoldedPurchaseDocumentDto)>();
         foreach (var c in candidates)

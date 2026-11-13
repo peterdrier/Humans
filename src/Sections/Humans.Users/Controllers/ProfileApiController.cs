@@ -138,7 +138,7 @@ internal sealed class ProfileApiController(
             userId,
             viewerUserId,
             ct);
-        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel.AccessLevel, ct);
+        var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
         var visibleEmail = visibleEmails
             .OrderByDescending(e => e.IsPrimary)
             .ThenBy(e => e.Email, StringComparer.OrdinalIgnoreCase)

@@ -78,19 +78,19 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Orders")]
-    [Xunit.InlineData("Tickets")]
-    [Xunit.InlineData("CheckIns")]
-    [Xunit.InlineData("Stripe")]
-    [Xunit.InlineData("Settings")]
-    public async Task ShutdownDuringSyncRead_RestoresIdleAndPreservesRetryCursor(string boundary)
+    [Xunit.InlineData(SyncReadBoundary.Orders)]
+    [Xunit.InlineData(SyncReadBoundary.Tickets)]
+    [Xunit.InlineData(SyncReadBoundary.CheckIns)]
+    [Xunit.InlineData(SyncReadBoundary.Stripe)]
+    [Xunit.InlineData(SyncReadBoundary.Settings)]
+    public async Task ShutdownDuringSyncRead_RestoresIdleAndPreservesRetryCursor(SyncReadBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var cursor = Clock.GetCurrentInstant() - Duration.FromDays(1);
         var stored = await TicketsDb.TicketSyncStates.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         stored.LastSyncAt = cursor;
         stored.LastError = "Previous diagnostic";
-        if (string.Equals(boundary, "Stripe", StringComparison.Ordinal))
+        if (boundary == SyncReadBoundary.Stripe)
         {
             var order = MakePaidOrder(null, [150m]);
             order.StripePaymentIntentId = "pi_cancel";
@@ -99,38 +99,38 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         }
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var observed = CancellationToken.None;
-        void Read(string name, CancellationToken ct)
+        void Read(SyncReadBoundary name, CancellationToken ct)
         {
-            if (!string.Equals(name, boundary, StringComparison.Ordinal)) return;
+            if (name != boundary) return;
             observed = ct;
             shutdown.Cancel();
             ct.ThrowIfCancellationRequested();
         }
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("Orders", call.Arg<CancellationToken>());
-            return string.Equals(boundary, "Settings", StringComparison.Ordinal)
+            Read(SyncReadBoundary.Orders, call.Arg<CancellationToken>());
+            return boundary == SyncReadBoundary.Settings
                 ? (IReadOnlyList<VendorOrderDto>)[MakeOrderDto("ord_before_shutdown", "Buyer", "buyer@example.com")]
                 : [];
         });
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("Tickets", call.Arg<CancellationToken>());
+            Read(SyncReadBoundary.Tickets, call.Arg<CancellationToken>());
             return (IReadOnlyList<VendorTicketDto>)[];
         });
         _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("CheckIns", call.Arg<CancellationToken>());
+            Read(SyncReadBoundary.CheckIns, call.Arg<CancellationToken>());
             return (IReadOnlyList<VendorCheckInDto>)[];
         });
         _stripeService.GetPaymentDetailsAsync("pi_cancel", Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("Stripe", call.Arg<CancellationToken>());
+            Read(SyncReadBoundary.Stripe, call.Arg<CancellationToken>());
             return (StripePaymentDetails?)null;
         });
         _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read("Settings", call.Arg<CancellationToken>());
+            Read(SyncReadBoundary.Settings, call.Arg<CancellationToken>());
             return (EventSettingsInfo?)null;
         });
         var logger = new CapturingLogger<TicketSyncService>();
@@ -151,7 +151,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error
             || entry.Message.Contains("completed", StringComparison.OrdinalIgnoreCase)
             || entry.Message.Contains("Failed to fetch Stripe", StringComparison.Ordinal));
-        if (string.Equals(boundary, "Settings", StringComparison.Ordinal))
+        if (boundary == SyncReadBoundary.Settings)
         {
             var ct = Xunit.TestContext.Current.CancellationToken;
             (await TicketsDb.TicketOrders.AsNoTracking().SingleAsync(ct)).VendorOrderId.Should().Be("ord_before_shutdown");
@@ -162,11 +162,11 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Starting")]
-    [Xunit.InlineData("StartingAck")]
-    [Xunit.InlineData("Completion")]
-    [Xunit.InlineData("CompletionAck")]
-    public async Task ShutdownDuringStateSave_RestoresCursorEvenAfterCommit(string stage)
+    [Xunit.InlineData(SyncStateSaveStage.Starting)]
+    [Xunit.InlineData(SyncStateSaveStage.StartingAck)]
+    [Xunit.InlineData(SyncStateSaveStage.Completion)]
+    [Xunit.InlineData(SyncStateSaveStage.CompletionAck)]
+    public async Task ShutdownDuringStateSave_RestoresCursorEvenAfterCommit(SyncStateSaveStage stage)
     {
         using var shutdown = new CancellationTokenSource();
         var cursor = Clock.GetCurrentInstant() - Duration.FromDays(1);
@@ -200,7 +200,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             || entry.Message.Contains("completed", StringComparison.OrdinalIgnoreCase));
     }
 
-    private sealed class CancelSyncStateSave(CancellationTokenSource shutdown, string stage) : SaveChangesInterceptor
+    private sealed class CancelSyncStateSave(CancellationTokenSource shutdown, SyncStateSaveStage stage) : SaveChangesInterceptor
     {
         public bool Triggered { get; private set; }
         public bool DetachedIdleSave { get; private set; }
@@ -211,8 +211,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             if (state is null) return;
             if (Triggered && state.SyncStatus == TicketSyncStatus.Idle && !ct.CanBeCanceled)
                 DetachedIdleSave = true;
-            var starting = stage.StartsWith("Starting", StringComparison.Ordinal);
-            if (Triggered || acknowledgement != stage.EndsWith("Ack", StringComparison.Ordinal)
+            var starting = stage is SyncStateSaveStage.Starting or SyncStateSaveStage.StartingAck;
+            if (Triggered || acknowledgement != (stage is SyncStateSaveStage.StartingAck or SyncStateSaveStage.CompletionAck)
                 || state.SyncStatus != (starting ? TicketSyncStatus.Running : TicketSyncStatus.Idle)) return;
             Triggered = true;
             shutdown.Cancel();
@@ -235,31 +235,31 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Shutdown")]
-    [Xunit.InlineData("Dependency")]
-    [Xunit.InlineData("Fault")]
-    public async Task ScheduledSync_DistinguishesShutdownFromGenuineFaults(string kind)
+    [Xunit.InlineData(SyncFailureKind.Shutdown)]
+    [Xunit.InlineData(SyncFailureKind.Dependency)]
+    [Xunit.InlineData(SyncFailureKind.Fault)]
+    public async Task ScheduledSync_DistinguishesShutdownFromGenuineFaults(SyncFailureKind kind)
     {
         using var shutdown = new CancellationTokenSource();
-        var failure = string.Equals(kind, "Fault", StringComparison.Ordinal)
+        var failure = kind == SyncFailureKind.Fault
             ? (Exception)new IOException("Sync unavailable")
-            : new OperationCanceledException(string.Equals(kind, "Shutdown", StringComparison.Ordinal)
+            : new OperationCanceledException(kind == SyncFailureKind.Shutdown
                 ? shutdown.Token : new CancellationToken(true));
         var sync = Substitute.For<ITicketSync>();
         sync.SyncOrdersAndAttendeesAsync(shutdown.Token).Returns(async Task<TicketSyncResult> (_) =>
         {
-            if (string.Equals(kind, "Shutdown", StringComparison.Ordinal)) await shutdown.CancelAsync();
+            if (kind == SyncFailureKind.Shutdown) await shutdown.CancelAsync();
             throw failure;
         });
         var logger = new CapturingLogger<TicketSyncJob>();
         var job = new TicketSyncJob(sync, Options.Create(new TicketVendorSettings
-            { EventId = "ev_test_123", ApiKey = "test_key" }), logger);
+        { EventId = "ev_test_123", ApiKey = "test_key" }), logger);
 
         var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
 
         error.Should().BeSameAs(failure);
         logger.Entries.Should().NotContain(entry => entry.Message.Contains("completed", StringComparison.OrdinalIgnoreCase));
-        if (string.Equals(kind, "Shutdown", StringComparison.Ordinal))
+        if (kind == SyncFailureKind.Shutdown)
         {
             logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
             logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
@@ -1161,3 +1161,9 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     private static VendorCheckInDto MakeCheckInDto(string vendorTicketId, Instant checkedInAt) =>
         new(vendorTicketId, checkedInAt);
 }
+
+public enum SyncReadBoundary { Orders, Tickets, CheckIns, Stripe, Settings }
+
+public enum SyncStateSaveStage { Starting, StartingAck, Completion, CompletionAck }
+
+public enum SyncFailureKind { Shutdown, Dependency, Fault }

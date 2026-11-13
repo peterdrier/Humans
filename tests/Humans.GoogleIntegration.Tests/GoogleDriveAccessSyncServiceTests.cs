@@ -56,8 +56,14 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var access = mutation == DetachedMutation.Remove ? Array.Empty<(Guid, DrivePermissionLevel)>()
             : new[] { (userId, mutation == DetachedMutation.ChangeRole ? DrivePermissionLevel.Viewer : DrivePermissionLevel.Contributor) };
         var service = CreateService(new StaticSource("folder-1", access));
-        var resource = new GoogleResource { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), GoogleId = "folder-1",
-            Name = "Folder", ResourceType = GoogleResourceType.DriveFolder };
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(),
+            TeamId = Guid.NewGuid(),
+            GoogleId = "folder-1",
+            Name = "Folder",
+            ResourceType = GoogleResourceType.DriveFolder
+        };
         _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>()).Returns(new[] { resource });
         StubUsers((userId, "Alice", "alice@nobodies.team"));
         StubFolder("folder-1", mutation switch
@@ -88,8 +94,14 @@ public sealed class GoogleDriveAccessSyncServiceTests
     {
         using var shutdown = new CancellationTokenSource();
         var service = CreateService(new StaticSource("folder-1"));
-        var resource = new GoogleResource { Id = Guid.NewGuid(), TeamId = Guid.NewGuid(), GoogleId = "folder-1",
-            Name = "Folder", ResourceType = GoogleResourceType.DriveFolder };
+        var resource = new GoogleResource
+        {
+            Id = Guid.NewGuid(),
+            TeamId = Guid.NewGuid(),
+            GoogleId = "folder-1",
+            Name = "Folder",
+            ResourceType = GoogleResourceType.DriveFolder
+        };
         _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>()).Returns(new[] { resource });
         StubFolder("folder-1");
         var failure = new OperationCanceledException("Status write stopped");

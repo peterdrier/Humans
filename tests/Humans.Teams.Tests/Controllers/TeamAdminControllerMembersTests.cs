@@ -623,7 +623,11 @@ public class TeamAdminControllerMembersTests
 
         var result = await controller.EditRole(team.Slug, roleId, new EditRoleDefinitionModel
         {
-            Name = "Updated", SlotCount = 1, Priorities = ["None"], IsManagement = requested, EstimatedHours = 7
+            Name = "Updated",
+            SlotCount = 1,
+            Priorities = ["None"],
+            IsManagement = requested,
+            EstimatedHours = 7
         });
 
         result.Should().BeOfType<RedirectToActionResult>();

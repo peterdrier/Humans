@@ -45,20 +45,20 @@ public class NotificationRetentionTests : IDisposable
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Shutdown")]
-    [Xunit.InlineData("DependencyCancellation")]
-    [Xunit.InlineData("Fault")]
-    public async Task RetentionJob_DistinguishesShutdownFromFaults(string kind)
+    [Xunit.InlineData(RetentionFailureKind.Shutdown)]
+    [Xunit.InlineData(RetentionFailureKind.DependencyCancellation)]
+    [Xunit.InlineData(RetentionFailureKind.Fault)]
+    public async Task RetentionJob_DistinguishesShutdownFromFaults(RetentionFailureKind kind)
     {
         using var shutdown = new CancellationTokenSource();
-        var failure = string.Equals(kind, "Fault", StringComparison.Ordinal)
+        var failure = kind == RetentionFailureKind.Fault
             ? (Exception)new IOException("Retention unavailable")
-            : new OperationCanceledException(string.Equals(kind, "Shutdown", StringComparison.Ordinal)
+            : new OperationCanceledException(kind == RetentionFailureKind.Shutdown
                 ? shutdown.Token : new CancellationToken(true));
         var retention = Substitute.For<INotificationRetention>();
         retention.PurgeExpiredAsync(shutdown.Token).Returns(async Task<(int, int, int)> (_) =>
         {
-            if (string.Equals(kind, "Shutdown", StringComparison.Ordinal)) await shutdown.CancelAsync();
+            if (kind == RetentionFailureKind.Shutdown) await shutdown.CancelAsync();
             throw failure;
         });
         var metrics = Substitute.For<IHumansMetrics>();
@@ -70,7 +70,7 @@ public class NotificationRetentionTests : IDisposable
         error.Should().BeSameAs(failure);
         await retention.Received(1).PurgeExpiredAsync(shutdown.Token);
         metrics.DidNotReceive().RecordJobRun("cleanup_notifications", "success");
-        if (string.Equals(kind, "Shutdown", StringComparison.Ordinal))
+        if (kind == RetentionFailureKind.Shutdown)
         {
             metrics.DidNotReceive().RecordJobRun("cleanup_notifications", "failure");
             logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
@@ -242,3 +242,5 @@ public class NotificationRetentionTests : IDisposable
         remaining.Should().ContainSingle().Which.Title.Should().Be("Live issue");
     }
 }
+
+public enum RetentionFailureKind { Shutdown, DependencyCancellation, Fault }

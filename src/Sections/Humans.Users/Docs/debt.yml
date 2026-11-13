@@ -2,4 +2,8 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 30
-inbox: []
+inbox:
+  - added: 2026-11-06
+    id: USERS-27
+    what: "ProfileCardViewComponent computes who may see legal names (Board member) and which contact access level applies (self/admin view = BoardOnly) instead of reading both from IContactFieldService; that is GDPR visibility, a fact, worked out in a view component. Its CanSendMessage predicate is likewise computed beside ICommunicationPreferenceService. Found by section-doctor controller-intent read."
+    review: panel

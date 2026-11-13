@@ -355,7 +355,7 @@ public sealed class BudgetServiceTests
             .Returns(finance ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var controller = new BudgetController(budget, auth, users,
             Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
-            { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
+        { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
 
         var result = await controller.Index();
 
@@ -399,7 +399,7 @@ public sealed class BudgetServiceTests
                 ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var controller = new BudgetController(budget, auth, users,
             Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
-            { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
+        { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
 
         var result = await controller.CategoryDetail(category.Id);
 

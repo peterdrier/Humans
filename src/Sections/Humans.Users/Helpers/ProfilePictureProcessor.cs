@@ -34,7 +34,7 @@ internal static class ProfilePictureProcessor
         }
         catch (MagickException ex)
         {
-            logger?.LogWarning("Failed to process image ({Length} bytes): {Reason}", imageData.Length, ex.Message);
+            logger?.LogWarning(ex, "Failed to process image ({Length} bytes)", imageData.Length);
             return null;
         }
     }

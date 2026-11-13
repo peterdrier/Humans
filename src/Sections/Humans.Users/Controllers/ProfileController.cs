@@ -238,6 +238,7 @@ internal sealed class ProfileController(
         return (uploadStream.ToArray(), upload.ContentType, upload.FileName);
     }
 
+    // GDPR Art. 9 data: owner-only here; anyone else goes through ProfileViewController.RevealMedical.
     [HttpGet("Me/Medical")]
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical(CancellationToken ct)
@@ -281,6 +282,4 @@ internal sealed class ProfileController(
             return View(model);
         }
     }
-
-
 }

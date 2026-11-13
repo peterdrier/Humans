@@ -17,7 +17,6 @@ namespace Humans.Teams.Services;
 /// </summary>
 internal interface ITeamMessageOptionsProvider : IApplicationService
 {
-    Task<IReadOnlyList<TeamMessageOption>> GetOptionsAsync(Guid viewerId, CancellationToken ct = default);
     Task<TeamMessageContext> GetContextAsync(Guid viewerId, Guid recipientId, CancellationToken ct = default);
     /// <summary>Queues and audits a message using the resolved participants and a team authorized by the caller.</summary>
     [ExternalWrite]

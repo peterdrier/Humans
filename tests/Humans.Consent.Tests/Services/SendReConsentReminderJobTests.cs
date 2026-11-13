@@ -25,12 +25,12 @@ namespace Humans.Consent.Tests.Services;
 public sealed class SendReConsentReminderJobTests
 {
     [HumansTheory]
-    [InlineData("Read")]
-    [InlineData("Email")]
-    [InlineData("Stamp")]
-    [InlineData("PriorFailure")]
-    [InlineData("UnitCancellation")]
-    public async Task ConsentShutdown_ReminderFinishesStartedUnitAndPreservesFailures(string boundary)
+    [InlineData(ReminderBoundary.Read)]
+    [InlineData(ReminderBoundary.Email)]
+    [InlineData(ReminderBoundary.Stamp)]
+    [InlineData(ReminderBoundary.PriorFailure)]
+    [InlineData(ReminderBoundary.UnitCancellation)]
+    public async Task ConsentShutdown_ReminderFinishesStartedUnitAndPreservesFailures(ReminderBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
@@ -45,22 +45,22 @@ public sealed class SendReConsentReminderJobTests
             .Returns(new Dictionary<Guid, UserInfo> { [first.Id] = first, [next.Id] = next });
         var repo = Substitute.For<IConsentReminderRepository>();
         repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([]);
-        if (string.Equals(boundary, "Read", StringComparison.Ordinal))
+        if (boundary == ReminderBoundary.Read)
             repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
                 .Returns(async Task<IReadOnlyList<ConsentReminder>> (_) =>
                 { await shutdown.CancelAsync(); throw new OperationCanceledException(shutdown.Token); });
-        Exception failure = boundary is "UnitCancellation" ? new OperationCanceledException("Enqueue dependency stopped")
+        Exception failure = boundary is ReminderBoundary.UnitCancellation ? new OperationCanceledException("Enqueue dependency stopped")
             : new IOException("Enqueue failed");
         var email = Substitute.For<IEmailService>();
         email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
         {
-            if (boundary is "Email" or "PriorFailure" or "UnitCancellation") await shutdown.CancelAsync();
-            if (boundary is "PriorFailure" or "UnitCancellation") throw failure;
+            if (boundary is ReminderBoundary.Email or ReminderBoundary.PriorFailure or ReminderBoundary.UnitCancellation) await shutdown.CancelAsync();
+            if (boundary is ReminderBoundary.PriorFailure or ReminderBoundary.UnitCancellation) throw failure;
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
         });
         repo.UpsertAsync(Arg.Any<Guid>(), now, Arg.Any<CancellationToken>()).Returns(async call =>
         {
-            if (boundary is "Stamp") await shutdown.CancelAsync();
+            if (boundary is ReminderBoundary.Stamp) await shutdown.CancelAsync();
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
         });
         var metrics = Substitute.For<IHumansMetrics>();
@@ -73,13 +73,13 @@ public sealed class SendReConsentReminderJobTests
 
         metrics.DidNotReceive().RecordJobRun("send_reconsent_reminder", "success");
         await email.DidNotReceive().SendAsync(Arg.Is<EmailMessage>(m => m.UserId == next.Id), Arg.Any<CancellationToken>());
-        if (boundary is "UnitCancellation")
+        if (boundary is ReminderBoundary.UnitCancellation)
         {
             error.Should().BeSameAs(failure);
             metrics.Received(1).RecordJobRun("send_reconsent_reminder", "failure");
             logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
         }
-        else if (boundary is "PriorFailure")
+        else if (boundary is ReminderBoundary.PriorFailure)
         {
             error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
             metrics.Received(1).RecordJobRun("send_reconsent_reminder", "failure");
@@ -89,7 +89,7 @@ public sealed class SendReConsentReminderJobTests
             error.Should().BeAssignableTo<OperationCanceledException>();
             metrics.DidNotReceive().RecordJobRun("send_reconsent_reminder", "failure");
             logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
-            if (boundary is "Read") await email.DidNotReceiveWithAnyArgs().SendAsync(default!);
+            if (boundary is ReminderBoundary.Read) await email.DidNotReceiveWithAnyArgs().SendAsync(default!);
             else
             {
                 await email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.UserId == first.Id && m.DeliveryId != null), CancellationToken.None);
@@ -276,3 +276,5 @@ public sealed class SendReConsentReminderJobTests
             [new UserEmail { Id = Guid.NewGuid(), UserId = user.Id, Email = email, IsVerified = true, IsPrimary = true }], [], null);
     }
 }
+
+public enum ReminderBoundary { Read, Email, Stamp, PriorFailure, UnitCancellation }

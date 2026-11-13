@@ -108,11 +108,13 @@ atomically — a cross-section call through the service interface.
 
 ### TeamMessageOptionsProvider (Scoped, internal)
 
-No repository, no cache. `ITeamMessageOptionsProvider`: the teams a viewer may send a
-facilitated message as — active teams the viewer coordinates whose linked Google Group is
-synced. Reads `ITeamService.GetTeamsAsync` and GoogleIntegration's
-`ITeamResourceService.GetResourcesByTeamIdsAsync`. Callers: `TeamMessageController` and
-`TeamMessageButtonsViewComponent`.
+No repository, no cache. `ITeamMessageOptionsProvider`: `GetContextAsync` resolves sender
+and recipient through `IUserService`, refuses self and opted-out recipients
+(`ICommunicationPreferenceService`), and lists the teams the viewer may send as — active teams
+the viewer coordinates whose linked Google Group is synced (`ITeamService.GetTeamsAsync`,
+GoogleIntegration's `ITeamResourceService.GetResourcesByTeamIdsAsync`). `SendAsync` queues the
+email through `IEmailService` and writes the `FacilitatedMessageSent` audit. Callers:
+`TeamMessageController` and `TeamMessageButtonsViewComponent`.
 
 ### CachingTeamService (Singleton, `Humans.Teams.Services`)
 

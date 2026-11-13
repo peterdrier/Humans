@@ -187,7 +187,9 @@ public class AgentUserSnapshotProviderTests
             .Returns((teamMemberships ?? []).Select((m, i) => new UserTeamMembershipInfo(
                 Guid.NewGuid(), Guid.NewGuid(), m.TeamName, $"team-{i}", false, m.Role, Instant.MinValue)
             {
-                IsActive = true, IsHidden = m.IsHidden, SystemTeamType = SystemTeamType.None
+                IsActive = true,
+                IsHidden = m.IsHidden,
+                SystemTeamType = SystemTeamType.None
             }).ToList());
 
         var consents = Substitute.For<IConsentService>();
