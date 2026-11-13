@@ -13,35 +13,35 @@ namespace Humans.Users.Data.Migrations
         {
             migrationBuilder.AddColumn<Guid>(
                 name: "UserId",
-                table: "volunteer_history_entries",
+                table: "user_volunteer_history_entries",
                 type: "uuid",
                 nullable: true);
 
             migrationBuilder.AddColumn<Guid>(
                 name: "UserId",
-                table: "profile_languages",
+                table: "user_profile_languages",
                 type: "uuid",
                 nullable: true);
 
             migrationBuilder.AddColumn<Guid>(
                 name: "UserId",
-                table: "contact_fields",
+                table: "user_contact_fields",
                 type: "uuid",
                 nullable: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_volunteer_history_entries_UserId",
-                table: "volunteer_history_entries",
+                name: "IX_user_volunteer_history_entries_UserId",
+                table: "user_volunteer_history_entries",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_profile_languages_UserId",
-                table: "profile_languages",
+                name: "IX_user_profile_languages_UserId",
+                table: "user_profile_languages",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_contact_fields_UserId",
-                table: "contact_fields",
+                name: "IX_user_contact_fields_UserId",
+                table: "user_contact_fields",
                 column: "UserId");
         }
 
@@ -49,28 +49,28 @@ namespace Humans.Users.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "IX_volunteer_history_entries_UserId",
-                table: "volunteer_history_entries");
+                name: "IX_user_volunteer_history_entries_UserId",
+                table: "user_volunteer_history_entries");
 
             migrationBuilder.DropIndex(
-                name: "IX_profile_languages_UserId",
-                table: "profile_languages");
+                name: "IX_user_profile_languages_UserId",
+                table: "user_profile_languages");
 
             migrationBuilder.DropIndex(
-                name: "IX_contact_fields_UserId",
-                table: "contact_fields");
+                name: "IX_user_contact_fields_UserId",
+                table: "user_contact_fields");
 
             migrationBuilder.DropColumn(
                 name: "UserId",
-                table: "volunteer_history_entries");
+                table: "user_volunteer_history_entries");
 
             migrationBuilder.DropColumn(
                 name: "UserId",
-                table: "profile_languages");
+                table: "user_profile_languages");
 
             migrationBuilder.DropColumn(
                 name: "UserId",
-                table: "contact_fields");
+                table: "user_contact_fields");
         }
     }
 }

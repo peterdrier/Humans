@@ -305,6 +305,9 @@ namespace Humans.Users.Data.Migrations
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -318,6 +321,8 @@ namespace Humans.Users.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProfileId");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("ProfileId", "Visibility");
 
@@ -447,9 +452,14 @@ namespace Humans.Users.Data.Migrations
                     b.Property<Guid>("ProfileId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProfileId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("user_profile_languages", (string)null);
                 });
@@ -481,9 +491,14 @@ namespace Humans.Users.Data.Migrations
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProfileId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("user_volunteer_history_entries", (string)null);
                 });
