@@ -29,7 +29,7 @@
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <!-- IIssueQueueOwner: this section declares the issue queue it owns. -->
     <ProjectReference Include="..\Humans.Issues\Humans.Issues.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />

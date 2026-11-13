@@ -34,7 +34,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 | Named events for a filter or a person | `IAuditViewerService` (`GetFilteredAsync`, `GetForUserAsync`) | `<vc:audit-log>`, Agent tool, Issues (interleaves audit with comments), Expenses (GDPR export), Users (duplicate-account scan) |
 | Named events for a page | internal `AuditViewerService.GetPageAsync` | `/AuditLog`, admin tile |
 | Show history on a host page | `<vc:audit-log>`, layouts `line` / `table` | Calendar, Debug, Expenses, Store, Teams, Tickets, Users |
-| Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | GoogleIntegration's history-migration screen; leaves with those columns |
+| Legacy Google-column read | `ILegacyGoogleSyncAuditReader` | Google's history-migration screen; leaves with those columns |
 | GDPR export slice | `IUserDataContributor` | Gdpr orchestrator |
 
 ## 3. Structure
@@ -83,7 +83,7 @@ prune or delete path, by design (Art. 30 / Art. 17(3)(b)).
 
 - **Drop the Google-sync columns** (`ResourceId`, `Success`, `ErrorMessage`, `Role`,
   `SyncSource`, `UserEmail`) and `ILegacyGoogleSyncAuditReader` with them, once the
-  GoogleIntegration history-migration screen has run in prod (`destructive-drops-need-approval`).
+  Google history-migration screen has run in prod (`destructive-drops-need-approval`).
   A schema change: Peter's, not a doctor strike.
 
 ## 6. Deliberately not done

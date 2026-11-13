@@ -3,7 +3,7 @@ import { loginAs, expectBlocked } from '../helpers/auth';
 
 // No full-Admin persona here — see helpers/auth.ts. /Admin is AnyAdminRole, so Board
 // reaches the dashboard; the AdminOnly pages this file used to cover (/Google/SyncSettings,
-// /Debug/Configuration) are covered in-process by GoogleIntegrationPageRenderTests and
+// /Debug/Configuration) are covered in-process by GooglePageRenderTests and
 // DebugPageRenderTests.
 test.describe('Admin (09-administration)', () => {
   test('US-9.1: admin dashboard loads with metrics cards', async ({ page }) => {

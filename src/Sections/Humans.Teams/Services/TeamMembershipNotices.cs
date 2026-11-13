@@ -3,7 +3,7 @@ using System.Resources;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;

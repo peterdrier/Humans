@@ -15,7 +15,7 @@ public static class AgentSectionKeys
         {
             "Onboarding", "Teams", "Consent", "Governance", "Shifts",
             "Tickets", "Users", "Auth", "Budget", "Camps",
-            "CityPlanning", "Campaigns", "GoogleIntegration",
+            "CityPlanning", "Campaigns", "Google",
             "Events", "Guide", "Store", "Scanner", "Gate",
             "Calendar", "Cantina", "Containers", "Issues"
         };
@@ -44,6 +44,8 @@ public static class AgentSectionKeys
             ["CityPlanningOverview"] = "CityPlanning",
             ["CityPlanningBarrioMap"] = "CityPlanning",
             ["ContainerMap"] = "Containers",
+            // The section's former name; stored conversations still emit it.
+            ["GoogleIntegration"] = "Google",
         };
 
     /// <summary>Every key a section guide can be fetched under, in canonical casing.</summary>

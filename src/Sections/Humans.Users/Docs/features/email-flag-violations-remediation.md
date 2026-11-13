@@ -2,16 +2,16 @@
   src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Humans.Base/Users/IUserEmailService.cs
   src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
-  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Google/Controllers/GoogleController.cs
   src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
-  src/Sections/Humans.GoogleIntegration/Views/Google/EmailFlagViolations.cshtml
+  src/Sections/Humans.Google/Views/Google/EmailFlagViolations.cshtml
 -->
 <!-- freshness:flag-on-change
   Clear / violations service surface, the admin EmailFlagViolations page, and the Profile Emails grid behavior on N>1 violations — review when these change.
 -->
 
 > **Superseded in part (Users decomposition commit 15).** The `IsGoogle` half of this spec is
-> retired: the Google Workspace identity is GoogleIntegration's `google_workspace_identities`,
+> retired: the Google Workspace identity is Google's `google_workspace_identities`,
 > resolved at read time, so there is no `IsGoogle` invariant to violate. `ClearGoogleAsync` and the
 > `ClearGoogle` routes are gone, `UserEmailFlagViolation` carries the primary counts only, and the
 > EmailFlagViolations page lists `IsPrimary` violations. The `IsPrimary` half below stands.
@@ -101,7 +101,7 @@ New audit action: `UsersAuditActions.UserEmailPrimaryCleared` (`UserEmailGoogleC
 ## Cross-Section Dependencies
 
 - **[Users section](../../../Humans.Users/Docs/Users.md)** — owns `UserEmail` and the `EnsurePrimaryInvariantAsync` invariant. `ClearPrimaryAsync` is the deliberate-bypass admin recovery path; document there.
-- **[GoogleIntegration section](../../../Humans.GoogleIntegration/Docs/GoogleIntegration.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
+- **[Google section](../../../Humans.Google/Docs/Google.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
 
 ## Related
 

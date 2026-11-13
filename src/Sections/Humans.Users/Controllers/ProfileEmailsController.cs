@@ -21,7 +21,7 @@ using Humans.Users.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
 
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 
 namespace Humans.Users.Controllers;
 

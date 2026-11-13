@@ -1,5 +1,5 @@
 using Humans.Gdpr.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using AwesomeAssertions;
 using Microsoft.Extensions.Configuration;
 using Humans.Base.Caching;

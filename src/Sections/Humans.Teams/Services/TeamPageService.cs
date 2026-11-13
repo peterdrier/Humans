@@ -1,5 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

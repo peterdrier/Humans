@@ -14,11 +14,11 @@ description: All Google Drive resources live on Shared Drives — API calls need
 
 **How to apply:**
 
-- New Drive API calls in `Humans.GoogleIntegration/Services/Workspace/*` always pass `SupportsAllDrives = true`.
+- New Drive API calls in `Humans.Google/Services/Workspace/*` always pass `SupportsAllDrives = true`.
 - Permission queries pass `Fields = "permissions(id,emailAddress,role,permissionDetails)"`.
 - The legacy Teams-keyed reconciler filters out permissions with any inherited component. The source-claimed reconciler retains direct/inherited details, updates direct elevations to at least the inherited floor, and treats floor-only access as satisfied. Neither path deletes inherited or mixed permissions. `AddOnly` never downgrades access.
 - Don't add features that read from or write to user My Drive folders.
 
 **Operational gates:** Google sync jobs (`SystemTeamSyncJob` hourly, `GoogleResourceReconciliationJob` daily at 03:00) are controlled by per-service mode at `/Admin/SyncSettings` (None/AddOnly/AddAndRemove). Set a service to "None" to disable without redeploying.
 
-**Related:** [`GoogleIntegration.md`](../../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md) — Google resource ownership.
+**Related:** [`Google.md`](../../src/Sections/Humans.Google/Docs/Google.md) — Google resource ownership.

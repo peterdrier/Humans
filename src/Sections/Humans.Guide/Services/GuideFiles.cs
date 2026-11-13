@@ -28,7 +28,7 @@ internal static class GuideFiles
         "Expenses",
         "Store",
         "CityPlanning",
-        "GoogleIntegration",
+        "Google",
         "Admin"
     ];
 

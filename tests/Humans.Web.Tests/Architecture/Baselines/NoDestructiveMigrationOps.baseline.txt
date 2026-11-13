@@ -463,8 +463,8 @@ src/Sections/Humans.Finance/Data/Migrations/20261112195806_RenameTablesToSection
 # Keys (name on table):
 #   PK_google_sync_log on google_sync_log
 #   PK_sync_service_settings on sync_service_settings
-src/Sections/Humans.GoogleIntegration/Data/Migrations/20261112195811_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_google_sync_log,table=google_sync_log)#1
-src/Sections/Humans.GoogleIntegration/Data/Migrations/20261112195811_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_sync_service_settings,table=sync_service_settings)#1
+src/Sections/Humans.Google/Data/Migrations/20261112195811_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_google_sync_log,table=google_sync_log)#1
+src/Sections/Humans.Google/Data/Migrations/20261112195811_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_sync_service_settings,table=sync_service_settings)#1
 
 # Governance: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
 # primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then

@@ -60,7 +60,7 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         ("/Email/EmailOutbox", "Humans.Email — Views/Email/_ViewStart"),
         ("/Finance/Creditors", "Humans.Finance — Views/Finance/_ViewStart"),
         ("/Gate/Admin", "Humans.Gate — inline override in Gate/Admin.cshtml"),
-        ("/Google", "Humans.GoogleIntegration — Views/Google/_ViewStart"),
+        ("/Google", "Humans.Google — Views/Google/_ViewStart"),
         ("/Governance/BoardVoting", "Humans.Governance — Views/Governance/BoardVoting/_ViewStart"),
         ("/Governance/Applications/Admin", "Humans.Governance — inline override in Applications/Admin.cshtml"),
         ("/MailerLite/Admin", "Humans.MailerLite — Views/MailerLite/Admin/_ViewStart"),

@@ -15,7 +15,7 @@ The Admin section provides system-wide management tools for administrators.
 - **Role Assignments** — manage governance and system role assignments with temporal tracking
 - **Legal Documents** — manage consent documents and their versions
 
-### Google Integration
+### Google
 
 - **System Team Sync** — runs hourly, syncs team memberships to Google Groups and Shared Drives
 - **Reconciliation** — runs daily at 03:00, detects drift between expected and actual Google permissions

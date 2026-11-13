@@ -1,5 +1,5 @@
 using Humans.Base.Authorization;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;

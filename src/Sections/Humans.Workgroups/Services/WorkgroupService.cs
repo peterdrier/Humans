@@ -8,7 +8,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Surveys.Contracts;

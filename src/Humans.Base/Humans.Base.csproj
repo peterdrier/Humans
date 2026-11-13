@@ -134,7 +134,7 @@
     <InternalsVisibleTo Include="Humans.Finance.Tests" />
     <InternalsVisibleTo Include="Humans.Gate.Tests" />
     <InternalsVisibleTo Include="Humans.Gdpr.Tests" />
-    <InternalsVisibleTo Include="Humans.GoogleIntegration.Tests" />
+    <InternalsVisibleTo Include="Humans.Google.Tests" />
     <InternalsVisibleTo Include="Humans.Governance.Tests" />
     <InternalsVisibleTo Include="Humans.Grants.Tests" />
     <InternalsVisibleTo Include="Humans.Guide.Tests" />

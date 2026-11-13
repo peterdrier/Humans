@@ -37,7 +37,7 @@ graph LR
     Finance
     Gate
     Gdpr
-    GoogleIntegration
+    Google
     Governance
     Grants
     Guide
@@ -101,7 +101,7 @@ graph LR
     Campaigns -.-> Users
     Camps --> CityPlanning
     Camps --> EarlyEntry
-    Camps --> GoogleIntegration
+    Camps --> Google
     Camps --> Issues
     Camps --> Settings
     Camps -.-> Email
@@ -166,16 +166,16 @@ graph LR
     Gate -.-> Shifts
     Gate -.-> Tickets
     Gdpr -.-> Users
-    GoogleIntegration --> AuditLog
-    GoogleIntegration --> Auth
-    GoogleIntegration --> Settings
-    GoogleIntegration -.-> Email
-    GoogleIntegration -.-> Notifications
-    GoogleIntegration -.-> Teams
-    GoogleIntegration -.-> Users
+    Google --> AuditLog
+    Google --> Auth
+    Google --> Settings
+    Google -.-> Email
+    Google -.-> Notifications
+    Google -.-> Teams
+    Google -.-> Users
     Governance --> Auth
     Governance --> Consent
-    Governance --> GoogleIntegration
+    Governance --> Google
     Governance --> Issues
     Governance --> Onboarding
     Governance -.-> Email
@@ -198,11 +198,11 @@ graph LR
     MailerLite -.-> Shifts
     MailerLite -.-> Tickets
     MailerLite -.-> Users
-    Monitor --> GoogleIntegration
+    Monitor --> Google
     Monitor --> Settings
     Notifications --> Auth
     Notifications --> Consent
-    Notifications --> GoogleIntegration
+    Notifications --> Google
     Notifications -.-> Camps
     Notifications -.-> Email
     Notifications -.-> Governance
@@ -256,7 +256,7 @@ graph LR
     Store -.-> Finance
     Store -.-> Teams
     Stripe -.-> Finance
-    Surveys --> GoogleIntegration
+    Surveys --> Google
     Surveys -.-> Email
     Surveys -.-> Governance
     Surveys -.-> Shifts
@@ -266,7 +266,7 @@ graph LR
     Teams --> Auth
     Teams --> Consent
     Teams --> EarlyEntry
-    Teams --> GoogleIntegration
+    Teams --> Google
     Teams --> Issues
     Teams --> Settings
     Teams -.-> Camps
@@ -297,7 +297,7 @@ graph LR
     Users --> Cantina
     Users --> Consent
     Users --> Gdpr
-    Users --> GoogleIntegration
+    Users --> Google
     Users --> Issues
     Users --> Settings
     Users -.-> Email
@@ -309,7 +309,7 @@ graph LR
     Users -.-> Tickets
     Workgroups --> Auth
     Workgroups --> Calendar
-    Workgroups --> GoogleIntegration
+    Workgroups --> Google
     Workgroups --> Holded
     Workgroups --> Settings
     Workgroups --> Surveys

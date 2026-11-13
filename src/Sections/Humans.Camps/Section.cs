@@ -12,7 +12,7 @@ using Humans.Camps.ViewComponents;
 using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Users.Contracts;

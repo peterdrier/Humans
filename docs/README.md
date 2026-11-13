@@ -8,7 +8,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 |----------|-------------|
 | [Event Guide Management](../src/Sections/Humans.Events/Docs/features/Events-feature.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
 | [In-App Guide Browser](../src/Sections/Humans.Events/Docs/features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
-| [Google Group Membership Sync](../src/Sections/Humans.GoogleIntegration/Docs/features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
+| [Google Group Membership Sync](../src/Sections/Humans.Google/Docs/features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
 | [Volunteer Tracking](../src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md) | `/Shifts/Dashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
 | [Active User Metrics](features/global/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
 | [Agent Section](../src/Sections/Humans.Agent/Docs/features/Agent-feature.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
@@ -38,9 +38,9 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Pre-approvals](features/global/preapprovals.md) | Programs of pre-authorized reimbursements: event-scoped pools with per-person grants that become capped, pre-booked expense reports with a claim deadline |
 | [Workgroup Budgets](features/global/workgroup-budget.md) | A budget amount and dedicated Holded expense account per budgeted workgroup, with Finance owning account creation and the managed-account registry |
 | [F-13: Drive Activity Monitoring](../src/Sections/Humans.Monitor/Docs/features/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
-| [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
-| [Google Removal Notifications](../src/Sections/Humans.GoogleIntegration/Docs/features/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
-| [Workspace Account Provisioning](../src/Sections/Humans.GoogleIntegration/Docs/features/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
+| [Google](../src/Sections/Humans.Google/Docs/features/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
+| [Google Removal Notifications](../src/Sections/Humans.Google/Docs/features/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
+| [Workspace Account Provisioning](../src/Sections/Humans.Google/Docs/features/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
 | [Tier Applications](../src/Sections/Humans.Governance/Docs/features/asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
 | [Board Voting](../src/Sections/Humans.Governance/Docs/features/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
 | [Membership Tiers](../src/Sections/Humans.Governance/Docs/features/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
@@ -120,7 +120,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Finance](../src/Sections/Humans.Finance/Docs/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
 | [Gate](../src/Sections/Humans.Gate/Docs/Gate.md) | Gate ticket scanning that decides entry at the event door and writes the durable admission record — distinct from the read-only Scanner section, which must never check anyone in |
 | [Gdpr](../src/Sections/Humans.Gdpr/Docs/Gdpr.md) | GDPR Article 15 export orchestrator — fans out to every section that holds personal data and merges the slices into the JSON the human downloads; owns no tables and no pages |
-| [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
+| [Google](../src/Sections/Humans.Google/Docs/Google.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
 | [Governance](../src/Sections/Humans.Governance/Docs/Governance.md) | Colaborador and Asociado tier applications, Board voting workflow, and term lifecycle (not volunteer onboarding) |
 | [Grants](../src/Sections/Humans.Grants/Docs/Grants.md) | Entitlements to a person (cheaper ticket, early entry, staying late): issuer rules, one live grant per person, expiry, source write contract, and notices |
 | [Guide](../src/Sections/Humans.Guide/Docs/Guide.md) | The in-app `/Guide` renderer for `docs/guide/` markdown with role-scoped block filtering |
@@ -165,7 +165,7 @@ The end-user guide for the Humans app, organized by role within each section.
 | [Email](guide/Email.md) | Personal `@nobodies.team` mailboxes and team group emails: how they work and how to send "as" your team |
 | [Events](guide/Events.md) | Browse the festival programme and submit your own events; moderators approve submissions into the public guide |
 | [Expenses](guide/Expenses.md) | Submit expense reports and track reimbursement; FinanceAdmin reviews |
-| [Google Integration](guide/GoogleIntegration.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |
+| [Google](guide/Google.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |
 | [Governance](guide/Governance.md) | Tier applications, Board votes, and coordinator/admin role assignments — not Volunteer onboarding |
 | [Issues](guide/Issues.md) | File a bug, feature request, or question and talk it through in one thread with whoever handles that part of the app |
 | [Consent](guide/LegalAndConsent.md) | Documents you sign, GDPR Article 15 export, and Article 17 deletion |

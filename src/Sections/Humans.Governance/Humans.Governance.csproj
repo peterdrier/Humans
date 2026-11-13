@@ -35,7 +35,7 @@
     <!-- OnboardingResource only — a resource marker is a section type, not a Contracts one.
          Acyclic: Humans.Onboarding names only Humans.Governance.Contracts. -->
     <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
   </ItemGroup>
 
   <ItemGroup>

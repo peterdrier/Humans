@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
