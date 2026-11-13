@@ -123,7 +123,6 @@ public sealed class Section :
         // Settings fans out over this after an event-settings save; the same instance answers.
         services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingShiftViewService>());
 
-        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
 
         // StartAsync is a no-op; hosted for symmetry with the sibling caches.

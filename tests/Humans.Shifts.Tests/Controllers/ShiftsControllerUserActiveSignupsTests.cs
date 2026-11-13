@@ -135,7 +135,7 @@ public class ShiftsControllerUserActiveSignupsTests
         {
             _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(
                 new ShiftUserView(_userId, null, null, null, [],
-                    [new ShiftSignup
+                    [ShiftUserSignup.From(new ShiftSignup
                     {
                         Id = Guid.NewGuid(),
                         Status = SignupStatus.Confirmed,
@@ -147,7 +147,7 @@ public class ShiftsControllerUserActiveSignupsTests
                             Duration = Duration.FromHours(4),
                             Rota = new Rota { Id = Guid.NewGuid(), EventSettingsId = ActiveBurnId, Name = "Gate" },
                         },
-                    }]));
+                    })]));
             if (string.Equals(boundary, "approval", StringComparison.Ordinal))
             {
                 var closedBurn = ActiveBurn with { EarlyEntryClose = _clock.GetCurrentInstant() - Duration.FromSeconds(1) };

@@ -8,7 +8,6 @@ namespace Humans.Shifts.Services;
 
 internal sealed class ShiftVolunteerProfiles(
     IShiftManagementRepository repo,
-    CachingShiftViewService viewInvalidator,
     IClock clock,
     ILogger<ShiftManagementService> logger) : IApplicationService
 {
@@ -36,14 +35,7 @@ internal sealed class ShiftVolunteerProfiles(
             return false;
         }
 
-        try
-        {
-            await repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateUser(userId);
-        }
+        await repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
         return true;
     }
 
@@ -63,17 +55,10 @@ internal sealed class ShiftVolunteerProfiles(
         entity.Languages = [.. profile.Languages];
         entity.UpdatedAt = now;
 
-        try
-        {
-            if (existing is null)
-                await repo.AddVolunteerEventProfileAsync(entity);
-            else
-                await repo.UpdateVolunteerEventProfileAsync(entity);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateUser(profile.UserId);
-        }
+        if (existing is null)
+            await repo.AddVolunteerEventProfileAsync(entity);
+        else
+            await repo.UpdateVolunteerEventProfileAsync(entity);
     }
 
     public async Task<ShiftVolunteerProfileInfo?> GetShiftProfileAsync(Guid userId, CancellationToken ct = default)
@@ -87,14 +72,6 @@ internal sealed class ShiftVolunteerProfiles(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        try
-        {
-            await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateUser(sourceUserId);
-            viewInvalidator.InvalidateUser(targetUserId);
-        }
+        await repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
     }
 }
