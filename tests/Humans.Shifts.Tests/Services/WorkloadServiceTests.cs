@@ -30,7 +30,8 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
             repo,
             Substitute.For<IVolunteerTrackingRepository>(),
             NewCalendarResolver(),
-            Substitute.For<IShiftManagement>());
+            Substitute.For<IShiftManagement>(),
+            Substitute.For<IShiftRotaRows>());
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => GetTeamInfosAsync());

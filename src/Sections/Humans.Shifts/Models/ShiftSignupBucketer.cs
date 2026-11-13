@@ -4,6 +4,8 @@ using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Dtos;
+using Humans.Shifts.Helpers;
 
 namespace Humans.Shifts.Models;
 
@@ -16,19 +18,17 @@ internal static class ShiftSignupBucketer
 {
     private static readonly ResourceManager Resources = new(typeof(ShiftsResource));
 
-    internal static IReadOnlyList<Guid> GetTeamIds(IReadOnlyList<ShiftSignup> signups) =>
+    internal static IReadOnlyList<Guid> GetTeamIds(IReadOnlyList<ShiftUserSignup> signups) =>
         signups
-            .Where(s => s.Shift?.Rota is not null)
-            .Select(s => s.Shift.Rota.TeamId)
+            .Select(s => s.Rota.TeamId)
             .Distinct()
             .ToList();
 
     internal static ShiftSignupBuckets Build(
-        IReadOnlyList<ShiftSignup> signups,
+        IReadOnlyList<ShiftUserSignup> signups,
         BurnSettingsInfo? eventSettings,
         IReadOnlyDictionary<Guid, string> teamNames,
-        Instant now,
-        Action<ShiftSignup>? onMissingSignupData = null)
+        Instant now)
     {
         var upcoming = new List<MySignupItem>();
         var pending = new List<MySignupItem>();
@@ -39,16 +39,10 @@ internal static class ShiftSignupBucketer
 
         foreach (var signup in signups)
         {
-            if (signup.Shift?.Rota is null)
-            {
-                onMissingSignupData?.Invoke(signup);
-                continue;
-            }
-
             var item = new MySignupItem
             {
                 Signup = signup,
-                DepartmentName = teamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, Resources.GetString("Shifts_Signup_UnknownTeam", CultureInfo.CurrentUICulture)!),
+                DepartmentName = teamNames.GetValueOrDefault(signup.Rota.TeamId, Resources.GetString("Shifts_Signup_UnknownTeam", CultureInfo.CurrentUICulture)!),
                 AbsoluteStart = signup.Shift.GetAbsoluteStart(eventSettings),
                 AbsoluteEnd = signup.Shift.GetAbsoluteEnd(eventSettings)
             };

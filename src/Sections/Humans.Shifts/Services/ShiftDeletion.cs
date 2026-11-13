@@ -27,7 +27,6 @@ internal sealed class ShiftDeletion(
 
         // Captured before the cascade, for the audit after it commits.
         var removedSignups = rota.Shifts.SelectMany(s => s.ShiftSignups).ToList();
-        var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
         try
         {
@@ -36,8 +35,6 @@ internal sealed class ShiftDeletion(
         finally
         {
             viewInvalidator.InvalidateRota(rotaId);
-            foreach (var uid in affectedUserIds)
-                viewInvalidator.InvalidateUser(uid);
         }
         await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId, $"rota '{rota.Name}' was deleted");
         return new ShiftDeletionResult();
@@ -54,7 +51,6 @@ internal sealed class ShiftDeletion(
 
         var rotaId = shift.RotaId;
         var removedSignups = shift.ShiftSignups.ToList();
-        var affectedUserIds = removedSignups.Select(s => s.UserId).Distinct().ToList();
 
         try
         {
@@ -64,8 +60,6 @@ internal sealed class ShiftDeletion(
         {
             viewInvalidator.InvalidateShift(shiftId);
             viewInvalidator.InvalidateRota(rotaId);
-            foreach (var uid in affectedUserIds)
-                viewInvalidator.InvalidateUser(uid);
         }
         await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId,
             $"shift in '{shift.Rota.Name}' on day {shift.DayOffset} was deleted");

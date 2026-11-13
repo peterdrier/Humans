@@ -2,6 +2,7 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
 using Humans.Settings.Contracts;
+using Humans.Shifts.Helpers;
 
 namespace Humans.Shifts.Services;
 
@@ -16,10 +17,13 @@ internal static class ShiftUserSummaryProjection
         rows.ToDictionary(kv => kv.Key, kv => kv.Value.ToSummary());
 
     /// <summary>Needs <c>Shift.Rota</c> loaded.</summary>
-    internal static ShiftSignupSummary ToSummary(ShiftSignup signup, BurnSettingsInfo settings)
+    internal static ShiftSignupSummary ToSummary(ShiftSignup signup, BurnSettingsInfo settings) =>
+        ToSummary(ShiftUserSignup.From(signup), settings);
+
+    internal static ShiftSignupSummary ToSummary(ShiftUserSignup signup, BurnSettingsInfo settings)
     {
         var shift = signup.Shift;
-        var rota = shift.Rota;
+        var rota = signup.Rota;
 
         return new ShiftSignupSummary(
             Id: signup.Id,
@@ -38,8 +42,8 @@ internal static class ShiftUserSummaryProjection
             WindowStart: shift.IsAllDay ? Shift.AllDayWindowStart : shift.StartTime,
             WindowEnd: shift.IsAllDay
                 ? Shift.AllDayWindowEnd
-                : shift.StartTime.PlusTicks(shift.Duration.BclCompatibleTicks),
-            DurationHours: shift.IsAllDay ? Shift.AllDayWindowHours : shift.Duration.TotalHours,
+                : shift.StartTime.PlusTicks(shift.GetDuration().BclCompatibleTicks),
+            DurationHours: shift.IsAllDay ? Shift.AllDayWindowHours : shift.DurationHours,
             ShiftDescription: shift.Description,
             AbsoluteStart: shift.GetAbsoluteStart(settings),
             AbsoluteEnd: shift.GetAbsoluteEnd(settings));

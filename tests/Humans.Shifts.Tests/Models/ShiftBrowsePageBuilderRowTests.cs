@@ -75,7 +75,7 @@ public class ShiftBrowsePageBuilderRowTests
         var builder = new ShiftBrowsePageBuilder(_shiftManagement, _burnSettings, _teamService);
 
         var result = await builder.BuildRowAsync(
-            shiftId, userSignups, isPrivileged: false, Xunit.TestContext.Current.CancellationToken);
+            shiftId, userSignups.Select(s => (s.ShiftId, s.Status)), isPrivileged: false, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         var (item, isSignedUp, status) = result.Value;

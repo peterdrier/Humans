@@ -31,8 +31,7 @@ public class ShiftViewArchitectureTests
     public static TheoryData<Type> ShiftsServicesThatInvalidate =>
     [
         typeof(ShiftSignupService),
-        typeof(ShiftManagementService),
-        typeof(VolunteerTrackingService)
+        typeof(ShiftManagementService)
     ];
 
     [HumansFact]
