@@ -95,6 +95,116 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         _metrics.DidNotReceive().RecordSyncOperation("success");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(GoogleResourceGrantOutcome.Accepted, false)]
+    [Xunit.InlineData(GoogleResourceGrantOutcome.Deferred, false)]
+    [Xunit.InlineData(GoogleResourceGrantOutcome.Failed, false)]
+    [Xunit.InlineData(GoogleResourceGrantOutcome.Failed, true)]
+    public async Task ProcessQueuedAsync_CancelledAfterGrant_PersistsOutcomeBeforeStopping(
+        GoogleResourceGrantOutcome outcome, bool retryable)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var first = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _clock.Advance(Duration.FromSeconds(1));
+        var next = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _googleSyncService.AddUserToTeamResourcesAsync(first.TeamId, first.UserId,
+                shutdown.Token, Arg.Any<GoogleSyncSource>())
+            .Returns(async _ =>
+            {
+                await shutdown.CancelAsync();
+                return new GoogleResourceGrantResult(outcome, first.UserId, "member@example.org",
+                    Retryable: retryable, ErrorMessage: "grant refused");
+            });
+
+        var act = () => _processor.ProcessQueuedAsync(shutdown.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking()
+            .SingleAsync(e => e.Id == first.Id, Xunit.TestContext.Current.CancellationToken);
+        var failed = outcome == GoogleResourceGrantOutcome.Failed;
+        stored.ProcessedAt.Should().Be(failed && retryable ? null : _clock.GetCurrentInstant());
+        stored.FailedPermanently.Should().Be(failed && !retryable);
+        stored.RetryCount.Should().Be(failed && retryable ? 1 : 0);
+        stored.LastError.Should().Be(failed ? "grant refused" : null);
+        await _identities.Received(outcome == GoogleResourceGrantOutcome.Accepted ? 1 : 0)
+            .SetStatusFromSyncAsync(first.UserId, "member@example.org", GoogleEmailStatus.Valid,
+                CancellationToken.None);
+        await _googleSyncService.DidNotReceive().AddUserToTeamResourcesAsync(next.TeamId, next.UserId,
+            Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>());
+        var untouched = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking()
+            .SingleAsync(e => e.Id == next.Id, Xunit.TestContext.Current.CancellationToken);
+        untouched.ProcessedAt.Should().BeNull();
+        untouched.RetryCount.Should().Be(0);
+        untouched.LastError.Should().BeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(System.Net.HttpStatusCode.Forbidden)]
+    [Xunit.InlineData(System.Net.HttpStatusCode.ServiceUnavailable)]
+    public async Task ProcessQueuedAsync_CancelledAfterVendorError_PersistsFailureBeforeStopping(
+        System.Net.HttpStatusCode status)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var first = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _clock.Advance(Duration.FromSeconds(1));
+        var next = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        var error = new global::Google.GoogleApiException("drive", "vendor refused")
+        {
+            Error = new global::Google.Apis.Requests.RequestError { Code = (int)status }
+        };
+        _googleSyncService.AddUserToTeamResourcesAsync(first.TeamId, first.UserId,
+                shutdown.Token, Arg.Any<GoogleSyncSource>())
+            .Returns(async _ =>
+            {
+                await shutdown.CancelAsync();
+                return await Task.FromException<GoogleResourceGrantResult>(error);
+            });
+
+        var act = () => _processor.ProcessQueuedAsync(shutdown.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking()
+            .SingleAsync(e => e.Id == first.Id, Xunit.TestContext.Current.CancellationToken);
+        var permanent = status == System.Net.HttpStatusCode.Forbidden;
+        stored.FailedPermanently.Should().Be(permanent);
+        stored.ProcessedAt.Should().Be(permanent ? _clock.GetCurrentInstant() : null);
+        stored.RetryCount.Should().Be(permanent ? 0 : 1);
+        stored.LastError.Should().Be(error.Message);
+        await _googleSyncService.DidNotReceive().AddUserToTeamResourcesAsync(next.TeamId, next.UserId,
+            Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task ProcessQueuedAsync_PreflightCancellation_OnlyRequestedCancellationEscapes(bool callerAborted)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var first = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _googleSyncService.AddUserToTeamResourcesAsync(first.TeamId, first.UserId,
+                shutdown.Token, Arg.Any<GoogleSyncSource>())
+            .Returns(async _ =>
+            {
+                if (callerAborted)
+                    await shutdown.CancelAsync();
+                return await Task.FromException<GoogleResourceGrantResult>(new OperationCanceledException(shutdown.Token));
+            });
+
+        var act = () => _processor.ProcessQueuedAsync(shutdown.Token);
+
+        if (callerAborted)
+            await act.Should().ThrowAsync<OperationCanceledException>();
+        else
+            await act.Should().NotThrowAsync();
+        var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking()
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        stored.ProcessedAt.Should().BeNull();
+        stored.FailedPermanently.Should().BeFalse();
+        stored.RetryCount.Should().Be(callerAborted ? 0 : 1);
+        _metrics.Received(callerAborted ? 0 : 1).RecordSyncOperation("failure");
+        _metrics.DidNotReceive().RecordSyncOperation("success");
+    }
+
     [HumansFact]
     public async Task ProcessQueuedAsync_PermanentGrantFailure_RecordsFailureWithoutRejectingAGuessedAddress()
     {

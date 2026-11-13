@@ -170,19 +170,19 @@ internal sealed class NotificationMeterProvider(
         try
         {
             var settings = await campService.GetSettingsAsync(cancellationToken);
-            var years = settings.OpenSeasons
-                .Append(settings.PublicYear)
-                .Distinct()
-                .OrderBy(year => year);
+            var eventIds = settings.Events
+                .Where(e => e.RegistrationOpen || e.EventSettingsId == settings.ActiveEventSettingsId)
+                .Select(e => e.EventSettingsId)
+                .Distinct();
 
             var pendingCount = 0;
-            foreach (var year in years)
+            foreach (var eventId in eventIds)
             {
-                var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
+                var camps = await campService.GetCampsForEventAsync(eventId, cancellationToken);
                 pendingCount += camps
                     .SelectMany(camp => camp.Seasons)
                     .Where(season =>
-                        season.Year == year &&
+                        season.EventSettingsId == eventId &&
                         season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full &&
                         season.IsLead(userId))
                     .Sum(season => season.PendingMembers.Count);

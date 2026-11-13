@@ -50,6 +50,131 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
 
+    [HumansFact]
+    public async Task ReconcileOneAsync_ProvisioningCompletesAfterCancellation_ThenReadsKeepCallerToken()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var callerToken = cancellation.Token;
+        var service = CreateService(new StaticSource("new-group@nobodies.team"));
+        _provisioningClient.LookupGroupIdAsync("new-group@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")),
+                new GroupLookupIdResult("group-new", null));
+        _provisioningClient.CreateGroupAsync("new-group@nobodies.team", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                cancellation.Cancel();
+                return new GroupCreateResult("group-new", null);
+            });
+        _provisioningClient.UpdateGroupSettingsAsync("new-group@nobodies.team", Arg.Any<GroupSettingsExpected>(), Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+        _membershipClient.ListMembershipsAsync("group-new", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipListResult([], null));
+
+        await service.ReconcileOneAsync("new-group@nobodies.team", SyncAction.Execute, callerToken);
+
+        await _provisioningClient.Received(1).LookupGroupIdAsync("new-group@nobodies.team", callerToken);
+        await _provisioningClient.Received(1).CreateGroupAsync(
+            "new-group@nobodies.team", Arg.Any<string>(), Arg.Any<string>(), CancellationToken.None);
+        await _auditLogService.Received(1).LogAsync(
+            GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditEntityType, Guid.Empty,
+            Arg.Any<string>(), nameof(GoogleGroupSyncService));
+        await _provisioningClient.Received(1).UpdateGroupSettingsAsync(
+            "new-group@nobodies.team", Arg.Any<GroupSettingsExpected>(), CancellationToken.None);
+        await _provisioningClient.Received(1).LookupGroupIdAsync("new-group@nobodies.team", CancellationToken.None);
+        await _membershipClient.Received(1).ListMembershipsAsync("group-new", callerToken);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_FailedProvisioningFinishesErrorAndRetryAfterCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        const string groupKey = "new-group@nobodies.team";
+        var service = CreateService(new StaticSource(groupKey));
+        var resource = StageResource(groupKey);
+        _provisioningClient.LookupGroupIdAsync(groupKey, Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")));
+        _provisioningClient.CreateGroupAsync(groupKey, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cancellation.Cancel();
+                return new GroupCreateResult(null, new GoogleClientError(503, "backend error"));
+            });
+
+        var diff = await service.ReconcileOneAsync(groupKey, SyncAction.Execute, cancellation.Token);
+
+        diff.ErrorMessage.Should().NotBeNullOrEmpty();
+        await _provisioningClient.Received(1).CreateGroupAsync(
+            groupKey, Arg.Any<string>(), Arg.Any<string>(), CancellationToken.None);
+        await _teamResourceService.Received(1).RecordResourceErrorAsync(
+            resource.Id, Arg.Any<string>(), CancellationToken.None);
+        _syncScheduler.Scheduled.Should().ContainSingle().Which.GroupKey.Should().Be(groupKey);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_AddCompletesAfterCancellation_ThenDoesNotStartNextMember()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var callerToken = cancellation.Token;
+        var alice = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var bob = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var service = CreateService(new StaticSource("team@nobodies.team", alice, bob));
+        StubUsers((alice, "Alice", "alice@nobodies.team"), (bob, "Bob", "bob@nobodies.team"));
+        StubGroup("team@nobodies.team", "group-1");
+        _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                cancellation.Cancel();
+                return new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null);
+            });
+        _membershipClient.CreateMembershipAsync("group-1", "bob@nobodies.team", Arg.Any<CancellationToken>())
+            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
+
+        await Xunit.Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, callerToken));
+
+        await _membershipClient.Received(1).CreateMembershipAsync(
+            "group-1", "alice@nobodies.team", CancellationToken.None);
+        await _membershipClient.DidNotReceive().CreateMembershipAsync(
+            "group-1", "bob@nobodies.team", Arg.Any<CancellationToken>());
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessGranted, Guid.Empty, Arg.Any<string>(), nameof(GoogleGroupSyncService),
+            "alice@nobodies.team", "MEMBER", GoogleSyncSource.ScheduledSync, success: true,
+            userId: alice, ct: CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task ReconcileOneAsync_RemoveCompletesAfterCancellation_LogsNotifiesAndMarksSynced()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var callerToken = cancellation.Token;
+        var service = CreateService(new StaticSource("team@nobodies.team"));
+        var resource = StageResource("team@nobodies.team");
+        StubGroup("team@nobodies.team", "group-1",
+            new GroupMembership("old@nobodies.team", "groups/group-1/memberships/old"));
+        _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmailMatch>());
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                cancellation.Cancel();
+                return (GoogleClientError?)null;
+            });
+
+        await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, callerToken);
+
+        await _membershipClient.Received(1).DeleteMembershipAsync(
+            "groups/group-1/memberships/old", CancellationToken.None);
+        await _googleSyncLog.Received(1).LogAsync(
+            GoogleSyncLogAction.AccessRevoked, resource.Id, Arg.Any<string>(), nameof(GoogleGroupSyncService),
+            "old@nobodies.team", "MEMBER", GoogleSyncSource.ScheduledSync, success: true,
+            userId: null, ct: CancellationToken.None);
+        await _removalNotifications.Received(1).NotifyRemovalAsync(
+            "old@nobodies.team", GoogleResourceType.Group, "Team Group", "team@nobodies.team",
+            SyncRemovalReason.Reconciliation, CancellationToken.None);
+        await _teamResourceService.Received(1).MarkResourceSyncedAsync(
+            resource.Id, _clock.GetCurrentInstant(), CancellationToken.None);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(false, false)]
     [Xunit.InlineData(true, false)]

@@ -1259,6 +1259,49 @@ public sealed class EventServiceTests
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExistingEventSaves_ValidateRecurrenceAgainstTheRecordsEvent(bool moderator)
+    {
+        var current = BurnFixtures.Burn(eventEndOffset: 2);
+        var original = BurnFixtures.Burn(year: 2025, eventEndOffset: 6);
+        _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = current.Id };
+        _burnSettings.GetEventSettingsByIdAsync(current.Id, Arg.Any<CancellationToken>()).Returns(current);
+        _burnSettings.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+        var category = new EventCategory { Id = Guid.NewGuid(), IsActive = true };
+        var venue = new EventVenue { Id = Guid.NewGuid(), IsActive = true };
+        _repo.Categories.Add(category);
+        _repo.Venues.Add(venue);
+        var entry = new Event
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = original.Id,
+            CategoryId = category.Id,
+            GuideSharedVenueId = venue.Id,
+            SubmitterUserId = Guid.NewGuid(),
+            Status = EventStatus.Pending,
+            Title = "Original",
+            Description = "Description",
+            DurationMinutes = 60,
+            StartAt = Instant.FromUtc(2025, 8, 1, 14, 30),
+            IsRecurring = true,
+            RecurrenceDays = "0,6"
+        };
+        _repo.Events.Add(entry);
+        var edit = EditOf(entry) with { Title = "Edited" };
+
+        if (moderator)
+            await _service.AdminUpdateAsync(entry.Id, edit, Guid.NewGuid(), "Historic correction", TestContext.Current.CancellationToken);
+        else
+            (await _service.UpdateAndResubmitAsync(entry.Id, edit, TestContext.Current.CancellationToken)).ErrorKey.Should().BeNull();
+
+        entry.Title.Should().Be("Edited");
+        entry.EventSettingsId.Should().Be(original.Id);
+        (await _service.GetEventForModerationAsync(entry.Id, TestContext.Current.CancellationToken))!
+            .EventSettingsId.Should().Be(original.Id);
+    }
+
     private static EventEdit EditOf(Event e) => new(
         e.CategoryId, e.GuideSharedVenueId, e.Title, e.Description, e.StartAt, e.DurationMinutes,
         e.LocationNote, e.Host, e.IsRecurring, e.RecurrenceDays, e.PriorityRank);
@@ -1491,6 +1534,83 @@ public sealed class EventServiceTests
             error.Errors.Contains("RecurrenceDays must contain only Mon Tue Wed Thu Fri Sat Sun."));
         _repo.Events.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BulkImportAsync_UnmatchedNewWeekdaySelection_RefusesTheWholeBatch(bool update)
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0";
+        if (update) _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(title: "Valid sibling"), Row(id: update ? existing.Id : null, title: "Changed",
+                isRecurring: true, recurrenceDays: "Sat", rowNumber: 3)],
+            new LocalDate(2026, 7, 8), 2, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        var error = result.Errors.Should().ContainSingle().Subject;
+        error.RowNumber.Should().Be(3);
+        error.Errors.Should().Contain(_localizer["Events_RecurrenceDaysInvalid"].Value);
+        result.CreatedCount.Should().Be(0);
+        result.UpdatedCount.Should().Be(0);
+        _repo.SaveChangesCount.Should().Be(0);
+        _repo.Events.Should().HaveCount(update ? 1 : 0);
+        if (update)
+        {
+            existing.Title.Should().Be("My Event");
+            existing.Status.Should().Be(EventStatus.Approved);
+            existing.RecurrenceDays.Should().Be("0");
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(" ")]
+    public async Task BulkImportAsync_BlankRecurrenceSelection_KeepsAuthoredStartFallback(string? days)
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", IsActive = true });
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(isRecurring: true, recurrenceDays: days)], new LocalDate(2026, 7, 8), 2,
+            DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        var entry = _repo.Events.Should().ContainSingle().Subject;
+        entry.IsRecurring.Should().BeTrue();
+        entry.RecurrenceDays.Should().BeNull();
+        entry.StartAt.Should().Be(Instant.FromUtc(2026, 7, 8, 9, 30));
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_UnchangedWeekdaysOutsideCurrentWindow_PreserveAuthoredOffsets()
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "3";
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(id: existing.Id, title: "Renamed", isRecurring: true, recurrenceDays: "Sat")],
+            new LocalDate(2026, 7, 8), 2, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        result.UpdatedCount.Should().Be(1);
+        existing.Title.Should().Be("Renamed");
+        existing.RecurrenceDays.Should().Be("3");
     }
 
     [HumansFact]

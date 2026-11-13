@@ -100,7 +100,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         await _seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         async Task<TeamGoogleResource?> FindAsync() => inactive
-            ? await _repository.FindInactiveGroupByCandidatesAsync(teamId, "12345", email, TestContext.Current.CancellationToken)
+            ? await _repository.FindInactiveGroupByCandidatesAsync(teamId, "12345", email, ct: TestContext.Current.CancellationToken)
             : await _repository.FindActiveGroupByEmailAsync(teamId, email, TestContext.Current.CancellationToken);
 
         (await FindAsync()).Should().BeNull();
@@ -123,7 +123,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         await _seedContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _repository.FindInactiveGroupByCandidatesAsync(
-            teamId, "12345", "renamed@nobodies.team", TestContext.Current.CancellationToken);
+            teamId, "12345", "renamed@nobodies.team", ct: TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.Id.Should().Be(exact.Id);
@@ -151,6 +151,53 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
         updated.Name.Should().Be("fresh");
         updated.Url.Should().Be("https://example.com/fresh");
         updated.DrivePermissionLevel.Should().Be(DrivePermissionLevel.Manager);
+    }
+
+    [HumansFact]
+    public async Task FindInactiveGroupByCandidatesAsync_UrlRecoveryIsScopedToTeamTypeAndState()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var teamId = Guid.NewGuid();
+        const string url = "https://groups.google.com/a/nobodies.team/g/restored";
+        Seed(Guid.NewGuid(), "other team", GoogleResourceType.Group, isActive: false).Url = url;
+        Seed(teamId, "other type", GoogleResourceType.DriveFolder, isActive: false).Url = url;
+        Seed(teamId, "already active", GoogleResourceType.Group).Url = url;
+        await _seedContext.SaveChangesAsync(ct);
+
+        (await _repository.FindInactiveGroupByCandidatesAsync(
+            teamId, "restored@nobodies.team", "restored@nobodies.team", url, ct)).Should().BeNull();
+
+        var target = Seed(teamId, "archived numeric group", GoogleResourceType.Group, isActive: false, googleId: "1234567");
+        target.Url = url.ToUpperInvariant();
+        await _seedContext.SaveChangesAsync(ct);
+
+        var found = await _repository.FindInactiveGroupByCandidatesAsync(
+            teamId, "restored@nobodies.team", "restored@nobodies.team", url, ct);
+
+        found!.Id.Should().Be(target.Id);
+        found.GoogleId.Should().Be("1234567");
+    }
+
+    [HumansFact]
+    public async Task ReactivateAsync_ReplacementCannotDeactivateAnotherTeamOrResourceType()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var teamId = Guid.NewGuid();
+        var foreign = Seed(Guid.NewGuid(), "foreign group", GoogleResourceType.Group);
+        var folder = Seed(teamId, "folder", GoogleResourceType.DriveFolder);
+        var first = Seed(teamId, "first group", GoogleResourceType.Group, isActive: false);
+        var second = Seed(teamId, "second group", GoogleResourceType.Group, isActive: false);
+        await _seedContext.SaveChangesAsync(ct);
+
+        await _repository.ReactivateAsync(first.Id, first.Name, first.Url, _clock.GetCurrentInstant(),
+            null, null, deactivateResourceId: foreign.Id, ct: ct);
+        await _repository.ReactivateAsync(second.Id, second.Name, second.Url, _clock.GetCurrentInstant(),
+            null, null, deactivateResourceId: folder.Id, ct: ct);
+
+        (await _repository.GetByIdAsync(foreign.Id, ct))!.IsActive.Should().BeTrue();
+        (await _repository.GetByIdAsync(folder.Id, ct))!.IsActive.Should().BeTrue();
+        (await _repository.GetByIdAsync(first.Id, ct))!.IsActive.Should().BeTrue();
+        (await _repository.GetByIdAsync(second.Id, ct))!.IsActive.Should().BeTrue();
     }
 
     [HumansFact]

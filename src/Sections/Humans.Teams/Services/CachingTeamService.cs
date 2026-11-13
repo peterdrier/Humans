@@ -55,11 +55,13 @@ internal sealed class CachingTeamService(
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
+        bool confirmGroupReactivation = false,
+        Guid? confirmedInactiveGroupResourceId = null,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UpdateTeamWithGoogleGroupAsync(
             teamId, name, description, requiresApproval, isActive, parentTeamId,
             googleGroupPrefix, customSlug, hasBudget, isHidden, isSensitive,
-            isPromotedToDirectory, earlyEntryEnabled, cancellationToken));
+            isPromotedToDirectory, earlyEntryEnabled, confirmGroupReactivation, confirmedInactiveGroupResourceId, cancellationToken));
 
     public Task<Team> CreateTeamAsync(
         string name,
@@ -192,11 +194,11 @@ internal sealed class CachingTeamService(
     public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default)
         => WithInnerAsync(inner => inner.GetEarlyEntryGrantsForTeamAsync(teamId, ct));
 
-    public Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
-        => WithInnerAsync(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct));
+    public Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default)
+        => WithInnerAsync(inner => inner.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, eventSettingsId, ct));
 
-    public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default)
-        => WithInnerAsync(inner => inner.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, ct));
+    public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default)
+        => WithInnerAsync(inner => inner.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, eventSettingsId, ct));
 
     public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
         => WithInnerAsync(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));

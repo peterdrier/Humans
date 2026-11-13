@@ -75,7 +75,7 @@ internal sealed class BudgetController(
                 return View("NoActiveBudget");
             }
 
-            var visibleGroups = activeYear.Groups.ToList();
+            var visibleGroups = activeYear.Groups.OrderBy(group => group.SortOrder).ToList();
             var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
 
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
@@ -86,8 +86,10 @@ internal sealed class BudgetController(
                 TotalIncome = summary.TotalIncome,
                 TotalExpenses = summary.TotalExpenses,
                 NetBalance = summary.NetBalance,
-                IncomeSlices = summary.IncomeSlices,
-                ExpenseSlices = summary.ExpenseSlices,
+                IncomeSlices = summary.IncomeSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                    .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
+                ExpenseSlices = summary.ExpenseSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                    .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
             };
             return View(model);

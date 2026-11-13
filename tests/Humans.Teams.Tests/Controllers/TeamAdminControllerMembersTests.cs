@@ -1,3 +1,4 @@
+using Humans.Settings.Contracts;
 using System.Security.Claims;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -128,7 +129,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
         var controller = new TeamAdminController(teams, resources, users, Substitute.For<IEmailProvisioningService>(),
-            auth, NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+            auth, NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -189,7 +190,7 @@ public class TeamAdminControllerMembersTests
         if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -251,7 +252,7 @@ public class TeamAdminControllerMembersTests
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            localizer, Substitute.For<ITicketService>())
+            localizer, Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http, ActionDescriptor = new ControllerActionDescriptor() },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -316,15 +317,15 @@ public class TeamAdminControllerMembersTests
         var logger = Substitute.For<ILogger<TeamAdminController>>();
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, logger,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
         };
         var failure = new Microsoft.EntityFrameworkCore.DbUpdateException("Storage failed");
-        teams.AddEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<CancellationToken>())
+        teams.AddEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
-        teams.EditEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<CancellationToken>())
+        teams.EditEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
         teams.RemoveEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
             .Returns(_ => throw failure);
@@ -336,9 +337,9 @@ public class TeamAdminControllerMembersTests
         Func<Task<IActionResult>> action = operation switch
         {
             "add" => () => controller.AddEarlyEntry(team.Slug,
-                new AddTeamEarlyEntryInput { UserId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
+                new AddTeamEarlyEntryInput { EventSettingsId = Guid.NewGuid(), UserId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
             "edit" => () => controller.EditEarlyEntry(team.Slug,
-                new EditTeamEarlyEntryInput { GrantId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
+                new EditTeamEarlyEntryInput { EventSettingsId = Guid.NewGuid(), GrantId = Guid.NewGuid(), EntryDate = "2026-07-06", ProjectName = "Build" }, TestContext.Current.CancellationToken),
             "assign" => () => controller.AssignRole(team.Slug, Guid.NewGuid(), new AssignRoleModel { UserId = Guid.NewGuid() }),
             "unassign" => () => controller.UnassignRole(team.Slug, Guid.NewGuid(), Guid.NewGuid()),
             _ => () => controller.RemoveEarlyEntry(team.Slug, Guid.NewGuid(), TestContext.Current.CancellationToken)
@@ -362,11 +363,15 @@ public class TeamAdminControllerMembersTests
     }
 
     [HumansTheory]
-    [InlineData(false, "")]
-    [InlineData(true, "")]
-    [InlineData(false, "2026-02-31")]
-    [InlineData(true, "2026-02-31")]
-    public async Task EarlyEntryForms_InvalidDatesRedisplayWithoutMutation(bool edit, string date)
+    [InlineData(false, "", "valid")]
+    [InlineData(true, "", "valid")]
+    [InlineData(false, "2026-02-31", "valid")]
+    [InlineData(true, "2026-02-31", "valid")]
+    [InlineData(false, "2026-07-06", null)]
+    [InlineData(true, "2026-07-06", null)]
+    [InlineData(false, "2026-07-06", "invalid-guid")]
+    [InlineData(true, "2026-07-06", "invalid-guid")]
+    public async Task EarlyEntryForms_InvalidFieldsRedisplayWithoutMutation(bool edit, string date, string? eventValue)
     {
         var userId = Guid.NewGuid();
         var teams = Substitute.For<ITeamManagementService>();
@@ -393,7 +398,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http, ActionDescriptor = new ControllerActionDescriptor() },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -409,9 +414,11 @@ public class TeamAdminControllerMembersTests
         {
             ["UserId"] = userId.ToString(),
             ["GrantId"] = Guid.NewGuid().ToString(),
+            ["EventSettingsId"] = string.Equals(eventValue, "valid", StringComparison.Ordinal) ? Guid.NewGuid().ToString() : eventValue,
             ["EntryDate"] = date,
             ["ProjectName"] = "Build"
         };
+        if (eventValue is null) fields.Remove("EventSettingsId");
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
             new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
             metadata, bindingInfo: null, modelName: "");
@@ -426,7 +433,7 @@ public class TeamAdminControllerMembersTests
         var view = result.Should().BeOfType<ViewResult>().Which;
         view.ViewName.Should().Be(nameof(TeamAdminController.EarlyEntry));
         view.Model.Should().BeOfType<TeamEarlyEntryPageViewModel>().Which.TeamName.Should().Be(team.Name);
-        controller.ModelState["EntryDate"]!.Errors.Should().ContainSingle();
+        controller.ModelState[string.Equals(eventValue, "valid", StringComparison.Ordinal) ? "EntryDate" : "EventSettingsId"]!.Errors.Should().ContainSingle();
         teams.ReceivedCalls().Should().NotContain(c =>
             string.Equals(c.GetMethodInfo().Name, nameof(ITeamManagementService.AddEarlyEntryGrantAsync), StringComparison.Ordinal)
             || string.Equals(c.GetMethodInfo().Name, nameof(ITeamManagementService.EditEarlyEntryGrantAsync), StringComparison.Ordinal));
@@ -469,7 +476,7 @@ public class TeamAdminControllerMembersTests
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -564,7 +571,7 @@ public class TeamAdminControllerMembersTests
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, provisioning, authorization,
             NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
-            Substitute.For<ITicketService>())
+            Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -629,7 +636,7 @@ public class TeamAdminControllerMembersTests
         localizer["Teams_RemoveMember_Permission"].Returns(new LocalizedString("Teams_RemoveMember_Permission", reason));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization,
-            logger, localizer, Substitute.For<ITicketService>())
+            logger, localizer, Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -688,7 +695,7 @@ public class TeamAdminControllerMembersTests
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
         var controller = new TeamAdminController(teams, resources, users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext
             {
@@ -731,7 +738,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

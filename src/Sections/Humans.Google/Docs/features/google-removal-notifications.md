@@ -20,7 +20,7 @@ When Google Workspace sync removes a user's email address from a Google Group or
 
 This silence drives support load — *"why am I no longer in the team mailing list?"* — and hides mistakes: when sync removes someone in error, neither the user nor a coordinator finds out until access is missed.
 
-This feature notifies the address that was removed whenever Google sync deletes a Group membership or a Drive permission, with copy that distinguishes "you lost access" from "an old address got tidied up."
+This feature notifies the address that was removed whenever Google sync deletes a Group membership or a Drive permission, with copy that distinguishes "you lost access" from "an old address got tidied up." Reconciliation completes the successful-removal log and notification enqueue with the same detached token as the remote mutation; job cancellation is checked before the next member or permission.
 
 Tracked in: peterdrier/Humans#639. Initial implementation: peterdrier/Humans#404.
 

@@ -1,3 +1,4 @@
+using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using AwesomeAssertions;
 using Humans.Agent.Services;
@@ -17,7 +18,7 @@ public class AgentPromptAssemblerTests
             DisplayName: "Felipe García",
             PreferredLocale: "es",
             Tier: "Volunteer",
-            IsApproved: true,
+            AccountState: UserState.Active,
             RoleAssignments: [("TeamsAdmin", "2027-12-31")],
             Teams:
             [
@@ -45,7 +46,7 @@ public class AgentPromptAssemblerTests
             DisplayName: "Volunteer",
             PreferredLocale: "es",
             Tier: "Volunteer",
-            IsApproved: true,
+            AccountState: UserState.Active,
             RoleAssignments: [],
             Teams:
             [
@@ -135,7 +136,7 @@ public class AgentPromptAssemblerTests
             DisplayName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
-            IsApproved: true,
+            AccountState: UserState.Active,
             RoleAssignments: [],
             Teams:
             [
@@ -196,7 +197,7 @@ public class AgentPromptAssemblerTests
             DisplayName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
-            IsApproved: true,
+            AccountState: UserState.Active,
             RoleAssignments: [],
             Teams: [],
             PendingConsentDocs: [],

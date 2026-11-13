@@ -59,8 +59,6 @@ internal sealed class ExpenseRepository(IDbContextFactory<ExpensesDbContext> fac
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
-            // arch:db-sort-ok dashboard aggregate read — newest-first is the only reasonable default
-            .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }

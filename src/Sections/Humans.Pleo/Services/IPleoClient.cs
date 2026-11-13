@@ -15,6 +15,7 @@ internal interface IPleoClient
     /// <summary>Every spending category, archived ones included: old entries still carry them.</summary>
     Task<IReadOnlyList<PleoCategoryWire>> SearchCategoriesAsync(CancellationToken ct = default);
 
+    /// <summary>Active and deleted cardholders, so historical entries retain their names.</summary>
     Task<IReadOnlyList<PleoEmployeeWire>> ListEmployeesAsync(CancellationToken ct = default);
     Task<PleoBalanceWire> GetBalanceAsync(CancellationToken ct = default);
 

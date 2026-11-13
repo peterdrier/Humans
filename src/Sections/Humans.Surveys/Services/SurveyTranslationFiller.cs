@@ -94,7 +94,7 @@ internal sealed class SurveyTranslationFiller(IGoogleTranslationService translat
         return (input, filled);
 
         static Dictionary<string, string> Copy(LocalizedText text)
-            => new(text.Values, StringComparer.Ordinal);
+            => new(text.Values, StringComparer.OrdinalIgnoreCase);
 
         static bool HasText(Dictionary<string, string> values, string culture)
             => values.TryGetValue(culture, out var v) && !string.IsNullOrWhiteSpace(v);

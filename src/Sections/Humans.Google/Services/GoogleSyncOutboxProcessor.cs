@@ -61,6 +61,9 @@ internal sealed class GoogleSyncOutboxProcessor(
 
         foreach (var outboxEvent in pendingEvents)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            // Dispatch owns its mutation boundaries; a returned outcome must finish tracking even during shutdown.
+            var completionCt = CancellationToken.None;
             try
             {
                 var grant = new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Deferred, outboxEvent.UserId);
@@ -91,7 +94,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                     if (grant.Retryable)
                         throw new InvalidOperationException(error);
                     await outboxRepository.MarkPermanentlyFailedAsync(
-                        outboxEvent.Id, clock.GetCurrentInstant(), error, cancellationToken);
+                        outboxEvent.Id, clock.GetCurrentInstant(), error, completionCt);
                     metrics.RecordSyncOperation("permanent_failure");
                     logger.LogWarning("Google provisioning refused outbox event {OutboxId}: {Error}", outboxEvent.Id, error);
                     continue;
@@ -103,21 +106,25 @@ internal sealed class GoogleSyncOutboxProcessor(
                     if (grant.GoogleEmail is not { } attempted)
                         throw new InvalidOperationException("Accepted Google grant omitted its target address");
                     await workspaceIdentities.SetStatusFromSyncAsync(
-                        grant.UserId, attempted, GoogleEmailStatus.Valid, cancellationToken);
+                        grant.UserId, attempted, GoogleEmailStatus.Valid, completionCt);
                 }
 
                 // Finish the status tail before closing the event: its failure
                 // must remain eligible for the retry path below.
                 await outboxRepository.MarkProcessedAsync(
-                    outboxEvent.Id, clock.GetCurrentInstant(), cancellationToken);
+                    outboxEvent.Id, clock.GetCurrentInstant(), completionCt);
                 metrics.RecordSyncOperation("success");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is int code && DrivePermissionErrorPolicy.IsPermanentFailure(code))
             {
                 metrics.RecordSyncOperation("permanent_failure");
 
                 await outboxRepository.MarkPermanentlyFailedAsync(
-                    outboxEvent.Id, clock.GetCurrentInstant(), ex.Message, cancellationToken);
+                    outboxEvent.Id, clock.GetCurrentInstant(), ex.Message, completionCt);
 
                 var userEmail = userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown");
                 var teamName = teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString());
@@ -143,7 +150,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                     clock.GetCurrentInstant(),
                     ex.Message,
                     MaxRetryCount,
-                    cancellationToken);
+                    completionCt);
 
                 var userEmail = userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown");
                 var teamName = teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString());

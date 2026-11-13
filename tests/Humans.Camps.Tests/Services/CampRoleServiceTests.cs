@@ -531,6 +531,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         row1.OverCapacity.Should().BeFalse();
         row1.FilledSlots[0].CampMemberId.Should().Be(member1.Id);
         row1.FilledSlots[0].UserId.Should().Be(member1.UserId);
+        row1.FilledSlots[0].AssignedAt.Should().Be(Clock.GetCurrentInstant());
 
         var row2 = panel.Rows.First(r => r.Definition.Id == def2.Id);
         row2.FilledSlots.Should().BeEmpty();

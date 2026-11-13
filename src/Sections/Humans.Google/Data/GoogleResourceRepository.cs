@@ -139,6 +139,7 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
         Guid teamId,
         string googleNumericId,
         string normalizedGroupEmail,
+        string? normalizedGroupUrl = null,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -149,7 +150,8 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
                 && !r.IsActive)
             .ToListAsync(ct);
         return groups.FirstOrDefault(r => string.Equals(r.GoogleId, googleNumericId, StringComparison.Ordinal)
-            || string.Equals(r.GoogleId, normalizedGroupEmail, StringComparison.OrdinalIgnoreCase));
+            || string.Equals(r.GoogleId, normalizedGroupEmail, StringComparison.OrdinalIgnoreCase)
+            || (normalizedGroupUrl is not null && string.Equals(r.Url, normalizedGroupUrl, StringComparison.OrdinalIgnoreCase)));
     }
 
     public async Task AddAsync(TeamGoogleResource resource, CancellationToken ct = default)
@@ -166,6 +168,7 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
         Instant lastSyncedAt,
         string? newGoogleId,
         DrivePermissionLevel? newPermissionLevel,
+        Guid? deactivateResourceId = null,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -173,6 +176,14 @@ internal sealed class GoogleResourceRepository(IDbContextFactory<GoogleIntegrati
         if (row is null)
         {
             return null;
+        }
+
+        if (deactivateResourceId is { } previousId && previousId != resourceId)
+        {
+            var previous = await ctx.GoogleResources.FirstOrDefaultAsync(
+                r => r.Id == previousId && r.TeamId == row.TeamId && r.ResourceType == row.ResourceType, ct);
+            if (previous is not null)
+                previous.IsActive = false;
         }
 
         if (newGoogleId is not null)

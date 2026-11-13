@@ -22,7 +22,8 @@ internal sealed class StoreStripePayments(
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
-    private static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
+    internal static readonly TrackedLock StripePaymentLock = new("Store.StripePayments");
+    internal const decimal MaximumCheckoutAmountEur = 999_999.99m;
 
     [ExternalWrite]
     public async Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
@@ -45,6 +46,11 @@ internal sealed class StoreStripePayments(
         {
             errorKey = "Store_PaymentAboveBalance";
             maximumAmount = order.BalanceEur;
+        }
+        else if (amountEur > MaximumCheckoutAmountEur)
+        {
+            errorKey = "Store_PaymentAboveCheckoutLimit";
+            maximumAmount = MaximumCheckoutAmountEur;
         }
         else if (order.Payments.Any(p => p.Status == PaymentStatus.Pending))
             errorKey = "Store_PaymentPending";

@@ -130,11 +130,13 @@ internal sealed class GoogleGroupSettings(
 
     public async Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             // Settings remediation is always allowed — it doesn't add/remove members.
+            // Finish the remote repair and its audit before shutdown stops the next group.
             var error = await groupProvisioning.UpdateGroupSettingsAsync(
-                groupEmail, GroupSettingsPolicy.BuildExpected(groupOptions.Groups), cancellationToken);
+                groupEmail, GroupSettingsPolicy.BuildExpected(groupOptions.Groups), CancellationToken.None);
 
             if (error is not null)
             {

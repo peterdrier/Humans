@@ -53,10 +53,14 @@ internal sealed class EmailOutboxProcessor(
 
         foreach (var message in messages)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            // A started SMTP attempt and its delivery record must finish together.
+            var deliveryCt = CancellationToken.None;
+
             // Skip invalid test addresses — sending to these bounces and damages sender reputation
             if (EmailTestAddress.IsTestAddress(message.RecipientEmail))
             {
-                await outboxRepo.MarkSentAsync(message.Id, now, cancellationToken);
+                await outboxRepo.MarkSentAsync(message.Id, now, deliveryCt);
                 logger.LogInformation(
                     "Skipped email {MessageId} to test address {Email}",
                     message.Id, message.RecipientEmail);
@@ -79,15 +83,15 @@ internal sealed class EmailOutboxProcessor(
                     message.PlainTextBody,
                     message.ReplyTo,
                     extraHeaders,
-                    cancellationToken);
+                    deliveryCt);
             }
             catch (Exception ex)
             {
                 var failedAt = clock.GetCurrentInstant();
                 var nextRetryAt = failedAt + Duration.FromMinutes((long)Math.Pow(2, message.RetryCount + 1));
-                await outboxRepo.MarkFailedAsync(message.Id, failedAt, ex.Message, nextRetryAt, cancellationToken);
+                await outboxRepo.MarkFailedAsync(message.Id, failedAt, ex.Message, nextRetryAt, deliveryCt);
                 metrics.RecordEmailFailed(message.TemplateName);
-                await TryIncrementDailySendCountAsync(message, failedAt, succeeded: false, cancellationToken);
+                await TryIncrementDailySendCountAsync(message, failedAt, succeeded: false, deliveryCt);
 
                 logger.LogError(
                     ex,
@@ -101,9 +105,9 @@ internal sealed class EmailOutboxProcessor(
             // Transport succeeded. A persistence or throttle failure must not
             // reclassify accepted mail as a failed delivery attempt.
             var sentAt = clock.GetCurrentInstant();
-            await outboxRepo.MarkSentAsync(message.Id, sentAt, cancellationToken);
+            await outboxRepo.MarkSentAsync(message.Id, sentAt, deliveryCt);
             metrics.RecordEmailSent(message.TemplateName);
-            await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, cancellationToken);
+            await TryIncrementDailySendCountAsync(message, sentAt, succeeded: true, deliveryCt);
 
             // Stays under the SMTP relay's rate limit.
             await ThrottleDelayAsync(TimeSpan.FromSeconds(1), cancellationToken);

@@ -143,6 +143,26 @@ internal static class SurveyWizardFlow
         return true;
     }
 
+    public static Dictionary<string, SurveyWizardAnswer> ToWizardAnswers(IReadOnlyList<SurveyDraftAnswer> answers)
+    {
+        var result = new Dictionary<string, SurveyWizardAnswer>(StringComparer.Ordinal);
+        foreach (var answer in answers)
+        {
+            result[answer.QuestionId.ToString()] = new SurveyWizardAnswer
+            {
+                SelectedOptionValues = answer.SelectedOptionValues.ToList(),
+                TextValue = answer.TextValue,
+                RatingValue = answer.RatingValue,
+                GridSelections = answer.GridSelections?.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.ToList(),
+                    StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
+                RankedValue = answer.RankedValue,
+            };
+        }
+        return result;
+    }
+
     public static Dictionary<Guid, AnswerState> ToAnswerStates(IReadOnlyDictionary<string, SurveyWizardAnswer> answers)
     {
         var result = new Dictionary<Guid, AnswerState>();

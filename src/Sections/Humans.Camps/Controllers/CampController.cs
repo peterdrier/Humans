@@ -73,9 +73,7 @@ internal sealed class CampController(
             return NotFound();
 
         var settings = await _campService.GetSettingsAsync(ct);
-        var season = settings.ActiveEventSettingsId is { } activeEventId
-            ? camp.GetSeasonForEvent(activeEventId, fallbackToLatestSeason: true)
-            : camp.Active;
+        var season = ResolveDisplaySeason(camp, settings.ActiveEventSettingsId);
         if (season is null)
             return NotFound();
 
@@ -163,11 +161,14 @@ internal sealed class CampController(
         var camp = await GetCampBySlugAsync(slug, HttpContext.RequestAborted);
         if (camp is null) return NotFound();
 
-        var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+        var season = await ResolveContactSeasonAsync(camp, user, HttpContext.RequestAborted);
+        if (season is null) return NotFound();
         var model = new CampContactViewModel
         {
             CampSlug = slug,
-            CampName = season?.Name ?? slug
+            CampName = season.Name
         };
         return View(model);
     }
@@ -183,21 +184,19 @@ internal sealed class CampController(
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
+        var season = await ResolveContactSeasonAsync(camp, currentUser, HttpContext.RequestAborted);
+        if (season is null) return NotFound();
+        var campDisplayName = season.Name;
         if (!ModelState.IsValid)
         {
             model.CampSlug = slug;
-            var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            model.CampName = season?.Name ?? slug;
+            model.CampName = campDisplayName;
             return View(model);
         }
 
-        var latestSeason = camp.Seasons
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault();
-        var campDisplayName = latestSeason?.Name ?? slug;
         var senderEmail = currentUser.Email!;
 
-        var leadUserIds = latestSeason?.LeadUserIds ?? [];
+        var leadUserIds = season.LeadUserIds;
 
         try
         {
@@ -227,6 +226,21 @@ internal sealed class CampController(
             SetError(sharedLocalizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
+    }
+
+    private static CampSeasonInfo? ResolveDisplaySeason(CampInfo camp, Guid? activeEventId) =>
+        activeEventId is { } eventId
+            ? camp.GetSeasonForEvent(eventId, fallbackToLatestSeason: true)
+            : camp.Active;
+
+    private async Task<CampSeasonInfo?> ResolveContactSeasonAsync(CampInfo camp, UserInfo user, CancellationToken ct)
+    {
+        var settings = await _campService.GetSettingsAsync(ct);
+        var season = ResolveDisplaySeason(camp, settings.ActiveEventSettingsId);
+        if (season is null || season.IsPublic) return season;
+
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, user);
+        return isLead || isCampAdmin ? season : null;
     }
 
     [Authorize]
@@ -383,10 +397,9 @@ internal sealed class CampController(
         }
 
         // Full is informational only: it must not disable camp management, so role management stays available.
-        var openSeason = camp.Seasons.FirstOrDefault(s => s.IsPublic);
-        viewModel.RolesPanel = openSeason is null
-            ? null
-            : await BuildRolesPanelAsync(camp.Slug, openSeason, canManage: true, ct);
+        viewModel.RolesPanel = editSeason is { IsPublic: true }
+            ? await BuildRolesPanelAsync(camp.Slug, editSeason, canManage: true, ct)
+            : null;
 
         return View(viewModel);
     }
@@ -395,7 +408,7 @@ internal sealed class CampController(
         string campSlug, CampSeasonInfo season, bool canManage, CancellationToken ct)
     {
         var panelData = await campRoleService.BuildPanelAsync(season.Id, ct);
-        var activeMemberRows = season.ActiveMembers;
+        var activeMemberRows = season.ActiveMembers.OrderBy(m => m.RequestedAt).ToList();
         var activeMemberUserIds = activeMemberRows
             .Select(m => m.UserId)
             .ToList();
@@ -421,6 +434,7 @@ internal sealed class CampController(
                 SlotCount = r.Definition.SlotCount,
                 MinimumRequired = r.Definition.MinimumRequired,
                 FilledSlots = r.FilledSlots
+                .OrderBy(s => s.AssignedAt)
                 .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
                 .ToList(),
                 EmptySlotCount = r.EmptySlotCount,
@@ -447,9 +461,11 @@ internal sealed class CampController(
         }
 
         viewModel.PendingMembers = season.PendingMembers
+            .OrderBy(m => m.RequestedAt)
             .Select(MapCampMemberRow)
             .ToList();
         viewModel.ActiveMembers = season.ActiveMembers
+            .OrderBy(m => m.RequestedAt)
             .Select(MapCampMemberRow)
             .ToList();
         viewModel.EeSlotCount = season.EeSlotCount;
@@ -507,7 +523,11 @@ internal sealed class CampController(
         }
 
         SetSuccess(campsLocalizer["Camps_Flash_Updated"].Value);
-        return RedirectToAction(nameof(Edit), new { slug });
+        return RedirectToAction(nameof(Edit), new
+        {
+            slug,
+            eventSettingsId = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId)?.EventSettingsId
+        });
     }
 
     [Authorize]
@@ -560,7 +580,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_SeasonWithdrawn"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, camp.Seasons.FirstOrDefault(s => s.Id == seasonId));
     }
 
     [Authorize]
@@ -585,7 +605,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_SeasonFull"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, camp.Seasons.FirstOrDefault(s => s.Id == seasonId));
     }
 
     [Authorize]
@@ -763,7 +783,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_RequestWithdrawn"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, FindMemberSeason(camp, campMemberId));
     }
 
     [Authorize]
@@ -787,7 +807,7 @@ internal sealed class CampController(
             SetError(campsLocalizer[result.ErrorMessage ?? "Camps_Flash_MembershipLeaveFailed"].Value);
         }
 
-        return RedirectToAction(nameof(Details), new { slug });
+        return RedirectToSeasonDetails(slug, FindMemberSeason(camp, campMemberId));
     }
 
     [Authorize]
@@ -810,7 +830,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_MembershipApproved"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
 
     [Authorize]
@@ -832,7 +852,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_RequestRejected"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
 
     [Authorize]
@@ -854,7 +874,7 @@ internal sealed class CampController(
             SetSuccess(campsLocalizer["Camps_Flash_MemberRemoved"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
 
     [Authorize]
@@ -885,8 +905,19 @@ internal sealed class CampController(
         else if (outcome == SetEarlyEntryOutcome.MemberAlreadyEntered)
             SetError(campsLocalizer["Camps_Flash_EarlyEntryAlreadyEntered"].Value);
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToMemberSeason(slug, camp, campMemberId);
     }
+
+    private static CampSeasonInfo? FindMemberSeason(CampInfo camp, Guid campMemberId) =>
+        camp.Seasons.FirstOrDefault(season => season.Members.Any(member => member.Id == campMemberId));
+
+    private IActionResult RedirectToMemberSeason(string slug, CampInfo camp, Guid campMemberId) =>
+        RedirectToAction(nameof(Members), new { slug, eventSettingsId = FindMemberSeason(camp, campMemberId)?.EventSettingsId });
+
+    private IActionResult RedirectToSeasonDetails(string slug, CampSeasonInfo? season) =>
+        season?.EventSettingsId is { } eventSettingsId
+            ? RedirectToAction(nameof(SeasonDetails), new { slug, eventSettingsId })
+            : RedirectToAction(nameof(Details), new { slug });
 
     [Authorize]
     [HttpPost("{slug}/Members/Add")]
@@ -1038,7 +1069,11 @@ internal sealed class CampController(
             SetError(campsLocalizer["Camps_Flash_AssignmentNotFound"].Value);
         }
 
-        return RedirectToAction(nameof(Members), new { slug });
+        return RedirectToAction(nameof(Members), new
+        {
+            slug,
+            eventSettingsId = camp.Seasons.First(s => s.Id == assignment.CampSeasonId).EventSettingsId
+        });
     }
 
     private async Task PopulateCityPlanningViewBagAsync(UserInfo? currentUser, CancellationToken cancellationToken)
@@ -1079,7 +1114,10 @@ internal sealed class CampController(
 
     private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model, CampInfo camp)
     {
-        var editData = await _campService.GetCampEditDataAsync(model.CampId, model.EventSettingsId);
+        var season = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
+        var editData = season is null
+            ? null
+            : await _campService.GetCampEditDataAsync(camp.Id, season.EventSettingsId);
         if (editData is null)
         {
             model.Images = [];
@@ -1094,7 +1132,6 @@ internal sealed class CampController(
                 SortOrder = image.SortOrder
             })
             .ToList();
-        var season = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
         PopulateEditMembers(model, season);
     }
 
@@ -1223,6 +1260,7 @@ internal sealed class CampController(
         if (vm.CanSeeFullCamp)
         {
             vm.Roster = activeMembers
+                .OrderBy(m => m.RequestedAt)
                 .Select(MapCampMemberRow)
                 .ToList();
         }

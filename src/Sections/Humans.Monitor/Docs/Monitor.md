@@ -40,7 +40,11 @@ pages and data.
   `IUserService`, and `IAuditLogService`.
 - A service-account change, matched by email or `people/{client_id}`, is never anomalous.
 - The last-run marker advances only when every resource was queried and the connector is
-  configured. Anomalies are still audited on an incomplete run.
+  configured. Ordinary resource failures still audit anomalies from the incomplete run.
+- Job cancellation propagates from a resource read and is checked between resources and
+  before finalization. It starts no further resource reads and leaves the marker unchanged,
+  so the next run re-reads the interrupted window. A dependency cancellation while the job
+  token remains live is handled as an ordinary resource failure.
 - When every resource query fails, the service throws so Hangfire records a failed run.
 - The manual controller action catches that exception, logs it, shows an error banner, and
   redirects to the filtered Audit Log page.

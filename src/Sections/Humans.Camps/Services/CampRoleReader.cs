@@ -50,11 +50,11 @@ internal sealed class CampRoleReader(
         {
             var defAssignments = assignments
                 .Where(a => a.CampRoleDefinitionId == def.Id)
-                .OrderBy(a => a.AssignedAt)
                 .ToList();
 
             var filled = defAssignments.Select(a =>
-                new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId)).ToList();
+                new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId)
+                { AssignedAt = a.AssignedAt }).ToList();
 
             var current = filled.Count;
             var empty = Math.Max(0, def.SlotCount - current);

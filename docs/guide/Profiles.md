@@ -95,7 +95,7 @@ Go to `/Search` and type a name. Results respect your access level and exclude s
 
 Both live on `/Consent/MyData`. **Download My Data** gives you a JSON file with every section of personal data the system holds about you. **Account deletion** revokes your team memberships and roles immediately, then gives you a 30-day grace period (you can still log in and cancel) before your personal data is anonymised automatically. The plain-language walkthrough — including who can see your details and how to control which emails you get — is in [Your data & privacy](YourData.md).
 
-## As a Board member / Users Admin / Admin
+## As a Board member / Admin (Users Admin)
 
 ### View any profile in full
 

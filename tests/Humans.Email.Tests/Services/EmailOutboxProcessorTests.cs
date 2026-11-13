@@ -253,6 +253,72 @@ public class EmailOutboxProcessorTests : IDisposable
         updated.SentAt.Should().Be(_clock.GetCurrentInstant());
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessQueuedAsync_FinishesDeliveryOutcomeAfterCancellation_WithoutStartingNextMessage(bool transportFails)
+    {
+        var first = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        _clock.Advance(Duration.FromSeconds(1));
+        var second = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        using var cancellation = new CancellationTokenSource();
+        _transport.SendAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                if (transportFails) throw new IOException("SMTP failure");
+            });
+
+        var drain = () => _job.ProcessQueuedAsync(cancellation.Token);
+
+        await drain.Should().ThrowAsync<OperationCanceledException>();
+        var rows = await FreshQuery().ToDictionaryAsync(row => row.Id, TestContext.Current.CancellationToken);
+        rows[first.Id].Status.Should().Be(transportFails ? EmailOutboxStatus.Failed : EmailOutboxStatus.Sent);
+        rows[first.Id].RetryCount.Should().Be(transportFails ? 1 : 0);
+        if (transportFails)
+        {
+            rows[first.Id].LastError.Should().Be("SMTP failure");
+            rows[first.Id].NextRetryAt.Should().Be(_clock.GetCurrentInstant() + Duration.FromMinutes(2));
+        }
+        else
+        {
+            rows[first.Id].SentAt.Should().Be(_clock.GetCurrentInstant());
+        }
+        rows[second.Id].Status.Should().Be(EmailOutboxStatus.Queued);
+        rows[second.Id].RetryCount.Should().Be(0);
+        var counts = await FreshCountsQuery().SingleAsync(TestContext.Current.CancellationToken);
+        counts.SentCount.Should().Be(transportFails ? 0 : 1);
+        counts.FailedCount.Should().Be(transportFails ? 1 : 0);
+        await _transport.Received(1).SendAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IDictionary<string, string>?>(), CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task ProcessQueuedAsync_CancelledAfterPickup_StartsNoDeliveryAttempt()
+    {
+        var message = await SeedMessageAsync(EmailOutboxStatus.Queued);
+        using var cancellation = new CancellationTokenSource();
+        var repo = Substitute.For<IEmailOutboxRepository>();
+        repo.GetProcessingBatchAsync(Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([message]);
+        repo.MarkPickedUpAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns(_ => cancellation.CancelAsync());
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
+            repo, _outboxService, _transport, _metrics, _meters, _clock, _settings,
+            NullLogger<EmailOutboxProcessor>.Instance));
+
+        var drain = () => processor.ProcessQueuedAsync(cancellation.Token);
+
+        await drain.Should().ThrowAsync<OperationCanceledException>();
+        await _transport.DidNotReceiveWithAnyArgs().SendAsync(
+            default!, default, default!, default!, default, default, default, default);
+        await repo.DidNotReceiveWithAnyArgs().MarkSentAsync(default, default, default);
+        await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default, default);
+    }
+
     [HumansFact(Timeout = 10000)]
     public async Task ProcessQueuedAsync_IncrementsDailySentCountOnSuccess()
     {

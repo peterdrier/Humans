@@ -8,6 +8,8 @@ internal sealed class TeamEarlyEntryGrant
     public Guid TeamId { get; init; }
     public Team Team { get; init; } = null!;
     public Guid UserId { get; init; }
+    /// <summary>Null until an operator assigns a legacy grant to an event.</summary>
+    public Guid? EventSettingsId { get; set; }
     public LocalDate EntryDate { get; set; }
     public string ProjectName { get; set; } = string.Empty;
     public Instant CreatedAt { get; init; }

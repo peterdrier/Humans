@@ -121,6 +121,8 @@ Known area labels in the member submission form, issue list and detail view use 
 
 ## Invariants
 
+- An authorized screenshot read returns no image for an absent file; storage I/O or access failures propagate rather than becoming a missing screenshot.
+
 - Submission, comment and triage actions forward request cancellation through account and issue-visibility reads before mutation. The shared triage guard applies this to status, assignee, section and GitHub-link actions. Mutation calls keep their existing non-cancellable boundaries.
 
 - The queue detail panel accepts only the latest selection request’s response; earlier successes and unavailable responses cannot replace the selected item’s content or wire stale forms.
@@ -131,7 +133,7 @@ Known area labels in the member submission form, issue list and detail view use 
 
 - Submission categories and status updates must be defined enum values; invalid service inputs fail before persistence or notifications. Browser submissions (page and floating widget) require an explicit category after resolving the reporter; omission cannot create a Bug by default. Explicit Bug remains valid.
 - Browser triage requires the status field to be posted explicitly; omission cannot reset an issue to Triage or clear resolution metadata. Explicit Triage remains valid after handler authorization.
-- Every issue is linked to the human who submitted it (`ReporterUserId` is required).
+- Every issue is linked to the human who submitted it (`ReporterUserId` is required). Backdoor creation requires an explicit, non-empty reporter ID and resolves it through Users before filing; unknown reporters return HTTP 400 without a mutation.
 - The GDPR export includes stored browser user agent and submission context alongside the reporter’s issues and comments across `UserInfo.AllUserIds`. Source-account reports remain exportable after a merge, and comments from any account in that identity chain are marked as the reporter’s. Issues reported by other people stay excluded.
 - Status flows Triage → Open → InProgress → Resolved/WontFix/Duplicate. Transitioning out of a terminal status clears `ResolvedAt` and `ResolvedByUserId`.
 - Reporter ownership follows `UserInfo.AllUserIds` from Users: merged-account issues remain in the same person’s list, Mine filter and actionable count, with detail, screenshot, thread and comment access intact. Reporter labels and auto-reopen recognize comments from either account. This restores the same person’s ownership; handler roles and access to other people’s issues do not change. Stored reporter IDs remain historical. Reporter and assignee filters match all IDs of the selected person, including historical assignments. Filtering by an assignee never bypasses the viewer’s queue restrictions.

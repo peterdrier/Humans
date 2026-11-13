@@ -162,7 +162,7 @@ CalendarEventException
 └── Navigation: Event
 ```
 
-Timed and all-day overrides require representable original and effective ranges, including inherited duration. Series edits reject a duration that would invalidate an active override.
+Timed and all-day overrides require representable original and effective ranges, including inherited duration. Timed form fields whose timezone conversion exceeds the instant range return localized validation feedback before saving. Series edits reject a duration that would invalidate an active override.
 
 The occurrence editor keeps text overrides optional, enforces these stored length limits and URL syntax before saving, and displays validation errors in all supported cultures.
 

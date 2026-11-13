@@ -70,6 +70,8 @@ internal sealed class ExpenseReportBackgroundProcessor(
 
             foreach (var outboxEvent in events)
             {
+                ct.ThrowIfCancellationRequested();
+                var completionCt = CancellationToken.None;
                 try
                 {
                     var report = await repo
@@ -81,7 +83,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                             "Outbox event {OutboxEventId} references missing report {ReportId} — marking permanently failed",
                             outboxEvent.Id, outboxEvent.ExpenseReportId);
                         await WriteOffOutboxEventAsync(
-                            outboxEvent, "Report not found", ct);
+                            outboxEvent, "Report not found", completionCt);
                         continue;
                     }
 
@@ -103,7 +105,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                                 "{ReportId} — Holded v2 has no tag/doc-update endpoint; recategorize is " +
                                 "now done by reclassifying the line directly in Holded.",
                                 outboxEvent.Id, report.Id);
-                            await repo.MarkOutboxProcessedAsync(outboxEvent.Id, now, ct);
+                            await repo.MarkOutboxProcessedAsync(outboxEvent.Id, now, completionCt);
                             break;
 
                         default:
@@ -117,13 +119,13 @@ internal sealed class ExpenseReportBackgroundProcessor(
                         ex,
                         "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
                         outboxEvent.Id, ex.StatusCode);
-                    await WriteOffOutboxEventAsync(outboxEvent, ex.Message, ct);
+                    await WriteOffOutboxEventAsync(outboxEvent, ex.Message, completionCt);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
                 {
                     // A lost completion acknowledgement or a failed follow-up must not reclassify a committed push.
                     if (ex is not HoldedTransientException
-                        && await repo.GetLatestOutboxForReportAsync(outboxEvent.ExpenseReportId, ct) is { } current
+                        && await repo.GetLatestOutboxForReportAsync(outboxEvent.ExpenseReportId, completionCt) is { } current
                         && current.Id == outboxEvent.Id && current.ProcessedAt is not null)
                     {
                         logger.LogError(ex, "Holded outbox event {OutboxEventId} completed before a follow-up failed", outboxEvent.Id);
@@ -140,7 +142,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                         await WriteOffOutboxEventAsync(
                             outboxEvent,
                             $"Gave up after {attempts} attempts. Last error: {ex.Message}",
-                            ct);
+                            completionCt);
                     }
                     else
                     {
@@ -154,7 +156,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                             "Error processing Holded outbox event {OutboxEventId} — attempt {Attempt}/{MaxRetries}, retrying at {NextRetryAt}",
                             outboxEvent.Id, attempts, MaxOutboxRetries, nextRetryAt);
                         await repo.IncrementOutboxRetryAsync(
-                            outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, ct);
+                            outboxEvent.Id, BoundOutboxError(ex.Message), nextRetryAt, completionCt);
                     }
                 }
 

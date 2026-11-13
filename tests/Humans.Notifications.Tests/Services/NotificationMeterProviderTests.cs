@@ -29,6 +29,8 @@ namespace Humans.Notifications.Tests.Services;
 
 public class NotificationMeterProviderTests : IDisposable
 {
+    private static readonly Guid CurrentEventId = Guid.NewGuid();
+    private static readonly Guid FutureEventId = Guid.NewGuid();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
@@ -43,6 +45,11 @@ public class NotificationMeterProviderTests : IDisposable
     public NotificationMeterProviderTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026])
+        {
+            ActiveEventSettingsId = CurrentEventId,
+            Events = [new(CurrentEventId, "Current event", 2026, true)]
+        });
         _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ConsentReviewInfo>());
         _provider = new NotificationMeterProvider(
@@ -78,11 +85,10 @@ public class NotificationMeterProviderTests : IDisposable
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(3);
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(userId)]);
         if (campLeadCount)
-            _campService.GetCampsForYearAsync(2026, aborted.Token)
+            _campService.GetCampsForEventAsync(CurrentEventId, aborted.Token)
                 .Returns(Task.FromCanceled<IReadOnlyList<CampInfo>>(aborted.Token));
         else
             _googleSyncService.GetFailedSyncEventCountAsync(aborted.Token)
@@ -129,8 +135,7 @@ public class NotificationMeterProviderTests : IDisposable
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                 return 3;
             });
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
         _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
         var controller = new NotificationsController(inbox, _userService, _provider, NullLogger<NotificationsController>.Instance)
@@ -181,8 +186,7 @@ public class NotificationMeterProviderTests : IDisposable
             }));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
         _applicationDecisionService.GetUnvotedApplicationCountAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfoWithPendingRequest(userId)]);
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>()).Returns([MakeCampInfoWithPendingRequest(userId)]);
         var principal = CreatePrincipalWithId(userId, RoleNames.Admin, RoleNames.Board, ConsentRoles.ConsentCoordinator);
         var keys = new[]
         {
@@ -200,7 +204,7 @@ public class NotificationMeterProviderTests : IDisposable
         expected.Should().OnlyContain(value => !value.ResourceNotFound);
         meters.Select(m => m.Title).Should().Equal(expected.Select(value => value.Value)).And.NotEqual(english);
         // No per-user cache over the camp reads: a changed roster shows on the next call.
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(userId), MakeCampInfoWithPendingRequest(userId)]);
         meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
         var plural = localizer["Notifications_Meter_CampJoinRequests", 2];
@@ -374,9 +378,7 @@ public class NotificationMeterProviderTests : IDisposable
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2026]));
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(leadUserId)]);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), TestContext.Current.CancellationToken);
@@ -398,11 +400,15 @@ public class NotificationMeterProviderTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027]));
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new CampSettingsInfo(2026, [2027])
+            {
+                ActiveEventSettingsId = CurrentEventId,
+                Events = [new(CurrentEventId, "Current event", 2026, false), new(FutureEventId, "Future event", 2027, true)]
+            });
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>())
             .Returns([MakeCampInfoWithPendingRequest(Guid.NewGuid())]);
-        _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
-            .Returns([MakeCampInfoWithPendingRequest(leadUserId, 2027)]);
+        _campService.GetCampsForEventAsync(FutureEventId, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfoWithPendingRequest(leadUserId, 2027, FutureEventId)]);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadUserId), TestContext.Current.CancellationToken);
 
@@ -410,8 +416,39 @@ public class NotificationMeterProviderTests : IDisposable
             m.Title == "1 human wants to join your camp" &&
             m.Count == 1 &&
             m.ActionUrl == "/Barrios");
-        await _campService.Received(1).GetCampsForYearAsync(2026, Arg.Any<CancellationToken>());
-        await _campService.Received(1).GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
+        await _campService.Received(1).GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>());
+        await _campService.Received(1).GetCampsForEventAsync(FutureEventId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CampRequests_CountOnlyActiveAndOpenEventsOnce(bool activeRegistrationOpen)
+    {
+        var leadId = Guid.NewGuid();
+        var otherOpenId = Guid.NewGuid();
+        var closedId = Guid.NewGuid();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<UserInfo>());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        _campService.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026])
+        {
+            ActiveEventSettingsId = CurrentEventId,
+            Events = [new(CurrentEventId, "Active", 2026, activeRegistrationOpen),
+                new(otherOpenId, "Open", 2026, true), new(closedId, "Closed", 2026, false)]
+        });
+        var active = MakeCampInfoWithPendingRequest(leadId);
+        var open = MakeCampInfoWithPendingRequest(leadId, eventSettingsId: otherOpenId);
+        var closed = MakeCampInfoWithPendingRequest(leadId, eventSettingsId: closedId);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([active, open, closed]);
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>()).Returns([active]);
+        _campService.GetCampsForEventAsync(otherOpenId, Arg.Any<CancellationToken>()).Returns([open]);
+
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipalWithId(leadId), TestContext.Current.CancellationToken);
+
+        meters.Should().ContainSingle(m => string.Equals(m.ActionUrl, "/Barrios", StringComparison.Ordinal) && m.Count == 2);
+        await _campService.Received(1).GetCampsForEventAsync(CurrentEventId, TestContext.Current.CancellationToken);
+        await _campService.Received(1).GetCampsForEventAsync(otherOpenId, TestContext.Current.CancellationToken);
+        await _campService.DidNotReceive().GetCampsForEventAsync(closedId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -482,7 +519,7 @@ public class NotificationMeterProviderTests : IDisposable
                 profile: UserFixtures.Profile());
         }).ToList();
 
-    private static CampInfo MakeCampInfoWithPendingRequest(Guid leadUserId, int year = 2026)
+    private static CampInfo MakeCampInfoWithPendingRequest(Guid leadUserId, int year = 2026, Guid? eventSettingsId = null)
     {
         var campId = Guid.NewGuid();
         var seasonId = Guid.NewGuid();
@@ -509,6 +546,7 @@ public class NotificationMeterProviderTests : IDisposable
                     YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
                     0, null, null, null, 0, null, null)
                 {
+                    EventSettingsId = eventSettingsId ?? CurrentEventId,
                     LeadUserIds = [leadUserId],
                     Members = [pendingMember]
                 }

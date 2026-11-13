@@ -188,6 +188,39 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
+    public void Sibling_buyer_fields_fill_independently_without_overwriting_populated_values()
+    {
+        var rows = StripeMirrorService.FillFromSiblings(
+        [
+            Txn("name", "acct_t", 100, name: "Ana Buyer", pi: "pi_1"),
+            Txn("email", "acct_t", 100, name: " ", email: "ana@example.org", pi: "pi_1"),
+            Txn("blank", "acct_t", -100, "refund", name: "", email: " ", pi: "pi_1"),
+            Txn("partial", "acct_t", -100, "refund", name: "Recorded name", pi: "pi_1"),
+        ]);
+
+        rows.Should().OnlyContain(t => string.Equals(t.CustomerEmail, "ana@example.org", StringComparison.Ordinal));
+        rows.Where(t => !string.Equals(t.Id, "partial", StringComparison.Ordinal))
+            .Should().OnlyContain(t => string.Equals(t.CustomerName, "Ana Buyer", StringComparison.Ordinal));
+        rows.Single(t => string.Equals(t.Id, "partial", StringComparison.Ordinal)).CustomerName.Should().Be("Recorded name");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData("  ")]
+    public void Blank_intent_ids_cannot_attribute_a_refund_to_an_unrelated_buyer(string intent)
+    {
+        var rows = StripeMirrorService.FillFromSiblings(
+        [
+            Txn("charge", "acct_t", 100, name: "Ana Buyer", email: "ana@example.org", pi: intent),
+            Txn("refund", "acct_t", -100, "refund", pi: intent),
+        ]);
+
+        var refund = rows.Single(t => string.Equals(t.Id, "refund", StringComparison.Ordinal));
+        refund.CustomerName.Should().BeNull();
+        refund.CustomerEmail.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Search_finds_an_order_by_buyer_email_or_metadata_order_id()
     {
         Returns(Tickets,

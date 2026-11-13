@@ -222,7 +222,7 @@ internal sealed partial class TeamResourceService(
             teamId,
             lookup.Group.NumericId,
             lookup.Group.NormalizedEmail,
-            ct);
+            ct: ct);
 
         var resource = await ReactivateOrInsertAsync(
             inactive,
@@ -238,7 +238,7 @@ internal sealed partial class TeamResourceService(
                 LastSyncedAt = now,
                 IsActive = true,
             },
-            id => repository.ReactivateAsync(id, lookup.Group.NormalizedEmail, url, now, lookup.Group.NumericId, null, ct),
+            id => repository.ReactivateAsync(id, lookup.Group.NormalizedEmail, url, now, lookup.Group.NumericId, null, ct: ct),
             "Group",
             ct);
 
@@ -275,7 +275,7 @@ internal sealed partial class TeamResourceService(
                 IsActive = true,
                 DrivePermissionLevel = permissionLevel,
             },
-            id => repository.ReactivateAsync(id, item.FullPath, item.WebViewLink, now, null, permissionLevel, ct),
+            id => repository.ReactivateAsync(id, item.FullPath, item.WebViewLink, now, null, permissionLevel, ct: ct),
             resourceType == GoogleResourceType.DriveFolder ? "Drive folder" : "Drive file",
             ct);
     }

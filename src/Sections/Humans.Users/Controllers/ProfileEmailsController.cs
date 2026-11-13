@@ -183,23 +183,7 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        var result = await userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
-        if (!result.Succeeded)
-        {
-            logger.LogWarning("Email SetPrimary refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
-                emailId, user.Id, user.Id, result.ErrorKey);
-            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-            return RedirectToAction(nameof(Emails));
-        }
-        // SetPrimaryAsync takes no actor, so the controller audits.
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailPrimarySet,
-            nameof(User), user.Id,
-            $"Set primary email row {emailId}",
-            user.Id,
-            relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-        SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
-
+        await SetPrimaryEmailAsync(user.Id, emailId, user.Id, isAdminContext: false, ct);
         return RedirectToAction(nameof(Emails));
     }
 
@@ -494,24 +478,30 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        var result = await userEmailService.SetPrimaryAsync(id, emailId, ct);
+        await SetPrimaryEmailAsync(id, emailId, actor.Id, isAdminContext: true, ct);
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    private async Task SetPrimaryEmailAsync(
+        Guid userId, Guid emailId, Guid actorId, bool isAdminContext, CancellationToken ct)
+    {
+        var result = await userEmailService.SetPrimaryAsync(userId, emailId, ct);
         if (!result.Succeeded)
         {
-            logger.LogWarning("Email AdminSetPrimary refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
-                emailId, id, actor.Id, result.ErrorKey);
+            logger.LogWarning("Email {Operation} refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                isAdminContext ? nameof(AdminSetPrimary) : nameof(SetPrimary), emailId, userId, actorId, result.ErrorKey);
             SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-            return RedirectToAction(nameof(AdminEmails), new { id });
+            return;
         }
         // SetPrimaryAsync takes no actor, so the controller audits.
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailPrimarySet,
-            nameof(User), id,
-            $"Admin set primary email row {emailId}",
-            actor.Id,
+            nameof(User), userId,
+            isAdminContext ? $"Admin set primary email row {emailId}" : $"Set primary email row {emailId}",
+            actorId,
             relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
         SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
-
-        return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
     [HttpPost("{id:guid}/Admin/Emails/ClearPrimary")]

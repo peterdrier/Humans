@@ -187,6 +187,8 @@ internal sealed class PleoMirrorSync(
 
     private static PleoEntry ToEntry(PleoEntryWire w, string raw)
     {
+        RequireCompleteMoney(w.TransactionValue, "transactionValue", w.Id!);
+        RequireCompleteMoney(w.TotalBillValue, "totalBillValue", w.Id!);
         var currency = w.TransactionValue?.Currency ?? "";
         var minors = w.TransactionValue?.Minors ?? 0;
         return new PleoEntry
@@ -216,6 +218,12 @@ internal sealed class PleoMirrorSync(
             ReceiptCount = w.ReceiptIds?.Count ?? 0,
             Raw = raw,
         };
+    }
+
+    private static void RequireCompleteMoney(PleoMoneyWire? money, string field, string entryId)
+    {
+        if (money is not null && (string.IsNullOrWhiteSpace(money.Currency) || money.Minors is null))
+            throw new PleoPermanentException($"Pleo entry {entryId}: {field} requires currency and minors.");
     }
 
     private static Instant? ToInstant(DateTimeOffset? at) => at is { } v ? Instant.FromDateTimeOffset(v) : null;
