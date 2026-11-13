@@ -69,7 +69,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
 | TermExpiresAt | LocalDate? | Term expiry (Dec 31 of the current cycle's odd year), set on approval |
-| BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made. Always set on finalize: `ApproveAsync`/`RejectAsync` default a missing date to today (UTC); the finalize form still asks for it. |
+| BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made. Always set on finalize: `ApproveAsync`/`RejectAsync` require an explicit `LocalDate`; the finalize form refuses missing or invalid dates. |
 | DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion) |
 | RenewalReminderSentAt | Instant? | When renewal reminder was last sent |
 
@@ -299,7 +299,7 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 - Membership snapshots and required-team reads resolve merged IDs to the survivor before querying
   memberships or consent requirements. Snapshot memoization uses that same resolved identity. A snapshot reuses its initial `UserInfo` for status and its canonical ID for required-team reads, rather than resolving the account again in nested public methods; direct status and required-team callers still resolve their own identity. The snapshot's status and `IsVolunteerMember` flag share one Volunteers membership read. Status and missing-consent counts also share the Volunteers requirements and signed-version set; only overdue Volunteers requirements can make the status Inactive. Standalone status calculation still skips membership and consent reads when the account state already determines its status.
 
-Approval and rejection share the same ordered eligibility check (application exists, is Submitted, and has at least one Board vote) before either decision mutates it. They also share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
+Approval and rejection share the same ordered eligibility check (application exists, is Submitted, and has at least one Board vote) before either decision mutates it. They also share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Both service decision methods require an explicit Board meeting date rather than inferring one from the processing date. Approval alone changes the membership tier and syncs the system team.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 

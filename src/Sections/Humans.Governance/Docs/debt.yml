@@ -14,10 +14,6 @@ inbox:
     what: "Application.ReviewNotes is written with the same text as DecisionNote on every approve and reject (Domain/Application.cs Approve/Reject beside ApplicationDecisionService), and the member and admin detail pages show ReviewNotes while the Board voting page shows DecisionNote. One fact in two columns; dropping one is a schema change for Peter. Found by section-doctor."
     review: panel
   - added: 2026-11-12
-    id: GOV-14
-    what: "A finalized decision must carry its Board meeting date, but only GovernanceBoardVotingController.Finalize refuses a missing one; ApproveAsync and RejectAsync default it to today. The rule belongs in the service. Found by section-doctor (controller intent)."
-    review: light
-  - added: 2026-11-12
     id: GOV-15
     what: "MemberTermStatusViewComponent works out the member's term state and its own 90-day 'expires soon' window, while TermRenewalReminderJob keeps a separate ReminderDaysBeforeExpiry of 90. The dashboard and the reminder email must agree and nothing ties them. Found by section-doctor (controller intent)."
     review: panel

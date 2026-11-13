@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 18
-inbox:
-  - added: 2026-11-10
-    id: TEAMS-17
-    what: "TeamController's Roster, MyTeams, Join GET and Join POST decide hidden-team and private-role visibility in the controller (IsTeamsAdminBoardOrAdmin checks) instead of the page service that builds those reads. Found by section-doctor's controller-intent thread."
-    review: panel
+inbox: []
