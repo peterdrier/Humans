@@ -33,5 +33,6 @@ internal sealed class VolunteerHistoryEntryConfiguration : IEntityTypeConfigurat
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(v => v.ProfileId);
+        builder.HasIndex(v => v.UserId);
     }
 }

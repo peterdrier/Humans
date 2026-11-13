@@ -26,5 +26,6 @@ internal sealed class ProfileLanguageConfiguration : IEntityTypeConfiguration<Pr
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(pl => pl.ProfileId);
+        builder.HasIndex(pl => pl.UserId);
     }
 }
