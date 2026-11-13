@@ -85,8 +85,9 @@ internal sealed class ExpensePageBuilder(
             Reports = reports,
             BookingLabels = await ResolveBookingLabelsAsync(reports, ct),
             Grants = await ResolveGrantsAsync(reports, ct),
-            FailedHoldedPushReportIds = (await service.GetFailedHoldedPushReportIdsAsync(
-                isFinanceAdmin, ct)).ToHashSet(),
+            FailedHoldedPushReportIds = isFinanceAdmin
+                ? (await service.GetFailedHoldedPushReportIdsAsync(ct)).ToHashSet()
+                : [],
             IsFinanceAdmin = isFinanceAdmin,
         };
     }

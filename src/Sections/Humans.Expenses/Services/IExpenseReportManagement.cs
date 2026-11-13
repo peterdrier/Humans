@@ -135,10 +135,9 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Queue-wide, not scoped to the actor. Empty unless <paramref name="actorIsFinanceAdmin"/>: only finance admins can
-    /// act on a written-off push.
+    /// Queue-wide, not scoped to the actor. The caller must authorize Finance access before loading these IDs.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(bool actorIsFinanceAdmin, CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default);
 }
 
 internal sealed record ExpenseMutationResult(bool Succeeded, ExpenseError? Error)

@@ -383,6 +383,36 @@ public sealed class ExpensesControllerPreapprovalTests
             "Expenses_Flash_CreateFailed Expenses_Validation_PreapprovalNotClaimable:");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Review_LoadsQueueWideHoldedFailuresOnlyForFinance(bool financeAccess)
+    {
+        using var request = new CancellationTokenSource();
+        var failedId = Guid.NewGuid();
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
+            .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _reports.GetReviewQueueAsync(_actorId, financeAccess, Arg.Any<CancellationToken>()).Returns([]);
+        _reports.GetFailedHoldedPushReportIdsAsync(Arg.Any<CancellationToken>()).Returns([failedId]);
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+
+        var model = (await controller.Review()).Should().BeOfType<ViewResult>()
+            .Which.Model.Should().BeOfType<ExpenseReviewViewModel>().Which;
+
+        model.IsFinanceAdmin.Should().Be(financeAccess);
+        if (financeAccess)
+        {
+            model.FailedHoldedPushReportIds.Should().BeEquivalentTo([failedId]);
+            await _reports.Received(1).GetFailedHoldedPushReportIdsAsync(request.Token);
+        }
+        else
+        {
+            model.FailedHoldedPushReportIds.Should().BeEmpty();
+            await _reports.DidNotReceiveWithAnyArgs().GetFailedHoldedPushReportIdsAsync(default);
+        }
+    }
+
     [HumansFact]
     public async Task Review_NamesEachPreapprovedReportsGrant_AndFlagsARevokedOne()
     {

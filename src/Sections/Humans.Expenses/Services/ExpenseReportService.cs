@@ -306,8 +306,8 @@ internal sealed class ExpenseReportService(
         RunMutationAsync(ct, () => Review.FinanceRejectWithResultAsync(reportId, actorUserId, reason, ct),
             "Error finance-rejecting expense report {ReportId}", reportId);
 
-    public async Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(bool actorIsFinanceAdmin, CancellationToken ct = default)
-        => actorIsFinanceAdmin ? await repo.GetFailedOutboxReportIdsAsync(ct) : [];
+    public Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default)
+        => repo.GetFailedOutboxReportIdsAsync(ct);
 
     public Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
         Guid reportId, Guid actorUserId, CancellationToken ct = default) =>
