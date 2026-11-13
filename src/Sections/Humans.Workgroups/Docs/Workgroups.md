@@ -463,6 +463,10 @@ One Hangfire job (`workgroups-rhythm`, 06:00 daily), calling
 `IWorkgroupService.RunDailyRhythmAsync`. **It never registers, closes, or refuses
 anything — every action here is a notice, a flag, or a record; a human still has to act.**
 
+Job shutdown cancellation during recipient lookup or notice delivery propagates even for
+the final group, with a Warning and no exception details. Other group failures remain
+isolated so the pass can continue.
+
 | Condition | Action |
 |-----------|--------|
 | Active, no Update, meeting notes or meeting (a series counts its stored first occurrence only) in 30 days | Notify coordinators, in-app, once per 30-day window |
