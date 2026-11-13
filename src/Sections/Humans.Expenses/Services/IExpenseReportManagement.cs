@@ -98,16 +98,26 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         CancellationToken ct = default, string? auditReviewerLabel = null);
 
     /// <summary>
-    /// The line stays but leaves <c>Total</c> and <c>Payable</c> and is never pushed. The cap is untouched. Open to
-    /// whoever holds Endorse or Approve while the report awaits them; proof rows are not declinable.
+    /// First-review command for Submitted reports. The caller authorizes the reviewer. Declined lines leave
+    /// Total and Payable but stay on the report; proof rows cannot be declined and the cap is untouched.
     /// </summary>
     Task<ExpenseMutationResult> DeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
+        Guid reportId, Guid actorUserId, Guid lineId, string reason,
         CancellationToken ct = default);
 
-    /// <summary>Undoes a decline under the same conditions that allow one.</summary>
+    /// <summary>The Finance-review command accepts Submitted or CoordinatorEndorsed reports after caller authorization.</summary>
+    Task<ExpenseMutationResult> DeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, string reason,
+        CancellationToken ct = default);
+
+    /// <summary>Undoes a first-review decline on a Submitted report after caller authorization.</summary>
     Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default);
+
+    /// <summary>The Finance-review command accepts Submitted or CoordinatorEndorsed reports after caller authorization.</summary>
+    Task<ExpenseMutationResult> UndoDeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> overrides the coordinator's cap; a non-null

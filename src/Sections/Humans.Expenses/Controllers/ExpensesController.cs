@@ -668,8 +668,9 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.DeclineLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId, input.Reason);
+        var result = await IsFinanceAdminAsync()
+            ? await service.DeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId, input.Reason)
+            : await service.DeclineLineWithResultAsync(id, user.Id, lineId, input.Reason);
         SetMutationResult(result, "Line declined.", "Could not decline the line.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -682,8 +683,9 @@ internal sealed class ExpensesController(
         var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.DeclineLine, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.UndoDeclineLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.UndoDeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId)
+            : await service.UndoDeclineLineWithResultAsync(id, user.Id, lineId);
         SetMutationResult(result, "Decline undone.", "Could not undo the decline.");
 
         return RedirectToAction(nameof(Detail), new { id });

@@ -384,6 +384,57 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(false, false, true)]
+    [Xunit.InlineData(true, false, true)]
+    [Xunit.InlineData(false, true, true)]
+    [Xunit.InlineData(true, true, true)]
+    [Xunit.InlineData(false, false, false)]
+    [Xunit.InlineData(true, false, false)]
+    public async Task LineReview_AuthorizesBeforeDispatch_AndSelectsTheDecisionWindow(
+        bool undo, bool financeAccess, bool permitted)
+    {
+        var report = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid() };
+        var lineId = Guid.NewGuid();
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
+            .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _reports.DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        var controller = Build();
+
+        var result = undo
+            ? await controller.UndoDeclineLine(report.Id, lineId)
+            : await controller.DeclineLine(report.Id, lineId, new DeclineLineInputModel { Reason = "Missing invoice" });
+
+        var decisions = _reports.ReceivedCalls().Where(call =>
+            call.GetMethodInfo().Name.Contains("DeclineLine", StringComparison.Ordinal)).ToList();
+        if (!permitted)
+        {
+            result.Should().BeOfType<ForbidResult>();
+            decisions.Should().BeEmpty();
+            return;
+        }
+        result.Should().BeOfType<RedirectToActionResult>();
+        decisions.Should().ContainSingle();
+        if (undo && financeAccess)
+            await _reports.Received(1).UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
+        else if (undo)
+            await _reports.Received(1).UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
+        else if (financeAccess)
+            await _reports.Received(1).DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
+        else
+            await _reports.Received(1).DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("Endorse", false, true)]
     [Xunit.InlineData("Reject", false, true)]
     [Xunit.InlineData("Endorse", true, true)]

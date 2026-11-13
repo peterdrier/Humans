@@ -283,15 +283,27 @@ internal sealed class ExpenseReportService(
             "Error coordinator-rejecting expense report {ReportId}", reportId);
 
     public Task<ExpenseMutationResult> DeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
+        Guid reportId, Guid actorUserId, Guid lineId, string reason,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Review.DeclineLineWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, reason, ct),
+        RunMutationAsync(ct, () => Review.DeclineLineWithResultAsync(reportId, actorUserId, lineId, reason, ct),
+            "Error declining line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> DeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, string reason,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, () => Review.DeclineLineForFinanceReviewWithResultAsync(reportId, actorUserId, lineId, reason, ct),
             "Error declining line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Review.UndoDeclineLineWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct),
+        RunMutationAsync(ct, () => Review.UndoDeclineLineWithResultAsync(reportId, actorUserId, lineId, ct),
+            "Error undoing decline of line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> UndoDeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, () => Review.UndoDeclineLineForFinanceReviewWithResultAsync(reportId, actorUserId, lineId, ct),
             "Error undoing decline of line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> ApproveWithResultAsync(

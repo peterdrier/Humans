@@ -3509,7 +3509,6 @@ public sealed partial class ExpenseReportServiceTests
     [HumansTheory]
     [InlineData("Draft")]
     [InlineData("PinnedYear")]
-    [InlineData("Reviewer")]
     public async Task BudgetValidation_StopsAtTheReadWhenCancelled(string boundary)
     {
         var (year, category) = SetupActiveYear();
@@ -3543,7 +3542,7 @@ public sealed partial class ExpenseReportServiceTests
             "Draft" => () => _sut.CreateDraftAsync(actor, actor, CategoryAccountNumber, null, ct: request.Token),
             "PinnedYear" => () => _sut.UpdateDraftWithResultAsync(reportId, actor, true,
                 CategoryAccountNumber, "changed", ct: request.Token),
-            _ => () => _sut.DeclineLineWithResultAsync(reportId, actor, false, Guid.NewGuid(), "Missing receipt", request.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(boundary)),
         };
         await mutate.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
@@ -3830,14 +3829,15 @@ public sealed partial class ExpenseReportServiceTests
         return (reportId, category.Id, category.TeamId!.Value, [.. lineIds]);
     }
 
-    [HumansFact]
-    public async Task DeclineLine_DropsTheLineFromTotalAndPayable_KeepsItOnTheReport_AndAudits()
+    [HumansTheory]
+    [InlineData(ExpenseReportStatus.Submitted)]
+    [InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
+    public async Task DeclineLine_DropsTheLineFromTotalAndPayable_KeepsItOnTheReport_AndAudits(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
-            ExpenseReportStatus.Submitted, Guid.NewGuid(), null, 0, 100m, 50m);
+            status, Guid.NewGuid(), null, 0, 100m, 50m);
 
-        var result = await _sut.DeclineLineWithResultAsync(
-            reportId, DeclineFinanceAdmin, true, lines[1], "  Alcohol is not reimbursable  ", TestContext.Current.CancellationToken);
+        var result = await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[1], "  Alcohol is not reimbursable  ", TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         var loaded = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!;
@@ -3862,8 +3862,7 @@ public sealed partial class ExpenseReportServiceTests
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Submitted, Guid.NewGuid(), 400m, 0, 450m, 50m);
 
-        (await _sut.DeclineLineWithResultAsync(
-            reportId, DeclineFinanceAdmin, true, lines[1], "Duplicate", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[1], "Duplicate", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         var loaded = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!;
         loaded.Total.Should().Be(450m);
@@ -3877,8 +3876,7 @@ public sealed partial class ExpenseReportServiceTests
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
             ExpenseReportStatus.Submitted, Guid.NewGuid(), 400m, 0, 300m, 100m, 50m);
 
-        (await _sut.DeclineLineWithResultAsync(
-            reportId, DeclineFinanceAdmin, true, lines[0], "Personal", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[0], "Personal", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         var loaded = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!;
         loaded.Total.Should().Be(150m);
@@ -3886,14 +3884,15 @@ public sealed partial class ExpenseReportServiceTests
         loaded.MaxAmount.Should().Be(400m);
     }
 
-    [HumansFact]
-    public async Task UndoDeclineLine_PutsTheLineBackInTotalAndPayable_AndAudits()
+    [HumansTheory]
+    [InlineData(ExpenseReportStatus.Submitted)]
+    [InlineData(ExpenseReportStatus.CoordinatorEndorsed)]
+    public async Task UndoDeclineLine_PutsTheLineBackInTotalAndPayable_AndAudits(ExpenseReportStatus status)
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(
-            ExpenseReportStatus.CoordinatorEndorsed, Guid.NewGuid(), null, 1, 50m, 100m);
+            status, Guid.NewGuid(), null, 1, 50m, 100m);
 
-        var result = await _sut.UndoDeclineLineWithResultAsync(
-            reportId, DeclineFinanceAdmin, true, lines[0], TestContext.Current.CancellationToken);
+        var result = await _sut.UndoDeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[0], TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         var loaded = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!;
@@ -3917,66 +3916,29 @@ public sealed partial class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted, Guid.NewGuid(), null, 0, 100m, 50m);
         SetupCoordinatorAuthz(categoryId, teamId, coordinator);
 
-        var result = await _sut.DeclineLineWithResultAsync(
-            reportId, coordinator, false, lines[1], "Not for this budget", TestContext.Current.CancellationToken);
+        var result = await _sut.DeclineLineWithResultAsync(reportId, coordinator, lines[1], "Not for this budget", TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Total.Should().Be(100m);
     }
 
-    [HumansFact]
-    public async Task DeclineLine_ByACoordinator_IsRefusedOnceTheReportIsEndorsed()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FirstReviewLineDecision_IsRefusedOnceTheReportIsEndorsed(bool undo)
     {
         var coordinator = Guid.NewGuid();
         var (reportId, categoryId, teamId, lines) = await SeedDeclineReportAsync(
-            ExpenseReportStatus.CoordinatorEndorsed, Guid.NewGuid(), null, 0, 100m, 50m);
+            ExpenseReportStatus.CoordinatorEndorsed, Guid.NewGuid(), null, undo ? 1 : 0, 100m, 50m);
         SetupCoordinatorAuthz(categoryId, teamId, coordinator);
 
-        var result = await _sut.DeclineLineWithResultAsync(
-            reportId, coordinator, false, lines[1], "Too late", TestContext.Current.CancellationToken);
+        var before = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Total;
+        var result = undo
+            ? await _sut.UndoDeclineLineWithResultAsync(reportId, coordinator, lines[0], TestContext.Current.CancellationToken)
+            : await _sut.DeclineLineWithResultAsync(reportId, coordinator, lines[1], "Too late", TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Total.Should().Be(150m);
-    }
-
-    [HumansFact]
-    public async Task DeclineLine_ByTheSubmitterOrARandomMember_IsRefused()
-    {
-        var submitter = Guid.NewGuid();
-        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
-            ExpenseReportStatus.Submitted, submitter, null, 0, 100m, 50m);
-        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
-        foreach (var actor in new[] { submitter, Guid.NewGuid() })
-        {
-            var result = await _sut.DeclineLineWithResultAsync(
-                reportId, actor, false, lines[1], "Nope", TestContext.Current.CancellationToken);
-            result.Succeeded.Should().BeFalse();
-        }
-
-        var loaded = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!;
-        loaded.Total.Should().Be(150m);
-        loaded.Lines.Should().OnlyContain(l => !l.Declined);
-        await AuditLog.DidNotReceive().LogAsync(
-            ExpensesAuditActions.ExpenseLineDeclined, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>());
-    }
-
-    [HumansFact]
-    public async Task UndoDeclineLine_ByTheSubmitter_IsRefused()
-    {
-        var submitter = Guid.NewGuid();
-        var (reportId, _, _, lines) = await SeedDeclineReportAsync(
-            ExpenseReportStatus.Submitted, submitter, null, 1, 50m, 100m);
-        _teamService.IsUserCoordinatorOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
-        var result = await _sut.UndoDeclineLineWithResultAsync(
-            reportId, submitter, false, lines[0], TestContext.Current.CancellationToken);
-
-        result.Succeeded.Should().BeFalse();
-        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Total.Should().Be(100m);
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Total.Should().Be(before);
     }
 
     [HumansTheory]
@@ -3987,8 +3949,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         var (reportId, _, _, lines) = await SeedDeclineReportAsync(status, Guid.NewGuid(), null, 0, 100m);
 
-        var result = await _sut.DeclineLineWithResultAsync(
-            reportId, DeclineFinanceAdmin, true, lines[0], "Too late", TestContext.Current.CancellationToken);
+        var result = await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[0], "Too late", TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Total.Should().Be(100m);
@@ -4015,14 +3976,14 @@ public sealed partial class ExpenseReportServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lines[1], "   ", TestContext.Current.CancellationToken))
+        (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[1], "   ", TestContext.Current.CancellationToken))
             .Succeeded.Should().BeFalse();
-        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, proofId, "Proof", TestContext.Current.CancellationToken))
+        (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, proofId, "Proof", TestContext.Current.CancellationToken))
             .Succeeded.Should().BeFalse();
 
-        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lines[1], "First", TestContext.Current.CancellationToken))
+        (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[1], "First", TestContext.Current.CancellationToken))
             .Succeeded.Should().BeTrue();
-        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lines[1], "Second", TestContext.Current.CancellationToken))
+        (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lines[1], "Second", TestContext.Current.CancellationToken))
             .Succeeded.Should().BeFalse();
 
         var loaded = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!;
@@ -4171,7 +4132,7 @@ public sealed partial class ExpenseReportServiceTests
                 reportId, userId, false, lineId, "receipt.pdf", "application/pdf", stream, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         }
         (await _sut.SubmitWithResultAsync(reportId, userId, false, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
-        (await _sut.DeclineLineWithResultAsync(reportId, DeclineFinanceAdmin, true, lineIds[1], "Personal", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lineIds[1], "Personal", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         (await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(100, TestContext.Current.CancellationToken);
