@@ -53,7 +53,6 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
-    private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IGovernanceService _governanceService =
         Substitute.For<IGovernanceService>();
@@ -89,7 +88,6 @@ public class ProfileControllerEditTests
             _userService,
             userManager,
             _profileEditorService,
-            _contactFields,
             _onboardingService,
             _configuration,
             new ConfigurationRegistry(),
@@ -120,7 +118,7 @@ public class ProfileControllerEditTests
         // SaveProfileAsync is invoked unconditionally by the happy path.
         _profileEditorService.SaveProfileAsync(
                 Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>())
             .Returns(new ProfileEditResult(true, _profileId));
         _userService.SaveProfileLanguagesAsync(
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
@@ -200,16 +198,16 @@ public class ProfileControllerEditTests
             result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
             _controller.ModelState[$"EditableContactFields[0].{field}"]!.Errors.Should().ContainSingle();
             _profileEditorService.ReceivedCalls().Should().BeEmpty();
-            _contactFields.ReceivedCalls().Should().BeEmpty();
         }
         else
         {
             result.Should().BeOfType<RedirectToActionResult>();
             _controller.ModelState.IsValid.Should().BeTrue();
             var expectedVisibility = Enum.Parse<ContactFieldVisibility>(visibility);
-            await _contactFields.Received(1).SaveContactFieldsAsync(_profileId,
+            await _profileEditorService.Received(1).SaveProfileAsync(_userId, Arg.Any<ProfileSaveRequest>(), CancellationToken.None,
                 Arg.Is<IReadOnlyList<ContactFieldEditDto>>(rows => rows.Count == 1 && rows[0].Id == contactId
-                    && rows[0].FieldType == ContactFieldType.Signal && rows[0].Visibility == expectedVisibility), CancellationToken.None);
+                    && rows[0].FieldType == ContactFieldType.Signal && rows[0].Visibility == expectedVisibility),
+                Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<IReadOnlyCollection<Guid>>());
         }
     }
 
@@ -253,13 +251,13 @@ public class ProfileControllerEditTests
             result.Should().BeOfType<ViewResult>();
             _controller.ModelState["RemovedLegacyContactFieldIds"]!.Errors.Should().ContainSingle();
             _profileEditorService.ReceivedCalls().Should().BeEmpty();
-            _contactFields.ReceivedCalls().Should().BeEmpty();
         }
         else
         {
             result.Should().BeOfType<RedirectToActionResult>();
-            await _contactFields.Received(1).SaveContactFieldsAsync(_profileId,
-                Arg.Is<IReadOnlyList<ContactFieldEditDto>>(rows => rows.Count == 0), CancellationToken.None,
+            await _profileEditorService.Received(1).SaveProfileAsync(_userId, Arg.Any<ProfileSaveRequest>(), CancellationToken.None,
+                Arg.Is<IReadOnlyList<ContactFieldEditDto>>(rows => rows.Count == 0),
+                Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(),
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(legacyId)));
         }
     }
@@ -288,7 +286,6 @@ public class ProfileControllerEditTests
         model.ContactFields.Should().ContainSingle().Which.Id.Should().Be(legacy.Id);
         model.ContactFields[0].Value.Should().Be("legacy@example.org");
         _profileEditorService.ReceivedCalls().Should().BeEmpty();
-        _contactFields.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -446,7 +443,7 @@ public class ProfileControllerEditTests
         var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner", ProfilePictureContentType = hasPicture ? "image/png" : null }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
         if (serviceRefusal)
-            _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+            _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>())
                 .Returns(new ProfileEditResult(false, ErrorKey: "Users_Profile_BurnerCVRequired"));
         else
             _controller.ModelState.AddModelError(nameof(ProfileViewModel.BurnerName), "Invalid");
@@ -478,9 +475,27 @@ public class ProfileControllerEditTests
         // CV rides on the save request — SaveProfileAsync owns persisting it.
         await _profileEditorService.Received(1).SaveProfileAsync(
             _userId, Arg.Is<ProfileSaveRequest>(r => r.VolunteerHistory != null),
-            Arg.Any<CancellationToken>());
-        await _userService.Received(1).SaveProfileLanguagesAsync(
-            _profileId, Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>());
+
+    }
+
+    [HumansTheory]
+    [InlineData("EmergencyContactPhone", "Validation_PhoneE164", "Users_Profile_EmergencyContactPhone", "EmergencyContactPhone")]
+    [InlineData("ContactFields[0].Value", "Validation_PhoneE164", "Users_Profile_Phone", "EditableContactFields[0].Value")]
+    [InlineData("ProfilePictureData", "Users_Profile_PictureInvalidFormat", null, "ProfilePictureUpload")]
+    public async Task Edit_ServiceValidation_MapsRefusalToLocalizedFormField(
+        string errorField, string errorKey, string? argumentKey, string expectedField)
+    {
+        _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>(),
+                Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(),
+                Arg.Any<IReadOnlyCollection<Guid>?>())
+            .Returns(new ProfileEditResult(false, ErrorKey: errorKey, ErrorField: errorField, ErrorArgumentKey: argumentKey));
+
+        var result = await _controller.Edit(MakeValidModel());
+
+        result.Should().BeOfType<ViewResult>();
+        _controller.ModelState[expectedField]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(errorKey);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
     }
 
     [HumansFact]
@@ -497,7 +512,7 @@ public class ProfileControllerEditTests
     public async Task Edit_Post_ServiceRefusal_UsesExistingLocalizedFeedbackAndStopsAfterSaveEffects()
     {
         _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
-        _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
+        _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>())
             .Returns(new ProfileEditResult(false, ErrorKey: "Users_Profile_BurnerCVRequired"));
         var model = MakeValidModel();
 

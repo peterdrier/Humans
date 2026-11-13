@@ -15,10 +15,11 @@ public interface IContactFieldService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Validates phone prefixes before any write, returning a structured refusal on invalid input.
     /// Upserts and deletes the current fields. Historical email fields stay unless listed in
     /// <paramref name="removedLegacyContactFieldIds"/>.
     /// </summary>
-    Task SaveContactFieldsAsync(
+    Task<ProfileEditResult> SaveContactFieldsAsync(
         Guid profileId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,

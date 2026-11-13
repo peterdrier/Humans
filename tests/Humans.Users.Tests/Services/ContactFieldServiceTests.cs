@@ -47,6 +47,30 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     }
 
     [HumansTheory]
+    [InlineData(ContactFieldType.Phone)]
+    [InlineData(ContactFieldType.WhatsApp)]
+    public async Task SaveContactFields_InvalidPhone_RefusesWithoutReplacingExistingFields(ContactFieldType type)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var profile = await CreateProfileAsync(Guid.NewGuid());
+        var existing = new ContactField
+        {
+            Id = Guid.NewGuid(), ProfileId = profile.Id, FieldType = ContactFieldType.Phone,
+            Value = "+34 612345678", Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = Clock.GetCurrentInstant(), UpdatedAt = Clock.GetCurrentInstant()
+        };
+        Db.ContactFields.Add(existing);
+        await Db.SaveChangesAsync(ct);
+
+        var result = await _service.SaveContactFieldsAsync(profile.Id,
+            [new(existing.Id, type, null, "612345678", ContactFieldVisibility.AllActiveProfiles, 0)], ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Validation_PhoneE164");
+        (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Value.Should().Be("+34 612345678");
+    }
+
+    [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task SaveContactFields_PostCommitFailure_RefreshesCachedVisibility(bool lostAcknowledgement)
@@ -59,7 +83,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
             FieldType = ContactFieldType.Phone,
-            Value = "old-number",
+            Value = "+34 611111111",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
@@ -95,7 +119,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
                 Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
         var save = () => service.SaveContactFieldsAsync(profile.Id,
-            [new(field.Id, field.FieldType, null, "new-number", ContactFieldVisibility.BoardOnly, 0)], cancellation.Token);
+            [new(field.Id, field.FieldType, null, "+34 622222222", ContactFieldVisibility.BoardOnly, 0)], cancellation.Token);
 
         if (lostAcknowledgement)
             (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
@@ -105,7 +129,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         cancellation.IsCancellationRequested.Should().BeTrue();
         (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
         var cached = (await cache.GetUserInfoAsync(userId, ct))!.Profile!.ContactFields.Single();
-        cached.Value.Should().Be("new-number");
+        cached.Value.Should().Be("+34 622222222");
         cached.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
     }
 
@@ -610,17 +634,17 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(ct);
         var fields = new List<ContactFieldEditDto>
         {
-            new(phone.Id, ContactFieldType.Phone, null, "updated-number", ContactFieldVisibility.MyTeams, 0)
+            new(phone.Id, ContactFieldType.Phone, null, "+34 698765432", ContactFieldVisibility.MyTeams, 0)
         };
         if (staleEditor)
-            fields.Add(new(legacy.Id, ContactFieldType.Phone, null, "changed", ContactFieldVisibility.AllActiveProfiles, 1));
+            fields.Add(new(legacy.Id, ContactFieldType.Phone, null, "+34 612345678", ContactFieldVisibility.AllActiveProfiles, 1));
 
         await _service.SaveContactFieldsAsync(profile.Id, fields, ct,
             [removeOwn ? legacy.Id : foreign.Id, phone.Id]);
 
         var rows = await Db.ContactFields.AsNoTracking().ToListAsync(ct);
         rows.Single(cf => cf.Id == foreign.Id).Value.Should().Be("other@example.org");
-        rows.Single(cf => cf.Id == phone.Id).Value.Should().Be("updated-number");
+        rows.Single(cf => cf.Id == phone.Id).Value.Should().Be("+34 698765432");
         if (removeOwn) rows.Should().NotContain(cf => cf.Id == legacy.Id);
         else
         {

@@ -4,10 +4,6 @@ version: 1
 next_id: 30
 inbox:
   - added: 2026-11-06
-    id: USERS-26
-    what: "ProfileController.Edit POST sequences SaveContactFieldsAsync and SaveProfileLanguagesAsync after SaveProfileAsync, and validates phone numbers (E.164) and picture size/type in the controller; every write surface must share those rules, so they belong in IProfileEditorService / IContactFieldService. Found by section-doctor controller-intent read."
-    review: panel
-  - added: 2026-11-06
     id: USERS-27
     what: "ProfileCardViewComponent computes who may see legal names (Board member) and which contact access level applies (self/admin view = BoardOnly) instead of reading both from IContactFieldService; that is GDPR visibility, a fact, worked out in a view component. Its CanSendMessage predicate is likewise computed beside ICommunicationPreferenceService. Found by section-doctor controller-intent read."
     review: panel

@@ -1,4 +1,9 @@
 using AwesomeAssertions;
+using ImageMagick;
+using Humans.Auth.Contracts;
+using Humans.Teams.Contracts;
+using Microsoft.Extensions.Localization;
+using Humans.Users.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Humans.Users.Data;
@@ -21,6 +26,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 {
     private readonly ProfileService _service;
     private readonly ProfileEditorService _editor;
+    private readonly IContactFieldService _contactFields = Substitute.For<IContactFieldService>();
     private readonly IUserRepository _userRepository;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly UserService _storageUserService;
@@ -55,7 +61,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             _userRepository,
             _pictureStorage);
         _editor = new ProfileEditorService(
-            _userService,
+            _userService, _contactFields,
             NullLogger<ProfileEditorService>.Instance);
 
         _userService.StubGetUserInfosFromContext(Db);
@@ -72,6 +78,90 @@ public sealed class ProfileServiceTests : ServiceTestHarness
                 call.ArgAt<byte[]?>(2),
                 call.ArgAt<CancellationToken>(3),
                 call.ArgAt<IReadOnlyList<CVEntry>?>(4)));
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_WithContactsAndLanguages_PersistsCompleteEditBeforeReturning()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var contacts = new ContactFieldService(_userRepository, _userService,
+            Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
+            Substitute.For<IUserInfoSliceRefresher>(), Clock, NullLogger<ContactFieldService>.Instance,
+            Substitute.For<IStringLocalizer<UsersResource>>());
+        var editor = new ProfileEditorService(_userService, contacts, NullLogger<ProfileEditorService>.Instance);
+        _userService.SaveProfileLanguagesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
+            .Returns(call => _storageUserService.SaveProfileLanguagesAsync(call.Arg<Guid>(),
+                call.Arg<IReadOnlyList<ProfileLanguageInfo>>(), call.Arg<CancellationToken>()));
+        var fields = new List<ContactFieldEditDto>
+        {
+            new(null, ContactFieldType.Phone, null, "+34 612345678", ContactFieldVisibility.BoardOnly, 0)
+        };
+        var languages = new List<ProfileLanguageInfo> { new(Guid.NewGuid(), "es", LanguageProficiency.Native) };
+
+        var result = await editor.SaveProfileAsync(userId, MakeRequest(), ct, fields, languages);
+
+        result.Succeeded.Should().BeTrue();
+        (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Value.Should().Be("+34 612345678");
+        (await Db.ProfileLanguages.AsNoTracking().SingleAsync(ct)).LanguageCode.Should().Be("es");
+        (await Db.Profiles.AsNoTracking().SingleAsync(ct)).Id.Should().Be(result.ProfileId!.Value);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task SaveProfileAsync_InvalidPhone_RefusesBeforeCreatingProfile(bool emergency)
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var request = MakeRequest() with { EmergencyContactPhone = emergency ? "123456" : null };
+        IReadOnlyList<ContactFieldEditDto>? fields = emergency ? null :
+            [new(null, ContactFieldType.WhatsApp, null, "123456", ContactFieldVisibility.BoardOnly, 0)];
+
+        var result = await _editor.SaveProfileAsync(userId, request, Xunit.TestContext.Current.CancellationToken, fields);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Validation_PhoneE164");
+        result.ErrorField.Should().Be(emergency ? "EmergencyContactPhone" : "ContactFields[0].Value");
+        (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("size", "Users_Profile_PictureTooLarge")]
+    [Xunit.InlineData("type", "Users_Profile_PictureInvalidFormat")]
+    [Xunit.InlineData("bytes", "Users_Profile_PictureInvalidFormat")]
+    public async Task SaveProfileAsync_InvalidPicture_RefusesBeforeAnyProfileWrite(string kind, string expectedKey)
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var data = kind is "size" ? new byte[20 * 1024 * 1024 + 1] : kind is "bytes" ? new byte[] { 1, 2, 3 } : PictureBytes();
+        var request = MakeRequest(pictureData: data, pictureContentType: kind is "type" ? "text/plain" : "image/png");
+
+        var result = await _editor.SaveProfileAsync(userId, request, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be(expectedKey);
+        result.ErrorField.Should().Be(nameof(ProfileSaveRequest.ProfilePictureData));
+        (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        _fileStorage.Files.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SaveProfileAsync_UploadWithHeifExtensionFallback_IsProcessedToJpeg()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var request = MakeRequest(pictureData: PictureBytes(), pictureContentType: "application/octet-stream")
+            with { ProfilePictureFileName = "photo.HEIC" };
+
+        var result = await _editor.SaveProfileAsync(userId, request, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var profile = await Db.Profiles.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        profile.ProfilePictureContentType.Should().Be("image/jpeg");
+        using var stored = new MagickImage(_fileStorage.Files[profile.ProfilePictureStorageKey!]);
+        stored.Format.Should().Be(MagickFormat.Jpeg);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -182,7 +272,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var payload = new byte[] { 0x10, 0x20, 0x30 };
+        var payload = PictureBytes();
         var request = MakeRequest(pictureData: payload, pictureContentType: "image/jpeg");
 
         await _editor.SaveProfileAsync(userId, request, ct: Xunit.TestContext.Current.CancellationToken);
@@ -194,7 +284,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var key = profile.ProfilePictureStorageKey!;
         key.Should().StartWith($"uploads/profile-pictures/{profile.Id}-").And.EndWith(".jpg");
         _fileStorage.Files.Should().ContainKey(key);
-        _fileStorage.Files[key].Should().BeEquivalentTo(payload);
+        _fileStorage.Files[key].Should().BeEquivalentTo(ProfilePictureProcessor.ResizeProfilePicture(payload)!.Value.Data);
         _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
     }
 
@@ -206,7 +296,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Disk full"));
 
-        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(), pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType.Should().Be("image/png");
@@ -227,7 +317,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Disk full"));
 
-        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(), pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType.Should().BeNull();
@@ -242,7 +332,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _pictureStorage.SaveAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new OperationCanceledException());
 
-        var act = () => _editor.SaveProfileAsync(userId, MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+        var act = () => _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(), pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
@@ -258,12 +348,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _pictureStorage.DeleteAsync(PicKey(profileId, "image/png"), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("File locked"));
 
-        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
+        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(), pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
 
         var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
         picture.Should().NotBeNull();
         picture.Value.ContentType.Should().Be("image/jpeg");
-        picture.Value.Data.Should().Equal(4, 5, 6);
+        picture.Value.Data.Should().Equal(ProfilePictureProcessor.ResizeProfilePicture(PictureBytes())!.Value.Data);
         await _pictureStorage.Received(1).DeleteAsync(PicKey(profileId, "image/png"), CancellationToken.None);
     }
 
@@ -431,7 +521,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
 
-        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: [4, 5, 6], pictureContentType: "image/png"), ct: Xunit.TestContext.Current.CancellationToken);
+        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(), pictureContentType: "image/png"), ct: Xunit.TestContext.Current.CancellationToken);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         profile.ProfilePictureStorageKey.Should().NotBeNullOrEmpty()
@@ -439,10 +529,10 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
         _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(profile.ProfilePictureStorageKey);
         var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
-        picture!.Value.Data.Should().Equal(4, 5, 6);
+        picture!.Value.Data.Should().Equal(ProfilePictureProcessor.ResizeProfilePicture(PictureBytes())!.Value.Data);
 
         var firstVersionedKey = profile.ProfilePictureStorageKey!;
-        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: [7, 8, 9], pictureContentType: "image/png"), ct: Xunit.TestContext.Current.CancellationToken);
+        await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(MagickColors.Blue), pictureContentType: "image/png"), ct: Xunit.TestContext.Current.CancellationToken);
 
         var replaced = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         replaced.ProfilePictureStorageKey.Should().NotBe(firstVersionedKey);
@@ -808,7 +898,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         try
         {
             await historyReached.Task.WaitAsync(ct);
-            var secondEditor = new ProfileEditorService(_userService, NullLogger<ProfileEditorService>.Instance);
+            var secondEditor = new ProfileEditorService(_userService, _contactFields, NullLogger<ProfileEditorService>.Instance);
             var second = secondEditor.SaveProfileAsync(userId, MakeRequest() with
             {
                 NoPriorBurnExperience = false,
@@ -887,6 +977,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [1, 2, 3], Xunit.TestContext.Current.CancellationToken);
         }
         return profile.Id;
+    }
+
+    private static byte[] PictureBytes(IMagickColor<byte>? color = null)
+    {
+        using var image = new MagickImage(color ?? MagickColors.Red, 2, 2);
+        return image.ToByteArray(MagickFormat.Png);
     }
 
     private static ProfileSaveRequest MakeRequest(

@@ -26,7 +26,6 @@ internal sealed class ProfileController(
     IUserManagement userService,
     UserManager<User> userManager,
     IProfileEditorService profileEditorService,
-    IContactFieldService contactFieldService,
     IOnboardingIntake onboardingService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
@@ -38,23 +37,6 @@ internal sealed class ProfileController(
     MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
-
-    private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024;
-    private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/heic",
-        "image/heif",
-        "image/avif"
-    };
-    private static readonly Dictionary<string, string> HeifExtensionToContentType = new(StringComparer.OrdinalIgnoreCase)
-    {
-        [".heic"] = "image/heic",
-        [".heif"] = "image/heif",
-        [".avif"] = "image/avif"
-    };
 
     [HttpGet("")]
     [AllowBeforeActiveMembership]
@@ -148,21 +130,8 @@ internal sealed class ProfileController(
             return View(model);
         }
 
-        ValidateEditSimpleFieldGuards(model);
-        if (ModelState.ErrorCount > 0)
-        {
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
-
-        var pictureUpload = await TryReadProfilePictureUploadAsync(model);
-        if (!pictureUpload.Success)
-        {
-            ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-            return View(model);
-        }
-
-        var (profileId, saveResult) = await SaveEditedProfileOrNullAsync(model, user.Id, pictureUpload);
+        var pictureUpload = await ReadProfilePictureUploadAsync(model);
+        var saveResult = await SaveEditedProfileOrNullAsync(model, user.Id, pictureUpload);
         if (saveResult is not null)
             return saveResult;
 
@@ -170,46 +139,13 @@ internal sealed class ProfileController(
         // reports the save.
         await onboardingService.ProfileSavedAsync(user.Id);
 
-        await SaveEditedContactFieldsAsync(model, profileId);
-
-        var newLanguages = model.EditableLanguages
-            .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
-            .Select(l => new ProfileLanguageInfo(
-                Guid.NewGuid(),
-                l.LanguageCode.Trim(),
-                l.Proficiency))
-            .ToList();
-
-        await _userService.SaveProfileLanguagesAsync(profileId, newLanguages);
-
         SetSuccess(sharedLocalizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));
     }
 
-    // Localized and tied to form fields, so these stay beside the ModelState they fill.
-    private void ValidateEditSimpleFieldGuards(ProfileViewModel model)
-    {
-        var phoneTypes = new[] { ContactFieldType.Phone, ContactFieldType.WhatsApp };
-        for (var i = 0; i < model.EditableContactFields.Count; i++)
-        {
-            var cf = model.EditableContactFields[i];
-            if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith("+", StringComparison.Ordinal))
-            {
-                ModelState.AddModelError($"EditableContactFields[{i}].Value",
-                    sharedLocalizer["Validation_PhoneE164", localizer["Users_Profile_" + cf.FieldType].Value].Value);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith("+", StringComparison.Ordinal))
-        {
-            ModelState.AddModelError(nameof(model.EmergencyContactPhone),
-                sharedLocalizer["Validation_PhoneE164", localizer["Users_Profile_EmergencyContactPhone"].Value].Value);
-        }
-    }
-
     // CV: existing rows keep Id and CreatedAt; new rows post Guid.Empty and get a fresh Id.
     private static ProfileSaveRequest BuildProfileSaveRequest(
-        ProfileViewModel model, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
+        ProfileViewModel model, (byte[]? Data, string? ContentType, string? FileName) pictureUpload)
     {
         var cvEntries = model.EditableVolunteerHistory
             .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
@@ -243,32 +179,44 @@ internal sealed class ProfileController(
             ProfilePictureData: pictureUpload.Data,
             ProfilePictureContentType: pictureUpload.ContentType,
             RemoveProfilePicture: model.RemoveProfilePicture,
-            VolunteerHistory: cvEntries);
+            VolunteerHistory: cvEntries,
+            ProfilePictureFileName: pictureUpload.FileName);
     }
 
-    private async Task<(Guid ProfileId, IActionResult? EarlyReturn)> SaveEditedProfileOrNullAsync(
-        ProfileViewModel model, Guid userId, (bool Success, byte[]? Data, string? ContentType) pictureUpload)
+    private async Task<IActionResult?> SaveEditedProfileOrNullAsync(
+        ProfileViewModel model, Guid userId, (byte[]? Data, string? ContentType, string? FileName) pictureUpload)
     {
         var saveRequest = BuildProfileSaveRequest(model, pictureUpload);
 
+        var languages = model.EditableLanguages
+            .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
+            .Select(l => new ProfileLanguageInfo(Guid.NewGuid(), l.LanguageCode.Trim(), l.Proficiency))
+            .ToList();
         var result = await profileEditorService.SaveProfileAsync(
-            userId, saveRequest);
-        if (result.Succeeded) return (result.ProfileId!.Value, null);
+            userId, saveRequest, contactFields: BuildContactFields(model), languages: languages,
+            removedLegacyContactFieldIds: model.RemovedLegacyContactFieldIds);
+        if (result.Succeeded) return null;
         var errorKey = result.ErrorKey;
 
-        ModelState.AddModelError(
-            string.Equals(errorKey, ProfileEditorService.BurnerCvRequiredErrorKey, StringComparison.Ordinal) ? nameof(model.NoPriorBurnExperience) : string.Empty,
-            errorKey is not null ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value);
+        var field = result.ErrorField?.Replace("ContactFields[", "EditableContactFields[", StringComparison.Ordinal)
+            ?? (string.Equals(errorKey, ProfileEditorService.BurnerCvRequiredErrorKey, StringComparison.Ordinal)
+                ? nameof(model.NoPriorBurnExperience) : string.Empty);
+        if (string.Equals(field, nameof(ProfileSaveRequest.ProfilePictureData), StringComparison.Ordinal))
+            field = nameof(model.ProfilePictureUpload);
+        var message = result.ErrorArgumentKey is { } labelKey && errorKey is not null
+            ? sharedLocalizer[errorKey, localizer[labelKey].Value].Value
+            : errorKey is not null ? localizer[errorKey].Value : sharedLocalizer["Common_Error"].Value;
+        ModelState.AddModelError(field, message);
         model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
             && string.IsNullOrEmpty(model.LastName)
             && string.IsNullOrEmpty(model.EmergencyContactName);
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
-        return (Guid.Empty, View(model));
+        return View(model);
     }
 
-    private async Task SaveEditedContactFieldsAsync(ProfileViewModel model, Guid profileId)
+    private static IReadOnlyList<ContactFieldEditDto> BuildContactFields(ProfileViewModel model)
     {
-        var contactFieldDtos = model.EditableContactFields
+        return model.EditableContactFields
             .Where(cf => !string.IsNullOrWhiteSpace(cf.Value))
             .Select((cf, index) => new ContactFieldEditDto(
                 cf.Id,
@@ -279,56 +227,17 @@ internal sealed class ProfileController(
                 index
             ))
             .ToList();
-
-        await contactFieldService.SaveContactFieldsAsync(profileId, contactFieldDtos,
-            removedLegacyContactFieldIds: model.RemovedLegacyContactFieldIds.Count > 0 ? model.RemovedLegacyContactFieldIds : null);
     }
 
-    private async Task<(bool Success, byte[]? Data, string? ContentType)> TryReadProfilePictureUploadAsync(ProfileViewModel model)
+    private async Task<(byte[]? Data, string? ContentType, string? FileName)> ReadProfilePictureUploadAsync(ProfileViewModel model)
     {
         if (model.ProfilePictureUpload is not { Length: > 0 } upload)
-        {
-            return (true, null, null);
-        }
-
-        if (upload.Length > MaxProfilePictureUploadBytes)
-        {
-            ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                localizer["Users_Profile_PictureTooLarge"].Value);
-            return (false, null, null);
-        }
-
-        var uploadContentType = upload.ContentType;
-        if (!AllowedImageContentTypes.Contains(uploadContentType))
-        {
-            var ext = Path.GetExtension(upload.FileName);
-            if (!string.IsNullOrEmpty(ext) && HeifExtensionToContentType.TryGetValue(ext, out var mapped))
-            {
-                uploadContentType = mapped;
-            }
-        }
-
-        if (!AllowedImageContentTypes.Contains(uploadContentType))
-        {
-            ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                localizer["Users_Profile_PictureInvalidFormat"].Value);
-            return (false, null, null);
-        }
-
+            return (null, null, null);
         using var uploadStream = new MemoryStream();
         await upload.CopyToAsync(uploadStream, HttpContext.RequestAborted);
-        var result = ResizeProfilePicture(uploadStream.ToArray());
-        if (result is null)
-        {
-            ModelState.AddModelError(nameof(model.ProfilePictureUpload),
-                localizer["Users_Profile_PictureInvalidFormat"].Value);
-            return (false, null, null);
-        }
-
-        return (true, result.Value.Data, result.Value.ContentType);
+        return (uploadStream.ToArray(), upload.ContentType, upload.FileName);
     }
 
-    // GDPR Art. 9 data: owner-only here; anyone else goes through ProfileViewController.RevealMedical.
     [HttpGet("Me/Medical")]
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Medical(CancellationToken ct)
@@ -373,6 +282,5 @@ internal sealed class ProfileController(
         }
     }
 
-    private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData) =>
-        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, logger);
+
 }

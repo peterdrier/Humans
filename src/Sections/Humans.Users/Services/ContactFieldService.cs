@@ -65,12 +65,18 @@ internal sealed class ContactFieldService(
         )).ToList();
     }
 
-    public async Task SaveContactFieldsAsync(
+    public async Task<ProfileEditResult> SaveContactFieldsAsync(
         Guid profileId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null)
     {
+        if (ValidateContactFields(fields) is { } refusal)
+        {
+            logger.LogWarning("Contact field save refused for profile {ProfileId}: {ErrorKey}", profileId, refusal.ErrorKey);
+            return refusal;
+        }
+
         var now = clock.GetCurrentInstant();
 
         // Detached: mutations go back explicitly through BatchSaveAsync.
@@ -139,6 +145,23 @@ internal sealed class ContactFieldService(
                 }
             }
         }
+        return new(true, profileId);
+    }
+
+    internal static bool IsValidPhone(string? phone) =>
+        string.IsNullOrWhiteSpace(phone) || phone.TrimStart().StartsWith("+", StringComparison.Ordinal);
+
+    internal static ProfileEditResult? ValidateContactFields(IReadOnlyList<ContactFieldEditDto>? fields)
+    {
+        if (fields is null) return null;
+        for (var i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            if (field.FieldType is ContactFieldType.Phone or ContactFieldType.WhatsApp && !IsValidPhone(field.Value))
+                return new(false, ErrorKey: "Validation_PhoneE164", ErrorField: $"ContactFields[{i}].Value",
+                    ErrorArgumentKey: "Users_Profile_" + field.FieldType);
+        }
+        return null;
     }
 
     public async Task<ContactFieldVisibility> GetViewerAccessLevelAsync(
