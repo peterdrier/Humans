@@ -130,7 +130,7 @@ The entity carries `TargetUser`, `SourceUser`, and `ResolvedByUser` navigation p
 - `user_roles` (was `AspNetUserRoles`) — same rationale; not used by the runtime authorization path.
 - `role_claims` (was `AspNetRoleClaims`) — same rationale.
 
-These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<IdentityRole<Guid>>` from `Microsoft.AspNetCore.Identity`, registered by Users (`AddHumansIdentity`, which also wires `HumansUserClaimsPrincipalFactory`). Do not write a custom repository over them.
+These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<IdentityRole<Guid>>` from `Microsoft.AspNetCore.Identity`, registered by Users' `Section.Register` (which also wires `HumansUserClaimsPrincipalFactory`). Do not write a custom repository over them.
 
 ## Routing
 
