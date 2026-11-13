@@ -1,3 +1,6 @@
+using Humans.Base.Interfaces;
+using Humans.Monitor.Jobs;
+using Microsoft.Extensions.Logging;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -48,6 +51,55 @@ public class DriveActivityMonitorServiceTests
         _service = new DriveActivityMonitorService(
             _client, _teamResources, _settingsStore, _userService, _auditLog, _clock,
             NullLogger<DriveActivityMonitorService>.Instance);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_AfterCheckpointStartsFinishesTheAnomalyAudit()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var resource = BuildResource("Drive");
+        SeedResources(resource);
+        SeedActivity(resource.GoogleId, BuildPermissionChangeEvent("intruder@example.com", "reader", "intruder@example.com"));
+        var markerStored = false;
+        _settingsStore.SetValueAsync(SettingKeys.DriveActivityMonitorLastRunAt, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                markerStored = true;
+                await shutdown.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            });
+
+        var count = await _service.CheckForAnomalousActivityAsync(shutdown.Token);
+
+        count.Should().Be(1);
+        markerStored.Should().BeTrue();
+        await _settingsStore.Received(1).SetValueAsync(SettingKeys.DriveActivityMonitorLastRunAt,
+            MarkerValue(_clock.GetCurrentInstant()), CancellationToken.None);
+        await _auditLog.Received(1).LogAsync(GoogleIntegrationAuditActions.AnomalousPermissionDetected,
+            nameof(GoogleResource), resource.Id, Arg.Any<string>(), JobName);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_CheckpointDependencyCancellationRemainsAJobFailure()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var resource = BuildResource("Drive");
+        SeedResources(resource);
+        SeedActivity(resource.GoogleId, BuildPermissionChangeEvent("intruder@example.com", "reader", "intruder@example.com"));
+        var failure = new OperationCanceledException("Checkpoint storage stopped");
+        _settingsStore.SetValueAsync(SettingKeys.DriveActivityMonitorLastRunAt, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<DriveActivityMonitorJob>();
+        var job = new DriveActivityMonitorJob(_service, metrics, logger, _clock);
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+        metrics.Received(1).RecordJobRun("drive_activity_monitor", "failure");
+        metrics.DidNotReceive().RecordJobRun("drive_activity_monitor", "success");
+        logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == error);
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
