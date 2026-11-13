@@ -57,7 +57,7 @@ internal partial interface IShiftManagementRepository : IRepository
     /// <summary>Distinct.</summary>
     Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default);
 
-    /// <summary>With the rota; the flags control visibility filtering and eager loads.</summary>
+    /// <summary>With the rota; the flags control visibility filtering.</summary>
     Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
         ShiftEventQuery query,
         CancellationToken ct = default);
@@ -186,9 +186,7 @@ internal enum ShiftEventQueryFlags
 {
     None = 0,
     ExcludeAdminOnly = 1,
-    ExcludeHiddenRotas = 2,
-    IncludeSignups = 4,
-    IncludeRotaTags = 8
+    ExcludeHiddenRotas = 2
 }
 
 internal sealed record ShiftEventQuery(

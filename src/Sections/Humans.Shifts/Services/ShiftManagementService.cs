@@ -44,7 +44,7 @@ internal sealed class ShiftManagementService(
     private readonly ShiftCoordinatorActivity coordinatorActivity = new(repo, calendarResolver, serviceProvider);
     private readonly ShiftCoverageReports coverageReports = new(repo, calendarResolver, serviceProvider);
     private readonly ShiftCampSummary campSummary = new(repo, serviceProvider);
-    private readonly ShiftBrowseReader browseReader = new(repo, calendarResolver, serviceProvider, clock);
+    private readonly ShiftBrowseReader browseReader = new(calendarResolver, serviceProvider, clock);
     private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
     private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();

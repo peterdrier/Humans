@@ -280,12 +280,6 @@ internal sealed partial class ShiftRepository : IShiftManagementRepository
             .AsNoTracking()
             .Include(s => s.Rota);
 
-        if (request.Flags.HasFlag(ShiftEventQueryFlags.IncludeRotaTags))
-            query = query.Include(s => s.Rota).ThenInclude(r => r.Tags);
-
-        if (request.Flags.HasFlag(ShiftEventQueryFlags.IncludeSignups))
-            query = query.Include(s => s.ShiftSignups);
-
         query = query.Where(s => s.Rota.EventSettingsId == request.EventSettingsId);
 
         if (request.Flags.HasFlag(ShiftEventQueryFlags.ExcludeAdminOnly))
