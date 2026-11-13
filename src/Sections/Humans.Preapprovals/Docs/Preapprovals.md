@@ -152,7 +152,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   lookup, save and completion effects across scoped requests. Overlapping submissions, including
   merged aliases, edit one row instead of creating duplicate applications; waiting observes caller cancellation.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
-  for it (a rejected report resubmitting). Release and consume need the holding report. All three transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Metadata dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction. Grant writes return before their completion effects: Expenses collects the owning section’s audit and inbox actions, runs them only after its transaction commits with `CancellationToken.None`, and discards them on refusal or rollback. Completion failures are logged without reversing the committed report/grant. Expenses coordinates all four report transition paths across scoped requests until their ambient transactions are disposed and completion effects finish; coordination does not end when an individual grant-write call returns.
+  for it (a rejected report resubmitting). Release and consume need the holding report. These transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Metadata dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction. Grant writes return before their completion effects: Expenses collects the owning section’s audit and inbox actions, runs them only after its transaction commits with `CancellationToken.None`, and discards them on refusal or rollback. Completion failures are logged without reversing the committed report/grant. Expenses coordinates the report transition paths across scoped requests until their ambient transactions are disposed and completion effects finish; coordination does not end when an individual grant-write call returns.
 - Withdrawal retains the historical expense-report id. Revocation notices link to a report and require action only when the grant was Claimed at revocation; revocation and amount-change audits describe a report as holding the grant only while Claimed.
 - Approve, decline, revoke and amount-change services require both program and grant IDs, refusing missing or foreign grants before status checks, money changes, audit or notices. Grant-level admin routes return 404 for these refusals; the controller also checks ownership before rejecting malformed binding, so a manager of A never acts on B's grants.
 - Grant admin actions reject invalid form binding with 400 after identity, program permission
@@ -201,7 +201,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Deadline moved: the stale file-by prompt is resolved, a new High-priority one and an email
   go to every Open holder; reminders run again for the new date.
 - Nightly `preapprovals-reminders` (05:00): 14-day and 3-day reminders to Open holders,
-  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. Notification or email handoff failures leave no sent marker. The pass attempts the remaining grants, then fails for retry; successful markers prevent repeat delivery. Other grant-change notices remain best effort after their committed mutation.
+  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. Notification or email handoff failures leave no sent marker. The pass attempts the remaining grants after ordinary failures, then fails for retry; successful markers prevent repeat delivery. A shutdown checkpoint precedes each grant. Cancellation rolls back an active reminder transaction and stops later grants; earlier failures remain in an aggregate with the cancellation. Loop cancellation without earlier failures propagates with a stack-free Warning. Reminder delivery and marker writes retain the job token inside their existing transaction; post-commit audit keeps its independent boundary. Other grant-change notices remain best effort after their committed mutation.
 - GDPR: export slices `Preapprovals` (own grants, always a list) and `PreapprovalDecisions`
   (created, managed, decided; null when empty). Export follows the resolved identity chain,
   so archived IDs return the same grants and decisions. Erasure deletes Applied and
@@ -228,7 +228,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`: selected IDs are unique, removable hidden inputs; batch submit is enabled only for a nonempty list. The views initialize it in the layout's Scripts section after the shared helpers load.
 
-The scoped internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion, shared by grant management and deadline reminders. Ordinary delivery failures remain best-effort. `PreapprovalDeadlineReminders` owns reminder selection, transactional delivery and sent stamps, then audits after commit. The recurring job calls this component directly; it does not resolve grant management. Reminder windows, Madrid dates, source keys, audit identity, failure aggregation and retry behavior are unchanged.
+The scoped internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion, shared by grant management and deadline reminders. Ordinary delivery failures remain best-effort. `PreapprovalDeadlineReminders` owns reminder selection, transactional delivery and sent stamps, then audits after commit. The recurring job calls this component directly; it does not resolve grant management.
 
 **Owning services:** `PreapprovalDeadlineReminders` (internal reminder pass), `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
 **Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
@@ -238,11 +238,11 @@ The scoped internal `PreapprovalNotices` owns recipient resolution, localized de
 
 A `Contracts/` folder in the section (no leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). Expenses is the only consumer.
 
-| Interface | Methods | Notes |
-|---|---:|---|
-| `IPreapprovalService` (public) | 1 | `GetGrantsAsync`: every grant, any state, with its holder, its program's managers and whether it can be claimed today. Expenses picks a member's or a manager's grants itself. |
-| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with the grant as booked on a successful claim). Each takes a required `afterCommit` list for its audit and notices. An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
-| `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking. |
+| Interface | Notes |
+|---|---|
+| `IPreapprovalService` (public) | `GetGrantsAsync`: every grant, any state, with its holder, its program's managers and whether it can be claimed today. Expenses picks a member's or a manager's grants itself. |
+| `IPreapprovalWrite` (public) | The Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with the grant as booked on a successful claim). Each takes a required `afterCommit` list for its audit and notices. An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
+| `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | Administration, issuing, applying, approving, declining, revoking. |
 
 `GrantOption`, `PreapprovalWriteResult` and `GrantStatus` are the public types beside them.
 

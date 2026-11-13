@@ -39,22 +39,33 @@ internal sealed class PreapprovalDeadlineReminders(
             .ToHashSet();
 
         var failures = new List<Exception>();
-        foreach (var (grant, kind) in due)
+        try
         {
-            if (sent.Contains((grant.Id, kind!.Value, grant.Program.ClaimBy))) continue;
-            try
+            foreach (var (grant, kind) in due)
             {
-                await RemindAsync(grant, kind.Value, today, ct);
+                ct.ThrowIfCancellationRequested();
+                if (sent.Contains((grant.Id, kind!.Value, grant.Program.ClaimBy))) continue;
+                try
+                {
+                    await RemindAsync(grant, kind.Value, today, ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failures.Add(ex);
+                    logger.LogError(ex, "Pre-approval {Kind} reminder failed for grant {GrantId}", kind, grant.Id);
+                }
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                failures.Add(ex);
-                logger.LogError(ex, "Pre-approval {Kind} reminder failed for grant {GrantId}", kind, grant.Id);
-            }
+        }
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
+        {
+            if (failures.Count > 0)
+                throw new AggregateException("Pre-approval deadline reminders failed before shutdown.", failures.Append(ex));
+            logger.LogWarning("Pre-approval deadline reminders interrupted by shutdown");
+            throw;
         }
         if (failures.Count > 0)
             throw new AggregateException("Failed to complete one or more pre-approval deadline reminders.", failures);
