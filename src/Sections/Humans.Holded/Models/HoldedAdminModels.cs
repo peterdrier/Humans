@@ -7,8 +7,7 @@ namespace Humans.Holded.Models;
 /// the chart.</summary>
 internal sealed record HoldedSummary(
     bool IsConfigured,
-    bool ApiReachable,
-    HoldedUsageDto? Usage,
+    HoldedUsageReading? Usage,
     int MonthlyCallBudget,
     IReadOnlyList<HoldedSyncStateRow> SyncStates,
     int LedgerLineCount,
@@ -16,6 +15,13 @@ internal sealed record HoldedSummary(
     int AccountCount,
     int MismatchCount,
     int FullSyncCalls);
+
+/// <summary>The stored usage reading, never a live call. <paramref name="ReadAt"/> is null until a refresh succeeds;
+/// <paramref name="LastError"/> is set when the latest refresh failed, and the earlier reading stays.</summary>
+internal sealed record HoldedUsageReading(int Calls, string? Period, Instant? ReadAt, string? LastError);
+
+/// <summary>Sync now's outcome: the parts that threw, and whether every part ran (false when a gate skipped one).</summary>
+internal sealed record HoldedSyncNowResult(IReadOnlyList<string> Failed, bool AllRan);
 
 internal sealed record HoldedMonthlyCalls(
     int Year, int Month, int Total, IReadOnlyDictionary<string, int> ByEndpoint);

@@ -81,42 +81,26 @@ internal sealed class HoldedController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncNow(CancellationToken ct)
     {
-        // Each sync on its own: a failed document pull must not skip the ledger sweep, or the reverse.
-        var docs = await TrySyncAsync("purchase-document sync", () => holded.SyncPurchaseDocumentsAsync(ct), ct);
-        var contacts = await TrySyncAsync("contact sync", () => holded.SyncContactsAsync(ct), ct);
-        var ledger = await TrySyncAsync("ledger sweep", () => holded.SyncLedgerAsync(full: false, ct), ct);
-        var failed = new[]
-            {
-                docs is null ? "purchase documents" : null, contacts is null ? "contacts" : null,
-                ledger is null ? "ledger" : null,
-            }
-            .OfType<string>().ToList();
-        if (failed.Count > 0)
-            SetError($"Sync failed: {string.Join(" and ", failed)}.");
-        else if (docs == true && contacts == true && ledger == true)
+        var result = await admin.SyncNowAsync(ct);
+        if (result.Failed.Count > 0)
+            SetError($"Sync failed: {string.Join(" and ", result.Failed)}.");
+        else if (result.AllRan)
             SetSuccess("Synced the purchase documents and contacts, and swept the trailing ledger window.");
         else
             SetInfo("A sync was already running, so part of this one was skipped.");
         return RedirectToAction(nameof(Index));
     }
 
-    /// <summary>Null when the sync threw; caller cancellation still propagates.</summary>
-    private async Task<bool?> TrySyncAsync(string name, Func<Task<bool>> sync, CancellationToken ct)
+    [HttpPost("RefreshUsage")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RefreshUsage(CancellationToken ct)
     {
-        try
-        {
-            return await sync();
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            logger.LogWarning("Manual Holded {Sync} cancelled by the caller", name);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Manual Holded {Sync} failed", name);
-            return null;
-        }
+        if (await admin.RefreshUsageAsync(ct))
+            SetSuccess("Usage refreshed.");
+        else
+            SetError("Holded did not answer the usage lookup; the last reading stays.");
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("FullSync")]

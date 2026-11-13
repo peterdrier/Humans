@@ -485,6 +485,35 @@ internal sealed class HoldedMirrorSync(
     internal static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();
 
+    /// <summary>Reads the month's call count into the Usage state row. A Holded failure is recorded on the row and
+    /// answers false; the last good reading and its stamp stay.</summary>
+    public async Task<bool> RefreshUsageAsync(CancellationToken ct)
+    {
+        var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Usage, ct);
+        try
+        {
+            var usage = await client.GetUsageAsync(ct);
+            var now = clock.GetCurrentInstant();
+            state.SyncStatus = HoldedSyncStatus.Idle;
+            state.LastSyncAt = now;
+            state.StatusChangedAt = now;
+            state.LastCount = (int)Math.Min(usage.Usage, int.MaxValue);
+            state.LastError = null;
+            await repo.SaveSyncStateAsync(state, ct);
+            return true;
+        }
+        catch (HoldedApiException ex)
+        {
+            logger.LogWarning(ex, "Holded usage refresh failed");
+            await PersistSyncFailureAsync(state, ex);
+            return false;
+        }
+        finally
+        {
+            await DrainCallLogAsync(CancellationToken.None);
+        }
+    }
+
     private static HoldedLedgerLine ToEntity(HoldedLedgerLineDto l, Instant now) => new()
     {
         Id = Guid.NewGuid(),
