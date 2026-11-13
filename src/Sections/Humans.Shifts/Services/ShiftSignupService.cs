@@ -940,13 +940,12 @@ internal sealed class ShiftSignupService(
         Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default) =>
         personalData.GetByUserAsync(userId, eventSettingsId, ct);
 
-    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
-    {
-        var signup = await repo.GetTeamProbeAsync(id, scope, ct);
-        return signup is null
-            ? null
-            : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
-    }
+    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default) =>
+        (await serviceProvider.GetRequiredService<IShiftRotaRows>().GetRotaRowsAsync(ct: ct))
+            .SelectMany(r => r.Shifts.SelectMany(s => s.Signups
+                .Where(signup => scope == ShiftSignupTeamProbeScope.Signup ? signup.Id == id : signup.SignupBlockId == id)
+                .Select(signup => new ShiftSignupTeamProbe(signup.Id, s.Shift.Id, r.Rota.TeamId))))
+            .FirstOrDefault();
 
     public Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default) =>
         personalData.GetNoShowHistoryAsync(userId, ct);

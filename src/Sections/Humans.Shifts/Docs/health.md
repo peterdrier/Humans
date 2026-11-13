@@ -84,7 +84,7 @@ The shapes imply:
 - **Event settings cutover** (nobodies-collective/Humans#1104): the app-wide event values are
   moving to the Settings section; `IBurnSettingsService`/`BurnSettingsInfo` is the surface
   every consumer holds until then. Do not widen it, do not split it early.
-- **Per-user reads still on `IShiftSignupService`** (`GetByUserAsync`, `GetTeamProbeAsync`):
+- **Per-user reads still on `IShiftSignupService`** (`GetByUserAsync`):
   the constraint is that `IShiftView` stays the only cached per-user projection, so do not add
   a second cache in front of these; move callers onto `IShiftView` when they are touched.
 - **Unused VEP dietary/medical columns** await a post-prod-soak drop

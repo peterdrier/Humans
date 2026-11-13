@@ -33,21 +33,6 @@ internal sealed partial class ShiftRepository
         return await query.ToListAsync(ct);
     }
 
-    public Task<ShiftSignup?> GetTeamProbeAsync(
-        Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
-    {
-        var query = _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(d => d.Shift).ThenInclude(s => s.Rota);
-
-        return scope switch
-        {
-            ShiftSignupTeamProbeScope.Signup => query.FirstOrDefaultAsync(d => d.Id == id, ct),
-            ShiftSignupTeamProbeScope.SignupBlock => query.FirstOrDefaultAsync(d => d.SignupBlockId == id, ct),
-            _ => Task.FromResult<ShiftSignup?>(null)
-        };
-    }
-
     public Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default) =>
         _dbContext.ShiftSignups
             .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
