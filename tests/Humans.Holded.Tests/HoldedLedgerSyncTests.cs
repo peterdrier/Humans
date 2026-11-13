@@ -14,6 +14,8 @@ using Xunit;
 
 namespace Humans.Holded.Tests;
 
+// Mirror sync gates are process-wide, so classes exercising real syncs must run serially.
+[Collection("HoldedMirrorSyncGates")]
 public sealed class HoldedLedgerSyncTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 8, 10, 12, 0);
