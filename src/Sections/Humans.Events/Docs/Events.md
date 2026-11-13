@@ -261,6 +261,7 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 - All authoring forms and bulk CSV validation require the event start and end to fit years 0001–9999 in both UTC and the event timezone. Unsupported calendar values return form or localized row errors before any event is saved; valid dates outside the event window remain accepted.
 
 - Barrio submit/edit GETs and the CSV-template GET propagate browser cancellation through their camp/user authorization reads, guide/event settings, event lookup and form/template data. Writes begin only after the preflight reads finish.
+- Refused individual and barrio create/update POSTs propagate browser cancellation through the category/venue reads that rebuild their forms. Submission and resubmission writes retain their non-cancellable boundary.
 
 ## Negative Access Rules
 

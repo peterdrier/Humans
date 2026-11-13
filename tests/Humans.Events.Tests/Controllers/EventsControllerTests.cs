@@ -1147,8 +1147,14 @@ public class EventsControllerTests
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(false, false, "Events_VenueUnavailable")]
     [Xunit.InlineData(true, false, "Events_VenueUnavailable")]
+    [Xunit.InlineData(false, false, "Events_CategoryUnavailable", "Categories")]
+    [Xunit.InlineData(true, false, "Events_CategoryUnavailable", "Categories")]
+    [Xunit.InlineData(false, true, "Events_CategoryUnavailable", "Categories")]
+    [Xunit.InlineData(true, true, "Events_CategoryUnavailable", "Categories")]
+    [Xunit.InlineData(false, false, "Events_VenueUnavailable", "Venues")]
+    [Xunit.InlineData(true, false, "Events_VenueUnavailable", "Venues")]
     public async Task SelectionRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(
-        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable")
+        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable", string? cancelAt = null)
     {
         var field = string.Equals(refusalKey, "Events_VenueUnavailable", StringComparison.Ordinal) ? "VenueId" : "CategoryId";
         var userId = Guid.NewGuid();
@@ -1166,8 +1172,20 @@ public class EventsControllerTests
         var controller = BuildController(userId);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         controller.Url = Substitute.For<IUrlHelper>();
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        async Task<IReadOnlyList<T>> ReadOptionsAsync<T>(CancellationToken ct, string boundary)
+        {
+            if (string.Equals(cancelAt, boundary, StringComparison.Ordinal)) await request.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+            return [];
+        }
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            ReadOptionsAsync<EventCategoryView>(call.Arg<CancellationToken>(), "Categories"));
+        _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            ReadOptionsAsync<EventVenueView>(call.Arg<CancellationToken>(), "Venues"));
         object model;
-        IActionResult result;
+        Func<Task<IActionResult>> invoke;
         if (barrio)
         {
             var input = new CampEventFormViewModel
@@ -1179,10 +1197,7 @@ public class EventsControllerTests
                 DurationMinutes = 60
             };
             model = input;
-            result = edit ? await controller.BarrioUpdate(camp.Slug, existing.Id, input) : await controller.BarrioCreate(camp.Slug, input);
-            input.Title.Should().Be("Entered title");
-            input.Description.Should().Be("Entered description");
-            input.CampId.Should().Be(camp.Id);
+            invoke = () => edit ? controller.BarrioUpdate(camp.Slug, existing.Id, input) : controller.BarrioCreate(camp.Slug, input);
         }
         else
         {
@@ -1196,10 +1211,23 @@ public class EventsControllerTests
                 DurationMinutes = 60
             };
             model = input;
-            result = edit ? await controller.Update(existing.Id, input) : await controller.Create(input);
-            input.Title.Should().Be("Entered title");
-            input.Description.Should().Be("Entered description");
+            invoke = () => edit ? controller.Update(existing.Id, input) : controller.Create(input);
         }
+        if (cancelAt is not null)
+        {
+            await invoke.Should().ThrowAsync<OperationCanceledException>()
+                .Where(error => error.CancellationToken == request.Token);
+            var mutation = _guide.ReceivedCalls().Single(call =>
+                string.Equals(call.GetMethodInfo().Name, nameof(IEventManagement.SubmitEventAsync), StringComparison.Ordinal)
+                || string.Equals(call.GetMethodInfo().Name, nameof(IEventManagement.UpdateAndResubmitAsync), StringComparison.Ordinal));
+            mutation.GetArguments()[^1].Should().Be(CancellationToken.None);
+            return;
+        }
+        var result = await invoke();
+        var inputModel = (EventProposalFormViewModel)model;
+        inputModel.Title.Should().Be("Entered title");
+        inputModel.Description.Should().Be("Entered description");
+        if (model is CampEventFormViewModel campModel) campModel.CampId.Should().Be(camp.Id);
         var view = result.Should().BeOfType<ViewResult>().Which;
         view.Model.Should().BeSameAs(model);
         view.ViewName.Should().Be(barrio ? "BarrioEventForm" : "IndividualEventForm");

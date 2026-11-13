@@ -196,7 +196,7 @@ internal sealed class EventsController(
                 return RedirectToAction(nameof(MySubmissions));
             }
             ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -284,7 +284,7 @@ internal sealed class EventsController(
             logger.LogWarning("Event resubmission refused for event {EventId}, category {CategoryId}: {ErrorKey}", eventId, model.CategoryId, errorKey);
             ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -403,7 +403,7 @@ internal sealed class EventsController(
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(EventProposalFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
+    private async Task PopulateDropdownsAsync(EventProposalFormViewModel model, EventSettingsInfo burn, CancellationToken ct)
     {
         var categories = await guide.GetActiveCategoriesAsync(ct);
         var venues = model is IndividualEventFormViewModel
@@ -501,7 +501,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
@@ -589,7 +589,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
 
