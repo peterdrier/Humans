@@ -32,6 +32,9 @@ internal partial interface IShiftManagementRepository : IRepository
 
     Task<Rota?> GetRotaAsync(Guid rotaId, RotaReadShape shape, CancellationToken ct = default);
 
+    /// <summary>Rotas with tags, shifts and every signup, across all events. Null <paramref name="rotaIds"/> loads them all.</summary>
+    Task<IReadOnlyList<Rota>> GetRotaRowsAsync(IReadOnlyCollection<Guid>? rotaIds, CancellationToken ct = default);
+
     /// <summary>One save, with every shift and signup. The service checks for confirmed signups first.</summary>
     Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default);
 

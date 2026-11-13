@@ -31,7 +31,7 @@ internal sealed class ShiftManagementService(
     CachingShiftViewService viewInvalidator,
     EventCalendarResolver calendarResolver,
     IClock clock,
-    ILogger<ShiftManagementService> logger) : IShiftManagement, IUserMerge
+    ILogger<ShiftManagementService> logger) : IShiftManagement, IShiftRotaRows, IUserMerge
 {
     private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
     private ShiftRotaManagement Rotas => new(
@@ -126,15 +126,23 @@ internal sealed class ShiftManagementService(
     public async Task<IReadOnlyList<ShiftAdminRota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
     {
         var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View, ct);
-        return rotas
-            .Select(r => new ShiftAdminRota(
-                ToRotaInfo(r),
-                [.. r.Shifts.Select(s => new ShiftAdminShift(
-                    ToShiftInfo(s),
-                    [.. s.ShiftSignups.Select(ss => new ShiftAdminSignup(
-                        ss.Id, ss.UserId, ss.SignupBlockId, ss.Status, ss.CreatedAt))]))]))
-            .ToList();
+        return rotas.Select(ToAdminRota).ToList();
     }
+
+    public async Task<IReadOnlyList<ShiftAdminRota>> GetRotaRowsAsync(
+        IReadOnlyCollection<Guid>? rotaIds = null, CancellationToken ct = default)
+    {
+        var rotas = await repo.GetRotaRowsAsync(rotaIds, ct);
+        return rotas.Select(ToAdminRota).ToList();
+    }
+
+    private static ShiftAdminRota ToAdminRota(Rota rota) =>
+        new(
+            ToRotaInfo(rota),
+            [.. rota.Shifts.Select(s => new ShiftAdminShift(
+                ToShiftInfo(s),
+                [.. s.ShiftSignups.Select(ss => new ShiftAdminSignup(
+                    ss.Id, ss.UserId, ss.SignupBlockId, ss.Status, ss.CreatedAt))]))]);
 
     public Task<ShiftSummary?> BuildSummaryAsync(
         BurnSettingsInfo activeEvent,

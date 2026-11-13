@@ -17,7 +17,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>No caching decorator.</summary>
+/// <summary>Keyed inner of <see cref="CachingShiftService"/>.</summary>
 internal sealed class ShiftSignupService(
     IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
@@ -31,7 +31,7 @@ internal sealed class ShiftSignupService(
     IClock clock,
     ILogger<ShiftSignupService> logger,
     IUserService users,
-    IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
+    IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserMerge, ICalendarFeedContributor
 {
     private readonly ShiftSignupNotices notices = new(notificationService, calendarResolver, users, serviceProvider, logger);
     private readonly ShiftSignupPersonalData personalData = new(repo, trackingRepo, calendarResolver, users, serviceProvider, localizer);
@@ -970,7 +970,7 @@ internal sealed class ShiftSignupService(
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         personalData.ContributeForUserAsync(userId, ct);
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [ShiftSignups] =
@@ -984,8 +984,6 @@ internal sealed class ShiftSignupService(
             [VolunteerBuildStatuses] = null,
             [ShiftTagPreferences] = null
         };
-
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>Cancels live commitments, then deletes the profile, availability, build-status and tag rows.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
