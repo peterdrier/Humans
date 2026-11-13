@@ -64,7 +64,12 @@ public sealed class Section :
             FormerNames: ["HumanAdmin"]),
     ];
 
-    internal static IdentityBuilder AddIdentity(IServiceCollection services) =>
+    public void Register(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton<IAuditActionContributor, UsersAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
+        services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
+
         services.AddIdentity<User, IdentityRole<Guid>>(options =>
             {
                 // UserEmail table owns email uniqueness; User.Email is null on new users.
@@ -74,12 +79,6 @@ public sealed class Section :
             .AddEntityFrameworkStores<UsersDbContext>()
             .AddDefaultTokenProviders()
             .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
-
-    public void Register(IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddSingleton<IAuditActionContributor, UsersAuditActions>();
-        services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
-        services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
         // On every section's context pipeline: catches User/UserEmail
         // writes wherever they are saved, including Identity machinery.
