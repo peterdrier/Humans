@@ -230,7 +230,8 @@ internal sealed class FinanceOverviewService(
         .ToList();
 
     /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning. An
-    /// open transfer either has a Sabadell line paired to it, so it can be booked, or is still waiting for one.</summary>
+    /// open transfer either has a Sabadell line paired to it (its own, or one debiting its whole file), so it can be
+    /// booked, or is still waiting for one.</summary>
     internal static FinanceWorkVm BuildWork(
         IReadOnlyList<ExpenseReportDto> queue,
         IReadOnlyList<CreditorAccountRow> creditors,
@@ -238,7 +239,7 @@ internal sealed class FinanceOverviewService(
         IReadOnlyList<SepaPayoutTransferRow> transfers)
     {
         var open = transfers.Where(t => !t.IsBooked && !t.IsWithdrawn).ToList();
-        var withBankLine = open.Count(t => t.CandidateBankMovementId is { Length: > 0 });
+        var withBankLine = open.Count(t => t.CandidateBankMovementId is { Length: > 0 } || t.BatchLine is not null);
         var submitted = queue.Where(r => r.Status == ExpenseReportStatus.Submitted).ToList();
         var endorsed = queue.Where(r => r.Status == ExpenseReportStatus.CoordinatorEndorsed).ToList();
         var ready = creditors

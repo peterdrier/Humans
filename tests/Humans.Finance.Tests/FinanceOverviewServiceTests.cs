@@ -122,13 +122,15 @@ public class FinanceOverviewServiceTests
             "Queued", ExpenseReconLineStatus.Pending, null, null, null, null, [], 0m);
         var work = FinanceOverviewService.BuildWork([], [.. rows,
             Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon with { Lines = [pending] },
-            [sent, sent with { CandidateBankMovementId = "m1" }, sent with { BookedAt = sent.GeneratedAt },
+            [sent, sent with { CandidateBankMovementId = "m1" },
+                sent with { BatchLine = new SepaBatchLineVm("m2", new LocalDate(2026, 3, 2), -60m, null, false, null) },
+                sent with { BookedAt = sent.GeneratedAt },
                 sent with { WithdrawnAt = sent.GeneratedAt }]);
         work.ReadyToPay.Should().Be(1);
         work.ReadyToPayAmount.Should().Be(50m);
         work.PushingToHolded.Should().Be(1);
         work.AwaitingBankLine.Should().Be(1);
-        work.TransfersToBook.Should().Be(1);
+        work.TransfersToBook.Should().Be(2);
         work.Problems.Should().Be(4);
 
         // The recon already names 40000004's doubled purchase: the account is not counted again.
