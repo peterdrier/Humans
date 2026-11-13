@@ -12,6 +12,11 @@ internal sealed class PleoSyncJob(IPleoAdminService pleo, ILogger<PleoSyncJob> l
         {
             outcome = await pleo.SyncAsync(cancellationToken);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Nightly Pleo sweep interrupted by shutdown");
+            throw;
+        }
         catch (PleoPermanentException ex)
         {
             // A 4xx is the key's limit, so Hangfire's retries would only repeat it; the sync row already holds the error.
