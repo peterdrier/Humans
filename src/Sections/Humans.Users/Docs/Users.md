@@ -247,6 +247,14 @@ Authentication routes are served by `AccountController`, which lives in `Humans.
 
 The operator-only user directory renders its sort-control label directly, without a missing resource key.
 
+The scheduled deletion sweep honours shutdown before each next account and propagates
+cancellation from erasure. A requested shutdown logs a warning without its exception and
+records no success/failure metric, unless an earlier account already failed: those failures
+remain an aggregate failure. Committed erasures still finish their audit and privacy-safe
+confirmation delivery independently of shutdown. Cancellation from the detached cache refresh
+after successful erasure remains a fault with its original exception preserved; refresh after
+incomplete erasure retains the existing best-effort policy that preserves the erasure error.
+
 ## Negative Access Rules
 
 - Code outside Users **cannot** inject `UserManager<User>` or `SignInManager<User>` (HUM0039). It goes through `IUserSignInService` / `IUserService`.
@@ -256,6 +264,7 @@ The operator-only user directory renders its sort-control label directly, withou
 - An Admin **cannot** purge their own account — `IAccountDeletionService.PurgeAsync` refuses when the actor is the target, and `UsersAdminController.PurgeHuman` returns the user to the admin-detail page with an error.
 - Purge **cannot** run in Production — `IAccountDeletionService.PurgeAsync` refuses when `IHostEnvironment.IsProduction()`, and `UsersAdminController.PurgeHuman` returns `NotFound`. Account anonymization (the GDPR-deletion path through `AnonymizeExpiredAccountAsync`) runs in every environment via `ProcessAccountDeletionsJob`.
 - A merge-tombstoned `User` (`MergedToUserId` non-null) **cannot** sign in — `LockoutEnd` is bumped far-future during fold. Application code outside `IAccountMergeService` **cannot** clear `MergedToUserId` / `MergedAt` or revive a tombstone.
+
 
 ## Triggers
 
