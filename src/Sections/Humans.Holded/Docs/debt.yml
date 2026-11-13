@@ -5,7 +5,7 @@ next_id: 5
 inbox:
   - added: 2026-11-13
     id: HOLDED-2
-    what: "Contracts/ holds connector-only types no other section uses: HoldedClientOptions, HoldedUsageDto, HoldedExpenseAccountDto, HoldedPurchaseDocumentDto and HoldedPaymentDetailDto are public though neither IHoldedService nor IHoldedWrite carries them; they belong internal beside the connector. HoldedAccountDto and HoldedLedgerLineDto are in the same position but Finance's tests build them through TestHoldedSync, so those two need Finance's tests moved first. Found by section-doctor's shape read."
+    what: "Contracts/ holds connector-only types no other section uses: HoldedClientOptions, HoldedUsageDto, HoldedExpenseAccountDto, HoldedPurchaseDocumentDto and HoldedPaymentDetailDto are public though neither IHoldedService nor IHoldedWrite carries them; they belong internal beside the connector. HoldedAccountDto and HoldedLedgerLineDto are in the same position but Finance's tests build them through TestHoldedSync, so both need Finance's tests moved first. Found by section-doctor's shape read."
     review: panel
   - added: 2026-11-13
     id: HOLDED-3

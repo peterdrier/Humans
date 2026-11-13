@@ -15,7 +15,7 @@ is the work.
 It is the association's only line to its accounting vendor. Nothing else in the system talks to
 Holded; everything else asks this section.
 
-It does two jobs:
+Its jobs:
 
 - **Keeps copies.** The book (every journal line and the chart of accounts), every purchase
   document, every contact, and the bank feed of the windows someone asked for are copied locally,
@@ -65,7 +65,7 @@ Written fresh from the shapes, not from today's folders.
 Contracts/                      what other sections may hold
   IHoldedService                shapes 1–4 and 11: mirror reads and the syncs a caller may run first
   IHoldedWrite                  shapes 6–9: every write another section makes, plus its outcome records
-  mirror and write DTOs         what those two carry; nothing else
+  mirror and write DTOs         what those interfaces carry; nothing else
   HoldedApiException            transient vs permanent, the one failure vocabulary callers catch
 Services/Service                IHoldedService reads + IHoldedAdminService; forwards syncs
 Services/HoldedMirrorSync       every sync: gates, replace, reconcile, failure state, call-log drain
@@ -83,7 +83,7 @@ Data/Repository                 the only code that touches HoldedDbContext
 Domain/                         the mirrored tables, internal
 Controllers/HoldedController    translation and display order only
 Models/HoldedAdminModels        the screen's vocabulary, internal
-Views/Holded/                   read-only pages plus the two sync buttons
+Views/Holded/                   read-only pages plus the sync buttons
 ```
 
 Structural facts the layout should make obvious:
@@ -131,7 +131,7 @@ Stated so a violation is recognisable; each names the line that enforces it.
 
 ### Negative access
 
-- `/Holded/*` reads need `FinancePolicies.Read` (Finance Admin, Board, Admin); the two sync
+- `/Holded/*` reads need `FinancePolicies.Read` (Finance Admin, Board, Admin); the sync
   POSTs need `FinancePolicies.Manage` (never Board) and an antiforgery token.
   `src/Sections/Humans.Holded/Controllers/HoldedController.cs:13`,
   `src/Sections/Humans.Holded/Controllers/HoldedController.cs:80`
@@ -188,4 +188,4 @@ Settled decisions. Later runs should stop re-litigating these.
 |---|---|---|---|
 | 1 | 2026-09-03 | First doctoring: the nightly sweep could skip in silence and a numberless account became account 0; the general-ledger page's own summary asserted the opposite sign convention to the one it renders | peterdrier/Humans#1583 |
 | 2 | 2026-10-28 | The docs still called the GDPR export of mirrored creditor lines undecided after Finance shipped it; connector rules lived in two docs; a dead list field and a create-only "upsert" | peterdrier/Humans#2177 |
-| 3 | 2026-11-13 | The docs narrated the single-mirror refactor instead of stating its rules and listed a fraction of who calls what; two doc comments contradicted their code; six contract members have never had a caller | peterdrier/Humans#2411 |
+| 3 | 2026-11-13 | The docs narrated the single-mirror refactor instead of stating its rules and listed a fraction of who calls what; doc comments contradicted their code; contract members have never had a caller | peterdrier/Humans#2411 |

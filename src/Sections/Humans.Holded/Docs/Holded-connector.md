@@ -22,7 +22,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   (`GetPurchaseDocumentAsync`) returns `notes` (null when absent or blank) — the v2 list never
   does (verified live 2026-10-21) — which is how Finance confirms a document the push wrote
   twice before deleting it. `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
-  two deletes, reached through `IHoldedWrite` by Finance only: both by its duplicate removal, and
+  deletes, reached through `IHoldedWrite` by Finance only: both by its duplicate removal, and
   the contact delete also to retract a creditor contact minted by a run that lost the member's
   binding race.
 - A **Sales Document** is the org's outgoing revenue record, in two kinds behind one
@@ -106,7 +106,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   mints the contact a second creditor account ([`holded-contact-put-is-full-replacement`](../../../../memory/code/holded-contact-put-is-full-replacement.md)).
 - There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside
   Holded (reclassify the line) and the ledger mirror picks the correction up.
-- The two deletes are `DELETE /api/v2/purchases/{id}` and `DELETE /api/v2/contacts/{id}`. A 404
+- The deletes are `DELETE /api/v2/purchases/{id}` and `DELETE /api/v2/contacts/{id}`. A 404
   on the contact delete (already gone) is success, logged at Error; a 404 on the purchase delete
   throws like any other 4xx. Holded refuses to delete a purchase document that carries a payment.
   The routes are not documented in this repo; unverified against Holded's published reference.

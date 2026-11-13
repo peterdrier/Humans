@@ -9,7 +9,7 @@
 ## Purpose
 
 Holded (the company) is a SaaS vendor that holds the association's accounting books and records.
-This section is our interface and conduit to that vendor. It does two jobs and keeps them apart:
+This section is our interface and conduit to that vendor. It keeps its jobs apart:
 it keeps a cached copy of the book so no page ever waits on Holded, and it is the one connector
 other sections use to book, pay and invoice. Holded's API has quotas, so keeping that cache
 current and metering every call against the allowance is part of the job.
