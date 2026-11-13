@@ -55,7 +55,7 @@ internal sealed class CampMembershipTransitions(
     public async Task<CampMemberRequestResult> RequestCampMembershipAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default)
     {
-        var activeEventId = (await settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
+        var activeEventId = (settingsService.GetActiveEventSettings())?.Id;
         var camp = await repo.GetByIdAsync(campId, cancellationToken);
         // Active AND Full both accept requests — Full is an informational label the lead
         // sets to say "we look full," not an enforcement gate. Humans doesn't yet know
@@ -210,7 +210,7 @@ internal sealed class CampMembershipTransitions(
         Guid campId, Guid? eventSettingsId, CancellationToken cancellationToken)
     {
         var targetEventId = eventSettingsId
-            ?? (await settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
+            ?? (settingsService.GetActiveEventSettings())?.Id;
         if (targetEventId is null)
             return null;
         var camp = await repo.GetByIdAsync(campId, cancellationToken);

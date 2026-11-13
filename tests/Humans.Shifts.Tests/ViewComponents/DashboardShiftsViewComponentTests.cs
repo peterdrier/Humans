@@ -75,7 +75,7 @@ public sealed class DashboardShiftsViewComponentTests
     {
         _teams.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>()).Returns(VolunteersTeam(_userId));
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(OpenBurn);
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(isOffSeason));
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason));
         _shiftMgmt.GetUrgentShiftsAsync(OpenBurn.Id, 3).Returns([]);
 
         var result = await BuildSut().InvokeAsync();
@@ -90,7 +90,7 @@ public sealed class DashboardShiftsViewComponentTests
         sut.HttpContext.RequestAborted = cancellation.Token;
         _teams.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>()).Returns(VolunteersTeam(_userId));
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(OpenBurn);
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(false));
+        _settings.GetActiveEventSettings().Returns(Event(false));
         _shiftMgmt.GetUrgentShiftsAsync(OpenBurn.Id, limit: 3, ct: cancellation.Token)
             .Returns(async _ =>
             {

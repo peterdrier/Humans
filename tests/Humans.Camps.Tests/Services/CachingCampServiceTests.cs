@@ -438,14 +438,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     {
         // PublicYear comes from Settings, whose writes never reach this section's
         // invalidator — so it must not be served from the cached snapshot.
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
 
         (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
             .PublicYear.Should().Be(2026);
 
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2027));
 
         (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
@@ -459,7 +459,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     {
         var eeStartDate = new LocalDate(2026, 7, 7);
         var burn = BurnFixtures.Burn(year: 2026, gateOpeningDate: new LocalDate(2026, 7, 14), earlyEntryStartOffset: -7);
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(burn);
+        _settingsService.GetActiveEventSettings().Returns(burn);
         _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
@@ -478,7 +478,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task GetEarlyEntriesAsync_NoOffsetConfigured_ReturnsEmpty()
     {
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);

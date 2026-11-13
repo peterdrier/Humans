@@ -191,8 +191,8 @@ public class DevelopmentDashboardSeederTests
         public Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult("Europe/Madrid");
 
-        public Task<EventSettingsInfo?> GetActiveEventSettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(_events.Values.FirstOrDefault(e => e.Status == EventSettingsStatus.Active));
+        public EventSettingsInfo? GetActiveEventSettings() =>
+            _events.Values.FirstOrDefault(e => e.Status == EventSettingsStatus.Active);
 
         public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(
             Guid id, CancellationToken cancellationToken = default) =>

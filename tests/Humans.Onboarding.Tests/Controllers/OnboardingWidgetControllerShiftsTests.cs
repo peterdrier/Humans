@@ -77,7 +77,7 @@ public class OnboardingWidgetControllerShiftsTests
         _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active, BurnerName = "Burner", FirstName = "First", LastName = "Last" }, [], [],
                 UserFixtures.Profile()));
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _burnSettings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn());
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<UrgentShiftInfo>());
@@ -103,7 +103,7 @@ public class OnboardingWidgetControllerShiftsTests
     public async Task Shifts_Get_UsesTheOwnerDerivedEarlyEntryLock(bool locked, bool otherLocked)
     {
         var userId = Guid.NewGuid();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _burnSettings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn() with { EarlyEntryClose = NodaTime.Instant.FromUtc(2020, 1, 1, 0, 0) });
         var row = UrgentShiftFixtures.Urgent(shift: UrgentShiftFixtures.Shift(dayOffset: -1))
             with
@@ -124,7 +124,7 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         using var request = new CancellationTokenSource();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _burnSettings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn());
         _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(userId)));

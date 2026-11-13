@@ -36,7 +36,7 @@ internal sealed class TicketPurchaseAudience(
             .Select(u => u.Id)
             .ToList();
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {

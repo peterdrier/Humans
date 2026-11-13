@@ -113,7 +113,7 @@ internal sealed class OnboardingWidgetController(
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
-        var es = await settingsService.GetActiveEventSettingsAsync(ct);
+        var es = settingsService.GetActiveEventSettings();
         if (es is null)
             return View(OnboardingShiftsStepBuilder.BuildEmpty(priority ?? string.Empty));
 

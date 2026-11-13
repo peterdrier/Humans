@@ -9,13 +9,13 @@ internal sealed record SettingsSnapshot(IReadOnlyList<EventSettingsInfo> Events,
 
 /// <summary>
 /// Holds one <see cref="SettingsSnapshot"/> so the event reads, which nearly every section makes on nearly every
-/// request, never reach the database. <see cref="Service"/> clears it before it tells the change listeners, so a
-/// listener that re-reads sees the write.
+/// request, never reach the database. It loads at startup, and <see cref="Service"/> reloads it before it tells the
+/// change listeners, so a listener that re-reads sees the write.
 /// </summary>
 internal sealed class CachingSettingsService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingSettingsService> logger)
-    : TrackedCache<int, SettingsSnapshot>("Settings.Events", warmOnStartup: false, logger),
+    : TrackedCache<int, SettingsSnapshot>("Settings.Events", warmOnStartup: true, logger),
       ISettingsWriteService, IEventSettingsSeeding
 {
     public const string InnerServiceKey = "settings-inner";
@@ -35,8 +35,11 @@ internal sealed class CachingSettingsService(
     public async Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default) =>
         (await GetSnapshotAsync(cancellationToken)).TimeZoneId;
 
-    public async Task<EventSettingsInfo?> GetActiveEventSettingsAsync(CancellationToken cancellationToken = default) =>
-        (await GetSnapshotAsync(cancellationToken)).Events.FirstOrDefault(e => e.Status == EventSettingsStatus.Active);
+    public EventSettingsInfo? GetActiveEventSettings() =>
+        (TryGet(SnapshotKey, out var snapshot)
+            ? snapshot
+            : throw new InvalidOperationException("The settings snapshot loads at startup and after every save; it is missing."))
+        .Events.FirstOrDefault(e => e.Status == EventSettingsStatus.Active);
 
     public async Task<EventSettingsInfo?> GetEventSettingsByIdAsync(
         Guid id, CancellationToken cancellationToken = default) =>
@@ -67,6 +70,12 @@ internal sealed class CachingSettingsService(
 
     public Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default) =>
         WithInnerAsync(inner => ((IEventSettingsSeeding)inner).DeleteEventAsync(id, cancellationToken));
+
+    /// <summary>Called by every save before it notifies listeners, so the plain reads never see an empty cache.</summary>
+    public Task ReloadAsync() => ReplaceAsync(SnapshotKey, CancellationToken.None);
+
+    protected override async Task WarmAllAsync(Action<int, SettingsSnapshot> publish, CancellationToken ct) =>
+        publish(SnapshotKey, (await LoadRowAsync(SnapshotKey, ct))!);
 
     protected override async ValueTask<SettingsSnapshot?> LoadRowAsync(int key, CancellationToken ct) =>
         await WithInnerAsync(async inner => new SettingsSnapshot(

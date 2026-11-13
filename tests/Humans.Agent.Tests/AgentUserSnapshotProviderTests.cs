@@ -227,7 +227,7 @@ public class AgentUserSnapshotProviderTests
             .Returns(new ValueTask<ShiftUserSummary>(view));
 
         var burnSettings = Substitute.For<ISettingsService>();
-        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
+        burnSettings.GetActiveEventSettings().Returns(activeEvent);
 
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 

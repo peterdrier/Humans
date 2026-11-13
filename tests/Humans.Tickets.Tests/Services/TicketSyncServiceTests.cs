@@ -688,7 +688,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);
@@ -723,7 +723,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         var earlier = Instant.FromUtc(2026, 7, 8, 10, 0);
@@ -759,7 +759,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -788,7 +788,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
@@ -823,7 +823,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
@@ -859,7 +859,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())

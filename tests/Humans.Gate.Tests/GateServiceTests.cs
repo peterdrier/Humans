@@ -100,7 +100,7 @@ public class GateServiceTests
         GateDb = new GateDbContext(_dbOptions);
         GateDbFactory = new TestDbContextFactory<GateDbContext>(_dbOptions);
 
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burn.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((EarlyEntryRosterRow?)null);
         _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, _jobs, _ledger, new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), Clock), _config, NullLogger<GateService>.Instance, Clock);
@@ -418,7 +418,7 @@ public class GateServiceTests
     }
 
     private void StubActiveEvent(int year = 2026) =>
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
+        _burn.GetActiveEventSettings().Returns(BurnFixtures.Burn(
             eventName: "Test",
             year: year,
             gateOpeningDate: new LocalDate(year, 3, 1)));
@@ -767,7 +767,7 @@ public class GateServiceTests
         Guid alice = Guid.NewGuid(), bob = Guid.NewGuid(), carol = Guid.NewGuid(),
              dave = Guid.NewGuid(), eve = Guid.NewGuid();
 
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(
+        _burn.GetActiveEventSettings().Returns(BurnFixtures.Burn(
             eventName: "Test",
             gateOpeningDate: new LocalDate(2026, 3, 1)));
         _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>()).Returns(new List<UrgentShiftInfo>
@@ -799,7 +799,7 @@ public class GateServiceTests
         Clock.Reset(Instant.FromUtc(2026, 3, 1, utcHour, 0));
         var memberId = Guid.NewGuid();
         var burn = BurnFixtures.Burn(gateOpeningDate: new LocalDate(2026, 3, 1));
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(burn);
+        _burn.GetActiveEventSettings().Returns(burn);
         _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns([UrgentShiftFixtures.Urgent(
                 shift: UrgentShiftFixtures.Shift(startTime: new LocalTime(storedHour, 0), isAllDay: true),
@@ -814,7 +814,7 @@ public class GateServiceTests
     public async Task GetShiftRoster_CancelsTheShiftsReadWhenTheRequestIsAborted()
     {
         using var aborted = new CancellationTokenSource();
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn());
+        _burn.GetActiveEventSettings().Returns(BurnFixtures.Burn());
         _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
@@ -831,7 +831,7 @@ public class GateServiceTests
     [HumansFact]
     public async Task GetShiftRoster_NoActiveEvent_ReturnsEmpty()
     {
-        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burn.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
         (await _svc.GetShiftRosterAsync(Guid.NewGuid())).Should().BeEmpty();
     }

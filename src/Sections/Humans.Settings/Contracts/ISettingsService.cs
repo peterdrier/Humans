@@ -16,8 +16,8 @@ public interface ISettingsService : IApplicationService
     /// <summary>The organisation's IANA timezone, which every event is read in; Europe/Madrid until an admin sets one.</summary>
     Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Null when no event is active.</summary>
-    Task<EventSettingsInfo?> GetActiveEventSettingsAsync(CancellationToken cancellationToken = default);
+    /// <summary>Null when no event is active. Served from memory: the event settings load at startup.</summary>
+    EventSettingsInfo? GetActiveEventSettings();
 
     /// <summary>Includes inactive cycles. Null when the id is unknown.</summary>
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken cancellationToken = default);

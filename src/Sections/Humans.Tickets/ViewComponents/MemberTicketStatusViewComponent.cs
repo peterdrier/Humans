@@ -68,7 +68,7 @@ public sealed class MemberTicketStatusViewComponent(
     {
         try
         {
-            return await settingsService.GetActiveEventSettingsAsync(ct);
+            return settingsService.GetActiveEventSettings();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

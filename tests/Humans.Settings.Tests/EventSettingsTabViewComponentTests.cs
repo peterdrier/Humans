@@ -38,7 +38,7 @@ public sealed class EventSettingsTabViewComponentTests
     private async Task<EventSettingsTabViewModel> InvokeAsAsync(
         bool authorized, string? eventQuery = null, EventSettingsInfo? active = null)
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(active ?? MakeInfo());
+        _settings.GetActiveEventSettings().Returns(active ?? MakeInfo());
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<string>())
             .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
@@ -85,7 +85,7 @@ public sealed class EventSettingsTabViewComponentTests
         var model = await InvokeAsAsync(authorized: true, eventQuery: namedId.ToString());
 
         model.Settings!.Id.Should().Be(namedId);
-        await _settings.DidNotReceive().GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
+        _settings.DidNotReceive().GetActiveEventSettings();
     }
 
     [HumansFact]
@@ -119,7 +119,7 @@ public sealed class EventSettingsTabViewComponentTests
 
     private async Task<EventSettingsTabViewModel> InvokeWithNoActiveEventAsync(bool authorized)
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<string>())
             .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         var sut = new EventSettingsTabViewComponent(_settings, _authorization)
@@ -168,7 +168,7 @@ public sealed class EventSettingsTabViewComponentTests
         model.Settings.EarlyEntryClose.Should().BeNull();
         model.Settings.IsActive.Should().BeFalse();
         model.Events.Should().ContainSingle();
-        await _settings.DidNotReceive().GetActiveEventSettingsAsync(Arg.Any<CancellationToken>());
+        _settings.DidNotReceive().GetActiveEventSettings();
     }
 
     [HumansFact]

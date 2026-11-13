@@ -25,7 +25,7 @@ merge chain through
 
 No repository. Cross-section reads via `IShiftService`
 (on-site cohort per day, via `GetOnSiteUserIdsForDayAsync`), `ISettingsService`
-(active-burn metadata — `GetActiveEventSettingsAsync` returning `EventSettingsInfo`, for
+(active-burn metadata — `GetActiveEventSettings` returning `EventSettingsInfo`, for
 the gate-opening/strike-end date range and event timezone),
 `IUserService` (cached `UserInfo` for burner names) and `ICantinaService`
 (dietary preference, allergies, intolerances), plus `IAuditLogService`

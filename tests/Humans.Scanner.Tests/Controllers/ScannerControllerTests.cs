@@ -257,7 +257,7 @@ public class ScannerControllerTests
             .Returns(new[] { "Privacy Policy", "Liability Waiver" });
 
         var burnSettings = Substitute.For<ISettingsService>();
-        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveBurn());
+        burnSettings.GetActiveEventSettings().Returns(ActiveBurn());
 
         tickets.GetParticipationsAsync(userId, Arg.Any<CancellationToken>()).Returns(
         [

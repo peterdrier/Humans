@@ -418,7 +418,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task GetState_NoActiveEvent_IsNotFound()
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
         var result = await CreateController().GetState(TestContext.Current.CancellationToken);
 
