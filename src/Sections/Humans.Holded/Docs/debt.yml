@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Holded. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 2
-inbox: []
+next_id: 3
+inbox:
+  - added: 2026-11-13
+    id: HOLDED-2
+    what: "HoldedMirrorSync.SyncLedgerAsync, SyncPurchaseDocumentsAsync and SyncContactsAsync save Running before their guarded work. A failed or cancelled initial save bypasses outcome cleanup and can leave a persisted Running row. Cover startup saves with failure handling and review cancellation around committed mirror writes and outcome saves. Found while fixing Stripe mirror lifecycle; Holded ledger reconciliation commits in several phases, so its cancellation boundaries require a separate batch."
+    review: panel
