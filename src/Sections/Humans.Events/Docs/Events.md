@@ -262,6 +262,7 @@ Member create, edit, withdrawal and bulk-import preflight reads retain browser c
 
 - Barrio submit/edit GETs and the CSV-template GET propagate browser cancellation through their camp/user authorization reads, guide/event settings, event lookup and form/template data. Writes begin only after the preflight reads finish.
 - Refused individual and barrio create/update POSTs propagate browser cancellation through the category/venue reads that rebuild their forms. Submission and resubmission writes retain their non-cancellable boundary.
+- Admin settings, category and venue POSTs propagate browser cancellation through read-only preflight checks and refused-settings form reloads. Configuration and taxonomy writes remain independent of browser cancellation.
 
 ## Negative Access Rules
 

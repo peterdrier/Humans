@@ -118,6 +118,70 @@ public class EventsControllerTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("SettingsInvalid", "Options")]
+    [Xunit.InlineData("SettingsMissing", "Edition")]
+    [Xunit.InlineData("SettingsMissing", "Options")]
+    [Xunit.InlineData("SettingsRefused", "Options")]
+    [Xunit.InlineData("CreateCategory", "Slug")]
+    [Xunit.InlineData("EditCategory", "Category")]
+    [Xunit.InlineData("EditCategory", "Slug")]
+    [Xunit.InlineData("EditVenue", "Venue")]
+    public async Task Admin_form_reads_observe_request_cancellation_before_writes(string action, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var controller = new EventsAdminController(_guide,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
+        {
+            ControllerContext = BuildController(Guid.NewGuid()).ControllerContext
+        };
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        if (string.Equals(action, "SettingsInvalid", StringComparison.Ordinal)) controller.ModelState.AddModelError("MaxPrintSlots", "Required");
+        async Task<T> ReadAsync<T>(T value, string current, CancellationToken ct)
+        {
+            if (string.Equals(current, boundary, StringComparison.Ordinal))
+            {
+                await request.CancelAsync();
+                ct.Should().Be(request.Token);
+            }
+            ct.ThrowIfCancellationRequested();
+            return value;
+        }
+        var id = Guid.NewGuid();
+        var burn = MakeBurnSettings();
+        _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<EventSettingsInfo?>(string.Equals(action, "SettingsMissing", StringComparison.Ordinal) ? null : burn, "Edition", call.Arg<CancellationToken>()));
+        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<IReadOnlyList<EventSettingsInfo>>([burn], "Options", call.Arg<CancellationToken>()));
+        _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), "Category", call.Arg<CancellationToken>()));
+        _guide.CategorySlugExistsAsync("category", Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync(false, "Slug", call.Arg<CancellationToken>()));
+        _guide.GetVenueAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<EventVenueView?>(new(id, "Venue", null, null, 0, true), "Venue", call.Arg<CancellationToken>()));
+        Func<Task<IActionResult>> invoke = () => action switch
+        {
+            "CreateCategory" => controller.CreateCategory(new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
+            "EditCategory" => controller.EditCategory(id, new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
+            "EditVenue" => controller.EditVenue(id, new GuideVenueFormViewModel { Name = "Venue" }),
+            _ => controller.SaveSettings(new GuideSettingsViewModel { EventSettingsId = burn.Id })
+        };
+
+        (await invoke.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
+        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+            nameof(IEventManagement.SaveGuideSettingsAsync) or nameof(IEventManagement.CreateCategoryAsync)
+            or nameof(IEventManagement.UpdateCategoryAsync) or nameof(IEventManagement.UpdateVenueAsync)).ToList();
+        if (string.Equals(action, "SettingsRefused", StringComparison.Ordinal))
+        {
+            writes.Should().ContainSingle().Which.GetArguments()[^1].Should().Be(CancellationToken.None);
+        }
+        else
+        {
+            writes.Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("CreateCategory", "IsSensitive", false)]
     [Xunit.InlineData("CreateCategory", "IsActive", false)]
     [Xunit.InlineData("CreateCategory", "DisplayOrder", false)]
