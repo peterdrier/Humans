@@ -238,7 +238,6 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Datei zu groß. Die maximale Größe beträgt {0} MB.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Der Dateiname darf höchstens {0} Zeichen lang sein.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Dateityp nicht unterstützt. Lade eine PDF-, JPEG-, PNG- oder HEIC-Datei hoch.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Nur die Person, die den Bericht eingereicht hat, kann ihn absenden.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Der Bericht muss mindestens eine Position enthalten.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Beleg- und Rechnungspositionen müssen vor dem Absenden einen Anhang haben.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Die einreichende Person muss eine IBAN im Profil hinterlegt haben.</value></data>

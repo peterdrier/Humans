@@ -238,7 +238,6 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Fichier trop volumineux. La taille maximale est de {0} Mo.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Le nom du fichier doit comporter au maximum {0} caractères.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Type de fichier non pris en charge. Téléversez un fichier PDF, JPEG, PNG ou HEIC.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le soumettre.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Le rapport doit comporter au moins une ligne.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Les lignes de reçu et de facture doivent avoir une pièce jointe avant l’envoi.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir un IBAN enregistré dans son profil.</value></data>

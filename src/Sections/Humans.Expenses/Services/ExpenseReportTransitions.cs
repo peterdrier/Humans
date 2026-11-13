@@ -128,13 +128,11 @@ internal sealed class ExpenseReportTransitions(
     }
 
     internal async Task<ExpenseMutationResult> SubmitWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default)
+        Guid reportId, Guid actorUserId, CancellationToken ct = default)
     {
         using var transition = await TransitionLock.AcquireAsync(logger, ct);
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-        if (!actorIsFinanceAdmin && !await reportAccess.IsSubmitterAsync(report, actorUserId, ct))
-            return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanSubmit");
         if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
 
         // The Subject carries the project name; reviewers cannot tell what was paid for without it.

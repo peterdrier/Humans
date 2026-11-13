@@ -68,11 +68,12 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
         Guid lineId, CancellationToken ct = default);
 
-    /// <summary>The payee snapshot comes from the submitter's profile, never the actor's. A pre-approved report claims
+    /// <summary>The caller authorizes submission; the service requires a Draft. The payee snapshot comes from the
+    /// submitter's profile, never the actor's. A pre-approved report claims
     /// its grant in the same transaction and is restamped with the grant's account and cap; a first submit past the
     /// claim deadline is refused, a resubmit of the report holding the grant is not.</summary>
     Task<ExpenseMutationResult> SubmitWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default);
+        Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The submitter's own decision; there is no on-behalf path. A pre-approved report releases its grant.
     /// Approved reports are refused: approval has already queued the Holded push.</summary>

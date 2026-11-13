@@ -251,7 +251,6 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>File too large. Maximum size is {0} MB.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Filename must be {0} characters or fewer.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Only the submitter can submit.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Report must have at least one line.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Receipt and invoice lines must have an attachment before submitting.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Submitter must have an IBAN set on their profile.</value></data>

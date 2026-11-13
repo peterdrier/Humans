@@ -495,7 +495,7 @@ internal sealed class ExpensesController(
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Submit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.SubmitWithResultAsync(id, user.Id, await IsFinanceAdminAsync());
+        var result = await service.SubmitWithResultAsync(id, user.Id);
         SetMutationResult(result, localizer["Expenses_Flash_ReportSubmitted"], localizer["Expenses_Flash_SubmitFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });

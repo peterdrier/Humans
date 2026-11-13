@@ -238,7 +238,6 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>File troppo grande. La dimensione massima è {0} MB.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Il nome del file deve contenere al massimo {0} caratteri.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Tipo di file non supportato. Carica un file PDF, JPEG, PNG o HEIC.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Solo chi presenta il rendiconto può inviarlo.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Il rendiconto deve contenere almeno una riga.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Le righe di ricevuta e fattura devono avere un allegato prima dell'invio.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>Chi presenta il rendiconto deve avere un IBAN nel proprio profilo.</value></data>

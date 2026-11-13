@@ -649,7 +649,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.AttachFileToLineWithResultAsync(reportId, sourceId, false, lineId,
             "receipt.pdf", "application/pdf", receipt, ct)).Succeeded.Should().BeTrue();
         if (string.Equals(operation, "withdraw", StringComparison.Ordinal))
-            (await _sut.SubmitWithResultAsync(reportId, sourceId, false, ct)).Succeeded.Should().BeTrue();
+            (await _sut.SubmitWithResultAsync(reportId, sourceId, ct)).Succeeded.Should().BeTrue();
         var survivor = (await _userService.GetUserInfoAsync(survivorId, ct))! with { MergedUserIds = [sourceId] };
         _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
@@ -661,7 +661,7 @@ public sealed partial class ExpenseReportServiceTests
                 (await _sut.AddLineWithResultAsync(reportId, survivorId, false, "More timber", 5m, ct: ct)).Succeeded.Should().BeTrue();
                 break;
             case "submit":
-                (await _sut.SubmitWithResultAsync(reportId, survivorId, false, ct)).Succeeded.Should().BeTrue();
+                (await _sut.SubmitWithResultAsync(reportId, survivorId, ct)).Succeeded.Should().BeTrue();
                 break;
             case "withdraw":
                 (await _sut.WithdrawWithResultAsync(reportId, survivorId, ct)).Succeeded.Should().BeTrue();
@@ -1861,7 +1861,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.AddLineWithResultAsync(id, submitter, false, "Invoice, no file", 1000m, ExpenseLineType.Invoice, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_ReceiptInvoiceNeedAttachment");
     }
@@ -1878,7 +1878,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.AddLineWithResultAsync(id, submitter, false, "Proof, no file", 400m, parentLineId: invoiceId, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_ReceiptInvoiceNeedAttachment");
     }
@@ -1893,7 +1893,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_SubjectRequired");
@@ -1923,7 +1923,7 @@ public sealed partial class ExpenseReportServiceTests
         if (financeAdmin)
             SetupUserAndProfile(actor, "Finance Admin", "ES9121000418450200051332");
 
-        var result = await _sut.SubmitWithResultAsync(id, actor, financeAdmin,
+        var result = await _sut.SubmitWithResultAsync(id, actor,
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
@@ -1954,7 +1954,7 @@ public sealed partial class ExpenseReportServiceTests
             ? "Alice Tester" : $"{new string('A', namePartLength)} {new string('B', namePartLength)}";
         SetupUserAndProfile(submitter, legalName, "ES9121000418450200051332");
 
-        var ok = (await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken)).Succeeded;
+        var ok = (await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken)).Succeeded;
 
         ok.Should().BeTrue();
         var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
@@ -1977,7 +1977,7 @@ public sealed partial class ExpenseReportServiceTests
         var id = (await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, "Project X", ct: TestContext.Current.CancellationToken)).ReportId!.Value;
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_ReportNeedsLine");
     }
@@ -1991,7 +1991,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.AddLineWithResultAsync(id, submitter, false, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_ReceiptInvoiceNeedAttachment");
     }
@@ -2009,7 +2009,7 @@ public sealed partial class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(submitter, UserFixtures.Profile()));
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_SubmitterNeedsIban");
     }
@@ -2024,7 +2024,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice", "ES9121000418450200051332");
 
-        (await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
         await AuditLog.Received(1).LogAsync(
             ExpensesAuditActions.ExpenseSubmit,
@@ -2045,7 +2045,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, MakeAttachment(submitter), TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.Error.Should().BeNull();
@@ -2061,7 +2061,7 @@ public sealed partial class ExpenseReportServiceTests
         var id = Guid.NewGuid();
         await SeedReportWithStatusAsync(id, submitter, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_CouldNotSubmitReport");
@@ -2077,7 +2077,7 @@ public sealed partial class ExpenseReportServiceTests
         (await _sut.AddLineWithResultAsync(id, submitter, false, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error!.ResourceKey.Should().Be("Expenses_Validation_ReceiptInvoiceNeedAttachment");
@@ -2092,7 +2092,7 @@ public sealed partial class ExpenseReportServiceTests
         await _sut.AddMileageLineWithResultAsync(id, submitter, "Berlin", "Barcelona", 100m, TestContext.Current.CancellationToken);
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         (await _sut.GetAsync(id, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
@@ -2107,7 +2107,7 @@ public sealed partial class ExpenseReportServiceTests
         await _sut.AddLineWithResultAsync(id, submitter, false, "Tent", 50m, ct: TestContext.Current.CancellationToken); // Receipt line, no attachment
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
-        var result = await _sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await _sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
     }
@@ -2128,7 +2128,7 @@ public sealed partial class ExpenseReportServiceTests
         (await sut.AddLineWithResultAsync(id, submitter, false, "No attachment line", 50m, ct: TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue(); // Receipt line, no attachment
         SetupUserAndProfile(submitter, "Bob", "ES1234");
 
-        var result = await sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning,
@@ -2163,7 +2163,7 @@ public sealed partial class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("IUserWrite: profile cache not initialized"));
 
-        var result = await sut.SubmitWithResultAsync(id, submitter, false, TestContext.Current.CancellationToken);
+        var result = await sut.SubmitWithResultAsync(id, submitter, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
         result.Error.Should().BeNull("the controller has a localized fallback for unexpected faults");
@@ -2220,7 +2220,7 @@ public sealed partial class ExpenseReportServiceTests
         Func<Task> action = async () =>
         {
             if (string.Equals(operation, "submit", StringComparison.Ordinal))
-                (await sut.SubmitWithResultAsync(id, submitter, false, cancellation.Token))
+                (await sut.SubmitWithResultAsync(id, submitter, cancellation.Token))
                     .Succeeded.Should().BeFalse();
             else
                 (await sut.SaveSubmitterIbanWithResultAsync(id, submitter,
@@ -2609,7 +2609,7 @@ public sealed partial class ExpenseReportServiceTests
         SetupUserAndProfile(member, "Dani Member", "ES9121000418450200051332");
         SetupUserAndProfile(admin, "Ada Admin", "ES7100302053091234567895");
 
-        var ok = (await _sut.SubmitWithResultAsync(id, admin, true, TestContext.Current.CancellationToken)).Succeeded;
+        var ok = (await _sut.SubmitWithResultAsync(id, admin, TestContext.Current.CancellationToken)).Succeeded;
 
         ok.Should().BeTrue();
         var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
@@ -3701,7 +3701,7 @@ public sealed partial class ExpenseReportServiceTests
             await _sut.AttachFileToLineWithResultAsync(
                 reportId, userId, false, lineId, "receipt.pdf", "application/pdf", stream, TestContext.Current.CancellationToken);
         }
-        ((await _sut.SubmitWithResultAsync(reportId, userId, false, TestContext.Current.CancellationToken)).Succeeded).Should().BeTrue();
+        ((await _sut.SubmitWithResultAsync(reportId, userId, TestContext.Current.CancellationToken)).Succeeded).Should().BeTrue();
         ((await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken)).Succeeded).Should().BeTrue();
 
         await _expenseRepo.SetHoldedContactLinkAsync(reportId, "c1", 40000007, FakeNow, TestContext.Current.CancellationToken);
@@ -4131,7 +4131,7 @@ public sealed partial class ExpenseReportServiceTests
             (await _sut.AttachFileToLineWithResultAsync(
                 reportId, userId, false, lineId, "receipt.pdf", "application/pdf", stream, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         }
-        (await _sut.SubmitWithResultAsync(reportId, userId, false, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
+        (await _sut.SubmitWithResultAsync(reportId, userId, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         (await _sut.DeclineLineForFinanceReviewWithResultAsync(reportId, DeclineFinanceAdmin, lineIds[1], "Personal", TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
         (await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, null, TestContext.Current.CancellationToken)).Succeeded.Should().BeTrue();
 
@@ -4305,7 +4305,7 @@ public sealed partial class ExpenseReportServiceTests
         await _sut.AttachFileToLineWithResultAsync(
             reportId, submitterId, false, lineId, "receipt.pdf", "application/pdf", stream, TestContext.Current.CancellationToken);
 
-        var submitted = (await _sut.SubmitWithResultAsync(reportId, submitterId, false, TestContext.Current.CancellationToken)).Succeeded;
+        var submitted = (await _sut.SubmitWithResultAsync(reportId, submitterId, TestContext.Current.CancellationToken)).Succeeded;
         if (!submitted) throw new InvalidOperationException("SeedApprovedReportWithAttachmentAsync: SubmitAsync returned false");
 
         var approved = (await _sut.ApproveWithResultAsync(reportId, Guid.NewGuid(), null, maxAmount, TestContext.Current.CancellationToken)).Succeeded;

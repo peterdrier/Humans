@@ -56,6 +56,33 @@ public sealed class ExpensesControllerPreapprovalTests
             new LocalizedString(call.Arg<string>(), $"{call.Arg<string>()}:{string.Join(",", call.Arg<object[]>())}"));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Submit_AuthorizesBeforeDispatch(bool permitted)
+    {
+        var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _reports.SubmitWithResultAsync(report.Id, _actorId, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+
+        var result = await Build().Submit(report.Id);
+
+        if (permitted)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _reports.Received(1).SubmitWithResultAsync(report.Id, _actorId, CancellationToken.None);
+        }
+        else
+        {
+            result.Should().BeOfType<ForbidResult>();
+            await _reports.DidNotReceiveWithAnyArgs().SubmitWithResultAsync(default, default);
+        }
+    }
+
     private ExpensesController Build()
     {
         var http = new DefaultHttpContext

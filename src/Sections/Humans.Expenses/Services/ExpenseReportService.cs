@@ -227,8 +227,8 @@ internal sealed class ExpenseReportService(
             "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> SubmitWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Transitions.SubmitWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, ct),
+        Guid reportId, Guid actorUserId, CancellationToken ct = default) =>
+        RunMutationAsync(ct, () => Transitions.SubmitWithResultAsync(reportId, actorUserId, ct),
             "Error submitting expense report {ReportId}", reportId);
 
     /// <summary>
