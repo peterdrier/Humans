@@ -16,34 +16,4 @@ internal sealed class TeamJoinRequest
     public string? ReviewNotes { get; set; }
     public ICollection<TeamJoinRequestStateHistory> StateHistory { get; } = new List<TeamJoinRequestStateHistory>();
 
-    public void Approve(Guid reviewerUserId, string? notes, IClock clock)
-    {
-        if (Status != TeamJoinRequestStatus.Pending)
-            throw new InvalidOperationException("Can only approve pending requests");
-
-        Status = TeamJoinRequestStatus.Approved;
-        ReviewedByUserId = reviewerUserId;
-        ReviewNotes = notes;
-        ResolvedAt = clock.GetCurrentInstant();
-    }
-
-    public void Reject(Guid reviewerUserId, string reason, IClock clock)
-    {
-        if (Status != TeamJoinRequestStatus.Pending)
-            throw new InvalidOperationException("Can only reject pending requests");
-
-        Status = TeamJoinRequestStatus.Rejected;
-        ReviewedByUserId = reviewerUserId;
-        ReviewNotes = reason;
-        ResolvedAt = clock.GetCurrentInstant();
-    }
-
-    public void Withdraw(IClock clock)
-    {
-        if (Status != TeamJoinRequestStatus.Pending)
-            throw new InvalidOperationException("Can only withdraw pending requests");
-
-        Status = TeamJoinRequestStatus.Withdrawn;
-        ResolvedAt = clock.GetCurrentInstant();
-    }
 }

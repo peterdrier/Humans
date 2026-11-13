@@ -39,7 +39,7 @@ One membership of a human in a team, with `TeamMemberRole` and `JoinedAt`/`LeftA
 
 **Tables:** `team_join_requests`, `team_join_request_state_history`
 
-A request to join an approval-required team (`Pending → Approved / Rejected / Withdrawn`), with the requester's message and the reviewer's notes, both at most 2,000 characters. The state history is append-only per design-rules.md, *Append-only entities*.
+A request to join an approval-required team (`Pending → Approved / Rejected / Withdrawn`), with the requester's message and the reviewer's notes, both at most 2,000 characters. The state history is append-only per design-rules.md, *Append-only entities*. `TeamJoining` owns review and withdrawal workflows; repository writes persist their transitions, and approval saves the request, new membership and any Google outbox event together.
 
 ### TeamRoleDefinition / TeamRoleAssignment
 
