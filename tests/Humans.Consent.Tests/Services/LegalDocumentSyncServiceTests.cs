@@ -95,6 +95,37 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ConsentShutdown_CommittedPublicationFinishesNoticesBeforeNextDocument(bool scheduled)
+    {
+        using var shutdown = new CancellationTokenSource();
+        StubActiveUser();
+        var first = await SeedDocumentAsync("First", "first/", "old");
+        var next = await SeedDocumentAsync("Next", "next/", "old");
+        StubGitHubFolder("first/", "First content", "new-first", "First update");
+        StubGitHubFolder("next/", "Next content", "new-next", "Next update");
+        _audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", first.Id,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(async _ => await shutdown.CancelAsync());
+
+        var error = await Xunit.Record.ExceptionAsync(async () =>
+        {
+            if (scheduled) await _service.SyncAllDocumentsAsync(shutdown.Token);
+            else await _service.SyncDocumentAsync(first.Id, shutdown.Token);
+        });
+
+        if (scheduled) error.Should().BeAssignableTo<OperationCanceledException>();
+        else error.Should().BeNull();
+        var notice = Notifier.ReceivedCalls().Where(call => Equals(call.GetArguments()[0], ConsentNotificationSources.LegalDocumentPublished))
+            .Should().ContainSingle().Which.GetArguments();
+        notice[^1].Should().Be(CancellationToken.None);
+        await _gitHub.DidNotReceive().DiscoverLanguageFilesAsync("next/", Arg.Any<CancellationToken>());
+        await using var verify = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        (await verify.DocumentVersions.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("create")]
     [Xunit.InlineData("update")]
     [Xunit.InlineData("archive")]

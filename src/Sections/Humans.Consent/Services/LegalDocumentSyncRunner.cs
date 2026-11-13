@@ -21,48 +21,75 @@ internal sealed class LegalDocumentSyncRunner(
     ILegalDocumentRepository documents,
     ILogger<LegalDocumentSyncRunner> logger) : ILegalDocumentSyncRunner
 {
+    private const string FailureMessage = "Failed to complete legal document sync or notification batches.";
+
     public async Task SyncAndNotifyAsync(CancellationToken cancellationToken = default)
     {
         var failures = new List<Exception>();
-        var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken, failures);
-        logger.LogInformation("Synced {Count} updated legal documents", updatedDocs.Count);
-
-        // The version and its marker commit together, so a crash or a later unchanged sync cannot lose this work.
-        var pending = (await documents.GetDocumentsAsync(null, cancellationToken))
-            .SelectMany(document => document.Versions
-                .Where(version => version.PendingReConsentBatchId is not null)
-                .Select(version => (Document: document, Version: version)))
-            .GroupBy(change => change.Version.PendingReConsentBatchId!.Value);
-        foreach (var batch in pending)
+        try
         {
-            try
+            var updatedDocs = await syncService.SyncAllDocumentsAsync(cancellationToken, failures);
+            logger.LogInformation("Synced {Count} updated legal documents", updatedDocs.Count);
+
+            // The version and its marker commit together, so a crash or a later unchanged sync cannot lose this work.
+            var pending = (await documents.GetDocumentsAsync(null, cancellationToken))
+                .SelectMany(document => document.Versions
+                    .Where(version => version.PendingReConsentBatchId is not null)
+                    .Select(version => (Document: document, Version: version)))
+                .GroupBy(change => change.Version.PendingReConsentBatchId!.Value);
+            foreach (var batch in pending)
             {
-                var currentChanges = batch.Where(change => change.Document.IsActive && change.Document.IsRequired
-                    && change.Document.CurrentVersion?.Id == change.Version.Id).ToList();
-                var batchFailures = await SendReConsentNotificationsAsync(batch.Key, currentChanges, cancellationToken);
-                failures.AddRange(batchFailures);
-                if (batchFailures.Count == 0)
-                    await documents.CompleteReConsentBatchAsync(batch.Key, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                failures.Add(ex);
-                logger.LogError(ex, "Failed to complete legal document notification batch {BatchId}", batch.Key);
+                cancellationToken.ThrowIfCancellationRequested();
+                var batchFailures = new List<Exception>();
+                try
+                {
+                    var currentChanges = batch.Where(change => change.Document.IsActive && change.Document.IsRequired
+                        && change.Document.CurrentVersion?.Id == change.Version.Id).ToList();
+                    await SendReConsentNotificationsAsync(batch.Key, currentChanges, batchFailures, cancellationToken);
+                    if (batchFailures.Count == 0)
+                    {
+                        try
+                        {
+                            await documents.CompleteReConsentBatchAsync(batch.Key, CancellationToken.None);
+                        }
+                        catch (OperationCanceledException ex)
+                        {
+                            // This detached save cannot receive the job's shutdown cancellation.
+                            batchFailures.Add(ex);
+                            logger.LogError(ex, "Failed to complete legal document notification batch {BatchId}", batch.Key);
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    batchFailures.Add(ex);
+                    logger.LogError(ex, "Failed to complete legal document notification batch {BatchId}", batch.Key);
+                }
+                finally
+                {
+                    failures.AddRange(batchFailures);
+                }
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Batch failures are copied during finally, after exception filters run.
+            if (failures.Count > 0)
+                throw new AggregateException(FailureMessage, failures);
+            throw;
+        }
         if (failures.Count > 0)
-            throw new AggregateException("Failed to complete legal document sync or notification batches.", failures);
+            throw new AggregateException(FailureMessage, failures);
     }
 
-    private async Task<IReadOnlyList<Exception>> SendReConsentNotificationsAsync(
+    private async Task SendReConsentNotificationsAsync(
         Guid batchId, IReadOnlyList<(LegalDocument Document, DocumentVersion Version)> changes,
-        CancellationToken cancellationToken)
+        ICollection<Exception> failures, CancellationToken cancellationToken)
     {
-        var failures = new List<Exception>();
         var userDocuments = new Dictionary<Guid, List<(LegalDocument Document, DocumentVersion Version)>>();
         foreach (var teamDocuments in changes.GroupBy(change => change.Document.TeamId))
         {
@@ -91,7 +118,7 @@ internal sealed class LegalDocumentSyncRunner(
         if (userDocuments.Count == 0)
         {
             logger.LogInformation("No team members to notify for legal document batch {BatchId}", batchId);
-            return failures;
+            return;
         }
 
         var users = await userService.GetUserInfosAsync(userDocuments.Keys.ToList(), cancellationToken);
@@ -102,6 +129,7 @@ internal sealed class LegalDocumentSyncRunner(
         var notificationCount = 0;
         foreach (var recipient in recipients)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var user = users[recipient.First()];
             var outstanding = recipient.SelectMany(id => userDocuments[id])
                 .Where(change => !consented.TryGetValue(user.Id, out var versions) || !versions.Contains(change.Version.Id))
@@ -120,12 +148,9 @@ internal sealed class LegalDocumentSyncRunner(
                     language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode);
                 var deliveryKey = string.Create(CultureInfo.InvariantCulture, $"{message.TemplateName}:{batchId:N}:{user.Id:N}");
                 var deliveryId = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(deliveryKey)).AsSpan(0, 16));
-                await emailService.SendAsync(message with { DeliveryId = deliveryId }, cancellationToken);
+                // The pending batch and delivery ID retain retry state; finish this started enqueue.
+                await emailService.SendAsync(message with { DeliveryId = deliveryId }, CancellationToken.None);
                 notificationCount++;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
             }
             catch (Exception ex)
             {
@@ -135,6 +160,5 @@ internal sealed class LegalDocumentSyncRunner(
         }
         logger.LogInformation("Enqueued legal document batch {BatchId} for {Count} human(s), with {FailureCount} recipient/team failure(s)",
             batchId, notificationCount, failures.Count);
-        return failures;
     }
 }

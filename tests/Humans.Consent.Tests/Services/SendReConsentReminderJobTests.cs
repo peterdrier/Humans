@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Humans.Consent.Services;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Extensions;
@@ -23,6 +24,80 @@ namespace Humans.Consent.Tests.Services;
 
 public sealed class SendReConsentReminderJobTests
 {
+    [HumansTheory]
+    [InlineData("Read")]
+    [InlineData("Email")]
+    [InlineData("Stamp")]
+    [InlineData("PriorFailure")]
+    [InlineData("UnitCancellation")]
+    public async Task ConsentShutdown_ReminderFinishesStartedUnitAndPreservesFailures(string boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var now = Instant.FromUtc(2026, 10, 2, 4, 0);
+        var first = MakeUser("first@example.com");
+        var next = MakeUser("next@example.com");
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>()).Returns(new[] { first.Id, next.Id });
+        var legal = Substitute.For<ILegalDocumentSyncManagement>();
+        legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [first.Id] = first, [next.Id] = next });
+        var repo = Substitute.For<IConsentReminderRepository>();
+        repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([]);
+        if (string.Equals(boundary, "Read", StringComparison.Ordinal))
+            repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
+                .Returns(async Task<IReadOnlyList<ConsentReminder>> (_) =>
+                { await shutdown.CancelAsync(); throw new OperationCanceledException(shutdown.Token); });
+        Exception failure = boundary is "UnitCancellation" ? new OperationCanceledException("Enqueue dependency stopped")
+            : new IOException("Enqueue failed");
+        var email = Substitute.For<IEmailService>();
+        email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (boundary is "Email" or "PriorFailure" or "UnitCancellation") await shutdown.CancelAsync();
+            if (boundary is "PriorFailure" or "UnitCancellation") throw failure;
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+        repo.UpsertAsync(Arg.Any<Guid>(), now, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (boundary is "Stamp") await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<SendReConsentReminderJob>();
+        var job = new SendReConsentReminderJob(membership, legal, users, new ConsentReminderService(repo, users), email,
+            TestConsentEmails.Create(), Options.Create(new EmailSettings { ConsentReminderCooldownDays = 7 }),
+            metrics, logger, new FakeClock(now));
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        metrics.DidNotReceive().RecordJobRun("send_reconsent_reminder", "success");
+        await email.DidNotReceive().SendAsync(Arg.Is<EmailMessage>(m => m.UserId == next.Id), Arg.Any<CancellationToken>());
+        if (boundary is "UnitCancellation")
+        {
+            error.Should().BeSameAs(failure);
+            metrics.Received(1).RecordJobRun("send_reconsent_reminder", "failure");
+            logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+        }
+        else if (boundary is "PriorFailure")
+        {
+            error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
+            metrics.Received(1).RecordJobRun("send_reconsent_reminder", "failure");
+        }
+        else
+        {
+            error.Should().BeAssignableTo<OperationCanceledException>();
+            metrics.DidNotReceive().RecordJobRun("send_reconsent_reminder", "failure");
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+            if (boundary is "Read") await email.DidNotReceiveWithAnyArgs().SendAsync(default!);
+            else
+            {
+                await email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.UserId == first.Id && m.DeliveryId != null), CancellationToken.None);
+                await repo.Received(1).UpsertAsync(first.Id, now, CancellationToken.None);
+            }
+        }
+    }
+
     [HumansTheory]
     [InlineData("send", "en", "en")]
     [InlineData("stamp", "en", "en")]
@@ -164,7 +239,7 @@ public sealed class SendReConsentReminderJobTests
     }
 
     [HumansFact]
-    public async Task Cancellation_StopsFanoutInsteadOfAggregating()
+    public async Task UnrelatedCancellation_StopsFanoutInsteadOfAggregating()
     {
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
         var first = MakeUser("first@example.com");
