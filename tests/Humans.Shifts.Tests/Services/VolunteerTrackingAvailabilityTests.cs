@@ -16,7 +16,6 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
 {
     private readonly VolunteerTrackingRepository _repo;
     private readonly VolunteerTrackingService _service;
-    private readonly ShiftViewProbe _views = new();
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
@@ -30,7 +29,6 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
             NewCalendarResolver(),
             Substitute.For<IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(),
-            _views.Cache,
             Clock,
             AuditLog);
     }
@@ -129,7 +127,6 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SetAvailabilityAsync(userId, eventId, [-3]);
         AuditLog.ClearReceivedCalls();
-        await _views.PrimeUserAsync(userId);
 
         var saved = await _service.SetAvailabilityAsync(userId, eventId, [-2, dayOffset]);
 
@@ -140,7 +137,6 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         if (!valid)
         {
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            _views.Evictions.Should().Be(0);
         }
     }
 
@@ -148,13 +144,11 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
     public async Task SetAvailability_UnknownCalendar_DoesNotCreateRow()
     {
         var userId = Guid.NewGuid();
-        await _views.PrimeUserAsync(userId);
 
         await _service.SetAvailabilityAsync(userId, Guid.NewGuid(), []);
 
         (await ShiftsDb.GeneralAvailability.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
-        _views.Evictions.Should().Be(0);
     }
 
     private static readonly Guid Coordinator = Guid.NewGuid();

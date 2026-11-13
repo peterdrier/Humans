@@ -27,7 +27,24 @@ implementation of `IShiftView`; it is wrapped by
 (Singleton decorator with two `TrackedCache` dictionaries for user and
 rota views).
 
-### ShiftManagementService (Scoped)
+### CachingShiftService (Singleton)
+
+No repository. Decorates `IShiftManagement` (with `IShiftService`, `IShiftSeeding`,
+`IShiftVolunteerProfiles`), `IShiftSignupService` (with `IShiftSignups`,
+`IShiftSignupSeeding`), `IUserMerge` and `IUserDataContributor`; the inner
+`ShiftManagementService`, `ShiftSignupService` and the merge inners are registered only
+under the key `shift-inner`, so every Shifts write passes through it. It is the
+section's only `IUserMerge`, running the three inner merges in their old order.
+
+| Cache | Key | Value | Warm | Refresh |
+|-------|-----|-------|------|---------|
+| `Shifts.Rota` (`TrackedCache`) | rota id | `ShiftAdminRota`: rota, its shifts and every signup, all events | at startup, under the refresh lock | after every rota, shift or signup write, in `finally`, under the refresh lock; user-wide writes, merge, erasure and event deletion reload every rota |
+
+Reads come from the inner `IShiftRotaRows` (`ShiftManagementService.GetRotaRowsAsync` →
+`IShiftManagementRepository.GetRotaRowsAsync`). `ShiftBrowseReader` (browse and urgent shifts)
+reads the cached rows; the other readers move onto `IShiftRotaRows` one area at a time.
+
+### ShiftManagementService (Scoped, keyed inner of CachingShiftService)
 
 Repository: `IShiftManagementRepository`.
 
@@ -67,7 +84,7 @@ names from `IUserService` — stitched in memory at the service layer with
 **no new cross-section interface** and no foreign-repository read. Returns
 `null` for an unknown team-slug / out-of-scope rota (controller maps to 404).
 
-### ShiftSignupService (Scoped)
+### ShiftSignupService (Scoped, keyed inner of CachingShiftService)
 
 Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 
@@ -86,7 +103,7 @@ Cross-section calls via `IShiftManagement`, `ISettingsService` (via
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
 `IUserService` (user lookups), `CachingShiftViewService`, plus `IServiceProvider`
 (lazy-resolves `ITeamService` for coordinator/team-name lookups).
-Implements `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`
+Holds the GDPR export and erasure that `CachingShiftService` exposes as `IUserDataContributor`. Implements `IUserMerge`, `ICalendarFeedContributor`
 (personal iCal feed contributor — the user's Confirmed and Pending shift
 signups; Cancelled/Bailed/NoShow history excluded). `EraseForUserAsync`
 (GDPR Art. 17) cancels active signups, then deletes the user's volunteer
@@ -142,14 +159,15 @@ direct DB access beyond the export query.
 
 ### ShiftViewService (Scoped — wrapped by CachingShiftViewService Singleton decorator)
 
-Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
+Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`. User-view signups come from the
+rota cache (`IShiftRotaRows`), not a repository read.
 
 | Table | R/W | Repo |
 |-------|-----|------|
 | EventSettings | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 | Shifts | R | IShiftManagementRepository |
-| ShiftSignups | R | IShiftManagementRepository (via `GetForUsersAsync` / rota view signups) |
+| ShiftSignups | R | IShiftManagementRepository (rota view signups) |
 | VolunteerEventProfiles | R | IShiftManagementRepository |
 | ShiftTags | R | IShiftManagementRepository |
 | VolunteerTagPreferences | R | IShiftManagementRepository |
@@ -159,23 +177,21 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 Implements the section-internal `IShiftRowView`: assembles user + rota
 views from two repositories and forwards Settings change callbacks to
 `IShiftManagement.InvalidateDashboardCaches` for event-keyed dashboard eviction. Wrapped by `CachingShiftViewService`
-which caches both projection types per-entity (per-user view and
-per-rota view). Service-keyed as `"shift-view-inner"` so the decorator
+which caches the per-rota view; user views pass straight through. Service-keyed as `"shift-view-inner"` so the decorator
 can resolve it without self-recursion.
 
 ### CachingShiftViewService (Singleton, `Humans.Shifts.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, ShiftUserView>` (`ShiftView.UserView`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`InvalidateUser`, called by the section's own writes) |
 | `TrackedCache<Guid, ShiftRotaView>` (`ShiftView.RotaView`, in-process, no `IMemoryCache`) | Per-Entity | yes | yes | yes (`InvalidateRota`, called by the section's own writes) |
 
 Implements `IShiftView`; its `Invalidate*` methods are called only by Shifts' own
 services, so nothing outside the section evicts it. Resolves the inner
 Scoped `IShiftRowView` via `IServiceScopeFactory` to honour scope rules.
-Settings change callbacks clear both view caches and synchronously delegate to that
+Settings change callbacks clear the rota views and synchronously delegate to that
 same keyed inner; the decorator resolves no other service.
-Both cache instances are surfaced on `/Debug/CacheStats`.
+The cache is surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)
 

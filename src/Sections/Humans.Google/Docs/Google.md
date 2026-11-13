@@ -1,0 +1,357 @@
+<!-- freshness:triggers
+  src/Sections/Humans.Google/**
+  src/Sections/Humans.Google/Contracts/**
+  src/Sections/Humans.Teams.Contracts/ISystemTeamSync.cs
+  src/Sections/Humans.AuditLog/Contracts/ILegacyGoogleSyncAuditReader.cs
+  src/Sections/Humans.Monitor/Services/DriveActivityMonitorService.cs
+  src/Sections/Humans.Users/Views/UsersAdmin/AdminDetail.cshtml
+  src/Sections/Humans.Users/Services/UserEmailService.cs
+-->
+<!-- freshness:flag-on-change
+  Sync mode invariants, Shared-Drive-only constraint, GoogleEmailStatus rules, and reconciliation gateway operations — review when Google services/entities/controller change.
+-->
+
+# Google — Section Invariants
+
+Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace accounts, reconciliation, Drive-activity monitoring.
+
+## Concepts
+
+- Resource administration audits persisted Drive/group links and reactivations, active unlinks, permission-level saves and inherited-access preferences, with the acting manager and owning team. Refused or missing-resource paths do not write entries; the committed inherited-access preference is audited even when subsequent Drive enforcement fails.
+- **Google Resources** are Shared Drive folders, Shared Drives, Drive files, and Google Groups linked to a team. When a human joins or leaves a team, their access to the team's linked Google resources is automatically managed. Resource rows live in Google's `google_resources`, owned by its `TeamResourceService`.
+- **Sync Mode** controls how the system interacts with Google APIs for each service type. Modes are: None (disabled), AddOnly (grant access but never revoke), or AddAndRemove (full bidirectional sync).
+- **Reconciliation** compares the expected Google resource state (based on team membership) against the actual Google resource state, detecting drift.
+- **Google Group membership sources** implement `IGoogleGroupMembershipSource`. Each source claims group keys and returns expected user IDs only; `IGoogleGroupSync` owns email hydration, user/profile filtering, Google API diffing, collision handling, and mutation.
+- **Drive access sources** implement `IGoogleDriveAccessSource`. Teams claims linked Drive resources, unions members across shared resources and rolls active child-team members into parent claims; Workgroups claims its folders. Sources return user IDs, permission levels, optional team-link metadata and an optional `ResourceName`. Registered resources carry their full Drive path as their name (refreshed daily by `UpdateDriveFolderPathsAsync`); a folder with no `TeamGoogleResource` row (Workgroups' folders) gets the same path walk (`DriveFolderPath`) per reconciliation pass, falling back to the source's `ResourceName`, so removal emails, the sync log and the sync page never show a raw file id. `IGoogleDriveSync` owns user/email hydration, multi-source unions, diffing, mutations and sync logs for both. Manual results retain linked-resource metadata; the daily job runs one Drive pass. `GoogleWorkspaceSyncService` retains provisioning, immediate join grants and outbox dispatch; those grants use the same source-owned permission levels. Consumer sections use `RequestSyncAsync` to enqueue a scoped reconciliation, `CreateSubfolderAsync` to provision folders and `IsFolderReachableAsync` to check a folder setting before saving it.
+- Initial Drive resource lookups reuse `DriveFolderPath` with the fetched leaf metadata. Shared Drive roots are named through `drives.get`, including roots whose file metadata omits `driveId`. Incomplete ancestor walks fall back to the item’s own name, never a partial path suffix.
+- The **sync outbox** queues resource-level sync events for processing by a background job.
+
+## Data Model
+
+The section was GoogleIntegration until 2026-11. Its context keeps the name `GoogleIntegrationDbContext`, because the name sets the `__EFMigrationsHistory_GoogleIntegration` table, and its merged migrations stay in the old `Humans.GoogleIntegration.Data.Migrations` namespace (a project-level `using` keeps them compiling). Audit rows store `TeamGoogleResource`'s entity type as `"GoogleResource"` (`TeamGoogleResource.AuditEntityType`).
+
+### SyncServiceSettings
+
+**Table:** `google_sync_service_settings`
+
+Per-service sync-mode configuration. Holds `UpdatedByUserId` — a bare cross-section Guid column, no FK constraint, no nav. Display names are resolved via `IUserService.GetUserInfosAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
+
+### WorkspaceIdentityRecord
+
+**Table:** `google_workspace_identities`
+
+A member's designated Google Workspace identity: `UserId` (PK, bare Guid, no FK), `Email` (nullable, max 256), `Status` (`GoogleEmailStatus` as string: `Unknown`, `Valid`, `Rejected`), `UpdatedAt`. One row per user. A row with `Email = null` records a cleared designation. Resolution then uses verified domain, primary, or first-address fallback; its verdict is Unknown. Users' retired `users.GoogleEmail` column remains mapped only as a shadow property for a separate drop PR; `user_emails.IsGoogle` / `GoogleEmailStatus` are dropped.
+
+### GoogleSyncOutboxEvent
+
+**Table:** `google_sync_outbox`
+
+Flat record — already clean. Holds `TeamId`/`UserId` scalars with no navs. Two event types defined in `GoogleSyncOutboxEventTypes`: `AddUserToTeamResources` and `RemoveUserFromTeamResources`.
+
+### GoogleSyncLogEntry
+
+**Table:** `google_sync_log_entries`
+
+One row per permission grant or revocation the sync path applies: `Action` (`AccessGranted` / `AccessRevoked`), `ResourceId`, optional `UserId`, `UserEmail` at the time of the call, `Role`, `Source` (`GoogleSyncSource`), `Success`, `ErrorMessage`, `Description`, `JobName`, `OccurredAt`. All Guids are bare columns — no navs, no FKs. Enums persist as strings; indexes on `ResourceId`, `UserId` and `OccurredAt`.
+
+This wing lived in `audit_log_entries` until nobodies-collective/Humans#1083. The section that produces the rows owns them.
+
+The rows written before the split are still on `audit_log_entries`. **`/Google/Admin/SyncHistoryMigration`** (admin-only, under the *Google* nav group) copies them forward: GET is a dry run reporting how many rows were examined, are already here, would move and cannot be mapped; POST copies. `GoogleSyncHistoryMigrationService` reads through `ILegacyGoogleSyncAuditReader` (AuditLog's `Contracts/` folder) and writes through `IGoogleSyncLogRepository`, so neither section touches the other's context. A copied row keeps its source audit row's id, which is what makes a second run a no-op; only `GoogleResourceAccessGranted` / `GoogleResourceAccessRevoked` rows carrying a `SyncSource` and a `Success` map, and the rest are reported as skipped. Nothing on `audit_log_entries` is changed or deleted — the column drop is its own PR, after this has been run and verified. The screen, the service and the reader all come out with the columns.
+
+`UserId` is nullable only because a sync can act on an address no `user_emails` row claims — an outside collaborator, or a mailbox left behind after a purge. Everywhere a human is identifiable the writers record them: expected members carry their id on the plan, and **extra** members — the revocation case, where the human has already left the team and is reachable only through the address Google still holds — are resolved by email (`IUserEmailService.MatchByEmailsAsync`) in Group reconciliation and both Drive reconciliation paths, including source-claimed folders. That query returns every matching `user_emails` row in no order, so both go through `UserEmailMatchOwner.ByEmail` — verified > most-recently-updated > stable id — because an unverified duplicate outranking the real owner would file the row in the wrong human's GDPR export. That dictionary is keyed by `GmailAliasEmailComparer` (nobodies-collective/Humans#1101): the matched row may be stored as a Gmail alias (`old.user+burn@googlemail.com`) of the canonical address Google reports, and a case-only comparer would hash it into an unreachable bucket. `GetWorkspaceAccountListAsync` shares the same picker. That is what makes `/Google/Human/{id}` and the GDPR slice non-empty.
+
+### Google resource entities
+
+**Table:** `google_resources`
+
+`TeamGoogleResource` rows are owned by this section's `TeamResourceService`; `TeamId` is a bare Guid column with no FK constraint and no nav. Google services call `ITeamResourceManagement` (internal) rather than querying the table. Cross-section readers use the public `ITeamResourceService`; the link, unlink, permission-level and restrict-inherited-access writes are internal (`ITeamResourceManagement`), called only by this section's `TeamResourcesController`. Both interfaces resolve to the same scoped service.
+
+### External-API surfaces
+
+`IGoogleSyncManagement` (`GoogleWorkspaceSyncService`), `IGoogleAdminService`, `IGoogleWorkspaceUserService`, and `IGoogleTranslationService` (`GoogleTranslationService`) wrap Google Drive / Groups / Admin SDK / Drive Activity / Cloud Translation HTTP APIs. They own no persistent tables; their "repository" surface is the Google HTTP client (via the connector interfaces listed under [Connector clients](#connector-clients) below), not EF Core.
+
+## Routing
+
+Google integration management is consolidated in `GoogleController` (`[Route("Google")]`). A team's linked resources are managed by `TeamResourcesController` at `/Google/Teams/{slug}/Resources`, linked from the team page and the team Members page.
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/Google` | GET | Admin | Integration dashboard |
+| `/Google/SyncSettings` | POST | Admin | Update sync mode for a service (posted from the `/Settings#google-sync` tab, no GET — peterdrier/Humans#1634) |
+| `/Google/SyncSystemTeams` | POST | Admin | Manual system-team sync trigger |
+| `/Google/SyncResults` | GET | Admin | PRG landing for sync report |
+| `/Google/ActivityLog` | GET | Admin | Newest-first `google_sync_log_entries` (500 rows), filterable by date, action, trigger, success, resource name |
+| `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Resource sync status dashboard |
+| `/Google/Resource/{id}` | GET | Board, Admin | Sync history for one resource |
+| `/Google/Human/{id}` | GET | UsersAdmin, Board, Admin | Sync history for one human |
+| `/Google/Sync/Preview/{resourceType}` | POST | TeamsAdmin, Board, Admin | AJAX: drift preview for resource type |
+| `/Google/Sync/Execute/{resourceId}` | POST | Admin | Execute sync for one resource |
+| `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin | Execute sync for all resources of a type |
+| `/Google/SyncOutbox` | GET | Admin | Recent outbox events with user/team/resource display |
+| `/Google/SyncOutbox/{id}/Requeue` | POST | Admin | Requeue one permanently-failed outbox event for retry |
+| `/Google/SyncOutbox/RequeueAll` | POST | Admin | Requeue all permanently-failed outbox events for retry |
+| `/Google/Human/{id}/RerunSync` | POST | Admin | Enqueue fresh Google sync events for all of a user's current teams |
+| `/Google/Human/{id}/ProvisionEmail` | POST | UsersAdmin, Admin | Provision @nobodies.team email for a human |
+| `/Google/AllGroups` | GET | Admin | Domain-wide group listing with drift status |
+| `/Google/CheckGroupSettings` | POST | Admin | Trigger group settings drift check |
+| `/Google/GroupSettingsResults` | GET | Admin | PRG landing for group settings drift results |
+| `/Google/RemediateGroupSettings` | POST | Admin | Remediate settings drift for one group |
+| `/Google/RemediateAllGroupSettings` | POST | Admin | Batch remediate all drifted groups |
+| `/Google/LinkGroupToTeam` | POST | Admin | Link an unlinked domain group to a team |
+| `/Google/CheckEmailRenames` | POST | Admin | Detect OAuth email renames |
+| `/Google/EmailRenames` | GET | Admin | PRG landing for email rename results |
+| `/Google/EmailFlagViolations` | GET | Admin | List users with `IsPrimary` flag violations; the controller orders by burner name with ordinal comparison ignoring case, retaining request cancellation through the Users diagnostic and bulk name read |
+| `/Google/Accounts` | GET | Admin | @nobodies.team Workspace account list (2FA, recovery email) |
+| `/Google/Accounts/Provision` | POST | Admin | Provision standalone @nobodies.team account |
+| `/Google/Accounts/Suspend` | POST | Admin | Suspend a Workspace account |
+| `/Google/Accounts/Reactivate` | POST | Admin | Reactivate a suspended Workspace account |
+| `/Google/Accounts/ResetPassword` | POST | Admin | Reset password (shown once in modal) |
+| `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Admin | Reset password + issue one backup 2FA code |
+| `/Google/Accounts/Link` | POST | Admin | Link existing Workspace account to a human |
+| `/Google/WorkspaceEmail` | POST | Signed-in member (self) | `WorkspaceIdentityController.Set`: designate one of the member's own verified addresses as their Google identity (antiforgery; carries `[AllowBeforeActiveMembership]` like the rest of the Emails grid) |
+| `/Google/Teams/{slug}/Resources` | GET | TeamsAdmin, Admin, or a resource manager of the team's department; Board reads it (`TeamsPolicies.Read`) with every form hidden | `TeamResourcesController.Index`: linked resources + link form |
+| `/Google/Teams/{slug}/Resources/LinkDrive` | POST | TeamsAdmin, Admin, or a resource manager of the team's department | Link a Drive folder or file by URL |
+| `/Google/Teams/{slug}/Resources/LinkGroup` | POST | same | Link a Google Group by email |
+| `/Google/Teams/{slug}/Resources/{resourceId}/PermissionLevel` | POST | same; resource must belong to the team (else 404) | Change a Drive resource's permission level |
+| `/Google/Teams/{slug}/Resources/{resourceId}/RestrictInheritedAccess` | POST | same; resource must belong to the team | Toggle inherited-access restriction on a Drive folder |
+| `/Google/Teams/{slug}/Resources/{resourceId}/Unlink` | POST | same; resource must belong to the team | Soft-unlink (IsActive = false) |
+| `/Google/Teams/{slug}/Resources/{resourceId}/Sync` | POST | same; resource must belong to the team | Reconcile one resource now |
+| `/Google/Admin/{id}/WorkspaceEmail` | POST | UsersAdmin, Admin (`UsersPolicies.Manage`) | `WorkspaceIdentityController.AdminSet`: same, on another member's grid; a merged-away `{id}` is 404 |
+
+## Actors & Roles
+
+| Actor | Capabilities |
+|-------|--------------|
+| Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, link, reset password, combined Reset + 2FA recovery for locked-out humans). Provision per-human @nobodies.team email. Requeue permanently-failed outbox events (individually or all at once). Re-enqueue Google sync for a specific user across all their current teams. |
+| TeamsAdmin, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via `TeamResourcesController`. View resource status. Trigger per-resource sync |
+| Board | View the resource sync status dashboard and every team's linked resources; link, unlink and sync nothing |
+| Coordinator | Link and unlink Google resources for their own department (via `TeamResourcesController`). Trigger per-resource sync for their own department |
+| Board, Admin | View Drive activity anomaly check results (running the check is Admin only). View sync audit logs |
+| UsersAdmin, Board, Admin | View per-human Google sync audit |
+| Background jobs | Automated sync: system team sync (hourly), resource reconciliation (daily at 03:00), sync outbox processing, resource provisioning |
+
+## Invariants
+
+- Team-resource authorization resolves non-privileged viewers before checking their
+  department's resource-management permission. Merged cookies use the surviving
+  account; missing accounts are denied and request cancellation propagates. The
+  TeamsAdmin/Admin bypass and department-only scope remain unchanged; Board is not
+  in the bypass (it reads the page through `TeamsPolicies.Read`).
+
+- Administrative account preflight honours browser cancellation before sync-setting,
+  provisioning, account-management, recovery-credential and sync-queue operations.
+  Once started, those operations retain their independent tokens.
+
+- Cloud Translation returns exactly one non-null translated text per input, in input order. Missing data, missing/null segments or missing/null `translatedText` fail the complete translation call before callers can store incomplete text. Explicit empty strings remain valid.
+
+- Domain-group reads impose no display order. The All Groups view orders linked groups first, then email ignoring case; batch settings remediation explicitly uses that same sequence.
+
+- Internal `WorkspaceAccountRecovery` owns password reset, backup-code rotation and the combined recovery workflow, including the live 2SV gate and delivery after audit failure. `GoogleAdminService` delegates its existing recovery methods and retains provisioning, suspension, reactivation, account/group linking and the team picker. The helper uses the existing dependencies and log category; no contract or DI registration changes.
+
+- Internal `WorkspaceAccountDiagnostics` owns account-list enrichment, counts and email-rename diagnostics. `GoogleAdminService` delegates its existing read methods; canonical email matching, per-account failure isolation, request cancellation, result shapes and log category stay unchanged. The vendor proxy remains focused on Workspace calls, and no contract or DI registration changes.
+
+- Password-reset and backup-code audits resolve the linked member through the same `UserEmailMatchOwner.ByEmail` picker as account listings and syncs, including Gmail-alias identity and verified/newest/stable-id precedence. Unlinked addresses retain an empty audit entity id.
+
+- Per-human Workspace provisioning accepts an optional team scope. Scoped requests require the target in that team's current member snapshot from `ITeamService` before any Workspace calls, identity writes, audits or credentials. Users-admin provisioning remains unscoped; caller authorization is separate.
+
+- Workspace provisioning and account linking check Users' verified-email addition result before identity reconciliation, team resync, success audits or credential notices. A refusal aborts the workflow through its existing failure handling; a duplicate address without a refusal remains an idempotent no-op. Provisioning still captures the recovery address before creating the Workspace account or adding its email row.
+
+- Activity-log resource-name filtering combines linked resource ids with a case-insensitive literal match on unlinked descriptions. Escaped matching runs before the database row limit; the growing log is never loaded into memory for this search.
+
+- The internal `StoredGoogleText` helper bounds persisted resource errors to 2000 UTF-16 units and outbox errors and sync-log text (including the job prefix) to 4000. All three persistence paths reuse its surrogate-safe boundary so long vendor failures cannot prevent failure-state or audit-row persistence.
+
+- Drive grant-failure diagnostics mask email local parts to at most two UTF-16 units without splitting surrogate pairs, retaining any `+tag` and domain. Failure classification and identity rejection remain unchanged.
+
+- Outbox error previews preserve whole UTF-16 surrogate pairs within their existing 120-unit limit; tooltips retain the complete stored error, and retry behavior is unchanged.
+
+- Domain-group listing and its team picker use browser cancellation. Aborted per-group settings fetches propagate through the listing instead of becoming group errors; caller cancellation logs warnings without exception stacks. Dependency failures retain their existing error feedback.
+
+- Workspace accounts, per-resource/per-human audit frames and Sync Outbox reads pass the browser abort token to every data lookup. Account-list caller cancellation logs a warning without an exception stack and propagates; dependency cancellation remains an error with generic feedback.
+
+- The Workspace accounts controller orders existing `WorkspaceAccountInfo` rows by primary email with ordinal comparison ignoring case. The service supplies account facts and counts without display ordering; status, member-link, 2FA and recovery fields are preserved.
+
+- Sync-dashboard preview loads apply only the latest response or failure for each resource tab. Drive and group previews load independently; sync POSTs keep their existing execution boundaries.
+- Sync preview local-user rows and email-rename diagnostics render identity through `Human`; a blank copied name cannot hide a known user. External sync rows retain supplied names. Rename-table client sorting follows the rendered name.
+- Group-settings checks and email-rename detection forward browser cancellation through their read-only lookups and propagate caller cancellation without publishing partial diagnostic results. Independent dependency failures retain per-account recovery or the existing load error.
+- Preview requests reject redirects and display the load failure; login or access-denied pages cannot become sync previews.
+
+- All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.
+- Inherited access cannot be removed at a child folder. Drive reconciliation retains direct/inherited component details (nobodies-collective/Humans#945): a direct elevation on a mixed permission is updated in place to the greater of the expected role and inherited floor. Departure or retirement reduces the elevation to that floor; equal-floor mixed or purely inherited permissions then need no further mutation. Pure direct extras are deleted. Role-change successes and failures enter the sync log; reducing an elevation while inherited access remains never sends a total-removal notice. A Drive delete that still 403s as inherited (a race between listing and deleting) is classified terminal and not retried until the next reconciliation pass.
+- Drive reconciliation retries a folder's permission list, a permission create or a role change up to twice in the same pass (1s, then 3s backoff) when Google reports a transient error: 5xx, 429, a 403 "rate limit exceeded", or the 400 "an internal error has occurred" shape (peterdrier/Humans#2037, peterdrier/Humans#2161). Each transient retry is logged at Warning without an exception stack so it is visible in the production log viewer; the sync log records the final outcome. Permanent failures, including target rejections, are never retried in-pass.
+- Drive plus-address fallback (peterdrier/Humans#2037): when Drive refuses a non-Gmail `local+tag@domain` identity (Gmail ones are canonicalized first) with a target rejection or its 400 internal error (never on an outage, rate limit or caller-permission failure), reconciliation and outbox grants retry the base `local@domain`. If Drive accepts it, the base address is recorded as `google_workspace_identities.DriveEmail` and later Drive passes match and grant it directly; the sync log names both addresses, even when the base already had access. If the base also fails, the original failure (and any rejection verdict) stands. `DriveEmail` is Drive-only, since Google treats plus addresses differently across services, so Groups keep using `Email`. A changed `Email` clears it. It rides the identity's GDPR slice and erasure. Follow-up: show it on the member's email addresses panel.
+- Drive role changes use Google's permission update operation rather than delete/recreate. `AddOnly` may elevate access but cannot downgrade it, including the mixed writer-to-inherited-reader transition; `None` and `Preview` never mutate.
+- Drive folders with `RestrictInheritedAccess = true` have `inheritedPermissionsDisabled` enforced by the reconciliation job. Drift (manual re-enablement of inheritance) is detected and corrected automatically, with an audit trail entry.
+- Sync settings are per-service (Google Drive, Google Groups, Discord). Setting a service to None disables sync without redeploying. The admin settings tab propagates the browser abort token through its settings and updater-name reads.
+- **Sync-mode changes are auditable.** Successful admin saves record `SyncModeChanged` against the saved settings row, with service, selected mode and authenticated actor. Missing settings rows do not audit; malformed posted fields return HTTP 400 before writing.
+- **Sync mode gates every Execute — scheduled and manual alike.** `SyncAction` only distinguishes `Preview` (diff only) from `Execute` (apply); on `Execute`, the per-service `SyncMode` still decides whether adds/removes actually apply (`None` → no writes, `AddOnly` → adds only, `AddAndRemove` → adds + removes). Admin UI "Sync Now" / "Sync All" pass `SyncAction.Execute` the same as the scheduled jobs — there is no operator bypass of a `None` or `AddOnly` mode.
+- **App is source of truth for expected membership.** Reconciliation computes expected members from team membership in the database; anyone present in Google but absent from the DB is classified as "extra" and shows as a removal candidate.
+- Manual group linking checks the submitted address before Google lookup and the resolved numeric id/canonical address afterward. An already-active group on that team is refused before any resource mutation or link audit; inactive matches retain the existing reactivation path.
+- Section-wide active Group and Drive-folder reads share `IGoogleResourceRepository.GetActiveByResourceTypeAsync`. Group checks do not derive the resource set from team counts; the public Drive-folder snapshot contract remains unchanged.
+- Group duplicate and inactive-recovery lookups compare legacy email-valued Google ids literally and case-insensitively, scoped to the requested team, Group type and active state. Inactive recovery also accepts the exact numeric Google id; underscores in addresses never match other characters.
+- The internal `GroupSettingsPolicy` owns enforced settings, expected/actual dictionary projections and drift comparisons shared by group-settings checks and domain listing. Provisioning and remediation consume the same expected settings. Internal `GoogleGroupSettings` owns drift checks, single-group inspection, remediation and domain-group listing; `GoogleWorkspaceSyncService` retains the existing forwarding entry points. Sync-mode gating, resource selection, enumeration concurrency and audit attribution are unchanged. Membership reconciliation, provisioning and Drive operations retain their existing owners; no DI registration or public contract is added.
+- Team-resource Drive and Group lookups return the existing status-0 structured error on HTTP/stream transport failures, so linking refuses without a resource write or audit. Cancellation still propagates. Credential/client initialization stays outside that boundary: missing or unreadable credential files remain configuration failures.
+- Group linking uses the live Cloud Identity response’s `groupKey.id` as its resolved email, including when lookup used an alias. Display links use that email’s domain and local part, not the configured provisioning domain; the stub follows the supplied domain. A response without a usable email is refused before linking or auditing, rather than substituting the submitted alias. Numeric group IDs still drive identity deduplication and reactivation.
+- Group settings drift checks use the same group-email resolver as membership sync: team email first, then the URL domain (configured-domain fallback for domainless URLs), then an email-valued legacy Google id. Trailing URL slashes do not become part of the group email.
+- Single-resource Drive reconciliation unions every active team link for the same Google id and resource type, including individual files, so one team’s manual sync cannot revoke another linked team’s access.
+- **One sync code path for preview / scheduled / manual.** Diff computation is shared; the `SyncAction` parameter (`Preview` / `Execute`) selects diff-only vs. apply, and the stored `SyncMode` determines which mutations execute. The initiating `GoogleSyncSource` is threaded through the Drive gateways so scheduled reconciliation and outbox dispatch leave truthful sync-log rows; `admin-resync:` outbox keys (per-human rerun) and `:resync:` keys (account link) identify manual reruns while ordinary add events record `TeamMemberJoined`.
+- **Manual Execute runs to completion regardless of the admin's browser.** `GoogleController.SyncExecute` / `SyncExecuteAll` pass `CancellationToken.None` to the sync call, not the request's `HttpContext.RequestAborted` — an admin closing the tab mid-reconcile must not abort partway through applying group memberships and Drive permissions, which would leave Workspace half-synced with no record of where it stopped (nobodies-collective/Humans#950).
+- **Reconciliation finishes started mutations before observing shutdown.** Group provisioning (creation, settings, audit, follow-up lookup and failed-attempt tracking) and each Group/Drive membership or permission mutation use a detached token through their required logs, rejection status, retries/fallbacks and successful-removal notification. Preflight reads and previews retain the caller token; cancellation is checked before each next resource/member/permission. A fully reconciled resource finishes its status write independently of cancellation. Membership selection, role rules, sync modes and retry limits are unchanged.
+- **Nightly reconciliation reports recorded outcomes through shutdown.** It checks cancellation
+  before each next phase and group-settings repair. Requested shutdown warns without an
+  exception and propagates after completing the accumulated admin notifications independently
+  of shutdown. An interrupted run records no success; genuine earlier phase failures still
+  produce the existing partial-failure metric and summary. Phase timeouts while the job token
+  remains live follow normal failure isolation. Returned Group errors, settings-check errors and unsuccessful
+  settings repairs reach that summary; corrected-drift counts include only acknowledged repairs.
+  Notification faults remain best-effort errors, including independent cancellation from their
+  detached dependency. Per-resource mutation boundaries and failure isolation remain service-owned.
+- **Detached Group failures retain retry tracking.** Cancellation from a detached membership
+  add/remove call becomes the existing status-0 failure, including resource error, failed sync
+  log and scoped retry when enabled. It never rejects an identity or sends a successful-removal
+  notice. Cancellation from detached outcome tracking, provisioning-failure tracking or the final
+  synced stamp remains a fault with its original exception preserved. Requested cancellation
+  still stops preflight reads and the next member; retry limits and provisioning fallback are unchanged.
+- **Drive cancellation follows the operation boundary.** Requested read cancellation and
+  iteration checkpoints propagate. A read timeout while the caller token remains live uses
+  the existing path fallback or resource-error diff. Cancellation from a detached permission
+  mutation remains a fault even during shutdown: the resource records an error rather than
+  success. Detached status persistence and inheritance-repair cancellation also remain faults
+  with their original exceptions preserved. Permission planning, retry timing and successful
+  removal notifications are unchanged.
+- **Maintenance observes cancellation between repairs.** Folder-path refresh and inherited-access enforcement propagate requested cancellation from metadata reads and stop before the next resource, while independent read failures remain isolated per resource. Inheritance and group-settings repairs check cancellation before starting, then finish their remote write and audit independently of shutdown.
+- **Cancelled health probes propagate cancellation.** A stopped Google credential/API probe is never reported as an authentication failure; credential-free instances still report degraded. The per-probe SDK client is disposed after every outcome.
+- **Drive Activity reads remain cancellable.** Activity queries and Directory identity lookups pass their caller token through the shared credential loader and Google API read. A cancelled identity lookup propagates cancellation instead of returning an unresolved person.
+- **Workspace account timestamps are UTC.** Directory creation and last-login timestamps retain their instant regardless of server timezone; missing creation time remains `DateTime.MinValue` and missing login time remains null.
+- A human's Google service email is their @nobodies.team email if provisioned, otherwise their OAuth login email.
+- Successful Workspace provisioning queues credentials and sends an inbox notice in the recipient's supported preferred language (English fallback), reusing the credential email subject and linking to their profile. Neither the preferred recovery address nor its OAuth fallback may be an `@nobodies.team` mailbox. Once the account is provisioned and linked, a credentials preparation/enqueue failure remains a successful provisioning with an operator warning to request an admin password reset; no additional password state is persisted for provisioning retries. Missing recovery addresses get the same recovery guidance. The member notice asks for admin help when credentials were not queued, and only asks them to check personal email after an acknowledged enqueue. Both human-admin and team-coordinator actions show the warning instead of claiming delivery.
+- `EmailProvisioningService.ProvisionNobodiesEmailAsync` refuses an archived id: a merge-resolved-forward id (lookup returns the survivor, whose `Id` differs) or a GDPR/legacy tombstone (`UserInfo.IsActive` false) is rejected before any Workspace call (peterdrier/Humans#1707).
+- Once Workspace creates an account, a failed provisioning audit never discards its temporary credentials: standalone provisioning returns the password and human-linked provisioning continues credential delivery and the member notice. Audit failures log at Critical with account, actor and (when linked) user attribution, without credentials; failed Workspace creation still returns failure.
+- Human-linked and standalone provisioning share mailbox-syntax validation and [Google Workspace's primary-username bounds](https://knowledge.workspace.google.com/admin/users/name-guidelines-for-users-and-groups): at most 64 characters, no leading, trailing or consecutive periods, and no reserved `abuse`/`postmaster` names. Invalid usernames return operator feedback before Workspace reads or writes. Human-linked provisioning retains its German/diacritic transliteration to ASCII and checks the resulting length; standalone provisioning retains the entered lowercase Unicode username. Other accepted symbols are preserved rather than restricted to an outdated character allowlist.
+- **Workspace identity resolution** (replaces Users' `EnsureGoogleInvariantAsync`, Users decomposition commit 15). `IGoogleService.GetWorkspaceIdentityAsync` resolves at read time over the member's verified addresses: (1) a verified `@nobodies.team` address (the designated one when it is `@nobodies.team`); else (2) the designated address — the `google_workspace_identities` row — if still verified; else (3) the verified primary; else (4) the first verified address by email. No verified address → no identity.
+- `Status` counts only for the address it was recorded against: a row whose `Email` differs from the resolved address reads `Unknown`. With no row, the status is `Unknown`. Explicit recipient rejection marks the identity `Rejected` through `SetStatusFromSyncAsync(userId, attemptedEmail, …)`, which is dropped when `attemptedEmail` is no longer the current identity; `Valid` never overwrites `Rejected`. Caller-permission and sharing-policy failures do not reject addresses. Re-designating the same address (the Retry button) resets `Rejected` to `Unknown`; designating another address starts at `Unknown`.
+- `Set` accepts only a verified address of the member's own (not a merged-away id) and, while the member has a verified `@nobodies.team` address, only a `@nobodies.team` one. Each set is audited as `UserEmailGoogleSet` on the `User` (same action and wording as Users' former `SetGoogleAsync`).
+- Users reports every address that leaves an account — email delete, admin delete-by-id, provider unlink, an OAuth tag-move or rename, and a cross-user displacement — through `IGoogleWrite.ClearIfAddressAsync`; when it is the designated address, the row becomes a cleared row (so the frozen legacy flag cannot resurrect it) and the read falls through to the default.
+- GDPR mailbox cleanup reads the exact raw account snapshot and suspends every distinct verified `@nobodies.team` address before deleting sync-log references. Merges can leave several managed mailboxes on the survivor; case-only duplicate addresses are suspended once, unverified/personal addresses are excluded, and archived ids never resolve forward to a living survivor. Any suspension failure aborts erasure while the addresses remain available for retry.
+- GDPR: `WorkspaceIdentityService` is an `IUserDataContributor` (slice `WorkspaceIdentity`: `Email`, `Status`; erasure deletes the row) and an `IUserMerge` (the archived account's row is deleted; the survivor keeps its own identity). The `google.workspace-identities` migration and legacy fallback are retired: production reported `pending: 0, done: true` at `https://humans.nobodies.team/api/data-migrations` on 2026-11-05.
+- Drive permission-create failures (HTTP 400/403) that match `GoogleWorkspaceSyncService.IsDriveTargetRejection` — including 403 "Cannot share a shared drive with non Google accounts" — set the address `Rejected` in both the Teams-keyed Drive path and `GoogleDriveAccessSyncService`; the access-source sync then skips that member until the status is cleared (peterdrier/Humans#1938).
+- Drive's 400 internal error on a grant is usually a hiccup, so one run never rejects. When the same member's latest grant on the same folder from an earlier pass (read from the sync log: by resource id for a registered folder; an unregistered one logs `Guid.Empty`, so by the display name that ends each grant description) also ended in that error, after any plus-address fallback failed too, `GoogleDriveAccessSyncService` marks the identity `Rejected` the same way, so nightly retries stop and the verdict shows on the member's admin card (peterdrier/Humans#2149, peterdrier/Humans#2179).
+- The Google outbox drain is marked `[ExternalWrite]`, matching its Workspace mutations; its Hangfire entry receives a literal `CancellationToken.None`.
+- Team provisioning returns `GoogleResourceGrantResult`, carrying the resolved owner and exact attempted email row, retryability and failure details. `Accepted` means Google creates or confirms an existing Drive grant and no grant fails. Disabled Drive sync, no resources and queued group reconciliation return `Deferred`; failed grants or ineligible addresses return `Failed`. Only `Accepted` lets the outbox mark the address Valid; resource existence alone is never verification.
+- Successful outbox dispatch finishes its applicable Google-email status update before marking the event processed and counting success. A dispatch/status persistence failure keeps the event pending under the existing retry limit rather than closing it with an unreachable retry count.
+- Direct Drive grants keep preflight reads cancellable, then finish the permission call, plus-address fallback, sync log and target-rejection status independently of cancellation. Cancellation stops the next resource. The outbox likewise finishes a returned grant's status and acknowledgement or failure tracking before stopping the next event; requested preflight cancellation propagates without consuming a retry, while an independent dependency timeout remains a failure.
+- Outbox shutdown is reported as a warning without an exception or a job success/failure metric.
+  Cancellation from a detached grant or completion dependency remains a fault even if shutdown
+  arrives concurrently. A returned grant's status-save failure follows normal retry tracking;
+  failure to persist that tracking escapes as a job failure with the original exception preserved.
+- Internal `GoogleSyncOutboxAdministration` owns counts, recent-event projections, manual requeue, per-user re-enqueue and retry audits shared with stub mode. `GoogleWorkspaceSyncService` keeps existing forwarding entry points. Rejected-identity handling, membership selection, deduplication keys, cancellation and audit text are unchanged. Producer enqueueing remains in `GoogleSyncOutboxService`, and processing remains in `GoogleSyncOutboxProcessor`; no DI registration or public contract is added.
+- Outbox retry and permanent-failure error text keeps at most 4000 UTF-16 code units, without splitting a Unicode surrogate pair. Retry counts and failure transitions are independent of truncation.
+- Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Returned failures follow the same lifecycle: transient failures increment retry count and remain pending; permanent/local refusals record failure, never success. Mixed results retry when any grant is retryable. Escaping exceptions without an attempted-row identity cannot reject a guessed current address. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.
+- Without Google credentials, the outbox job reports `skipped` and the processor leaves every event pending without dispatching stubs or changing `GoogleEmailStatus`. The nightly reconciliation job likewise reports `skipped` without running a phase, the hourly Teams system-team sync skips its Google Group reconcile step, and the scoped Hangfire schedulers log and enqueue nothing, so no reconciler ever writes sync-log rows against the in-memory stubs. `IGoogleDriveActivityClient.IsConfigured` is the one credential signal for all of them.
+- The system authenticates to Google APIs as a service account — no domain-wide delegation or user impersonation.
+- Drive permissions are modified through `IGoogleDriveSync` reconciliation and the provisioning/join gateways in `IGoogleSyncManagement`. Google Group membership is modified only by `IGoogleGroupSync`; `IGoogleSyncManagement` still provisions groups and remediates group settings.
+- Internal `GoogleGroupClaimReader` owns membership-source collection and the active group-resource lookup shared by single and bulk reconciliation. Key normalization, source collision counts, oldest-resource selection, read order and request cancellation are unchanged. `GoogleGroupSyncService` retains collision decisions, provisioning, mutations, diagnostics and scoped retries; no public contract or DI registration is added.
+- `IGoogleGroupSync.ReconcileAllAsync` loads all registered group claims, hydrates expected users once for the pass, records per-group errors, and schedules capped scoped retries for groups that fail during Execute (a transport error such as a reset connection, in the provisioning or membership client, is one group's error, not the pass's, peterdrier/Humans#2049); it is the daily, hourly teams-system-sync, and bulk reconcile path.
+- `IGoogleGroupSync.ReconcileOneAsync` reconciles one group key and, on Google API failure during Execute, schedules delayed scoped Hangfire retries for the same group key, capped at five retry attempts.
+- Group sync logs retain their trigger through direct, bulk, queued and retry paths: admin operations use `ManualSync`, inline provisioning carries its existing trigger, the hourly team pass uses `SystemTeamSync`, and the daily job uses `ScheduledSync`. Scoped Group and Drive Hangfire calls pass every current argument explicitly with `CancellationToken.None`; neither retains a legacy signature overload (standing policy D13).
+- If more than one `IGoogleGroupMembershipSource` claims the same group key, the orchestrator logs/audits a collision and skips mutation for that group. First-wins is forbidden because it would silently revoke access claimed by another owner.
+- `TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups. `ITeamService` does not inherit that interface; Teams registers the concrete `TeamService` as a source. Camps' `CampRoleService` is a second source, for camp role groups, and Workgroups' `WorkgroupGoogleGroupSource` a third, for a workgroup's optional email group.
+- Group and Drive source fan-outs share one verified-email and user-eligibility policy; rejected, suspended, deletion-pending and merged-away claimed users are excluded. Inline team provisioning uses the same suspension, deletion-pending and email-rejection gate before scheduling groups or granting Drive access, so delayed outbox events cannot restore excluded access. Address selection and rejection state use the same `UserInfo` snapshot; they never pair one snapshot’s status with another email lookup. Vendor rejection and acceptance update the exact attempted email row, preserving a newer selection’s state.
+- Signup rejection (`UserState.Rejected`) also excludes Google access, even when a non-system team or camp-role claim remains. Group/Drive reconciliation and inline provisioning share this gate; configured sync modes still govern removals. Email-address rejection remains a separate per-address state.
+- Drive and Group plans compare Gmail identities with `GmailAliasEmailComparer` (dots, plus tags and gmail/googlemail aliases); other domains keep their distinct local parts. Existing alias-form access is never classified as extra against the same expected identity. Drive claims reconcile once at the highest already-claimed level, using a stable user ID on ties; Group alias claims reconcile once with stable user-ID attribution. API targets retain their accepted dotted form.
+- Drive file ids are matched exactly, including case, in both scoped reconciliation and claim collision detection.
+- If more than one `IGoogleDriveAccessSource` claims the same folder id (e.g. Teams and Workgroups), `IGoogleDriveSync` reconciles the union of their claims, highest level per user — unlike the group side, which skips colliding keys. If any source throws, the pass still grants but holds every removal and demotion and records an error (in every sync mode, and for previews) on each claimed resource, since the failed source may have claimed those members; active resources no surviving source claimed get the same error rather than being skipped silently. The join-time grant (`AddUserToTeamResourcesAsync`) does not tolerate a failing source: the exception propagates so the outbox retries the event instead of marking it processed with no grant.
+- Drive roles are fully managed: a direct role above the claimed level (e.g. raised by hand) is `MemberSyncState.Downgrade`. Preview and the `/Google/Sync` page list every pending downgrade with current and expected role; `AddAndRemove` then lowers it in place and logs `AccessRevoked` in the sync log. `AddOnly` never demotes.
+- Drive folder-name maintenance saves only complete paths reaching a root. Failed parent reads, unavailable root names and the walk-depth limit preserve the stored name; a Shared Drive root (the drive itself: its id is the drive id, `files.get` reads it as an anonymous parentless folder named "Drive") is named only by `drives.get`, never by the `files.get` placeholder, and is recognised from its own or a descendant's `driveId`, or by a `drives.get` probe of a parentless folder — a failed drive-name read leaves the path unresolved.
+- `IGoogleSyncWrite.CreateSubfolderAsync` respects the `GoogleDrive` `SyncMode` (throws when it is `None`) and throws on a Google API failure rather than returning a bogus id, so a failed creation is visible to the caller.
+
+## Negative Access Rules
+
+- TeamsAdmin and Board **cannot** manage sync settings — that is Admin-only.
+- Coordinators **cannot** manage sync settings, execute bulk sync actions, or remediate Google Group settings drift.
+- Regular humans have no access to Google resource management.
+- A member **cannot** designate another member's Google identity, nor an address that is not their own verified row: `/Google/WorkspaceEmail` acts on the signed-in member only, and `/Google/Admin/{id}/WorkspaceEmail` requires UsersAdmin or Admin.
+- The admin Google Sync / @nobodies.team cards (`AdminDetailSidebar` user part) render nothing outside the admin view; the Re-run Google Sync button inside them is Admin-only.
+
+## Triggers
+
+- When team membership changes, Drive sync outbox events are queued and scoped Google Group membership sync requests are enqueued after the team write commits.
+- When a human selects a different Google email, the new canonical address starts `Unknown` (status is per-address, #687); fresh Drive sync events and scoped Google Group sync requests are enqueued for current team memberships.
+- When a Google resource is linked to a team, current team members are synced to that resource.
+- When a Google resource is unlinked, it is deactivated and audited; the unlink itself does not revoke Google permissions.
+- The system team sync job runs hourly, reconciling system team membership.
+- After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
+- The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.
+- On every applied or failed Drive/Group permission grant or revocation, `GoogleWorkspaceSyncService` / `GoogleGroupSyncService` / `GoogleDriveAccessSyncService` append a `google_sync_log_entries` row via `IGoogleSyncLogService.LogAsync`, carrying `success: false` + the API error on failure. Group recipient failures record the resource error, failed sync log and applicable scoped retry before updating the attempted Users email row; a status-write failure propagates with those diagnostics preserved.
+- Source-claimed groups without a linked resource row still log applied and failed membership writes with `ResourceId = Guid.Empty`, the group key in the description and the known member ID. Auto-provisioning a missing claimed group writes `GoogleResourceProvisioned` to the audit trail. Existing sync-log export and erasure cover these rows.
+- The daily reconciliation job runs `IGoogleDriveSync.ReconcileAllAsync` once for all registered source claims, including linked team files/folders and Workgroups folders. Retired teams' resources are deactivated only in `AddAndRemove` after every linked resource of the selected type reconciles without error; API failures remain visible and block deactivation. Per-resource errors in the returned result count as a failed Drive phase: the job records `partial_failure` and sends a SyncError alert. Source-only claims (no linked resource row, e.g. Workgroup folders) show the folder id read-only on the sync dashboard, with no per-resource Audit or Execute controls.
+
+## Cross-Section Dependencies
+
+- **Audit actions:** declared on `GoogleAuditActions` (`src/Sections/Humans.Google/Contracts/GoogleAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GoogleResourceAccessGranted`, `GoogleResourceAccessRevoked`, `GoogleResourceProvisioned`, `AnomalousPermissionDetected`, `GoogleResourceDeactivated`, `WorkspaceAccountProvisioned`, `WorkspaceAccountSuspended`, `WorkspaceAccountReactivated`, `WorkspaceAccountPasswordReset`, `WorkspaceAccountLinked`, `WorkspaceAccountBackupCodesGenerated`, `WorkspaceAccountResetBlockedFor2Sv`, `GoogleResourceSettingsRemediated`, `GoogleResourceInheritanceDriftCorrected`, `UserEmailGoogleSet`, `GoogleSyncRetryScheduled`, `GoogleResourceLinked`, `GoogleResourceUnlinked`, `GoogleResourceUpdated`, `SyncModeChanged`. The class is public in `Contracts/` because Monitor's Drive-activity scan also writes `AnomalousPermissionDetected` (the one `Alert` action: highlighted rows and a count on the admin audit page).
+- **Notifications:** `INotificationEmitter` (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `GoogleNotificationSources` (`src/Sections/Humans.Google/GoogleNotificationSources.cs`), one `NotificationSourceDefinition` each: `WorkspaceCredentialsReady` (informational, to the user: @nobodies.team provisioned); `SyncError` (actionable, to admin role: google sync failure); `GoogleDriftDetected` (informational, to admin role: reconciliation fixes drift).
+- **Teams:** `ITeamService` / `ITeamResourceManagement` — Google resources are linked per team. Team membership drives Google Group and Drive access.
+- **Users:** `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` supply the member's verified addresses; the Workspace identity itself is this section's `google_workspace_identities`. Vendor status writes go through `SetStatusFromSyncAsync` with the attempted address, never re-resolving the target. Users calls `IGoogleWrite.ClearIfAddressAsync` when an address leaves an account. `IUserEmailService.MatchByEmailsAsync` attributes extra permissions, and `GetByEmailOrAlternateAsync` checks already-linked identities during standalone account provisioning. Users' Emails grid hosts `<vc:workspace-identity>` (the Google column and the rejection banner) and its admin list and profile card host `<vc:nobodies-email-badge>`; both view components are this section's.
+- **Teams, Camps:** read `IGoogleService` — Teams skips outbox events for a `Rejected` identity and targets Drive/Group grants at the identity address; Camps' role drill-down shows each holder's identity address.
+- **Admin:** Sync settings management is Admin-only.
+- **Onboarding:** Volunteers membership is reconciled by `SystemTeamSyncJob` on name + consents only, which cascades to Google Group membership; the Consent Coordinator's clear/flag does not affect it.
+- **Email:** `IGoogleRemovalNotificationService` (Google-owned) dispatches the Google removal messages via `IEmailService.SendAsync(...)`, built by the section's own `GoogleEmails` builder (this section owns the copy and its `/Email/EmailPreview` samples, peterdrier/Humans#1651), after every confirmed Google API delete in `IGoogleGroupSync` / `IGoogleDriveSync` (issue peterdrier/Humans#639). Variant 1 (loss-of-access) vs Variant 2 (secondary-email cleanup) is chosen by inspecting the recipient's `UserEmail` rows; messages are `MessageCategory.System` (no unsubscribe footer) and localized to the recipient's supported `User.PreferredLanguage`, falling back to English for blank, invalid or unsupported preferences. `SyncRemovalReason.EmailRotation` is plumbed through for audit/telemetry but does not suppress the notification — Workspace identity rotation produces a Variant 2 email so the user can confirm which address was tidied up. Suppression is limited to the orphan-address case (no matching `UserEmail` row, e.g. deleted user, anonymized human, or OAuth-rename-in-place).
+
+## Architecture
+
+Internal `TeamResourceReader` owns resource-row snapshots, team summaries, active counts, folder lists and resource-name/id reads. `TeamResourceService` retains its existing entry points, management authorization and resource mutations. Query order, active/inactive lookup behavior, empty-input handling, summary counts, projection fields and cancellation are unchanged; no public contract or DI registration is added.
+
+The internal `GoogleTeamGroupLinking` owns team-prefix group linking and its cross-team URL-conflict lookup. `GoogleWorkspaceSyncService` delegates the existing `EnsureTeamGroupAsync` entry point. Inactive recovery matches legacy email IDs or the canonical group URL of numeric-ID rows and requires confirmation. A confirmed restoration reuses the archived row, refreshes its team name and URL, and deactivates only the selected oldest existing group in the same repository save; both changes are audited after persistence. Other manually linked groups remain active. Teams carries the pending resource ID back to its existing edit form so the operator can confirm and save again. Prefix-clearing deactivation and reconciliation flags retain their existing behavior. Manual resource linking and group-settings remediation retain their existing owners; no public contract or DI registration is added.
+
+The internal `GoogleDriveFolderMaintenance` owns stored folder-path refresh and inherited-access restriction enforcement, including the shared Drive setter. `GoogleWorkspaceSyncService` forwards its existing entry points. The helpers retain active-team filtering, complete-path checks for name updates and correction audits for inheritance repairs. Requested cancellation propagates; independent failures remain isolated per resource. Folder creation, membership reconciliation and permission planning keep their existing owners; no contract or DI registration is added.
+
+The internal `DriveAccessClaims` owns source collection, per-folder claim unions and claim snapshots shared by Drive reconciliation and Workspace permission-level resolution. Sources remain sequential; partial failures still prevent removal/demotion, while the strict resolver path propagates source failures. Key trimming, permission maxima, team-link combination, cancellation and logging are unchanged. Resource loading/enrichment, permission mutations and retries remain in the reconciliation owner; no public contract or DI registration is added.
+
+The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Drive permission plan, including Gmail alias grouping, inherited access floors and direct-grant classification. `GoogleDriveAccessSyncService` retains hydration, API mutations, retry/error policy, sync logs and removal notices. Planning still selects the highest claimed access level with the same user-ID tie-break; no permission decisions, DI registrations or public contracts change.
+
+**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncManagement`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleDriveAccessSyncService` (implements `IGoogleDriveSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
+**Owned tables:** `google_sync_service_settings`, `google_sync_outbox`, `google_sync_log_entries`, `google_resources`, `google_workspace_identities`
+**Status:** (A) Migrated.
+
+### Public contract
+
+| Public interface | Methods | Notes |
+|---|---:|---|
+| `IGoogleSyncService` | 2 | Read contract: `GetFailedSyncEventCountAsync` (Notifications meter), `IsFolderReachableAsync` (Workgroups root-folder check). |
+| `IGoogleSyncWrite` | 4 | `AddUserToTeamResourcesAsync` (Teams system-team sync), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
+| `ITeamResourceService` | 7 | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
+| `IGoogleService` | 2 | Read contract: `GetWorkspaceIdentityAsync` / `GetWorkspaceIdentitiesAsync` — a member's effective Workspace identity (`WorkspaceIdentity(UserId, Email, Status)`), keyed by the requested id (merge-aware). Teams, Camps, Users' admin list. |
+| `IGoogleWrite` | 1 | `ClearIfAddressAsync` — Users reports an address leaving an account. |
+
+`GoogleWorkspaceSyncService` (or `StubGoogleSyncService`) implements the internal `IGoogleSyncManagement`; `TeamResourceService` implements the internal `ITeamResourceManagement`; `WorkspaceIdentityService` implements the internal `IWorkspaceIdentityManagement` (reads + `ClearIfAddressAsync` + `SetAsync`, `SetStatusFromSyncAsync` and the copy). DI registers each face to the same instance. Everything else (sync-by-type, drift checks, outbox requeue, metrics counts) is internal.
+
+- Service(s) live in `src/Sections/Humans.Google/Services/` (namespace `Humans.Google.Services`) and never import `Microsoft.EntityFrameworkCore`.
+- `ISyncSettingsRepository`, `IGoogleSyncOutboxRepository`, `IGoogleSyncLogRepository`, `IGoogleResourceRepository`, `IWorkspaceIdentityRepository` (all `internal`, in `src/Sections/Humans.Google/Data/`) are the only code paths that touch this section's tables via `DbContext`. They are unreachable from outside the section assembly, which is what retired the old `check-google-resource-ownership.sh` grep guard.
+- **Decorator decision** — no caching decorator. All Google services are either request-scoped admin operations or background-job processors; no hot bulk-read path warrants a `ConcurrentDictionary` projection.
+- **Cross-domain navs** — none remain. `SyncServiceSettings.UpdatedByUserId`, `TeamGoogleResource.TeamId`, and `GoogleSyncOutboxEvent.TeamId`/`UserId` are all bare Guid columns with no nav and no FK constraint. Team deletion is guarded instead by a pre-check in `TeamService.PermanentlyDeleteTeamAsync`.
+- **Cross-section calls** — `ITeamService`, `ITeamWrite`, `IUserService`, `IUserEmailService`, `IEmailService`, `ILegacyGoogleSyncAuditReader`, `IAuditLogService` (write path — `IGoogleSyncManagement` logs outbox requeue and per-human rerun, `GoogleController` logs link/remediate actions; `IAuditLogRepository` itself is `internal` to the AuditLog section and not reachable cross-section).
+- **Architecture tests** (`tests/Humans.Google.Tests/Architecture/`) — `GoogleWorkspaceSyncBridgeArchitectureTests.cs` sweeps every type in `Humans.Google.Services` for Google SDK types in its signatures and pins the four sync bridge interfaces' namespace and shape-neutrality; `GoogleWorkspaceUserArchitectureTests.cs` pins `IWorkspaceUserDirectoryClient`; `TeamResourceArchitectureTests.cs` pins `ITeamResourceGoogleClient`.
+
+### `<vc:google-sync-log>` — the sync-log render path
+
+The section's `/Google/Resource/{id}` and `/Google/Human/{id}` pages emit `<vc:google-sync-log>` with the applicable predicate. The component owns the read (`IGoogleSyncLogViewer`) and render, while the page supplies its title, empty text, and back link. Keeping the host page here avoids a cross-section Razor tag-helper dependency. The render test seeds a row and asserts it reaches the page. `/Google/ActivityLog` reads the internal `IGoogleSyncLogService.GetRecentAsync`, capped at 500: a name filter is resolved to resource ids first (the log's distinct ids, named through `ITeamResourceService`), then the repository filters by those ids. Rows whose resource has no `google_resources` row (unregistered workgroup Drive folders, `ResourceId = Guid.Empty`) show their sync-log description instead (the Drive path the sync service writes, peterdrier/Humans#2000), or "(unlinked)" when it is empty, and the name filter also matches that description case-insensitively.
+
+The read/write split is deliberate: `IGoogleSyncLogViewer` and its `GoogleSyncLogView` DTO are public only because a cross-assembly ViewComponent's constructor parameters must be. The write side and the Activity Log's cross-resource read, `IGoogleSyncLogService`, stay `internal` — nothing outside this section appends to the log or needs that query.
+
+The GDPR sync-log export preserves the viewer fields and resolves resource names, but formats `OccurredAt` as UTC ISO 8601 so download JSON contains a timestamp. Page rendering retains the public viewer DTO.
+
+### Repository surface
+
+- **`ISyncSettingsRepository`** — owns `google_sync_service_settings`. Unique index on `ServiceType` (`SyncServiceSettingsConfiguration.cs:31`). One row per `SyncServiceType`, seeded (reserved GUID block 0002).
+- **`IGoogleSyncOutboxRepository`** — owns `google_sync_outbox`. Entity holds `TeamId`/`UserId` scalars only; no entity-level navs and no FK constraint — bare Guid columns. Indexes on `(ProcessedAt, OccurredAt)`, `(TeamId, UserId, ProcessedAt)`, and `DeduplicationKey` (unique). Enqueue writes live here (`AddAsync` / `AddRangeAsync`) and are surfaced to producers through `IGoogleSyncOutboxService`. When an enqueue must be atomic with another section's mutation — e.g. `TeamService` queuing an event on a `TeamMember` change — the producer wraps the team-repository call and `IGoogleSyncOutboxService.AddAsync` in an ambient `TransactionScope` rather than folding the outbox write into `TeamRepository`.
+- **`IGoogleSyncLogRepository`** — owns `google_sync_log_entries`. Append + three top-N reads (by resource, by user ids at 200 rows each; recent-across-resources for the Activity Log, limit set by the caller) + the distinct resource ids it references + the GDPR paths (`DeleteByUserIdsAsync` erasure, `GetAllByUserIdsContributorAsync` export). Its main caller is `GoogleSyncLogService`, which writes best-effort (a failed log is swallowed after an Error, never failing the sync) and reads for `<vc:google-sync-log>`. `AddRangeAsync` + `GetExistingIdsAsync` exist for the one-time history migration and go with it.
+- **`IGoogleResourceRepository`** — owns `google_resources`. `TeamResourceService` is the main caller; `GoogleWorkspaceSyncService` and `GoogleDriveAccessSyncService` use it for resource reads and reconciliation-loop atomic writes. Other sections read through `ITeamResourceService`; writes stay inside the section.
+
+> `DriveActivityMonitorService` moved to the **Monitor** section (`src/Sections/Humans.Monitor`) — it injects five sections' services and calls no repository, so it is a cross-section orchestrator rather than Google's. It reads this section through `IGoogleDriveActivityClient` and `ITeamResourceService`, and persists its `DriveActivityMonitor:LastRunAt` marker through `ISettingsService`. See [Monitor.md](../../Humans.Monitor/Docs/Monitor.md).
+
+### Connector clients
+
+Section services depend only on shape-neutral connector interfaces in `Humans.Google.Services.Workspace` (`IGoogleDriveActivityClient` is in the section's `Contracts/` folder, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (the connector rule in design-rules.md, *Layers and projects*). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.Google/Services/Workspace/`. `IGoogleDirectoryClient` lists domain groups only and requests only the group-read scope. Workspace account enumeration and lifecycle operations use `IWorkspaceUserDirectoryClient`; there is no parallel primary-email-only listing path. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncWrite.CreateSubfolderAsync`, not by any reconciliation path.
+
+### Touch-and-clean guidance
+
+- None open.

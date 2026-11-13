@@ -82,7 +82,7 @@ Repository: `ICampRepository`.
 
 Cross-section calls via `ICampRoleCampAccess` (implemented by
 `CachingCampService` — camp-member status without the full camp surface),
-`IUserService`, `IGoogleIntegrationService` (Workspace
+`IUserService`, `IGoogleService` (Workspace
 identities for the role drill-down through internal `CampRoleReader`), `IAuditLogService`,
 `INotificationEmitter`. The decorator evicts the cached `CampInfo` after its
 role writes. Implements
@@ -95,7 +95,7 @@ Reads role definitions, role assignments and their Camps-owned member/season fac
 through the shared `ICampRepository`. Builds the role panel, directory summaries,
 compliance matrix, drill-down and expected Google group memberships. Reuses
 `ICampRoleCampAccess` for event settings and seasons, and
-`IGoogleIntegrationService` for Workspace identities. No writes or cache.
+`IGoogleService` for Workspace identities. No writes or cache.
 
 ### CampImageGallery (constructed by CampService, not DI-registered)
 

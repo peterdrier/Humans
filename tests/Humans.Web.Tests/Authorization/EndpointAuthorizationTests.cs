@@ -61,13 +61,13 @@ public class EndpointAuthorizationTests
         { typeof(AdminController), "Index", "AnyAdminRole" },
         { SectionType("Humans.AuditLog.Controllers.AuditLogController"), "Index", "BoardOrAdmin" },
         { SectionType("Humans.Monitor.Controllers.MonitorController"), "CheckDriveActivity", "AdminOnly" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Resource", "BoardOrAdmin" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "Human", UsersPolicies.Read },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "UpdateSyncSetting", "AdminOnly" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncSystemTeams", "AdminOnly" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "SyncResults", "AdminOnly" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "CheckGroupSettings", "AdminOnly" },
-        { SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), "GroupSettingsResults", "AdminOnly" },
+        { SectionType("Humans.Google.Controllers.GoogleController"), "Resource", "BoardOrAdmin" },
+        { SectionType("Humans.Google.Controllers.GoogleController"), "Human", UsersPolicies.Read },
+        { SectionType("Humans.Google.Controllers.GoogleController"), "UpdateSyncSetting", "AdminOnly" },
+        { SectionType("Humans.Google.Controllers.GoogleController"), "SyncSystemTeams", "AdminOnly" },
+        { SectionType("Humans.Google.Controllers.GoogleController"), "SyncResults", "AdminOnly" },
+        { SectionType("Humans.Google.Controllers.GoogleController"), "CheckGroupSettings", "AdminOnly" },
+        { SectionType("Humans.Google.Controllers.GoogleController"), "GroupSettingsResults", "AdminOnly" },
         { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), null, "ReviewQueueAccess" },
         { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Clear", "ConsentCoordinatorBoardOrAdmin" },
         { SectionType("Humans.Consent.Controllers.ConsentReviewQueueController"), "Flag", "ConsentCoordinatorBoardOrAdmin" },
@@ -104,7 +104,7 @@ public class EndpointAuthorizationTests
     [InlineData("GroupSettingsResults")]
     public void GoogleAdminEndpoint_RequiresAdminPolicy(string actionName)
     {
-        AssertHasPolicy(SectionType("Humans.GoogleIntegration.Controllers.GoogleController"), actionName, "AdminOnly");
+        AssertHasPolicy(SectionType("Humans.Google.Controllers.GoogleController"), actionName, "AdminOnly");
     }
 
     [HumansFact]

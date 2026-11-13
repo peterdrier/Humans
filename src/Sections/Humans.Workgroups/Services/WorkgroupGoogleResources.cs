@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Workgroups.Data;
 using Humans.Workgroups.Domain;

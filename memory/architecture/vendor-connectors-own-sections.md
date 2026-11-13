@@ -1,16 +1,16 @@
 ---
 name: vendor-connectors-own-sections
-description: HARD RULE. Vendor connector sections (Holded, MailerLite, GoogleIntegration) are never merged into their consumer sections — vendors can be swapped; never re-export a vendor's wire DTO.
+description: HARD RULE. Vendor connector sections (Holded, MailerLite, Google) are never merged into their consumer sections — vendors can be swapped; never re-export a vendor's wire DTO.
 ---
 
 A section wrapping an external vendor (Holded, MailerLite, Stripe, Google Workspace via
-GoogleIntegration) stays its own section, even when one app section is its only consumer.
+Google) stays its own section, even when one app section is its only consumer.
 
 **Why:** Peter: *"that's an external vendor which could change … vendors don't get merged with app code
 ever."* Folding the connector into its consumer welds a replaceable surface into domain code.
 
 **The shape:** the connector owns its typed client, proxies what the app needs and caches vendor
-responses as necessary. GoogleIntegration is the reference.
+responses as necessary. Google is the reference.
 
 **How to apply:**
 - A new vendor integration gets its own section, consumed through its interface.
@@ -22,7 +22,7 @@ responses as necessary. GoogleIntegration is the reference.
 - **Cache tables follow the connector; decision tables stay with the domain.** A read-through cache of
   vendor facts belongs to the connector; our own attribution rules and member bindings belong to the
   domain section.
-- A vendor prefix on a table name does not prove ownership (`holded_expense_outbox_events` is
+- A vendor prefix on a table name does not prove ownership (`expense_holded_outbox_events` is
   Expenses').
 - Never propose merging a connector into its consumer during a cleanup.
 

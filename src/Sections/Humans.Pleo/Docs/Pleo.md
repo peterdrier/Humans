@@ -36,7 +36,7 @@ books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
 | `pleo_entries` | one row per entry, keyed by Pleo id; typed fields, signed `AmountEur`, and `Raw` (jsonb, the entry as returned) |
 | `pleo_employees` | cardholders: Pleo id, first/last name, code, deleted flag. No email or phone |
 | `pleo_accounts` | the chart: Pleo id, code, name, external (Holded) id, archived |
-| `pleo_balance` | one row: wallet current, available and pending debits in minors |
+| `pleo_balances` | one row: wallet current, available and pending debits in minors |
 | `pleo_sync_states` | one row: status, last run, entries mirrored, empty rows skipped, last error |
 | `pleo_categories` | category name → Holded code, linked Pleo category id (unique when set), who set it (null: a sweep) and when |
 

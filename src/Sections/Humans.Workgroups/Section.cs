@@ -9,7 +9,7 @@ using Humans.Base.Models.Tables;
 using Humans.Calendar.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Authorization;
 using Humans.Workgroups.Data;

@@ -1,11 +1,11 @@
 using Humans.Base.Constants;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services.Contributors;
 
-/// <summary>User ids only, never emails: GoogleIntegration hydrates and filters them uniformly across sources.</summary>
+/// <summary>User ids only, never emails: Google hydrates and filters them uniformly across sources.</summary>
 internal sealed class WorkgroupDriveAccessSource(
     IWorkgroupService workgroups,
     ITeamService teams) : IGoogleDriveAccessSource

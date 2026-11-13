@@ -3,7 +3,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
@@ -114,7 +114,7 @@ public class TeamServiceSlugRaceTests
             Substitute.For<IAdminAuthorizationService>(),
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
-                .With<IGoogleIntegrationService>()
+                .With<IGoogleService>()
                 .Build(),
             clock,
             NullLogger<TeamService>.Instance);

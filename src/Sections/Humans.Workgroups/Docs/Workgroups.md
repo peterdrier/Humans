@@ -6,10 +6,10 @@
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupMembershipSource.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupSync.cs
+  src/Sections/Humans.Google/Contracts/IGoogleSyncService.cs
+  src/Sections/Humans.Google/Contracts/IGoogleDriveAccessSource.cs
+  src/Sections/Humans.Google/Contracts/IGoogleGroupMembershipSource.cs
+  src/Sections/Humans.Google/Contracts/IGoogleGroupSync.cs
   src/Sections/Humans.Calendar/Contracts/ICalendarFeedContributor.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
@@ -256,7 +256,7 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 ### Settings
 
-`workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
+`workgroup_settings` owns the root Drive folder id: one row (`Id = 1`),
 `RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
 through the Workgroups repository and audits the actor. A save is refused unless
 the service account can read the folder (`IGoogleSyncService.IsFolderReachableAsync`),
@@ -496,17 +496,17 @@ should end is the Board's decision, taken on the register in front of them.
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
-- **GoogleIntegration**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
+- **Google**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
   folders → ContentManager (`fileOrganizer`) for current members (never a pending request), Dormant → Viewer,
-  root → Board readers only. Every claim carries the group's name (`Workgroups` for the root) as the fallback when GoogleIntegration cannot resolve the folder's Drive path, so removal emails and the sync log never show a raw folder id. Every folder-bearing group that is neither Active nor Dormant (Applied, Referred, Refused,
+  root → Board readers only. Every claim carries the group's name (`Workgroups` for the root) as the fallback when Google cannot resolve the folder's Drive path, so removal emails and the sync log never show a raw folder id. Every folder-bearing group that is neither Active nor Dormant (Applied, Referred, Refused,
   Withdrawn) remains claimed with an empty roster so existing direct grants are revoked. Calls `IGoogleSyncWrite.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
-- **GoogleIntegration (email group)**: implements `IGoogleGroupMembershipSource` alongside Teams and Camps (inbound) —
+- **Google (email group)**: implements `IGoogleGroupMembershipSource` alongside Teams and Camps (inbound) —
   an Active or Dormant group with a `GoogleGroupPrefix` claims `{prefix}@{GoogleGroupDomain}` for its current members
   (never a pending request); a Dormant roster is frozen, so the group keeps it. Other statuses claim nothing. Linking,
   and every change that requests a Drive sync, also call `IGoogleGroupSync.RequestSyncAsync` for a claimed group.
   Clearing the prefix stops the claim and leaves the Google group's members as they are. A group another source
-  also claims is a collision: GoogleIntegration skips and audits it.
+  also claims is a collision: Google skips and audits it.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
@@ -547,7 +547,7 @@ The internal `WorkgroupDataExport` owns all six GDPR export slices, including re
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)
 **Owned tables:** `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
 `MyWorkgroupsViewComponent` supplies the member-dashboard list and passes
@@ -563,7 +563,7 @@ picker labels and roster profile badges load a member dictionary.
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IWorkgroupService` | — | Not published — no other section consumes Workgroups directly (Calendar and GoogleIntegration are inbound fan-outs Workgroups implements); no `.Contracts` leaf |
+| `IWorkgroupService` | — | Not published — no other section consumes Workgroups directly (Calendar and Google are inbound fan-outs Workgroups implements); no `.Contracts` leaf |
 
 ### For (A) Migrated sections
 

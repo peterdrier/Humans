@@ -71,7 +71,7 @@
                             <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                                 <div>
                                     <status-badge value="@shift.GetShiftPeriod(es)" text="@ShiftDisplayItem.PeriodLabel(shift.GetShiftPeriod(es), SharedLocalizer)" class="me-1" />
-                                    <strong>@shift.Rota.Name</strong> —
+                                    <strong>@first.Signup.Rota.Name</strong> —
                                     @es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToWeekdayDayMonth() to @es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToWeekdayDayMonth()
                                     <small class="text-muted">(@block.Count() days)</small>
                                     <span class="ms-1">@first.DepartmentName</span>
@@ -123,11 +123,11 @@
                         </text>;
                         var upcomingTable = TableModel.For(individualItems)
                             .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
-                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Rota.Name)
                             .Template(Localizer["Shifts_Phase"].Value, upcomingPhaseCell)
                             .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth(), c => c.Css("text-nowrap"))
                             .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
-                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.DurationHours + "h")
                             .Template("", upcomingActionCell, c => c.NoSort())
                             .Build();
                         <partial name="_Table" model="upcomingTable" />
@@ -172,11 +172,11 @@
                         </text>;
                         var pendingTable = TableModel.For(Model.Pending)
                             .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
-                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Rota.Name)
                             .Template(Localizer["Shifts_Phase"].Value, pendingPhaseCell)
                             .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth(), c => c.Css("text-nowrap"))
                             .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
-                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.DurationHours + "h")
                             .Template("", pendingActionCell, c => c.NoSort())
                             .Build();
                     }
@@ -205,11 +205,11 @@
                         </text>;
                         var pastTable = TableModel.For(Model.Past)
                             .Column(Localizer["Shifts_Department"].Value, r => r.DepartmentName)
-                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Shift.Rota.Name)
+                            .Column(Localizer["Shifts_Shift"].Value, r => r.Signup.Rota.Name)
                             .Template(Localizer["Shifts_Phase"].Value, pastPhaseCell)
                             .Column(Localizer["Shifts_Date"].Value, r => es.GateOpeningDate.PlusDays(r.Signup.Shift.DayOffset).ToWeekdayDayMonth(), c => c.Css("text-nowrap"))
                             .Column(Localizer["Shifts_Time"].Value, r => r.AbsoluteStart.ToTime(tz!))
-                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.Duration.TotalHours + "h")
+                            .Column(Localizer["Shifts_Duration"].Value, r => r.Signup.Shift.DurationHours + "h")
                             .Template(SharedLocalizer["Common_Status"].Value, pastStatusCell)
                             .Build();
                     }

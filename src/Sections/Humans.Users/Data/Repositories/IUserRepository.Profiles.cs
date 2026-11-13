@@ -21,6 +21,14 @@ internal partial interface IUserRepository
     /// </summary>
     Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Per user, the contact-field, language and volunteer-history rows that carry no <c>UserId</c> yet. Read-only.
+    /// </summary>
+    Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default);
+
+    /// <summary>Stamps the owning user onto every such row. Returns the rows written.</summary>
+    Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default);
+
     /// <summary>Copies the profile's non-blank names onto every mismatched user row. Returns the rows written.</summary>
     Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default);
 
@@ -91,3 +99,5 @@ internal sealed record ProfileNameMismatch(
     Guid UserId,
     string UserBurnerName, string UserFirstName, string UserLastName,
     string ProfileBurnerName, string ProfileFirstName, string ProfileLastName);
+
+internal sealed record ProfileChildRowsWithoutUser(Guid UserId, int ContactFields, int Languages, int VolunteerHistory);

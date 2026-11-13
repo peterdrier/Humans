@@ -76,7 +76,15 @@ internal sealed partial class UserRepository
         ctx.ProfileLanguages.RemoveRange(existing);
 
         if (languages.Count > 0)
+        {
+            var ownerUserId = await ctx.Profiles
+                .Where(p => p.Id == profileId)
+                .Select(p => (Guid?)p.UserId)
+                .FirstOrDefaultAsync(ct);
+            foreach (var language in languages)
+                language.UserId = ownerUserId;
             ctx.ProfileLanguages.AddRange(languages);
+        }
 
         await ctx.SaveChangesAsync(ct);
     }
@@ -98,7 +106,7 @@ internal sealed partial class UserRepository
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
         if (volunteerHistory is not null)
-            await ReconcileCVEntriesAsync(ctx, profile.Id, volunteerHistory, ct);
+            await ReconcileCVEntriesAsync(ctx, profile, volunteerHistory, ct);
         await UpdateUserStateFromProfileAsync(ctx, profile, ct);
         await ctx.SaveChangesAsync(ct);
     }
@@ -179,6 +187,45 @@ internal sealed partial class UserRepository
         public required User User { get; init; }
         public required Profile Profile { get; init; }
     }
+
+    public async Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var owners = await ProfileOwnersAsync(ctx, ct);
+        var contactFields = await ctx.ContactFields.Where(r => r.UserId == null).Select(r => r.ProfileId).ToListAsync(ct);
+        var languages = await ctx.ProfileLanguages.Where(r => r.UserId == null).Select(r => r.ProfileId).ToListAsync(ct);
+        var history = await ctx.VolunteerHistoryEntries.Where(r => r.UserId == null).Select(r => r.ProfileId).ToListAsync(ct);
+
+        Dictionary<Guid, int> CountByUser(List<Guid> profileIds) => profileIds
+            .GroupBy(id => owners[id])
+            .ToDictionary(g => g.Key, g => g.Count());
+        var (byContact, byLanguage, byHistory) = (CountByUser(contactFields), CountByUser(languages), CountByUser(history));
+
+        return [.. byContact.Keys.Concat(byLanguage.Keys).Concat(byHistory.Keys).Distinct().Order()
+            .Select(userId => new ProfileChildRowsWithoutUser(
+                userId,
+                byContact.GetValueOrDefault(userId),
+                byLanguage.GetValueOrDefault(userId),
+                byHistory.GetValueOrDefault(userId)))];
+    }
+
+    public async Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var owners = await ProfileOwnersAsync(ctx, ct);
+        var contactFields = await ctx.ContactFields.Where(r => r.UserId == null).ToListAsync(ct);
+        var languages = await ctx.ProfileLanguages.Where(r => r.UserId == null).ToListAsync(ct);
+        var history = await ctx.VolunteerHistoryEntries.Where(r => r.UserId == null).ToListAsync(ct);
+        foreach (var row in contactFields) row.UserId = owners[row.ProfileId];
+        foreach (var row in languages) row.UserId = owners[row.ProfileId];
+        foreach (var row in history) row.UserId = owners[row.ProfileId];
+        await ctx.SaveChangesAsync(ct);
+        return contactFields.Count + languages.Count + history.Count;
+    }
+
+    private static Task<Dictionary<Guid, Guid>> ProfileOwnersAsync(UsersDbContext ctx, CancellationToken ct) =>
+        ctx.Profiles.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.UserId, ct);
 
     public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -288,6 +335,7 @@ internal sealed partial class UserRepository
             else
             {
                 ctx.Entry(src).Property(nameof(VolunteerHistoryEntry.ProfileId)).CurrentValue = targetProfile.Id;
+                src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
                 targetVolunteerKeys.Add(key);
             }
@@ -308,6 +356,7 @@ internal sealed partial class UserRepository
             else
             {
                 ctx.Entry(src).Property(nameof(ProfileLanguage.ProfileId)).CurrentValue = targetProfile.Id;
+                src.UserId = targetUserId;
                 targetLanguageByCode[src.LanguageCode] = src;
             }
         }
@@ -388,13 +437,13 @@ internal sealed partial class UserRepository
 
     private async Task ReconcileCVEntriesAsync(
         UsersDbContext ctx,
-        Guid profileId,
+        Profile profile,
         IReadOnlyList<CVEntry> entries,
         CancellationToken ct)
     {
         // Tracked, so the change tracker sees in-place mutations.
         var existing = await ctx.VolunteerHistoryEntries
-            .Where(v => v.ProfileId == profileId)
+            .Where(v => v.ProfileId == profile.Id)
             .ToListAsync(ct);
 
         var existingLookup = existing.ToDictionary(v => v.Id);
@@ -432,7 +481,8 @@ internal sealed partial class UserRepository
                 ctx.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
                 {
                     Id = Guid.NewGuid(),
-                    ProfileId = profileId,
+                    ProfileId = profile.Id,
+                    UserId = profile.UserId,
                     Date = entry.Date,
                     EventName = entry.EventName,
                     Description = entry.Description,

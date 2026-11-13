@@ -271,7 +271,7 @@ internal sealed class MyShiftsViewModel
 
 internal sealed class MySignupItem
 {
-    public ShiftSignup Signup { get; set; } = null!;
+    public ShiftUserSignup Signup { get; set; } = null!;
     public string? RotaName { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public Instant AbsoluteStart { get; set; }

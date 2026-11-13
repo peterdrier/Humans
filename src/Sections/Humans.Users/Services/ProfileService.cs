@@ -27,4 +27,10 @@ internal sealed class ProfileService(IUserRepository userRepository,
 
     public Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default) =>
         userRepository.CopyProfileNamesToUsersAsync(ct);
+
+    public Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default) =>
+        userRepository.GetProfileChildRowsWithoutUserAsync(ct);
+
+    public Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default) =>
+        userRepository.FillProfileChildUserIdsAsync(ct);
 }

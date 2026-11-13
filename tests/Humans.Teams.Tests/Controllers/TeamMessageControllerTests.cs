@@ -17,7 +17,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;
 using Humans.Teams.Controllers;

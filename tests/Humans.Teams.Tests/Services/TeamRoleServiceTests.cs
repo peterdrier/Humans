@@ -8,9 +8,9 @@ using Humans.Auth.Services;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
-using Humans.GoogleIntegration.Contracts;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services;
+using Humans.Google.Contracts;
+using Humans.Google.Data;
+using Humans.Google.Services;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
@@ -61,14 +61,14 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
         var userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
-            new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
+            new GoogleSyncOutboxRepository(GoogleDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
             .With<IRoleAssignmentService>(roleAssignmentService)
             .With<IEmailService>()
             .With(_systemTeamSync)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
-            .With<IGoogleIntegrationService>()
+            .With<IGoogleService>()
             .With(teamResourceService)
             .With(userService)
             .With(userService)
@@ -482,7 +482,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         result.Refusal.Should().Contain(missingRole ? "not found" : "permission");
         (await TeamsDb.TeamRoleAssignments.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         (await TeamsDb.TeamMembers.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
         _systemTeamSync.ReceivedCalls().Should().BeEmpty();
     }
@@ -635,7 +635,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         if (!alreadyMember)
             (await TeamsDb.TeamJoinRequests.SingleAsync(Xunit.TestContext.Current.CancellationToken))
                 .Status.Should().Be(TeamJoinRequestStatus.Pending);
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
         _systemTeamSync.ReceivedCalls().Should().BeEmpty();
     }

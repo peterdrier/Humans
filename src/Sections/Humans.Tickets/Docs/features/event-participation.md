@@ -41,7 +41,7 @@ Track yearly event participation status for each human, enabling self-service op
 
 ## Data Model
 
-### EventParticipation (`tickets_event_participations`, Tickets-owned since Users decomposition commit 13)
+### EventParticipation (`ticket_event_participations`, Tickets-owned since Users decomposition commit 13)
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |

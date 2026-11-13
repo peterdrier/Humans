@@ -1,7 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Threading;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;

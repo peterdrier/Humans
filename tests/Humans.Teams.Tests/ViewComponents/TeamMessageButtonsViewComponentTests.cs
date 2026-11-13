@@ -3,7 +3,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.AuditLog.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

@@ -22,7 +22,7 @@ Repository: `IAuditLogRepository`.
 Cross-section calls via `IUserService` (migrated to the read-split
 surface). Implements `IUserDataContributor`, and — until the six Google
 columns are dropped — `ILegacyGoogleSyncAuditReader`, the read-only feed for
-GoogleIntegration's one-time history migration screen.
+Google's one-time history migration screen.
 No `IMemoryCache`.
 
 ### AuditViewerService (Scoped) — `src/Sections/Humans.AuditLog/Services/`
@@ -34,7 +34,7 @@ No DB access, no cache. `internal sealed`; its interface and `AuditEvent` sit in
 stays internal. It names no other
 section: actor, subject and target-team display names come back from the
 contributor fan-out (nobodies-collective/Humans#1059), so the section no
-longer takes `Humans.Teams.Contracts` or `Humans.GoogleIntegration.Contracts`.
+longer takes `Humans.Teams.Contracts` or `Humans.Google.Contracts`.
 
 `AuditEvent` and `AuditActionDefinition` are value types / pure
 formatters with no DI dependencies.

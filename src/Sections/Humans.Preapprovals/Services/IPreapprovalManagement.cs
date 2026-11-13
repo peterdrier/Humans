@@ -30,7 +30,7 @@ internal interface IPreapprovalManagement : IPreapprovalService, IPreapprovalWri
     Task<PreapprovalMutationResult<IReadOnlyList<Guid>>> IssueManyAsync(
         Guid programId, IReadOnlyList<Guid> beneficiaryUserIds, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Approve an application. <paramref name="amount"/> may lower a per-grant request; ignored on fixed programs.</summary>
+    /// <summary>Approve an application. <paramref name="amount"/> may lower a per-grant request; refused on fixed programs.</summary>
     Task<PreapprovalMutationResult> ApproveAsync(Guid programId, Guid grantId, decimal? amount, Guid actorUserId, CancellationToken ct = default);
     Task<PreapprovalMutationResult> DeclineAsync(Guid programId, Guid grantId, string? note, Guid actorUserId, CancellationToken ct = default);
 

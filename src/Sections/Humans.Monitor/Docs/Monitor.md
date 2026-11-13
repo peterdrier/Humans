@@ -10,15 +10,15 @@
 
 # Monitor — Section Invariants
 
-Monitor is the detective control over permission changes that GoogleIntegration's service
-account did not make. It owns the scan and its triggers; GoogleIntegration owns its sync-log
+Monitor is the detective control over permission changes that Google's service
+account did not make. It owns the scan and its triggers; Google owns its sync-log
 pages and data.
 
 ## Concepts
 
 - **Anomalous permission change** — a grant or revocation on a managed Drive folder made by
   someone other than the service account. Each is written through `IAuditLogService` as
-  `GoogleIntegrationAuditActions.AnomalousPermissionDetected`.
+  `GoogleAuditActions.AnomalousPermissionDetected`.
 - **Time-window dedup** — a successful configured scan advances
   `DriveActivityMonitor:LastRunAt` through `ISettingsService`; an incomplete or stubbed scan
   does not.
@@ -68,13 +68,13 @@ pages and data.
 
 | Section | Through |
 |---|---|
-| GoogleIntegration | `IGoogleDriveActivityClient`, `ITeamResourceService` |
+| Google | `IGoogleDriveActivityClient`, `ITeamResourceService` |
 | AuditLog | `IAuditLogService` (append path, declared in `src/Humans.Base/AuditLog/IAuditLogService.cs`) |
 | Settings | `ISettingsService` |
 | Users | `IUserService` |
 
 Google sync history is shown at `/Google/Resource/{id}` and `/Google/Human/{id}` by
-GoogleIntegration. Monitor's project references `Humans.GoogleIntegration` whole, because that
+Google. Monitor's project references `Humans.Google` whole, because that
 section's contracts are a `Contracts/` folder of its project; the call-site rule still limits
 Monitor to the interfaces listed above.
 

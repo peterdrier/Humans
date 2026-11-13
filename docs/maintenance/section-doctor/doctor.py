@@ -609,7 +609,7 @@ def cmd_blast(a):
 REVIEW_TIERS = (
     ("doctor-reviewer-critical", "fable high", {
         "Users", "Auth", "Backdoor", "Gdpr", "Consent", "Governance", "Finance", "Stripe", "Holded",
-        "Tickets", "TicketTailor", "Teams", "Onboarding", "GoogleIntegration", "AuditLog", "Email"}),
+        "Tickets", "TicketTailor", "Teams", "Onboarding", "Google", "AuditLog", "Email"}),
     ("doctor-reviewer-light", "opus medium", {
         "Tour", "Guide", "Debug", "Development", "Feedback", "Rideshare", "CityPlanning", "Agent"}),
 )

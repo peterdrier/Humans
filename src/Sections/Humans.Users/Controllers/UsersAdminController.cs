@@ -5,7 +5,7 @@ using Microsoft.Extensions.Hosting;
 // @e2e: profile.spec.ts
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Controllers;
@@ -30,7 +30,7 @@ internal sealed class UsersAdminController(
     IOnboardingIntake onboardingService,
     IUsersAudienceService audienceService,
     IAccountDeletionService accountDeletionService,
-    IGoogleIntegrationService googleIdentities,
+    IGoogleService googleIdentities,
     IWebHostEnvironment environment,
     ILogger<UsersAdminController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
@@ -70,7 +70,7 @@ internal sealed class UsersAdminController(
                 .ToHashSet();
         }
 
-        // GoogleIntegration's verdicts, loaded only when the Google-rejected filter asks.
+        // Google's verdicts, loaded only when the Google-rejected filter asks.
         IReadOnlySet<Guid>? googleRejectedUserIds = null;
         if (string.Equals(filter, AdminHumanListAssembler.GoogleRejectedFilter, StringComparison.OrdinalIgnoreCase))
         {

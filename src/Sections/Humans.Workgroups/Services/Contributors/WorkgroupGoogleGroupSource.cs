@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services.Contributors;

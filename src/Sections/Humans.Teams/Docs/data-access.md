@@ -16,9 +16,9 @@ resx set at the project root. **DbContext:**
 `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`,
 `TeamRoleAssignments`, `TeamRoleDefinitions`, `TeamEarlyEntryGrants`. On team
 mutations it also emits `GoogleSyncOutboxEvents` — those go
-through `IGoogleSyncOutboxService` (the Google Integration section's write
+through `IGoogleSyncOutboxService` (the Google section's write
 surface) inside a `TransactionScope`, not through `TeamRepository`. The
-table is therefore owned wholly by Google Integration.
+table is therefore owned wholly by Google.
 
 The `Humans.Teams.Contracts` leaf carries two public faces:
 `ITeamService` (the cross-section read surface, `TeamInfo` /
@@ -100,7 +100,7 @@ cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
 Implements `IGoogleDriveAccessSource` over the existing `ITeamService` and `ITeamResourceService` bulk projections. Owns membership union, maximum permission levels and active child-team rollup for linked Drive resources. Returns user-ID claims and team-link display metadata; inactive teams retain empty claims so reconciliation can revoke grants before retiring linked resources. No repository or cache.
 
 **Outbox write goes through the owning service:**
-`GoogleSyncOutboxEvents` is owned by the Google Integration section.
+`GoogleSyncOutboxEvents` is owned by the Google section.
 `TeamService` does not reach into the table via `TeamRepository`; it calls
 `IGoogleSyncOutboxService.AddAsync` / `AddRangeAsync` inside a
 `TransactionScope` so the team mutation and the outbox append commit
@@ -112,7 +112,7 @@ No repository, no cache. `ITeamMessageOptionsProvider`: `GetContextAsync` resolv
 and recipient through `IUserService`, refuses self and opted-out recipients
 (`ICommunicationPreferenceService`), and lists the teams the viewer may send as — active teams
 the viewer coordinates whose linked Google Group is synced (`ITeamService.GetTeamsAsync`,
-GoogleIntegration's `ITeamResourceService.GetResourcesByTeamIdsAsync`). `SendAsync` queues the
+Google's `ITeamResourceService.GetResourcesByTeamIdsAsync`). `SendAsync` queues the
 email through `IEmailService` and writes the `FacilitatedMessageSent` audit. Callers:
 `TeamMessageController` and `TeamMessageButtonsViewComponent`.
 

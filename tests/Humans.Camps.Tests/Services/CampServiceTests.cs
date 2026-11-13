@@ -15,7 +15,7 @@ using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -2116,7 +2116,7 @@ public sealed class CampServiceTests : CampsTestHarness
             var lookup = await repo.GetMemberLookupAsync(call.Arg<Guid>(), call.Arg<CancellationToken>());
             return lookup is { } row ? new CampMemberLookup(row.CampSeasonId, row.UserId, row.Status) : null;
         });
-        var roles = new CampRoleService(repo, access, Substitute.For<IGoogleIntegrationService>(), _userService,
+        var roles = new CampRoleService(repo, access, Substitute.For<IGoogleService>(), _userService,
             AuditLog, Notifier, Options.Create(new GoogleWorkspaceOptions()), Clock, NullLogger<CampRoleService>.Instance);
         return new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
             new Lazy<ICampRoleService>(() => roles), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),

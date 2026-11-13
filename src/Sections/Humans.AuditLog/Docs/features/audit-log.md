@@ -33,13 +33,13 @@ Background jobs and admin actions make changes on members' behalf (team enrollme
 | RelatedEntityId | Guid? | Secondary entity |
 | RelatedEntityType | string? | "User", "Team", etc. |
 
-Table: `audit_log`
+Table: `audit_log_entries`
 
-The columns `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. GoogleIntegration's own `google_sync_log` replaced them in nobodies-collective/Humans#1083; nothing reads or writes them any more and the entity keeps them only so the historical rows stay readable until the data move retires them. The column drop is its own PR under `destructive-drops-need-approval`.
+The columns `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. Google's own `google_sync_log_entries` replaced them in nobodies-collective/Humans#1083; nothing reads or writes them any more and the entity keeps them only so the historical rows stay readable until the data move retires them. The column drop is its own PR under `destructive-drops-need-approval`.
 
 ### Immutability
 
-Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. `ActorUserId` is a bare cross-section Guid column with no DB-level FK constraint — a deleted/anonymized actor is handled at the application layer: `AuditEvent` (`Contracts/AuditEvent.cs`) displays "Someone" when the actor name does not resolve.
+Database triggers prevent UPDATE and DELETE on the `audit_log_entries` table, matching the pattern used for `consent_records`. `ActorUserId` is a bare cross-section Guid column with no DB-level FK constraint — a deleted/anonymized actor is handled at the application layer: `AuditEvent` (`Contracts/AuditEvent.cs`) displays "Someone" when the actor name does not resolve.
 
 ### Audit action definitions
 
@@ -103,7 +103,7 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 | Google Group linked or reactivated for a team | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
 | Google Group provisioned | GoogleResourceProvisioned | GoogleWorkspaceSyncService |
 
-`GoogleResourceAccessGranted` / `GoogleResourceAccessRevoked` have no live writer: access changes live in `google_sync_log`.
+`GoogleResourceAccessGranted` / `GoogleResourceAccessRevoked` have no live writer: access changes live in `google_sync_log_entries`.
 
 ### DriveActivityMonitorJob
 
@@ -113,7 +113,7 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 
 ### Google Sync Audit — moved out
 
-Permission-change detail (user email, role, sync source, success flag, error message) is no longer audit's business. GoogleIntegration owns `google_sync_log` and renders it through `<vc:google-sync-log>` (nobodies-collective/Humans#1083). See [GoogleIntegration.md](../../../Humans.GoogleIntegration/Docs/GoogleIntegration.md).
+Permission-change detail (user email, role, sync source, success flag, error message) is no longer audit's business. Google owns `google_sync_log_entries` and renders it through `<vc:google-sync-log>` (nobodies-collective/Humans#1083). See [Google.md](../../../Humans.Google/Docs/Google.md).
 
 ## User Interface
 
@@ -131,7 +131,7 @@ POST action on `MonitorController` (see [`AuditLog.md`](../AuditLog.md#routing))
 
 ### Google sync pages (`/Google/Resource/{id}`, `/Google/Human/{id}`)
 
-These GoogleIntegration pages render `<vc:google-sync-log>` over its `google_sync_log`. Documented in [GoogleIntegration.md](../../../Humans.GoogleIntegration/Docs/GoogleIntegration.md).
+These Google pages render `<vc:google-sync-log>` over its `google_sync_log_entries`. Documented in [Google.md](../../../Humans.Google/Docs/Google.md).
 
 ### Per-User Audit View (MemberDetail page)
 

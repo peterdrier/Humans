@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Stays a leaf: folding into Humans.Notifications would close a project cycle: Humans.Notifications -> Humans.Auth -> Humans.Notifications (also via Humans.GoogleIntegration). -->
+  <!-- Stays a leaf: folding into Humans.Notifications would close a project cycle: Humans.Notifications -> Humans.Auth -> Humans.Notifications (also via Humans.Google). -->
 
   <!--
     Notifications' cross-section surface: the dispatch, auto-resolve, retention and inbox-read

@@ -33,7 +33,7 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Tests.Services;
 
 /// <summary>
-/// <see cref="LegalDocumentSyncService"/> is the sole writer for <c>legal_documents</c>/<c>document_versions</c>,
+/// <see cref="LegalDocumentSyncService"/> is the sole writer for <c>consent_legal_documents</c>/<c>consent_document_versions</c>,
 /// owning both the admin (<see cref="IAdminLegalDocumentService"/>) and GitHub-sync
 /// (<see cref="ILegalDocumentSyncManagement"/>) write surfaces, and evicts after each successful write.
 /// </summary>

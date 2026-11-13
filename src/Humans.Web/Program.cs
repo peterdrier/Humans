@@ -127,8 +127,6 @@ builder.Services.AddDataProtection()
     .PersistKeysToSystemDbContext()
     .SetApplicationName("Humans.Web");
 
-builder.Services.AddHumansIdentity();
-
 // TLS terminated by Coolify/reverse proxy.
 builder.Services.ConfigureApplicationCookie(options =>
 {

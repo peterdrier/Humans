@@ -152,7 +152,7 @@ loader and must not be gated. The group-loading methods take the check from the 
 ## 6. Deliberately not done
 
 - **No cross-section read interface and no `.Contracts` leaf.** Nothing outside the section names
-  a Workgroups type; Calendar and GoogleIntegration call fan-outs Workgroups implements. A read
+  a Workgroups type; Calendar and Google call fan-outs Workgroups implements. A read
   interface arrives with its first consumer.
 - **No workflow engine.** Every transition is a human's. No auto-register, no auto-close, no
   state-machine type — ordinary methods check the current status and write the next one.

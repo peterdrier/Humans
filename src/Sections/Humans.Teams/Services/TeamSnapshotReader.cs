@@ -1,7 +1,7 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Enums;

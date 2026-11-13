@@ -43,7 +43,7 @@
   <data name="Guide_Page_LegalAndConsent" xml:space="preserve"><value>Legal &amp; Consent</value></data>
   <data name="Guide_Page_Email" xml:space="preserve"><value>Email</value></data>
   <data name="Guide_Page_Campaigns" xml:space="preserve"><value>Campaigns</value></data>
-  <data name="Guide_Page_GoogleIntegration" xml:space="preserve"><value>Google Integration</value></data>
+  <data name="Guide_Page_Google" xml:space="preserve"><value>Google</value></data>
   <data name="Guide_Page_EmailAccount" xml:space="preserve"><value>Your @nobodies.team email</value></data>
   <data name="Guide_Page_TwoStepVerification" xml:space="preserve"><value>Two-step verification (2FA)</value></data>
   <data name="Guide_Page_TicketTransfers" xml:space="preserve"><value>Transferring your ticket</value></data>

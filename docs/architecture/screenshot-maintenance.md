@@ -14,7 +14,7 @@ filled in over time.
 ## Naming convention
 
 - Store images at `docs/guide/img/<section>-<slug>.png`.
-  - `<section>` is the lowercased section filename (e.g., `profiles`, `teams`, `legalandconsent`).
+  - `<section>` is the lowercased section filename (e.g., `user_profiles`, `teams`, `legalandconsent`).
   - `<slug>` is a short kebab-case description of what's in the shot (e.g., `edit`, `contact-field-visibility`).
 - Examples:
   - `docs/guide/img/profiles-edit.png`

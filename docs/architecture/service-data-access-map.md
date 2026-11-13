@@ -24,12 +24,12 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `TeamsDbContext` | `Teams`, `TeamMembers`, `TeamJoinRequests`, `TeamJoinRequestStateHistories`, `TeamRoleDefinitions`, `TeamRoleAssignments`, `TeamEarlyEntryGrants` — owned by `src/Sections/Humans.Teams`; `TeamRepository` injects `IDbContextFactory<TeamsDbContext>` |
 > | `AuditLogDbContext` | `AuditLogEntries` — owned by `src/Sections/Humans.AuditLog` (a *horizontal* section — see [AuditLog](../../src/Sections/Humans.AuditLog/Docs/data-access.md)) |
 > | `LegalDbContext` | `LegalDocuments`, `DocumentVersions`, `ConsentRecords`, `consent_reviews`, `consent_reminders` — own project, `src/Sections/Humans.Consent/Data/`. `ConsentRecords` lives here (not a separate Consent context) — Consent has never owned its own DbContext. |
-> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`rota_shift_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` (own project, `src/Sections/Humans.Shifts/`) |
-> | `TicketsDbContext` | `TicketOrders`, `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`, `EventParticipations` (`tickets_event_participations`) — owned by `src/Sections/Humans.Tickets`, alongside a `src/Sections/Humans.Tickets.Contracts` leaf and the `src/Sections/Humans.TicketTailor` vendor adapter (see [Tickets](../../src/Sections/Humans.Tickets/Docs/data-access.md)) |
+> | `ShiftsDbContext` | `EventSettings`, `Rotas`, `Shifts`, `ShiftSignups`, `ShiftTags`, `RotaShiftTags` (`shift_rota_tags` — the implicit many-to-many mapped by `ShiftTagConfiguration` via `UsingEntity`), `VolunteerEventProfiles`, `GeneralAvailability`, `VolunteerBuildStatuses`, `VolunteerTagPreferences` (own project, `src/Sections/Humans.Shifts/`) |
+> | `TicketsDbContext` | `TicketOrders`, `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`, `EventParticipations` (`ticket_event_participations`) — owned by `src/Sections/Humans.Tickets`, alongside a `src/Sections/Humans.Tickets.Contracts` leaf and the `src/Sections/Humans.TicketTailor` vendor adapter (see [Tickets](../../src/Sections/Humans.Tickets/Docs/data-access.md)) |
 > | `AuthDbContext` | `RoleAssignments` (own project, `src/Sections/Humans.Auth/`) |
 > | `GovernanceDbContext` | `Applications`, `ApplicationStateHistories`, `BoardVotes`, `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`, `AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`, `governance_membership_tiers` (own project, `src/Sections/Humans.Governance/`) |
 > | `CampaignsDbContext` | `Campaigns`, `CampaignCodes`, `CampaignGrants` (own project, `src/Sections/Humans.Campaigns/`) |
-> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog`, `google_workspace_identities` (own project, `src/Sections/Humans.GoogleIntegration/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
+> | `GoogleIntegrationDbContext` | `GoogleResources`, `GoogleSyncOutboxEvents`, `SyncServiceSettings`, `GoogleSyncLog`, `google_workspace_identities` (own project, `src/Sections/Humans.Google/`; owns no table beyond these — see [Monitor](../../src/Sections/Humans.Monitor/Docs/data-access.md) for the related horizontal section) |
 > | `CityPlanningDbContext` | `CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories` (own project, `src/Sections/Humans.CityPlanning/`) |
 > | `BudgetDbContext` | `BudgetYears`, `BudgetGroups`, `BudgetCategories`, `BudgetLineItems`, `BudgetAuditLogs`, `TicketingProjections` (own project, `src/Sections/Humans.Budget/`) |
 > | `CampsDbContext` | `Camps`, `CampSeasons`, `CampHistoricalNames`, `CampImages`, `CampSettings`, `CampMembers`, `CampRoleDefinitions`, `CampRoleAssignments` (own project, `src/Sections/Humans.Camps/`) |
@@ -41,7 +41,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `IssuesDbContext` | `Issues`, `IssueComments` (own project, `src/Sections/Humans.Issues/`) |
 > | `SurveysDbContext` | `Surveys`, `SurveyQuestions`, `SurveyQuestionOptions`, `SurveyInvitations`, `SurveyResponses`, `SurveyAnswers` (own project, `src/Sections/Humans.Surveys/`) |
 > | `AgentDbContext` | `AgentConversations`, `AgentMessages`, `AgentSettings` (own project, `src/Sections/Humans.Agent/`) |
-> | `SettingsDbContext` | `Setting`, `EventSettings` — tables `system_settings` and `settings_event` (own project, `src/Sections/Humans.Settings/`) |
+> | `SettingsDbContext` | `Setting`, `EventSettings` — tables `settings_system_values` and `settings_events` (own project, `src/Sections/Humans.Settings/`) |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements`, `ContainerImages` (own project, `src/Sections/Humans.Containers/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
 > | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `finance_payment_details` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
@@ -53,10 +53,10 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `BackdoorDbContext` | `backdoor_api_keys` (own project, `src/Sections/Humans.Backdoor/`) |
 > | `MailerLiteDbContext` | `MailerLiteSyncStates` (`mailerlite_sync_states`) (own project, `src/Sections/Humans.MailerLite/`) |
 > | `RideshareDbContext` | `RideshareTrips`, `RideshareRequests`, `RideshareInterests`, `RideshareSettings` (own project, `src/Sections/Humans.Rideshare/`, table names `rideshare_trips` / `rideshare_requests` / `rideshare_interests` / `rideshare_settings`) |
-> | `WorkgroupsDbContext` | `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings` (own project, `src/Sections/Humans.Workgroups/`) |
+> | `WorkgroupsDbContext` | `workgroups`, `workgroup_members`, `workgroup_meetings`, `workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_settings` (own project, `src/Sections/Humans.Workgroups/`) |
 > | `CantinaDbContext` | `cantina_dietary_profiles` (own project, `src/Sections/Humans.Cantina/`) |
 > | `GrantsDbContext` | `Programs` (`grant_programs`), `Managers` (`grant_program_managers`), `Grants` (`grants`) (own project, `src/Sections/Humans.Grants/`) |
-> | `PreapprovalsDbContext` | `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent` (own project, `src/Sections/Humans.Preapprovals/`) |
+> | `PreapprovalsDbContext` | `preapproval_programs`, `preapproval_program_managers`, `preapproval_grants`, `preapproval_sent_reminders` (own project, `src/Sections/Humans.Preapprovals/`) |
 >
 > Each context applies its `IEntityTypeConfiguration` classes explicitly (no
 > assembly scanning), so a section's model can never accrete another
@@ -136,10 +136,10 @@ Every table is owned by exactly one repository; there are no HUM0025
 
 | Table | Owning Section | Routed via |
 |-------|----------------|--------|
-| **GoogleSyncOutboxEvents** | Google Integration | `TeamService` appends via `IGoogleSyncOutboxService` inside a `TransactionScope`. |
-| **EventSettings** (`event_settings`, the Shifts per-event knobs) | Shifts | `ShiftRepository`. |
+| **GoogleSyncOutboxEvents** | Google | `TeamService` appends via `IGoogleSyncOutboxService` inside a `TransactionScope`. |
+| **EventSettings** (`shift_event_settings`, the Shifts per-event knobs) | Shifts | `ShiftRepository`. |
 | **ShiftSignups** | Shifts | `ShiftRepository`. |
-| **Settings** (`system_settings`, `settings_event`) | Settings | Single owner `Repository`; consumers route through `ISettingsService`. `settings_event` is the app-wide event calendar every event-facing section reads (Shifts via `EventCalendarResolver`). |
+| **Settings** (`settings_system_values`, `settings_events`) | Settings | Single owner `Repository`; consumers route through `ISettingsService`. `settings_events` is the app-wide event calendar every event-facing section reads (Shifts via `EventCalendarResolver`). |
 
 ### Notable Cross-Section Patterns
 
@@ -218,7 +218,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    call, not a foreign repository read.
 
 7. **Settings' tables are owned by a single section/repository.**
-   `system_settings` (key/value) and `settings_event` (the app-wide event
+   `settings_system_values` (key/value) and `settings_events` (the app-wide event
    values) are both owned by the Settings section's `Repository`; consuming
    sections route through `ISettingsService` rather than touching the tables
    from their own repository:
@@ -227,7 +227,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    |-----|-------------------|------------|
    | `IsEmailSendingPaused` | Email | `EmailOutboxService` → `ISettingsService` |
    | `DriveActivityMonitor:LastRunAt` | Monitor | `DriveActivityMonitorService` → `ISettingsService` |
-   | `Workgroups:RootDriveFolderId` | Workgroups | `WorkgroupService` → `ISettingsService` (legacy read fallback only; Workgroups owns its root folder in `workgroups_settings`) |
+   | `Workgroups:RootDriveFolderId` | Workgroups | `WorkgroupService` → `ISettingsService` (legacy read fallback only; Workgroups owns its root folder in `workgroup_settings`) |
 
    New keys should be added to `SettingKeys` and accessed through
    `ISettingsService`. The first two keys move to their own sections' settings
@@ -281,7 +281,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `IUserService`, `ITicketService`, `IShiftView`, `IGovernanceService` and
     `IConsentService` for
     audience resolution and display-name stitching — never a foreign
-    repository. `IGoogleTranslationService` (GoogleIntegration section)
+    repository. `IGoogleTranslationService` (Google section)
     is the translation bridge for the admin pre-fill helper. No
     cross-section table reads. There is no public `ISurveyService` contract — no other
     section consumes one; the section's outbound contracts are the

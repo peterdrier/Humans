@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
 using NodaTime;

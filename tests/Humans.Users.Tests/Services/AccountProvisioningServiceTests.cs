@@ -122,6 +122,10 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();

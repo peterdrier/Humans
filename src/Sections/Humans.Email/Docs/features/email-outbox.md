@@ -52,7 +52,7 @@ When paused, `ProcessEmailOutboxJob` skips processing without dequeuing messages
 
 ## Global Pause
 
-The `IsEmailSendingPaused` key in `system_settings` controls whether the outbox processor runs. The Pause/Resume actions on the `/Settings#email` tab update this setting (peterdrier/Humans#1634); the dashboard only links to them. Useful during maintenance windows or when diagnosing delivery issues.
+The `IsEmailSendingPaused` key in `settings_system_values` controls whether the outbox processor runs. The Pause/Resume actions on the `/Settings#email` tab update this setting (peterdrier/Humans#1634); the dashboard only links to them. Useful during maintenance windows or when diagnosing delivery issues.
 
 ## Daily Send Counts (nobodies-collective/Humans#1195)
 

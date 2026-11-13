@@ -201,8 +201,8 @@ public sealed class HumanSummaryViewComponentTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(UsersResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly)
-            // <vc:nobodies-email-badge> is GoogleIntegration's.
-            .AddApplicationPart(typeof(Humans.GoogleIntegration.ViewComponents.NobodiesEmailBadgeViewComponent).Assembly)
+            // <vc:nobodies-email-badge> is Google's.
+            .AddApplicationPart(typeof(Humans.Google.ViewComponents.NobodiesEmailBadgeViewComponent).Assembly)
             .AddViewLocalization();
         builder.Services.AddSingleton(users);
         var authorization = Substitute.For<IAuthorizationService>();

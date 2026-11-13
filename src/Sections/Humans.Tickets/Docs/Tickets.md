@@ -61,7 +61,7 @@ The Codes and Humans & Tickets display rows carry recipient/user IDs for `<vc:hu
 
 ### TicketSyncState
 
-**Table:** `ticket_sync_state`
+**Table:** `ticket_sync_states`
 
 Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId` records the event currently being synced. `LastSyncAt` doubles as the resume cursor passed to the vendor's `updated_at.gte` filter on the next run. `SyncStatus` is `Idle` / `Running` / `Error`; if a sync is found stuck in `Running` for >30 min, `GetDashboardStatsAsync` auto-resets it to `Error` with a stale-state message. `FullResync` clears `LastSyncAt` so the next run pulls all orders again.
 
@@ -77,7 +77,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 
 ### EventParticipation
 
-**Table:** `tickets_event_participations`
+**Table:** `ticket_event_participations`
 
 One record per `(UserId, Year)` (unique index; no FK). `Status` is `ParticipationStatus` (`NotAttending` / `Ticketed` / `Attended` / `NoShow`), stored as string, nullable: historical cleared rows have null status and read as unknown; new removals delete the row. `Source` is `ParticipationSource` (`UserDeclared` / `TicketSync` / `AdminBackfill`). `DeclaredAt` stamps a self-declaration; `CheckedInAt` is the first gate check-in (write-once). `ParticipationStatus` / `ParticipationSource` live in `Humans.Tickets.Contracts`.
 
@@ -206,7 +206,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
   - Self-declared `NotAttending` rows are the member's (`UserDeclared`), but a matched ticket overrides the declaration: a ticket is a physical thing, so sync flips a prior `NotAttending` to `Ticketed` (via the same `RecordParticipationAsync` path) when the user holds a `Valid`/`CheckedIn` ticket. Only `Attended` rows are never overwritten.
 - "Who Hasn't Bought" lists active Volunteers-team members (`ITeamService.GetTeamAsync(SystemTeamIds.Volunteers)`, active members only) minus those whose current-year `EventParticipation.Status` is `NotAttending`. `HasTicket` uses the has-a-ticket rule above, scoped to the current event (`TicketSyncState.VendorEventId`): a matched `Valid` or `CheckedIn` attendee row. Buyer-only, void and prior-event matches do not count.
 - Code redemption: vendor discount codes attached to orders are pushed back to Campaigns via `ICampaignWrite.MarkGrantsRedeemedAsync` so each `CampaignGrant.RedeemedAt` reflects the order's `PurchasedAt`.
-- Event participation reads (`ITicketService.GetParticipationsAsync`, forward-resolving a merged-away id; `GetAllParticipationsAsync`) use only `tickets_event_participations`. Historical null-status rows read as unknown; writes replace them, and removals delete records rather than writing cleared markers.
+- Event participation reads (`ITicketService.GetParticipationsAsync`, forward-resolving a merged-away id; `GetAllParticipationsAsync`) use only `ticket_event_participations`. Historical null-status rows read as unknown; writes replace them, and removals delete records rather than writing cleared markers.
 - When an account merge accepts, `EventParticipationService.ReassignAsync` (via `IUserMerge`) folds each source year into the target by precedence `Attended > Ticketed > NoShow > NotAttending` (the higher status brings its `Source` and `DeclaredAt`; the first `CheckedInAt` is kept), then deletes the source's records, including historical cleared rows. Retrying the fold leaves the same target records.
 - When an account merge accepts, `TicketSyncService.ReassignAsync` re-FKs `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and `TicketTransferRequest.SenderUserId` / `TicketTransferRequest.ReceiverUserId` from source to target. Order/attendee and transfer reassignment share one transaction, so a failed transfer update cannot leave ownership half moved; the caching decorator, which is the section's `IUserMerge` and forwards the fold to it, then drops the order projection and both users' `UserTicketHoldings` tracked entries. The per-user eviction is required: without it a merged user's homepage tickets card and holdings widget lag up to 5 minutes behind the fold. `AccountMergeService.MergeAsync` fans out across all `IUserMerge` registrations; the Tickets section participates through `CachingTicketQueryService`.
 - Audit actions written by ticket transfer: `TicketTransferRequested` (on `CreateRequestAsync`), `TicketTransferCancelled` (on `CancelAsync`), `TicketTransferApproved` (on `ApproveAsync`, and on a successful `ProcessTransferAsync` / `RetryReissueAsync`), `TicketTransferAutoFailed` (on a failed `ProcessTransferAsync` / `RetryReissueAsync`), `TicketTransferRejected` (on `RejectAsync`).
@@ -257,11 +257,11 @@ Internal `TicketPurchaseAudience` owns the Who Hasn't Bought report and its curr
 - `TicketVendorGateway` — the section's forwarding edge onto its vendor port, and the only place in the codebase that names both the application's ticketing vocabulary (`TicketDiscountCodeRequest` / `TicketDiscountKind`) and the port's (`DiscountCodeSpec` / `DiscountType`). Serves `ITicketDiscountCodes` (Campaigns' grant waves) and `ITicketVendorMirror` (`GateVendorCheckInJob`'s gate-admission mirror).
 - `AttendeeContactImportService` — manually-triggered admin job that classifies unmatched ticket attendees and provisions Humans users for them via `IAccountProvisioningService` (plan + apply pattern mirroring the MailerLite import; squatter protection uses Users' atomic replacement-and-provisioning operation).
 - `OnsiteRosterService` — the "Who's Onsite" join of checked-in attendees with user, team, camp and role labels; onsite users are this year's participations with `OnsiteSince` set. The service deduplicates and filters names ignoring case without display ordering. The onsite controller orders rows newest-check-in first and all row-name lists and filter options with ordinal comparison ignoring case.
-- `EventParticipationService` — `tickets_event_participations`: the participation reads behind `ITicketService`, `ITicketWrite`, the member declaration, ticket-sync reconciliation, the admin backfill, the export slice and the merge fold (internal `IEventParticipationManagement`). No caching decorator.
+- `EventParticipationService` — `ticket_event_participations`: the participation reads behind `ITicketService`, `ITicketWrite`, the member declaration, ticket-sync reconciliation, the admin backfill, the export slice and the merge fold (internal `IEventParticipationManagement`). No caching decorator.
 - `UserParticipationBackfillService` — parses the `/Tickets/Participation/Backfill` CSV and hands valid rows to `EventParticipationService`.
 - `GateTerminalAccountSeeder` — provisions the roleless gate-terminal user lazily on first password set and rotates its password. Until a password exists, every attempt completes account and profile setup on the existing user; a refused setup step returns failure before setting a password or auditing success. Every password set marks the account fake in Users, which keeps it out of the Consent Coordinator review queue. Established-account rotations do not repeat setup, and a rejected password leaves the existing credential intact. Backs `/Tickets/Admin/Gate`.
 
-**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_state`, `ticket_transfer_requests`, `tickets_event_participations`
+**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests`, `ticket_event_participations`
 
 Transfer confirmation, request creation and sender notifications use the canonical `Email` on their existing `UserInfo` read, preserving verified-primary, verified-secondary and identity fallback selection. Confirmation and request creation both reject missing or whitespace-only receiver emails before persistence or side effects, using the existing invalid-selection feedback. Recipient validation rejects merged-away IDs and tombstoned receiver records, even when a legal name and email remain.
 
@@ -327,9 +327,9 @@ Vendor event summaries require a readable response with a nonblank name and an e
 
 ### Repositories
 
-- **`ITicketRepository`** (Tickets-owned) — owns reads/writes for `ticket_orders`, `ticket_attendees`, `ticket_sync_state`. Aggregate-local navs kept (`TicketOrder.Attendees`, `TicketAttendee.TicketOrder`). Cross-domain `MatchedUser` nav properties have been stripped from both entities; FK (`MatchedUserId`) is retained; grid views render it through `<vc:human>` without copying a user name into the row.
+- **`ITicketRepository`** (Tickets-owned) — owns reads/writes for `ticket_orders`, `ticket_attendees`, `ticket_sync_states`. Aggregate-local navs kept (`TicketOrder.Attendees`, `TicketAttendee.TicketOrder`). Cross-domain `MatchedUser` nav properties have been stripped from both entities; FK (`MatchedUserId`) is retained; grid views render it through `<vc:human>` without copying a user name into the row.
 - **`ITicketTransferRepository`** (Tickets-owned) — owns reads/writes for `ticket_transfer_requests`; the state machine's writes go through it and nowhere else.
-- **`IEventParticipationRepository`** (Tickets-owned, Singleton) — owns reads/writes for `tickets_event_participations`, including the lifecycle rules and the merge fold.
+- **`IEventParticipationRepository`** (Tickets-owned, Singleton) — owns reads/writes for `ticket_event_participations`, including the lifecycle rules and the merge fold.
 
 The Tickets→Budget bridge is Budget's: `Humans.Budget.Services.TicketingBudgetService` reads paid-order data through `ITicketService` and delegates all writes to Budget's `IBudgetManagement`; its tests live at `tests/Humans.Budget.Tests/Services/TicketingBudgetServiceTests.cs`.
 

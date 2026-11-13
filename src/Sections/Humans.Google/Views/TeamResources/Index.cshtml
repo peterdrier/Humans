@@ -1,0 +1,234 @@
+@model TeamResourcesViewModel
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@{
+    ViewData["Title"] = string.Format(Localizer["Google_TeamResources_Title"].Value, Model.TeamName);
+}
+
+@section Crumbs {
+    <a asp-controller="Team" asp-action="Index">@SharedLocalizer["Teams_Title"]</a>
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a>
+    <span>@Localizer["Google_TeamResources_Breadcrumb"]</span>
+}
+
+<page-header title="@(Localizer["Google_TeamResources_Heading"].Value)"
+             subtitle="@($"{Localizer["Google_TeamResources_Team"].Value}: {Model.TeamName}")" />
+
+
+<div class="card mb-4">
+    <div class="card-header">@Localizer["Google_TeamResources_ServiceAccountTitle"]</div>
+    <div class="card-body">
+        <p class="mb-2">@Localizer["Google_TeamResources_ShareWithServiceAccount"]</p>
+        <div class="input-group mb-3 mw-600">
+            <input type="text" class="form-control" value="@Model.ServiceAccountEmail" readonly id="serviceAccountEmail">
+            <button class="btn btn-outline-secondary" type="button" data-copy="#serviceAccountEmail">@Localizer["Google_TeamResources_Copy"]</button>
+        </div>
+        <ul class="mb-0 text-muted small">
+            <li><strong>@Localizer["Google_TeamResources_DriveFolders"]:</strong> @Localizer["Google_TeamResources_DriveFoldersHelp"]</li>
+            <li><strong>Drive Files:</strong> Share the file's parent Shared Drive with the service account as Contributor.</li>
+            <li><strong>@Localizer["Google_TeamResources_GoogleGroups"]:</strong> @Localizer["Google_TeamResources_GoogleGroupsHelp"]</li>
+        </ul>
+    </div>
+</div>
+
+@if (Model.Resources.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">@Localizer["Google_TeamResources_LinkedResources"]</div>
+        @{
+            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> nameCell = @<text>
+                @if (!string.IsNullOrEmpty(item.Url))
+                {
+                    <a href="@item.Url" target="_blank" rel="noopener noreferrer">@item.Name</a>
+                }
+                else
+                {
+                    @item.Name
+                }
+
+            </text>;
+            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> typeCell = @<text>
+                @if (string.Equals(item.ResourceType, "Drive Folder", StringComparison.Ordinal))
+                {
+                    <span class="badge bg-info">Drive Folder</span>
+                }
+                else if (string.Equals(item.ResourceType, "Drive File", StringComparison.Ordinal))
+                {
+                    <span class="badge bg-warning text-dark">Drive File</span>
+                }
+                else if (string.Equals(item.ResourceType, "Google Group", StringComparison.Ordinal))
+                {
+                    <span class="badge bg-primary">Google Group</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary">@item.ResourceType</span>
+                }
+
+            </text>;
+            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> permissionCell = @<text>
+                @if (item.IsDriveResource)
+                {
+                    <form asp-action="UpdatePermissionLevel" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@item.Id" method="post" class="d-inline permission-form">
+                        @Html.AntiForgeryToken()
+                        @{
+                            var currentLevel = item.DrivePermissionLevel.ToString();
+                        }
+                        <select name="level" class="form-select form-select-sm d-inline-block permission-select" style="width: auto; min-width: 140px;" data-original="@currentLevel"
+                                disabled="@(Model.CanManage ? null : "disabled")">
+                            @foreach (var opt in new[] { ("Viewer", "Viewer"), ("Commenter", "Commenter"), ("Contributor", "Contributor (add/modify)"), ("ContentManager", "Content Manager (move/delete)"), ("Manager", "Manager") })
+                            {
+                                if (opt.Item1 == currentLevel)
+                                {
+                                    <option value="@opt.Item1" selected>@opt.Item2</option>
+                                }
+                                else
+                                {
+                                    <option value="@opt.Item1">@opt.Item2</option>
+                                }
+                            }
+                        </select>
+                    </form>
+                }
+                else
+                {
+                    <span class="text-muted">—</span>
+                }
+
+            </text>;
+            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> restrictInheritanceCell = @<text>
+                @if (item.IsDriveFolder && !Model.CanManage)
+                {
+                    <span class="badge @(item.RestrictInheritedAccess ? "bg-warning text-dark" : "bg-secondary")">
+                        @(item.RestrictInheritedAccess ? Localizer["Google_TeamResources_Restricted"] : Localizer["Google_TeamResources_Inherited"])
+                    </span>
+                }
+                else if (item.IsDriveFolder)
+                {
+                    @if (item.RestrictInheritedAccess)
+                    {
+                        <form asp-action="ToggleRestrictInheritedAccess" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@item.Id" method="post" class="d-inline" data-confirm="This will re-enable inherited permissions on this folder. Are you sure?">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="restrict" value="false" />
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                <i class="fa-solid fa-lock me-1"></i>Restricted
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="ToggleRestrictInheritedAccess" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@item.Id" method="post" class="d-inline" data-confirm="This will disable inherited permissions on this folder, restricting access to only direct permissions. Are you sure?">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="restrict" value="true" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="fa-solid fa-lock-open me-1"></i>Inherited
+                            </button>
+                        </form>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">—</span>
+                }
+
+            </text>;
+            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> lastsyncedCell = @<text>
+                @if (item.LastSyncedAt.HasValue)
+                {
+                            @item.LastSyncedAt.Value.ToDateTime()
+                }
+                else
+                {
+                    <span class="text-muted">@SharedLocalizer["Admin_Never"]</span>
+                }
+
+            </text>;
+            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> statusCell = @<text>
+                @if (!string.IsNullOrEmpty(item.ErrorMessage))
+                {
+                    <span class="badge bg-danger" title="@item.ErrorMessage">Error</span>
+                }
+                else
+                {
+                    <span class="badge bg-success">Active</span>
+                }
+
+            </text>;
+            Func<Humans.Google.Models.GoogleResourceViewModel, IHtmlContent> actionsCell = @<text>
+                @if (Model.CanManage)
+                {
+                    <div class="d-flex gap-1" role="group">
+                        <form asp-action="UnlinkResource" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to deactivate this item?">Deactivate</button>
+                        </form>
+                    </div>
+                }
+
+            </text>;
+            var resourcesTable = TableModel.For(Model.Resources)
+                .Template(Localizer["Google_TeamResources_Name"], nameCell, sortBy: r => r.Name)
+                .Template(Localizer["Google_TeamResources_Type"], typeCell)
+                .Template("Permission", permissionCell)
+                .Template("Restrict Inheritance", restrictInheritanceCell)
+                .Template(Localizer["Google_TeamResources_LastSynced"], lastsyncedCell, sortBy: r => r.LastSyncedAt)
+                .Template(SharedLocalizer["Common_Status"], statusCell)
+                .Template(Localizer["Google_TeamResources_Actions"], actionsCell, o => o.NoSort())
+                .Css("align-middle")
+                .Build();
+        }
+        <partial name="_Table" model="resourcesTable" />
+    </div>
+}
+else
+{
+    <div class="alert alert-info mb-4">
+        @Localizer["Google_TeamResources_NoResources"]
+    </div>
+}
+
+@if (Model.CanManage)
+{
+    <div class="card mb-4">
+        <div class="card-header">Link Google Drive Resource</div>
+        <div class="card-body">
+            <form asp-action="LinkDriveResource" asp-route-slug="@Model.TeamSlug" method="post">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label for="resourceUrl" class="form-label">Drive URL</label>
+                    <input type="url" class="form-control" id="resourceUrl" name="ResourceUrl"
+                           placeholder="https://drive.google.com/drive/folders/... or https://docs.google.com/spreadsheets/d/..." required>
+                    <div class="form-text">Paste a Google Drive folder, Sheets, Docs, Slides, or other file URL.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="permissionLevel" class="form-label">Permission Level</label>
+                    <select class="form-select" id="permissionLevel" name="PermissionLevel" style="max-width: 300px;">
+                        <option value="Viewer">Viewer (read-only)</option>
+                        <option value="Commenter">Commenter</option>
+                        <option value="Contributor" selected>Contributor (add/modify)</option>
+                        <option value="ContentManager">Content Manager (move/delete)</option>
+                        <option value="Manager">Manager</option>
+                    </select>
+                    <div class="form-text">Permission level granted to team humans for this resource.</div>
+                </div>
+                <button type="submit" class="btn btn-primary">Link Resource</button>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="mt-3">
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["Google_TeamResources_BackToTeam"]</a>
+    <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-primary">@Localizer["Google_TeamResources_ManageMembers"]</a>
+</div>
+
+<script>
+    document.querySelectorAll('.permission-select').forEach(function (select) {
+        select.addEventListener('change', function () {
+            if (confirm('Are you sure you want to change the permission level?')) {
+                this.closest('form').submit();
+            } else {
+                this.value = this.getAttribute('data-original');
+            }
+        });
+    });
+</script>

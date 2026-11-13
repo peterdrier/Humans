@@ -33,7 +33,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 ## Data Model
 
-### PreapprovalProgram — `pre_programs`
+### PreapprovalProgram — `preapproval_programs`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -53,7 +53,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 Index: `Status`.
 
-### ProgramManager — `pre_program_managers`
+### ProgramManager — `preapproval_program_managers`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -62,7 +62,7 @@ Index: `Status`.
 | AddedByUserId | Guid | |
 | AddedAt | Instant | |
 
-### PreapprovalGrant — `pre_grants`
+### PreapprovalGrant — `preapproval_grants`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -80,7 +80,7 @@ Index: `Status`.
 
 Indexes: `(ProgramId, Status)`, `BeneficiaryUserId`, `ExpenseReportId`.
 
-### ReminderSent — `pre_reminders_sent`
+### ReminderSent — `preapproval_sent_reminders`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -122,13 +122,6 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 ## Invariants
 
 - Member application notes are optional and limited to 2,000 characters. A supplied requested amount must be between 0.01 and 1,000,000. Validation feedback uses the shared `Validation_MaxLength` and `Validation_Range` resources in the current supported UI culture.
-
-- Authorization’s program-manager and member-access reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. The program page and admin index both use `ProgramOperationRequirement.View`, matching manager rows against all of the resolved viewer’s current and merged IDs. A manager still cannot administer programs or manage an unrelated program.
-
-- Admin program pages and edit forms render manager and actor IDs through the shared Human component without profile links. Missing members use its localized fallback. Manager order and comma separators are preserved; page models carry no display-name dictionary. Program create/edit resolves posted manager IDs to surviving accounts and deduplicates them in posted order. Missing or tombstoned managers refuse the complete save before fields, manager rows, audits or deadline notices change; historical manager authorization remains merge-aware.
-
-- Admin program grant ordering belongs to the view model: applications oldest-created first, decided grants nonterminal first then oldest-created. Service projections impose no display order.
-
 - Status follows: `Applied → Open | Declined`; `Open → Claimed | Revoked`; `Claimed → Open`
   (withdraw before approval) `| Consumed | Revoked`. Consumed, Declined and Revoked are
   terminal. Every move is a person's action or Expenses' on their behalf; nothing runs on a
@@ -141,28 +134,39 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   Checked on issue, issue-many (all or nothing), approve and amount change; a ceiling edit
   below what is committed is refused (`CeilingCheck`, `CeilingBelowCommitted`).
 - Fixed kind: every grant is `PerPersonAmount`; an explicit amount is refused on issue and
-  ignored on approve and apply. Per-grant kind: an amount is required on issue; an
+  approve and ignored on apply. Per-grant kind: an amount is required on issue; an
   application carries `RequestedAmount` and the manager may approve less.
-- Single and batch issuance share the initial decision stamp (issuing actor and grant creation time), persistence and the subsequent per-beneficiary audit/notice pipeline; sizing, ceiling checks and audit wording remain specific to each entry point. Single/batch issuance and application submission require a resolvable, non-tombstoned beneficiary before any writes or dispatch; an unavailable person refuses the complete batch or pending-application edit. New issues and applications store the resolved survivor ID. Batch issuance resolves and deduplicates people before the ceiling check, so merged IDs cannot reserve multiple grants in one batch. Existing pending applications retain their original row identity when edited.
-- Supplied program amounts and ceilings, and grant amounts, must be positive exact-cent values within the existing `decimal(18,2)` storage range. Sub-cent and oversized inputs are refused before writes or notices; trailing zeroes remain valid.
+- Amounts and ceilings are positive, at most two decimals, and fit `decimal(18,2)`; anything
+  else is refused before a write.
 - Issue, issue-many and approve are refused on a Closed program or after `ClaimBy`.
   Applying needs Open, `AcceptsApplications` and the deadline not passed; a POST that
   arrives anyway is 400.
-- Program create/edit forms require explicit kind, status and application-intake choices. Missing fields redisplay validation errors before any program change, audit or notification; they cannot reopen a Closed program or disable applications. Explicit Open, fixed-per-person and false choices remain valid, including the hidden kind value on locked programs.
+- People are resolved before any write: issuing, applying and naming managers refuse the whole
+  request if a person is missing or tombstoned, store the surviving id, and deduplicate merged
+  ids (issue-many before its ceiling check). Program-manager checks match every id the viewer
+  has held.
 - One pending application per person per program across every id they have held; a second
-  submit edits it. A process-wide application lock spans the fresh program read, pending-row
-  lookup, save and completion effects across scoped requests. Overlapping submissions, including
-  merged aliases, edit one row instead of creating duplicate applications; waiting observes caller cancellation.
+  submit edits it. Applications are serialized by a process-wide lock, so overlapping submits
+  edit one row.
 - Claim is idempotent for the report already holding the grant and skips the deadline check
-  for it (a rejected report resubmitting). Release and consume need the holding report. These transitions return `PreapprovalWriteResult`: expected state/deadline/missing-grant refusals leave the grant unchanged; successful claims carry a booking stamp. Metadata dependency failures propagate to the caller, and request cancellation remains attached to the ambient Expenses transaction. Grant writes return before their completion effects: Expenses collects the owning section’s audit and inbox actions, runs them only after its transaction commits with `CancellationToken.None`, and discards them on refusal or rollback. Completion failures are logged without reversing the committed report/grant. Expenses coordinates the report transition paths across scoped requests until their ambient transactions are disposed and completion effects finish; coordination does not end when an individual grant-write call returns.
-- Withdrawal retains the historical expense-report id. Revocation notices link to a report and require action only when the grant was Claimed at revocation; revocation and amount-change audits describe a report as holding the grant only while Claimed.
-- Approve, decline, revoke and amount-change services require both program and grant IDs, refusing missing or foreign grants before status checks, money changes, audit or notices. Grant-level admin routes return 404 for these refusals; the controller also checks ownership before rejecting malformed binding, so a manager of A never acts on B's grants.
-- Grant admin actions reject invalid form binding with 400 after identity, program permission
-  and grant ownership checks. Malformed amounts never fall back to a program/request amount,
-  and malformed bulk selections never issue grants to only the valid subset.
-- The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
-  ClaimBy)`; it never touches a grant. The marker transaction commits before the independently persisted, best-effort reminder audit is attempted. A moved deadline reminds again (`ReminderTests`).
-- Table names start with `pre_`. The section's migrations are immutable once shipped.
+  for it (a rejected report resubmitting). Release and consume need the holding report. A
+  refusal leaves the grant unchanged; a successful claim returns the grant as booked.
+- Audit and notices for a grant change never undo it. Expenses' transitions hand theirs back to
+  run after its transaction commits (discarded on rollback); every other change runs them after
+  its own save, unaffected by the browser disconnecting. Failures are logged.
+- Withdrawal keeps the expense-report id on the grant. Revoking a Claimed grant links the
+  holding report in the notice and audit.
+- Approve, decline, revoke and amount change take the program id with the grant id and refuse a
+  missing or foreign grant before anything changes; the admin routes answer 404, so a manager of
+  A never acts on B's grants (`GrantTests.GrantMutation_RefusesMissingOrForeignGrant_WithoutChangingCommitments`,
+  `ControllerTests`).
+- Malformed grant-action forms are 400 after the permission and ownership checks; a bad amount
+  never falls back to another amount, and a bad bulk selection never issues a partial batch.
+- The program form needs explicit kind, status and application choices; a missing one
+  redisplays the form before anything changes.
+- The reminder job sends and writes `preapproval_sent_reminders` rows keyed `(GrantId, Kind,
+  ClaimBy)`; it never touches a grant. A moved deadline reminds again (`ReminderTests`).
+- Table names start with `preapproval_`. The section's migrations are immutable once shipped.
 
 ## Negative Access Rules
 
@@ -173,44 +177,44 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - A program manager **cannot** create or edit a program, set its ceiling, name managers or
   close it (`ProgramOperationRequirement.Administer` is roles only).
 - A manager of program A **cannot** manage, issue under, or act on grants of program B
-  (`ProgramAuthorizationHandler`, `ControllerTests.GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound`).
+  (`ProgramAuthorizationHandler`, `ControllerTests.GrantOfAnotherProgram_UnderMyProgramsUrl_IsNotFound_EvenWithMalformedInput`).
 - A member **cannot** apply to a Closed program, one not accepting applications, or one past
   its deadline.
 - Expenses **cannot** claim a grant that is Revoked, Consumed, Claimed by another report, or
   Open past its deadline; it **cannot** release or consume a grant its report does not hold.
-- The reminder job **cannot** change any row but `pre_reminders_sent`.
+- The reminder job **cannot** change any row but `preapproval_sent_reminders`.
 
 ## Triggers
 
 - Every state change, program edit, manager add/remove and amount change writes an audit
   entry (`PreapprovalsAuditActions.Preapproval*`), related to the program, the expense report, or the
-  affected user. Program kind edits before the first grant include the old and new sizing
-  rules in the program-edit audit, alongside any per-person amount change. Program fields and manager additions/removals persist in one save; a failed manager write leaves fields and managers unchanged, without success audits or deadline notices.
-- Member notices and emails format amounts and claim deadlines in the recipient’s culture. Both channels resolve merged recipients to their canonical user IDs and deliver once per person, even when manager rows name both an archived ID and its survivor.
-  Amount changes carry both amounts as numbers until rendering; audit amounts remain invariant.
+  affected user. Program fields and manager changes save together or not at all.
+- Notices and emails go in the recipient's culture, once per person across merged ids. Audit
+  text is invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key
   `pre-grant:{id}`) and `preapproval_issued` email to the beneficiary. Claim resolves the
   notification; release re-raises it.
 - Apply: `PreapprovalApplicationReceived` to every manager (source key `pre-request:{id}`)
-  plus email; approve, decline and a merge-drop resolve it. Applicant-name enrichment
-  belongs to each best-effort channel: a lookup or delivery fault is logged after the audited
-  save, leaves the successful application successful, and does not skip the other channel.
-  Best-effort manager notices isolate each notification language group and each email recipient, so one preparation
-  or handoff failure does not skip later groups or managers. Required reminder deliveries still propagate failures.
-  Initial reads and the first persistence call retain request cancellation. Once a grant or complete program edit commits, audit, notification resolution and notice/email handoffs finish independently of browser cancellation; this includes each beneficiary of a batch issue.
+  plus email; approve, decline and a merge-drop resolve it. Each manager notice and email is
+  best effort on its own: one failing never skips the others or fails the application.
 - Decline, revoke, amount change: `PreapprovalGrantDecided` notification and the matching
   email. A revoke on a Claimed grant links the holding expense report.
 - Deadline moved: the stale file-by prompt is resolved, a new High-priority one and an email
   go to every Open holder; reminders run again for the new date.
 - Nightly `preapprovals-reminders` (05:00): 14-day and 3-day reminders to Open holders,
-  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. Notification or email handoff failures leave no sent marker. The pass attempts the remaining grants after ordinary failures, then fails for retry; successful markers prevent repeat delivery. A shutdown checkpoint precedes each grant. Cancellation rolls back an active reminder transaction and stops later grants; earlier failures remain in an aggregate with the cancellation. Loop cancellation without earlier failures propagates with a stack-free Warning. Reminder delivery and marker writes retain the job token inside their existing transaction; post-commit audit keeps its independent boundary. Other grant-change notices remain best effort after their committed mutation.
+  once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. A failed
+  notification or email leaves no sent marker; the pass finishes the other grants, then fails
+  so Hangfire retries. A shutdown checkpoint precedes each grant: cancellation rolls back the
+  active reminder transaction and stops later grants, keeping earlier failures in an aggregate
+  with the cancellation; with no earlier failure it propagates with a stack-free Warning.
+  Delivery and marker writes keep the job token inside their transaction; the post-commit audit
+  keeps its own boundary.
 - GDPR: export slices `Preapprovals` (own grants, always a list) and `PreapprovalDecisions`
-  (created, managed, decided; null when empty). Export follows the resolved identity chain,
-  so archived IDs return the same grants and decisions. Erasure deletes Applied and
-  manager rows and keeps every decided grant (Art. 17(3)(b), fiscal retention). Merge re-keys every
-  user-id column (including who added a moved manager), preserves other authors and the original
-  manager-added timestamp, dedups manager rows, and collapses duplicate pending applications to the
-  older one with an audit entry.
+  (created, managed, decided; null when empty), across every id the person has held. Erasure
+  deletes Applied and manager rows and keeps every decided grant (Art. 17(3)(b), fiscal
+  retention). Merge re-keys every user-id column (including who added a moved manager), keeps
+  the original manager-added timestamp, dedups manager rows, and collapses duplicate pending
+  applications to the older one with an audit entry.
 
 ## Cross-Section Dependencies
 
@@ -228,12 +232,18 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Architecture
 
-Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`: selected IDs are unique, removable hidden inputs; batch submit is enabled only for a nonempty list. The views initialize it in the layout's Scripts section after the shared helpers load.
+`PreapprovalService` is a façade over internal components, each owning one job:
+`PreapprovalReader` (reads, projection, merged ids, the Madrid date), `PreapprovalClaims` (the
+three Expenses transitions), `PreapprovalProgramAdministration` (program create and edit),
+`PreapprovalPersonalData` (export, erasure, merge), `PreapprovalJournal` (audit text) and
+`PreapprovalInput` (money and text rules). None is registered in DI or public.
+
+Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`.
 
 The scoped internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion, shared by grant management and deadline reminders. Ordinary delivery failures remain best-effort. `PreapprovalDeadlineReminders` owns reminder selection, transactional delivery and sent stamps, then audits after commit. The recurring job calls this component directly; it does not resolve grant management.
 
 **Owning services:** `PreapprovalDeadlineReminders` (internal reminder pass), `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
-**Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
+**Owned tables:** `preapproval_programs`, `preapproval_program_managers`, `preapproval_grants`, `preapproval_sent_reminders`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
 
 ### Public contract
@@ -250,24 +260,16 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 
 ### For (A) Migrated sections
 
-- `PreapprovalService` lives in `Services/` as partial files (core, Programs, Grants,
-  Gdpr) and never imports `Microsoft.EntityFrameworkCore`.
+- `PreapprovalService` and its components live in `Services/` and never import
+  `Microsoft.EntityFrameworkCore`.
 - `IPreapprovalRepository` (impl in `Data/`) is the only code path that touches the four
   tables; it hands over detached graphs and takes scalars back.
 - **Decorator decision** — no caching decorator. Rationale: a few programs a year, pages
   read by their holders and managers; every read is one query.
-- **Display stitching** — `IUserService.GetUserInfosAsync` for names on the admin pages;
-  `<vc:human>` and `<vc:human-search>` for people.
+- **Display stitching** — `<vc:human>` and `<vc:human-search>` for people on the pages;
+  `IUserService.GetUserInfosAsync` only for notice recipients.
 - **Cross-section calls** — `IUserService`,
   `IFinanceService`, `INotificationEmitter`, `INotificationAutoResolve`,
   `IEmailService`, `IAuditLogService`.
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`
   across every culture; `GdprExportDependencyInjectionTests` for the contributor.
-
-Internal `PreapprovalReader` owns program/grant reads, the grant list Expenses reads, member visibility checks, DTO projection and merged-account id lookup. Mutations reuse its projection and Madrid-date rule, while GDPR export reuses its id lookup. Deadline comparisons, current/archived identity handling, short-circuit reads, grant fields and ordering are unchanged. Issuance, applications, decisions, program changes, expense claim/release/consume, notices and retention stay in their existing owners. The façade keeps its signatures; no contract or DI registration is added.
-
-Internal `PreapprovalPersonalData` owns both personal-data slices, their retention declarations, erasure and merge handling. It reuses the existing reader for merged ids. Slice keys, export shape/order, empty-decision behavior, retention wording, per-user erasure scope and merge side-effect order are unchanged. The existing façade remains the registered contributor and merge entry point; no public contract or DI registration is added.
-
-Internal `PreapprovalClaims` owns claim, release and consume, including holding-report checks, the booked-grant projection and completion handling. It reuses the reader’s Madrid-date rule and the shared `PreapprovalJournal` audit metadata/money formatting. Idempotent resubmission, deadline and state refusals, report ownership, writes, timestamps, and notice order are unchanged; audit and notices always go into the caller's after-commit list. The façade retains all signatures; no public contract or DI registration is added.
-
-Internal `PreapprovalProgramAdministration` owns complete program create/update, account resolution, manager reconciliation and deadline-change notices. It shares live-person checks through the reader, money/text rules through `PreapprovalInput`, and audit metadata through the journal. Unchanged-account fallback, committed-ceiling and kind-lock guards, refusal order, timestamps, manager audit and detached post-commit notices are preserved. The façade keeps its entrypoints; no public contract or DI registration is added.

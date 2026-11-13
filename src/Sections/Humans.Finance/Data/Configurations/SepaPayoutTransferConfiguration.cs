@@ -8,7 +8,7 @@ internal sealed class SepaPayoutTransferConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<SepaPayoutTransfer> b)
     {
-        b.ToTable("sepa_payout_transfers");
+        b.ToTable("finance_sepa_payout_transfers");
         b.HasKey(x => x.Id);
         b.HasIndex(x => x.FileId);
         b.HasIndex(x => x.UserId);

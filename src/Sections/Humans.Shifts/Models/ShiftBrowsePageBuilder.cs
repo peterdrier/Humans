@@ -1,4 +1,5 @@
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
@@ -11,7 +12,7 @@ namespace Humans.Shifts.Models;
 internal sealed record ShiftBrowsePageRequest(
     BurnSettingsInfo EventSettings,
     Guid UserId,
-    IReadOnlyList<ShiftSignup> UserSignups,
+    IReadOnlyList<ShiftUserSignup> UserSignups,
     IReadOnlyList<VolunteerTagPreference> UserTagPreferences,
     IReadOnlyList<UserSignupConflictItem> UserActiveSignups,
     Guid? DepartmentId,
@@ -34,7 +35,7 @@ internal sealed class ShiftBrowsePageBuilder(
     /// section's own rows.
     /// </summary>
     private static (HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses) ResolveActiveStatuses(
-        IReadOnlyList<ShiftSignup> signups)
+        IEnumerable<(Guid ShiftId, SignupStatus Status)> signups)
     {
         var active = signups
             .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
@@ -110,7 +111,7 @@ internal sealed class ShiftBrowsePageBuilder(
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id, ct);
         var allTags = await shiftManagement.GetTagsAsync(ct: ct);
         var dayOptions = await BuildDayOptionsAsync(es, browseFlags, ct);
-        var (userSignupShiftIds, userSignupStatuses) = ResolveActiveStatuses(request.UserSignups);
+        var (userSignupShiftIds, userSignupStatuses) = ResolveActiveStatuses(request.UserSignups.Select(s => (s.ShiftId, s.Status)));
 
         // Pies use the shift list's date window so the percentages match the filter. Each promoted sub-team renders
         // right after its parent (memory/architecture/display-sort-in-controllers).
@@ -151,7 +152,7 @@ internal sealed class ShiftBrowsePageBuilder(
     /// <see cref="BuildAsync"/> so its counts stay consistent.
     /// </summary>
     public async Task<(ShiftDisplayItem Item, bool IsSignedUp, SignupStatus? Status)?> BuildRowAsync(
-        Guid shiftId, IReadOnlyList<ShiftSignup> userSignups, bool isPrivileged, CancellationToken ct)
+        Guid shiftId, IEnumerable<(Guid ShiftId, SignupStatus Status)> userSignups, bool isPrivileged, CancellationToken ct)
     {
         var es = await burnSettings.GetActiveAsync(ct)
             ?? throw new InvalidOperationException("BuildRowAsync requires an active event.");

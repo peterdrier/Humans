@@ -30,7 +30,7 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
     <!--
       Calendar's contributor fan-out inverts the dependency arrow: ICalendarFeedContributor
       lives in Humans.Calendar/Contracts, so implementers reference the section itself.

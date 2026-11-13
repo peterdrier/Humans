@@ -1,9 +1,9 @@
 <!-- freshness:triggers
-  src/Sections/Humans.GoogleIntegration/Services/GoogleAdminService.cs
-  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
-  src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
-  src/Sections/Humans.GoogleIntegration/Services/Workspace/IWorkspaceUserDirectoryClient.cs
-  src/Sections/Humans.GoogleIntegration/Services/Workspace/WorkspaceUserDirectoryClient.cs
+  src/Sections/Humans.Google/Services/GoogleAdminService.cs
+  src/Sections/Humans.Google/Services/GoogleWorkspaceUserService.cs
+  src/Sections/Humans.Google/Services/EmailProvisioningService.cs
+  src/Sections/Humans.Google/Services/Workspace/IWorkspaceUserDirectoryClient.cs
+  src/Sections/Humans.Google/Services/Workspace/WorkspaceUserDirectoryClient.cs
 -->
 <!-- freshness:flag-on-change
   2FA requirement on @nobodies.team accounts, backup codes, and admin lockout recovery (password reset / 2SV-blocked handling). Review when workspace account admin flows change.

@@ -186,8 +186,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await SaveAllAsync(ct);
         if (operation == SignupWrite.NoShow) Clock.Advance(Duration.FromDays(60));
         await _views.PrimeRotaAsync(rota.Id, shift);
-        await _views.PrimeUserAsync(userId, shift);
-        await _views.PrimeUserAsync(actorId);
         var failure = new IOException("Persistence acknowledgement failed");
         var options = new DbContextOptionsBuilder<ShiftsDbContext>(
                 (DbContextOptions<ShiftsDbContext>)ShiftsDb.GetService<IDbContextOptions>())
@@ -220,9 +218,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
 
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(actorId)).Should().Be(operation is not (SignupWrite.Merge or SignupWrite.BulkCancel));
         management.Received(1).InvalidateDashboardCaches(es.Id);
         AuditLog.ReceivedCalls().Should().BeEmpty();
         Notifier.ReceivedCalls().Should().BeEmpty();
@@ -265,8 +261,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         ShiftsDb.ShiftTags.Add(tag);
         ShiftsDb.VolunteerTagPreferences.Add(new VolunteerTagPreference { UserId = userId, ShiftTagId = tag.Id });
         await SaveAllAsync(ct);
-        await _views.PrimeUserAsync(userId, shift);
-        await _views.PrimeUserAsync(Guid.NewGuid(), shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var failure = new IOException("Erasure acknowledgement failed");
         var options = new DbContextOptionsBuilder<ShiftsDbContext>(
@@ -281,7 +275,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Func<Task> erase = () => service.EraseForUserAsync(userId, ct);
 
         (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
         await using var persisted = await ShiftsDbFactory.CreateDbContextAsync(ct);
         (await persisted.ShiftSignups.SingleAsync(ct)).StatusReason.Should()
@@ -312,7 +305,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var failure = new IOException("Deletion acknowledgement failed");
         repo.DeleteAllForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
             .Returns(fails ? Task.FromException<int>(failure) : Task.FromResult(0));
-        await _views.PrimeUserAsync(user, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var management = Substitute.For<IShiftManagement>();
         var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
@@ -323,7 +315,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         if (fails) (await remove.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         else await remove();
 
-        (await _views.IsUserCachedAsync(user)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().Be(!fails);
         if (fails) management.Received(1).InvalidateDashboardCaches(es.Id);
         else management.DidNotReceiveWithAnyArgs().InvalidateDashboardCaches(default);
@@ -429,8 +420,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         dayOff.GetProperty("DayOffset").GetInt32().Should().Be(-3);
         dayOff.GetProperty("Reason").GetString().Should().Be("Rest");
         dayOff.GetProperty("MarkedAt").GetString().Should().Be("2026-06-15T12:00:00Z");
-        service.ErasureDeclaration.Should().ContainKey("VolunteerBuildStatuses");
-        service.ErasureDeclaration["VolunteerBuildStatuses"].Should().BeNull();
+        ShiftSignupService.Erasure.Should().ContainKey("VolunteerBuildStatuses");
+        ShiftSignupService.Erasure["VolunteerBuildStatuses"].Should().BeNull();
     }
 
     [HumansTheory]
@@ -633,7 +624,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
                 ? UserInfoStubHelpers.MakeUserInfo(userId) with { State = actualState }
                 : null);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await _views.PrimeUserAsync(userId, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
 
         foreach (var flags in new[]
@@ -1093,7 +1083,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             signups.Add(second);
         }
         await SaveAllAsync(ct);
-        await _views.PrimeUserAsync(userId, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var reason = new string('x', length);
         bool success;
@@ -2510,16 +2499,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        var viewer = Guid.NewGuid();
-        await _views.PrimeUserAsync(userId);
-        await _views.PrimeUserAsync(viewer, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
@@ -2550,16 +2534,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        var viewer = Guid.NewGuid();
-        await _views.PrimeUserAsync(userId);
-        await _views.PrimeUserAsync(viewer, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
 
         var result = await _service.BailAsync(signup.Id, userId, null);
 
         result.Success.Should().BeTrue();
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
@@ -2691,7 +2670,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         survivor.EnrolledByUserId = otherActor;
         var duplicate = ownsDuplicateSignup ? SeedSignup(source, shift.Id, SignupStatus.Pending) : null;
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await _views.PrimeUserAsync(enrolled.UserId, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var management = Substitute.For<IShiftManagement>();
         var service = new ShiftSignupService(_repo, Substitute.For<IVolunteerTrackingRepository>(), management,
@@ -2715,7 +2693,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         rows[reviewed.Id].StatusReason.Should().Be("Absent");
         rows[survivor.Id].EnrolledByUserId.Should().Be(otherActor);
         if (duplicate is not null) rows.Should().NotContainKey(duplicate.Id);
-        (await _views.IsUserCachedAsync(enrolled.UserId)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
         management.Received(1).InvalidateDashboardCaches(eventSettings.Id);
         await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupReassigned, nameof(User), target,

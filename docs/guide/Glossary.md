@@ -97,7 +97,7 @@ Tracked on the profile and changed via tier applications. See
 The nightly Google sync job (`GoogleResourceReconciliationJob`, 03:00) that
 realigns Shared Drive and Group membership with your team memberships. Runs
 only for services whose sync mode is not `None`. See
-[Google Integration](GoogleIntegration.md).
+[Google](Google.md).
 
 ## Role assignment
 
@@ -115,13 +115,13 @@ have their own guide page.
 The Google identity the app uses to manage Shared Drive folders and Groups.
 To link a resource, that account must already be an Editor on the Drive
 folder or a Manager on the Group. See
-[Google Integration](GoogleIntegration.md).
+[Google](Google.md).
 
 ## Shared Drive
 
 A Google Drive shared with a team. The app manages only Shared Drives — not
 personal My Drive folders — and touches only direct permissions, not
-inherited ones. See [Google Integration](GoogleIntegration.md).
+inherited ones. See [Google](Google.md).
 
 ## Sound zone
 
@@ -140,7 +140,7 @@ sub-team. See [Teams](Teams.md).
 The per-service Google sync setting — `None` (off), `AddOnly` (grant access
 only, never revoke), or `AddAndRemove` (full bidirectional sync). Flipping a
 service to `None` is the fast kill switch. See
-[Google Integration](GoogleIntegration.md).
+[Google](Google.md).
 
 ## System team
 

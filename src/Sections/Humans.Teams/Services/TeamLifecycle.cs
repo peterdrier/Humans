@@ -4,7 +4,7 @@ using Humans.Auth.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
