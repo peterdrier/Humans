@@ -100,12 +100,10 @@ internal sealed class HoldedContactsClient(HoldedTransport transport, ILogger<Ho
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            // The page envelope was unreadable; the skip-and-log below covers only one bad item in a good page.
             throw new HoldedPermanentException("Holded contacts could not be read.", ex);
         }
 
         var contacts = new List<HoldedContactDto>();
-        var skipped = 0;
         foreach (var n in items)
         {
             try
@@ -115,19 +113,10 @@ internal sealed class HoldedContactsClient(HoldedTransport transport, ILogger<Ho
             catch (Exception ex) when (ex is JsonException or InvalidOperationException
                 or FormatException or OverflowException or HoldedPermanentException)
             {
-                // One bad contact must not cost the others their names: this list is the only source of creditor
-                // names on /Finance/Creditors, and its caller turns a throw into all names blank. Detail is logged
-                // for the first only, so a bad page can't flood the log.
-                if (skipped == 0)
-                    logger.LogWarning(ex, "Unreadable Holded contact; skipping it.");
-                skipped++;
+                throw new HoldedPermanentException("Holded contacts contain an unreadable contact.", ex);
             }
         }
 
-        if (skipped > 0)
-            logger.LogWarning(
-                "Skipped {Skipped} unreadable Holded contact(s); those accounts will show without a name.",
-                skipped);
         return contacts;
     }
 

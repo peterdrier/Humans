@@ -18,7 +18,7 @@ namespace Humans.Governance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -103,7 +103,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("UserId", "Status");
 
-                    b.ToTable("applications", (string)null);
+                    b.ToTable("governance_applications", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.ApplicationStateHistory", b =>
@@ -135,7 +135,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("ChangedAt");
 
-                    b.ToTable("application_state_history", (string)null);
+                    b.ToTable("governance_application_state_history", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyBallot", b =>
@@ -174,7 +174,7 @@ namespace Humans.Governance.Data.Migrations
                     b.HasIndex("VoteId", "RosterId")
                         .IsUnique();
 
-                    b.ToTable("assembly_ballots", (string)null);
+                    b.ToTable("governance_assembly_ballots", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyBallotHistory", b =>
@@ -205,7 +205,7 @@ namespace Humans.Governance.Data.Migrations
                     b.HasIndex("BallotId", "Revision")
                         .IsUnique();
 
-                    b.ToTable("assembly_ballot_history", (string)null);
+                    b.ToTable("governance_assembly_ballot_history", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVote", b =>
@@ -300,7 +300,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("Status", "ClosesAt");
 
-                    b.ToTable("assembly_votes", (string)null);
+                    b.ToTable("governance_assembly_votes", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVoteOption", b =>
@@ -330,7 +330,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("VoteId");
 
-                    b.ToTable("assembly_vote_options", (string)null);
+                    b.ToTable("governance_assembly_vote_options", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVotePeek", b =>
@@ -352,7 +352,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("VoteId");
 
-                    b.ToTable("assembly_vote_peeks", (string)null);
+                    b.ToTable("governance_assembly_vote_peeks", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVoteRoster", b =>
@@ -392,7 +392,7 @@ namespace Humans.Governance.Data.Migrations
                         .IsUnique()
                         .HasFilter("\"UserId\" IS NOT NULL");
 
-                    b.ToTable("assembly_vote_roster", (string)null);
+                    b.ToTable("governance_assembly_vote_roster_entries", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.BoardVote", b =>
@@ -428,7 +428,7 @@ namespace Humans.Governance.Data.Migrations
                     b.HasIndex("ApplicationId", "BoardMemberUserId")
                         .IsUnique();
 
-                    b.ToTable("board_votes", (string)null);
+                    b.ToTable("governance_board_votes", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.MembershipTierRecord", b =>

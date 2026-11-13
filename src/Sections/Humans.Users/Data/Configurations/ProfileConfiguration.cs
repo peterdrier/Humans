@@ -8,7 +8,7 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 {
     public void Configure(EntityTypeBuilder<Profile> builder)
     {
-        builder.ToTable("profiles");
+        builder.ToTable("user_profiles");
 
         builder.HasKey(p => p.Id);
 

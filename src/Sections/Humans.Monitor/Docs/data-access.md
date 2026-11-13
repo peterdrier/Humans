@@ -38,7 +38,7 @@ Cross-section calls via `IGoogleDriveActivityClient` (GoogleIntegration —
 `ITeamResourceService`, `ISettingsService`, `IUserService`,
 `IAuditLogService`. No cache.
 
-**Cross-section table read/write (design-rule note):** `system_settings`
+**Cross-section table read/write (design-rule note):** `settings_system_values`
 is read/written through the owning Settings section's
 `ISettingsService` — this is the contract-compliant cross-section call
 (service interface, not a foreign repository), so it is **not** a violation.

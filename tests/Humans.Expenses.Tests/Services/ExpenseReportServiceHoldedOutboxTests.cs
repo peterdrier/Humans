@@ -748,8 +748,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [HumansFact]
     public async Task CreateIncomingDoc_AttachmentBytesMissing_BacksOffAndDoesNotMarkProcessed()
     {
-        // IFileStorage.TryReadAsync returns null for both missing files and IO errors.
-        // Either case must keep the outbox event unprocessed with backoff —
+        // Missing attachment bytes must keep the outbox event unprocessed with backoff —
         // silently skipping would permanently lose the receipt upload to Holded.
         var attachment = new ExpenseAttachmentDto
         {
@@ -783,7 +782,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _repo.Received(1).IncrementOutboxRetryAsync(outboxEvent.Id,
             Arg.Is<string>(error => error.Contains("could not be read from storage", StringComparison.Ordinal)),
-            Now + Duration.FromMinutes(2), TestContext.Current.CancellationToken);
+            Now + Duration.FromMinutes(2), CancellationToken.None);
 
         await _holdedWrite.DidNotReceiveWithAnyArgs()
             .UploadPurchaseAttachmentAsync(null!, null!, Arg.Any<CancellationToken>());
@@ -1073,22 +1072,22 @@ public class ExpenseReportServiceHoldedOutboxTests
         _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), BatchSize, ct).Returns([failedEvent, healthyEvent]);
         _repo.GetByIdAsync(broken.Id, ct).Returns(broken);
         _repo.GetByIdAsync(healthy.Id, ct).Returns(healthy);
-        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), ct)
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), CancellationToken.None)
             .Returns(Task.FromException<string>(failure), Task.FromResult("healthy-doc"));
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, ct);
 
-        await _repo.Received(1).MarkOutboxProcessedAsync(healthyEvent.Id, Now, ct);
-        await _repo.DidNotReceive().MarkOutboxProcessedAsync(failedEvent.Id, Arg.Any<Instant>(), ct);
+        await _repo.Received(1).MarkOutboxProcessedAsync(healthyEvent.Id, Now, CancellationToken.None);
+        await _repo.DidNotReceive().MarkOutboxProcessedAsync(failedEvent.Id, Arg.Any<Instant>(), CancellationToken.None);
         if (retries == 9)
         {
             await _repo.Received(1).MarkOutboxFailedPermanentlyAsync(failedEvent.Id,
-                Arg.Is<string>(s => s.Contains(failure.Message, StringComparison.Ordinal)), Now, ct);
+                Arg.Is<string>(s => s.Contains(failure.Message, StringComparison.Ordinal)), Now, CancellationToken.None);
             await _auditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseHoldedFailed,
                 Arg.Any<string>(), broken.Id, Arg.Any<string>(), ExpenseReportBackgroundProcessor.OutboxJobName);
         }
         else
-            await _repo.Received(1).IncrementOutboxRetryAsync(failedEvent.Id, failure.Message, Now + Duration.FromMinutes(2), ct);
+            await _repo.Received(1).IncrementOutboxRetryAsync(failedEvent.Id, failure.Message, Now + Duration.FromMinutes(2), CancellationToken.None);
     }
 
     [HumansFact]
@@ -1100,12 +1099,12 @@ public class ExpenseReportServiceHoldedOutboxTests
         outboxEvent.RetryCount = 9;
         _repo.GetUnprocessedOutboxAsync(Arg.Any<Instant>(), BatchSize, ct).Returns([outboxEvent]);
         _repo.GetByIdAsync(report.Id, ct).Returns(report);
-        _repo.MarkOutboxProcessedAsync(outboxEvent.Id, Now, ct).Returns(_ =>
+        _repo.MarkOutboxProcessedAsync(outboxEvent.Id, Now, CancellationToken.None).Returns(_ =>
         {
             outboxEvent.ProcessedAt = Now;
             throw new IOException("Completion committed before acknowledgement failed");
         });
-        _repo.GetLatestOutboxForReportAsync(report.Id, ct).Returns(outboxEvent);
+        _repo.GetLatestOutboxForReportAsync(report.Id, CancellationToken.None).Returns(outboxEvent);
 
         await _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, ct);
 

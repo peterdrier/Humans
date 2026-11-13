@@ -248,7 +248,9 @@ internal sealed class FinanceOverviewService(
     internal static FinanceBudgetVm BuildBudget(BudgetYearDetail year, IReadOnlyList<CategoryActualRow> actuals)
     {
         var actualByCategory = actuals.ToDictionary(a => a.BudgetCategoryId, a => Math.Abs(a.Actual));
-        var categories = year.Groups.SelectMany(g => g.Categories).Where(c => c.AllocatedAmount < 0m).ToList();
+        // Group priority breaks equal-overage ties in the top-three selector.
+        var categories = year.Groups.OrderBy(group => group.SortOrder)
+            .SelectMany(g => g.Categories).Where(c => c.AllocatedAmount < 0m).ToList();
 
         var over = categories
             .Select(c => new FinanceOverBudgetVm(

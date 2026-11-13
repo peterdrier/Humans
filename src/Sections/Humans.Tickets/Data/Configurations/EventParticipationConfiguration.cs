@@ -8,7 +8,7 @@ internal sealed class EventParticipationConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<EventParticipation> builder)
     {
-        builder.ToTable("tickets_event_participations");
+        builder.ToTable("ticket_event_participations");
 
         builder.HasKey(ep => ep.Id);
 

@@ -7,7 +7,7 @@ internal sealed class ProfileLanguageConfiguration : IEntityTypeConfiguration<Pr
 {
     public void Configure(EntityTypeBuilder<ProfileLanguage> builder)
     {
-        builder.ToTable("profile_languages");
+        builder.ToTable("user_profile_languages");
 
         builder.HasKey(pl => pl.Id);
 

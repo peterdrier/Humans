@@ -33,9 +33,11 @@ public sealed class GateVendorCheckInJob(
             return;
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            await vendor.CreateCheckInAsync(vendorTicketId, occurredAt, cancellationToken);
+            // Finish a started non-idempotent POST; retrying an uncertain result can duplicate the check-in.
+            await vendor.CreateCheckInAsync(vendorTicketId, occurredAt, CancellationToken.None);
         }
         catch (HttpRequestException ex) when (ex.StatusCode is { } status && (int)status is >= 400 and < 500)
         {

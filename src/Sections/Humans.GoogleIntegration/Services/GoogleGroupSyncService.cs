@@ -61,6 +61,7 @@ internal sealed class GoogleGroupSyncService(
 
         foreach (var claim in claims)
         {
+            ct.ThrowIfCancellationRequested();
             if (claim.IsCollision)
             {
                 diffs.Add(await BuildCollisionDiffAsync(claim, resourcesByGroup));
@@ -127,7 +128,7 @@ internal sealed class GoogleGroupSyncService(
         IReadOnlyDictionary<Guid, GoogleSyncMember>? expectedMembersByUserId,
         CancellationToken ct)
     {
-        var lookup = await LookupOrProvisionGroupAsync(claim, action, ct);
+        var (lookup, provisionAttempted) = await LookupOrProvisionGroupAsync(claim, action, ct);
 
         if (lookup.GroupNumericId is null)
         {
@@ -138,7 +139,7 @@ internal sealed class GoogleGroupSyncService(
                 lookup.Error,
                 scheduleRetryOnFailure,
                 nextRetryAttempt,
-                ct);
+                provisionAttempted ? CancellationToken.None : ct);
         }
 
         expectedMembersByUserId ??= await GoogleSyncMemberHydration.LoadAsync(claim.UserIds, userService, workspaceIdentities, ct);
@@ -191,16 +192,16 @@ internal sealed class GoogleGroupSyncService(
         };
     }
 
-    private async Task<GroupLookupIdResult> LookupOrProvisionGroupAsync(
+    private async Task<(GroupLookupIdResult Lookup, bool ProvisionAttempted)> LookupOrProvisionGroupAsync(
         GroupClaim claim,
         SyncAction action,
         CancellationToken ct)
     {
         var lookup = await provisioningClient.LookupGroupIdAsync(claim.GroupKey, ct);
         if (lookup.GroupNumericId is not null || !IsGroupNotFound(lookup.Error) || action != SyncAction.Execute)
-            return lookup;
+            return (lookup, false);
 
-        return await TryProvisionGroupAsync(claim.GroupKey, lookup, ct);
+        return (await TryProvisionGroupAsync(claim.GroupKey, lookup, ct), true);
     }
 
     private async Task<GroupLookupIdResult> TryProvisionGroupAsync(
@@ -208,13 +209,16 @@ internal sealed class GoogleGroupSyncService(
         GroupLookupIdResult failedLookup,
         CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
+        // Creation, settings and its audit must finish as one provisioning unit.
+        var commitCt = CancellationToken.None;
         try
         {
             var create = await provisioningClient.CreateGroupAsync(
                 groupKey,
                 displayName: groupKey,
                 description: $"Auto-provisioned group ({groupKey}).",
-                ct);
+                commitCt);
 
             if (create.GroupNumericId is null)
             {
@@ -231,8 +235,8 @@ internal sealed class GoogleGroupSyncService(
                 GoogleIntegrationAuditActions.GoogleResourceProvisioned, nameof(GoogleResource), Guid.Empty,
                 $"Auto-provisioned Google Group '{groupKey}' ({create.GroupNumericId})",
                 nameof(GoogleGroupSyncService));
-            await TryApplyProvisionedGroupSettingsAsync(groupKey, ct);
-            return await provisioningClient.LookupGroupIdAsync(groupKey, ct);
+            await TryApplyProvisionedGroupSettingsAsync(groupKey, commitCt);
+            return await provisioningClient.LookupGroupIdAsync(groupKey, commitCt);
         }
         catch (Exception ex)
         {
@@ -368,7 +372,7 @@ internal sealed class GoogleGroupSyncService(
         }
 
         if (resource is not null && mode != SyncMode.None)
-            await teamResourceService.MarkResourceSyncedAsync(resource.Id, clock.GetCurrentInstant(), ct);
+            await teamResourceService.MarkResourceSyncedAsync(resource.Id, clock.GetCurrentInstant(), CancellationToken.None);
 
         return null;
     }
@@ -385,7 +389,10 @@ internal sealed class GoogleGroupSyncService(
         var members = plan.Members;
         foreach (var member in members.Where(m => m.State == MemberSyncState.Missing))
         {
-            var add = await membershipClient.CreateMembershipAsync(groupNumericId, member.Email, ct);
+            ct.ThrowIfCancellationRequested();
+            var commitCt = CancellationToken.None;
+
+            var add = await membershipClient.CreateMembershipAsync(groupNumericId, member.Email, commitCt);
             if (add.Outcome == GroupMembershipMutationOutcome.Failed)
             {
                 var failure = DescribeGroupAddFailure(resource, claim.GroupKey, member.Email, add.Error);
@@ -400,12 +407,12 @@ internal sealed class GoogleGroupSyncService(
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
                     member.UserId,
-                    ct);
+                    commitCt);
                 if (failure.RejectTarget)
                 {
                     var target = plan.ExpectedByEmail[member.Email];
                     await workspaceIdentities.SetStatusFromSyncAsync(
-                        target.UserId, target.IdentityEmail, GoogleEmailStatus.Rejected, ct);
+                        target.UserId, target.IdentityEmail, GoogleEmailStatus.Rejected, commitCt);
                     logger.LogWarning(
                         "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
                         "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
@@ -426,7 +433,7 @@ internal sealed class GoogleGroupSyncService(
                     claim.SyncSource,
                     success: true,
                     userId: member.UserId,
-                    ct: ct);
+                    ct: commitCt);
             }
         }
 
@@ -443,10 +450,13 @@ internal sealed class GoogleGroupSyncService(
     {
         foreach (var member in plan.Members.Where(m => m.State == MemberSyncState.Extra))
         {
+            ct.ThrowIfCancellationRequested();
+            var commitCt = CancellationToken.None;
+
             if (!plan.CurrentByEmail.TryGetValue(member.Email, out var membershipResourceName))
                 continue;
 
-            var deleteError = await membershipClient.DeleteMembershipAsync(membershipResourceName, ct);
+            var deleteError = await membershipClient.DeleteMembershipAsync(membershipResourceName, commitCt);
             if (deleteError is not null)
             {
                 return await BuildMemberMutationErrorDiffAsync(
@@ -459,7 +469,7 @@ internal sealed class GoogleGroupSyncService(
                     scheduleRetryOnFailure,
                     nextRetryAttempt,
                     member.UserId,
-                    ct);
+                    commitCt);
             }
 
             await googleSyncLog.LogAsync(
@@ -472,9 +482,9 @@ internal sealed class GoogleGroupSyncService(
                 claim.SyncSource,
                 success: true,
                 userId: member.UserId,
-                ct: ct);
+                ct: commitCt);
 
-            await NotifyRemovalAsync(member.Email, resource, claim.GroupKey, ct);
+            await NotifyRemovalAsync(member.Email, resource, claim.GroupKey, commitCt);
         }
 
         return null;

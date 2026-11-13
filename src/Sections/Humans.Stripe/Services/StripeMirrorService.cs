@@ -124,14 +124,17 @@ internal sealed class StripeMirrorService(
     internal static List<StripeBalanceTransaction> FillFromSiblings(IReadOnlyList<StripeBalanceTransaction> rows)
     {
         var byIntent = rows
-            .Where(t => t.PaymentIntentId is not null && (t.CustomerName is not null || t.CustomerEmail is not null))
+            .Where(t => !string.IsNullOrWhiteSpace(t.PaymentIntentId))
             .GroupBy(t => t.PaymentIntentId!, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-        foreach (var t in rows.Where(t => t.PaymentIntentId is not null && t.CustomerName is null && t.CustomerEmail is null))
+            .ToDictionary(g => g.Key, g => (
+                Name: g.Select(t => t.CustomerName).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)),
+                Email: g.Select(t => t.CustomerEmail).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))),
+                StringComparer.Ordinal);
+        foreach (var t in rows.Where(t => !string.IsNullOrWhiteSpace(t.PaymentIntentId)))
         {
             if (!byIntent.TryGetValue(t.PaymentIntentId!, out var sibling)) continue;
-            t.CustomerName = sibling.CustomerName;
-            t.CustomerEmail = sibling.CustomerEmail;
+            if (string.IsNullOrWhiteSpace(t.CustomerName)) t.CustomerName = sibling.Name;
+            if (string.IsNullOrWhiteSpace(t.CustomerEmail)) t.CustomerEmail = sibling.Email;
         }
         return rows.DistinctBy(t => t.Id, StringComparer.Ordinal).ToList();
     }

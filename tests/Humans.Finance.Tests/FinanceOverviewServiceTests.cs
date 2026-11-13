@@ -172,6 +172,27 @@ public class FinanceOverviewServiceTests
         budget.OverBudget.Should().ContainSingle().Which.Should().Be(new FinanceOverBudgetVm(sound.Id, "Sound", 30m));
     }
 
+    [HumansFact]
+    public void BuildBudget_UsesGroupSortOrderToBreakEqualOverBudgetTies()
+    {
+        var yearId = Guid.NewGuid();
+        var groups = Enumerable.Range(0, 4).Select(sortOrder =>
+        {
+            var id = Guid.NewGuid();
+            return new BudgetGroupDetail(id, yearId, $"Group {sortOrder}", sortOrder, false, false, false, null,
+                [Category(id, $"Category {sortOrder}", -100m)]);
+        }).ToList();
+        var year = new BudgetYearDetail(yearId, "2026", "2026", BudgetYearStatus.Active, false,
+            groups.AsEnumerable().Reverse().ToList());
+        var actuals = groups.Select(group => new CategoryActualRow(
+            group.Categories[0].Id, group.SortOrder == 3 ? 150m : 125m, [])).ToList();
+
+        var budget = FinanceOverviewService.BuildBudget(year, actuals);
+
+        budget.OverBudget.Select(row => row.CategoryId).Should().Equal(
+            groups[3].Categories[0].Id, groups[0].Categories[0].Id, groups[1].Categories[0].Id);
+    }
+
     private static CreditorAccountRow Row(int num, decimal owed, IReadOnlyList<CreditorContactBinding> bindings,
         string? pending = null, bool duplicates = false, string? reason = null) =>
         new(num, $"N{num}", -owed, Math.Max(0m, owed), bindings, PendingPayoutFileName: pending,

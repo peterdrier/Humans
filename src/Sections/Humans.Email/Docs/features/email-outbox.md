@@ -25,6 +25,8 @@ Transactional emails (onboarding, campaign codes, notifications) must be deliver
 5. On failure: `RetryCount++`, `LastError` set, `NextRetryAt` computed with exponential backoff. After `OutboxMaxRetries` attempts, message stays `Failed` and is not retried.
 6. `CleanupEmailOutboxJob` (Hangfire, weekly — Sunday 03:00 UTC) deletes **sent** messages older than `OutboxRetentionDays`. `Failed` messages are retained (`DeleteSentOlderThanAsync` filters on `Status == Sent`).
 
+Job cancellation is checked before starting each message. A started SMTP attempt completes its delivery-state and daily-count writes independently of cancellation; shutdown may interrupt the throttle or stop the next message. Messages picked up but not attempted retain the existing stale-pickup recovery path.
+
 ## Configuration
 
 All settings live under the `Email` section in `appsettings.json`:
@@ -50,7 +52,7 @@ When paused, `ProcessEmailOutboxJob` skips processing without dequeuing messages
 
 ## Global Pause
 
-The `IsEmailSendingPaused` key in `system_settings` controls whether the outbox processor runs. The Pause/Resume actions on the `/Settings#email` tab update this setting (peterdrier/Humans#1634); the dashboard only links to them. Useful during maintenance windows or when diagnosing delivery issues.
+The `IsEmailSendingPaused` key in `settings_system_values` controls whether the outbox processor runs. The Pause/Resume actions on the `/Settings#email` tab update this setting (peterdrier/Humans#1634); the dashboard only links to them. Useful during maintenance windows or when diagnosing delivery issues.
 
 ## Daily Send Counts (nobodies-collective/Humans#1195)
 

@@ -56,6 +56,7 @@ internal sealed class DriveActivityMonitorService(
 
         foreach (var resource in resources)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 await ScanResourceAsync(
@@ -75,6 +76,10 @@ internal sealed class DriveActivityMonitorService(
                     "Drive resource {GoogleId} not found when checking activity (may have been deleted)",
                     resource.GoogleId);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 hadFailures = true;
@@ -83,6 +88,8 @@ internal sealed class DriveActivityMonitorService(
                     resource.Id, resource.GoogleId);
             }
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (anomalies.Count > 0)
         {

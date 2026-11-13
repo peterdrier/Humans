@@ -8,7 +8,7 @@ internal sealed class HoldedManagedAccountConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<HoldedManagedAccount> b)
     {
-        b.ToTable("holded_managed_accounts");
+        b.ToTable("finance_holded_managed_accounts");
         b.HasKey(x => x.Id);
         b.HasIndex(x => x.HoldedAccountNumber).IsUnique();
         b.HasIndex(x => x.HoldedAccountId).IsUnique();

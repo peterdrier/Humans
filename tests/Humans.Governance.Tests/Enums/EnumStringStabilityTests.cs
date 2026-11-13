@@ -35,7 +35,7 @@ public class EnumStringStabilityTests
             typeof(VoteChoice), ["Yay", "Maybe", "No", "Abstain"]
         },
         {
-            // applications.MembershipTier and governance_membership_tiers.Tier.
+            // governance_applications.MembershipTier and governance_membership_tiers.Tier.
             typeof(MembershipTier), ["Volunteer", "Colaborador", "Asociado"]
         }
     };

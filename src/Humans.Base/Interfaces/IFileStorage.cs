@@ -30,6 +30,7 @@ public interface IFileStorage
     /// Read the bytes at <paramref name="key"/>. Returns <c>null</c> when
     /// no file is present. Implementations must not throw for missing files —
     /// a miss is a normal outcome.
+    /// Other I/O or access failures propagate rather than being reported as missing files.
     /// </summary>
     Task<byte[]?> TryReadAsync(string key, CancellationToken ct = default);
 
@@ -46,6 +47,7 @@ public interface IFileStorage
     /// Every stored file whose key starts with the directory <paramref name="prefix"/>, with its
     /// size and last write time. A missing directory yields an empty list. In-flight temp files
     /// from <see cref="SaveAsync(string, Stream, CancellationToken)"/> are not listed.
+    /// Other listing failures propagate rather than returning an empty or partial inventory.
     /// </summary>
     Task<IReadOnlyList<StoredFileInfo>> ListAsync(string prefix, CancellationToken ct = default);
 }

@@ -20,6 +20,7 @@ As a **signed-in human** I want to **type a question about how the system works*
 **Acceptance:**
 - The Assistant panel is reachable from the floating "Help" launcher whenever `AgentSettings.Enabled = true`.
 - An "AI Terms" link below the composer opens `/Legal/agent-chat`. There is no explicit consent gate — opening the panel and sending a message constitutes use; the linked Terms describe what's sent, retention, admin visibility, and rights.
+- Personal context reports the account’s canonical state; consent-coordinator review does not determine Volunteer admission or access.
 - Response streams token-by-token within 2s of submission (SSE).
 - When the docs don't cover the question, the agent calls `route_to_issue` with a proposed `{title, category, description}`. The server emits an `AgentIssueProposal` SSE frame; the client opens the Issues submission modal pre-filled. The user reviews and submits via `POST /Issues` — no row is written server-side from the agent.
 

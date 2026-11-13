@@ -6,7 +6,7 @@ namespace Humans.AuditLog.Contracts;
 
 /// <summary>
 /// Temporary: feeds GoogleIntegration's one-time history migration screen, and goes with the six Google columns
-/// on <c>audit_log</c>.
+/// on <c>audit_log_entries</c>.
 /// </summary>
 public interface ILegacyGoogleSyncAuditReader : IApplicationService
 {

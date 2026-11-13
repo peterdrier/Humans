@@ -9,7 +9,7 @@ internal sealed class SettingConfiguration : IEntityTypeConfiguration<Setting>
     public void Configure(EntityTypeBuilder<Setting> builder)
     {
         // Physical rename to "settings" is deferred to the retirement step; not authorized here.
-        builder.ToTable("system_settings");
+        builder.ToTable("settings_system_values");
 
         builder.HasKey(e => e.Key);
 

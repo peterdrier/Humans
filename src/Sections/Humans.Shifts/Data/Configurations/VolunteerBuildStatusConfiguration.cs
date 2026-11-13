@@ -18,7 +18,7 @@ internal sealed class VolunteerBuildStatusConfiguration
 
     public void Configure(EntityTypeBuilder<VolunteerBuildStatus> builder)
     {
-        builder.ToTable("volunteer_build_statuses");
+        builder.ToTable("shift_volunteer_build_statuses");
 
         builder.HasKey(x => x.Id);
 

@@ -86,15 +86,7 @@ internal sealed class OrderAuthorizationHandler(
         if (resource.CampSeasonId is { } sid)
         {
             var season = await campService.GetCampSeasonByIdAsync(sid, ct);
-            if (season is not null)
-            {
-                var camp = (await campService.GetCampsForYearAsync(season.Year, ct))
-                    .FirstOrDefault(c => c.Id == season.CampId);
-                if (camp?.IsLead(userId) == true)
-                {
-                    authorized = true;
-                }
-            }
+            authorized = season?.IsLead(userId) == true;
         }
         else if (resource.TeamId is { } tid)
         {

@@ -31,6 +31,7 @@ internal sealed class GoogleDriveFolderMaintenance(
         var updatedCount = 0;
         foreach (var resource in filtered)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var fullPath = await DriveFolderPath.ResolveAsync(drivePermissions, resource.GoogleId, logger, cancellationToken);
@@ -42,6 +43,10 @@ internal sealed class GoogleDriveFolderMaintenance(
                     await resourceRepository.UpdateNameAsync(resource.Id, fullPath, cancellationToken);
                     updatedCount++;
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -59,7 +64,9 @@ internal sealed class GoogleDriveFolderMaintenance(
         bool restrict,
         CancellationToken cancellationToken = default)
     {
-        var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        // A started inheritance repair must finish before shutdown can stop the next resource.
+        var error = await drivePermissions.SetInheritedPermissionsDisabledAsync(googleFileId, restrict, CancellationToken.None);
         if (error is not null)
         {
             logger.LogWarning(
@@ -88,6 +95,7 @@ internal sealed class GoogleDriveFolderMaintenance(
         var correctedCount = 0;
         foreach (var resource in restricted)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var fileResult = await drivePermissions.GetFileAsync(resource.GoogleId, cancellationToken);
@@ -125,6 +133,10 @@ internal sealed class GoogleDriveFolderMaintenance(
 
                     correctedCount++;
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

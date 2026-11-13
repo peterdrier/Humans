@@ -10,7 +10,7 @@ internal sealed class DocumentVersionConfiguration : IEntityTypeConfiguration<Do
 {
     public void Configure(EntityTypeBuilder<DocumentVersion> builder)
     {
-        builder.ToTable("document_versions");
+        builder.ToTable("consent_document_versions");
 
         builder.HasKey(dv => dv.Id);
 

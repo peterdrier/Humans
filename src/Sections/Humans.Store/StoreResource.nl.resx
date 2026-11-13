@@ -133,4 +133,5 @@
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(onbekend)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Kampbestelling</value></data>
   <data name="Store_PaymentPrecision" xml:space="preserve"><value>Voer een bedrag in met maximaal twee decimalen.</value></data>
+  <data name="Store_PaymentAboveCheckoutLimit" xml:space="preserve"><value>Het betaalbedrag mag niet hoger zijn dan {0:0.00} EUR per betaling. Betaal het resterende saldo met een volgende betaling.</value></data>
 </root>

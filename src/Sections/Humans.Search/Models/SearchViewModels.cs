@@ -9,6 +9,8 @@ internal sealed class GlobalSearchViewModel
 
     public SearchResultType? Filter { get; init; }
 
+    public bool SearchFailed { get; init; }
+
     public IReadOnlyList<HumanSearchResult> HumanResults { get; init; } =
         [];
 

@@ -152,11 +152,15 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 
 Google Group membership is reconciled by `IGoogleGroupSync`, not by the Drive-oriented `IGoogleSyncService` gateway. `IGoogleGroupMembershipSource` is a plugin interface: each source returns expected user IDs for the Google group keys it owns, and the orchestrator performs the shared work of hydrating users/emails, filtering deletion/merge/suspension/rejected-email state, diffing against Google, and applying changes.
 
+When a team prefix points back to an inactive group resource, the existing team-edit form requests explicit reactivation confirmation. Recovery recognizes both legacy email-valued IDs and numeric IDs through their canonical group URL. Confirmation restores the same row with the current team name and URL, atomically retires the selected previous group link, and audits both changes. Other manually linked group resources remain active; no duplicate row or provisioning call is needed.
+
 `TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups, and Camps' `CampRoleService` implements it for camp role groups. `ITeamService` intentionally does not inherit the source interface; Teams registers the concrete service as a source so group membership ownership remains explicit and does not expand the general Teams boundary.
 
 Collision handling is fail-closed. If more than one source claims the same group key, `IGoogleGroupSync` logs and audits the collision and skips mutation for that group. First-wins would be unsafe because one source could silently remove members owned by another source.
 
 `ReconcileAllAsync` is the daily and bulk-preview/bulk-execute path. It loads all claims, hydrates expected users once for the pass, records per-group errors, and on Execute schedules capped scoped retries for groups that fail. `ReconcileOneAsync` is the scoped path used by Hangfire requests after membership/email changes and by per-row Execute in the UI; when scoped Execute hits a Google API failure, it schedules another scoped Hangfire attempt after the retry delay.
+
+Group and Drive reconciliation keep preflight reads cancellable and check job cancellation before the next mutation or resource. A started mutation completes its remote call and required local tracking independently of shutdown, including bounded Drive retries, plus-address fallback, rejection status and removal notification. Completed resources finish their sync-status writes.
 
 Group sync requests use Hangfire instead of in-process retry. Team membership and email changes commit first, then enqueue scoped group reconciliation by group key. This keeps Google API failures outside the Teams transaction and makes retries visible and independently executable.
 
@@ -336,7 +340,7 @@ Same diff logic as full sync, but read-only — no writes to Google APIs.
 
 ## Sync Mode Settings
 
-Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `sync_service_settings` table and managed via the `/Settings#google-sync` tab (Admin-only).
+Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `google_sync_service_settings` table and managed via the `/Settings#google-sync` tab (Admin-only).
 
 ### SyncServiceSettings Entity
 ```
@@ -400,6 +404,8 @@ Settings applied at group creation can drift if someone changes them manually in
 - IsArchived (expected: true — enables conversation history), MembersCanPostAsTheGroup (expected: true), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: true)
 
 **Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures per group are logged but don't stop the check phase; a phase-level failure that kills the entire check dispatches a `SyncError` Admin alert (covered under per-phase fault isolation above).
+
+Each settings remediation checks cancellation before starting its remote write, then completes that write and its audit independently of shutdown. Cancellation stops the next remediation.
 
 **Manual trigger:** The Google admin page at `/Google` has a "Check Group Settings" button. Results show at `/Google/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
 
@@ -544,6 +550,8 @@ Process: Calls Drive and Group `ReconcileAllAsync` once each with `SyncAction.Ex
 
 **Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` for name, parents and `driveId`; `drives.get` for a Shared Drive root's name, never the `files.get` placeholder). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Google/Sync` page accurate without requiring manual intervention. Only a complete root-reaching path replaces the stored name; failed metadata reads or the depth limit preserve it. Initial resource lookup uses the same resolver and reuses its leaf metadata; an incomplete walk returns the leaf name rather than a partial suffix. Shared Drive roots whose file metadata omits `driveId` are resolved through `drives.get`.
 
+Folder-path refresh and inherited-access enforcement keep metadata reads cancellable and propagate requested cancellation rather than returning partial counts. Both stop before the next resource; independent read failures retain per-resource recovery. A started inheritance repair completes its remote write and correction audit independently of cancellation.
+
 > Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at the `/Settings#google-sync` tab before the job will modify Google resources.
 
 ### SystemTeamSyncJob
@@ -574,6 +582,8 @@ record `ManualSync`; membership add events record `TeamMemberJoined`.
 **Transient failures (all other errors including 429, 5xx):** Retried on each drain run, up to 10 times. When the retry budget is exhausted (dead-lettered), the event is marked `FailedPermanently` and surfaces via the "Failed Google sync events" meter and the `/Google/SyncOutbox` admin page with Retry.
 
 `GoogleEmailStatus` is set to `Valid` only when `AddUserToTeamResourcesAsync` returns `Accepted`: Google created or confirmed an existing Drive grant and no grant failed. No linked resources, disabled Drive sync and deferred group reconciliation do not validate the address; failed grants do not either. A `Rejected` status is never overwritten with `Valid`; the user must change their email to reset it.
+
+Direct Drive grants retain cancellation on preflight reads and stop before the next resource. A started permission attempt completes its fallback, sync log and target-rejection status independently of shutdown. Once dispatch returns an outcome, the outbox finishes the applicable email status and processed/permanent-failure/retry write before stopping the next event. Requested cancellation during preflight leaves the event pending without consuming a retry; an unrelated dependency timeout still follows the failure path.
 
 ### Resource-Level Retry Strategy
 ```

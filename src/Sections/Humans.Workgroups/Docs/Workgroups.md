@@ -137,7 +137,9 @@ Meetings are created and edited through Calendar's shared form (`_CalendarEventF
 organisation zone (`ISettingsService.GetTimeZoneIdAsync`, Settings' `Event:TimeZoneId`). Times
 are read in the chosen zone and stored as UTC instants. A one-off meeting doesn't store its
 zone, so its edit reopens in the organisation zone; a repeating meeting stores it and reopens
-in it. Meetings hide the form's all-day part and use its recurrence picker.
+in it. Meetings hide the form's all-day part and use its recurrence picker. Local times whose
+timezone conversion exceeds the supported instant range return the shared form's localized
+validation error without saving a meeting.
 
 Occurrences are expanded by Calendar's `CalendarRecurrence.Occurrences`, the same expansion
 the community calendar uses; nothing per occurrence is stored. The group page timeline lists
@@ -254,7 +256,7 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 ### Settings
 
-`workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
+`workgroup_settings` owns the root Drive folder id: one row (`Id = 1`),
 `RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
 through the Workgroups repository and audits the actor. A save is refused unless
 the service account can read the folder (`IGoogleSyncService.IsFolderReachableAsync`),
@@ -388,7 +390,7 @@ Settings and Register an existing group on first setup or after clearing the que
   after the group leaves Active (`RequireAcceptsMemberWork` on the responding calls too).
 - A group's Slug never collides with a reserved route segment (`apply`, `admin`).
 - Both Board/Admin budget forms require an explicit budget checkbox value. Enabling a budget also requires a valid create/link account choice; omissions and unknown choices cannot clear a budget or create a Holded account. Clearing a budget needs no account choice. The initial registration form selects create; rejected submissions retain their choices.
-- Budget: amount ≥ 0 or null and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
+- Budget: amount ≥ 0 or null, fits the existing decimal(18,2) column, and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse oversized amounts and fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
   anything is written, so a failed create or an unknown account number changes nothing;
   the first account bound is created as "Workgroups / {Name}" or linked to an existing
   account of that normalized name; clearing keeps the binding; rebinding never touches
@@ -508,7 +510,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.
 - **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
-  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and leave the picker empty; cancellation propagates. Account creation and linking still go through Finance.
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and propagate, stopping the page rather than presenting an empty account picker; cancellation propagates. Account creation and linking still go through Finance.
 
 ## GDPR
 
@@ -538,7 +540,7 @@ The internal `WorkgroupDataExport` owns all six GDPR export slices, including re
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)
 **Owned tables:** `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
 `MyWorkgroupsViewComponent` supplies the member-dashboard list and passes

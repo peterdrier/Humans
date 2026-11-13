@@ -85,7 +85,7 @@ namespace Humans.Settings.Data.Migrations
 
                     b.HasIndex("Status");
 
-                    b.ToTable("settings_event", (string)null);
+                    b.ToTable("settings_events", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Settings.Domain.Setting", b =>
@@ -101,7 +101,7 @@ namespace Humans.Settings.Data.Migrations
 
                     b.HasKey("Key");
 
-                    b.ToTable("system_settings", (string)null);
+                    b.ToTable("settings_system_values", (string)null);
 
                     b.HasData(
                         new

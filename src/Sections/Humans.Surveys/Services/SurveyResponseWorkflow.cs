@@ -87,6 +87,7 @@ internal sealed class SurveyResponseWorkflow(
         }
 
         // Idempotent: one in-progress Identified draft per Human, regardless of entry path.
+        using var finalization = await ResponseFinalizationLock.AcquireAsync(logger, ct);
         var existing = await repo.GetDraftResponseAsync(surveyId, userId, ct);
         if (existing is not null)
         {

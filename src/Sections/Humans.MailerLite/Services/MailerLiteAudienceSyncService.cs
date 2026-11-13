@@ -25,9 +25,14 @@ internal sealed class MailerLiteAudienceSyncService(
         var results = new List<AudienceSyncResult>();
         foreach (var audience in audiences)
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
                 results.Add(await SyncAsync(audience, actorUserId, ct));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -80,8 +85,11 @@ internal sealed class MailerLiteAudienceSyncService(
                 audience.Key, droppedNoEmail);
 
         var snapshot = await BuildSnapshotAsync(ct);
+        ct.ThrowIfCancellationRequested();
+        // One audience owns one summary and audit: finish its write phase before stopping the next audience.
+        var mutationCt = CancellationToken.None;
         var group = snapshot.Groups.FirstOrDefault(g => string.Equals(g.Name, audience.MailerLiteGroupName, StringComparison.Ordinal))
-            ?? await ml.CreateGroupAsync(audience.MailerLiteGroupName, ct);
+            ?? await ml.CreateGroupAsync(audience.MailerLiteGroupName, mutationCt);
 
         var currentGroupMemberIds = snapshot.ByEmail.Values
             .Where(s => s.GroupIds.Contains(group.Id, StringComparer.Ordinal))
@@ -121,7 +129,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             try
             {
-                var bulk = await ml.BulkImportSubscribersToGroupAsync(group.Id, toBulkImport.Values.ToList(), ct);
+                var bulk = await ml.BulkImportSubscribersToGroupAsync(group.Id, toBulkImport.Values.ToList(), mutationCt);
                 created = bulk.Created;
                 errors += bulk.Errors;
             }
@@ -136,7 +144,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             try
             {
-                await ml.AssignSubscriberToGroupAsync(subId, group.Id, ct);
+                await ml.AssignSubscriberToGroupAsync(subId, group.Id, mutationCt);
                 assigned++;
             }
             catch (Exception ex)
@@ -150,7 +158,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             try
             {
-                await ml.UnassignSubscriberFromGroupAsync(subId, group.Id, ct);
+                await ml.UnassignSubscriberFromGroupAsync(subId, group.Id, mutationCt);
                 unassigned++;
             }
             catch (Exception ex)
@@ -185,7 +193,7 @@ internal sealed class MailerLiteAudienceSyncService(
             AlreadyAssigned = result.AlreadyAssigned,
             Unassigned = result.Unassigned,
             Errors = result.Errors,
-        }, ct);
+        }, mutationCt);
 
         var description = $"Audience '{audience.DisplayName}' synced to " +
                           $"'{result.GroupName}': {result.FormatSummary()}";

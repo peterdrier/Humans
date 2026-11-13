@@ -6,12 +6,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Settings.Data.Configurations;
 
-/// <summary>The Shifts-owned <c>event_settings</c> is a different table.</summary>
+/// <summary>The Shifts-owned <c>shift_event_settings</c> is a different table.</summary>
 internal sealed class EventSettingsConfiguration : IEntityTypeConfiguration<EventSettings>
 {
     public void Configure(EntityTypeBuilder<EventSettings> builder)
     {
-        builder.ToTable("settings_event");
+        builder.ToTable("settings_events");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.EventName).HasMaxLength(256).IsRequired();

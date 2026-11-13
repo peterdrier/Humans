@@ -271,7 +271,7 @@ public sealed class Section :
             ProfileNamesStatusAsync, ApplyProfileNamesAsync),
         new(ProfileChildrenUserIdKey, SectionName,
             "Stamp the owning user id onto contact fields, profile languages and volunteer history",
-            "The ProfileId key on contact_fields, profile_languages and volunteer_history_entries",
+            "The ProfileId key on user_contact_fields, user_profile_languages and user_volunteer_history_entries",
             ProfileChildrenStatusAsync, ApplyProfileChildrenAsync),
     ];
 

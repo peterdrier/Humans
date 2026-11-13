@@ -48,8 +48,7 @@ internal sealed class EventsController(
         var individualEvents = await guide.GetUserSubmissionsAsync(user.Id, ct);
 
         // Camps the user leads or runs workshops for.
-        var campSettings = await CampService.GetSettingsAsync(ct);
-        var managedCamps = (await CampService.GetCampsForYearAsync(campSettings.PublicYear, ct))
+        var managedCamps = (await LoadCampsByIdAsync(CampService, guideSettings?.EventSettingsId, ct)).Values
             .Where(camp => camp.IsEventManager(user.Id))
             .ToList();
 
@@ -225,7 +224,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
@@ -257,7 +256,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, editable.Event!.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -529,7 +528,7 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
         var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
@@ -561,7 +560,7 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);

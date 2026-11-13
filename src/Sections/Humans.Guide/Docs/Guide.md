@@ -21,12 +21,8 @@
   its parenthetical's privilege tokens, and dropped at request time by
   `GuideFilter` before the markdown reaches Markdig. No role metadata
   survives into the rendered HTML.
-- A `##` line **inside a fenced code block** is sample text, not a heading: it neither opens a
-  role-scoped block nor closes the one it sits in. `GuideSegmenter` tracks fence state for that
-  reason — an untracked fenced `##` ends the block around it and serves its remainder to
-  everyone. The rule cuts both ways: a backtick fence's info string may not itself contain a
-  backtick, so `` ```md`x `` opens no fence, and treating it as one would swallow a real heading
-  below it and leave the block *that* opens unscoped.
+- Heading boundaries follow CommonMark: up to three leading spaces, then `##` and a space/tab or end of line. Four-space code examples and non-breaking spaces after the hashes do not create boundaries. The original markdown is retained in each segment.
+- Only H2 lines identified by the renderer's shared Markdig pipeline can open or close role segments, using the existing `##` heading grammar. Sample headings inside code, HTML comments or raw HTML blocks never change the surrounding audience. Original markdown remains intact; the segmenter does not maintain a separate fence parser.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
   role sees that block. Every parenthetical must be a role title in Auth's
@@ -72,7 +68,9 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - If a file contains any Board/Admin block visible to the current user, all Coordinator blocks in that file are also shown (within-file superset rule, enforced in `GuideFilter.Apply`).
 - Guide content is `GuideFiles.All`: `README`, `GettingStarted`, `Glossary`, the sections enumerated in `GuideFiles.Sections`, plus the plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). One markdown file under `docs/guide/` per stem, in both directions. Nothing is authored in-app.
 - Link and image rewrites use parsed HTML attributes, including single-quoted and unquoted URLs. Known sibling markdown links stay in-app; other relative markdown links resolve to GitHub. External links default to a new tab, preserve authored targets and `rel` tokens, and add `noopener` for new-tab targets. Rewriting preserves fragment styles and comments.
-- Concrete app paths in inline code become links only outside existing anchors and code blocks. Explicit Markdown links keep their authored destination, including a code-formatted label; linkification never nests anchors.
+- Current-directory prefixes on sibling Markdown links are normalized before route lookup; query strings and fragments survive route and GitHub rewrites. Protocol-relative links receive external-link handling, protocol-relative images keep their source, and protocol-relative code examples are not treated as app paths.
+- Network URLs include mixed slash/backslash authority prefixes, matching browser URL normalization. Links receive external-link handling and images retain their authored source; inline code containing backslashes never becomes an app link.
+- Concrete app paths in inline code become links only outside existing anchors and code blocks. Validation uses the entire decoded code text, so attributes are preserved while escaped placeholders and whitespace remain unlinked. Explicit Markdown links keep their authored destination, including a code-formatted label; linkification never nests anchors.
 - Cache key is `guide:<FileStem>`; the cached value is the segmented `GuideDocument`, never rendered HTML — filtering happens before rendering, so rendering is per request. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
 - Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.

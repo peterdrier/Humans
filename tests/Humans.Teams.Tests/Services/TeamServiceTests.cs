@@ -1202,6 +1202,67 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.GroupWarning.Should().Be("Group was deactivated.");
     }
 
+    [HumansFact]
+    public async Task UpdateTeamWithGoogleGroup_ConfirmedReactivation_ForwardsConfirmationAndReturnsOk()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var inactiveResourceId = Guid.NewGuid();
+        _googleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.NeedsConfirmation("Restore this group?", inactiveResourceId));
+        _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), confirmReactivation: true,
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.Ok());
+
+        var result = await _service.UpdateTeamWithGoogleGroupAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+            confirmGroupReactivation: true, confirmedInactiveGroupResourceId: inactiveResourceId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.GroupWarning.Should().BeNull();
+        await _googleSyncService.Received(1).EnsureTeamGroupAsync(
+            team.Id, confirmReactivation: true, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamWithGoogleGroup_ConfirmationForDifferentResource_RequestsFreshConfirmation()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var currentResourceId = Guid.NewGuid();
+        _googleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.NeedsConfirmation("Restore this group?", currentResourceId));
+
+        var result = await _service.UpdateTeamWithGoogleGroupAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+            confirmGroupReactivation: true, confirmedInactiveGroupResourceId: Guid.NewGuid(),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.InactiveGroupResourceId.Should().Be(currentResourceId);
+        result.GroupWarning.Should().Be("Restore this group?");
+        await _googleSyncService.DidNotReceive().EnsureTeamGroupAsync(
+            team.Id, confirmReactivation: true, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamWithGoogleGroup_GroupNeedsConfirmation_ReturnsInactiveResourceId()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var inactiveResourceId = Guid.NewGuid();
+        const string warning = "Group was deactivated.";
+        _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.NeedsConfirmation(warning, inactiveResourceId));
+
+        var result = await _service.UpdateTeamWithGoogleGroupAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.GroupWarning.Should().Be(warning);
+        result.InactiveGroupResourceId.Should().Be(inactiveResourceId);
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
