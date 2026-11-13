@@ -203,6 +203,12 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
   settings repairs reach that summary; corrected-drift counts include only acknowledged repairs.
   Notification faults remain best-effort errors, including independent cancellation from their
   detached dependency. Per-resource mutation boundaries and failure isolation remain service-owned.
+- **Detached Group failures retain retry tracking.** Cancellation from a detached membership
+  add/remove call becomes the existing status-0 failure, including resource error, failed sync
+  log and scoped retry when enabled. It never rejects an identity or sends a successful-removal
+  notice. Cancellation from detached outcome tracking, provisioning-failure tracking or the final
+  synced stamp remains a fault with its original exception preserved. Requested cancellation
+  still stops preflight reads and the next member; retry limits and provisioning fallback are unchanged.
 - **Drive cancellation follows the operation boundary.** Requested read cancellation and
   iteration checkpoints propagate. A read timeout while the caller token remains live uses
   the existing path fallback or resource-error diff. Cancellation from a detached permission
