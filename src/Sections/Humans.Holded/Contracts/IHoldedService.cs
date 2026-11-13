@@ -26,20 +26,6 @@ public interface IHoldedService : IApplicationService
     /// <paramref name="entryNumber"/>.</summary>
     Task<IReadOnlyList<HoldedLedgerLineInfo>> GetEntryAsync(int entryNumber, CancellationToken ct = default);
 
-    /// <summary>Lines of type <c>purchase</c> on one account, in daybook order, optionally only those whose
-    /// description starts with <paramref name="descriptionPrefix"/> (ordinal). A document's line carries Holded's
-    /// own text, <c>"Purchase  "</c> plus the document's description, so match on that. For pairing approved
-    /// expense lines by description and amount, counting duplicates.</summary>
-    Task<IReadOnlyList<HoldedLedgerLineInfo>> GetPurchaseLinesAsync(
-        int accountNum, string? descriptionPrefix = null, CancellationToken ct = default);
-
-    /// <summary>What purchase documents leave open per account in [<paramref name="fromAccount"/>,
-    /// <paramref name="toAccount"/>]: Σ (credit − debit) over <c>purchase</c>, <c>purchaserefund</c> and
-    /// <c>payment</c> lines. Positive means owed by the association. Not the account balance: lines booked by hand
-    /// (journal entries, collections) are left out. Accounts with none of the three types are absent.</summary>
-    Task<IReadOnlyDictionary<int, decimal>> GetOpenDocumentAmountsAsync(
-        int fromAccount, int toAccount, CancellationToken ct = default);
-
     /// <summary>Σdebit − Σcredit per account over [<paramref name="from"/>, <paramref name="to"/>], both
     /// inclusive accounting dates. Every requested account is present; one with no line in the window is 0.</summary>
     Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
@@ -47,10 +33,6 @@ public interface IHoldedService : IApplicationService
 
     /// <summary>The whole chart from the mirror, archived accounts included. Consumers choose display order.</summary>
     Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default);
-
-    /// <summary>When the chart mirror last refreshed, by <see cref="SyncChartAsync"/> or a ledger sweep; null when
-    /// never.</summary>
-    Task<Instant?> GetChartSyncedAtAsync(CancellationToken ct = default);
 
     /// <summary>Refreshes the chart mirror from Holded: one list call. For a caller about to choose accounts by
     /// number or name.</summary>

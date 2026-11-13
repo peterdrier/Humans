@@ -57,14 +57,10 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     }
 
     public async Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, Instant? from = null, Instant? toExclusive = null, string? type = null,
-        CancellationToken ct = default)
+        int accountNum, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var q = ctx.HoldedLedgerLines.AsNoTracking().Where(l => l.AccountNum == accountNum);
-        if (from is { } f) q = q.Where(l => l.Date >= f);
-        if (toExclusive is { } t) q = q.Where(l => l.Date < t);
-        if (type is not null) q = q.Where(l => l.Type == type);
         return await q.ToListAsync(ct);
     }
 
@@ -85,18 +81,6 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedLedgerLines.AsNoTracking()
             .GroupBy(l => l.AccountNum)
             .Select(g => new HoldedAccountTotals(g.Key, g.Sum(l => l.Debit), g.Sum(l => l.Credit), g.Count()))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedAccountTypeTotals>> GetAccountTypeTotalsAsync(
-        int fromAccount, int toAccount, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedLedgerLines.AsNoTracking()
-            .Where(l => l.AccountNum >= fromAccount && l.AccountNum <= toAccount)
-            .GroupBy(l => new { l.AccountNum, l.Type })
-            .Select(g => new HoldedAccountTypeTotals(
-                g.Key.AccountNum, g.Key.Type, g.Sum(l => l.Debit), g.Sum(l => l.Credit)))
             .ToListAsync(ct);
     }
 

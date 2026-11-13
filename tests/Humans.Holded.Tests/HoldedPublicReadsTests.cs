@@ -103,45 +103,6 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
-    public async Task GetPurchaseLines_keeps_purchase_lines_on_the_account_matching_the_prefix()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        await SeedAsync(ct,
-            Line(1, 1, 40000004, "purchase", credit: 50m, description: "Purchase  Expense report 12"),
-            Line(2, 1, 40000004, "purchase", credit: 50m, description: "Purchase  Expense report 12"),
-            Line(3, 1, 40000004, "purchase", credit: 9m, description: "Purchase  Truck"),
-            Line(4, 1, 40000004, "payment", debit: 50m, description: "Purchase  Expense report 12"),
-            Line(5, 1, 40000005, "purchase", credit: 50m, description: "Purchase  Expense report 12"));
-
-        (await _service.GetPurchaseLinesAsync(40000004, ct: ct)).Should().HaveCount(3);
-        var matched = await _service.GetPurchaseLinesAsync(40000004, "Purchase  Expense report", ct);
-        matched.Select(l => l.EntryNumber).Should().Equal(1, 2);
-    }
-
-    [HumansFact]
-    public async Task GetOpenDocumentAmounts_is_purchases_less_refunds_and_payments_per_account_in_range()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        await SeedAsync(ct,
-            Line(1, 1, 40000004, "purchase", credit: 121m),
-            Line(2, 1, 40000004, "payment", debit: 90m),
-            Line(7, 1, 40000004, "purchaserefund", debit: 10m),
-            Line(3, 1, 40000004, "entry", debit: 21m),          // a journal entry is not a payment
-            Line(4, 1, 41000001, "purchase", credit: 10m),
-            Line(5, 1, 41000002, "payment", debit: 3m),         // paid with no purchase mirrored
-            Line(6, 1, 62900300, "purchase", debit: 121m));     // outside the range
-
-        var open = await _service.GetOpenDocumentAmountsAsync(40000000, 41999999, ct);
-
-        open.Should().BeEquivalentTo(new Dictionary<int, decimal>
-        {
-            [40000004] = 21m,
-            [41000001] = 10m,
-            [41000002] = -3m,
-        });
-    }
-
-    [HumansFact]
     public async Task GetSumsByAccount_sums_the_inclusive_madrid_window_and_zero_fills()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

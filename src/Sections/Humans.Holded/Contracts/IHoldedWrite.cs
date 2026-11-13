@@ -23,21 +23,6 @@ public interface IHoldedWrite : IApplicationService
     Task<HoldedCreditorContactOutcome> EnsureCreditorContactAsync(
         string legalName, string? tradeName, string? iban, CancellationToken ct = default);
 
-    /// <summary>
-    /// A purchase document on the creditor's contact booking <paramref name="amount"/> to
-    /// <paramref name="expenseAccountNum"/>. An existing document matches on contact, description, total and notes;
-    /// otherwise one is created. <paramref name="notes"/> is the document's Humans key and must name one document
-    /// (an expense line, not its report): identical lines with shared notes collapse into one document. The attachment is uploaded when the document is new, or when
-    /// <paramref name="attachmentUploaded"/> says an earlier call did not get that far: Holded's v2 purchase read
-    /// does not report attachments, so the caller remembers. A draft is approved.
-    /// Throws <see cref="HoldedPermanentException"/> when no contact owns the creditor account or the expense account
-    /// is not in the chart mirror.
-    /// </summary>
-    [ExternalWrite]
-    Task<HoldedPurchaseDocumentOutcome> EnsurePurchaseDocumentAsync(
-        int creditorAccountNum, int expenseAccountNum, string description, decimal amount, LocalDate date,
-        string notes, HoldedAttachmentInput? attachment, bool attachmentUploaded, CancellationToken ct = default);
-
     /// <summary>The expense account, created through <c>expenses-accounts</c> when neither the chart mirror nor Holded's
     /// live expense-account list has the number; the chart mirror is refreshed whenever the mirror lacked it.
     /// <paramref name="name"/> is used only to create.</summary>
@@ -129,9 +114,6 @@ public interface IHoldedWrite : IApplicationService
 /// <summary><paramref name="AccountNum"/> is the contact's ledger account; <paramref name="Created"/> is true when
 /// this call created the contact.</summary>
 public sealed record HoldedCreditorContactOutcome(int AccountNum, bool Created);
-
-/// <summary>What the call did. <paramref name="DocNumber"/> is Holded's human document number, for display.</summary>
-public sealed record HoldedPurchaseDocumentOutcome(bool Created, bool Attached, bool Approved, string DocNumber);
 
 public enum HoldedDeleteOutcome
 {

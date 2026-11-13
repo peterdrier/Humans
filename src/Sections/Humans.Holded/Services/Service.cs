@@ -20,10 +20,6 @@ internal sealed class Service(
     private readonly HoldedAccountReader accountReader = new(repo);
     private HoldedMirrorSync MirrorSync => new(repo, client, callLog, clock, logger, accountReader);
 
-    private const string PurchaseType = "purchase";
-    private const string PaymentType = "payment";
-    private const string PurchaseRefundType = "purchaserefund";
-
     /// <summary>The connector's ledger-entries page size, for the full-resync cost estimate.</summary>
     private const int LedgerPageSize = 200;
 
@@ -51,23 +47,6 @@ internal sealed class Service(
             .Select(ToInfo)
             .ToList();
 
-    public async Task<IReadOnlyList<HoldedLedgerLineInfo>> GetPurchaseLinesAsync(
-        int accountNum, string? descriptionPrefix = null, CancellationToken ct = default) =>
-        (await repo.GetLedgerLinesByAccountNumAsync(accountNum, type: PurchaseType, ct: ct))
-            .Where(l => descriptionPrefix is null
-                        || (l.Description?.StartsWith(descriptionPrefix, StringComparison.Ordinal) ?? false))
-            .OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ThenBy(l => l.Line)
-            .Select(ToInfo)
-            .ToList();
-
-    public async Task<IReadOnlyDictionary<int, decimal>> GetOpenDocumentAmountsAsync(
-        int fromAccount, int toAccount, CancellationToken ct = default) =>
-        (await repo.GetAccountTypeTotalsAsync(fromAccount, toAccount, ct))
-            .Where(t => t.Type is PurchaseType or PurchaseRefundType or PaymentType)
-            .GroupBy(t => t.AccountNum)
-            // A purchase credits the creditor; a refund and a payment debit it.
-            .ToDictionary(g => g.Key, g => g.Sum(t => t.Credit - t.Debit));
-
     public async Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
         IReadOnlySet<int> accounts, LocalDate from, LocalDate to, CancellationToken ct = default)
     {
@@ -81,9 +60,6 @@ internal sealed class Service(
             .Select(a => new HoldedChartAccountInfo(
                 a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Group, a.Archived, a.Balance))
             .ToList();
-
-    public async Task<Instant?> GetChartSyncedAtAsync(CancellationToken ct = default) =>
-        (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.Accounts)?.LastSyncAt;
 
     public Task SyncChartAsync(CancellationToken ct = default) =>
         MirrorSync.SyncChartAsync(ct);

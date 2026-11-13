@@ -39,56 +39,6 @@ internal sealed class HoldedWrite(
         return new HoldedCreditorContactOutcome(RequireAccountNum(created), Created: true);
     }
 
-    public async Task<HoldedPurchaseDocumentOutcome> EnsurePurchaseDocumentAsync(
-        int creditorAccountNum, int expenseAccountNum, string description, decimal amount, LocalDate date,
-        string notes, HoldedAttachmentInput? attachment, bool attachmentUploaded, CancellationToken ct = default)
-    {
-        var contact = await FindContactByAccountAsync(creditorAccountNum, ct)
-            ?? throw new HoldedPermanentException(
-                $"No Holded contact owns creditor account {creditorAccountNum}.");
-
-        var found = await FindDocumentAsync(contact.Id, description, amount, date: null, ct);
-        var match = found.FirstOrDefault(d => string.Equals(d.Doc.Notes, notes, StringComparison.Ordinal));
-
-        var created = match.Doc is null;
-        var docId = match.Doc?.Id;
-        if (created)
-        {
-            var account = (await repo.GetAccountsAsync(ct)).FirstOrDefault(a => a.Number == expenseAccountNum)
-                ?? throw new HoldedPermanentException(
-                    $"Expense account {expenseAccountNum} is not in the chart mirror; ensure it first.");
-            docId = await client.CreatePurchaseDocumentAsync(new HoldedPurchaseDocumentInput
-            {
-                ContactId = contact.Id,
-                ContactName = contact.Name ?? "",
-                Date = date.AtStartOfDayInZone(MadridZone).ToInstant(),
-                Description = description,
-                Notes = notes,
-                Lines = [new HoldedPurchaseDocumentLineInput
-                {
-                    Description = description, Amount = amount, AccountId = account.HoldedId,
-                }],
-            }, ct);
-        }
-
-        var attached = false;
-        if (attachment is not null && (created || !attachmentUploaded))
-        {
-            await client.UploadAttachmentAsync(docId!, attachment, ct);
-            attached = true;
-        }
-
-        var doc = created ? await client.GetPurchaseDocumentAsync(docId!, ct) : match.Doc!;
-        var approved = false;
-        if (doc.ApprovedAt is null)
-        {
-            await client.ApprovePurchaseDocumentAsync(docId!, ct);
-            approved = true;
-        }
-
-        return new HoldedPurchaseDocumentOutcome(created, attached, approved, doc.DocNumber);
-    }
-
     public async Task<HoldedExpenseAccountOutcome> EnsureExpenseAccountAsync(
         int number, string name, CancellationToken ct = default)
     {

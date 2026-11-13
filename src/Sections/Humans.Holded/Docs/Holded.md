@@ -151,13 +151,6 @@ is safe to repeat, and returns an outcome, never a Holded id.
   40000000–41999999, whatever their type (hand-made contacts are `supplier`), else POST; returns
   `supplier_record.num`. Never PUTs a contact. No `custom_id` lookup until a live write confirms
   v2's create stores it.
-- `EnsurePurchaseDocumentAsync` — contact by account number (live contacts list); document by
-  contact + description + total + notes (list, then GET for notes); else created with the line's
-  `account` = the chart mirror's Holded id for the expense account number (the same id
-  `expenses-accounts` uses). Notes are the document's Humans key and must name one expense line, or
-  identical lines collapse into one document. Attaches on create, or when the caller says its earlier
-  attachment did not go up: Holded's v2 purchase GET has no attachment field, so the caller remembers.
-  Approves a draft.
 - `EnsureExpenseAccountAsync` — chart mirror by number, else Holded's live `expenses-accounts` list,
   else POST; the chart mirror is refreshed whenever it lacked the number. Returns the account's Holded
   id (what a caller that books to it stores) and whether it was created.
@@ -169,6 +162,8 @@ is safe to repeat, and returns an outcome, never a Holded id.
 - `PayPurchaseDocumentAsync` / `ReconcileBankMovementAsync` — the client's treasury payment and
   bank-line reconcile behind the face, for SEPA booking. The payment returns Holded's payment id
   (or an `unconfirmed:` marker), the one Holded id this face hands out: the reconcile must name it.
+
+Expenses issues purchase documents through the id-keyed create/upload/approve operations, retaining its per-step recovery state.
 
 Id-keyed writes for callers that already store Holded's ids, one step each:
 `CreateContactAsync` / `DeleteContactAsync` (each refreshes the contact mirror; a failed refresh is
@@ -199,7 +194,7 @@ it wrote.
 
 - The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets oldest first (the pivot's columns). Services supply the state and aggregated counts without display ordering.
 
-- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too); `GetChartSyncedAtAsync` says when.
+- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too).
 
 - Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits. Both 4xx diagnostics and successful paged responses missing `items` mask decoded JSON strings (including escaped separators); plain-text bodies use the same IBAN formatter. Pager previews truncate only after masking. `HoldedPermanentException.ResponseBody` retains the untouched body for existing business checks.
 
@@ -219,15 +214,12 @@ it wrote.
   only that account's mirrored lines, under the same gate (false when a sweep holds it). Sync states are
   untouched. Finance calls it on 57200003 before and after a Pleo booking run, so its "already in Holded"
   judgement is Holded's own current ledger.
-- Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
+- Reads (`IHoldedService`: lines, balances, entry, sums by account,
   chart, purchase documents, contacts, bank movements, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
 - `GetLedgerSyncedAtAsync` is the later `LastSyncAt` of the `Ledger` and `FullSync` states, stamped only
   on success, so a failed sweep leaves the last good one. Finance's expense recon uses it to tell a push
   the ledger has not swept yet (Pending) from one that is absent (Missing).
-- `GetOpenDocumentAmountsAsync` is Σ (credit − debit) over `purchase`, `purchaserefund` and `payment`
-  lines per account: what documents leave open, not the balance (hand-booked entries and collections
-  are left out).
 - A ledger line keeps Holded's `id` as `EntryId` (the journal entry's id, shared by every line of
   the entry, so never a key: the natural key stays `(EntryNumber, Line)`) and `checked` as
   `Checked` (Holded's manual tick, not bank reconciliation; null until the line is re-synced).
