@@ -49,14 +49,14 @@ debt. One branch and PR contain all completed substantive fixes.
 Before starting work and after each validated, committed round, the runner reads
 live quota through `account/rateLimits/read`. It selects the `codex` bucket's
 seven-day window by duration, not by primary/secondary position. The minimum
-remaining percentage is `max(16, 100 - 12 * (elapsed_days_since_weekly_reset + 1))`.
-The next day's allowance is available upfront: immediately after reset, stop below
-88% remaining; at 1.5 days, stop below 70%. The cutoff is fixed at the run's first
-quota read and renewed only if the weekly reset timestamp changes. Later runs
-release more allowance; unused allowance carries forward within the week. At
-least 16% is reserved. All account usage, including interactive work, counts.
-Missing, invalid, stale or failed quota reads stop new work. Another exhausted
-returned window also stops work. No earned reset credits are consumed.
+remaining percentage is `100 - 12 * elapsed_days_since_weekly_reset`, recomputed
+at each boundary. Immediately after reset, no usage is allowed; at 1.5 days,
+stop below 82% remaining. Unused allowance carries forward within the week,
+leaving 16% at its end. All account usage, including interactive work, counts.
+The run records the first weekly reset timestamp and stops new work if it changes,
+so fresh reset credits cannot automatically extend the run. Missing, invalid,
+stale or failed quota reads stop new work. Another exhausted returned window
+also stops work. Completed fixes still pass through validation and publication.
 
 Each round completes the native goal and supplies a cumulative report after one
 coherent batch. Every completed round requires a nonempty report and a clean
