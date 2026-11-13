@@ -1008,15 +1008,20 @@ public class SepaBankBookingTests
     }
 
     [HumansFact]
-    public async Task Sweep_NothingUnbooked_MakesNoHoldedCalls()
+    public async Task Sweep_NothingUnbooked_ReadsTheFeedOnlyOnTheNightRun()
     {
         SeedRows(Row(TransferId, _userId, bookedAt: FixedNow, movementId: MovementId,
             reconciledAt: FixedNow));
 
         await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
+        await _holded.DidNotReceiveWithAnyArgs().SyncBankMovementsAsync(default!, default, default, default, default);
 
-        await _feed.DidNotReceiveWithAnyArgs().ListBankMovementsAsync(
-            default!, default, default);
+        // 03:17 in Madrid: the one run a day that reads the whole window, open transfers or not.
+        _clock.Reset(Instant.FromUtc(2026, 5, 2, 1, 17));
+        await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
+        await _holded.Received(1).SyncBankMovementsAsync(
+            "treasury-1", new LocalDate(2026, 5, 2).PlusDays(-90 - IFinanceAdminService.DefaultSepaMatchToleranceDays),
+            new LocalDate(2026, 5, 2), Arg.Any<IReadOnlySet<string>?>(), Arg.Any<CancellationToken>());
         await AssertNothingPostedAsync();
     }
 

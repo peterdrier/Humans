@@ -6,6 +6,7 @@ using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using Humans.Pleo.Contracts;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Finance.Services;
@@ -20,6 +21,7 @@ internal sealed class FinanceOverviewService(
     IBudgetService budget,
     CashFlowService cashFlow,
     IPleoService pleo,
+    IOptions<SepaOptions> sepa,
     IClock clock) : IApplicationService
 {
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -35,7 +37,8 @@ internal sealed class FinanceOverviewService(
             var balances = await holded.GetAccountBalancesAsync(ct);
             var chart = await holded.GetChartAsync(ct);
             var filings = await TaxFilingsAsync(chart, today, ct);
-            ledger = BuildLedgerCards(chart, balances, filings, (await pleo.GetWalletBalanceAsync(ct))?.CurrentEur);
+            ledger = BuildLedgerCards(chart, balances, filings, (await pleo.GetWalletBalanceAsync(ct))?.CurrentEur,
+                sepa.Value.TreasuryLedgerAccount, await BankFeedAsync(today, ct));
         }
 
         var (creditors, _, creditorsUnavailable) = await finance.ListCreditorAccountsAsync(ct);
@@ -68,6 +71,17 @@ internal sealed class FinanceOverviewService(
             BuildSepaInProgress(transfers));
     }
 
+    /// <summary>Null when no treasury account is configured: there is then no feed to mirror.</summary>
+    private async Task<FinanceBankFeedVm?> BankFeedAsync(LocalDate today, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId)) return null;
+        var mirror = await holded.GetBankMovementsAsync(
+            sepa.Value.TreasuryAccountId, today.PlusDays(-SepaBankBooking.FeedWindowDays), today, ct);
+        return mirror.LastSyncAt is null
+            ? new FinanceBankFeedVm(null, null)
+            : new FinanceBankFeedVm(mirror.Movements.Count(m => !SepaBankMatching.IsReconciled(m)), mirror.LastSyncAt);
+    }
+
     private static bool Under(int accountNum, string prefix) =>
         accountNum.ToString(CultureInfo.InvariantCulture).StartsWith(prefix, StringComparison.Ordinal);
 
@@ -80,12 +94,15 @@ internal sealed class FinanceOverviewService(
 
     /// <summary>Banks are 570/572, Stripe 441 until it moves. An archived account shows only while it holds money.
     /// Receivables are summed per group: 430 has one sub-account per customer. The Pleo account carries the wallet's
-    /// own balance beside Holded's, unknown (null) before Pleo's first sweep.</summary>
+    /// own balance beside Holded's, unknown (null) before Pleo's first sweep; the SEPA treasury's ledger account carries
+    /// the bank feed's unreconciled count.</summary>
     internal static FinanceLedgerCardsVm BuildLedgerCards(
         IReadOnlyList<HoldedChartAccountInfo> chart,
         IReadOnlyDictionary<int, decimal> balances,
         IReadOnlyList<FinanceTaxFilingVm> filings,
-        decimal? pleoWallet = null)
+        decimal? pleoWallet = null,
+        int? bankFeedAccount = null,
+        FinanceBankFeedVm? bankFeed = null)
     {
         decimal Balance(int num) => balances.GetValueOrDefault(num);
 
@@ -93,7 +110,8 @@ internal sealed class FinanceOverviewService(
             .Where(a => match(a.Number) && (!a.Archived || Balance(a.Number) != 0m))
             .OrderBy(a => a.Number)
             .Select(a => new FinanceAccountLineVm(a.Number, a.Name, Balance(a.Number),
-                a.Number == PleoBooking.PleoTreasury ? new FinanceAccountSourceVm(pleoWallet, "Pleo") : null))
+                a.Number == PleoBooking.PleoTreasury ? new FinanceAccountSourceVm(pleoWallet, "Pleo") : null,
+                a.Number == bankFeedAccount ? bankFeed : null))
             .ToList();
 
         var receivables = ReceivableGroups

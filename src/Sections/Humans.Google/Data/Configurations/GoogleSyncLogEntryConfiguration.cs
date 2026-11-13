@@ -9,7 +9,7 @@ internal sealed class GoogleSyncLogEntryConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<GoogleSyncLogEntry> builder)
     {
-        builder.ToTable("google_sync_log");
+        builder.ToTable("google_sync_log_entries");
 
         builder.HasKey(e => e.Id);
 

@@ -10,7 +10,7 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
 {
     public void Configure(EntityTypeBuilder<AuditLogEntry> builder)
     {
-        builder.ToTable("audit_log");
+        builder.ToTable("audit_log_entries");
 
         builder.HasKey(e => e.Id);
 

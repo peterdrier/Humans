@@ -17,7 +17,7 @@ namespace Humans.Consent.Tests.Architecture;
 /// <summary>
 /// <c>consent_records</c> is append-only (database triggers reject UPDATE/DELETE). The caching
 /// decorators own all cache state; <see cref="LegalDocumentSyncService"/> is the sole writer for
-/// <c>legal_documents</c>/<c>document_versions</c> and evicts its decorator directly after each write.
+/// <c>consent_legal_documents</c>/<c>consent_document_versions</c> and evicts its decorator directly after each write.
 /// </summary>
 public sealed class ConsentArchitectureTests
 {

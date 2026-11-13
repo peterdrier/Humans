@@ -56,7 +56,8 @@ internal sealed class SepaBankBooking(
 
     /// <summary>How far back a file may have been generated and still match. The feed is read
     /// <see cref="GenerationSlackDays"/> further back (<see cref="FeedFrom"/>).</summary>
-    private const int FeedWindowDays = 90;
+    internal const int FeedWindowDays = 90;
+
 
     /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
     private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
@@ -282,7 +283,10 @@ internal sealed class SepaBankBooking(
         var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var pending = rows.Where(r => r.ReconcilePending).ToList();
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
-        if (pending.Count == 0 && unbooked.Count == 0) return;
+        // The sweep runs every two hours, so exactly one run a day lands in this band. That run reads the whole window
+        // whatever is open, so /Finance's count of unreconciled Sabadell lines is at most a day behind.
+        var nightRun = clock.GetCurrentInstant().InZone(MadridZone).Hour is 3 or 4;
+        if (pending.Count == 0 && unbooked.Count == 0 && !nightRun) return;
 
         // Every reconcile-pending row's bank line must lie inside the window read. A pending row's lower bound is its
         // own first payable day with no floor, or a row aging out would never see a later reconcile. Both bounds key off
@@ -292,6 +296,7 @@ internal sealed class SepaBankBooking(
         if (matchFrom < floor) matchFrom = floor;
         var pendingFrom = pending.Select(matching.FirstPayableDate).DefaultIfEmpty(matchFrom).Min();
         var from = pendingFrom < matchFrom ? pendingFrom : matchFrom;
+        if (nightRun && floor < from) from = floor;
 
         IReadOnlyList<HoldedBankMovementDto> movements;
         try

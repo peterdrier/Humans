@@ -10,7 +10,7 @@ using NodaTime;
 
 namespace Humans.Google.Services;
 
-/// <summary>Write and read sides of <c>google_sync_log</c>; one class, three interfaces.</summary>
+/// <summary>Write and read sides of <c>google_sync_log_entries</c>; one class, three interfaces.</summary>
 internal sealed class GoogleSyncLogService(
     IGoogleSyncLogRepository repo,
     ITeamResourceManagement teamResourceService,

@@ -136,7 +136,7 @@ Product constraints, not code shape. A PR that works against one is a
   or row versioning (`no-concurrency-tokens`).
 - **Small scale.** One server, dataset in RAM: no distributed locks or
   coordination, no pagination or query cleverness added for its own sake.
-- **`consent_records` and `audit_log` are append-only.** No UPDATE or
+- **`consent_records` and `audit_log_entries` are append-only.** No UPDATE or
   DELETE path (`consent-record-immutable`).
 - **Google service account authenticates as itself** — no domain-wide
   delegation or impersonation (`google-service-account-bare-auth`).

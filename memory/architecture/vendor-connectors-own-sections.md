@@ -22,7 +22,7 @@ responses as necessary. Google is the reference.
 - **Cache tables follow the connector; decision tables stay with the domain.** A read-through cache of
   vendor facts belongs to the connector; our own attribution rules and member bindings belong to the
   domain section.
-- A vendor prefix on a table name does not prove ownership (`holded_expense_outbox_events` is
+- A vendor prefix on a table name does not prove ownership (`expense_holded_outbox_events` is
   Expenses').
 - Never propose merging a connector into its consumer during a cleanup.
 

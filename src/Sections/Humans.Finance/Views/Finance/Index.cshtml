@@ -20,15 +20,23 @@
             <a asp-action="@source.ReconcileAction" class="@(item.Difference == 0m ? "text-success" : "text-danger fw-bold")">@(item.Difference?.ToEuro() ?? "unknown")</a>
         }
     </text>;
+    Func<FinanceAccountLineVm, IHtmlContent> unreconciledCell = @<text>
+        @if (item.BankFeed is { } feed)
+        {
+            <span class="@(feed.Unreconciled is null ? "text-danger" : feed.Unreconciled > 0 ? "text-warning fw-bold" : "text-success")"
+                  title="Bank lines of the last @Humans.Finance.Services.SepaBankBooking.FeedWindowDays days not reconciled in Holded. Bank feed read @(feed.SyncedAt?.ToDateTime() ?? "never").">@(feed.Unreconciled?.ToString(invariant) ?? "unknown")</span>
+        }
+    </text>;
     var cashTable = ledger is null ? null : TableModel.For(ledger.CashAccounts)
         .Link("Account", a => a.Name, a => $"/Holded/Accounts/{a.AccountNum.ToString(invariant)}")
         .Column("Number", a => a.AccountNum.ToString(invariant))
         .Template("In Holded", holdedCell, o => o.End().Css("text-nowrap"), sortBy: a => a.Amount)
         .Template("At the source", sourceCell, o => o.End().Css("text-nowrap"), sortBy: a => a.Source?.Balance)
         .Template("Difference", differenceCell, o => o.End().Css("text-nowrap"), sortBy: a => a.Difference)
+        .Template("Unreconciled", unreconciledCell, o => o.End().Css("text-nowrap"), sortBy: a => a.BankFeed?.Unreconciled)
         .Footer(new TableFooterCell("Total"), new TableFooterCell(""),
             new TableFooterCell(ledger.CashTotal.ToEuro(), "text-end fw-bold"),
-            new TableFooterCell(""), new TableFooterCell(""))
+            new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""))
         .Css("table-sm mb-0")
         .Build();
 

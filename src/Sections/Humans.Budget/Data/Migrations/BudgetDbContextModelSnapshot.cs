@@ -18,7 +18,7 @@ namespace Humans.Budget.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -312,7 +312,7 @@ namespace Humans.Budget.Data.Migrations
                     b.HasIndex("BudgetGroupId")
                         .IsUnique();
 
-                    b.ToTable("ticketing_projections", (string)null);
+                    b.ToTable("budget_ticketing_projections", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Budget.Domain.BudgetAuditLog", b =>

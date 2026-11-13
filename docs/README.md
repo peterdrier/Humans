@@ -137,7 +137,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Rideshare](../src/Sections/Humans.Rideshare/Docs/Rideshare.md) | Members-only map board for organizing rides to and from the burn — offers, requests, and a lightweight interest lifecycle, no booking or payment |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
 | [Search](../src/Sections/Humans.Search/Docs/Search.md) | Orchestrator behind the global `/Search` page — fans out to five sections' read surfaces, scores each independently, owns no tables |
-| [Settings](../src/Sections/Humans.Settings/Docs/Settings.md) | App-wide `system_settings` key/value store every section may read and write, plus `settings_event`, the app-wide event calendar and active-cycle record |
+| [Settings](../src/Sections/Humans.Settings/Docs/Settings.md) | App-wide `settings_system_values` key/value store every section may read and write, plus `settings_events`, the app-wide event calendar and active-cycle record |
 | [Shifts](../src/Sections/Humans.Shifts/Docs/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](../src/Sections/Humans.Store/Docs/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
 | [Stripe](../src/Sections/Humans.Stripe/Docs/Stripe.md) | The payments connector — Checkout Session creation, webhook signature verification, fee lookups, boot-time key probes — plus the read-only Stripe mirror (ledger, payouts, balance, reserves) and the `/Stripe` pages |

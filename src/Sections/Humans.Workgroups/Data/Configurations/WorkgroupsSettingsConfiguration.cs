@@ -8,7 +8,7 @@ internal sealed class WorkgroupsSettingsConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<WorkgroupsSettings> builder)
     {
-        builder.ToTable("workgroups_settings");
+        builder.ToTable("workgroup_settings");
         builder.HasKey(s => s.Id);
         builder.Property(s => s.Id).ValueGeneratedNever();
         builder.Property(s => s.RootDriveFolderId).HasMaxLength(1000).IsRequired();

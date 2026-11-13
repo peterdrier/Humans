@@ -141,13 +141,7 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Bare");
 
-                    b.Property<bool>("SuppressScheduleChangeEmails")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("UnsubscribedFromCampaigns")
                         .HasColumnType("boolean");
 
                     b.Property<string>("UserName")
@@ -275,7 +269,7 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasIndex("TargetUserId");
 
-                    b.ToTable("account_merge_requests", (string)null);
+                    b.ToTable("user_account_merge_requests", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.ContactField", b =>
@@ -321,7 +315,7 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasIndex("ProfileId", "Visibility");
 
-                    b.ToTable("contact_fields", (string)null);
+                    b.ToTable("user_contact_fields", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.Profile", b =>
@@ -425,7 +419,7 @@ namespace Humans.Users.Data.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("profiles", (string)null);
+                    b.ToTable("user_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.ProfileLanguage", b =>
@@ -451,7 +445,7 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasIndex("ProfileId");
 
-                    b.ToTable("profile_languages", (string)null);
+                    b.ToTable("user_profile_languages", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.VolunteerHistoryEntry", b =>
@@ -485,7 +479,7 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasIndex("ProfileId");
 
-                    b.ToTable("volunteer_history_entries", (string)null);
+                    b.ToTable("user_volunteer_history_entries", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>

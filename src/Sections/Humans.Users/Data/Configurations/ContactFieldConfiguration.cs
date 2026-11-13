@@ -7,7 +7,7 @@ internal sealed class ContactFieldConfiguration : IEntityTypeConfiguration<Conta
 {
     public void Configure(EntityTypeBuilder<ContactField> builder)
     {
-        builder.ToTable("contact_fields");
+        builder.ToTable("user_contact_fields");
 
         builder.HasKey(cf => cf.Id);
 

@@ -443,7 +443,7 @@ namespace Humans.Workgroups.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("workgroups_settings", (string)null);
+                    b.ToTable("workgroup_settings", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Workgroups.Domain.WorkgroupDocument", b =>

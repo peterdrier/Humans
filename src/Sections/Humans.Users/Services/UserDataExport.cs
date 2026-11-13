@@ -44,21 +44,12 @@ internal sealed class UserDataExport(IUserRepository repo) : IApplicationService
             .Select(e => e.Email)
             .FirstOrDefault() ?? user.IdentityEmailColumn;
 
-        // The dead legacy flags stay in the Art. 15 export while the columns exist; this is their
-        // only reader.
-#pragma warning disable CS0618
-        var unsubscribedFromCampaigns = user.UnsubscribedFromCampaigns;
-        var suppressScheduleChangeEmails = user.SuppressScheduleChangeEmails;
-#pragma warning restore CS0618
-
         var shaped = new
         {
             user.Id,
             Email = effectiveEmail,
             user.DisplayName,
             user.PreferredLanguage,
-            UnsubscribedFromCampaigns = unsubscribedFromCampaigns,
-            SuppressScheduleChangeEmails = suppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
             State = user.State.ToString(),
             DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),
