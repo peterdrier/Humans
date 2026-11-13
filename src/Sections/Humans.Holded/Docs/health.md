@@ -104,24 +104,24 @@ Stated so a violation is recognisable; each names the line that enforces it.
    it does not no-op. `src/Sections/Humans.Holded/Data/Repository.cs:53`
 2. **The trailing window is anchored on now**, never on the newest cached line: the API filters
    on accounting date, so a late entry dated into a closed month must still be reachable.
-   `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:89`
+   `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:88`
 3. **Mirror reads never call Holded.** `Service`'s read members reach only the repository.
    `src/Sections/Humans.Holded/Services/Service.cs:35`
 4. **Reconciliation compares the raw `Debit − Credit` sign**; the association's-POV flip is
    applied after the verdict and only for display.
-   `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:404`,
+   `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:403`,
    `src/Sections/Humans.Holded/Services/HoldedAccountReader.cs:159`
 5. **One sync of a kind at a time, and the loser is told.** Each gate is non-blocking; a second
-   caller gets `false`, never a queue. `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:69`
+   caller gets `false`, never a queue. `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:68`
 6. **A short read never becomes a delete.** A page without `items`, a null item, `has_more`
    without a cursor, a repeated cursor or the page cap throws; the prefix is never returned.
-   `src/Sections/Humans.Holded/Services/HoldedTransport.cs:70`
+   `src/Sections/Humans.Holded/Services/HoldedTransport.cs:71`
 7. **A missing identity or amount fails the page**, never a manufactured `0`.
    `src/Sections/Humans.Holded/Services/HoldedJson.cs:49`
 8. **No payload clears a Holded field it was not asked to clear**: every write serializes with
    nulls omitted. `src/Sections/Humans.Holded/Services/HoldedJson.cs:16`
 9. **A failed sync keeps the last good copy and stamp**: the error path writes status, message
-   and time, never `LastSyncAt`. `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:463`
+   and time, never `LastSyncAt`. `src/Sections/Humans.Holded/Services/HoldedMirrorSync.cs:462`
 10. **A posted payment never throws**: once the POST may have landed, an unreadable id comes back
     as `unconfirmed:{documentId}`. `src/Sections/Humans.Holded/Services/HoldedPurchasesClient.cs:209`
 11. **Contacts are created, never updated**: v2's PUT is a full replacement that mints a second
@@ -188,3 +188,4 @@ Settled decisions. Later runs should stop re-litigating these.
 |---|---|---|---|
 | 1 | 2026-09-03 | First doctoring: the nightly sweep could skip in silence and a numberless account became account 0; the general-ledger page's own summary asserted the opposite sign convention to the one it renders | peterdrier/Humans#1583 |
 | 2 | 2026-10-28 | The docs still called the GDPR export of mirrored creditor lines undecided after Finance shipped it; connector rules lived in two docs; a dead list field and a create-only "upsert" | peterdrier/Humans#2177 |
+| 3 | 2026-11-13 | The docs narrated the single-mirror refactor instead of stating its rules and listed a fraction of who calls what; two doc comments contradicted their code; six contract members have never had a caller | pending |
