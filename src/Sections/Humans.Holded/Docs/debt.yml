@@ -1,5 +1,17 @@
 # Section debt ledger for Humans.Holded. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 2
-inbox: []
+next_id: 5
+inbox:
+  - added: 2026-11-13
+    id: HOLDED-2
+    what: "Contracts/ holds connector-only types no other section uses: HoldedClientOptions, HoldedUsageDto, HoldedExpenseAccountDto, HoldedPurchaseDocumentDto and HoldedPaymentDetailDto are public though neither IHoldedService nor IHoldedWrite carries them; they belong internal beside the connector. HoldedAccountDto and HoldedLedgerLineDto are in the same position but Finance's tests build them through TestHoldedSync, so those two need Finance's tests moved first. Found by section-doctor's shape read."
+    review: panel
+  - added: 2026-11-13
+    id: HOLDED-3
+    what: "Section.cs reads Holded:MonthlyCallBudget but DeclareSettings declares only Holded:BaseUrl and HOLDED_API_KEY_V2, so the admin configuration page never lists the budget. Found by section-doctor's behaviour read."
+    review: light
+  - added: 2026-11-13
+    id: HOLDED-4
+    what: "tests/Humans.Holded.Tests pins the one-at-a-time gate only for the ledger sweep, and the keep-the-last-good-stamp rule only for purchase documents and contacts: no test shows a second purchase-document, contact or bank-feed sync answering false, or a failed ledger sweep leaving LastSyncAt where it was. Found by section-doctor's tests thread."
+    review: light
