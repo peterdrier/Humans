@@ -82,9 +82,8 @@ internal sealed class ExpenseReportService(
         return reports;
     }
 
-    public Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
-        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default) =>
-        reportAccess.GetReviewQueueAsync(viewerUserId, isFinanceAdmin, ct);
+    public Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default) =>
+        repo.GetForReviewQueueAsync(ct);
 
     public Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
         Guid attachmentId, CancellationToken ct = default) =>

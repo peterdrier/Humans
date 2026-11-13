@@ -75,9 +75,9 @@ internal sealed class ExpensePageBuilder(
     }
 
     public async Task<ExpenseReviewViewModel> BuildReviewAsync(
-        Guid userId, bool isFinanceAdmin, CancellationToken ct = default)
+        IReadOnlyList<ExpenseReportDto> visibleReports, bool isFinanceAdmin, CancellationToken ct = default)
     {
-        var reports = (await service.GetReviewQueueAsync(userId, isFinanceAdmin, ct))
+        var reports = visibleReports
             .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
             .ToList();
         return new ExpenseReviewViewModel

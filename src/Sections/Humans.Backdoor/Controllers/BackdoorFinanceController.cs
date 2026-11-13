@@ -45,7 +45,7 @@ internal sealed class BackdoorFinanceController(
         var userId = GetCurrentUserId()!.Value;
 
         var isFinanceAdmin = await IsFinanceAdminAsync();
-        var reports = await expenses.GetReviewQueueAsync(userId, isFinanceAdmin, ct);
+        var reports = await ReadVisibleReviewQueueAsync(userId, isFinanceAdmin, ct);
         var years = await ResolveBudgetYearsAsync(reports, ct);
         var names = await ResolveNamesAsync(reports.Select(r => r.SubmitterUserId).ToList(), ct);
 
@@ -354,6 +354,30 @@ internal sealed class BackdoorFinanceController(
                 if (!string.Equals(masked, text, StringComparison.Ordinal)) value.ReplaceWith(masked);
                 break;
         }
+    }
+
+    private async Task<IReadOnlyList<ExpenseReportDto>> ReadVisibleReviewQueueAsync(
+        Guid userId, bool isFinanceAdmin, CancellationToken ct)
+    {
+        var reports = await expenses.GetReviewQueueAsync(ct);
+        if (isFinanceAdmin) return reports;
+        var viewer = await FindUserInfoByIdAsync(userId, ct);
+        if (viewer is null) return [];
+
+        var activeYear = await budget.GetActiveYearAsync(ct);
+        var categoryIds = activeYear?.Groups.SelectMany(g => g.Categories).Select(c => c.Id).ToHashSet() ?? [];
+        var visible = new List<ExpenseReportDto>();
+        foreach (var report in reports)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!viewer.AllUserIds.Contains(report.SubmitterUserId)
+                && report.PreapprovalGrantId is null
+                && !(report.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId)))
+                continue;
+            if (await CanViewAsync(report))
+                visible.Add(report);
+        }
+        return visible;
     }
 
     private async Task<bool> IsFinanceAdminAsync() =>

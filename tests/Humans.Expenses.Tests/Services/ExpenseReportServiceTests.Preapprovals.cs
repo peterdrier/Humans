@@ -354,7 +354,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task ReviewQueues_ExcludePreapprovedReportsOutsideTheViewersPrograms()
+    public async Task CoordinatorQueue_ExcludesPreapprovedReportsOutsideTheViewersPrograms()
     {
         var submitter = Guid.NewGuid();
         var grant = MakeGrant();
@@ -366,7 +366,6 @@ public sealed partial class ExpenseReportServiceTests
         ManageGrant(otherManager, MakeGrant());
 
         (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Status.Should().Be(ExpenseReportStatus.Submitted);
-        (await _sut.GetReviewQueueAsync(otherManager, isFinanceAdmin: false, TestContext.Current.CancellationToken)).Should().BeEmpty();
         (await _sut.GetCoordinatorQueueAsync(otherManager, TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 
@@ -384,8 +383,6 @@ public sealed partial class ExpenseReportServiceTests
         ManageGrant(manager, grant);
 
         (await _sut.GetCoordinatorQueueAsync(manager, TestContext.Current.CancellationToken))
-            .Should().ContainSingle(r => r.Id == reportId);
-        (await _sut.GetReviewQueueAsync(manager, isFinanceAdmin: false, TestContext.Current.CancellationToken))
             .Should().ContainSingle(r => r.Id == reportId);
 
         var over = await _sut.CoordinatorEndorseWithResultAsync(reportId, manager, 151m, TestContext.Current.CancellationToken);

@@ -56,6 +56,37 @@ public sealed class ExpensesControllerPreapprovalTests
             new LocalizedString(call.Arg<string>(), $"{call.Arg<string>()}:{string.Join(",", call.Arg<object[]>())}"));
     }
 
+    [HumansFact]
+    public async Task Review_AuthorizesCandidatesAndPreservesTheActiveYearScope()
+    {
+        using var request = new CancellationTokenSource();
+        var archived = Guid.NewGuid();
+        _users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = _actorId }, [], [], null) with { MergedUserIds = [archived] });
+        var categoryId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2026", "Year", BudgetYearStatus.Active, false,
+            [new BudgetGroupDetail(groupId, yearId, "Group", 0, false, false, false, null,
+                [new BudgetCategoryDetail(categoryId, groupId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
+        var own = ReviewRow(null) with { SubmitterUserId = archived };
+        var current = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = categoryId };
+        var old = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid() };
+        var grant = Grant("Program", Today.PlusDays(10), GrantStatus.Claimed);
+        var managed = ReviewRow(grant.Id) with { SubmitterUserId = Guid.NewGuid() };
+        var denied = ReviewRow(grant.Id) with { SubmitterUserId = Guid.NewGuid() };
+        _reports.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([own, current, old, managed, denied]);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(call => ReferenceEquals(call.ArgAt<object>(1), denied) ? AuthorizationResult.Failed() : AuthorizationResult.Success());
+        var controller = Build();
+        controller.HttpContext.RequestAborted = request.Token;
+
+        var model = (await controller.Review()).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ExpenseReviewViewModel>().Which;
+
+        model.Reports.Select(r => r.Id).Should().BeEquivalentTo([own.Id, current.Id, managed.Id]);
+        await _reports.Received(1).GetReviewQueueAsync(request.Token);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
@@ -622,7 +653,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var failedId = Guid.NewGuid();
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _reports.GetReviewQueueAsync(_actorId, financeAccess, Arg.Any<CancellationToken>()).Returns([]);
+        _reports.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([]);
         _reports.GetFailedHoldedPushReportIdsAsync(Arg.Any<CancellationToken>()).Returns([failedId]);
         var controller = Build();
         controller.HttpContext.RequestAborted = request.Token;
@@ -652,13 +683,15 @@ public sealed class ExpensesControllerPreapprovalTests
         var onRevoked = ReviewRow(revoked.Id) with { SubmittedAt = now.Minus(Duration.FromDays(2)) };
         var onHeld = ReviewRow(held.Id) with { CreatedAt = now.Minus(Duration.FromDays(1)) };
         var plain = ReviewRow(null) with { SubmittedAt = now };
-        _reports.GetReviewQueueAsync(_actorId, false, Arg.Any<CancellationToken>()).Returns([onRevoked, onHeld, plain]);
+        _reports.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([onRevoked, onHeld, plain]);
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         _finance.ListExpenseAccountsAsync(activeOnly: false, Arg.Any<CancellationToken>()).Returns([]);
         PutGrant(revoked);
         PutGrant(held);
 
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
         var model = (await Build().Review()).Should().BeOfType<ViewResult>()
             .Which.Model.Should().BeOfType<ExpenseReviewViewModel>().Subject;
 

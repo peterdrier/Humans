@@ -603,7 +603,6 @@ public sealed partial class ExpenseReportServiceTests
         foreach (var id in new[] { survivorId, sourceId })
         {
             (await _sut.GetForSubmitterAsync(id, ct)).Select(r => r.Id).Should().BeEquivalentTo([ownReportId, sourceReportId]);
-            (await _sut.GetReviewQueueAsync(id, false, ct)).Select(r => r.Id).Should().BeEquivalentTo([ownReportId, sourceReportId]);
         }
     }
 
@@ -2701,10 +2700,8 @@ public sealed partial class ExpenseReportServiceTests
         loaded.CoordinatorEndorsedByUserId.Should().Be(coordinator);
     }
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ReviewerQueueAccountRead_PropagatesCancellation(bool coordinatorQueue)
+    [HumansFact]
+    public async Task CoordinatorQueueAccountRead_PropagatesCancellation()
     {
         var userId = Guid.NewGuid();
         using var request = new CancellationTokenSource();
@@ -2716,23 +2713,18 @@ public sealed partial class ExpenseReportServiceTests
             observed.ThrowIfCancellationRequested();
             return UserInfo.Create(new User { Id = userId }, [], [], null);
         });
-        Func<Task> read = coordinatorQueue
-            ? () => _sut.GetCoordinatorQueueAsync(userId, request.Token)
-            : () => _sut.GetReviewQueueAsync(userId, false, request.Token);
+        Func<Task> read = () => _sut.GetCoordinatorQueueAsync(userId, request.Token);
 
         await read.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
     }
 
     [HumansTheory]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    public async Task ReviewerQueueIdentityResolution_UsesSurvivorAndDeniesMissingAccounts(
-        bool coordinatorQueue, bool accountExists, bool survivorCoordinates)
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task CoordinatorQueueIdentityResolution_UsesSurvivorAndDeniesMissingAccounts(
+        bool accountExists, bool survivorCoordinates)
     {
         var ct = TestContext.Current.CancellationToken;
         var (year, category) = SetupActiveYear();
@@ -2747,38 +2739,12 @@ public sealed partial class ExpenseReportServiceTests
         var reportId = Guid.NewGuid();
         await SeedReportWithStatusAsync(reportId, Guid.NewGuid(), category.Id, year.Id, ExpenseReportStatus.Submitted);
 
-        var reports = coordinatorQueue
-            ? await _sut.GetCoordinatorQueueAsync(cookieId, ct)
-            : await _sut.GetReviewQueueAsync(cookieId, isFinanceAdmin: false, ct);
+        var reports = await _sut.GetCoordinatorQueueAsync(cookieId, ct);
 
         reports.Select(r => r.Id).Should().BeEquivalentTo(
             accountExists && survivorCoordinates ? new[] { reportId } : []);
     }
 
-    [HumansFact]
-    public async Task GetReviewQueueAsync_ForACoordinator_SkipsReportsOutsideTheBudget()
-    {
-        var (year, category) = SetupActiveYear();
-        var coordinator = Guid.NewGuid();
-        _userService.GetUserInfoAsync(coordinator, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = coordinator }, [], [], null));
-        var submitter = Guid.NewGuid();
-        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinator, Arg.Any<CancellationToken>())
-            .Returns(true);
-        var inBudget = Guid.NewGuid();
-        await SeedReportWithStatusAsync(inBudget, submitter, category.Id, year.Id, ExpenseReportStatus.Submitted);
-        var outsideBudget = (await _sut.CreateDraftAsync(submitter, submitter, OtherAccountNumber, null, ct: TestContext.Current.CancellationToken)).ReportId!.Value;
-        await using (var ctx = new ExpensesDbContext(_expensesOptions))
-        {
-            var tracked = await ctx.ExpenseReports.SingleAsync(r => r.Id == outsideBudget, TestContext.Current.CancellationToken);
-            tracked.Status = ExpenseReportStatus.Submitted;
-            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
-        }
-
-        var queue = await _sut.GetReviewQueueAsync(coordinator, isFinanceAdmin: false, TestContext.Current.CancellationToken);
-
-        queue.Select(r => r.Id).Should().BeEquivalentTo([inBudget]);
-    }
 
     [HumansFact]
     public async Task CoordinatorEndorseAsync_ByAFinanceAdminWhoIsNotTheCoordinator_Endorses()
@@ -3305,7 +3271,7 @@ public sealed partial class ExpenseReportServiceTests
     }
 
     [HumansFact]
-    public async Task GetReviewQueueAsync_ReturnsNonDraftNonWithdrawn_ForFinanceAdmin()
+    public async Task GetReviewQueueAsync_ReturnsNonDraftNonWithdrawnCandidates()
     {
         var (_, category) = SetupActiveYear();
         var yearId = Guid.NewGuid();
@@ -3314,62 +3280,13 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
         await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Withdrawn);
 
-        var queue = await _sut.GetReviewQueueAsync(Guid.NewGuid(), isFinanceAdmin: true,
-            TestContext.Current.CancellationToken);
+        var queue = await _sut.GetReviewQueueAsync(TestContext.Current.CancellationToken);
         queue.Should().HaveCount(2);
         queue.Should().OnlyContain(r =>
             r.Status != ExpenseReportStatus.Draft && r.Status != ExpenseReportStatus.Withdrawn);
     }
 
-    [HumansFact]
-    public async Task GetReviewQueueAsync_ScopesToOwnReportsAndCoordinatedCategories()
-    {
-        // A coordinator sees their own reports plus their categories' reports, and nothing else.
-        var (_, category) = SetupActiveYear();
-        var coordinatorUserId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(coordinatorUserId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = coordinatorUserId }, [], [], null));
-        var yearId = Guid.NewGuid();
 
-        var ownId = Guid.NewGuid();
-        var departmentId = Guid.NewGuid();
-        var strangersId = Guid.NewGuid();
-        await SeedReportWithStatusAsync(ownId, coordinatorUserId, Guid.NewGuid(), yearId,
-            ExpenseReportStatus.Approved);
-        await SeedReportWithStatusAsync(departmentId, Guid.NewGuid(), category.Id, yearId,
-            ExpenseReportStatus.Submitted);
-        await SeedReportWithStatusAsync(strangersId, Guid.NewGuid(), Guid.NewGuid(), yearId,
-            ExpenseReportStatus.Submitted);
-
-        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, coordinatorUserId,
-            Arg.Any<CancellationToken>()).Returns(true);
-
-        var queue = await _sut.GetReviewQueueAsync(coordinatorUserId, isFinanceAdmin: false,
-            TestContext.Current.CancellationToken);
-
-        queue.Select(r => r.Id).Should().BeEquivalentTo([ownId, departmentId]);
-    }
-
-    [HumansFact]
-    public async Task GetReviewQueueAsync_ShowsPlainMemberOnlyTheirOwnReports()
-    {
-        var (_, category) = SetupActiveYear();
-        var memberUserId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(memberUserId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = memberUserId }, [], [], null));
-        var yearId = Guid.NewGuid();
-
-        var ownId = Guid.NewGuid();
-        await SeedReportWithStatusAsync(ownId, memberUserId, category.Id, yearId,
-            ExpenseReportStatus.Submitted);
-        await SeedReportWithStatusAsync(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId,
-            ExpenseReportStatus.Submitted);
-
-        var queue = await _sut.GetReviewQueueAsync(memberUserId, isFinanceAdmin: false,
-            TestContext.Current.CancellationToken);
-
-        queue.Select(r => r.Id).Should().BeEquivalentTo([ownId]);
-    }
 
     [HumansTheory]
     [InlineData(false)]

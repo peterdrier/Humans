@@ -718,8 +718,27 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
+            var ct = HttpContext.RequestAborted;
             var isFinanceAdmin = await IsFinanceAdminAsync();
-            return View(await pageBuilder.BuildReviewAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted));
+            var reports = await service.GetReviewQueueAsync(ct);
+            if (!isFinanceAdmin)
+            {
+                var year = await budgetService.GetActiveYearAsync(ct);
+                var categoryIds = year?.Groups.SelectMany(g => g.Categories).Select(c => c.Id).ToHashSet() ?? [];
+                var visible = new List<ExpenseReportDto>();
+                foreach (var report in reports)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (!user.AllUserIds.Contains(report.SubmitterUserId)
+                        && report.PreapprovalGrantId is null
+                        && !(report.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId)))
+                        continue;
+                    if (await AllowsAsync(report, ExpenseReportOperation.View))
+                        visible.Add(report);
+                }
+                reports = visible;
+            }
+            return View(await pageBuilder.BuildReviewAsync(reports, isFinanceAdmin, ct));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -835,9 +854,6 @@ internal sealed class ExpensesController(
         (await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(operation))).Succeeded;
 
-    /// <summary>
-    /// Handed to the service so its ownership and status checks know an admin is acting for a member.
-    /// </summary>
     private async Task<bool> IsFinanceAdminAsync() =>
         (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
 

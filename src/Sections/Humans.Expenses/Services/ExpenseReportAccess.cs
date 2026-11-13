@@ -20,26 +20,6 @@ internal sealed class ExpenseReportAccess(
     IPreapprovalService preapprovals,
     IFinanceService finance) : IApplicationService
 {
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
-        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default)
-    {
-        var queue = await repo.GetForReviewQueueAsync(ct);
-        if (isFinanceAdmin) return queue;
-
-        // Filtering the whole queue in memory beats a per-audience query at this scale.
-        // Drafts and withdrawals are excluded upstream for everyone.
-        var viewer = await userService.GetUserInfoAsync(viewerUserId, ct);
-        if (viewer is null) return [];
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(viewer.Id, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(viewer.AllUserIds, ct);
-        var ownIds = viewer.AllUserIds;
-        return queue
-            .Where(r => ownIds.Contains(r.SubmitterUserId)
-                        || (r.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId))
-                        || (r.PreapprovalGrantId is { } grantId && managedGrantIds.Contains(grantId)))
-            .ToList();
-    }
-
     public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default)
     {

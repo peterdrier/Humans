@@ -24,7 +24,7 @@ internal sealed class FinanceOverviewService(
 {
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
-    public async Task<FinanceOverviewVm> GetAsync(Guid viewerUserId, CancellationToken ct = default)
+    public async Task<FinanceOverviewVm> GetAsync(CancellationToken ct = default)
     {
         var today = clock.GetCurrentInstant().InZone(Madrid).Date;
 
@@ -40,7 +40,7 @@ internal sealed class FinanceOverviewService(
 
         var (creditors, _, creditorsUnavailable) = await finance.ListCreditorAccountsAsync(ct);
         var recon = await finance.GetExpenseReconAsync(null, ct);
-        var queue = await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
+        var queue = await expenseReports.GetReviewQueueAsync(ct);
         var (transfers, _) = await finance.GetSepaTransfersAsync(ct);
 
         var year = await budget.GetActiveYearAsync(ct);

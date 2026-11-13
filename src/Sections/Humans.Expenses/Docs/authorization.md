@@ -3,7 +3,7 @@
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `ExpensesController` | Class | `[Authorize]` (authenticated) | — |
-| `ExpensesController.Review` | In-method | Any authenticated human — the queue is viewer-scoped (`GetReviewQueueAsync(userId, isFinanceAdmin)`); `FinancePolicies.Manage` via `AuthorizeAsync` widens it to the finance view and the failed-Holded-push report list | Policy check |
+| `ExpensesController.Review` | In-method | Any authenticated human — the controller scopes unscoped `GetReviewQueueAsync(ct)` candidates by active-year listing rules and report View authorization; `FinancePolicies.Manage` via `AuthorizeAsync` widens it to the finance view and the failed-Holded-push report list | Policy check |
 | `ExpensesController.Approve` | Action | `FinanceAdmin, Admin` | `FinancePolicies.Manage` |
 | `ExpensesController.Reject` | Action | `FinanceAdmin, Admin` | `FinancePolicies.Manage` |
 | `ExpensesController.HoldedRetry` | Action | `FinanceAdmin, Admin` | `FinancePolicies.Manage` (re-queues a stuck Holded push for an approved report; `ExpenseReportOperation.RequeueHoldedPush`) |

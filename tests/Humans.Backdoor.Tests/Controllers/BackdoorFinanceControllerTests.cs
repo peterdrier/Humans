@@ -51,11 +51,57 @@ public class BackdoorFinanceControllerTests
         // tests override when the resolved name itself matters.
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
+        _auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.ExpenseReportView)
+            .Returns(AuthorizationResult.Failed());
         _sut = new BackdoorFinanceController(_expenses, _finance, _holded, _budget, _auth, _users);
     }
 
     /// <summary>Read-only surface, GET only — no <c>[Http{Post,Put,Patch,Delete}]</c> action anywhere
     /// on this controller.</summary>
+    [HumansFact]
+    public async Task ExpenseReports_AuthorizesCandidatesBeforeProjectingNamesAndTimelines()
+    {
+        var userId = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(false);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = userId }, [], [], null) with { MergedUserIds = [archived] });
+        var allowed = Report(submitterUserId: archived);
+        var current = Report();
+        var historical = Report();
+        var managed = Report() with { BudgetCategoryId = null, BudgetYearId = null, PreapprovalGrantId = Guid.NewGuid() };
+        var denied = Report() with { BudgetCategoryId = null, BudgetYearId = null, PreapprovalGrantId = Guid.NewGuid() };
+        SetActiveCategory(current);
+        foreach (var report in new[] { allowed, current, historical, managed }) SetCanView(true, report);
+        SetCanView(false, denied);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([allowed, current, historical, managed, denied]);
+
+        var json = Emitted(await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken));
+
+        json.Should().Contain(allowed.Id.ToString()).And.Contain(current.Id.ToString()).And.Contain(managed.Id.ToString())
+            .And.NotContain(denied.Id.ToString()).And.NotContain(historical.Id.ToString());
+        await _users.DidNotReceive().GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(denied.SubmitterUserId) || ids.Contains(historical.SubmitterUserId)),
+            Arg.Any<CancellationToken>());
+        await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task ExpenseReports_MissingViewerReceivesNoCandidates()
+    {
+        var userId = Guid.NewGuid();
+        SetPrincipal(userId);
+        SetFinanceAdmin(false);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
+        var report = Report(submitterUserId: userId);
+        SetCanView(true, report);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
+
+        Emitted(await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken)).Should().Be("[]");
+    }
+
+
     [HumansFact]
     public void Every_action_is_HttpGet_only()
     {
@@ -99,6 +145,21 @@ public class BackdoorFinanceControllerTests
     private void RunResultFilter(IActionResult result) =>
         _sut.OnResultExecuting(new ResultExecutingContext(
             new ActionContext(_sut.HttpContext, new RouteData(), new ActionDescriptor()), [], result, _sut));
+
+    private void SetQueueViewer(Guid userId, params ExpenseReportDto[] reports)
+    {
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        foreach (var report in reports) SetCanView(true, report);
+    }
+
+    private void SetActiveCategory(ExpenseReportDto report)
+    {
+        var yearId = report.BudgetYearId ?? Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2026", "Year", BudgetYearStatus.Active, false,
+            [new BudgetGroupDetail(groupId, yearId, "Group", 0, false, false, false, null,
+                [new BudgetCategoryDetail(report.BudgetCategoryId!.Value, groupId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
+    }
 
     private void SetFinanceAdmin(bool isFinanceAdmin) =>
         _auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
@@ -149,12 +210,14 @@ public class BackdoorFinanceControllerTests
         var userId = Guid.NewGuid();
         SetPrincipal(userId);
         SetFinanceAdmin(false);
-        _expenses.GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>()).Returns([Report(submitterUserId: userId)]);
+        var report = Report(submitterUserId: userId);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
+        SetQueueViewer(userId, report);
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkObjectResult>();
-        await _expenses.Received(1).GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>());
+        await _expenses.Received(1).GetReviewQueueAsync(Arg.Any<CancellationToken>());
     }
 
     /// <summary>The list only ever carries push state, which the browser shows finance admins
@@ -167,7 +230,8 @@ public class BackdoorFinanceControllerTests
         SetPrincipal(userId);
         SetFinanceAdmin(false);
         var report = Report(submitterUserId: userId);
-        _expenses.GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>()).Returns([report]);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
+        SetQueueViewer(userId, report);
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -184,7 +248,7 @@ public class BackdoorFinanceControllerTests
         SetPrincipal(userId);
         SetFinanceAdmin(true);
         var report = Report(submitterUserId: userId) with { Note = "Van hire, refund to ES79 2100 0813 6101 2345 6789" };
-        _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report]);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>()).Returns(Timeline());
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
@@ -206,7 +270,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var submitted = Report(status: ExpenseReportStatus.Submitted);
         var approved = Report(status: ExpenseReportStatus.Approved);
-        _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([submitted, approved]);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([submitted, approved]);
 
         var result = await _sut.ExpenseReports("", "Approved", Xunit.TestContext.Current.CancellationToken);
 
@@ -225,7 +289,9 @@ public class BackdoorFinanceControllerTests
         SetPrincipal(userId);
         SetFinanceAdmin(false);
         var report = Report();
-        _expenses.GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>()).Returns([report]);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
+        SetQueueViewer(userId, report);
+        SetActiveCategory(report);
 
         var result = await _sut.ExpenseReports(null, null, Xunit.TestContext.Current.CancellationToken);
 
@@ -244,7 +310,7 @@ public class BackdoorFinanceControllerTests
         SetFinanceAdmin(true);
         var report2026 = Report();
         var report2025 = Report();
-        _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report2026, report2025]);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report2026, report2025]);
         _budget.GetYearByIdAsync(report2026.BudgetYearId!.Value, Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(report2026.BudgetYearId!.Value, "2026", "2026", BudgetYearStatus.Active, false, []));
         _budget.GetYearByIdAsync(report2025.BudgetYearId!.Value, Arg.Any<CancellationToken>()).Returns(
@@ -737,7 +803,7 @@ public class BackdoorFinanceControllerTests
                 },
             ],
         };
-        _expenses.GetReviewQueueAsync(userId, true, Arg.Any<CancellationToken>()).Returns([report]);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
         _expenses.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
         SetCanView(true, report);
         _expenses.GetHoldedTimelineAsync(report, Arg.Any<CancellationToken>())
@@ -838,8 +904,9 @@ public class BackdoorFinanceControllerTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         SetFinanceAdmin(false);
-        _expenses.GetReviewQueueAsync(userId, false, Arg.Any<CancellationToken>())
-            .Returns([Report(submitterUserId: userId) with { Note = Tainted }]);
+        var report = Report(submitterUserId: userId) with { Note = Tainted };
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([report]);
+        SetQueueViewer(userId, report);
         var keys = Substitute.For<IBackdoorApiKeyService>();
         keys.ResolveOwnerAsync("key", Arg.Any<CancellationToken>()).Returns(new BackdoorKeyOwner(userId, []));
 

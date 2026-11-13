@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Backdoor. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 4
-inbox: []
+next_id: 5
+inbox:
+  - added: 2026-11-13
+    id: BACKDOOR-4
+    what: "BackdoorFinanceController.ExpenseReports and ExpenseReport compare SubmitterUserId directly with the key owner's id when projecting financial fields. Owners of reports retained under merged account ids pass View and queue eligibility but lose submitter-only payee/IBAN fields and the detail payment timeline. Resolve the key owner through IUserService and use UserInfo.AllUserIds, as Expenses detail already does. Found while removing the review-queue privilege flag; list/detail financial projections need a separate identity-aware review."
+    review: light
