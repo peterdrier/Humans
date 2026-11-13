@@ -212,7 +212,7 @@ internal sealed class Service(
         return (await repo.GetApiCallsAsync(ct))
             .GroupBy(c =>
             {
-                var d = c.CalledAt.InZone(HoldedMirrorSync.MadridZone).Date;
+                var d = c.CalledAt.InZone(HoldedJson.MadridZone).Date;
                 return (d.Year, d.Month);
             })
             .Select(m => new HoldedMonthlyCalls(

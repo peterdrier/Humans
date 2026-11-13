@@ -3,6 +3,7 @@ using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
 using NodaTime;
+using static Humans.Holded.Services.HoldedJson;
 
 namespace Humans.Holded.Services;
 
@@ -14,8 +15,6 @@ internal sealed class HoldedMirrorSync(
     ILogger<Service> logger,
     HoldedAccountReader accountReader) : IApplicationService
 {
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
     /// <summary>Before the org existed; the full sweep's fixed floor.</summary>
     private static readonly LocalDate LedgerInception = new(2020, 1, 1);
 
@@ -33,7 +32,7 @@ internal sealed class HoldedMirrorSync(
     // in-process gate is enough.
     private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
 
-    // Same reasoning, its own gate: the two syncs write different tables.
+    // Same reasoning, one gate per sync: each writes its own table.
     private static readonly SemaphoreSlim PurchaseDocSyncGate = new(1, 1);
     private static readonly SemaphoreSlim ContactSyncGate = new(1, 1);
     private static readonly SemaphoreSlim BankMovementSyncGate = new(1, 1);
