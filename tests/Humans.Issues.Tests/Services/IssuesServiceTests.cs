@@ -1,3 +1,4 @@
+using Humans.Issues.Jobs;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Tickets.Contracts;
@@ -182,6 +183,63 @@ public sealed class IssuesServiceTests
             ct.ThrowIfCancellationRequested();
             return Task.CompletedTask;
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Shutdown")]
+    [Xunit.InlineData("DependencyCancellation")]
+    [Xunit.InlineData("Fault")]
+    public async Task RetentionJob_DistinguishesShutdownFromFaults(string kind)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var failure = string.Equals(kind, "Fault", StringComparison.Ordinal)
+            ? (Exception)new IOException("Retention unavailable")
+            : new OperationCanceledException(string.Equals(kind, "Shutdown", StringComparison.Ordinal)
+                ? shutdown.Token : new CancellationToken(true));
+        var retention = Substitute.For<IIssuesRetention>();
+        retention.PurgeExpiredAsync(shutdown.Token).Returns(async Task<int> (_) =>
+        {
+            if (string.Equals(kind, "Shutdown", StringComparison.Ordinal)) await shutdown.CancelAsync();
+            throw failure;
+        });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<CleanupIssuesJob>();
+        var job = new CleanupIssuesJob(retention, metrics, logger);
+
+        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeSameAs(failure);
+        await retention.Received(1).PurgeExpiredAsync(shutdown.Token);
+        metrics.DidNotReceive().RecordJobRun("cleanup_issues", "success");
+        if (string.Equals(kind, "Shutdown", StringComparison.Ordinal))
+        {
+            metrics.DidNotReceive().RecordJobRun("cleanup_issues", "failure");
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+        }
+        else
+        {
+            metrics.Received(1).RecordJobRun("cleanup_issues", "failure");
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+        }
+    }
+
+    [HumansFact]
+    public async Task RetentionJob_RecordsSuccessAfterThePurgeCompletes()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var retention = Substitute.For<IIssuesRetention>();
+        retention.PurgeExpiredAsync(ct).Returns(2);
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<CleanupIssuesJob>();
+        var job = new CleanupIssuesJob(retention, metrics, logger);
+
+        await job.ExecuteAsync(ct);
+
+        await retention.Received(1).PurgeExpiredAsync(ct);
+        metrics.Received(1).RecordJobRun("cleanup_issues", "success");
+        metrics.DidNotReceive().RecordJobRun("cleanup_issues", "failure");
+        logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
     }
 
     [HumansFact]
