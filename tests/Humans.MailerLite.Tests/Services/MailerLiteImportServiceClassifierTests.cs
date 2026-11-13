@@ -3,6 +3,8 @@ using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.MailerLite.Services.Dtos;
+using Humans.MailerLite.Data;
+using Humans.MailerLite.Domain;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Services;
 using Humans.MailerLite.Tests.Infrastructure;
@@ -15,6 +17,67 @@ namespace Humans.MailerLite.Tests.Services;
 
 public class MailerLiteImportServiceClassifierTests
 {
+    public enum ApplyFailure { Fault, DependencyCancellation, CallerCancellation }
+
+    [HumansTheory]
+    [Xunit.InlineData(ApplyFailure.Fault)]
+    [Xunit.InlineData(ApplyFailure.DependencyCancellation)]
+    [Xunit.InlineData(ApplyFailure.CallerCancellation)]
+    public async Task Apply_IsolatesDecisionFaultsAndPublishesSummary_ButPropagatesCallerCancellation(ApplyFailure failure)
+    {
+        var harness = new ClassifierHarness();
+        harness.MlReturns(
+            Active("before@x.com") with { Id = "before" },
+            Active("failed@x.com") with { Id = "failed" },
+            Active("after@x.com") with { Id = "after" });
+        using var cancellation = new CancellationTokenSource();
+        Exception error = failure == ApplyFailure.Fault
+            ? new IOException("Provisioning unavailable")
+            : new OperationCanceledException(cancellation.Token);
+        harness.Provisioning.FindOrCreateUserByEmailAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), ContactSource.MailerLite, cancellation.Token)
+            .Returns(_ => new AccountProvisioningResult(Guid.NewGuid(), Created: true));
+        harness.Provisioning.FindOrCreateUserByEmailAsync(
+                "failed@x.com", null, ContactSource.MailerLite, cancellation.Token)
+            .Returns(async Task<AccountProvisioningResult> (_) =>
+            {
+                if (failure == ApplyFailure.CallerCancellation) await cancellation.CancelAsync();
+                throw error;
+            });
+        var plan = await harness.Service.BuildPlanAsync(cancellation.Token);
+        var actor = Guid.NewGuid();
+        ImportResult? result = null;
+
+        var observed = await Xunit.Record.ExceptionAsync(async () =>
+            result = await harness.Service.ApplyAsync(plan, actor, ct: cancellation.Token));
+
+        await harness.Provisioning.Received(1).FindOrCreateUserByEmailAsync(
+            "before@x.com", null, ContactSource.MailerLite, cancellation.Token);
+        if (failure == ApplyFailure.CallerCancellation)
+        {
+            observed.Should().BeSameAs(error);
+            await harness.Provisioning.DidNotReceive().FindOrCreateUserByEmailAsync(
+                "after@x.com", null, ContactSource.MailerLite, cancellation.Token);
+            harness.Audit.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+
+        observed.Should().BeNull();
+        result.Should().NotBeNull();
+        result!.Errors.Should().Be(1);
+        result.HumansCreated.Should().Be(2);
+        result.TotalPulled.Should().Be(3);
+        await harness.Provisioning.Received(1).FindOrCreateUserByEmailAsync(
+            "after@x.com", null, ContactSource.MailerLite, cancellation.Token);
+        var state = await harness.Repository.GetSyncStateAsync(MailerLiteSyncKeys.Reconciliation,
+            Xunit.TestContext.Current.CancellationToken);
+        state.Should().NotBeNull();
+        state!.Summary.Should().Be(result.FormatSummary());
+        await harness.Audit.Received(1).LogAsync(
+            MailerLiteAuditActions.MailerLiteReconciliationCompleted, "MailerLite", state.Id,
+            result.FormatSummary(), actorUserId: actor);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(true, true, null)]
     [Xunit.InlineData(true, false, null)]
@@ -327,6 +390,8 @@ internal sealed class ClassifierHarness
     public IAccountProvisioningService Provisioning { get; } = Substitute.For<IAccountProvisioningService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
+    public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
+    public IMailerLiteRepository Repository { get; } = InMemoryMailerLiteRepository.New();
 
     /// <summary>email → userId for verified email matches (single owner).</summary>
     public Dictionary<string, Guid> VerifiedMatches { get; } = [];
@@ -405,8 +470,8 @@ internal sealed class ClassifierHarness
             Provisioning,
             _prefs,
             Substitute.For<ICommunicationPreferenceWrite>(),
-            Substitute.For<IAuditLogService>(),
-            InMemoryMailerLiteRepository.New(),
+            Audit,
+            Repository,
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<MailerLiteImportService>.Instance);
     }
