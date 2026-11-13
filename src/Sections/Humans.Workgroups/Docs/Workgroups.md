@@ -300,7 +300,7 @@ Settings and Register an existing group on first setup or after clearing the que
 ## Invariants
 
 - Meeting saves require explicit recurrence and public-visibility values. Omitted flags redisplay field errors before any create/update call, with a Warning after member authorization; explicit false choices remain valid. Meetings stay timed-only.
-- Approving, declining and directly adding members share one preflight: the group must exist and be Active before coordinator/admin authorization is checked. An admin override does not bypass the Active requirement.
+- Approving, declining and directly adding members use the same `ManageMembership` resource authorization in the controller and form visibility: active-group coordinators or Board/Admin. The services trust the authorized caller, accept no privilege flag, and require an existing Active group before request/target validation or mutation. Board/Admin authorization does not bypass that Active requirement.
 - Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
 
 - Roster membership-tier badges use localized enum labels in all supported cultures.

@@ -26,17 +26,17 @@ internal interface IWorkgroupService : IApplicationService
     /// <summary>Asks to join: a pending row, and the coordinators are notified. Nothing else changes until a decision.</summary>
     Task<WorkgroupMutationResult> JoinAsync(Guid workgroupId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>A coordinator (or <paramref name="asAdmin"/>) admits a pending request: MemberJoined, audit, notice, Drive sync.</summary>
+    /// <summary>The authorized caller admits a pending request: MemberJoined, audit, notice, Drive sync.</summary>
     Task<WorkgroupMutationResult> ApproveMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default);
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>A coordinator (or <paramref name="asAdmin"/>) declines a pending request. Audited; the person is told, without a reason.</summary>
+    /// <summary>The authorized caller declines a pending request. Audited; the person is told, without a reason.</summary>
     Task<WorkgroupMutationResult> DeclineMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default);
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>A coordinator (or <paramref name="asAdmin"/>) adds a person directly, no request needed. Same record as an approval.</summary>
+    /// <summary>The authorized caller adds a person directly, no request needed. Same record as an approval.</summary>
     Task<WorkgroupMutationResult> AddMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default);
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Leaves the group. The last coordinator must name a replacement first; a

@@ -116,16 +116,16 @@ internal sealed partial class WorkgroupService(
         Membership.JoinAsync(workgroupId, userId, ct);
 
     public Task<WorkgroupMutationResult> ApproveMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
-        Membership.ApproveMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct);
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default) =>
+        Membership.ApproveMemberAsync(workgroupId, actorUserId, userId, ct);
 
     public Task<WorkgroupMutationResult> DeclineMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
-        Membership.DeclineMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct);
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default) =>
+        Membership.DeclineMemberAsync(workgroupId, actorUserId, userId, ct);
 
     public Task<WorkgroupMutationResult> AddMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
-        Membership.AddMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct);
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default) =>
+        Membership.AddMemberAsync(workgroupId, actorUserId, userId, ct);
 
     public Task<WorkgroupMutationResult> LeaveAsync(
         Guid workgroupId,

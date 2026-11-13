@@ -336,7 +336,6 @@
   <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Only members and the Board see the roster, documents and history. The name and purpose stay on the register.</value></data>
   <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>Your request to join is already waiting for a coordinator.</value></data>
   <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>There is no pending request from that person.</value></data>
-  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Only a coordinator can decide who joins.</value></data>
   <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>This group is sensitive; only its members can do that.</value></data>
   <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Someone asked to join</value></data>
   <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>Your request to join was approved</value></data>

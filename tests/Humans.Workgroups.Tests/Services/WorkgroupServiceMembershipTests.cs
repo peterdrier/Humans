@@ -393,7 +393,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await AddMemberAsync(workgroup.Id, requester, isPending: true);
         var actor = asAdmin ? SeedUser("Secretary") : coordinator;
 
-        var result = await NewService().ApproveMemberAsync(workgroup.Id, actor, requester, asAdmin, Ct);
+        var result = await NewService().ApproveMemberAsync(workgroup.Id, actor, requester, Ct);
 
         result.Refusal.Should().BeNull();
         var info = (await NewService().GetByIdAsync(workgroup.Id, Ct))!;
@@ -410,31 +410,6 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Single() == requester),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await GoogleSync.Received(1).RequestSyncAsync(workgroup.DriveFolderId!, CancellationToken.None);
-    }
-
-    [HumansTheory]
-    [InlineData("approve")]
-    [InlineData("decline")]
-    [InlineData("add")]
-    public async Task MembershipDecisions_ByAPlainMember_AreRefused(string action)
-    {
-        var workgroup = await SeedWorkgroupAsync();
-        var member = SeedUser("Member");
-        await AddMemberAsync(workgroup.Id, member);
-        var subject = SeedUser("Subject");
-        await AddMemberAsync(workgroup.Id, subject, isPending: true);
-        var service = NewService();
-
-        var result = action switch
-        {
-            "approve" => await service.ApproveMemberAsync(workgroup.Id, member, subject, ct: Ct),
-            "decline" => await service.DeclineMemberAsync(workgroup.Id, member, subject, ct: Ct),
-            _ => await service.AddMemberAsync(workgroup.Id, member, SeedUser("Newcomer"), ct: Ct)
-        };
-
-        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.NotACoordinator);
-        (await OpenContext().Members.SingleAsync(m => m.UserId == subject, Ct)).IsPending.Should().BeTrue();
-        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

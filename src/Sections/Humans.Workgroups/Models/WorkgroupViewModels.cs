@@ -112,7 +112,7 @@ internal sealed class WorkgroupPageViewModel
     /// <summary>False unless the group is Active.</summary>
     public required bool CanDoMemberWork { get; init; }
 
-    public bool CanManageMembers => CanAdminister || (IsCoordinator && CanDoMemberWork);
+    public required bool CanManageMembers { get; init; }
 
     public bool CanSeeContent => !Workgroup.IsSensitive || IsMember || CanAdminister;
 

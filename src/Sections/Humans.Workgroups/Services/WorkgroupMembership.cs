@@ -45,9 +45,9 @@ internal sealed class WorkgroupMembership(
     }
 
     internal async Task<WorkgroupMutationResult> ApproveMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default)
     {
-        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -59,9 +59,9 @@ internal sealed class WorkgroupMembership(
     }
 
     internal async Task<WorkgroupMutationResult> DeclineMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default)
     {
-        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
 
@@ -81,9 +81,9 @@ internal sealed class WorkgroupMembership(
     }
 
     internal async Task<WorkgroupMutationResult> AddMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default)
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default)
     {
-        var workgroupResult = await access.RequireMembershipManagerAsync(workgroupId, actorUserId, asAdmin, ct);
+        var workgroupResult = await access.RequireActiveAsync(workgroupId, ct);
         if (workgroupResult.Refusal is { } workgroupRefusal) return new(Refusal: workgroupRefusal);
         var workgroup = workgroupResult.Value!;
         var target = await access.ResolveMemberTargetAsync(userId, ct);

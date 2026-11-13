@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Workgroups.Authorization;
 
 /// <summary>
-/// Deliberately no Coordinator operation: the coordinator distinction is register-facing, and the one decision it
-/// carries (membership) is checked by the service.
+/// Resource-scoped read, member-work, membership-decision and Board/Admin operations.
 /// </summary>
 internal sealed class WorkgroupOperationRequirement : IAuthorizationRequirement
 {
@@ -12,6 +11,8 @@ internal sealed class WorkgroupOperationRequirement : IAuthorizationRequirement
 
     /// <summary>Member work: register edits, meetings, log entries, documents, comment responses.</summary>
     public static readonly WorkgroupOperationRequirement Member = new(nameof(Member));
+
+    public static readonly WorkgroupOperationRequirement ManageMembership = new(nameof(ManageMembership));
 
     public static readonly WorkgroupOperationRequirement Administer = new(nameof(Administer));
 
