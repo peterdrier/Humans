@@ -100,23 +100,14 @@ internal sealed class ExpenseReportAccess(
         return (report, line, null);
     }
 
-    /// <summary>
-    /// The service half of the edit gate. A member edits only their own Draft. A finance admin edits on their behalf,
-    /// so ownership is waived and the window is Draft, Submitted and CoordinatorEndorsed.
-    /// </summary>
+    /// <summary>Requires the command's edit window; the caller authorizes the actor.</summary>
     internal async Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct)
+        Guid reportId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses, CancellationToken ct)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Iban_ReportNotFound"));
-        if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanEdit"));
-
-        var editable = actorIsFinanceAdmin
-            ? report.Status is ExpenseReportStatus.Draft or ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed
-            : report.Status is ExpenseReportStatus.Draft;
-        return editable
+        return allowedStatuses.Contains(report.Status)
             ? (report, null)
             : (null, ExpenseMutationResult.Failure("Expenses_Validation_ReportCannotBeEditedInStatus", report.Status));
     }

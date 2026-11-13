@@ -83,6 +83,117 @@ public sealed class ExpensesControllerPreapprovalTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Edit", false, true)]
+    [Xunit.InlineData("Edit", true, true)]
+    [Xunit.InlineData("Edit", true, false)]
+    [Xunit.InlineData("AddLine", false, true)]
+    [Xunit.InlineData("AddLine", true, true)]
+    [Xunit.InlineData("AddLine", true, false)]
+    [Xunit.InlineData("UpdateLine", false, true)]
+    [Xunit.InlineData("UpdateLine", true, true)]
+    [Xunit.InlineData("UpdateLine", true, false)]
+    [Xunit.InlineData("RemoveLine", false, true)]
+    [Xunit.InlineData("RemoveLine", true, true)]
+    [Xunit.InlineData("RemoveLine", true, false)]
+    [Xunit.InlineData("AttachFile", false, true)]
+    [Xunit.InlineData("AttachFile", true, true)]
+    [Xunit.InlineData("AttachFile", true, false)]
+    [Xunit.InlineData("RemoveAttachment", false, true)]
+    [Xunit.InlineData("RemoveAttachment", true, true)]
+    [Xunit.InlineData("RemoveAttachment", true, false)]
+    public async Task Edits_AuthorizeBeforeDispatch_AndSelectTheCorrectionCommand(
+        string action, bool financeAccess, bool permitted)
+    {
+        var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
+        var lineId = Guid.NewGuid();
+        _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
+            .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        _reports.UpdateDraftWithResultAsync(report.Id, _actorId, 62900001, "Updated", null, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.UpdateHeaderForFinanceCorrectionWithResultAsync(report.Id, _actorId, 62900001, "Updated", null, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.AddLineWithResultAsync(report.Id, _actorId, "Item", 10m, ExpenseLineType.Receipt, null, null, Arg.Any<CancellationToken>())
+            .Returns(new ExpenseAddLineResult(true, null, lineId));
+        _reports.AddLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, "Item", 10m, ExpenseLineType.Receipt, null, null, Arg.Any<CancellationToken>())
+            .Returns(new ExpenseAddLineResult(true, null, lineId));
+        _reports.UpdateLineWithResultAsync(report.Id, _actorId, lineId, "Updated", 20m, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.UpdateLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, lineId, "Updated", 20m, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.RemoveLineWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.RemoveLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.AttachFileToLineWithResultAsync(report.Id, _actorId, lineId, "receipt.pdf", "application/pdf", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.AttachFileToLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, lineId, "receipt.pdf", "application/pdf", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.RemoveAttachmentFromLineAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        _reports.RemoveAttachmentFromLineForFinanceCorrectionAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+            .Returns(ExpenseMutationResult.Success);
+        using var content = new MemoryStream([1, 2, 3]);
+        var upload = new FormFile(content, 0, content.Length, "file", "receipt.pdf")
+            { Headers = new HeaderDictionary(), ContentType = "application/pdf" };
+        var controller = Build();
+
+        var result = action switch
+        {
+            "Edit" => await controller.Edit(report.Id, new ExpenseEditViewModel { HoldedAccountNumber = 62900001, Note = "Updated" }),
+            "AddLine" => await controller.AddLine(report.Id, new AddLineInputModel { Description = "Item", Amount = 10m }, null),
+            "UpdateLine" => await controller.UpdateLine(report.Id, new EditLineInputModel { LineId = lineId, Description = "Updated", Amount = 20m }),
+            "RemoveLine" => await controller.RemoveLine(report.Id, lineId),
+            "AttachFile" => await controller.AttachFile(report.Id, lineId, upload),
+            "RemoveAttachment" => await controller.RemoveAttachment(report.Id, lineId),
+            _ => throw new InvalidOperationException(action)
+        };
+        var commands = new[]
+        {
+            "UpdateDraftWithResultAsync",
+            "UpdateHeaderForFinanceCorrectionWithResultAsync",
+            "AddLineWithResultAsync",
+            "AddLineForFinanceCorrectionWithResultAsync",
+            "UpdateLineWithResultAsync",
+            "UpdateLineForFinanceCorrectionWithResultAsync",
+            "RemoveLineWithResultAsync",
+            "RemoveLineForFinanceCorrectionWithResultAsync",
+            "AttachFileToLineWithResultAsync",
+            "AttachFileToLineForFinanceCorrectionWithResultAsync",
+            "RemoveAttachmentFromLineAsync",
+            "RemoveAttachmentFromLineForFinanceCorrectionAsync",
+        };
+        var mutations = _reports.ReceivedCalls()
+            .Where(call => commands.Contains(call.GetMethodInfo().Name, StringComparer.Ordinal)).ToList();
+        if (!permitted)
+        {
+            result.Should().BeOfType<ForbidResult>();
+            mutations.Should().BeEmpty();
+            return;
+        }
+        result.Should().BeOfType<RedirectToActionResult>();
+        var expectedCommand = action switch
+        {
+            "Edit" => financeAccess ? "UpdateHeaderForFinanceCorrectionWithResultAsync" : "UpdateDraftWithResultAsync",
+            "AddLine" => financeAccess ? "AddLineForFinanceCorrectionWithResultAsync" : "AddLineWithResultAsync",
+            "UpdateLine" => financeAccess ? "UpdateLineForFinanceCorrectionWithResultAsync" : "UpdateLineWithResultAsync",
+            "RemoveLine" => financeAccess ? "RemoveLineForFinanceCorrectionWithResultAsync" : "RemoveLineWithResultAsync",
+            "AttachFile" => financeAccess ? "AttachFileToLineForFinanceCorrectionWithResultAsync" : "AttachFileToLineWithResultAsync",
+            "RemoveAttachment" => financeAccess ? "RemoveAttachmentFromLineForFinanceCorrectionAsync" : "RemoveAttachmentFromLineAsync",
+            _ => throw new InvalidOperationException(action)
+        };
+        mutations.Should().ContainSingle();
+        var dispatched = mutations.Single();
+        dispatched.GetMethodInfo().Name.Should().Be(expectedCommand);
+        dispatched.GetArguments()[0].Should().Be(report.Id);
+        dispatched.GetArguments()[1].Should().Be(_actorId);
+        dispatched.GetArguments()[^1].Should().Be(CancellationToken.None);
+    }
+
     private ExpensesController Build()
     {
         var http = new DefaultHttpContext

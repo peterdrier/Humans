@@ -5,9 +5,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Expenses.Services;
 
 /// <summary>
-/// A report belongs to its <c>SubmitterUserId</c>; the actor is whoever is changing it. Setting
-/// <c>actorIsFinanceAdmin</c> waives the ownership match and widens the editable window to Draft, Submitted and
-/// CoordinatorEndorsed. These checks are defence in depth behind the resource-based handler.
+/// Callers authorize report mutations. Ordinary edits require Draft; explicit Finance-correction commands also
+/// accept Submitted and CoordinatorEndorsed. The actor identifies audit attribution, never permission.
 /// </summary>
 internal interface IExpenseReportManagement : IExpenseReportService, IApplicationService
 {
@@ -28,10 +27,17 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default);
 
-    /// <summary>On a Draft, <paramref name="preapprovalGrantId"/> may keep, swap or drop the pre-approval; past Draft
-    /// it and its account are locked and only the note changes.</summary>
+    /// <summary>Updates a Draft after caller authorization; a pre-approval may be kept, swapped or dropped.</summary>
     Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
+        CancellationToken ct = default);
+
+    /// <summary>Updates a Draft, Submitted or CoordinatorEndorsed report after caller authorization.
+    /// Past Draft, a pre-approval and its account remain locked; other accounts stay in their booked year.</summary>
+    Task<ExpenseMutationResult> UpdateHeaderForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         int holdedAccountNumber, string? note,
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default);
@@ -42,7 +48,16 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
     /// backing that Invoice line.
     /// </summary>
     Task<ExpenseAddLineResult> AddLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
+        ExpenseFileUpload? file = null,
+        CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseAddLineResult> AddLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         string description, decimal amount,
         ExpenseLineType lineType = ExpenseLineType.Receipt,
         Guid? parentLineId = null,
@@ -50,22 +65,44 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> UpdateLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> UpdateLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> RemoveLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> RemoveLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> AttachFileToLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default);
 
     /// <summary>Idempotent: no-op if the line has no attachment.</summary>
     Task<ExpenseMutationResult> RemoveAttachmentFromLineAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        Guid lineId, CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> RemoveAttachmentFromLineForFinanceCorrectionAsync(
+        Guid reportId, Guid actorUserId,
         Guid lineId, CancellationToken ct = default);
 
     /// <summary>The caller authorizes submission; the service requires a Draft. The payee snapshot comes from the

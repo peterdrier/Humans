@@ -244,7 +244,6 @@
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>De indiener moet een voor- en achternaam in het profiel hebben ingesteld.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Kan de declaratie niet indienen. Mogelijk is het geen concept meer.</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Alleen de indiener kan intrekken.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Alleen de indiener kan deze declaratie bewerken.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Deze declaratie kan niet worden bewerkt met de status {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Declaratie</value></data>
   <data name="Expenses_Withdraw" xml:space="preserve"><value>Intrekken</value></data>

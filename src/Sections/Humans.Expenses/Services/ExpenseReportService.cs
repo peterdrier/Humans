@@ -39,6 +39,10 @@ internal sealed class ExpenseReportService(
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportManagement,
         IUserDataContributor
 {
+    private static readonly ExpenseReportStatus[] DraftEditStatuses = [ExpenseReportStatus.Draft];
+    private static readonly ExpenseReportStatus[] FinanceCorrectionStatuses =
+        [ExpenseReportStatus.Draft, ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed];
+
     internal const string ExpenseReports = ExpenseReportExport.ExpenseReports;
     internal const string ExpenseAuditLog = ExpenseReportExport.ExpenseAuditLog;
 
@@ -167,18 +171,33 @@ internal sealed class ExpenseReportService(
     }
 
     public Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
         int holdedAccountNumber, string? note,
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Transitions.UpdateDraftWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, holdedAccountNumber, note, preapprovalGrantId, ct),
+        RunMutationAsync(ct, () => Transitions.UpdateDraftWithResultAsync(reportId, actorUserId, DraftEditStatuses, holdedAccountNumber, note, preapprovalGrantId, ct),
+            "Error updating expense report {ReportId}", reportId);
+
+    public Task<ExpenseMutationResult> UpdateHeaderForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, () => Transitions.UpdateDraftWithResultAsync(reportId, actorUserId, FinanceCorrectionStatuses, holdedAccountNumber, note, preapprovalGrantId, ct),
             "Error updating expense report {ReportId}", reportId);
 
     public Task<ExpenseAddLineResult> AddLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
         string description, decimal amount, ExpenseLineType lineType = ExpenseLineType.Receipt,
         Guid? parentLineId = null, ExpenseFileUpload? file = null, CancellationToken ct = default) =>
-        Lines.AddLineWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin,
+        Lines.AddLineWithResultAsync(reportId, actorUserId, DraftEditStatuses,
+            description, amount, lineType, parentLineId, file, ct);
+
+    public Task<ExpenseAddLineResult> AddLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        string description, decimal amount, ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null, ExpenseFileUpload? file = null, CancellationToken ct = default) =>
+        Lines.AddLineWithResultAsync(reportId, actorUserId, FinanceCorrectionStatuses,
             description, amount, lineType, parentLineId, file, ct);
 
     public Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
@@ -196,34 +215,65 @@ internal sealed class ExpenseReportService(
             "Error adding per-diem line to report {ReportId}", reportId);
 
     public Task<ExpenseMutationResult> UpdateLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Lines.UpdateLineWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, description, amount, ct),
+        RunMutationAsync(ct, () => Lines.UpdateLineWithResultAsync(reportId, actorUserId, DraftEditStatuses, lineId, description, amount, ct),
+            "Error updating line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> UpdateLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, () => Lines.UpdateLineWithResultAsync(reportId, actorUserId, FinanceCorrectionStatuses, lineId, description, amount, ct),
             "Error updating line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> RemoveLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default) =>
-        RunMutationAsync(ct, () => Lines.RemoveLineWithResultAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct),
+        RunMutationAsync(ct, () => Lines.RemoveLineWithResultAsync(reportId, actorUserId, DraftEditStatuses, lineId, ct),
+            "Error removing line {LineId} from report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> RemoveLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default) =>
+        RunMutationAsync(ct, () => Lines.RemoveLineWithResultAsync(reportId, actorUserId, FinanceCorrectionStatuses, lineId, ct),
             "Error removing line {LineId} from report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default) =>
         RunMutationAsync(ct, async () =>
         {
             var refusal = await attachments.StoreAttachmentAsync(
-                reportAccess, reportId, actorUserId, actorIsFinanceAdmin, lineId, originalFileName, contentType, content, ct);
+                reportAccess, reportId, actorUserId, DraftEditStatuses, lineId, originalFileName, contentType, content, ct);
+            return refusal is null ? ExpenseMutationResult.Success : new(false, refusal);
+        }, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> AttachFileToLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default) =>
+        RunMutationAsync(ct, async () =>
+        {
+            var refusal = await attachments.StoreAttachmentAsync(
+                reportAccess, reportId, actorUserId, FinanceCorrectionStatuses, lineId, originalFileName, contentType, content, ct);
             return refusal is null ? ExpenseMutationResult.Success : new(false, refusal);
         }, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> RemoveAttachmentFromLineAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
         Guid lineId, CancellationToken ct = default) =>
         RunMutationAsync(ct,
-            () => attachments.RemoveAsync(reportAccess, reportId, actorUserId, actorIsFinanceAdmin, lineId, ct),
+            () => attachments.RemoveAsync(reportAccess, reportId, actorUserId, DraftEditStatuses, lineId, ct),
+            "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> RemoveAttachmentFromLineForFinanceCorrectionAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, CancellationToken ct = default) =>
+        RunMutationAsync(ct,
+            () => attachments.RemoveAsync(reportAccess, reportId, actorUserId, FinanceCorrectionStatuses, lineId, ct),
             "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
 
     public Task<ExpenseMutationResult> SubmitWithResultAsync(

@@ -286,8 +286,11 @@ internal sealed class ExpensesController(
             return View(model);
         }
 
-        var result = await service.UpdateDraftWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.UpdateHeaderForFinanceCorrectionWithResultAsync(
+                id, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId)
+            : await service.UpdateDraftWithResultAsync(
+                id, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Expenses_Flash_ReportUpdated"]);
@@ -345,9 +348,13 @@ internal sealed class ExpensesController(
             ? null
             : new ExpenseFileUpload(file.FileName, file.ContentType, stream);
 
-        var result = await service.AddLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(),
-            input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
+        var result = await IsFinanceAdminAsync()
+            ? await service.AddLineForFinanceCorrectionWithResultAsync(
+                id, user.Id,
+                input.Description, input.Amount, input.LineType, input.ParentLineId, upload)
+            : await service.AddLineWithResultAsync(
+                id, user.Id,
+                input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
 
         if (!result.Succeeded)
         {
@@ -427,8 +434,11 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
         }
 
-        var result = await service.UpdateLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), input.LineId, input.Description, input.Amount);
+        var result = await IsFinanceAdminAsync()
+            ? await service.UpdateLineForFinanceCorrectionWithResultAsync(
+                id, user.Id, input.LineId, input.Description, input.Amount)
+            : await service.UpdateLineWithResultAsync(
+                id, user.Id, input.LineId, input.Description, input.Amount);
         SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineUpdated"], localizer["Expenses_Flash_UpdateLineFailed"]);
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
@@ -444,8 +454,11 @@ internal sealed class ExpensesController(
         // A removed proof row returns the submitter to its invoice's proofs page.
         var parentLineId = report.Lines.FirstOrDefault(l => l.Id == lineId)?.ParentLineId;
 
-        var result = await service.RemoveLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.RemoveLineForFinanceCorrectionWithResultAsync(
+                id, user.Id, lineId)
+            : await service.RemoveLineWithResultAsync(
+                id, user.Id, lineId);
         SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineRemoved"], localizer["Expenses_Flash_RemoveLineFailed"]);
 
         return parentLineId is { } parent
@@ -468,8 +481,11 @@ internal sealed class ExpensesController(
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await service.AttachFileToLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId, file.FileName, file.ContentType, stream);
+        var result = await IsFinanceAdminAsync()
+            ? await service.AttachFileToLineForFinanceCorrectionWithResultAsync(
+                id, user.Id, lineId, file.FileName, file.ContentType, stream)
+            : await service.AttachFileToLineWithResultAsync(
+                id, user.Id, lineId, file.FileName, file.ContentType, stream);
 
         SetMutationResult(result, localizer["Expenses_Flash_AttachmentUploaded"], localizer["Expenses_Flash_UploadAttachmentFailed"]);
 
@@ -483,7 +499,9 @@ internal sealed class ExpensesController(
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.RemoveAttachmentFromLineAsync(id, user.Id, await IsFinanceAdminAsync(), lineId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.RemoveAttachmentFromLineForFinanceCorrectionAsync(id, user.Id, lineId)
+            : await service.RemoveAttachmentFromLineAsync(id, user.Id, lineId);
         SetMutationResult(result, localizer["Expenses_Flash_AttachmentRemoved"], localizer["Expenses_Flash_RemoveAttachmentFailed"]);
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }

@@ -34,13 +34,13 @@ internal sealed class ExpenseReportTransitions(
     private static readonly TrackedLock TransitionLock = new("Expenses.ReportTransitions");
 
     internal async Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         int holdedAccountNumber, string? note,
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default)
     {
         using var transition = await TransitionLock.AcquireAsync(logger, ct);
-        var (editableReport, refusal) = await reportAccess.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await reportAccess.GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return refusal;
         var report = editableReport!;
 

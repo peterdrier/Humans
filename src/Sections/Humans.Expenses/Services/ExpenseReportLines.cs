@@ -18,11 +18,11 @@ internal sealed class ExpenseReportLines(
     private readonly TravelReimbursementConfig _travel = travel;
 
     private async Task<(ExpenseAddLineResult Result, ExpenseReportDto? Report)> AddLineWithoutAuditAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         string description, decimal amount, ExpenseLineType lineType,
         Guid? parentLineId, CancellationToken ct)
     {
-        var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return (new(false, refusal.Error, null), null);
         var report = editableReport!;
 
@@ -61,7 +61,7 @@ internal sealed class ExpenseReportLines(
     }
 
     internal async Task<ExpenseAddLineResult> AddLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         string description, decimal amount,
         ExpenseLineType lineType = ExpenseLineType.Receipt,
         Guid? parentLineId = null,
@@ -86,7 +86,7 @@ internal sealed class ExpenseReportLines(
                 return Reject(uploadRefusal);
 
             var (added, report) = await AddLineWithoutAuditAsync(
-                reportId, actorUserId, actorIsFinanceAdmin,
+                reportId, allowedStatuses,
                 description, amount, lineType, parentLineId, ct);
             if (added.Error is { } addRefusal) return Reject(addRefusal);
             var lineId = added.LineId!.Value;
@@ -95,7 +95,7 @@ internal sealed class ExpenseReportLines(
             {
                 if (file is not null)
                     attachmentRefusal = await attachments.StoreAttachmentAsync(
-                        reportAccess, reportId, actorUserId, actorIsFinanceAdmin, lineId, file.FileName, file.ContentType, file.Content, ct);
+                        reportAccess, reportId, actorUserId, allowedStatuses, lineId, file.FileName, file.ContentType, file.Content, ct);
                 if (attachmentRefusal is null)
                     await reportAudit.AuditOnBehalfEditAsync(report!, actorUserId,
                         $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", CancellationToken.None);
@@ -166,7 +166,7 @@ internal sealed class ExpenseReportLines(
         CancellationToken ct)
     {
         var (added, report) = await AddLineWithoutAuditAsync(
-            reportId, actorUserId, false, description, amount, lineType, null, ct);
+            reportId, [ExpenseReportStatus.Draft], description, amount, lineType, null, ct);
         if (added.Error is not null) return new(false, added.Error);
         await reportAudit.AuditOnBehalfEditAsync(report!, actorUserId, $"Added line \"{description}\" €{amount}", ct);
         return ExpenseMutationResult.Success;
@@ -206,11 +206,11 @@ internal sealed class ExpenseReportLines(
     }
 
     internal async Task<ExpenseMutationResult> UpdateLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default)
     {
-        var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return refusal;
         var report = editableReport!;
 
@@ -241,10 +241,10 @@ internal sealed class ExpenseReportLines(
     }
 
     internal async Task<ExpenseMutationResult> RemoveLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses, Guid lineId,
         CancellationToken ct = default)
     {
-        var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return refusal;
         var report = editableReport!;
         // Read the line before it is gone — the audit entry names what was removed, not an id.
@@ -274,7 +274,7 @@ internal sealed class ExpenseReportLines(
     }
 
     private Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct) =>
-        reportAccess.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        Guid reportId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses, CancellationToken ct) =>
+        reportAccess.GetEditableReportAsync(reportId, allowedStatuses, ct);
 
 }
