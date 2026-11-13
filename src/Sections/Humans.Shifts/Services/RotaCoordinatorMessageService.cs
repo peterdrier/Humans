@@ -97,7 +97,7 @@ internal sealed class RotaCoordinatorMessageService(
         if (string.IsNullOrWhiteSpace(messageText))
             return TeamRotasMessageDispatchResult.Failure("Message body is required.");
 
-        var team = await teamService.GetTeamAsync(teamId);
+        var team = await teamService.GetTeamAsync(teamId, ct);
         if (team is null)
             return TeamRotasMessageDispatchResult.Failure("Team not found.");
 
@@ -326,7 +326,7 @@ internal sealed class RotaCoordinatorMessageService(
                 // Email may suppress an opted-out recipient without throwing.
                 requested++;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 failed++;
                 logger.LogError(ex,
