@@ -24,7 +24,7 @@ public sealed class BurnSettingsServiceTests
     }
 
     private void StubActiveCalendar(EventSettingsInfo info) =>
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(info);
+        _settingsService.GetActiveEventSettings().Returns(info);
 
     private void StubCalendarById(EventSettingsInfo info) =>
         _settingsService.GetEventSettingsByIdAsync(info.Id, Arg.Any<CancellationToken>()).Returns(info);

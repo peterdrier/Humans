@@ -119,7 +119,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - **Users**: `IUserService.GetUserInfoAsync` (merged ids, preferred language, burner names and canonical notice address). Implements `IUserMerge`.
 - **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`). Its sources are declared in `GrantsNotificationSources` (`src/Sections/Humans.Grants/GrantsNotificationSources.cs`), one `NotificationSourceDefinition` each: `GrantReceived` (informational, to the grant holder: a grant issued to the person, or its notice resent); `GrantRevoked` (informational, to the former holder: a grant the person held was revoked).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.
-- **Settings**: `ISettingsService.GetAllEventSettingsAsync` (the events a program can be for, and naming them), `GetActiveEventSettingsAsync` (the new-program default).
+- **Settings**: `ISettingsService.GetAllEventSettingsAsync` (the events a program can be for, and naming them), `GetActiveEventSettings` (the new-program default).
 - **LowIncome** (caller): issues and revokes through `IGrantWrite` with source key `low-income`.
 - **Gdpr**: implements `IUserDataContributor` (slices `Grants`, `GrantDecisions`).
 - Email and Tickets do not know Grants exists; delivery of the thing (e.g. a vendor code) is a later, separate concern.

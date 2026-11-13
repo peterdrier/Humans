@@ -38,7 +38,7 @@ public class ShiftViewServiceTests
     }
 
     private void StubActiveCalendar(EventSettingsInfo? calendar) =>
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);
+        _settingsService.GetActiveEventSettings().Returns(calendar);
 
     private static EventSettingsInfo Calendar(Guid id) => new(
         Id: id, EventName: "Nowhere 2026", Year: 2026, TimeZoneId: "Europe/Madrid",

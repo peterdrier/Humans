@@ -57,7 +57,7 @@ internal sealed class ScannerController(
             pendingConsents = (await consents.GetPendingDocumentNamesAsync(userId, ct))
                 .Order(StringComparer.Ordinal).ToList();
 
-            var burn = await settingsService.GetActiveEventSettingsAsync(ct);
+            var burn = settingsService.GetActiveEventSettings();
             burnTz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
             if (burn is not null)
             {

@@ -31,7 +31,7 @@ Interactive map surface: a read-only overview, barrio polygon editing, and conta
 
 ### CityPlanningSettings
 
-Per-year singleton controlling the placement phase and map overlays. The current year is the active event's (`ISettingsService.GetActiveEventSettingsAsync().Year`). Reads never create the row: a year with no row reads as the unpersisted defaults; the first admin write creates it.
+Per-year singleton controlling the placement phase and map overlays. The current year is the active event's (`ISettingsService.GetActiveEventSettings().Year`). Reads never create the row: a year with no row reads as the unpersisted defaults; the first admin write creates it.
 
 **Table:** `city_settings`
 
@@ -205,7 +205,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `CityPlanningAuditActions` (`src/Sections/Humans.CityPlanning/CityPlanningAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CityPlanningPlacementOpened`, `CityPlanningPlacementClosed`, `CityPlanningPlacementOverrideCleared`, `CityPlanningContainerPlacementOpened`, `CityPlanningContainerPlacementClosed`, `CityPlanningLimitZoneUpdated`, `CityPlanningLimitZoneDeleted`, `CityPlanningOfficialZonesUpdated`, `CityPlanningOfficialZonesDeleted`, `CityPlanningPlacementDatesUpdated`, `CityPlanningRegistrationInfoUpdated`.
-- **Settings:** `ISettingsService.GetActiveEventSettingsAsync` — the active event's year is city planning's current year.
+- **Settings:** `ISettingsService.GetActiveEventSettings` — the active event's year is city planning's current year.
 - **Camps:** `ICampService` — CampSeason is the anchor entity; CampLead determines who can edit which polygon; `GetCampsForYearAsync`, `GetCampSeasonByIdAsync`, `GetSettingsAsync` used by container admin and map pages. Lead/display data is derived via LINQ over the cached `GetCampsForYearAsync` projection (`CampInfo.IsLead` / `GetLeadSeasonIdForYear`); the polygon-edit gate asks `CampSeasonInfo.IsLead` on the season read by id.
 - **Containers:** `IContainerService` — placement API and container admin pages (`CityPlanningApiController`, `CityPlanningController`) read and write container placement via `IContainerService.GetAllAsync`, `GetPlacementsByYearAsync`, `SavePlacementAsync`, `ClearPlacementAsync`, plus per-camp container CRUD. City Planning hosts the placement API endpoints for an entity owned by the Containers section.
 - **Teams:** `ITeamService` — membership in the city-planning team (slug: `city-planning`) grants admin access.

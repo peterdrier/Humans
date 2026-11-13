@@ -26,7 +26,7 @@ public sealed class OnsiteChipViewComponent(
             return Content(string.Empty);
 
         var ct = HttpContext.RequestAborted;
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
+        var active = settingsService.GetActiveEventSettings();
         if (active is null || active.Year == 0)
             return Content(string.Empty);
 

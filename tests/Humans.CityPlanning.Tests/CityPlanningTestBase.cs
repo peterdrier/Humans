@@ -46,7 +46,7 @@ public abstract class CityPlanningTestBase : IDisposable
     private protected static ISettingsService ActiveEvent(int? year = 2026)
     {
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        settings.GetActiveEventSettings()
             .Returns(year is { } y ? BurnFixtures.Burn(year: y) : null);
         return settings;
     }

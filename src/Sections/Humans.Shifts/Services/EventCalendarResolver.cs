@@ -27,7 +27,7 @@ internal sealed class EventCalendarResolver(ISettingsService settingsService, IS
     public async Task<BurnSettingsInfo?> GetActiveAsync(CancellationToken ct = default)
     {
         if (_activeLoaded) return _active;
-        _active = await WithSubPeriodsAsync(await settingsService.GetActiveEventSettingsAsync(ct), ct);
+        _active = await WithSubPeriodsAsync(settingsService.GetActiveEventSettings(), ct);
         _activeLoaded = true;
         if (_active is not null) _byId[_active.Id] = _active;
         return _active;

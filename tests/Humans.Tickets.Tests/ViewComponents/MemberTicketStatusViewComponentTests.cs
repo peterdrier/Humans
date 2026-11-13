@@ -44,7 +44,7 @@ public sealed class MemberTicketStatusViewComponentTests
     [HumansFact]
     public async Task InvokeAsync_OffSeason_RendersNothing()
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(isOffSeason: true));
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason: true));
 
         var result = await BuildSut().InvokeAsync();
 
@@ -54,7 +54,7 @@ public sealed class MemberTicketStatusViewComponentTests
     [HumansFact]
     public async Task InvokeAsync_InSeason_RendersTheCardWithTheEventYear()
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(isOffSeason: false));
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason: false));
 
         var result = await BuildSut().InvokeAsync();
 
@@ -67,7 +67,7 @@ public sealed class MemberTicketStatusViewComponentTests
     [InlineData(false)]
     public async Task InvokeAsync_HoldingsReadFails_ShowsUnavailableNotMissing(bool fails)
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(isOffSeason: false));
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason: false));
         if (fails)
             _tickets.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                 .Returns<UserTicketHoldings>(_ => throw new InvalidOperationException("vendor down"));

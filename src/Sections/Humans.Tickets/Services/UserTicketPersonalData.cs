@@ -79,7 +79,7 @@ internal sealed class UserTicketPersonalData(
 
     private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
             return null;
 

@@ -222,7 +222,7 @@ public sealed class Section :
 
     private static async ValueTask<AdminTileValue?> TicketHoldersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
+        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
         var count = 0;
         if (activeEvent is { Year: > 0 })
         {

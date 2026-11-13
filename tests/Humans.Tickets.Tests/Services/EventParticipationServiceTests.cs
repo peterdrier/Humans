@@ -273,7 +273,7 @@ public sealed class EventParticipationServiceTests : IDisposable
             new EventParticipationInfo(userId, 2026, ParticipationStatus.Attended, ParticipationSource.TicketSync, null, Now),
         ]);
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        settings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TicketsPolicies.Read)
@@ -296,7 +296,7 @@ public sealed class EventParticipationServiceTests : IDisposable
         tickets.GetParticipationsAsync(userId, Arg.Any<CancellationToken>()).Returns(
             [new EventParticipationInfo(userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null, null)]);
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        settings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
         var component = WithContext(new OnsiteChipViewComponent(tickets, settings, Substitute.For<IAuthorizationService>()));
 
@@ -357,7 +357,7 @@ public sealed class EventParticipationServiceTests : IDisposable
         Guid userId, IEventParticipationManagement participations, int? activeYear)
     {
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        settings.GetActiveEventSettings()
             .Returns(activeYear is { } year ? BurnFixtures.Burn(year: year) : null);
         var localizer = Substitute.For<IStringLocalizer<TicketsResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString((string)call[0], (string)call[0]));

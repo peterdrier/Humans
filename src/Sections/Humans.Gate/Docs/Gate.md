@@ -227,7 +227,7 @@ nobodies-collective/Humans#933.)
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
   is the Tickets cache/sync interval, not real-time.
 - **Early Entry** — `IEarlyEntryService.GetForUserAsync`.
-- **Settings / Shifts** — `ISettingsService.GetActiveEventSettingsAsync` (Settings: event time zone for "today"; also the active
+- **Settings / Shifts** — `ISettingsService.GetActiveEventSettings` (Settings: event time zone for "today"; also the active
   event/year for the shift roster pre-fill and the Attended-participation write); and Shifts' `IShiftService.GetBrowseShiftsAsync`
   from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster
   (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since

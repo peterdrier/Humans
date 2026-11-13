@@ -7,7 +7,7 @@
     // Emit the shared stub CSS once per request (the component renders many times).
     var emitCss = !Context.Items.ContainsKey("ticket-stub-css");
     if (emitCss) { Context.Items["ticket-stub-css"] = true; }
-    var activeEvent = await SettingsService.GetActiveEventSettingsAsync(Context.RequestAborted);
+    var activeEvent = SettingsService.GetActiveEventSettings();
     var eventName = activeEvent?.EventName ?? Localizer["Tickets_TicketHoldings_Title"].Value;
     var eventLabel = Localizer["Tickets_TicketStub_EventLabel", eventName];
 }

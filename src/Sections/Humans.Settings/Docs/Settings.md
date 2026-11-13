@@ -95,7 +95,7 @@ named by `SectionMigrationsHistory.TableFor`.
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any section (code) | Read/write `settings_system_values` keys and read the timezone via `ISettingsService`; read `settings_events` via `GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
+| Any section (code) | Read/write `settings_system_values` keys and read the timezone via `ISettingsService`; read `settings_events` via `GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | Any authenticated member | Views the active event's values, read-only, on the `/Settings#event` tab |
 | Admin | Edits event rows, starts a new cycle, makes an event active and sets the timezone, from the `/Settings#event` tab (posts to `SettingsAdminController`) |
 
@@ -179,7 +179,7 @@ too wide to keep in step by hand. Derive it from the call sites.
 
 | Direction | Section | Through |
 |---|---|---|
-| in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync`. Not enumerated — see above |
+| in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
 | in | Workgroups | `ISettingsService.GetValueAsync` — legacy root-folder fallback until its admin saves section-owned `workgroup_settings`; no new writes. `ISettingsService.GetTimeZoneIdAsync` — the default zone of the meeting form |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
@@ -196,9 +196,11 @@ registered as `ISettingsService`, `ISettingsWriteService` and `IEventSettingsSee
 **Owned tables:** `settings_system_values`, `settings_events`
 **Status:** (A) — own project, own context, repository-only data access.
 `CachingSettingsService` holds every event row and the timezone in memory, so the
-event reads never reach the database; `Service` clears it on every event or timezone
-write, before it tells the `IEventSettingsChangeListener`s. Plain key reads
-(`GetValueAsync`) are not cached.
+event reads never reach the database. It loads at startup, and `Service` reloads it on
+every event or timezone write, before it tells the `IEventSettingsChangeListener`s.
+`GetActiveEventSettings()` is synchronous: it only reads that copy, and the database-backed
+`Service` throws `NotSupportedException` for it. Plain key reads (`GetValueAsync`) are not
+cached.
 **Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
 tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` — the
 `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav`

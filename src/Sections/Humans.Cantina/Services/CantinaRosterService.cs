@@ -41,7 +41,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     public async Task<WeeklyRosterDto?> GetWeeklyRosterAsync(int? weekStartOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
     {
-        var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var burn = _settingsService.GetActiveEventSettings();
         var offset = weekStartOffset ?? CurrentWeekStartOffset(burn);
         if (!CanRepresentWindow(burn, offset, DaysPerWeek)) return null;
         var roster = await BuildWeeklyRosterAsync(
@@ -174,7 +174,7 @@ internal sealed class CantinaRosterService : ICantinaRosterService
 
     public async Task<DailyMatrixDto?> GetDailyRosterAsync(int? dayOffset = null, RosterDisclosure? disclosure = null, CancellationToken ct = default)
     {
-        var burn = await _settingsService.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
+        var burn = _settingsService.GetActiveEventSettings();
         var offset = dayOffset ?? CurrentDayOffset(burn);
         if (!CanRepresentWindow(burn, offset, 1)) return null;
         var matrix = await BuildDailyRosterAsync(

@@ -111,7 +111,7 @@ internal sealed class StoreOrderReader(
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
     public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 

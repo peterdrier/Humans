@@ -63,7 +63,7 @@ public sealed class Section :
 
     private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
+        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
         if (activeEvent is not { Year: > 0 })
             return new AdminTileValue("", Detail: "no active event", Secondary: "—");
 

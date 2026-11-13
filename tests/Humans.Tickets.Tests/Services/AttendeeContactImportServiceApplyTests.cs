@@ -516,7 +516,7 @@ internal sealed class ApplyHarness
 
     public void WithActiveYear(int year)
     {
-        Shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: year));
+        Shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: year));
     }
 
     public AttendeeContactImportService Service => new(
