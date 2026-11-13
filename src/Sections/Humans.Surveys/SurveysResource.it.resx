@@ -400,5 +400,6 @@
   <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Ogni domanda a scelta deve avere almeno un’opzione.</value></data>
   <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>I valori delle opzioni di una domanda a scelta non possono essere vuoti.</value></data>
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>I valori delle opzioni di ogni domanda a scelta devono essere univoci.</value></data>
+  <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Ogni domanda, opzione di risposta e immagine può comparire una sola volta in un sondaggio.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>Il valore minimo della valutazione non può superare il valore massimo.</value></data>
 </root>

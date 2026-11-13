@@ -9,7 +9,7 @@ internal sealed class GeneralAvailabilityConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<GeneralAvailability> builder)
     {
-        builder.ToTable("general_availability");
+        builder.ToTable("shift_general_availabilities");
 
         builder.HasKey(e => e.Id);
 

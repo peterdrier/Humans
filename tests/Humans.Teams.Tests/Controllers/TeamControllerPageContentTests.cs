@@ -689,6 +689,101 @@ public class TeamControllerPageContentTests
     }
 
     [HumansFact]
+    public async Task EditTeam_GroupReactivationNeedsConfirmation_KeepsFormAndShowsWarning()
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var teams = Substitute.For<ITeamManagementService>();
+        var teamId = Guid.NewGuid();
+        var inactiveResourceId = Guid.NewGuid();
+        const string warning = "The Google Group was deactivated. Confirm reactivation to continue.";
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        teams.UpdateTeamWithGoogleGroupAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(),
+                Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamUpdateResult(
+                Team: new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" },
+                GroupWarning: warning,
+                InactiveGroupResourceId: inactiveResourceId));
+        var http = new DefaultHttpContext { RequestServices = services };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), authorization,
+            NullLogger<TeamController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        // A previous confirmation round posted another group's resource ID; the hidden input must not echo it back.
+        var staleResourceId = Guid.NewGuid();
+        var model = new EditTeamViewModel { Id = teamId, Name = "Alpha", IsActive = true, InactiveGroupResourceId = staleResourceId };
+        controller.ModelState.SetModelValue(nameof(model.InactiveGroupResourceId), staleResourceId, staleResourceId.ToString());
+        controller.ModelState.MarkFieldValid(nameof(model.InactiveGroupResourceId));
+
+        var result = await controller.EditTeam(teamId, model);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+        model.InactiveGroupResourceId.Should().Be(inactiveResourceId);
+        model.ConfirmGroupReactivation.Should().BeFalse();
+        controller.ModelState.Should().NotContainKey(nameof(model.ConfirmGroupReactivation));
+        controller.ModelState.Should().NotContainKey(nameof(model.InactiveGroupResourceId));
+        model.Slug.Should().Be("alpha");
+        controller.ModelState.Values.SelectMany(entry => entry.Errors).Should().ContainSingle()
+            .Which.ErrorMessage.Should().Be(warning);
+    }
+
+    [HumansFact]
+    public async Task EditTeam_ConfirmedGroupReactivation_ForwardsConfirmationAndRedirects()
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var teams = Substitute.For<ITeamManagementService>();
+        var teamId = Guid.NewGuid();
+        var inactiveResourceId = Guid.NewGuid();
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        teams.UpdateTeamWithGoogleGroupAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(),
+                Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
+                Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(new TeamUpdateResult(
+                Team: new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" }));
+        var http = new DefaultHttpContext { RequestServices = services };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), authorization,
+            NullLogger<TeamController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+            Url = Substitute.For<IUrlHelper>()
+        };
+        var model = new EditTeamViewModel
+        {
+            Id = teamId,
+            Name = "Alpha",
+            IsActive = true,
+            ConfirmGroupReactivation = true,
+            InactiveGroupResourceId = inactiveResourceId
+        };
+
+        var result = await controller.EditTeam(teamId, model);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(TeamController.Summary));
+        await teams.Received(1).UpdateTeamWithGoogleGroupAsync(
+            teamId, "Alpha", null, true, true, null, null, null, false, false, false, false, false,
+            confirmGroupReactivation: true, confirmedInactiveGroupResourceId: inactiveResourceId,
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task Join_InvalidMessageReturnsTheFormWithoutSubmittingARequest()
     {
         using var cultureScope = new CultureScope("en");

@@ -220,7 +220,14 @@ internal sealed class FinanceOverviewService(
         var ready = creditors
             .Where(r => r.NotPayableReason is null)
             .ToList();
-        var duplicates = creditors.Count(r => r.HasDuplicateDocuments == true);
+        // The recon and the duplicate-document check see the same doubled purchase from two mirrors: an account the
+        // recon already names is not a second problem.
+        var reconDuplicateAccounts = recon.Lines
+            .Where(l => l.Status == ExpenseReconLineStatus.Duplicated && l.LedgerAccountNum is not null)
+            .Select(l => l.LedgerAccountNum!.Value)
+            .ToHashSet();
+        var duplicates = creditors.Count(r =>
+            r.HasDuplicateDocuments == true && !reconDuplicateAccounts.Contains(r.SupplierAccountNum));
         int? reconProblems = recon.IsAvailable ? recon.Totals.Problems : null;
 
         return new FinanceWorkVm(
@@ -241,7 +248,9 @@ internal sealed class FinanceOverviewService(
     internal static FinanceBudgetVm BuildBudget(BudgetYearDetail year, IReadOnlyList<CategoryActualRow> actuals)
     {
         var actualByCategory = actuals.ToDictionary(a => a.BudgetCategoryId, a => Math.Abs(a.Actual));
-        var categories = year.Groups.SelectMany(g => g.Categories).Where(c => c.AllocatedAmount < 0m).ToList();
+        // Group priority breaks equal-overage ties in the top-three selector.
+        var categories = year.Groups.OrderBy(group => group.SortOrder)
+            .SelectMany(g => g.Categories).Where(c => c.AllocatedAmount < 0m).ToList();
 
         var over = categories
             .Select(c => new FinanceOverBudgetVm(

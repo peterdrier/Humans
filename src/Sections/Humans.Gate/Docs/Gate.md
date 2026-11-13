@@ -99,6 +99,9 @@ after the retention window.
   `GateVendorCheckInJob` runs with `Attempts = 0` (no retry — a retry after a silent success would
   double-record; a missed mirror is acceptable, `gate_scan_events` is authoritative). Before enabling
   the flag, confirm the configured TicketTailor key has Event-manager scope.
+  Enabled jobs observe shutdown before starting the POST, then finish that single attempt independently
+  of cancellation. Shutdown before the attempt propagates without a vendor call; vendor failures retain
+  the existing best-effort, no-retry handling. Disabled jobs still skip the attempt.
   Because check-ins double-record, every enqueued mirror is claimed atomically in the in-memory
   `GateVendorMirrorLedger` (`TryMarkSent`, 24 h retention) — the live admit path marks it (only
   while the flag is on), and the one-off **vendor check-in backfill page**
@@ -256,8 +259,9 @@ nobodies-collective/Humans#933.)
   volunteers as one-tap picks; the `/Gate/Search` name search remains for anyone not on the
   roster (burner-name matching only — never email; each result shows a masked org-public email
   as a disambiguator, peterdrier/Humans#1073). Unset → search only (no behaviour change). Only
-  volunteers whose gate **shift starts within ±2 hours of now** (event-local time, from
-  `EventSettings.TimeZoneId`) are shown, so the list tracks shift change rather than the whole
+  volunteers whose gate **shift starts within ±2 hours of now** are shown. Gate uses Shifts'
+  resolved `AbsoluteStart`, including the standard 08:00 local start for all-day shifts rather
+  than their ignored stored start time, so the list tracks shift change rather than the whole
   event roster. De-dupes one pick per human; excludes refused/bailed/cancelled/no-show signups.
 
 ## Architecture

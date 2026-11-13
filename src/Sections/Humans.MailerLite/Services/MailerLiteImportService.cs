@@ -202,6 +202,11 @@ internal sealed class MailerLiteImportService(
             .GroupBy(d => d.TargetUserId!.Value)
             .ToDictionary(g => g.Key, g => g.Select(d => d.Email).ToList());
         var appliedUsers = new HashSet<Guid>();
+        var provisioningByEmail = plan.Decisions
+            .Where(d => d.Outcome is SubscriberOutcome.ReplaceUnverifiedEmail or SubscriberOutcome.CreateNewHuman)
+            .GroupBy(d => d.Email.Trim(), NormalizingEmailComparer.Instance)
+            .ToDictionary(g => g.Key, g => g.ToList(), NormalizingEmailComparer.Instance);
+        var appliedAddresses = new HashSet<string>(NormalizingEmailComparer.Instance);
 
         foreach (var d in toProcess)
         {
@@ -215,7 +220,7 @@ internal sealed class MailerLiteImportService(
                     continue;
                 }
 
-                if (!subsByEmail.TryGetValue(d.Email, out var subscriber))
+                if (!subsByEmail.ContainsKey(d.Email))
                 {
                     vanishedBetweenPlanAndApply++;
                     logger.LogWarning("Subscriber {Email} vanished between plan and apply", d.Email);
@@ -248,16 +253,24 @@ internal sealed class MailerLiteImportService(
                     case SubscriberOutcome.ReplaceUnverifiedEmail:
                     case SubscriberOutcome.CreateNewHuman:
                         {
-                            var replacing = d.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail;
+                            if (!appliedAddresses.Add(d.Email.Trim())) break;
+                            var addressDecisions = provisioningByEmail[d.Email.Trim()];
+                            // A throttled alias still carries consent evidence, just as for verified humans above.
+                            var governing = GoverningSubscriber(addressDecisions
+                                .Select(decision => subsByEmail.GetValueOrDefault(decision.Email))
+                                .OfType<MailerLiteSubscriber>());
+                            var provisioningDecision = addressDecisions.FirstOrDefault(
+                                decision => decision.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail) ?? d;
+                            var replacing = provisioningDecision.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail;
                             // A replacement provisions a separate contact, so target its returned id, not TargetUserId.
                             var (provUserId, provCreated) = replacing
                                 ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
-                                    d.TargetUserId!.Value, d.UnverifiedEmailIdToDelete!.Value,
-                                    subscriber.Email, displayName: null, ContactSource.MailerLite, ct)
+                                    provisioningDecision.TargetUserId!.Value, provisioningDecision.UnverifiedEmailIdToDelete!.Value,
+                                    governing.Email, displayName: null, ContactSource.MailerLite, ct)
                                 : await provisioning.FindOrCreateUserByEmailAsync(
-                                    subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
+                                    governing.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
-                            var delta = await ApplyMarketingDeltaAsync(provUserId, subscriber, ct);
+                            var delta = await ApplyMarketingDeltaAsync(provUserId, governing, ct);
                             if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
                             else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
                             if (replacing) replacedUnverified++;

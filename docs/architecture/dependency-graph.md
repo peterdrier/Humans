@@ -87,7 +87,6 @@ graph LR
     Backdoor --> Surveys
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
-    Backdoor -.-> Users
     Budget --> Issues
     Budget -.-> Camps
     Budget -.-> Finance
@@ -95,7 +94,6 @@ graph LR
     Budget -.-> Tickets
     Calendar --> AuditLog
     Calendar -.-> Teams
-    Calendar -.-> Users
     Campaigns -.-> Email
     Campaigns -.-> Notifications
     Campaigns -.-> Teams
@@ -111,15 +109,14 @@ graph LR
     Camps -.-> Shifts
     Camps -.-> Teams
     Camps -.-> Tickets
-    Camps -.-> Users
     Cantina --> Settings
     Cantina -.-> Shifts
-    Cantina -.-> Users
     CityPlanning --> Containers
     CityPlanning --> Issues
     CityPlanning --> Settings
     CityPlanning -.-> Camps
     CityPlanning -.-> Teams
+    Consent --> Auth
     Consent --> Issues
     Consent -.-> Email
     Consent -.-> Governance
@@ -130,6 +127,7 @@ graph LR
     Containers -.-> Camps
     Containers -.-> CityPlanning
     Debug --> Consent
+    Debug --> Settings
     Debug -.-> Email
     Debug -.-> Shifts
     Debug -.-> Tickets
@@ -139,7 +137,6 @@ graph LR
     Development --> Settings
     Development -.-> Camps
     Development -.-> CityPlanning
-    Development -.-> Governance
     Development -.-> Shifts
     Development -.-> Teams
     Development -.-> Users
@@ -150,7 +147,6 @@ graph LR
     Events --> Camps
     Events --> Settings
     Events -.-> Email
-    Events -.-> Users
     Expenses --> AuditLog
     Expenses --> Budget
     Expenses --> Holded
@@ -164,13 +160,11 @@ graph LR
     Finance --> Pleo
     Finance -.-> Email
     Finance -.-> Tickets
-    Finance -.-> Users
     Gate --> Auth
     Gate --> EarlyEntry
     Gate --> Settings
     Gate -.-> Shifts
     Gate -.-> Tickets
-    Gate -.-> Users
     Gdpr -.-> Users
     GoogleIntegration --> AuditLog
     GoogleIntegration --> Auth
@@ -187,7 +181,6 @@ graph LR
     Governance -.-> Email
     Governance -.-> Notifications
     Governance -.-> Teams
-    Governance -.-> Users
     Grants --> Settings
     Grants -.-> Email
     Grants -.-> Notifications
@@ -216,7 +209,6 @@ graph LR
     Notifications -.-> Shifts
     Notifications -.-> Teams
     Notifications -.-> Tickets
-    Notifications -.-> Users
     Onboarding --> Consent
     Onboarding --> Issues
     Onboarding --> Settings
@@ -227,14 +219,11 @@ graph LR
     Onboarding -.-> Teams
     Onboarding -.-> Users
     Pleo -.-> Finance
-    Pleo -.-> Users
     Preapprovals -.-> Email
     Preapprovals -.-> Finance
     Preapprovals -.-> Notifications
-    Preapprovals -.-> Users
     Rideshare --> Settings
     Rideshare -.-> Notifications
-    Rideshare -.-> Users
     Scanner --> Calendar
     Scanner --> Consent
     Scanner --> EarlyEntry
@@ -246,11 +235,10 @@ graph LR
     Search --> Events
     Search --> Shifts
     Search --> Teams
-    Search --> Users
-    Shifts --> AuditLog
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Cantina
+    Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
     Shifts --> Onboarding
@@ -258,10 +246,8 @@ graph LR
     Shifts --> Teams
     Shifts -.-> Camps
     Shifts -.-> Email
-    Shifts -.-> Governance
     Shifts -.-> Notifications
     Shifts -.-> Tickets
-    Shifts -.-> Users
     Store --> AuditLog
     Store --> Holded
     Store --> Settings
@@ -270,14 +256,12 @@ graph LR
     Store -.-> Finance
     Store -.-> Teams
     Stripe -.-> Finance
-    Stripe -.-> Users
     Surveys --> GoogleIntegration
     Surveys -.-> Email
     Surveys -.-> Governance
     Surveys -.-> Shifts
     Surveys -.-> Teams
     Surveys -.-> Tickets
-    Surveys -.-> Users
     Teams --> AuditLog
     Teams --> Auth
     Teams --> Consent
@@ -291,7 +275,6 @@ graph LR
     Teams -.-> Notifications
     Teams -.-> Shifts
     Teams -.-> Tickets
-    Teams -.-> Users
     TicketTailor --> Tickets
     Tickets --> AuditLog
     Tickets --> Auth
@@ -317,11 +300,11 @@ graph LR
     Users --> GoogleIntegration
     Users --> Issues
     Users --> Settings
-    Users --> Shifts
     Users -.-> Email
     Users -.-> Governance
     Users -.-> Notifications
     Users -.-> Onboarding
+    Users -.-> Shifts
     Users -.-> Teams
     Users -.-> Tickets
     Workgroups --> Auth
@@ -335,7 +318,6 @@ graph LR
     Workgroups -.-> Governance
     Workgroups -.-> Notifications
     Workgroups -.-> Teams
-    Workgroups -.-> Users
 ```
 
 <!-- END GENERATED -->

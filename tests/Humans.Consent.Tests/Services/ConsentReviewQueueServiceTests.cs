@@ -17,7 +17,6 @@ public sealed class ConsentReviewQueueServiceTests
     private readonly IConsentWrite _consentWrite = Substitute.For<IConsentWrite>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IGovernanceService _governance = Substitute.For<IGovernanceService>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
 
     public ConsentReviewQueueServiceTests()
@@ -40,7 +39,6 @@ public sealed class ConsentReviewQueueServiceTests
             _consentService,
             _consentWrite,
             _governance,
-            _membershipCalculator,
             NullLogger<ConsentReviewQueueService>.Instance);
 
     [HumansFact]
@@ -71,14 +69,11 @@ public sealed class ConsentReviewQueueServiceTests
         var approvedFlaggedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
         var approvedFlaggedProfile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Flagged",
-            lastName: "Approved",
             createdAt: now);
         Review(approvedFlaggedId, ConsentCheckStatus.Flagged, isApproved: true);
 
         StubReviewQueueDependencies(
-            [MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile)]);
+            [MakeUserInfo(approvedFlaggedId, approvedFlaggedProfile, burnerName: "Burner", firstName: "Flagged", lastName: "Approved")]);
 
         var data = await BuildSut().GetReviewQueueAsync(TestContext.Current.CancellationToken);
 
@@ -94,14 +89,11 @@ public sealed class ConsentReviewQueueServiceTests
         var rejectedFlaggedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
         var rejectedFlaggedProfile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Flagged",
-            lastName: "Rejected",
             createdAt: now);
         Review(rejectedFlaggedId, ConsentCheckStatus.Flagged, rejectedAt: now);
 
         StubReviewQueueDependencies(
-            [MakeUserInfo(rejectedFlaggedId, rejectedFlaggedProfile) with { State = UserState.Rejected }]);
+            [MakeUserInfo(rejectedFlaggedId, rejectedFlaggedProfile, burnerName: "Burner", firstName: "Flagged", lastName: "Rejected") with { State = UserState.Rejected }]);
 
         var data = await BuildSut().GetReviewQueueAsync(TestContext.Current.CancellationToken);
 
@@ -117,13 +109,10 @@ public sealed class ConsentReviewQueueServiceTests
         // Gate terminal and dev personas: nobody to review, so neither list nor the nav badge shows them.
         var fakeId = Guid.NewGuid();
         var profile = UserFixtures.Profile(
-            burnerName: "Gate Terminal",
-            firstName: "Gate",
-            lastName: "Terminal",
             createdAt: Instant.FromUnixTimeSeconds(1));
         Review(fakeId, status);
 
-        StubReviewQueueDependencies([MakeUserInfo(fakeId, profile) with { IsFake = true }]);
+        StubReviewQueueDependencies([MakeUserInfo(fakeId, profile, burnerName: "Gate Terminal", firstName: "Gate", lastName: "Terminal") with { IsFake = true }]);
 
         var data = await BuildSut().GetReviewQueueAsync(TestContext.Current.CancellationToken);
 
@@ -140,9 +129,6 @@ public sealed class ConsentReviewQueueServiceTests
         var mergedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
         var profile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Merged",
-            lastName: "Away",
             createdAt: now);
         var mergedUser = new User
         {
@@ -152,7 +138,7 @@ public sealed class ConsentReviewQueueServiceTests
             MergedToUserId = Guid.NewGuid(),
         };
 
-        StubReviewQueueDependencies([ToUserInfo(mergedUser, profile)]);
+        StubReviewQueueDependencies([ToUserInfo(mergedUser, profile, burnerName: "Burner", firstName: "Merged", lastName: "Away")]);
 
         var data = await BuildSut().GetReviewQueueAsync(TestContext.Current.CancellationToken);
 
@@ -168,9 +154,6 @@ public sealed class ConsentReviewQueueServiceTests
         var mergedId = Guid.NewGuid();
         var now = Instant.FromUnixTimeSeconds(1);
         var profile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "Flagged",
-            lastName: "Merged",
             createdAt: now);
         Review(mergedId, ConsentCheckStatus.Flagged);
         var mergedUser = new User
@@ -181,7 +164,7 @@ public sealed class ConsentReviewQueueServiceTests
             MergedToUserId = Guid.NewGuid(),
         };
 
-        StubReviewQueueDependencies([ToUserInfo(mergedUser, profile)]);
+        StubReviewQueueDependencies([ToUserInfo(mergedUser, profile, burnerName: "Burner", firstName: "Flagged", lastName: "Merged")]);
 
         var data = await BuildSut().GetReviewQueueAsync(TestContext.Current.CancellationToken);
 
@@ -204,20 +187,16 @@ public sealed class ConsentReviewQueueServiceTests
         var mergedId = Guid.NewGuid();
 
         var flagged = MakeUserInfo(flaggedId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "In", lastName: "Flagged",
-            createdAt: now));
+            createdAt: now), burnerName: "Burner", firstName: "In", lastName: "Flagged");
         Review(flaggedId, ConsentCheckStatus.Flagged);
         var pending = MakeUserInfo(pendingId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "In", lastName: "Pending",
-            createdAt: now));
+            createdAt: now), burnerName: "Burner", firstName: "In", lastName: "Pending");
         var rejected = MakeUserInfo(rejectedId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "Out", lastName: "Rejected",
-            createdAt: now)) with
+            createdAt: now), burnerName: "Burner", firstName: "Out", lastName: "Rejected") with
         { State = UserState.Rejected };
         Review(rejectedId, ConsentCheckStatus.Flagged, rejectedAt: now);
         var unselected = MakeUserInfo(unselectedId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "Out", lastName: "Unselected",
-            createdAt: now));
+            createdAt: now), burnerName: "Burner", firstName: "Out", lastName: "Unselected");
         var merged = ToUserInfo(
             new User
             {
@@ -226,7 +205,7 @@ public sealed class ConsentReviewQueueServiceTests
                 MergedAt = now,
                 MergedToUserId = Guid.NewGuid(),
             },
-            UserFixtures.Profile(burnerName: "Burner", firstName: "Out", lastName: "Merged", createdAt: now));
+            UserFixtures.Profile(createdAt: now), burnerName: "Burner", firstName: "Out", lastName: "Merged");
         Review(mergedId, ConsentCheckStatus.Flagged);
 
         StubReviewQueueDependencies([flagged, pending, rejected, unselected, merged]);
@@ -262,20 +241,20 @@ public sealed class ConsentReviewQueueServiceTests
         _governance.GetUserIdsWithPendingApplicationAsync(
                 Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
-        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(
-                Status: MembershipStatus.Pending,
-                IsVolunteerMember: false,
-                RequiredConsentCount: 0,
-                PendingConsentCount: 0,
-                MissingConsentVersionIds: []));
+        _consentService.GetConsentProgressAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ConsentProgress(0, []));
     }
 
-    private static UserInfo ToUserInfo(User user, ProfileInfo profile) =>
-        UserInfo.Create(user, [], [], profile: profile);
+    private static UserInfo ToUserInfo(User user, ProfileInfo profile, string burnerName = "", string firstName = "", string lastName = "")
+    {
+        user.BurnerName = burnerName;
+        user.FirstName = firstName;
+        user.LastName = lastName;
+        return UserInfo.Create(user, [], [], profile: profile);
+    }
 
-    private static UserInfo MakeUserInfo(Guid userId, ProfileInfo profile) =>
+    private static UserInfo MakeUserInfo(Guid userId, ProfileInfo profile, string burnerName = "", string firstName = "", string lastName = "") =>
         UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en", BurnerName = profile.BurnerName, State = UserFixtures.StateFor(profile) },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = burnerName, FirstName = firstName, LastName = lastName, State = UserFixtures.StateFor(profile, burnerName, firstName, lastName) },
             [], [], profile: profile);
 }

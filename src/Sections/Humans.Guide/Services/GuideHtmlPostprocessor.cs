@@ -10,12 +10,10 @@ namespace Humans.Guide.Services;
 /// </summary>
 internal sealed class GuideHtmlPostprocessor
 {
-    // Matches <code>/route/path</code> spans where the content is a concrete app path:
-    // starts with "/", contains no "{" and no "*" (so route templates like /Profile/{id}
-    // and wildcards like /api/backdoor/* are left alone — both would 404 if linked), no
-    // whitespace, no "#" or "?". These spans get wrapped in an <a href>.
+    // Validate decoded text: attributes do not change a path, and entity escaping must not
+    // turn placeholders or whitespace into navigation. Templates and wildcards would 404.
     private static readonly Regex AppPathCodePattern = new(
-        """<code>(?<path>/[^\s<>{}#?*]+)</code>""",
+        @"\A/(?!/)[^\\\s<>{}#?*]+\z",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(500));
 
@@ -77,11 +75,14 @@ internal sealed class GuideHtmlPostprocessor
         foreach (var code in body.QuerySelectorAll("code"))
         {
             // Existing links own their destination; block examples are not navigation.
-            if (code.Closest("a, pre") is not null || !AppPathCodePattern.IsMatch(code.OuterHtml))
+            if (code.Closest("a, pre") is not null)
+                continue;
+            var path = code.TextContent;
+            if (!AppPathCodePattern.IsMatch(path))
                 continue;
 
             var anchor = document.CreateElement("a");
-            anchor.SetAttribute("href", code.TextContent);
+            anchor.SetAttribute("href", path);
             anchor.ClassName = "guide-app-path";
             code.Parent?.ReplaceChild(anchor, code);
             anchor.AppendChild(code);
@@ -96,8 +97,7 @@ internal sealed class GuideHtmlPostprocessor
         string githubRepoBlobBase,
         string guideFolder)
     {
-        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (IsHttpOrNetworkUrl(url))
         {
             return (url, true);
         }
@@ -112,29 +112,25 @@ internal sealed class GuideHtmlPostprocessor
             return (url, false);
         }
 
-        if (url.StartsWith("../", StringComparison.Ordinal))
-        {
-            var resolved = ResolveParentRelative(url, guideFolder);
-            return ($"{githubRepoBlobBase}{resolved}", true);
-        }
+        var (path, suffix) = SplitUrlSuffix(url);
+        while (path.StartsWith("./", StringComparison.Ordinal))
+            path = path[2..];
 
-        var (path, fragment) = SplitFragment(url);
+        if (path.StartsWith("../", StringComparison.Ordinal))
+        {
+            var resolved = ResolveParentRelative(path, guideFolder);
+            return ($"{githubRepoBlobBase}{resolved}{suffix}", true);
+        }
 
         if (path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
         {
             var stem = path[..^3];
             if (GuideFiles.TryCanonical(stem, out var known))
             {
-                var href = fragment is null ? $"/Guide/{known}" : $"/Guide/{known}#{fragment}";
-                return (href, false);
+                return ($"/Guide/{known}{suffix}", false);
             }
 
-            var blobUrl = $"{githubRepoBlobBase}{guideFolder}{path}";
-            if (fragment is not null)
-            {
-                blobUrl = $"{blobUrl}#{fragment}";
-            }
-            return (blobUrl, true);
+            return ($"{githubRepoBlobBase}{guideFolder}{path}{suffix}", true);
         }
 
         return (url, false);
@@ -142,8 +138,7 @@ internal sealed class GuideHtmlPostprocessor
 
     private static string RewriteImgSrc(string url, string rawBase, string guideFolder)
     {
-        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (IsHttpOrNetworkUrl(url))
         {
             return url;
         }
@@ -156,6 +151,12 @@ internal sealed class GuideHtmlPostprocessor
 
         return rawBase + trimmed;
     }
+
+    // Browsers normalize backslashes in HTTP(S) URLs, including both authority-prefix separators.
+    private static bool IsHttpOrNetworkUrl(string url) =>
+        url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+        || (url.Length >= 2 && (url[0] is '/' or '\\') && (url[1] is '/' or '\\'));
 
     private static string ResolveParentRelative(string url, string guideFolder)
     {
@@ -175,13 +176,9 @@ internal sealed class GuideHtmlPostprocessor
         return string.Join('/', segments);
     }
 
-    private static (string Path, string? Fragment) SplitFragment(string url)
+    private static (string Path, string Suffix) SplitUrlSuffix(string url)
     {
-        var hashIndex = url.IndexOf('#');
-        if (hashIndex < 0)
-        {
-            return (url, null);
-        }
-        return (url[..hashIndex], url[(hashIndex + 1)..]);
+        var suffixIndex = url.IndexOfAny(['?', '#']);
+        return suffixIndex < 0 ? (url, string.Empty) : (url[..suffixIndex], url[suffixIndex..]);
     }
 }

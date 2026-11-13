@@ -1,9 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 
 namespace Humans.Consent.Services;
@@ -12,10 +10,12 @@ internal sealed class ConsentReader(
     IConsentRepository repo,
     ILegalDocumentSyncManagement legalDocumentSyncService,
     IUserService userService,
-    IServiceProvider serviceProvider,
+    ConsentCompliance compliance,
     IClock clock,
     ILogger<ConsentService> logger) : IApplicationService
 {
+    internal ConsentCompliance Compliance => compliance;
+
     // The resolved record's ids, never [userId ∪ …]: asked with an archived id, that would leave the
     // survivor's own consents out.
     internal async Task<IReadOnlyCollection<Guid>> GetChainFollowIdsAsync(
@@ -26,8 +26,7 @@ internal sealed class ConsentReader(
     {
         var now = clock.GetCurrentInstant();
 
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
-        var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
+        var userTeamIds = await compliance.GetRequiredTeamIdsAsync(userId, ct);
 
         var documents = await legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
 
@@ -101,7 +100,7 @@ internal sealed class ConsentReader(
             ChangesSummary: version.ChangesSummary,
             HasAlreadyConsented: consentRecord is not null,
             ConsentedAt: consentRecord?.ConsentedAt,
-            UserFullName: info?.Profile?.FullName);
+            UserFullName: info?.Profile is null ? null : info.FullName);
     }
 
     internal async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)
@@ -189,8 +188,7 @@ internal sealed class ConsentReader(
 
     internal async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
     {
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
-        var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
+        var missingVersionIds = await compliance.GetMissingVolunteerVersionIdsAsync(userId, ct);
 
         if (missingVersionIds.Count == 0)
             return [];

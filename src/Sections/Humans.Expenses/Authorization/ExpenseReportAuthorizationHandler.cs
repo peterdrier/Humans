@@ -3,6 +3,7 @@ using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
+using Humans.Expenses.Services;
 using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -97,7 +98,7 @@ internal sealed class ExpenseReportAuthorizationHandler(
                 or ExpenseReportOperation.DeclineLine
                 or ExpenseReportOperation.View)
             && (op == ExpenseReportOperation.View || resource.Status == ExpenseReportStatus.Submitted)
-            && await IsFirstReviewerAsync(viewer.Id, resource, ct))
+            && await IsFirstReviewerAsync(viewer, resource, ct))
         {
             context.Succeed(requirement);
         }
@@ -107,10 +108,10 @@ internal sealed class ExpenseReportAuthorizationHandler(
     /// The category's coordinator, or for a pre-approved report (which has no category) a manager of the grant's
     /// program.
     /// </summary>
-    private async Task<bool> IsFirstReviewerAsync(Guid userId, ExpenseReportDto report, CancellationToken ct)
+    private async Task<bool> IsFirstReviewerAsync(UserInfo viewer, ExpenseReportDto report, CancellationToken ct)
     {
         if (report.PreapprovalGrantId is { } grantId)
-            return (await preapprovals.ListManagedGrantIdsAsync(userId, ct)).Contains(grantId);
+            return (await preapprovals.ListManagedGrantIdsAsync(viewer.AllUserIds, ct)).Contains(grantId);
 
         // No budget category (an account outside the budget) means no coordinator route at all.
         if (report.BudgetCategoryId is not { } categoryId) return false;
@@ -118,6 +119,6 @@ internal sealed class ExpenseReportAuthorizationHandler(
         if (category?.TeamId is null)
             return false;
 
-        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, userId, ct);
+        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, viewer.Id, ct);
     }
 }

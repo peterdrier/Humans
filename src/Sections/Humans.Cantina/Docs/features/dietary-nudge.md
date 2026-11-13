@@ -35,7 +35,7 @@ Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can 
 ## GDPR
 
 - **Dietary:** Cantina's `DietaryProfileService` exports the `DietaryProfile` slice (including `DeclinedToAnswer`) and deletes the row on erasure; merges keep the survivor's answers (the source's move only when the survivor has none).
-- **Medical:** stays in Users' `Profile` export/erasure. The legacy food columns on `profiles` stay in Users' export and are erased with the profile until the retirement drops them.
+- **Medical:** stays in Users' `Profile` export/erasure. The legacy food columns on `user_profiles` stay in Users' export and are erased with the profile until the retirement drops them.
 
 ## User Stories
 
@@ -88,7 +88,7 @@ A shift qualifies when `Shift.IsAllDay` (08:00–18:00) **or** `Shift.Duration �
 | `IntoleranceOtherText` | `varchar(500)?` | Only with `Other` |
 | `UpdatedAt` | `timestamptz` | |
 
-Dietary answers are read only from `cantina_dietary_profiles`. Users' legacy food columns are dropped. `MedicalConditions` (`varchar(4000)?`) stays on `profiles`.
+Dietary answers are read only from `cantina_dietary_profiles`. Users' legacy food columns are dropped. `MedicalConditions` (`varchar(4000)?`) stays on `user_profiles`.
 
 ## Triggers
 
@@ -102,7 +102,7 @@ Dietary answers are read only from `cantina_dietary_profiles`. Users' legacy foo
 
 ## Cross-section dependencies
 
-- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`), volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
+- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`). Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
 - **Users** → Cantina: `ICantinaService.GetDietaryProfileAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain.
 
 ## Negative access rules

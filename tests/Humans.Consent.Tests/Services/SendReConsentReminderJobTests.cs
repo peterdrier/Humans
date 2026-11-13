@@ -39,8 +39,8 @@ public sealed class SendReConsentReminderJobTests
         var first = MakeUser("first@example.com") with { PreferredLanguage = language };
         var next = MakeUser("next@example.com");
         var cooling = MakeUser("cooling@example.com");
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new[] { first.Id, next.Id, cooling.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
@@ -83,8 +83,8 @@ public sealed class SendReConsentReminderJobTests
                 && m.Subject == expectedSubject), Arg.Any<CancellationToken>());
         await email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == next.Email), Arg.Any<CancellationToken>());
-        await membership.Received(1).GetUsersRequiringStatusUpdateAsync(
-            TestContext.Current.CancellationToken, Duration.FromDays(3));
+        await membership.Received(1).GetUsersPastConsentDeadlineAsync(
+            Duration.FromDays(3), TestContext.Current.CancellationToken);
         await reminderRepo.Received(1).UpsertAsync(next.Id, now, Arg.Any<CancellationToken>());
         await email.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == cooling.Email), Arg.Any<CancellationToken>());
@@ -112,8 +112,8 @@ public sealed class SendReConsentReminderJobTests
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
         var clock = new FakeClock(now);
         var member = MakeUser("member@example.com");
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new[] { member.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
@@ -169,8 +169,8 @@ public sealed class SendReConsentReminderJobTests
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
         var first = MakeUser("first@example.com");
         var next = MakeUser("next@example.com");
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new[] { first.Id, next.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);

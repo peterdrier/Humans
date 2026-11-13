@@ -41,19 +41,10 @@ internal sealed class AssemblyVoteService(
 
     private readonly AssemblyVoteEffects effects = new(
         repository, users, email, messages, notifications, notificationResolve, audit, clock, logger,
-        MaxTitleLength, LapseJobName);
-
-    internal const string AssemblyVotes = AssemblyVoteDataExport.AssemblyVotes;
-    internal const string AssemblyVoteActions = AssemblyVoteDataExport.AssemblyVoteActions;
+        AssemblyVoteDrafts.MaxTitleLength, LapseJobName);
 
     /// <summary>The recurring job that closes lapsed votes and sends the T-24h reminder.</summary>
     internal const string LapseJobName = "governance-assembly-vote-lapse";
-
-    // Bounded text columns, mirrored from the EF configurations: form text is checked with Fits
-    // so an over-long value is a rejected draft rather than a 500. Title's jsonb column is
-    // uncapped, but it is copied into bounded email and notification columns after an
-    // irreversible transition, so it is bounded at the draft while the vote is still editable.
-    internal const int MaxTitleLength = AssemblyVoteDrafts.MaxTitleLength;         // assembly_votes.Title, per culture
 
     /// <summary>
     /// Enums as names so a stored result survives CLR reordering; NodaTime because
@@ -82,23 +73,10 @@ internal sealed class AssemblyVoteService(
     private AssemblyVoteSettlement Settlement => new(
         repository, audit, clock, effects, resultReader, ResultJsonOptions, LapseJobName);
 
-    private Task<AssemblyVote?> SettleAsync(Guid voteId, CancellationToken ct) =>
-        Settlement.SettleAsync(voteId, ct);
-
-    private Task<IReadOnlyList<AssemblyVote>> SettleAllAsync(CancellationToken ct) =>
-        Settlement.SettleAllAsync(ct);
-
-    private Task FinishInterruptedCloseAsync(AssemblyVote vote, CancellationToken ct) =>
-        Settlement.FinishInterruptedCloseAsync(vote, ct);
-
-    private Task<bool> CloseAsync(
-        AssemblyVote vote, Guid? closedByUserId, AuditActionDefinition action, string description, CancellationToken ct) =>
-        Settlement.CloseAsync(vote, closedByUserId, action, description, ct);
-
     public async Task<AssemblyVoteResultsView?> GetResultsAsync(
         Guid voteId, Guid userId, bool viewerIsBoardOrAdmin, CancellationToken ct = default)
     {
-        var vote = await SettleAsync(voteId, ct);
+        var vote = await Settlement.SettleAsync(voteId, ct);
         if (vote is null) return null;
 
         // The embargo: results exist only once the vote is closed, and Board and Admin get
@@ -141,7 +119,7 @@ internal sealed class AssemblyVoteService(
     public async Task<IReadOnlyList<AssemblyVoteListItem>> GetAllForAdminAsync(
         CancellationToken ct = default)
     {
-        var votes = await SettleAllAsync(ct);
+        var votes = await Settlement.SettleAllAsync(ct);
         var items = new List<AssemblyVoteListItem>(votes.Count);
 
         // Every state, drafts included: this is the page Create redirects to, and its
@@ -203,7 +181,7 @@ internal sealed class AssemblyVoteService(
     public async Task<(AssemblyVoteResult? Result, bool Recorded)> PeekAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default)
     {
-        var vote = await SettleAsync(voteId, ct);
+        var vote = await Settlement.SettleAsync(voteId, ct);
         if (vote is null) return (null, false);
 
         // The peek log records looking *early*, so only an open vote writes one, and Recorded =
@@ -248,7 +226,7 @@ internal sealed class AssemblyVoteService(
     public async Task<IReadOnlyList<AssemblyBallotDisclosureRow>?> GetBallotsForBoardAsync(
         Guid voteId, Guid actorUserId, CancellationToken ct = default)
     {
-        var vote = await SettleAsync(voteId, ct);
+        var vote = await Settlement.SettleAsync(voteId, ct);
         if (vote is null) return null;
         // Closed, not merely terminal. A cancelled vote's ballots are retained as an
         // abandoned record with no result; disclosing who voted what on a vote that was
@@ -289,7 +267,7 @@ internal sealed class AssemblyVoteService(
             // Counted only when the close landed. A vote an Extend rescued between the query
             // and the write is still open, and a job that reports it as closed is wrong in
             // the one place anybody looks to see what the automation did.
-            if (await CloseAsync(vote, closedByUserId: null, GovernanceAuditActions.AssemblyVoteClosed,
+            if (await Settlement.CloseAsync(vote, closedByUserId: null, GovernanceAuditActions.AssemblyVoteClosed,
                     $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
             {
                 closed++;
@@ -306,7 +284,7 @@ internal sealed class AssemblyVoteService(
         // one when somebody looks; this is so nobody has to. The whole table fits in memory.
         foreach (var vote in await repository.GetAllAsync(ct))
         {
-            await FinishInterruptedCloseAsync(vote, ct);
+            await Settlement.FinishInterruptedCloseAsync(vote, ct);
             try
             {
                 await effects.RetryOpenedEmailsAsync(vote, failures, ct);
@@ -342,7 +320,7 @@ internal sealed class AssemblyVoteService(
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [AssemblyVotes] =
+            [AssemblyVoteDataExport.AssemblyVotes] =
                 "Partially retained: the member's roster row is anonymized (the link to the "
                 + "account is removed) but the row and its ballot are kept, because the vote "
                 + "is the association's legal record of an agreement it adopted and the "
@@ -350,7 +328,7 @@ internal sealed class AssemblyVoteService(
                 + "(Ley Organica 1/2002 Art. 14; GDPR Art. 17(3)(b) and (e)). After erasure "
                 + "the ballot can no longer be attributed to the person.",
 
-            [AssemblyVoteActions] =
+            [AssemblyVoteDataExport.AssemblyVoteActions] =
                 "Retained: who drafted, opened or closed a vote, and who looked at a live "
                 + "tally before it closed, are part of the association's record of how the "
                 + "decision was taken — the acta names the closer and the results page "

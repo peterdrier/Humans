@@ -9,12 +9,14 @@ namespace Humans.Onboarding.Tests.Services;
 /// </summary>
 internal static class UserInfoStubs
 {
-    internal static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
+    internal static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User",
+        string? burnerName = null, string firstName = "", string lastName = "")
     {
-        var info = profile ?? UserFixtures.Profile(burnerName: displayName);
+        var info = profile ?? UserFixtures.Profile();
+        burnerName ??= displayName;
         return UserInfo.Create(
             // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            new User { Id = userId, PreferredLanguage = "en", BurnerName = info.BurnerName, State = UserFixtures.StateFor(info) },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = burnerName, FirstName = firstName, LastName = lastName, State = UserFixtures.StateFor(info, burnerName, firstName, lastName) },
             [],
             [],
             profile: info);

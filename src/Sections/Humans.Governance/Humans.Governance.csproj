@@ -30,7 +30,6 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- ConsentResource only. Acyclic — Humans.Consent references
          Humans.Governance.Contracts, never this project. -->
     <!-- OnboardingResource only — a resource marker is a section type, not a Contracts one.

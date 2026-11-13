@@ -18,12 +18,12 @@ namespace Humans.Teams.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.Team", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -247,7 +247,7 @@ namespace Humans.Teams.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamEarlyEntryGrant", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamEarlyEntryGrant", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -261,6 +261,9 @@ namespace Humans.Teams.Data.Migrations
 
                     b.Property<LocalDate>("EntryDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("EventSettingsId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ProjectName")
                         .IsRequired()
@@ -285,7 +288,7 @@ namespace Humans.Teams.Data.Migrations
                     b.ToTable("team_early_entry_grants", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamJoinRequest", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamJoinRequest", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -332,7 +335,7 @@ namespace Humans.Teams.Data.Migrations
                     b.ToTable("team_join_requests", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamJoinRequestStateHistory", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamJoinRequestStateHistory", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -365,7 +368,7 @@ namespace Humans.Teams.Data.Migrations
                     b.ToTable("team_join_request_state_history", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamMember", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamMember", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -402,7 +405,7 @@ namespace Humans.Teams.Data.Migrations
                     b.ToTable("team_members", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamRoleAssignment", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamRoleAssignment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -438,7 +441,7 @@ namespace Humans.Teams.Data.Migrations
                     b.ToTable("team_role_assignments", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamRoleDefinition", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamRoleDefinition", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -502,9 +505,9 @@ namespace Humans.Teams.Data.Migrations
                     b.ToTable("team_role_definitions", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.Team", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Team", "ParentTeam")
+                    b.HasOne("Humans.Teams.Domain.Team", "ParentTeam")
                         .WithMany("ChildTeams")
                         .HasForeignKey("ParentTeamId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -512,9 +515,9 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("ParentTeam");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamEarlyEntryGrant", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamEarlyEntryGrant", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
+                    b.HasOne("Humans.Teams.Domain.Team", "Team")
                         .WithMany("EarlyEntryGrants")
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -523,9 +526,9 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamJoinRequest", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamJoinRequest", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
+                    b.HasOne("Humans.Teams.Domain.Team", "Team")
                         .WithMany("JoinRequests")
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -534,9 +537,9 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamJoinRequestStateHistory", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamJoinRequestStateHistory", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.TeamJoinRequest", "TeamJoinRequest")
+                    b.HasOne("Humans.Teams.Domain.TeamJoinRequest", "TeamJoinRequest")
                         .WithMany("StateHistory")
                         .HasForeignKey("TeamJoinRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -545,9 +548,9 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("TeamJoinRequest");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamMember", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamMember", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
+                    b.HasOne("Humans.Teams.Domain.Team", "Team")
                         .WithMany("Members")
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -556,15 +559,15 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamRoleAssignment", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamRoleAssignment", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.TeamMember", "TeamMember")
+                    b.HasOne("Humans.Teams.Domain.TeamMember", "TeamMember")
                         .WithMany("RoleAssignments")
                         .HasForeignKey("TeamMemberId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Humans.Domain.Entities.TeamRoleDefinition", "TeamRoleDefinition")
+                    b.HasOne("Humans.Teams.Domain.TeamRoleDefinition", "TeamRoleDefinition")
                         .WithMany("Assignments")
                         .HasForeignKey("TeamRoleDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -575,9 +578,9 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("TeamRoleDefinition");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamRoleDefinition", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamRoleDefinition", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
+                    b.HasOne("Humans.Teams.Domain.Team", "Team")
                         .WithMany("RoleDefinitions")
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -586,7 +589,7 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.Team", b =>
                 {
                     b.Navigation("ChildTeams");
 
@@ -599,17 +602,17 @@ namespace Humans.Teams.Data.Migrations
                     b.Navigation("RoleDefinitions");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamJoinRequest", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamJoinRequest", b =>
                 {
                     b.Navigation("StateHistory");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamMember", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamMember", b =>
                 {
                     b.Navigation("RoleAssignments");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.TeamRoleDefinition", b =>
+            modelBuilder.Entity("Humans.Teams.Domain.TeamRoleDefinition", b =>
                 {
                     b.Navigation("Assignments");
                 });

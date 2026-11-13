@@ -437,6 +437,26 @@ public class HoldedClientReadTests
             .WithMessage("*without a valid items array*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ListLedgerEntries_masks_error_body_before_truncating_the_preview(bool escaped)
+    {
+        var info = escaped
+            ? "invalid iban E S 9 1 2100\u00a00418\n4502 0005 1332"
+            : new string('x', 80) + " ES9121000418450200051332";
+        var body = System.Text.Json.JsonSerializer.Serialize(new { status = 0, info });
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, body)));
+
+        var act = async () => await client.ListLedgerEntriesAsync(
+            new LocalDate(2026, 1, 1), new LocalDate(2026, 1, 31),
+            ct: Xunit.TestContext.Current.CancellationToken);
+
+        var failure = (await act.Should().ThrowAsync<HoldedTransientException>()).Which;
+        failure.Message.Should().Contain("without a valid items array").And.Contain("ES91****332");
+        failure.Message.Should().NotContain("2100");
+    }
+
     [HumansFact]
     public async Task ListLedgerEntries_refuses_a_page_with_a_null_item()
     {

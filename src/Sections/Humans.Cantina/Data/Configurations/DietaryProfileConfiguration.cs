@@ -18,7 +18,6 @@ internal sealed class DietaryProfileConfiguration : IEntityTypeConfiguration<Die
         b.Property(x => x.DietaryPreference).HasMaxLength(200);
         b.Property(x => x.AllergyOtherText).HasMaxLength(500);
         b.Property(x => x.IntoleranceOtherText).HasMaxLength(500);
-        b.Property(x => x.DeclinedToAnswer).HasDefaultValueSql("NULL");
         b.Property(x => x.UpdatedAt).IsRequired();
 
         var listComparer = new ValueComparer<List<string>>(

@@ -112,15 +112,13 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(
                 MakeUser(_receiverId, "Alice"),
-                UserFixtures.Profile(
-                    burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
+                UserFixtures.Profile(), burnerName: "Alice", firstName: "Alice", lastName: "Smith"));
 
         // Sender: display name + primary email (for emails).
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(
                 MakeUser(_senderId, "Bob"),
-                UserFixtures.Profile(
-                    burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
+                UserFixtures.Profile(), burnerName: "Bob", firstName: "Bob", lastName: "Jones"));
 
         _transferRepo.GetBySenderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -138,10 +136,11 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(
                 MakeUser(_receiverId, "Alice"),
-                UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith"),
+                UserFixtures.Profile(),
                 hasVerifiedEmail
                     ? [new UserEmail { UserId = _receiverId, Email = "contact@example.com", IsVerified = true, IsPrimary = isPrimary }]
-                    : []));
+                    : [],
+                burnerName: "Alice", firstName: "Alice", lastName: "Smith"));
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         var confirm = await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId, Xunit.TestContext.Current.CancellationToken);
@@ -196,7 +195,7 @@ public sealed class TicketTransferServiceTests
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
         var survivorId = resolvesToSender ? _senderId : Guid.NewGuid();
         var survivor = WrapInUserInfo(MakeUser(survivorId, "Survivor"),
-            UserFixtures.Profile(burnerName: "Survivor", firstName: "Survivor", lastName: "Smith"));
+            UserFixtures.Profile(), burnerName: "Survivor", firstName: "Survivor", lastName: "Smith");
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>()).Returns(survivor);
 
         if (create)
@@ -228,7 +227,7 @@ public sealed class TicketTransferServiceTests
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
         var receiver = WrapInUserInfo(MakeUser(_receiverId, "Alice"),
-            UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith"));
+            UserFixtures.Profile(), burnerName: "Alice", firstName: "Alice", lastName: "Smith");
         receiver = tombstone switch
         {
             "deleted" => receiver with { State = UserState.Deleted },
@@ -268,7 +267,7 @@ public sealed class TicketTransferServiceTests
         receiver.Email = address;
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(receiver,
-                UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
+                UserFixtures.Profile(), burnerName: "Alice", firstName: "Alice", lastName: "Smith"));
 
         (await _service.GetConfirmationAsync(_attendeeId, _receiverId, _senderId,
             Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
@@ -290,7 +289,7 @@ public sealed class TicketTransferServiceTests
         var fullName = $"{firstName} {lastName}";
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(MakeUser(_receiverId, "Alice"),
-                UserFixtures.Profile(burnerName: "Alice", firstName: firstName, lastName: lastName)));
+                UserFixtures.Profile(), burnerName: "Alice", firstName: firstName, lastName: lastName));
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         var result = await _service.CreateRequestAsync(
@@ -321,7 +320,7 @@ public sealed class TicketTransferServiceTests
         var sender = MakeUser(_senderId, "Bob");
         sender.PreferredLanguage = language;
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(sender, UserFixtures.Profile(burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
+            .Returns(WrapInUserInfo(sender, UserFixtures.Profile(), burnerName: "Bob", firstName: "Bob", lastName: "Jones"));
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
 
         await _service.CreateRequestAsync(
@@ -662,11 +661,11 @@ public sealed class TicketTransferServiceTests
         var sender = MakeUser(_senderId, "Bob");
         sender.PreferredLanguage = senderLanguage;
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(sender, UserFixtures.Profile(burnerName: "Bob", firstName: "Bob", lastName: "Jones")));
+            .Returns(WrapInUserInfo(sender, UserFixtures.Profile(), burnerName: "Bob", firstName: "Bob", lastName: "Jones"));
         var receiver = MakeUser(_receiverId, "Alice");
         receiver.PreferredLanguage = receiverLanguage;
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(receiver, UserFixtures.Profile(burnerName: "Alice", firstName: "Alice", lastName: "Smith")));
+            .Returns(WrapInUserInfo(receiver, UserFixtures.Profile(), burnerName: "Alice", firstName: "Alice", lastName: "Smith"));
         var req = MakePending(Guid.NewGuid());
         _transferRepo.GetByIdAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
@@ -1426,11 +1425,14 @@ public sealed class TicketTransferServiceTests
     };
 
     private static UserInfo WrapInUserInfo(
-        User user, ProfileInfo? profile, IReadOnlyList<UserEmail>? emails = null) => UserInfo.Create(
-        user: user,
-        userEmails: emails ?? [],
-        externalLogins: [],
-        profile: profile);
+        User user, ProfileInfo? profile, IReadOnlyList<UserEmail>? emails = null,
+        string? burnerName = null, string? firstName = null, string? lastName = null)
+    {
+        user.BurnerName = burnerName ?? user.BurnerName;
+        user.FirstName = firstName ?? user.FirstName;
+        user.LastName = lastName ?? user.LastName;
+        return UserInfo.Create(user: user, userEmails: emails ?? [], externalLogins: [], profile: profile);
+    }
 
     private static TicketAttendee MakeAttendee(
         Guid id, Guid orderId, Guid attendeeMatchedUserId, TicketAttendeeStatus status,

@@ -26,9 +26,9 @@ internal static class ProfileEditViewModelBuilder
             Id = profile?.Id ?? Guid.Empty,
             UserId = info.Id,
             HasCustomProfilePicture = hasCustomPicture,
-            BurnerName = profile?.BurnerName ?? info.BurnerName,
-            FirstName = profile?.FirstName ?? string.Empty,
-            LastName = profile?.LastName ?? string.Empty,
+            BurnerName = info.BurnerName,
+            FirstName = info.FirstName,
+            LastName = info.LastName,
             City = profile?.City,
             CountryCode = profile?.CountryCode,
             Latitude = profile?.Latitude,
@@ -47,8 +47,8 @@ internal static class ProfileEditViewModelBuilder
             IsInitialSetup = isInitialSetup,
             IsTierLocked = isTierLocked,
             NoPriorBurnExperience = profile?.NoPriorBurnExperience ?? false,
-            ShowPrivateFirst = string.IsNullOrEmpty(profile?.FirstName)
-                && string.IsNullOrEmpty(profile?.LastName)
+            ShowPrivateFirst = string.IsNullOrEmpty(info.FirstName)
+                && string.IsNullOrEmpty(info.LastName)
                 && string.IsNullOrEmpty(profile?.EmergencyContactName),
             ContactFields = BuildLegacyContactFields(profile),
             EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default)

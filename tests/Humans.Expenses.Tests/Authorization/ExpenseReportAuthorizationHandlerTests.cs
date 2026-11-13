@@ -57,9 +57,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var grantId = Guid.NewGuid();
         _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = survivorId }, [], [], null) with { MergedUserIds = [cookieId] });
-        _preapprovals.ListManagedGrantIdsAsync(
-                Arg.Is<Guid>(id => id == cookieId || id == survivorId), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { grantId });
+        StubManagedGrant(grantId, cookieId);
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with
         {
             PreapprovalGrantId = grantId,
@@ -125,10 +123,10 @@ public sealed class ExpenseReportAuthorizationHandlerTests
             Read("User", call.Arg<CancellationToken>());
             return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = CoordinatorId }, [], [], null));
         });
-        _preapprovals.ListManagedGrantIdsAsync(CoordinatorId, Arg.Any<CancellationToken>()).Returns(call =>
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Grant", call.Arg<CancellationToken>());
-            return new HashSet<Guid> { grantId };
+            return (IReadOnlyList<GrantOption>)[ManagedGrant(grantId, CoordinatorId)];
         });
         _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -581,8 +579,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         var operation = Enum.Parse<ExpenseReportOperation>(operationName);
         var grantId = Guid.NewGuid();
         var manager = Guid.NewGuid();
-        _preapprovals.ListManagedGrantIdsAsync(manager, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { grantId });
+        StubManagedGrant(grantId, manager);
         var report = MakeReport(SubmitterId, status) with { BudgetCategoryId = null, BudgetYearId = null, PreapprovalGrantId = grantId };
 
         (await EvaluateAsync(CreateUser(manager), report, operation)).Should().Be(expected);
@@ -592,8 +589,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     public async Task PreapprovalManager_OfAnotherProgram_And_TheCategoryCoordinator_CannotReviewAPreapprovedReport()
     {
         var otherManager = Guid.NewGuid();
-        _preapprovals.ListManagedGrantIdsAsync(otherManager, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid> { Guid.NewGuid() });
+        StubManagedGrant(Guid.NewGuid(), otherManager);
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted) with { PreapprovalGrantId = Guid.NewGuid() };
 
         (await EvaluateAsync(CreateUser(otherManager), report, ExpenseReportOperation.View)).Should().BeFalse();
@@ -704,4 +700,12 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         };
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }
+
+    private static GrantOption ManagedGrant(Guid grantId, Guid manager) => new(
+        grantId, Guid.NewGuid(), [manager], "Program", null, 100m, 62900500, "acc-grant",
+        new LocalDate(2026, 12, 31), GrantStatus.Claimed, false);
+
+    private void StubManagedGrant(Guid grantId, Guid manager) =>
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<GrantOption>)[ManagedGrant(grantId, manager)]);
 }

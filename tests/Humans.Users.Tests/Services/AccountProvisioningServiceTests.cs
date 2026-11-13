@@ -118,6 +118,10 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();

@@ -150,7 +150,7 @@ public sealed class IssuesServiceTests
                 user: user,
                 userEmails: [],
                 externalLogins: [],
-                profile: UserFixtures.Profile(burnerName: user.BurnerName ?? "", firstName: "Test", lastName: "User"));
+                profile: UserFixtures.Profile());
     }
 
     private User SeedUser(Guid? id = null, string displayName = "Test User")
@@ -164,6 +164,8 @@ public sealed class IssuesServiceTests
             DisplayName = displayName,
             // UserInfo.BurnerName reads User.BurnerName (dual-written from Profile by CopyNamesToUser), so set it here.
             BurnerName = displayName,
+            FirstName = "Test",
+            LastName = "User",
             PreferredLanguage = "en",
             CreatedAt = Clock.GetCurrentInstant()
         };

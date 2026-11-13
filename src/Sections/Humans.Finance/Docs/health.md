@@ -75,7 +75,7 @@ The section's methods, grouped by the question each one answers.
 | **A — Accounts to spend against** | Which accounts exist for spending, and make the missing ones | `GetProvisioningPlanAsync`, `ProvisionAsync`, `GetHoldedAccountIdForCategoryAsync`, `GetCategoryMapAsync`, `CreateOrLinkExpenseAccountAsync`, `SetExpenseAccountActiveAsync`, `ListExpenseAccountsAsync` | Finance's own page; Expenses, to book a line; Workgroups; Backdoor |
 | **B — What was spent** | The per-category total over Holded's purchase mirror, what didn't attribute, how the pull went | `GetActualsForYearAsync`, `GetUnmatchedAsync` | Budget's year page; Finance's own pages; Backdoor |
 | **C — Whose account is this** | Which Holded creditor account is this member's — set it, correct it, clear it | `GetCreditorContactByUserAsync`, `EnsureCreditorContactAsync`, `SetCreditorAccountNumAsync`, `SetCreditorContactAsync`, `ClearCreditorContactAsync` | Expenses' push path and views; Finance's own page |
-| **D — What is owed** | What does the org owe this member, the journal behind it, and does it match the reports | `GetCreditorStatusAsync`, `GetCreditorLedgerAsync`, `ListCreditorAccountsAsync`, `CreditorMatchService` | Expenses; Finance's own pages; Backdoor |
+| **D — What is owed** | What does the org owe this member, the journal behind it, and does it match the reports | `GetCreditorStatusAsync`, `GetCreditorLedgerAsync`, `ListCreditorAccountsAsync`, `GetExpenseReconAsync` | Expenses; Finance's own pages; Backdoor |
 | **E — Paying it** | Is payout configured; make the bank file; what files exist; withdraw a cancelled transfer | `GetSepaPayoutSettings`, `GenerateSepaPayoutAsync`, `GetSepaPayoutsAsync`, `GetSepaTransfersAsync`, `WithdrawSepaTransferAsync` | Finance's own pages; Backdoor |
 | **F — Settling it** | Book this transfer, this file, these textless lines, or everything the feed now shows | `BookSepaTransferAsync`, `BookSepaFileAsync`, `BookSepaFileMatchesAsync`, the sweep | Finance's own page; the sweep job |
 | **G — Do the books match the reports** | Which expense lines have no document or a duplicate, and which documents nobody filed; remove the duplicates | `GetExpenseReconAsync`, `GetHoldedDuplicatesAsync`, `RemoveHoldedDuplicatesAsync` | Finance's own pages and nightly job; Backdoor |
@@ -125,7 +125,6 @@ Humans.Finance/
     SepaPaymentFileBuilder.cs  pure pain.001 XML from a batch, no dependencies
     SepaSchema.cs, SepaText.cs the schema and the character rules that builder obeys
     SepaPayoutEmails.cs, FinanceEmails.cs, FinanceEmailPreviews.cs  the payout emails and their preview
-    CreditorMatchService.cs    D's reports-vs-ledger match
     CashFlowService.cs         shape H
     PaymentDetailsService.cs   shapes I and J for the IBAN
     I*.cs                      the internal interfaces

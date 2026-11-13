@@ -10,9 +10,8 @@ internal static class UserInfoStubHelpers
 {
     public static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User")
         => UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = displayName },
             [],
             [],
-            profile: profile ?? UserFixtures.Profile(
-                burnerName: displayName));
+            profile: profile ?? UserFixtures.Profile());
 }

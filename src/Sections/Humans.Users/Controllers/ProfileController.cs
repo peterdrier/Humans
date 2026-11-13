@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
@@ -33,7 +34,7 @@ internal sealed class ProfileController(
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
     IGovernanceService governanceService,
-    IMembershipCalculator membershipCalculator,
+    IConsentService consentService,
     MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
@@ -83,8 +84,7 @@ internal sealed class ProfileController(
             return null;
 
         var profile = info.Profile;
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(info.Id, ct);
-        var pendingConsentCount = snapshot.PendingConsentCount;
+        var pendingConsentCount = (await consentService.GetConsentProgressAsync(info.Id, ct)).PendingCount;
 
         var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.MaxBy(a => a.SubmittedAt);

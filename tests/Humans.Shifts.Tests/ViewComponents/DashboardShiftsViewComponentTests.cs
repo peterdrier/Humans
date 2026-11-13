@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Governance.Contracts;
+using Humans.Base.Constants;
+using Humans.Base.Enums;
+using Humans.Teams.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.ViewComponents;
@@ -10,16 +12,18 @@ using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
 public sealed class DashboardShiftsViewComponentTests
 {
-    private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();
+    private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
-    private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     private static readonly BurnSettingsInfo OpenBurn = new(
         Id: Guid.NewGuid(),
@@ -44,13 +48,20 @@ public sealed class DashboardShiftsViewComponentTests
         -14, 6, 9, new Dictionary<int, int>(), null, null,
         IsOffSeason: isOffSeason);
 
+    private static TeamInfo VolunteersTeam(params Guid[] memberIds) => new(
+        SystemTeamIds.Volunteers, "Volunteers", null, "volunteers",
+        IsActive: true, IsSystemTeam: true, SystemTeamType.Volunteers, RequiresApproval: false,
+        IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false, Instant.MinValue,
+        memberIds.Select(id => new TeamMemberInfo(
+            Guid.NewGuid(), id, "Member", null, null, TeamMemberRole.Member, Instant.MinValue)).ToList());
+
     private DashboardShiftsViewComponent BuildSut()
     {
         var httpContext = new DefaultHttpContext();
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
+            [new Claim(ClaimTypes.NameIdentifier, _userId.ToString())], "test"));
         return new DashboardShiftsViewComponent(
-            _shiftMgmt, _shiftView, _burnSettings, _settings, _membership,
+            _shiftMgmt, _shiftView, _burnSettings, _settings, _teams,
             SystemClock.Instance, NullLogger<DashboardShiftsViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext
@@ -62,8 +73,7 @@ public sealed class DashboardShiftsViewComponentTests
 
     private async Task<DashboardShiftsViewModel> InvokeAsync(bool isOffSeason)
     {
-        _membership.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
+        _teams.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>()).Returns(VolunteersTeam(_userId));
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(OpenBurn);
         _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(isOffSeason));
         _shiftMgmt.GetUrgentShiftsAsync(OpenBurn.Id, 3).Returns([]);
@@ -78,8 +88,7 @@ public sealed class DashboardShiftsViewComponentTests
         using var cancellation = new CancellationTokenSource();
         var sut = BuildSut();
         sut.HttpContext.RequestAborted = cancellation.Token;
-        _membership.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 0, 0, []));
+        _teams.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>()).Returns(VolunteersTeam(_userId));
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(OpenBurn);
         _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(Event(false));
         _shiftMgmt.GetUrgentShiftsAsync(OpenBurn.Id, limit: 3, ct: cancellation.Token)

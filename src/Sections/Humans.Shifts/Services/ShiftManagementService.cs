@@ -67,13 +67,11 @@ internal sealed class ShiftManagementService(
         shiftSettings.GetKnobsAsync(eventSettingsId, ct);
 
     public async Task SaveKnobsAsync(
-        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
-        BuildSubPeriodStarts subPeriods, Guid actorUserId)
+        Guid eventSettingsId, bool isShiftBrowsingOpen, BuildSubPeriodStarts subPeriods, Guid actorUserId)
     {
         try
         {
-            await shiftSettings.SaveKnobsAsync(eventSettingsId, isShiftBrowsingOpen, globalVolunteerCap,
-                reminderLeadTimeHours, subPeriods, actorUserId);
+            await shiftSettings.SaveKnobsAsync(eventSettingsId, isShiftBrowsingOpen, subPeriods, actorUserId);
         }
         finally
         {

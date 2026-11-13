@@ -4,7 +4,7 @@
     var hasAny = Model.Upcoming.Count > 0 || Model.Pending.Count > 0 || Model.Past.Count > 0;
     var es = Model.EventSettings;
     var tz = es != null ? DateTimeZoneProviders.Tzdb[es.TimeZoneId] : null;
-    var isAdmin = Model.ViewMode == ShiftSignupsViewMode.Admin;
+    var isAdmin = Model.ViewMode == ProfileCardViewMode.Admin;
 
 }
 

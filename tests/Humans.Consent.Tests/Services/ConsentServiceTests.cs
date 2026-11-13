@@ -13,7 +13,10 @@ using Humans.Base.Interfaces;
 using Humans.Consent.Domain;
 using ConsentService = Humans.Consent.Services.ConsentService;
 using Humans.Notifications.Contracts;
-using Humans.Governance.Contracts;
+using Humans.Auth.Contracts;
+using Humans.Base.Constants;
+using Humans.Base.Enums;
+using Humans.Teams.Contracts;
 using Humans.Consent.Data;
 using Humans.Users.Contracts;
 
@@ -24,7 +27,9 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     private readonly ConsentService _service;
     // The real decorator over _service: the inner submit evicts it before its membership check.
     private readonly CachingConsentService _cache;
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
+    private readonly List<(Guid UserId, Guid TeamId)> _memberships = [];
     private readonly ILegalDocumentSyncManagement _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly IHumanLifecycleService _humanLifecycleService = Substitute.For<IHumanLifecycleService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -32,9 +37,19 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
     public ConsentServiceTests()
     {
-        var serviceProvider = new ServiceLocatorBuilder()
-            .With(_membershipCalculator)
-            .Build();
+        var serviceProvider = new ServiceLocatorBuilder().Build();
+
+        _legalDocumentSyncService
+            .GetRequiredDocumentVersionsForTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Teams.ToDictionary(kv => kv.Key, kv => kv.Value with
+            {
+                Members = _memberships.Where(m => m.TeamId == kv.Key)
+                    .Select(m => new TeamMemberInfo(
+                        Guid.NewGuid(), m.UserId, "Member", null, null, TeamMemberRole.Member, Clock.GetCurrentInstant()))
+                    .ToList()
+            }));
 
         _legalDocumentSyncService
             .GetVersionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -86,10 +101,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             .Returns(callInfo => WrapInUserInfo(
                 callInfo.ArgAt<Guid>(0),
                 UserFixtures.Profile(
-                    burnerName: "Burner",
-                    firstName: "First",
-                    lastName: "Last",
-                    createdAt: Clock.GetCurrentInstant())));
+                    createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last"));
 
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => ResolveUserInfosAsync(
@@ -108,11 +120,22 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             _legalDocumentSyncService,
             _humanLifecycleService,
             _userService,
+            _teamService,
+            _roleAssignments,
             serviceProvider,
             _metrics,
             Clock,
             NullLogger<ConsentService>.Instance);
     }
+
+    private void MemberOf(Guid userId, params Guid[] teamIds) =>
+        _memberships.AddRange(teamIds.Select(teamId => (userId, teamId)));
+
+    private void RequireForVolunteers(Guid versionId) =>
+        _legalDocumentSyncService
+            .GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns([new RequiredDocumentVersionSnapshot(
+                versionId, Guid.NewGuid(), "Doc", 7, "v1.0", Clock.GetCurrentInstant(), false, null)]);
 
     private async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveUserInfosAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken ct)
@@ -126,14 +149,16 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         return infos;
     }
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile, string burnerName = "", string firstName = "", string lastName = "") => UserInfo.Create(
         user: new User
         {
             Id = userId,
-            DisplayName = profile.BurnerName,
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
             PreferredLanguage = "en",
             CreatedAt = profile.CreatedAt,
-            State = UserFixtures.StateFor(profile),
+            State = UserFixtures.StateFor(profile, burnerName, firstName, lastName),
         },
         userEmails: [],
         externalLogins: [],
@@ -206,9 +231,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         var cached = _cache;
-        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(async call => (await cached.GetConsentedVersionIdsAsync(
-                userId, call.ArgAt<CancellationToken>(1))).Contains(versionId));
+        RequireForVolunteers(versionId);
         (await cached.GetConsentedVersionIdsAsync(userId, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
 
@@ -219,7 +242,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         (await LegalDb.ConsentRecords.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
         (await cached.GetConsentedVersionIdsAsync(userId, TestContext.Current.CancellationToken))
             .Should().Contain(versionId);
-        await _membershipCalculator.Received(1).HasAllRequiredConsentsAsync(userId, CancellationToken.None);
         await _humanLifecycleService.Received(1).RestoreConsentSuspensionAsync(userId, CancellationToken.None);
     }
 
@@ -230,8 +252,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var sourceId = Guid.NewGuid();
         var info = WrapInUserInfo(userId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant())) with
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last") with
         { MergedUserIds = [sourceId] };
         foreach (var id in info.AllUserIds)
             _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(info);
@@ -251,8 +272,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                 throw failure;
             });
         var service = new ConsentService(repository, _cache, _legalDocumentSyncService,
-            _humanLifecycleService, _userService,
-            new ServiceLocatorBuilder().With(_membershipCalculator).Build(),
+            _humanLifecycleService, _userService, _teamService, _roleAssignments,
+            new ServiceLocatorBuilder().Build(),
             _metrics, Clock, NullLogger<ConsentService>.Instance);
 
         var submit = () => service.SubmitConsentAsync(sourceId, versionId, true, "127.0.0.1", "Agent", ct);
@@ -264,8 +285,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         (await _cache.SubmitConsentAsync(sourceId, versionId, true, "127.0.0.1", "Agent", ct))
             .ErrorKey.Should().Be("AlreadyConsented");
         _metrics.DidNotReceive().RecordConsentGiven();
-        await _membershipCalculator.DidNotReceive()
-            .HasAllRequiredConsentsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _legalDocumentSyncService.DidNotReceive()
+            .GetRequiredDocumentVersionsForTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -276,12 +297,10 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var requestedId = archivedId ? Guid.NewGuid() : userId;
         var info = WrapInUserInfo(userId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant())) with
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last") with
         { MergedUserIds = archivedId ? [requestedId] : [] };
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
-        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "Spanish text" });
 
@@ -489,19 +508,20 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             if (cancelAfterCommit)
                 cancellation.Cancel();
         });
-        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
+        _legalDocumentSyncService
+            .GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
-                return true;
+                return (IReadOnlyList<RequiredDocumentVersionSnapshot>)[];
             });
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", cancellation.Token);
 
         result.Success.Should().BeTrue();
         LegalDb.ConsentRecords.Should().Contain(record => record.UserId == userId && record.DocumentVersionId == versionId);
-        await _membershipCalculator.Received(1)
-            .HasAllRequiredConsentsAsync(userId, CancellationToken.None);
+        await _legalDocumentSyncService.Received(1)
+            .GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, CancellationToken.None);
         await _humanLifecycleService.Received(1)
             .RestoreConsentSuspensionAsync(userId, CancellationToken.None);
     }
@@ -512,8 +532,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(false);
+        RequireForVolunteers(Guid.NewGuid());
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", TestContext.Current.CancellationToken);
 
@@ -549,12 +568,9 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
 
         var activeProfile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "First",
-            lastName: "Last",
             createdAt: Clock.GetCurrentInstant());
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(userId, activeProfile));
+            .Returns(WrapInUserInfo(userId, activeProfile, burnerName: "Burner", firstName: "First", lastName: "Last"));
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", TestContext.Current.CancellationToken);
 
@@ -568,8 +584,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var teamId1 = Guid.NewGuid();
         var teamId2 = Guid.NewGuid();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId1, teamId2 });
+        MemberOf(userId, teamId1, teamId2);
 
         SeedTeam(teamId1, "Team A");
         SeedTeam(teamId2, "Team B");
@@ -587,8 +602,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId });
+        MemberOf(userId, teamId);
 
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Active Doc");
@@ -607,8 +621,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var now = Clock.GetCurrentInstant();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId });
+        MemberOf(userId, teamId);
 
         SeedTeam(teamId, "Team");
         var docId = Guid.NewGuid();
@@ -659,8 +672,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId });
+        MemberOf(userId, teamId);
 
         SeedTeam(teamId, "Team");
         var versionId = SeedDocument(teamId, "Doc");
@@ -678,8 +690,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId });
+        MemberOf(userId, teamId);
 
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Doc");
@@ -697,8 +708,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var now = Clock.GetCurrentInstant();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId });
+        MemberOf(userId, teamId);
 
         SeedTeam(teamId, "Team");
         var v1 = SeedDocument(teamId, "Doc A");
@@ -719,8 +729,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var now = Clock.GetCurrentInstant();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId });
+        MemberOf(userId, teamId);
 
         SeedTeam(teamId, "Team");
         SeedDocument(teamId, "Future Doc", effectiveFrom: now + Duration.FromDays(30));
@@ -737,8 +746,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
     {
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { teamId });
+        MemberOf(userId, teamId);
 
         var (groups, history) = await _service.GetConsentDashboardAsync(userId, TestContext.Current.CancellationToken);
 
@@ -754,11 +762,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         SeedConsentRecord(userId, versionId);
         var profile = UserFixtures.Profile(
-            burnerName: "Test",
-            firstName: "Jane",
-            lastName: "Doe",
             createdAt: Clock.GetCurrentInstant());
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile, burnerName: "Test", firstName: "Jane", lastName: "Doe"));
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, TestContext.Current.CancellationToken);
@@ -776,11 +781,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         var profile = UserFixtures.Profile(
-            burnerName: "Test",
-            firstName: "Jane",
-            lastName: "Doe",
             createdAt: Clock.GetCurrentInstant());
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(userId, profile, burnerName: "Test", firstName: "Jane", lastName: "Doe"));
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var detail = await _service.GetConsentReviewDetailAsync(versionId, userId, TestContext.Current.CancellationToken);
@@ -829,8 +831,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         // id still resolves to the target's record (the redirect), and the
         // unrelated id lists nothing.
         var target = WrapInUserInfo(targetId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant()));
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last");
         var targetInfo = target with { MergedUserIds = [sourceId] };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -838,8 +839,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                     id => id,
                     id => id == unrelatedId
                         ? WrapInUserInfo(unrelatedId, UserFixtures.Profile(
-                            burnerName: "Burner", firstName: "First", lastName: "Last",
-                            createdAt: Clock.GetCurrentInstant()))
+                            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last")
                         : targetInfo)));
 
         var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId], TestContext.Current.CancellationToken);
@@ -865,8 +865,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var target = WrapInUserInfo(targetId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant()));
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last");
         var targetInfo = target with { MergedUserIds = [sourceId] };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -965,8 +964,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var target = WrapInUserInfo(targetId, UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
-            createdAt: Clock.GetCurrentInstant()));
+            createdAt: Clock.GetCurrentInstant()), burnerName: "Burner", firstName: "First", lastName: "Last");
         var targetInfo = target with { MergedUserIds = [sourceId] };
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(

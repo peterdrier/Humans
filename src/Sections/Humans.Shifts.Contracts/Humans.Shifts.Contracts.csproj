@@ -12,36 +12,30 @@
     The split is carved from the call sites, not from the interfaces (Notifications'
     rule). A member is on this leaf if something outside the section calls it, and
     nowhere else. From IShiftManagement that is the cross-section reads
-    (IShiftService), the volunteer-profile surface Shell's profile page
-    and widget gallery read (IShiftVolunteerProfiles), and the dev-fixture verbs
-    Humans.Development's seeder needs (IShiftSeeding); the rota/shift generation,
+    (IShiftService) and the dev-fixture verbs Humans.Development's seeder needs
+    (IShiftSeeding); the rota/shift generation,
     coordinator-dashboard and post-event-stats surface has no outside caller and stays
-    on the internal IShiftManagement, which inherits the three leaf interfaces so
+    on the internal IShiftManagement, which inherits the two leaf interfaces so
     the section's own call sites are unchanged. Same shape for IShiftSignupService: the
     signup state machine Shell and onboarding drive leaves as IShiftSignups, the seeder's
     verbs as IShiftSignupSeeding (Teams' rule — the seeder builds a multi-section
     fixture, so the verbs come to the leaf rather than the seeding going into the
     section), and the review surface stays internal.
 
-    References Humans.Base (IApplicationService, IInvalidator, SurfaceBudget,
-    Grandfathered) and Humans.Settings (BurnSettingsInfo also implements
-    IEventSettingsInfo, nobodies-collective/Humans#1630 — the calendar-only twin every
-    Shifts-internal day-offset helper now takes, so this leaf's DTO satisfies both
-    without a second copy). The section's persisted-string enums (SignupStatus,
-    ShiftPeriod, ShiftPriority, RotaPeriod, BuildSubPeriod, SignupPolicy) live here because
+    References Humans.Base only (IApplicationService, IInvalidator, SurfaceBudget,
+    Grandfathered). The section's persisted-string enums (SignupStatus,
+    ShiftPeriod, ShiftPriority, RotaPeriod, SignupPolicy) live here because
     this leaf's own signatures name them; their EnumStringStabilityTests rows live in
     tests/Humans.Shifts.Tests/Enums.
 
     No entity crosses this boundary. Shift / ShiftSignup / Rota / EventSettings /
     VolunteerEventProfile are internal sealed types in Humans.Shifts.Domain, and every
     leaf member that used to return one returns a flat projection instead
-    (ShiftUserSummary, UrgentShiftInfo / ShiftInfo / RotaInfo, ShiftVolunteerProfileInfo,
-    BurnSettingsInfo, and Guid ids on the seeding verbs).
+    (ShiftUserSummary, UrgentShiftInfo / ShiftInfo / RotaInfo, and Guid ids on the seeding verbs).
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
   </ItemGroup>
 
   <ItemGroup>

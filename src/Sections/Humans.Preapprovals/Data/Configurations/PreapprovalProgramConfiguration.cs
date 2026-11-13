@@ -8,7 +8,7 @@ internal sealed class PreapprovalProgramConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<PreapprovalProgram> b)
     {
-        b.ToTable("pre_programs");
+        b.ToTable("preapproval_programs");
         b.HasKey(p => p.Id);
 
         b.Property(p => p.Name).IsRequired().HasMaxLength(200);
@@ -43,7 +43,7 @@ internal sealed class ProgramManagerConfiguration : IEntityTypeConfiguration<Pro
 {
     public void Configure(EntityTypeBuilder<ProgramManager> b)
     {
-        b.ToTable("pre_program_managers");
+        b.ToTable("preapproval_program_managers");
         b.HasKey(m => new { m.ProgramId, m.UserId });
 
         // A bare cross-section reference: indexed for the per-user reads, no FK.
@@ -59,7 +59,7 @@ internal sealed class PreapprovalGrantConfiguration : IEntityTypeConfiguration<P
 {
     public void Configure(EntityTypeBuilder<PreapprovalGrant> b)
     {
-        b.ToTable("pre_grants");
+        b.ToTable("preapproval_grants");
         b.HasKey(g => g.Id);
 
         b.Property(g => g.ProgramId).IsRequired();
@@ -83,7 +83,7 @@ internal sealed class ReminderSentConfiguration : IEntityTypeConfiguration<Remin
 {
     public void Configure(EntityTypeBuilder<ReminderSent> b)
     {
-        b.ToTable("pre_reminders_sent");
+        b.ToTable("preapproval_sent_reminders");
         // Keyed by the deadline announced: a moved deadline runs the reminders again.
         b.HasKey(r => new { r.GrantId, r.Kind, r.ClaimBy });
 

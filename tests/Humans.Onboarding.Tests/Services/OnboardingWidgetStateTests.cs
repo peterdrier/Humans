@@ -15,7 +15,6 @@ public class OnboardingWidgetStateTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IOnboardingWidgetSessionState _session = Substitute.For<IOnboardingWidgetSessionState>();
@@ -32,25 +31,25 @@ public class OnboardingWidgetStateTests
     }
 
     private OnboardingWidgetState BuildSut() =>
-        new(_users, _shiftView, _membership, _burnSettings, _consents, _session);
+        new(_users, _shiftView, _burnSettings, _consents, _session);
 
     private static UserInfo NonStubUserInfo(Guid userId) =>
-        WrapInUserInfo(userId, UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "First",
-            lastName: "Last"));
+        WrapInUserInfo(userId, UserFixtures.Profile(), burnerName: "Burner", firstName: "First", lastName: "Last");
 
     private static UserInfo StubUserInfo(Guid userId) =>
         WrapInUserInfo(userId, UserFixtures.Profile());
 
-    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo? profile) => UserInfo.Create(
+    private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo? profile, string burnerName = "", string firstName = "", string lastName = "") => UserInfo.Create(
         user: new User
         {
             Id = userId,
             DisplayName = "Test",
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-            State = UserFixtures.StateFor(profile),
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
+            State = UserFixtures.StateFor(profile, burnerName, firstName, lastName),
         },
         userEmails: [],
         externalLogins: [],
@@ -84,7 +83,7 @@ public class OnboardingWidgetStateTests
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         var info = missingNames ? StubUserInfo(userId) : NonStubUserInfo(userId);
         _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>()).Returns(info);
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
 
         var step = await BuildSut().GetCurrentStepAsync(inputId, TestContext.Current.CancellationToken);
@@ -97,7 +96,7 @@ public class OnboardingWidgetStateTests
     {
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
 
         var step = await BuildSut().GetCurrentStepAsync(userId, TestContext.Current.CancellationToken);
@@ -109,7 +108,7 @@ public class OnboardingWidgetStateTests
     public async Task NoUserInfo_ReturnsNames()
     {
         var userId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
@@ -125,7 +124,7 @@ public class OnboardingWidgetStateTests
         // signup) means the user hasn't filled in legal name yet — they must
         // hit the Names step before the consent flow can write a record.
         var userId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(StubUserInfo(userId));
 
@@ -139,7 +138,7 @@ public class OnboardingWidgetStateTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
@@ -154,7 +153,7 @@ public class OnboardingWidgetStateTests
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
@@ -174,7 +173,7 @@ public class OnboardingWidgetStateTests
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         var eventId = Guid.NewGuid();
         var shiftId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(id: eventId));
@@ -197,7 +196,7 @@ public class OnboardingWidgetStateTests
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         var ct = TestContext.Current.CancellationToken;
         _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns([new RequiredConsentRow(Guid.NewGuid(), "Replacement document", Signed: false)]);
@@ -220,7 +219,7 @@ public class OnboardingWidgetStateTests
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var signedDocId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _consents.GetConsentedVersionIdsAsync(userId, Arg.Any<CancellationToken>())
@@ -236,7 +235,7 @@ public class OnboardingWidgetStateTests
     public async Task ProfileWithNoActiveEvent_ReturnsShifts()
     {
         var userId = Guid.NewGuid();
-        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _consents.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(false);
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(NonStubUserInfo(userId));
         _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);

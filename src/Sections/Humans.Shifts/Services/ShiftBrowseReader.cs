@@ -198,7 +198,6 @@ internal sealed class ShiftBrowseReader(
                     with
                 { EarlyEntrySignupsClosed = lockedTeams.Contains(s.Rota.TeamId) };
             })
-            .OrderByDescending(u => u.UrgencyScore)
             .ToList();
     }
 

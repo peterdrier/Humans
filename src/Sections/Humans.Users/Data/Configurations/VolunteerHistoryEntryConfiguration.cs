@@ -7,7 +7,7 @@ internal sealed class VolunteerHistoryEntryConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<VolunteerHistoryEntry> builder)
     {
-        builder.ToTable("volunteer_history_entries");
+        builder.ToTable("user_volunteer_history_entries");
 
         builder.HasKey(v => v.Id);
 

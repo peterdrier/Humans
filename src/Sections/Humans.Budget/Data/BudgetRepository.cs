@@ -40,8 +40,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         // Display sort (SortOrder) is applied by the controllers and views, not here.
         return await ctx.BudgetYears
             .AsNoTracking()
-            // arch:db-sort-ok budget tree persisted SortOrder
-            .Include(y => y.Groups.OrderBy(g => g.SortOrder))
+            .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
                     .ThenInclude(c => c.LineItems)
             .Include(y => y.Groups)

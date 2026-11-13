@@ -3,7 +3,7 @@ name: Per-event data is keyed by event id, never by year
 description: When a table or setting belongs to one event (season, rota, guide entry, placement, order), key it by the Settings event id, never by a year.
 ---
 
-Data that belongs to one event carries the `settings_event` id (`EventSettingsInfo.Id`), and "the current event" is `ISettingsService.GetActiveEventSettingsAsync`. Never key such data by a year, and never keep a section-local "current year" or "open seasons" list.
+Data that belongs to one event carries the `settings_events` id (`EventSettingsInfo.Id`), and "the current event" is `ISettingsService.GetActiveEventSettingsAsync`. Never key such data by a year, and never keep a section-local "current year" or "open seasons" list.
 
 **Why:** Peter (2026-10-28): "the sections should all be keyed off event id going forwards.. year was sloppy". There can be several events in one year (a spring and a fall event), and a year-keyed section drifts out of sync with the event settings (Barrios showed a 2026 season of its own).
 

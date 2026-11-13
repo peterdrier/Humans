@@ -8,6 +8,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Monitor.Services;
 using Humans.Users.Contracts;
+using Xunit;
 
 namespace Humans.Monitor.Tests;
 
@@ -325,6 +326,71 @@ public class DriveActivityMonitorServiceTests
                 !d.Contains("first@example.com", StringComparison.Ordinal) &&
                 !d.Contains("second@example.com", StringComparison.Ordinal)),
             JobName);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CheckForAnomalousActivityAsync_PropagatesCallerCancellationButContinuesAfterDependencyCancellation(bool cancelCaller)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var completed = BuildResource("Completed");
+        var interrupted = BuildResource("Interrupted");
+        var remaining = BuildResource("Remaining");
+        SeedResources(completed, interrupted, remaining);
+        SeedActivity(completed.GoogleId);
+        SeedActivity(remaining.GoogleId);
+        _client.QueryActivityAsync(interrupted.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => InterruptedAsync());
+
+        var scan = () => _service.CheckForAnomalousActivityAsync(cancellation.Token);
+
+        if (cancelCaller)
+        {
+            var failure = await scan.Should().ThrowAsync<OperationCanceledException>();
+            failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        }
+        else
+        {
+            (await scan()).Should().Be(0);
+        }
+        _client.Received(cancelCaller ? 0 : 1).QueryActivityAsync(
+            remaining.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
+
+        async IAsyncEnumerable<DriveActivityEvent> InterruptedAsync()
+        {
+            if (cancelCaller) await cancellation.CancelAsync();
+            await Task.FromException(new OperationCanceledException(cancellation.Token));
+            yield break;
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CheckForAnomalousActivityAsync_StopsAfterCancellationEvenWhenReadCompletes(bool moreResources)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var completed = BuildResource("Completed");
+        var remaining = BuildResource("Remaining");
+        SeedResources(moreResources ? [completed, remaining] : [completed]);
+        SeedActivity(remaining.GoogleId);
+        _client.QueryActivityAsync(completed.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => CompleteAndCancelAsync());
+
+        var scan = () => _service.CheckForAnomalousActivityAsync(cancellation.Token);
+
+        await scan.Should().ThrowAsync<OperationCanceledException>();
+        _client.DidNotReceive().QueryActivityAsync(
+            remaining.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
+
+        async IAsyncEnumerable<DriveActivityEvent> CompleteAndCancelAsync()
+        {
+            await cancellation.CancelAsync();
+            yield break;
+        }
     }
 
     [HumansFact]

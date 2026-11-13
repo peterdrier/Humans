@@ -52,8 +52,8 @@ public class CantinaDailyRosterServiceTests
         _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, _clock, _audit);
     }
 
-    /// <summary>Builds a human: burner name on the profile, dietary as Cantina's own record.</summary>
-    private static (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet) Human(
+    /// <summary>Builds a human: burner name on the user, dietary as Cantina's own record.</summary>
+    private static (Guid UserId, ProfileInfo Profile, string BurnerName, DietaryProfileInfo? Diet) Human(
         Guid userId,
         string burner,
         string? dietary = null,
@@ -62,7 +62,7 @@ public class CantinaDailyRosterServiceTests
         IReadOnlyList<string>? intolerances = null,
         string? intoleranceOther = null) => (
         userId,
-        UserFixtures.Profile(burnerName: burner),
+        UserFixtures.Profile(), burner,
         dietary is null && allergies is null && intolerances is null
             ? null
             : new DietaryProfileInfo(userId, dietary, allergies ?? [], allergyOther, intolerances ?? [], intoleranceOther));
@@ -245,7 +245,7 @@ public class CantinaDailyRosterServiceTests
                         },
                         userEmails: [],
                         externalLogins: [],
-                        profile: UserFixtures.Profile(burnerName: "")),
+                        profile: UserFixtures.Profile()),
                 }));
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken));
@@ -267,8 +267,7 @@ public class CantinaDailyRosterServiceTests
 
         var userId = Guid.NewGuid();
         SetupDay(0, userId);
-        SetupHumans((userId, UserFixtures.Profile(
-            burnerName: "Sensitive"),
+        SetupHumans((userId, UserFixtures.Profile(), "Sensitive",
             new DietaryProfileInfo(userId, "Omnivore", [], null, [], null)));
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken));
@@ -357,13 +356,13 @@ public class CantinaDailyRosterServiceTests
                 Arg.Any<Guid>(), dayOffset, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(onSiteIds));
 
-    private void SetupHumans(params (Guid UserId, ProfileInfo Profile, DietaryProfileInfo? Diet)[] profiles)
+    private void SetupHumans(params (Guid UserId, ProfileInfo Profile, string BurnerName, DietaryProfileInfo? Diet)[] profiles)
     {
         var dict = profiles.ToDictionary(
             p => p.UserId,
             p => UserInfo.Create(
                 // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-                user: new User { Id = p.UserId, DisplayName = p.Profile.BurnerName, BurnerName = p.Profile.BurnerName, PreferredLanguage = "en" },
+                user: new User { Id = p.UserId, BurnerName = p.BurnerName, PreferredLanguage = "en" },
                 userEmails: [],
                 externalLogins: [],
                 profile: p.Profile));

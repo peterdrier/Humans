@@ -50,7 +50,7 @@ namespace Humans.CityPlanning.Data.Migrations
                     b.HasIndex("CampSeasonId")
                         .IsUnique();
 
-                    b.ToTable("camp_polygons", (string)null);
+                    b.ToTable("city_camp_polygons", (string)null);
                 });
 
             modelBuilder.Entity("Humans.CityPlanning.Domain.CampPolygonHistory", b =>
@@ -84,7 +84,7 @@ namespace Humans.CityPlanning.Data.Migrations
 
                     b.HasIndex("CampSeasonId", "ModifiedAt");
 
-                    b.ToTable("camp_polygon_histories", (string)null);
+                    b.ToTable("city_camp_polygon_history", (string)null);
                 });
 
             modelBuilder.Entity("Humans.CityPlanning.Domain.CityPlanningSettings", b =>
@@ -141,7 +141,7 @@ namespace Humans.CityPlanning.Data.Migrations
                     b.HasIndex("Year")
                         .IsUnique();
 
-                    b.ToTable("city_planning_settings", (string)null);
+                    b.ToTable("city_settings", (string)null);
                 });
 #pragma warning restore 612, 618
         }

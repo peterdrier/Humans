@@ -1,4 +1,6 @@
 
+using NodaTime;
+
 namespace Humans.Camps.Services;
 
 internal sealed record CampRolesPanelData(
@@ -15,4 +17,7 @@ internal sealed record CampRolesPanelRow(
 internal sealed record CampRolesPanelSlot(
     Guid AssignmentId,
     Guid CampMemberId,
-    Guid UserId);
+    Guid UserId)
+{
+    public Instant AssignedAt { get; init; }
+}

@@ -36,7 +36,7 @@ Priority is impact, not a requirement to serialize every PR. Independent package
 
 The single highest-leverage package: every section Users or Auth references is pinned active until this lands.
 
-- [ ] Rework deletion, email reconciliation, suspension and merge participation around existing contributor patterns. Audit `AccountDeletionService`, `UserEmailService`, `NonCompliantMemberSuspension`, `UserParticipationBackfillService`, `UsersAudienceService`, and Governance's `MembershipCalculator` first.
+- [ ] Rework deletion, email reconciliation, suspension and merge participation around existing contributor patterns. Audit `AccountDeletionService`, `UserEmailService`, `NonCompliantMemberSuspension`, `UserParticipationBackfillService`, and `UsersAudienceService` first.
 - [ ] Profile and admin-detail composition: adopt the `IUserPart` fan-out already designed in nobodies-collective/Humans#1112 and #1044, so the profile page, `AdminHumanDetailViewModelBuilder`, `ISectionAdminTiles` and `ISectionThingsToDo` in Users compose contributed pieces instead of naming Governance, Tickets, Shifts, Campaigns, Camps and Events. This is what removes the Camps and Events implementation references from `Humans.Users.csproj`.
 - [x] Users' outbound cache flushes are gone: each cache owner evicts on its own writes or reads live.
 - [ ] Auth: `RoleAssignmentService` reaches Teams, Email and Notifications. Respect the existing Peter-led Auth inversion work and its `DontFix` markers rather than silently absorbing it into this task; record what remains.

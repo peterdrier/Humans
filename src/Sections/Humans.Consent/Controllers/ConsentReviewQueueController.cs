@@ -234,15 +234,14 @@ internal sealed class ConsentReviewQueueController(
     private static ConsentReviewQueueItemViewModel MapToItem(UserInfo info, ReviewQueueData data)
     {
         var progress = data.ConsentProgress.GetValueOrDefault(info.Id);
-        var profile = info.Profile!;
         return new ConsentReviewQueueItemViewModel
         {
             UserId = info.Id,
-            LegalName = profile.FullName,
+            LegalName = info.FullName,
             Email = info.Email ?? string.Empty,
             ConsentCheckStatus = data.Reviews.GetValueOrDefault(info.Id)?.Status,
             MembershipTier = data.Tiers.GetValueOrDefault(info.Id, MembershipTier.Volunteer),
-            ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
+            ProfileCreatedAt = info.Profile!.CreatedAt.ToDateTimeUtc(),
             HasPendingApplication = data.PendingAppUserIds.Contains(info.Id),
             ConsentCount = progress?.Signed ?? 0,
             RequiredConsentCount = progress?.Required ?? 0

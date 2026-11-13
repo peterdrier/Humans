@@ -47,7 +47,7 @@ public sealed class ProfileCardViewComponentTests
         var survivorId = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(
-            UserInfo.Create(new User { Id = targetId }, [], [], UserFixtures.Profile(firstName: "Private name")));
+            UserInfo.Create(new User { Id = targetId, FirstName = "Private name" }, [], [], UserFixtures.Profile()));
         users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(viewerExists
             ? UserInfo.Create(new User { Id = survivorId }, [], [], null) : null);
         var roles = Substitute.For<IRoleAssignmentService>();
@@ -199,9 +199,8 @@ public sealed class ProfileCardViewComponentTests
     {
         var userId = Guid.NewGuid();
         const string name = "Canonical <script>&";
-        var profile = UserFixtures.Profile(burnerName: "Stale profile name", firstName: "Legal first",
-            lastName: "Legal last", boardNotes: "Private board notes", profilePictureContentType: "image/png");
-        var info = UserInfo.Create(new User { Id = userId, BurnerName = name }, [], [], profile);
+        var profile = UserFixtures.Profile(boardNotes: "Private board notes", profilePictureContentType: "image/png");
+        var info = UserInfo.Create(new User { Id = userId, BurnerName = name, FirstName = "Legal first", LastName = "Legal last" }, [], [], profile);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         var teams = Substitute.For<ITeamService>();

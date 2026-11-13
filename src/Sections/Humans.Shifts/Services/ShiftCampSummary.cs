@@ -69,21 +69,19 @@ internal sealed class ShiftCampSummary(
         var userIds = totals.Select(t => t.UserId).ToList();
         var userInfos = await UserService.GetUserInfosAsync(userIds, ct);
 
-        var campByUser = new Dictionary<Guid, CampSeasonInfo?>();
-        foreach (var userId in userIds)
-            campByUser[userId] = (await CampService.GetCampUserInfoAsync(userId, ct)).Season;
+        var campRoster = await CampService.GetCampsForEventAsync(activeEvent.Id, ct);
 
         var humans = totals
             .Select(t =>
             {
-                var camp = campByUser[t.UserId];
+                var camp = CampUserInfo.Resolve(campRoster, activeEvent.Id, t.UserId).Season;
                 var name = userInfos.TryGetValue(t.UserId, out var ui) ? ui.BurnerName : string.Empty;
                 return new ShiftSummaryHumanRow(
                     t.UserId, name, camp?.CampId, camp?.Name, t.Hours, t.Count);
             })
             .ToList();
 
-        var camps = await BuildCampPivotAsync(humans, ct);
+        var camps = BuildCampPivot(humans, campRoster, activeEvent.Id);
 
         IReadOnlyList<ShiftSummaryTeamLink> teamLinks = scope == ShiftSummaryScope.Global
             ? await BuildDepartmentLinksAsync(activeEvent.Id, ct)
@@ -100,8 +98,8 @@ internal sealed class ShiftCampSummary(
 
     // Left-joins the active-camp roster so camps with nobody in scope show as zero rows; campless humans get a
     // CampId-null bucket.
-    private async Task<IReadOnlyList<ShiftSummaryCampRow>> BuildCampPivotAsync(
-        IReadOnlyList<ShiftSummaryHumanRow> humans, CancellationToken ct)
+    private static IReadOnlyList<ShiftSummaryCampRow> BuildCampPivot(
+        IReadOnlyList<ShiftSummaryHumanRow> humans, IReadOnlyList<CampInfo> roster, Guid eventSettingsId)
     {
         var byCamp = humans
             .Where(h => h.CampId is not null)
@@ -114,15 +112,12 @@ internal sealed class ShiftCampSummary(
                     Count: g.Sum(h => h.Count),
                     Name: g.Select(h => h.CampName).FirstOrDefault(n => n is not null)));
 
-        var publicYear = (await CampService.GetSettingsAsync(ct)).PublicYear;
-        var roster = await CampService.GetCampsForYearAsync(publicYear, ct);
-
         var rows = new List<ShiftSummaryCampRow>();
         var seen = new HashSet<Guid>();
 
         foreach (var camp in roster)
         {
-            var season = camp.GetSeasonForYear(publicYear);
+            var season = camp.GetSeasonForEvent(eventSettingsId);
             if (season is not { Status: CampSeasonStatus.Active or CampSeasonStatus.Full })
                 continue;
 

@@ -111,7 +111,7 @@ Emergency contact fields are marked `[PersonalData]` and included in the data ex
 
 ## Membership Status
 
-`MembershipStatus` is not stored on `Profile`; Governance's `IMembershipCalculator` (`Humans.Governance.Contracts.MembershipStatus`) computes it from the account state, active roles or Volunteers-team membership, and consent deadlines. The Consent Coordinator review is an independent annotation and does not affect this status or require an approval banner on the profile.
+No membership status is stored on `Profile` or computed: the account state is `UserState` on the user. The Consent Coordinator review is an independent annotation and does not affect this status or require an approval banner on the profile.
 
 | Status | Description | Visual |
 |--------|-------------|--------|
@@ -271,6 +271,8 @@ ProcessAccountDeletionsJob (daily)
         ├── Audit log: AccountAnonymized
         └── AccountDeleted confirmation email to the original address
 ```
+
+After anonymization commits, its no-persistence confirmation completes independently of job shutdown. Cancellation is checked before starting another account and propagates without being aggregated as a per-account failure.
 
 #### Google Workspace Deprovisioning
 

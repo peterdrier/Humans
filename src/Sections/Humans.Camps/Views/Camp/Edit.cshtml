@@ -9,7 +9,9 @@
     <span>@SharedLocalizer["Common_Edit"]</span>
 }
 
-<h1 class="mb-4">@SharedLocalizer["Common_Edit"] @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
+<page-header>
+    <page-header-title>@SharedLocalizer["Common_Edit"] @Model.Name <small class="text-muted">(@Model.Year)</small></page-header-title>
+</page-header>
 
 
 <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -242,7 +244,7 @@
                 <p class="card-text small text-muted mb-3">
                     @Localizer["Camps_Edit_MembersRolesDescription"]
                 </p>
-                <a asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-primary">
+                <a asp-action="Members" asp-route-slug="@Model.Slug" asp-route-eventSettingsId="@Model.EventSettingsId" class="btn btn-primary">
                     <i class="fa-solid fa-users-gear me-1"></i> @Localizer["Camps_Edit_OpenMembersRoles"]
                 </a>
             </div>

@@ -70,9 +70,6 @@ internal sealed class AuditLogService(
             action.Name, entityType, entityId, actorUserId, description);
     }
 
-    private static IReadOnlyList<string> Names(IReadOnlyList<AuditActionDefinition> actions) =>
-        actions.Select(a => a.Name).ToList();
-
     private async Task PersistAsync(AuditLogEntry entry)
     {
         try
@@ -178,12 +175,6 @@ internal sealed class AuditLogService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
-
-    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditActionDefinition> actions,
-        CancellationToken ct = default) =>
-        repo.GetEntityIdsForEntityTypeActionsAsync(entityType, Names(actions), ct);
 
     public async Task<IReadOnlyList<LegacyGoogleSyncAuditRow>> GetLegacyGoogleSyncRowsAsync(
         CancellationToken ct = default)

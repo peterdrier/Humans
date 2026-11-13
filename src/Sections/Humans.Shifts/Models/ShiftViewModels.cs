@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using Humans.Base;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
@@ -20,10 +21,6 @@ internal sealed class EventSettingsViewModel : IValidatableObject
 {
     [BindRequired]
     public bool IsShiftBrowsingOpen { get; set; }
-    [BindRequired]
-    public int? GlobalVolunteerCap { get; set; }
-    [BindRequired]
-    public int ReminderLeadTimeHours { get; set; } = 24;
 
     [BindRequired]
     public int FirstCrewStartOffset { get; set; } = -25;
@@ -513,7 +510,6 @@ internal sealed class VolunteerSearchResult
     public List<string> Skills { get; set; } = [];
     public List<string> Quirks { get; set; } = [];
     public List<string> Languages { get; set; } = [];
-    public string? DietaryPreference { get; set; }
     public int BookedShiftCount { get; set; }
     public bool HasOverlap { get; set; }
     public bool IsInPool { get; set; }
@@ -538,7 +534,7 @@ internal sealed class ShiftSignupsViewModel
     public List<ShiftSignupsRow> Pending { get; set; } = [];
     public List<ShiftSignupsRow> Past { get; set; } = [];
     public BurnSettingsInfo? EventSettings { get; set; }
-    public ShiftSignupsViewMode ViewMode { get; set; }
+    public ProfileCardViewMode ViewMode { get; set; }
     public Guid UserId { get; set; }
 }
 
@@ -680,3 +676,8 @@ internal sealed class EventRotaRowViewModel
     public IReadOnlyList<Guid> FilterTagIds { get; set; } = [];
     public string? Sort { get; set; }
 }
+
+internal sealed record ProfileShiftsViewModel(Guid UserId, IReadOnlyList<NoShowHistoryItem> NoShowHistory);
+
+internal sealed record NoShowHistoryItem(
+    string ShiftLabel, string DepartmentName, string ShiftDateLabel, Guid? MarkedByUserId, string? MarkedAtLabel);

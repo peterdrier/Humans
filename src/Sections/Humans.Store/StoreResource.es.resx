@@ -133,4 +133,5 @@
   <data name="Store_UnknownCounterparty" xml:space="preserve"><value>(desconocido)</value></data>
   <data name="Store_CheckoutCampOrder" xml:space="preserve"><value>Pedido del campamento</value></data>
   <data name="Store_PaymentPrecision" xml:space="preserve"><value>Introduce un importe con un máximo de dos decimales.</value></data>
+  <data name="Store_PaymentAboveCheckoutLimit" xml:space="preserve"><value>El importe del pago no puede superar los {0:0.00} EUR por operación. Paga el saldo restante en otra operación.</value></data>
 </root>

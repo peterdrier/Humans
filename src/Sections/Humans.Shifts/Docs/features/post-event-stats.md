@@ -58,7 +58,7 @@ Asked for in nobodies-collective/Humans#161 (partial scope — CSV exports are d
 
 ## Data Model
 
-No new tables or columns. Derived from existing `event_settings`, `rotas`, `shifts`, `shift_signups`, and `teams`.
+No new tables or columns. Derived from existing `shift_event_settings`, `shift_rotas`, `shifts`, `shift_signups`, and `teams`.
 
 ### Period assignment
 

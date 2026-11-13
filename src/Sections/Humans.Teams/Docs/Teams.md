@@ -51,7 +51,7 @@ Named role slots on a team: name, description, slot count, a `SlotPriority` per 
 
 **Table:** `team_early_entry_grants`
 
-One early-entry grant: a human may enter on a date for a named project, on a team with `EarlyEntryEnabled`. Projected to the EarlyEntry roster as `"{TeamName}: {ProjectName}"`.
+One event-scoped early-entry grant: a human may enter on a date for a named project, on a team with `EarlyEntryEnabled`. `EventSettingsId` identifies the Settings event and is nullable only for legacy grants awaiting review. Only grants for the active event contribute to the EarlyEntry roster as `"{TeamName}: {ProjectName}"`; dates and years never infer an event.
 
 ### Enums
 
@@ -152,6 +152,8 @@ One early-entry grant: a human may enter on a date for a named project, on a tea
 - A private role (`IsPublic = false`) shows only to Admin, Board, TeamsAdmin and the team's direct or inherited coordinators; coordinating one team never reveals another team's private roles.
 - Slugs are unique across `Slug` and `CustomSlug` and both resolve. A rename regenerates the slug unless the new one is reserved or taken, in which case the old URL stays.
 - An early-entry grant is created only while its team has `EarlyEntryEnabled`. Turning the flag off, or deactivating the team, keeps the grants but drops them from the roster. Every grant mutation is audited (`EarlyEntryGranted`, `EarlyEntryUpdated`, `EarlyEntryRevoked`); removing an absent grant is a no-op.
+- Early-entry add/edit requires an explicit event: empty, unknown or Deleted events are refused before writes; Inactive events remain valid for planning. Add defaults to the active event, while edit uses the stored event. Legacy grants stay visible with a review warning until an operator selects an event and saves; the nullable-column migration performs no backfill. Add/edit audit text names the event, and the `TeamEarlyEntry` GDPR slice includes `EventSettingsId`; erasure and merge cover all events. Reactivated teams contribute kept grants only when their selected event is active.
+- Editing a prefix that matches a previously unlinked Google group redisplays an unchecked reactivation confirmation. Confirmation is tied to that archived resource ID; a changed target requires fresh confirmation. Confirming restores the resource through Manage; leaving it unchecked keeps the link pending. GoogleIntegration reuses the archived row and retires only its selected previous group link in one save, preserving other manually linked groups.
 - Teams owns its access rule for send as team (`TeamMessageOptionsProvider`): an active team the viewer coordinates, whose Google Group is linked, active, synced at least once and error-free. The recipient must accept facilitated messages and cannot be the sender. Each message is audited `FacilitatedMessageSent`; the audit names the team and never its address.
 - Expected refusals (missing record, no permission, validation) return a result before anything is written or audited, and log at Warning without a stack. Unexpected failures propagate.
 - Mutations of the cached team graph invalidate the whole cache, even when the inner call throws after writing. Pending join-request reads bypass the cache.
@@ -191,9 +193,9 @@ One early-entry grant: a human may enter on a date for a named project, on a tea
 - **EarlyEntry:** Teams implements `IEarlyEntryProvider` for the roster and reads `EarlyEntryRoles`.
 - **Tickets.Contracts:** `ITicketService.FindCurrentEventAttendeeByBarcodeAsync` for the early-entry ticket lookup.
 - **Camps.Contracts:** `ICampLeadDirectory` for Barrio Leads.
-- **Governance.Contracts:** `IGovernanceService` and `IMembershipCalculator` for the tier teams.
-- **Consent:** `IConsentService` for the Volunteers and tier-team consent-review gate.
-- **Settings:** `ISettingsService` for the active event on the team page.
+- **Governance.Contracts:** `IGovernanceService` for the tier teams.
+- **Consent:** `IConsentService` for the system teams' required-consents check and the consent-review gate.
+- **Settings:** `ISettingsService` for the active event on the team page, the early-entry event picker, event validation and the active-event roster filter. Grants store an event ID without a cross-section EF relationship.
 - **Issues:** Teams implements `IIssueQueueOwner` for its `Teams` issue queue.
 - **Base (`Humans.Base.Gdpr`):** `IUserDataContributor` (export and erasure).
 

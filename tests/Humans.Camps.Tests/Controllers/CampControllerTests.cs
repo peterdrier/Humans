@@ -45,6 +45,140 @@ public class CampControllerTests
     private readonly IStringLocalizer<CampsResource> _campsLocalizer = Substitute.For<IStringLocalizer<CampsResource>>();
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
 
+    public enum ContactSurface { Form, Redisplay, Send }
+    public enum ContactViewer { Other, Lead, CampsAdmin, Admin }
+
+    [HumansTheory]
+    [InlineData(ContactSurface.Form)]
+    [InlineData(ContactSurface.Redisplay)]
+    [InlineData(ContactSurface.Send)]
+    public async Task Contact_UsesTheActiveEventsSeasonForNamesAndLeadNotices(ContactSurface surface)
+    {
+        using var request = new CancellationTokenSource();
+        var senderId = Guid.NewGuid();
+        var activeLead = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Active camp", CampSeasonStatus.Active, activeLead);
+        var active = camp.Seasons[0];
+        var other = active with { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Name = "Other event", LeadUserIds = [Guid.NewGuid()] };
+        var future = MakeCamp("alpha", "Future camp", CampSeasonStatus.Active, Guid.NewGuid(), year: 2027).Seasons[0]
+            with
+        { CampId = camp.Id };
+        camp = camp with { Seasons = [future, other, active] };
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
+        _users.GetUserInfoAsync(senderId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = senderId, Email = "sender@example.com", BurnerName = "Sender" }, [], [], null));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _contacts.SendFacilitatedMessageAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>()).Returns(new CampContactResult(true, false));
+        var controller = BuildController(senderId);
+        controller.HttpContext.RequestAborted = request.Token;
+        var model = new CampContactViewModel { Message = "Hello", CampName = "Posted name", IncludeContactInfo = false };
+        if (surface == ContactSurface.Redisplay) controller.ModelState.AddModelError("Message", "Required");
+
+        var result = surface == ContactSurface.Form
+            ? await controller.Contact(camp.Slug)
+            : await controller.Contact(camp.Slug, model);
+
+        if (surface == ContactSurface.Send)
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _contacts.Received(1).SendFacilitatedMessageAsync(camp.Id, camp.ContactEmail, "Active camp",
+                senderId, "Sender", "sender@example.com", "Hello", false,
+                Arg.Is<IReadOnlyList<Guid>>(ids => ids.SequenceEqual(new[] { activeLead })), $"/Barrios/{camp.Slug}");
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CampContactViewModel>()
+                .Subject.CampName.Should().Be("Active camp");
+            _contacts.ReceivedCalls().Should().BeEmpty();
+        }
+        await _camps.Received(1).GetSettingsAsync(request.Token);
+    }
+
+    [HumansTheory]
+    [InlineData(ContactSurface.Form, ContactViewer.Other)]
+    [InlineData(ContactSurface.Send, ContactViewer.Other)]
+    [InlineData(ContactSurface.Form, ContactViewer.Lead)]
+    [InlineData(ContactSurface.Send, ContactViewer.Lead)]
+    [InlineData(ContactSurface.Form, ContactViewer.CampsAdmin)]
+    [InlineData(ContactSurface.Send, ContactViewer.CampsAdmin)]
+    [InlineData(ContactSurface.Form, ContactViewer.Admin)]
+    [InlineData(ContactSurface.Send, ContactViewer.Admin)]
+    public async Task Contact_NonPublicSeason_UsesTheDetailPagesViewerGate(ContactSurface surface, ContactViewer viewer)
+    {
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("private", "Private camp", CampSeasonStatus.Pending,
+            viewer == ContactViewer.Lead ? userId : Guid.NewGuid());
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(userId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(viewer == ContactViewer.Other ? AuthorizationResult.Failed() : AuthorizationResult.Success());
+        _contacts.SendFacilitatedMessageAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>()).Returns(new CampContactResult(true, false));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        if (viewer is ContactViewer.Admin or ContactViewer.CampsAdmin)
+            controller.User.AddIdentity(new ClaimsIdentity([new Claim(ClaimTypes.Role,
+                viewer == ContactViewer.Admin ? RoleNames.Admin : CampsRoles.CampsAdmin)]));
+
+        var result = surface == ContactSurface.Form
+            ? await controller.Contact(camp.Slug)
+            : await controller.Contact(camp.Slug, new CampContactViewModel { Message = "Hello" });
+
+        if (viewer == ContactViewer.Other)
+        {
+            result.Should().BeOfType<NotFoundResult>();
+            _contacts.ReceivedCalls().Should().BeEmpty();
+        }
+        else if (surface == ContactSurface.Form)
+            result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CampContactViewModel>()
+                .Subject.CampName.Should().Be("Private camp");
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            _contacts.ReceivedCalls().Should().ContainSingle();
+        }
+    }
+
+    [HumansFact]
+    public async Task Contact_MissingActor_CannotLoadTheForm()
+    {
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+
+        var result = await BuildController(Guid.NewGuid()).Contact(camp.Slug);
+
+        result.Should().BeOfType<UnauthorizedResult>();
+        _contacts.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Contact_CancelledDisplaySettingsRead_DoesNotSend()
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active);
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(userId));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Settings2026();
+        });
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestAborted = request.Token;
+
+        var send = () => controller.Contact(camp.Slug, new CampContactViewModel { Message = "Hello" });
+
+        await send.Should().ThrowAsync<OperationCanceledException>();
+        _contacts.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData(false, "AcceptingMembers")]
     [InlineData(false, "KidsWelcome")]
@@ -183,6 +317,7 @@ public class CampControllerTests
         }
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>())
             .Returns(call => ReadCampAsync(call.Arg<CancellationToken>()));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
         _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(call => ReadActorAsync(call.Arg<CancellationToken>()));
         _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
@@ -207,7 +342,8 @@ public class CampControllerTests
         };
         Assert.IsType<RedirectToActionResult>(await InvokeAsync());
         var mutation = Assert.Single(_camps.ReceivedCalls()
-            .Where(call => !string.Equals(call.GetMethodInfo().Name, nameof(ICampManagement.GetCampBySlugAsync), StringComparison.Ordinal))
+            .Where(call => call.GetMethodInfo().Name is not
+                (nameof(ICampManagement.GetCampBySlugAsync) or nameof(ICampManagement.GetSettingsAsync)))
             .Concat(_contacts.ReceivedCalls()));
         foreach (var token in mutation.GetArguments().OfType<CancellationToken>())
             Assert.Equal(CancellationToken.None, token);
@@ -392,6 +528,7 @@ public class CampControllerTests
             new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(userId), "Viewer", call.Arg<CancellationToken>())));
         _camps.GetCampEditDataAsync(camp.Id, null, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<CampEditData?>(MakeEditData(camp, season), "EditData", call.Arg<CancellationToken>()));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
         _authorization.AuthorizeAsync(
             Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -1089,6 +1226,196 @@ public class CampControllerTests
         vm.Camps.Select(c => c.Id).Should().Equal(leadCamp.Id, alphabeticalFirst.Id);
     }
 
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Edit_RedisplayMetadata_IsScopedToTheAuthorizedCamp(bool saveRefused, bool foreignSeason)
+    {
+        var actorId = Guid.NewGuid();
+        var camp = MakeCamp("owned", "Owned camp", CampSeasonStatus.Active, actorId);
+        var season = camp.Seasons.Single();
+        var other = MakeCamp("other", "Other camp", CampSeasonStatus.Pending);
+        var otherSeason = other.Seasons.Single() with { EventSettingsId = Guid.NewGuid() };
+        var imageId = Guid.NewGuid();
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp,
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId)
+            .Returns(CampUpdateResult.Failure("Camps_Flash_UpdateFailed"));
+        _camps.GetCampEditDataAsync(camp.Id, season.EventSettingsId)
+            .Returns(MakeEditData(camp, season) with { Images = [new CampImageSummary(imageId, "/owned.jpg", 0)] });
+        _camps.GetCampEditDataAsync(other.Id, otherSeason.EventSettingsId)
+            .Returns(MakeEditData(other, otherSeason) with { Images = [new CampImageSummary(Guid.NewGuid(), "/other.jpg", 0)] });
+        var model = new CampEditViewModel
+        {
+            CampId = other.Id,
+            EventSettingsId = otherSeason.EventSettingsId,
+            SeasonId = foreignSeason ? otherSeason.Id : season.Id,
+            Name = "Submitted edit",
+            ContactEmail = camp.ContactEmail
+        };
+        var controller = BuildController(actorId);
+        if (!saveRefused) controller.ModelState.AddModelError(nameof(model.Name), "Invalid name");
+
+        var result = await controller.Edit(camp.Slug, model);
+
+        result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(model);
+        model.Name.Should().Be("Submitted edit");
+        await _camps.DidNotReceive().GetCampEditDataAsync(other.Id, Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+        if (foreignSeason)
+        {
+            model.Images.Should().BeEmpty();
+            _camps.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name,
+                    nameof(ICampManagement.GetCampEditDataAsync), StringComparison.Ordinal))
+                .Should().BeEmpty();
+        }
+        else
+        {
+            model.Images.Should().ContainSingle().Which.Id.Should().Be(imageId);
+            await _camps.Received(1).GetCampEditDataAsync(camp.Id, season.EventSettingsId);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(nameof(CampController.Edit), true)]
+    [InlineData(nameof(CampController.Withdraw), true)]
+    [InlineData(nameof(CampController.MarkFull), true)]
+    [InlineData(nameof(CampController.WithdrawMembershipRequest), true)]
+    [InlineData(nameof(CampController.LeaveMembership), true)]
+    [InlineData(nameof(CampController.ApproveMembership), true)]
+    [InlineData(nameof(CampController.ApproveMembership), false)]
+    [InlineData(nameof(CampController.RejectMembership), true)]
+    [InlineData(nameof(CampController.RemoveMembership), true)]
+    [InlineData(nameof(CampController.SetMemberEarlyEntry), true)]
+    [InlineData(nameof(CampController.SetMemberEarlyEntry), false)]
+    [InlineData(nameof(CampController.UnassignRole), true)]
+    [InlineData(nameof(CampController.UnassignRole), false)]
+    public async Task SeasonWrites_ReturnToTheAffectedEvent(string action, bool succeeded)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var actorId = Guid.NewGuid();
+        var member = MakeSeasonMember(actorId);
+        var camp = MakeCamp("garden", "Default event", CampSeasonStatus.Active, actorId);
+        var selected = camp.Seasons.Single() with
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = Guid.NewGuid(),
+            Name = "Selected event",
+            Members = [member]
+        };
+        camp = camp with { Seasons = [camp.Seasons.Single(), selected] };
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actorId));
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actorId).Returns(CampUpdateResult.Success());
+        _camps.WithdrawSeasonAsync(camp.Id, selected.Id, actorId).Returns(CampUpdateResult.Success());
+        _camps.MarkSeasonFullAsync(camp.Id, selected.Id, actorId).Returns(CampUpdateResult.Success());
+        var membershipResult = succeeded ? CampMembershipMutationResult.Success()
+            : CampMembershipMutationResult.Failure("Camps_Flash_CampNotFound");
+        _camps.WithdrawCampMembershipRequestAsync(member.Id, actorId).Returns(membershipResult);
+        _camps.LeaveCampAsync(member.Id, actorId).Returns(membershipResult);
+        _camps.ApproveCampMemberAsync(camp.Id, member.Id, actorId).Returns(membershipResult);
+        _camps.RejectCampMemberAsync(camp.Id, member.Id, actorId).Returns(membershipResult);
+        _camps.RemoveCampMemberAsync(camp.Id, member.Id, actorId).Returns(membershipResult);
+        _camps.SetEarlyEntryAsync(camp.Id, member.Id, true, actorId, ct)
+            .Returns(succeeded ? SetEarlyEntryOutcome.Success : SetEarlyEntryOutcome.SlotCapExceeded);
+        var assignmentId = Guid.NewGuid();
+        _roles.GetAssignmentByIdAsync(assignmentId, ct)
+            .Returns(new CampRoleAssignmentInfo(assignmentId, selected.Id, Guid.NewGuid(), member.Id));
+        _roles.UnassignAsync(assignmentId, actorId, ct).Returns(succeeded);
+        var controller = BuildController(actorId);
+
+        var result = action switch
+        {
+            nameof(CampController.Edit) => await controller.Edit(camp.Slug, new CampEditViewModel
+            {
+                SeasonId = selected.Id,
+                EventSettingsId = Guid.NewGuid(),
+                Name = selected.Name,
+                ContactEmail = camp.ContactEmail
+            }),
+            nameof(CampController.Withdraw) => await controller.Withdraw(camp.Slug, selected.Id),
+            nameof(CampController.MarkFull) => await controller.MarkFull(camp.Slug, selected.Id),
+            nameof(CampController.WithdrawMembershipRequest) => await controller.WithdrawMembershipRequest(camp.Slug, member.Id),
+            nameof(CampController.LeaveMembership) => await controller.LeaveMembership(camp.Slug, member.Id),
+            nameof(CampController.ApproveMembership) => await controller.ApproveMembership(camp.Slug, member.Id),
+            nameof(CampController.RejectMembership) => await controller.RejectMembership(camp.Slug, member.Id),
+            nameof(CampController.RemoveMembership) => await controller.RemoveMembership(camp.Slug, member.Id),
+            nameof(CampController.SetMemberEarlyEntry) => await controller.SetMemberEarlyEntry(camp.Slug, member.Id, true, ct),
+            nameof(CampController.UnassignRole) => await controller.UnassignRole(camp.Slug, assignmentId, ct),
+            _ => throw new ArgumentOutOfRangeException(nameof(action))
+        };
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(action switch
+        {
+            nameof(CampController.Edit) => nameof(CampController.Edit),
+            nameof(CampController.Withdraw) or nameof(CampController.MarkFull)
+                or nameof(CampController.WithdrawMembershipRequest) or nameof(CampController.LeaveMembership)
+                => nameof(CampController.SeasonDetails),
+            _ => nameof(CampController.Members)
+        });
+        redirect.RouteValues!["slug"].Should().Be(camp.Slug);
+        redirect.RouteValues["eventSettingsId"].Should().Be(selected.EventSettingsId);
+    }
+
+    [HumansTheory]
+    [InlineData(CampSeasonStatus.Active)]
+    [InlineData(CampSeasonStatus.Full)]
+    [InlineData(CampSeasonStatus.Pending)]
+    [InlineData(CampSeasonStatus.Rejected)]
+    public async Task Members_RolePanel_UsesTheSelectedSeason(CampSeasonStatus status)
+    {
+        var leadId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var camp = MakeCamp("garden", "Selected event", status, leadId, members: [MakeSeasonMember(memberId)]);
+        var selected = camp.Seasons.Single();
+        var other = selected with
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = Guid.NewGuid(),
+            Status = CampSeasonStatus.Active,
+            Name = "Other event",
+            Members = []
+        };
+        camp = camp with { Seasons = [other, selected] };
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _camps.GetCampEditDataAsync(camp.Id, selected.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(MakeEditData(camp, selected));
+        _users.GetUserInfoAsync(leadId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(leadId));
+        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [memberId] = MakeUserInfo(memberId) });
+        _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, ShiftUserSummary> { [memberId] = MakeShiftUserSummary(memberId) });
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new CampRolesPanelData(call.ArgAt<Guid>(0), []));
+
+        var result = await BuildController(leadId).Members(camp.Slug, selected.EventSettingsId,
+            TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CampEditViewModel>().Subject;
+        model.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
+        if (selected.IsPublic)
+        {
+            model.RolesPanel.Should().NotBeNull();
+            model.RolesPanel!.CampSeasonId.Should().Be(selected.Id);
+            model.RolesPanel!.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
+            await _roles.Received(1).BuildPanelAsync(selected.Id, TestContext.Current.CancellationToken);
+        }
+        else
+        {
+            model.RolesPanel.Should().BeNull();
+            _roles.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
     [HumansFact]
     public async Task Members_Shows_Active_Event_Shift_Counts_From_Shift_View()
     {
@@ -1096,12 +1423,13 @@ public class CampControllerTests
         var zeroShiftMemberId = Guid.NewGuid();
         var oneShiftMemberId = Guid.NewGuid();
         var fivePlusShiftMemberId = Guid.NewGuid();
+        var earliest = Instant.FromUtc(2026, 1, 1, 0, 0);
 
         var members = new[]
         {
-            MakeSeasonMember(zeroShiftMemberId),
-            MakeSeasonMember(oneShiftMemberId),
-            MakeSeasonMember(fivePlusShiftMemberId),
+            MakeSeasonMember(zeroShiftMemberId) with { RequestedAt = earliest.Plus(Duration.FromDays(2)) },
+            MakeSeasonMember(oneShiftMemberId) with { RequestedAt = earliest },
+            MakeSeasonMember(fivePlusShiftMemberId) with { RequestedAt = earliest.Plus(Duration.FromDays(1)) },
         };
         var camp = MakeCamp("garden-of-joy", "Garden of Joy", CampSeasonStatus.Active, leadUserId, members: members);
         var season = camp.Seasons.Single();
@@ -1122,7 +1450,12 @@ public class CampControllerTests
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
             .Returns(new CampRolesPanelData(season.Id, [
-                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [], 1, false, 0),
+                new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [
+                    new CampRolesPanelSlot(Guid.NewGuid(), members[0].Id, zeroShiftMemberId)
+                    { AssignedAt = earliest.Plus(Duration.FromDays(1)) },
+                    new CampRolesPanelSlot(Guid.NewGuid(), members[1].Id, oneShiftMemberId)
+                    { AssignedAt = earliest },
+                ], 0, false, 2),
                 new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Alpha", SortOrder = 1 }, [], 1, false, 0),
                 new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Priority", SortOrder = -1 }, [], 1, false, 0),
             ]));
@@ -1149,6 +1482,10 @@ public class CampControllerTests
         var vm = result.Should().BeOfType<ViewResult>().Subject
             .Model.Should().BeOfType<CampEditViewModel>().Subject;
         vm.RolesPanel!.Rows.Select(row => row.Name).Should().Equal("Priority", "Alpha", "Zebra");
+        vm.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
+        vm.RolesPanel.ActiveMembers.Select(m => m.UserId).Should().Equal(oneShiftMemberId, fivePlusShiftMemberId, zeroShiftMemberId);
+        vm.RolesPanel.Rows.Single(row => string.Equals(row.Name, "Zebra", StringComparison.Ordinal)).FilledSlots.Select(s => s.UserId)
+            .Should().Equal(oneShiftMemberId, zeroShiftMemberId);
         vm.ActiveMembers.Single(m => m.UserId == zeroShiftMemberId).EventShiftSignupCount.Should().Be(0);
         vm.ActiveMembers.Single(m => m.UserId == oneShiftMemberId).EventShiftSignupCount.Should().Be(1);
         vm.ActiveMembers.Single(m => m.UserId == fivePlusShiftMemberId).EventShiftSignupCount.Should().Be(5);
@@ -1539,9 +1876,8 @@ public class CampControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId) =>
         UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = "Lead Human" },
             [],
             [],
-            UserFixtures.Profile(
-                burnerName: "Lead Human"));
+            UserFixtures.Profile());
 }

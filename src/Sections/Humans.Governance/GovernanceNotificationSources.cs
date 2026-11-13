@@ -14,6 +14,6 @@ internal sealed class GovernanceNotificationSources : NotificationSourceContribu
 
     public static readonly NotificationSourceDefinition AssemblyVoteOpened = new("AssemblyVoteOpened", MessageCategory.Governance);
 
-    /// <summary>Replaced by the Board voting meter; declared so stored rows still filter and purge.</summary>
+    /// <summary>Retired; declared so stored rows still filter and purge.</summary>
     public static readonly NotificationSourceDefinition ApplicationSubmitted = new("ApplicationSubmitted", MessageCategory.Governance, NotificationInboxGroup.Approvals, Retired: true);
 }

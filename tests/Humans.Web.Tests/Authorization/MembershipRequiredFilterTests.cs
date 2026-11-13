@@ -376,11 +376,16 @@ public class MembershipRequiredFilterTests
         if (nameGateHasNames is { } hasNames)
         {
             var users = Substitute.For<IUserService>();
-            var profile = UserFixtures.Profile(
-                burnerName: hasNames ? "Member" : "", firstName: "Deleted", lastName: "User");
             var info = UserInfo.Create(
-                new User { Id = Guid.NewGuid(), State = state!.Value },
-                [], [], profile);
+                new User
+                {
+                    Id = Guid.NewGuid(),
+                    State = state!.Value,
+                    BurnerName = hasNames ? "Member" : "",
+                    FirstName = "Deleted",
+                    LastName = "User",
+                },
+                [], [], UserFixtures.Profile());
             users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(info);
             var nameFilter = new NameRequiredFilter(users);
             await nameFilter.OnActionExecutionAsync(ctx, async () =>

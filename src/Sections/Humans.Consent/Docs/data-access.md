@@ -14,7 +14,7 @@ owned by the same section's [Consent](#consent) repository below). The inner `IL
 warmed on startup, with a version-id → document-id index). It caches the
 global active-document set behind the every-page consent-banner read and
 the per-version lookup, invalidated wholesale after any persisted
-`legal_documents` / `document_versions` write.
+`consent_legal_documents` / `consent_document_versions` write.
 
 `LegalDocumentSyncService` is the sole writer for `LegalDocuments` /
 `DocumentVersions` — it implements both `ILegalDocumentSyncManagement` (the
@@ -120,9 +120,8 @@ Repository: `IConsentRepository`.
 | ConsentRecords | R/W |
 
 Cross-section calls via `ILegalDocumentSyncManagement`,
-`IHumanLifecycleService`, `IUserService`,
-`IHumansMetrics`, plus `IServiceProvider` to lazy-resolve `IMembershipCalculator`
-(cycle-breaking). Implements
+`IHumanLifecycleService`, `IUserService`, `IHumansMetrics`, and, for the required-consent
+checks in `ConsentCompliance`, `ITeamService` and `IRoleAssignmentService`. Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching
 lives in the decorator.
 
@@ -158,7 +157,7 @@ for writes. No cache.
 
 No repository. The Consent Coordinator review queue: reads reviews through `IConsentService`, people
 through `IUserService`, tiers and pending applications through `IGovernanceService`, signed/required counts
-through `IMembershipCalculator`, and clears or flags through the section's own `IConsentWrite`. No cache.
+through `IConsentService.GetConsentProgressAsync`, and clears or flags through the section's own `IConsentWrite`. No cache.
 
 ### ConsentReminderService (Scoped, internal; implements `IUserDataContributor`)
 

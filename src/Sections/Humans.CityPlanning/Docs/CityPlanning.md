@@ -33,7 +33,7 @@ Interactive map surface: a read-only overview, barrio polygon editing, and conta
 
 Per-year singleton controlling the placement phase and map overlays. The current year is the active event's (`ISettingsService.GetActiveEventSettingsAsync().Year`). Reads never create the row: a year with no row reads as the unpersisted defaults; the first admin write creates it.
 
-**Table:** `city_planning_settings`
+**Table:** `city_settings`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -57,7 +57,7 @@ Per-year singleton controlling the placement phase and map overlays. The current
 
 One polygon per CampSeason representing the camp's placed barrio area.
 
-**Table:** `camp_polygons`
+**Table:** `city_camp_polygons`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -72,7 +72,7 @@ One polygon per CampSeason representing the camp's placed barrio area.
 
 Append-only per design-rules.md, *Append-only entities*. The repository exposes no `UpdateAsync` / `RemoveAsync` — restores call `SavePolygonAndAppendHistoryAsync` with a `"Restored from ..."` note, which both updates the polygon and appends a new history row.
 
-**Table:** `camp_polygon_histories`
+**Table:** `city_camp_polygon_history`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -218,7 +218,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 The internal `CityPlanningReader` owns camp-map enrichment, history, settings and placement-state projections, edit-permission reads, registration-target resolution and GeoJSON export. `CityPlanningService` delegates those reads and retains geometry/settings mutations and audit sequencing. Both reuse the same event-year resolution; active-event anchoring, time-zone evaluation, team and lead checks, read order and cancellation are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `CityPlanningService` (`Humans.CityPlanning.Services`)
-**Owned tables:** `city_planning_settings`, `camp_polygons`, `camp_polygon_histories`
+**Owned tables:** `city_settings`, `city_camp_polygons`, `city_camp_polygon_history`
 **Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22). Own project since G5 (nobodies-collective/Humans#866).
 
 - `CityPlanningService` lives in `Humans.CityPlanning.Services` and never imports `Microsoft.EntityFrameworkCore` — the repository is the only EF consumer. `CityPlanningArchitectureTests` pins the API controller's route prefix only, not this EF boundary.
@@ -248,7 +248,7 @@ The internal `CityPlanningReader` owns camp-map enrichment, history, settings an
 - Season-scoped cascade delete (`DeletePolygonsForCampSeasonsAsync`) — removes a season's polygon and its history rows in one unit of work, and is the one exception to append-only. Reached from Camps through `ICityPlanningWrite.DeleteCampPolygonsForSeasonsAsync` when a camp is deleted.
 - Settings read (`GetSettingsAsync` — null when the year has no row; never writes) and upsert (`GetOrCreateSettingsAsync`, `MutateSettingsAsync` — write paths only). All field-level mutations (barrio override, barrio schedule, container phase, limit zone, official zones, registration info) flow through `MutateSettingsAsync` at the service layer. It returns `Task`, so no EF entity leaves the repository.
 
-Per design-rules.md, *Append-only entities*, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
+Per design-rules.md, *Append-only entities*, `city_camp_polygon_history` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
 
 ## Issue queue
 

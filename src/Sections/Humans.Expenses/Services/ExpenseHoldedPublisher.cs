@@ -55,18 +55,21 @@ internal sealed class ExpenseHoldedPublisher(
             seedAccountNum = priorLinked?.HoldedSupplierAccountNum;
         }
 
+        ct.ThrowIfCancellationRequested();
+        // Keep every vendor result and checkpoint once creditor provisioning starts; a cancelled tail can duplicate payables.
+        var publishCt = CancellationToken.None;
         var holdedContactId = await financeWrite.EnsureCreditorContactAsync(
             creditorUserId, report.PayeeName, burnerName, report.PayeeIban,
-            seedContactId, seedAccountNum, ExpenseReportBackgroundProcessor.OutboxJobName, ct);
+            seedContactId, seedAccountNum, ExpenseReportBackgroundProcessor.OutboxJobName, publishCt);
 
         // Mirror the contact id onto the report (the creditor timeline reads it) before the retryable steps.
-        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, ct);
+        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, null, now, publishCt);
 
         // Reports that predate the account column resolve through their category's mapping; null when there is none,
         // and the doc still creates, just unbooked.
         var holdedAccountId = report.HoldedAccountId
             ?? (report.BudgetCategoryId is { } categoryId
-                ? await finance.GetHoldedAccountIdForCategoryAsync(categoryId, ct)
+                ? await finance.GetHoldedAccountIdForCategoryAsync(categoryId, publishCt)
                 : null);
 
         // 2–4. One purchase doc per bookable line. A report pushed before per-line docs resumes onto its single doc
@@ -74,13 +77,13 @@ internal sealed class ExpenseHoldedPublisher(
         string pushedSummary;
         if (!string.IsNullOrEmpty(report.HoldedDocId))
         {
-            await ResumeLegacySingleDocPushAsync(report, report.HoldedDocId, now, ct);
+            await ResumeLegacySingleDocPushAsync(report, report.HoldedDocId, now, publishCt);
             pushedSummary = $"Pushed to Holded as purchase document {report.HoldedDocId}.";
         }
         else
         {
             pushedSummary = await PushPerLineDocsAsync(
-                report, holdedContactId, holdedAccountId, now, ct);
+                report, holdedContactId, holdedAccountId, now, publishCt);
         }
 
         // 5. Resolve supplierRecord.num now that a payable exists, from the contact mirror (synced once when it lacks
@@ -89,9 +92,9 @@ internal sealed class ExpenseHoldedPublisher(
         int? supplierAccountNum = null;
         try
         {
-            supplierAccountNum = await MirroredAccountNumAsync(holdedContactId, ct);
-            if (supplierAccountNum is null && await holded.SyncContactsAsync(ct))
-                supplierAccountNum = await MirroredAccountNumAsync(holdedContactId, ct);
+            supplierAccountNum = await MirroredAccountNumAsync(holdedContactId, publishCt);
+            if (supplierAccountNum is null && await holded.SyncContactsAsync(publishCt))
+                supplierAccountNum = await MirroredAccountNumAsync(holdedContactId, publishCt);
         }
         catch (HoldedTransientException ex)
         {
@@ -107,12 +110,31 @@ internal sealed class ExpenseHoldedPublisher(
                 "automatic retry; bind manually via POST /Finance/Creditors/Bind",
                 holdedContactId, ex.Message);
         }
-        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, ct);
+        await repo.SetHoldedContactLinkAsync(report.Id, holdedContactId, supplierAccountNum, now, publishCt);
         if (supplierAccountNum is not null)
             await financeWrite.SetCreditorAccountNumAsync(
-                creditorUserId, supplierAccountNum.Value, ExpenseReportBackgroundProcessor.OutboxJobName, ct);
+                creditorUserId, supplierAccountNum.Value, ExpenseReportBackgroundProcessor.OutboxJobName, publishCt);
 
-        await repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
+        await repo.MarkOutboxProcessedAsync(outboxEventId, now, publishCt);
+
+        // So the member's owed balance and the report's ledger match show the new documents now, not after the nightly
+        // sync. Best-effort: the push is done, and the nightly sync catches up whatever this misses.
+        if (supplierAccountNum is { } accountNum)
+        {
+            try
+            {
+                if (!await holded.SyncAccountLedgerAsync(accountNum, CancellationToken.None))
+                    logger.LogWarning(
+                        "Expense report {ReportId} is pushed, but a ledger sync was running: creditor account {Account} shows its old balance until the next sync.",
+                        report.Id, accountNum);
+            }
+            catch (Exception ex) // anything: the money step is done, and what follows audits it
+            {
+                logger.LogWarning(ex,
+                    "Expense report {ReportId} is pushed, but creditor account {Account} could not be re-synced: it shows its old balance until the next sync.",
+                    report.Id, accountNum);
+            }
+        }
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseHoldedPushed,

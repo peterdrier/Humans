@@ -1,0 +1,31 @@
+@model ProfileShiftsViewModel
+
+@await Component.InvokeAsync(typeof(ShiftSignupsViewComponent), new { userId = Model.UserId, viewMode = ProfileCardViewMode.Admin })
+@await Component.InvokeAsync(typeof(VolunteerBuildStripViewComponent), new { userId = Model.UserId })
+
+@if (Model.NoShowHistory.Count > 0)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> @Localizer["Shifts_Profile_NoShowHistory", Model.NoShowHistory.Count]</h5>
+        </div>
+        <div class="card-body p-0">
+            @{
+                Func<NoShowHistoryItem, IHtmlContent> reviewerCell = @<text>
+                    @if (item.MarkedByUserId is { } reviewerId)
+                    {
+                        <vc:human user-id="@reviewerId" link="None" />
+                    }
+                </text>;
+                var noShowTable = TableModel.For(Model.NoShowHistory)
+                    .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
+                    .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
+                    .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel, c => c.Css("text-nowrap"))
+                    .Template(Localizer["Shifts_Profile_MarkedBy"].Value, reviewerCell)
+                    .Column(Localizer["Shifts_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
+                    .Build();
+            }
+            <partial name="_Table" model="noShowTable" />
+        </div>
+    </div>
+}

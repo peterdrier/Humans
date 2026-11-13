@@ -11,6 +11,7 @@ using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using NodaTime.Text;
+using Humans.Settings.Contracts;
 
 namespace Humans.Teams.Controllers;
 
@@ -24,7 +25,8 @@ internal sealed class TeamAdminController(
     IAuthorizationService authorizationService,
     ILogger<TeamAdminController> logger,
     IStringLocalizer<TeamsResource> localizer,
-    ITicketService tickets)
+    ITicketService tickets,
+    ISettingsService settings)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly TeamMembersPageBuilder membersPageBuilder = new(teamService, teamResourceService, userService);
@@ -140,7 +142,7 @@ internal sealed class TeamAdminController(
         var rows = members
             .Select(m => new TeamRosterRowViewModel(
                 m.UserId,
-                infos.GetValueOrDefault(m.UserId)?.Profile?.FullName ?? string.Empty,
+                infos.GetValueOrDefault(m.UserId)?.FullName ?? string.Empty,
                 m.JoinedAt))
             .OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -633,7 +635,7 @@ internal sealed class TeamAdminController(
         }
 
         var result = await _teamService.AddEarlyEntryGrantAsync(
-            team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+            team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, input.EventSettingsId.GetValueOrDefault(), ct);
         if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Early entry grant refused for team {TeamId} by user {UserId}: {Reason}", team.Id, user.Id, refusal);
@@ -671,7 +673,7 @@ internal sealed class TeamAdminController(
         }
 
         var result = await _teamService.EditEarlyEntryGrantAsync(
-            team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+            team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, input.EventSettingsId.GetValueOrDefault(), ct);
         if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Early entry update refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", input.GrantId, team.Id, user.Id, refusal);
@@ -730,12 +732,15 @@ internal sealed class TeamAdminController(
 
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
     {
+        var events = await settings.GetAllEventSettingsAsync(ct);
+        var activeEvent = await settings.GetActiveEventSettingsAsync(ct);
         var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
         var rows = grants
             .Select(g => new TeamEarlyEntryRowViewModel
             {
                 GrantId = g.Id,
                 UserId = g.UserId,
+                EventSettingsId = g.EventSettingsId,
                 EntryDate = g.EntryDate,
                 ProjectName = g.ProjectName,
             })
@@ -748,6 +753,9 @@ internal sealed class TeamAdminController(
             Slug = team.Slug,
             TeamName = team.Name,
             Grants = rows,
+            Events = events.Where(e => e.Status != EventSettingsStatus.Deleted)
+                .OrderByDescending(e => e.GateOpeningDate).ThenBy(e => e.EventName, StringComparer.OrdinalIgnoreCase).ToList(),
+            ActiveEventSettingsId = activeEvent?.Id,
         };
     }
 

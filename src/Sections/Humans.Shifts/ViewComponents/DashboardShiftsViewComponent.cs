@@ -1,9 +1,11 @@
 using System.Security.Claims;
-using Humans.Governance.Contracts;
+using Humans.Base.Constants;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.ViewComponents;
 
@@ -11,12 +13,12 @@ namespace Humans.Shifts.ViewComponents;
 /// Off season, an admin switch on the active event, swaps the callout and the tri-card row for a "season wrapped"
 /// note.
 /// </summary>
-public sealed class DashboardShiftsViewComponent(
-    IShiftService shiftMgmt,
+internal sealed class DashboardShiftsViewComponent(
+    IShiftManagement shiftMgmt,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
     ISettingsService settingsService,
-    IMembershipCalculator membershipCalculator,
+    ITeamService teamService,
     IClock clock,
     ILogger<DashboardShiftsViewComponent> logger) : ViewComponent
 {
@@ -28,7 +30,8 @@ public sealed class DashboardShiftsViewComponent(
         }
 
         var ct = HttpContext.RequestAborted;
-        var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
+        var isVolunteerMember = (await teamService.GetTeamAsync(SystemTeamIds.Volunteers, ct))
+            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
         BurnSettingsInfo? activeEvent = null;
         try

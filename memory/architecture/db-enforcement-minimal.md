@@ -8,7 +8,7 @@ The database is storage. The owning service enforces every invariant. Don't just
 - **CHECK constraints are banned** (Peter, 2026-08-09): no `HasCheckConstraint`, no `AddCheckConstraint`, no raw SQL. Write the guard in the service that owns the write and test it there. A CHECK surfaces as a Postgres 500 and is invisible to EF-InMemory tests.
 - **NOT NULL is not enforcement.** Required-ness lives in service code; see [`required-columns-need-approval`](required-columns-need-approval.md).
 - **Unique indexes are not load-bearing;** see [`unique-constraints-ids-only`](unique-constraints-ids-only.md).
-- **The only doctrinal DB enforcement** is the immutability triggers on `audit_log` and `consent_records`. They stay.
+- **The only doctrinal DB enforcement** is the immutability triggers on `audit_log_entries` and `consent_records`. They stay.
 - Foreign keys inside one section are ordinary EF relationships. Across sections they are banned by [`no-cross-section-ef-joins`](no-cross-section-ef-joins.md).
 
 **Details:**

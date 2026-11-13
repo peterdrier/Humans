@@ -59,3 +59,5 @@ public sealed record RotaInfo(
     IReadOnlyList<ShiftTagSummary> Tags);
 
 public sealed record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status);
+
+public record ShiftTagSummary(Guid Id, string Name);

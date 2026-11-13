@@ -33,7 +33,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 ## Data Model
 
-### PreapprovalProgram — `pre_programs`
+### PreapprovalProgram — `preapproval_programs`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -53,7 +53,7 @@ consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/fea
 
 Index: `Status`.
 
-### ProgramManager — `pre_program_managers`
+### ProgramManager — `preapproval_program_managers`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -62,7 +62,7 @@ Index: `Status`.
 | AddedByUserId | Guid | |
 | AddedAt | Instant | |
 
-### PreapprovalGrant — `pre_grants`
+### PreapprovalGrant — `preapproval_grants`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -80,7 +80,7 @@ Index: `Status`.
 
 Indexes: `(ProgramId, Status)`, `BeneficiaryUserId`, `ExpenseReportId`.
 
-### ReminderSent — `pre_reminders_sent`
+### ReminderSent — `preapproval_sent_reminders`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -158,7 +158,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Grant admin actions reject invalid form binding with 400 after identity, program permission
   and grant ownership checks. Malformed amounts never fall back to a program/request amount,
   and malformed bulk selections never issue grants to only the valid subset.
-- The reminder job sends and writes `pre_reminders_sent` rows keyed `(GrantId, Kind,
+- The reminder job sends and writes `preapproval_sent_reminders` rows keyed `(GrantId, Kind,
   ClaimBy)`; it never touches a grant. The marker transaction commits before the independently persisted, best-effort reminder audit is attempted. A moved deadline reminds again (`ReminderTests`).
 - Table names start with `pre_`. The section's migrations are immutable once shipped.
 
@@ -176,7 +176,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
   its deadline.
 - Expenses **cannot** claim a grant that is Revoked, Consumed, Claimed by another report, or
   Open past its deadline; it **cannot** release or consume a grant its report does not hold.
-- The reminder job **cannot** change any row but `pre_reminders_sent`.
+- The reminder job **cannot** change any row but `preapproval_sent_reminders`.
 
 ## Triggers
 
@@ -222,8 +222,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - **AuditLog**: `IAuditLogService.LogAsync` (actor and job overloads).
 - **Gdpr**: implements `IUserDataContributor`.
 - **Expenses** (consumer, PR 3 of the feature): `IPreapprovalWrite.ClaimAsync` / `ReleaseAsync` /
-  `ConsumeAsync` inside its own `TransactionScope`; `IPreapprovalService.ListClaimableForUserAsync` /
-  `GetGrantAsync` / `ListManagedGrantIdsAsync`.
+  `ConsumeAsync` inside its own `TransactionScope`; `IPreapprovalService.GetGrantsAsync`.
 
 ## Architecture
 
@@ -232,7 +231,7 @@ Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in
 The scoped internal `PreapprovalNotices` owns recipient resolution, localized delivery and standing-notice completion, shared by grant management and deadline reminders. Ordinary delivery failures remain best-effort. `PreapprovalDeadlineReminders` owns reminder selection, transactional delivery and sent stamps, then audits after commit. The recurring job calls this component directly; it does not resolve grant management. Reminder windows, Madrid dates, source keys, audit identity, failure aggregation and retry behavior are unchanged.
 
 **Owning services:** `PreapprovalDeadlineReminders` (internal reminder pass), `PreapprovalService` (`Humans.Preapprovals`; `IPreapprovalService` / `IPreapprovalWrite` public in `Contracts/`, `IPreapprovalManagement` internal)
-**Owned tables:** `pre_programs`, `pre_program_managers`, `pre_grants`, `pre_reminders_sent`
+**Owned tables:** `preapproval_programs`, `preapproval_program_managers`, `preapproval_grants`, `preapproval_sent_reminders`
 **Status:** (A) Migrated — built as a section from day one (2026-10-16).
 
 ### Public contract
@@ -241,11 +240,11 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 
 | Interface | Methods | Notes |
 |---|---:|---|
-| `IPreapprovalService` (public) | 3 | `ListClaimableForUserAsync`, `GetGrantAsync`, `ListManagedGrantIdsAsync` (the grants a named manager may first-review in Expenses). Returns `GrantOption` or ids, never entities. |
-| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with a `GrantStamp` on successful claims). An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
+| `IPreapprovalService` (public) | 1 | `GetGrantsAsync`: every grant, any state, with its holder, its program's managers and whether it can be claimed today. Expenses picks a member's or a manager's grants itself. |
+| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with the grant as booked on a successful claim). Each takes a required `afterCommit` list for its audit and notices. An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
 | `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking. |
 
-`GrantOption`, `GrantStamp`, `PreapprovalWriteResult` and `GrantStatus` are the public types beside them.
+`GrantOption`, `PreapprovalWriteResult` and `GrantStatus` are the public types beside them.
 
 ### For (A) Migrated sections
 
@@ -263,10 +262,10 @@ A `Contracts/` folder in the section (no leaf project: nothing Preapprovals refe
 - **Architecture enforcement** — analyzers HUM0030/32/34/36; `SectionResourceParityTests`
   across every culture; `GdprExportDependencyInjectionTests` for the contributor.
 
-Internal `PreapprovalReader` owns program/grant reads, claimable and managed-grant selection, member visibility checks, DTO projection and merged-account id lookup. Mutations reuse its projection and Madrid-date rule, while GDPR export reuses its id lookup. Deadline comparisons, current/archived identity handling, short-circuit reads, grant fields and ordering are unchanged. Issuance, applications, decisions, program changes, expense claim/release/consume, notices and retention stay in their existing owners. The façade keeps its signatures; no contract or DI registration is added.
+Internal `PreapprovalReader` owns program/grant reads, the grant list Expenses reads, member visibility checks, DTO projection and merged-account id lookup. Mutations reuse its projection and Madrid-date rule, while GDPR export reuses its id lookup. Deadline comparisons, current/archived identity handling, short-circuit reads, grant fields and ordering are unchanged. Issuance, applications, decisions, program changes, expense claim/release/consume, notices and retention stay in their existing owners. The façade keeps its signatures; no contract or DI registration is added.
 
 Internal `PreapprovalPersonalData` owns both personal-data slices, their retention declarations, erasure and merge handling. It reuses the existing reader for merged ids. Slice keys, export shape/order, empty-decision behavior, retention wording, per-user erasure scope and merge side-effect order are unchanged. The existing façade remains the registered contributor and merge entry point; no public contract or DI registration is added.
 
-Internal `PreapprovalClaims` owns claim, release and consume, including holding-report checks, stamp projection and completion handling. It reuses the reader’s Madrid-date rule and the shared `PreapprovalJournal` audit metadata/money formatting. Idempotent resubmission, deadline and state refusals, report ownership, writes, timestamps, notice order and the existing optional after-commit callback remain unchanged. The façade retains all signatures; no public contract or DI registration is added.
+Internal `PreapprovalClaims` owns claim, release and consume, including holding-report checks, the booked-grant projection and completion handling. It reuses the reader’s Madrid-date rule and the shared `PreapprovalJournal` audit metadata/money formatting. Idempotent resubmission, deadline and state refusals, report ownership, writes, timestamps, and notice order are unchanged; audit and notices always go into the caller's after-commit list. The façade retains all signatures; no public contract or DI registration is added.
 
 Internal `PreapprovalProgramAdministration` owns complete program create/update, account resolution, manager reconciliation and deadline-change notices. It shares live-person checks through the reader, money/text rules through `PreapprovalInput`, and audit metadata through the journal. Unchanged-account fallback, committed-ceiling and kind-lock guards, refusal order, timestamps, manager audit and detached post-commit notices are preserved. The façade keeps its entrypoints; no public contract or DI registration is added.

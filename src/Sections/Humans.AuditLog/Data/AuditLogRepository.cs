@@ -113,21 +113,6 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<string> actions,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = await ctx.AuditLogEntries
-            .AsNoTracking()
-            .Where(e => e.EntityType == entityType && actions.Contains(e.Action))
-            .Select(e => e.EntityId)
-            .Distinct()
-            .ToListAsync(ct);
-        return new HashSet<Guid>(ids);
-    }
-
     public async Task<IReadOnlyList<AuditLogEntry>> GetLegacyGoogleSyncEntriesAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

@@ -154,7 +154,7 @@ internal sealed class WorkloadService(
 
     private async Task<List<WorkloadByPersonRow>> BuildByPersonAsync(
         IReadOnlyList<(Rota Rota, Shift Shift)> entries,
-        Humans.Shifts.Contracts.BurnSettingsInfo es,
+        BurnSettingsInfo es,
         IReadOnlyDictionary<Guid, RolePersonHours> rolePersonHours,
         CancellationToken ct)
     {

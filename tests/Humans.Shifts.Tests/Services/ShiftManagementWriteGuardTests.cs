@@ -309,7 +309,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
             if (eventData.Context!.ChangeTracker.Entries().Any(e =>
-                string.Equals(e.Metadata.GetTableName(), "rota_shift_tags", StringComparison.Ordinal)
+                string.Equals(e.Metadata.GetTableName(), "shift_rota_tags", StringComparison.Ordinal)
                 && e.State is EntityState.Added or EntityState.Deleted))
                 throw new IOException("Rota tag persistence failed.");
             return base.SavingChangesAsync(eventData, result, cancellationToken);

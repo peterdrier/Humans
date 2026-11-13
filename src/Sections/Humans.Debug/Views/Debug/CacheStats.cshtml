@@ -3,24 +3,19 @@
     ViewData["Title"] = "Cache Statistics";
 }
 
-<div class="page-head">
-    <div>
-        <h1 class="title">Cache Statistics</h1>
-        <p class="sub">@((Model.TotalHits + Model.TotalMisses).ToString("N0")) total lookups since last restart</p>
-    </div>
-    <div class="d-flex align-items-center gap-3">
-        <form asp-action="ResetCacheStats" method="post" class="d-inline" authorize-policy="AdminOnly">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-warning btn-sm"
-                    data-confirm="Reset all cache statistics?">
-                <i class="fa-solid fa-rotate-right me-1"></i>Reset
-            </button>
-        </form>
-        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
-            <i class="fa-solid fa-arrow-left me-1"></i>Admin
-        </a>
-    </div>
-</div>
+<page-header title="Cache Statistics" variant="compact">
+    <page-header-subtitle>@((Model.TotalHits + Model.TotalMisses).ToString("N0")) total lookups since last restart</page-header-subtitle>
+    <form asp-action="ResetCacheStats" method="post" class="d-inline" authorize-policy="AdminOnly">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-warning btn-sm"
+                data-confirm="Reset all cache statistics?">
+            <i class="fa-solid fa-rotate-right me-1"></i>Reset
+        </button>
+    </form>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Admin
+    </a>
+</page-header>
 
 
 <div class="stats">

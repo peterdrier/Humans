@@ -33,7 +33,7 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Tests.Services;
 
 /// <summary>
-/// <see cref="LegalDocumentSyncService"/> is the sole writer for <c>legal_documents</c>/<c>document_versions</c>,
+/// <see cref="LegalDocumentSyncService"/> is the sole writer for <c>consent_legal_documents</c>/<c>consent_document_versions</c>,
 /// owning both the admin (<see cref="IAdminLegalDocumentService"/>) and GitHub-sync
 /// (<see cref="ILegalDocumentSyncManagement"/>) write surfaces, and evicts after each successful write.
 /// </summary>
@@ -1081,16 +1081,17 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     private void StubActiveUser()
     {
         var profile = UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
             createdAt: Clock.GetCurrentInstant());
         var user = UserInfo.Create(
             user: new User
             {
                 Id = Guid.NewGuid(),
-                DisplayName = profile.BurnerName,
+                BurnerName = "Burner",
+                FirstName = "First",
+                LastName = "Last",
                 PreferredLanguage = "en",
                 CreatedAt = profile.CreatedAt,
-                State = UserFixtures.StateFor(profile),
+                State = UserState.Active,
             },
             userEmails: [],
             externalLogins: [],

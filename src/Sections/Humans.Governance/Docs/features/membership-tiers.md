@@ -171,7 +171,7 @@ Application created → Board Voting → Approve/Reject
 ## Business Rules
 
 1. **Everyone starts as Volunteer** — tier selection is optional
-2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (`MembershipCalculator` never reads `ConsentCheckStatus`)
+2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (admission never reads `ConsentCheckStatus`)
 3. **No inline application** — initial profile setup only links to the application route
 4. **Applications use the dedicated route** — profile edit is just profile data
 5. **Asociados are not in Colaboradors team** — separate system teams

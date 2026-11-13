@@ -42,6 +42,8 @@ Google Group membership is reconciled as expected state from application-owned s
 
 `ReconcileOneAsync` is the scoped path used by per-row Execute and queued Hangfire requests after team membership or Google-email changes. On Google API failure during Execute, it schedules delayed retries for the same group key, capped at five scoped retry attempts.
 
+Provisioning and each membership mutation finish their required follow-through independently of job cancellation: creation includes settings, audit, follow-up lookup and failure/retry records; member changes include sync logs, failure/retry records, rejected-address status and successful-removal notification. Initial reads keep the caller token, which is checked before starting each next group or member. A completed group finishes its synced-status write even if shutdown followed its final mutation.
+
 ## Collision Rule
 
 Group-key collisions are fail-closed. If more than one source claims the same key, the orchestrator logs and audits the collision and skips mutation for that group. First-wins is forbidden because it could silently remove members claimed by another owner.

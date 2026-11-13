@@ -69,9 +69,12 @@ internal sealed class GoogleWorkspaceSyncService(
             await workspaceIdentities.GetDriveEmailsAsync(cancellationToken),
             userId, identityEmail, EmailNormalization.CanonicalizeGmail(userEmail));
 
+        cancellationToken.ThrowIfCancellationRequested();
+        // Once Drive sees the grant, finish its fallback and tracking before observing shutdown.
+        var grantCt = CancellationToken.None;
         var (result, grantedEmail) = await DrivePlusAddressFallback.CreateAsync(
-            email => drivePermissions.CreatePermissionAsync(resource.GoogleId, email, apiRole, cancellationToken),
-            driveTargetEmail, userId, identityEmail, workspaceIdentities, cancellationToken);
+            email => drivePermissions.CreatePermissionAsync(resource.GoogleId, email, apiRole, grantCt),
+            driveTargetEmail, userId, identityEmail, workspaceIdentities, grantCt);
 
         var insteadOf = string.Equals(grantedEmail, driveTargetEmail, StringComparison.Ordinal)
             ? ""
@@ -87,7 +90,7 @@ internal sealed class GoogleWorkspaceSyncService(
                     $"Granted Drive access ({effectiveLevel}) to {grantedEmail}{insteadOf} ({resource.Name})",
                     nameof(GoogleWorkspaceSyncService),
                     grantedEmail, apiRole, syncSource, success: true,
-                    userId: userId, ct: cancellationToken);
+                    userId: userId, ct: grantCt);
                 return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, userId, identityEmail);
 
             case DrivePermissionCreateOutcome.AlreadyExists:
@@ -107,8 +110,8 @@ internal sealed class GoogleWorkspaceSyncService(
                     nameof(GoogleWorkspaceSyncService),
                     userEmail, apiRole, syncSource, success: false,
                     errorMessage: result.Error?.RawMessage,
-                    userId: userId, ct: cancellationToken);
-                await HandleDriveAddFailureAsync(resource, userEmail, userId, identityEmail, result.Error, cancellationToken);
+                    userId: userId, ct: grantCt);
+                await HandleDriveAddFailureAsync(resource, userEmail, userId, identityEmail, result.Error, grantCt);
                 return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, userId, identityEmail,
                     Retryable: !DrivePermissionErrorPolicy.IsPermanentFailure(result.Error?.StatusCode),
                     ErrorMessage: $"{resource.Name}: HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}");
@@ -212,6 +215,7 @@ internal sealed class GoogleWorkspaceSyncService(
         {
             foreach (var resource in await resourceRepository.GetActiveByTeamIdAsync(resourceTeamId, cancellationToken))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (resource.ResourceType == GoogleResourceType.Group)
                 {
                     // Group membership reconciliation owned by IGoogleGroupSync; this path handles Drive only.
