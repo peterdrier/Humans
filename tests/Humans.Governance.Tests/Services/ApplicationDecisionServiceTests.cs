@@ -331,11 +331,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             RequestAborted = request.Token,
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var shared = Substitute.For<IStringLocalizer<SharedResource>>();
-        shared[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var applications = new GovernanceApplicationsController(_service, _userService, shared,
+        var applications = new GovernanceApplicationsController(_service, _userService, localizer,
             NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -403,7 +401,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<Humans.Base.SharedResource>>(),
+            Substitute.For<IStringLocalizer<GovernanceResource>>(),
             NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -467,8 +465,8 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var data = new TheoryData<string, string?, string>();
         foreach (var culture in CultureCatalog.SupportedCultureCodes)
         {
-            data.Add(culture, null, "Profile_MotivationRequired");
-            data.Add(culture, "short", "Application_MotivationLength");
+            data.Add(culture, null, "Governance_Application_MotivationRequired");
+            data.Add(culture, "short", "Governance_Application_MotivationLength");
         }
         return data;
     }
@@ -482,11 +480,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         registrations.AddControllers().AddDataAnnotationsLocalization(options =>
             options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
         using var services = registrations.BuildServiceProvider();
-        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+        var governanceLocalizer = services.GetRequiredService<IStringLocalizer<GovernanceResource>>();
         var viewerId = Guid.NewGuid();
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo()));
-        var controller = new GovernanceApplicationsController(_service, _userService, localizer,
+        var controller = new GovernanceApplicationsController(_service, _userService, governanceLocalizer,
             NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
@@ -506,9 +504,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         (await controller.Create(model)).Should().BeOfType<ViewResult>();
 
-        localizer[resourceKey].ResourceNotFound.Should().BeFalse();
+        var expected = governanceLocalizer[resourceKey];
+        expected.ResourceNotFound.Should().BeFalse();
         controller.ModelState[nameof(model.Motivation)]!.Errors.Should().ContainSingle()
-            .Which.ErrorMessage.Should().Be(localizer[resourceKey].Value);
+            .Which.ErrorMessage.Should().Be(expected.Value);
         (await GovernanceDb.Applications.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
@@ -1587,7 +1586,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1618,7 +1617,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1654,7 +1653,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             return new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo());
         });
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1759,7 +1758,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1793,7 +1792,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.Motivation = motivation;
         await SaveAllAsync(TestContext.Current.CancellationToken);
         var controller = new GovernanceApplicationsController(_service, _userService,
-            Substitute.For<IStringLocalizer<SharedResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };

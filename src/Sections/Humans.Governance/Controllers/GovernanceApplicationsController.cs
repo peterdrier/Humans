@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Governance.Contracts;
-using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Governance.Models;
 using Humans.Users.Contracts;
@@ -21,7 +20,7 @@ namespace Humans.Governance.Controllers;
 internal sealed class GovernanceApplicationsController(
     ApplicationDecisionService applicationDecisionService,
     IUserService userService,
-    IStringLocalizer<SharedResource> sharedLocalizer,
+    IStringLocalizer<GovernanceResource> localizer,
     ILogger<GovernanceApplicationsController> logger,
     IClock clock) : HumansControllerBase(userService)
 {
@@ -73,7 +72,7 @@ internal sealed class GovernanceApplicationsController(
 
         if (hasPending)
         {
-            SetError(sharedLocalizer["Application_AlreadyPending"].Value);
+            SetError(localizer["Governance_Application_AlreadyPending"].Value);
             return RedirectToAction(nameof(Index));
         }
 
@@ -93,7 +92,7 @@ internal sealed class GovernanceApplicationsController(
     {
         if (!model.ConfirmAccuracy)
         {
-            ModelState.AddModelError(nameof(model.ConfirmAccuracy), sharedLocalizer["Application_ConfirmAccuracy"].Value);
+            ModelState.AddModelError(nameof(model.ConfirmAccuracy), localizer["Governance_Application_ConfirmAccuracy"].Value);
         }
 
         if (!ModelState.IsValid)
@@ -122,13 +121,13 @@ internal sealed class GovernanceApplicationsController(
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(sharedLocalizer["Application_Submitted"].Value);
+            SetSuccess(localizer["Governance_Application_Submitted"].Value);
             return RedirectToAction(nameof(Details), new { id = result.ApplicationId });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to submit application for user {UserId}", user.Id);
-            SetError(sharedLocalizer["Application_SubmitError"].Value);
+            SetError(localizer["Governance_Application_SubmitError"].Value);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -137,24 +136,24 @@ internal sealed class GovernanceApplicationsController(
     {
         if (string.Equals(errorKey, "AlreadyPending", StringComparison.Ordinal))
         {
-            SetError(sharedLocalizer["Application_AlreadyPending"].Value);
+            SetError(localizer["Governance_Application_AlreadyPending"].Value);
             return;
         }
 
         (string? Field, string? ResourceKey) fieldError = errorKey switch
         {
-            "InvalidTier" => (nameof(ApplicationCreateViewModel.MembershipTier), "Application_InvalidTier"),
-            "MotivationRequired" => (nameof(ApplicationCreateViewModel.Motivation), "Profile_MotivationRequired"),
-            "SignificantContributionRequired" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Application_SignificantContributionRequired"),
-            "RoleUnderstandingRequired" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Application_RoleUnderstandingRequired"),
-            "MotivationLength" => (nameof(ApplicationCreateViewModel.Motivation), "Application_MotivationLength"),
-            "AdditionalInfoTooLong" => (nameof(ApplicationCreateViewModel.AdditionalInfo), "Application_AdditionalInfoTooLong"),
-            "SignificantContributionTooLong" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Application_SignificantContributionTooLong"),
-            "RoleUnderstandingTooLong" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Application_RoleUnderstandingTooLong"),
+            "InvalidTier" => (nameof(ApplicationCreateViewModel.MembershipTier), "Governance_Application_InvalidTier"),
+            "MotivationRequired" => (nameof(ApplicationCreateViewModel.Motivation), "Governance_Application_MotivationRequired"),
+            "SignificantContributionRequired" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Governance_Application_SignificantContributionRequired"),
+            "RoleUnderstandingRequired" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Governance_Application_RoleUnderstandingRequired"),
+            "MotivationLength" => (nameof(ApplicationCreateViewModel.Motivation), "Governance_Application_MotivationLength"),
+            "AdditionalInfoTooLong" => (nameof(ApplicationCreateViewModel.AdditionalInfo), "Governance_Application_AdditionalInfoTooLong"),
+            "SignificantContributionTooLong" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Governance_Application_SignificantContributionTooLong"),
+            "RoleUnderstandingTooLong" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Governance_Application_RoleUnderstandingTooLong"),
             _ => (null, null)
         };
         if (fieldError.Field is not null)
-            ModelState.AddModelError(fieldError.Field, sharedLocalizer[fieldError.ResourceKey!].Value);
+            ModelState.AddModelError(fieldError.Field, localizer[fieldError.ResourceKey!].Value);
     }
 
     [HttpGet("Details/{id:guid}")]
@@ -212,17 +211,17 @@ internal sealed class GovernanceApplicationsController(
             if (!result.Success)
             {
                 if (string.Equals(result.ErrorKey, "CannotWithdraw", StringComparison.Ordinal))
-                    SetError(sharedLocalizer["Application_CannotWithdraw"].Value);
+                    SetError(localizer["Governance_Application_CannotWithdraw"].Value);
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            SetSuccess(sharedLocalizer["Application_Withdrawn"].Value);
+            SetSuccess(localizer["Governance_Application_Withdrawn"].Value);
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to withdraw application {ApplicationId}", id);
-            SetError(sharedLocalizer["Application_CannotWithdraw"].Value);
+            SetError(localizer["Governance_Application_CannotWithdraw"].Value);
             return RedirectToAction(nameof(Details), new { id });
         }
     }
