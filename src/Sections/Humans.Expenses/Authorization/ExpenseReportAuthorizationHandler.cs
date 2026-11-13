@@ -111,7 +111,7 @@ internal sealed class ExpenseReportAuthorizationHandler(
     private async Task<bool> IsFirstReviewerAsync(UserInfo viewer, ExpenseReportDto report, CancellationToken ct)
     {
         if (report.PreapprovalGrantId is { } grantId)
-            return (await preapprovals.ListManagedGrantIdsAsync(viewer.AllUserIds, ct)).Contains(grantId);
+            return (await PreapprovalGrantQueries.ListManagedGrantIdsAsync(preapprovals, viewer.AllUserIds, ct)).Contains(grantId);
 
         // No budget category (an account outside the budget) means no coordinator route at all.
         if (report.BudgetCategoryId is not { } categoryId) return false;

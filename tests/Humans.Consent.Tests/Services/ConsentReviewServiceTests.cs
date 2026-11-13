@@ -136,7 +136,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
         review.IsRejected.Should().BeTrue();
         review.RejectionReason.Should().Be("dup");
         (await _sut.GetReviewsAsync(Ct))[user.Id].IsRejected.Should().BeTrue();
-        user.IsConsentCheckFlagged(review).Should().BeFalse();
+        review.IsConsentCheckFlagged(user).Should().BeFalse();
         (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, Guid.NewGuid(), null, Ct))
             .ErrorKey.Should().Be("AlreadyRejected");
         (await _sut.RecordRejectionAsync(user.Id, Guid.NewGuid(), "again", Ct))
@@ -356,18 +356,18 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var none = ConsentReviewInfo.None(active.Id);
         var flagged = none with { Status = ConsentCheckStatus.Flagged };
 
-        active.NeedsConsentReview(none).Should().BeTrue();
-        active.NeedsConsentReview(none with { IsApproved = true }).Should().BeFalse();
-        tombstone.NeedsConsentReview(none).Should().BeFalse();
-        (active with { State = UserState.Rejected }).NeedsConsentReview(none).Should().BeFalse();
+        none.NeedsConsentReview(active).Should().BeTrue();
+        (none with { IsApproved = true }).NeedsConsentReview(active).Should().BeFalse();
+        none.NeedsConsentReview(tombstone).Should().BeFalse();
+        none.NeedsConsentReview(active with { State = UserState.Rejected }).Should().BeFalse();
         // Fake accounts (gate terminal, dev personas) never count, so the queue, pill and meters agree.
-        (active with { IsFake = true }).NeedsConsentReview(none).Should().BeFalse();
+        none.NeedsConsentReview(active with { IsFake = true }).Should().BeFalse();
 
-        active.IsConsentCheckFlagged(flagged).Should().BeTrue();
-        active.IsConsentCheckFlagged(flagged with { IsApproved = true }).Should().BeTrue();
-        active.IsConsentCheckFlagged(flagged with { RejectedAt = Earlier }).Should().BeFalse();
-        tombstone.IsConsentCheckFlagged(flagged).Should().BeFalse();
-        (active with { IsFake = true }).IsConsentCheckFlagged(flagged).Should().BeFalse();
+        flagged.IsConsentCheckFlagged(active).Should().BeTrue();
+        (flagged with { IsApproved = true }).IsConsentCheckFlagged(active).Should().BeTrue();
+        (flagged with { RejectedAt = Earlier }).IsConsentCheckFlagged(active).Should().BeFalse();
+        flagged.IsConsentCheckFlagged(tombstone).Should().BeFalse();
+        flagged.IsConsentCheckFlagged(active with { IsFake = true }).Should().BeFalse();
     }
 
     [HumansFact]

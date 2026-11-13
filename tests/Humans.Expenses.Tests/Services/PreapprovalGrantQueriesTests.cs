@@ -28,7 +28,7 @@ public sealed class PreapprovalGrantQueriesTests
         var someoneElses = Grant(Guid.NewGuid(), [], claimable: true);
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns([mine, underMergedId, lapsed, someoneElses]);
 
-        var claimable = await _preapprovals.ListClaimableAsync([Current, Merged], TestContext.Current.CancellationToken);
+        var claimable = await PreapprovalGrantQueries.ListClaimableAsync(_preapprovals, [Current, Merged], TestContext.Current.CancellationToken);
 
         claimable.Select(g => g.Id).Should().BeEquivalentTo([mine.Id, underMergedId.Id]);
     }
@@ -41,7 +41,7 @@ public sealed class PreapprovalGrantQueriesTests
         var elsewhere = Grant(Guid.NewGuid(), [Guid.NewGuid()], claimable: true);
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns([consumed, open, elsewhere]);
 
-        var managed = await _preapprovals.ListManagedGrantIdsAsync([Current, Merged], TestContext.Current.CancellationToken);
+        var managed = await PreapprovalGrantQueries.ListManagedGrantIdsAsync(_preapprovals, [Current, Merged], TestContext.Current.CancellationToken);
 
         managed.Should().BeEquivalentTo([consumed.Id, open.Id]);
     }

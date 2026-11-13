@@ -9,7 +9,7 @@ namespace Humans.Store.Services;
 /// </summary>
 internal static class EventZoneToday
 {
-    public static async Task<LocalDate> TodayInEventZoneAsync(this ISettingsService settingsService, IClock clock, CancellationToken ct = default)
+    public static async Task<LocalDate> TodayInEventZoneAsync(ISettingsService settingsService, IClock clock, CancellationToken ct = default)
     {
         var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
         var tz = activeEvent is null

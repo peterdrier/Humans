@@ -107,7 +107,7 @@ public sealed class ShiftsControllerSettingsTests
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return new ValueTask<UserInfo?>(account == AccountScenario.Missing
-                ? null : UserInfoStubHelpers.MakeUserInfo(actorId));
+                ? null : UserFixtures.MakeUserInfo(actorId));
         });
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
         if (account == AccountScenario.Cancelled)
@@ -140,7 +140,7 @@ public sealed class ShiftsControllerSettingsTests
             _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(actorId));
+            .Returns(UserFixtures.MakeUserInfo(actorId));
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

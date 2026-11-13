@@ -18,7 +18,7 @@ public class UsersAudienceServiceTests
         var users = Substitute.For<IUserManagement>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>
         {
-            new User { Id = attendeeId }.ToUserInfo(profile: new Profile { UserId = attendeeId }),
+            UserInfoStubHelpers.FromEntities(new User { Id = attendeeId }, new Profile { UserId = attendeeId }),
             new User { Id = buyerId }.ToUserInfo(),
             new User { Id = Guid.NewGuid() }.ToUserInfo(),
         });

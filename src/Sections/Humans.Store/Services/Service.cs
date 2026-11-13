@@ -199,7 +199,7 @@ internal sealed class Service(
             return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await settingsService.TodayInEventZoneAsync(clock, ct);
+        var today = await EventZoneToday.TodayInEventZoneAsync(settingsService, clock, ct);
         var deadlinePassed = today > product.OrderableUntil;
 
         var line = new OrderLine
@@ -237,7 +237,7 @@ internal sealed class Service(
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await settingsService.TodayInEventZoneAsync(clock, ct);
+        var today = await EventZoneToday.TodayInEventZoneAsync(settingsService, clock, ct);
         var deadlinePassed = today > ctx.ProductOrderableUntil;
 
         await repo.RemoveLineAsync(lineId, ct);

@@ -56,7 +56,7 @@ internal sealed class OrderAuthorizationHandler(
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var pastDeadline = resource.ProductOrderableUntil is { } until
             && pending.Any(IsLineEdit)
-            && await settingsService.TodayInEventZoneAsync(clock, ct) > until;
+            && await EventZoneToday.TodayInEventZoneAsync(settingsService, clock, ct) > until;
 
         // Additive: fall through so a TeamsAdmin who is also a camp lead picks up camp rights below.
         if (TeamsRoles.IsTeamsAdmin(context.User))

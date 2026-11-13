@@ -112,6 +112,8 @@
     <InternalsVisibleTo Include="Humans.Users" />
     <!-- Repository substitutes name internal email entities and reconcile plans. -->
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    <!-- The shared test fixtures (UserInfoFixtures.ToUserInfo) build UserInfo from entities. -->
+    <InternalsVisibleTo Include="Humans.Testing" />
     <!-- Existing section fixtures build UserInfo from entities; this is not a production contract. -->
     <InternalsVisibleTo Include="Humans.Agent.Tests" />
     <InternalsVisibleTo Include="Humans.AuditLog.Tests" />

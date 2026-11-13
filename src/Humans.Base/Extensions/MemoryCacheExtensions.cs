@@ -1,4 +1,3 @@
-using Humans.Base.Caching;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Base.Extensions;
@@ -36,7 +35,4 @@ public static class MemoryCacheExtensions
     }
 
     private static readonly Lock ReservationGate = new();
-
-    public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
-        cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 }

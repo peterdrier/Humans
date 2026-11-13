@@ -141,7 +141,7 @@ internal sealed class OnboardingService(
     private async Task SetConsentCheckPendingIfEligibleAsync(
         UserInfo info, ConsentReviewInfo review, CancellationToken ct)
     {
-        if (!info.NeedsConsentReview(review) || review.Status is not null)
+        if (!review.NeedsConsentReview(info) || review.Status is not null)
             return;
         var userId = info.Id;
 

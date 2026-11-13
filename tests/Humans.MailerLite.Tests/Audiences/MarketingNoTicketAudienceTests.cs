@@ -86,5 +86,5 @@ public class MarketingNoTicketAudienceTests
                 MatchedUserId: userId)])).ToList();
 
     private static UserInfo User(Guid userId) =>
-        UserInfoStubHelpers.MakeUserInfo(userId);
+        UserFixtures.MakeUserInfo(userId);
 }
