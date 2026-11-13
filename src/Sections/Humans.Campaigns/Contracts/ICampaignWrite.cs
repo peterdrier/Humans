@@ -6,8 +6,9 @@ namespace Humans.Campaigns.Contracts;
 public interface ICampaignWrite : IApplicationService
 {
     /// <summary>
-    /// Matches codes case-insensitively against Active and Completed campaigns' unredeemed grants, one grant per
-    /// redemption. When a code matches grants in several campaigns, the newest campaign wins. Returns grants marked.
+    /// Reconciles a complete purchase snapshot against Active and Completed campaigns' grants, case-insensitively.
+    /// Existing redemptions count toward the snapshot, so replay never redeems additional grants. New purchases
+    /// select the newest campaign first; recorded redemption dates stay unchanged. Returns newly marked grants.
     /// </summary>
     Task<int> MarkGrantsRedeemedAsync(
         IReadOnlyCollection<DiscountCodeRedemption> redemptions,

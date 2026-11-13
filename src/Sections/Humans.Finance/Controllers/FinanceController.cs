@@ -35,8 +35,8 @@ internal sealed class FinanceController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
-        return View(await overview.GetAsync(viewerUserId, HttpContext.RequestAborted));
+        if (GetCurrentUserId() is null) return Challenge();
+        return View(await overview.GetAsync(HttpContext.RequestAborted));
     }
 
     [HttpGet("Pleo")]
@@ -444,13 +444,13 @@ internal sealed class FinanceController(
     [HttpGet("Creditors/{accountNum:int}")]
     public async Task<IActionResult> CreditorStatement(int accountNum)
     {
-        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
+        if (GetCurrentUserId() is null) return Challenge();
         var ledger = await finance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
         // The finance-admin review queue is every submitted report; the ones booked to this account are the other
         // side of the ledger.
-        var reports = (await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, HttpContext.RequestAborted))
+        var reports = (await expenseReports.GetReviewQueueAsync(HttpContext.RequestAborted))
             .Where(r => r.HoldedSupplierAccountNum == accountNum)
             .OrderByDescending(r => r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt)
             .ToList();

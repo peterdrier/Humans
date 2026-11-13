@@ -183,7 +183,7 @@ A guided three-step UX that replaces the single-page profile form for the Volunt
 
 ### Steps
 
-1. **Names** — burner name, first name, last name. Pre-filled from the user's own saved profile when present — never from OAuth claims, which are unverified. Required because every downstream view ("Hi, X") depends on a display name.
+1. **Names** — burner name, first name, last name. Pre-filled from the user's own saved profile when present — never from OAuth claims, which are unverified. Required because every downstream view ("Hi, X") depends on a display name. Each field is required and limited to 100 characters; validation feedback follows the current UI culture using the shared validation resources.
 2. **Shifts** — browse priority shifts and pick one (or skip). Build/Strike rotas use the multi-day range picker; event shifts use the standard sign-up.
 3. **Consents** — the unsigned legal documents required for Volunteers, signed one at a time inline.
 

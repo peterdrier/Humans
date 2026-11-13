@@ -37,11 +37,8 @@ internal sealed class TeamEarlyEntry(
 
     public async Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default)
     {
-        var team = await repo.GetByIdAsync(teamId, ct);
-        if (team is null)
-            return new(Refusal: $"Team {teamId} not found.");
-        if (!team.EarlyEntryEnabled)
-            return new(Refusal: $"Early entry is not enabled for team {teamId}.");
+        if (await GetTeamRefusalAsync(teamId, ct) is { } teamRefusal)
+            return new(Refusal: teamRefusal);
         if (userId == Guid.Empty)
             return new(Refusal: "UserId must be a non-empty GUID.");
         var targetUserId = await snapshotReader.ResolveMembershipTargetAsync(userId, ct);
@@ -73,6 +70,8 @@ internal sealed class TeamEarlyEntry(
         var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
         if (grant is null || grant.TeamId != teamId)
             return new(Refusal: $"EE grant {grantId} not found.");
+        if (await GetTeamRefusalAsync(teamId, ct) is { } teamRefusal)
+            return new(Refusal: teamRefusal);
         if (await GetEventRefusalAsync(eventSettingsId, ct) is { } eventRefusal)
             return new(Refusal: eventRefusal);
         grant.EventSettingsId = eventSettingsId;
@@ -85,13 +84,16 @@ internal sealed class TeamEarlyEntry(
         return new();
     }
 
-    public async Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<TeamEarlyEntryMutationResult> RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
     {
         var grant = await repo.FindEarlyEntryGrantForMutationAsync(grantId, ct);
-        if (grant is null || grant.TeamId != teamId) return; // idempotent; another team's grant counts as missing
+        if (grant is null || grant.TeamId != teamId) return new(); // idempotent; another team's grant counts as missing
+        if (await GetTeamRefusalAsync(teamId, ct) is { } teamRefusal)
+            return new(Refusal: teamRefusal);
         await repo.RemoveEarlyEntryGrantAsync(grantId, ct);
         await auditLogService.LogAsync(TeamsAuditActions.EarlyEntryRevoked, nameof(TeamEarlyEntryGrant), grantId,
             $"EE revoked for {grant.UserId} (team {grant.TeamId})", actorUserId);
+        return new();
     }
 
     public async Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct)
@@ -99,6 +101,14 @@ internal sealed class TeamEarlyEntry(
         var grants = await repo.GetEarlyEntryGrantsForUserAsync(userId, ct);
         if (grants.Count == 0) return;
         await repo.RemoveEarlyEntryGrantsForUserAsync(userId, ct);
+    }
+
+    private async Task<string?> GetTeamRefusalAsync(Guid teamId, CancellationToken ct)
+    {
+        var team = await repo.GetByIdAsync(teamId, ct);
+        if (team is null)
+            return $"Team {teamId} not found.";
+        return team.EarlyEntryEnabled ? null : $"Early entry is not enabled for team {teamId}.";
     }
 
     private async Task<string?> GetEventRefusalAsync(Guid eventSettingsId, CancellationToken ct)

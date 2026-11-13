@@ -49,16 +49,21 @@ internal sealed class StripeMirrorService(
         var configured = _accounts.Where(a => a.IsConfigured).ToList();
         if (configured.Count == 0) return StripeSyncOutcome.NotConfigured;
         if (!await SyncGate.WaitAsync(0, ct)) return StripeSyncOutcome.Busy;
+        var failed = 0;
         try
         {
             var states = (await repo.GetSyncStatesAsync(ct)).ToDictionary(s => s.AccountId, StringComparer.Ordinal);
-            var failed = 0;
             foreach (var account in configured)
             {
+                ct.ThrowIfCancellationRequested();
                 var state = states.GetValueOrDefault(account.Id) ?? new StripeSyncState { AccountId = account.Id };
                 if (!await SyncAccountAsync(account, state, ct)) failed++;
             }
             return failed == 0 ? StripeSyncOutcome.Synced : StripeSyncOutcome.SomeFailed;
+        }
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested && failed > 0)
+        {
+            throw new InvalidOperationException($"Stripe mirror sweep interrupted after {failed} account failure(s).", ex);
         }
         finally
         {
@@ -68,54 +73,58 @@ internal sealed class StripeMirrorService(
 
     private async Task<bool> SyncAccountAsync(StripeMirrorAccount account, StripeSyncState state, CancellationToken ct)
     {
+        var previousError = state.LastError;
+        var mirrorReplaced = false;
         state.SyncStatus = StripeSyncStatus.Running;
         state.StatusChangedAt = clock.GetCurrentInstant();
-        await repo.SaveSyncStateAsync(state, ct);
         try
         {
+            await repo.SaveSyncStateAsync(state, ct);
             // Everything is fetched before anything is written, so a failed call leaves the mirror as it was.
             var fetch = await client.FetchAsync(account, ct);
             var transactions = FillFromSiblings(fetch.Transactions);
             var now = clock.GetCurrentInstant();
+            ct.ThrowIfCancellationRequested();
             await repo.ReplaceAccountAsync(
                 new StripeAccountSnapshot(account.Id, transactions, fetch.Payouts, fetch.Balances), now, ct);
+            mirrorReplaced = true;
 
             state.SyncStatus = StripeSyncStatus.Idle;
             state.LastSyncAt = now;
             state.StatusChangedAt = now;
             state.LastCount = transactions.Count;
             state.LastError = null;
-            await repo.SaveSyncStateAsync(state, ct);
+            // The account mirror committed; its outcome must finish despite caller shutdown.
+            await repo.SaveSyncStateAsync(state, CancellationToken.None);
             logger.LogInformation("Stripe {Account} sweep mirrored {Transactions} transactions and {Payouts} payouts",
                 account.Name, transactions.Count, fetch.Payouts.Count);
             return true;
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested && !mirrorReplaced)
         {
-            // Never leave the row at Running for a sweep that stopped.
-            await RecordErrorAsync(state, "Sweep cancelled before it finished; the mirror is as it was.");
+            await RecordOutcomeAsync(state, StripeSyncStatus.Idle, previousError);
             throw;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Stripe {Account} sweep failed", account.Name);
-            await RecordErrorAsync(state, ex.Message);
+            await RecordOutcomeAsync(state, StripeSyncStatus.Error, ex.Message);
             return false;
         }
     }
 
-    private async Task RecordErrorAsync(StripeSyncState state, string message)
+    private async Task RecordOutcomeAsync(StripeSyncState state, StripeSyncStatus status, string? message)
     {
         try
         {
-            state.SyncStatus = StripeSyncStatus.Error;
+            state.SyncStatus = status;
             state.StatusChangedAt = clock.GetCurrentInstant();
-            state.LastError = StripeMirrorClient.Clip(message, 2000);
+            state.LastError = message is null ? null : StripeMirrorClient.Clip(message, 2000);
             await repo.SaveSyncStateAsync(state, CancellationToken.None);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to persist Stripe sync error state for account {AccountId}", state.AccountId);
+            logger.LogError(ex, "Failed to persist Stripe sync outcome for account {AccountId}", state.AccountId);
         }
     }
 

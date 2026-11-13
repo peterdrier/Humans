@@ -109,10 +109,20 @@ internal sealed class DriveActivityMonitorService(
         var newMarker = ResolveNewMarker(hadFailures, now, filterTime);
         if (newMarker is not null)
         {
-            await settingsStore.SetValueAsync(
-                SettingKeys.DriveActivityMonitorLastRunAt,
-                newMarker.Value.ToIso8601(),
-                cancellationToken);
+            try
+            {
+                // Finish the checkpoint and its audit after starting: advancing the marker
+                // without the audit would hide these anomalies from subsequent scans.
+                await settingsStore.SetValueAsync(
+                    SettingKeys.DriveActivityMonitorLastRunAt,
+                    newMarker.Value.ToIso8601(),
+                    CancellationToken.None);
+            }
+            catch (OperationCanceledException ex)
+            {
+                // This detached dependency failed independently of the job's shutdown token.
+                throw new InvalidOperationException("Failed to save the Drive activity monitor checkpoint.", ex);
+            }
         }
 
         foreach (var (resourceId, description) in anomalies)

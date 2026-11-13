@@ -1,8 +1,5 @@
-using Humans.AuditLog.Contracts;
 using Humans.Base;
 using Humans.Base.Controllers;
-using Humans.Base.Extensions;
-using Humans.Email.Contracts;
 using Humans.Teams.Models;
 using Humans.Teams.Services;
 using Humans.Users.Contracts;
@@ -12,22 +9,14 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Teams.Controllers;
 
-/// <summary>
-/// The team is authorized through <see cref="ITeamMessageOptionsProvider"/>; Email relays the message with the group as
-/// reply-to and keeps no team logic.
-/// </summary>
+/// <summary>The controller authorizes the selected send-as team; the provider owns eligibility and delivery.</summary>
 [Authorize]
 [Route("Teams")]
 internal sealed class TeamMessageController(
     IUserService userService,
     ITeamMessageOptionsProvider teamOptions,
-    ICommunicationPreferenceService commPrefs,
-    IEmailService emailService,
-    IEmailMessageFactory emailMessages,
-    IAuditLogService auditLogService,
     IStringLocalizer<TeamsResource> localizer,
-    IStringLocalizer<SharedResource> sharedLocalizer,
-    ILogger<TeamMessageController> logger) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
 {
     private const string ProfileController = "ProfileView";
     private const string ViewProfileAction = "ViewProfile";
@@ -38,126 +27,69 @@ internal sealed class TeamMessageController(
         var currentUser = await GetCurrentUserInfoAsync(ct);
         if (currentUser is null)
             return NotFound();
-
-        if (currentUser.Id == id)
-            return RedirectToProfile(id);
-
-        var targetInfo = await UserService.GetUserInfoAsync(id, ct);
-        if (targetInfo is null)
-            return NotFound();
-        id = targetInfo.Id;
-        if (currentUser.Id == id)
-            return RedirectToProfile(id);
-
-        if (!await commPrefs.AcceptsFacilitatedMessagesAsync(id, ct))
-        {
-            SetError(localizer["Teams_SendMessage_OptedOut"].Value);
-            return RedirectToProfile(id);
-        }
-
-        var team = await FindTeamAsync(currentUser.Id, teamId, ct);
+        var context = await teamOptions.GetContextAsync(currentUser.Id, id, ct);
+        if (RefusalResponse(context) is { } response)
+            return response;
+        var team = context.Teams.FirstOrDefault(t => t.TeamId == teamId);
         if (team is null)
             return Forbid();
 
-        return View(new TeamSendMessageViewModel
-        {
-            TeamId = team.TeamId,
-            TeamName = team.TeamName,
-            TeamReplyToEmail = team.GoogleGroupEmail,
-            RecipientId = id,
-            PageTitle = string.Format(localizer["Teams_SendMessage_FromTeam"].Value, targetInfo.BurnerName, team.TeamName),
-            SenderEmail = currentUser.Email ?? string.Empty,
-        });
+        var model = new TeamSendMessageViewModel();
+        PopulateModel(model, context, team);
+        return View(model);
     }
 
     [HttpPost("{teamId:guid}/SendMessage/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SendMessage(
-        Guid teamId, Guid id, TeamSendMessageViewModel model, CancellationToken ct)
+    public async Task<IActionResult> SendMessage(Guid teamId, Guid id, TeamSendMessageViewModel model, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
         if (currentUser is null)
             return NotFound();
-
-        if (currentUser.Id == id)
-            return RedirectToProfile(id);
-
-        var participants = await UserService.GetUserInfosAsync([id, currentUser.Id], ct);
-        if (!participants.TryGetValue(id, out var targetUser))
-            return NotFound();
-        id = targetUser.Id;
-        if (currentUser.Id == id)
-            return RedirectToProfile(id);
-
-        if (!await commPrefs.AcceptsFacilitatedMessagesAsync(id, ct))
-        {
-            SetError(localizer["Teams_SendMessage_OptedOut"].Value);
-            return RedirectToProfile(id);
-        }
-
-        var team = await FindTeamAsync(currentUser.Id, teamId, ct);
+        var context = await teamOptions.GetContextAsync(currentUser.Id, id, ct);
+        if (RefusalResponse(context) is { } response)
+            return response;
+        var team = context.Teams.FirstOrDefault(t => t.TeamId == teamId);
         if (team is null)
             return Forbid();
 
-        model.TeamId = team.TeamId;
-        model.TeamName = team.TeamName;
-        model.TeamReplyToEmail = team.GoogleGroupEmail;
-        model.RecipientId = id;
-        model.PageTitle = string.Format(localizer["Teams_SendMessage_FromTeam"].Value, targetUser.BurnerName, team.TeamName);
-        model.SenderEmail = currentUser.Email ?? string.Empty;
-
+        PopulateModel(model, context, team);
         if (!ModelState.IsValid)
             return View(model);
 
-        if (!participants.TryGetValue(currentUser.Id, out var sender))
-            return NotFound();
-
-        if (string.IsNullOrWhiteSpace(targetUser.Email) || string.IsNullOrWhiteSpace(sender.Email))
+        if (!await teamOptions.SendAsync(context, team, model.Message, model.IncludeContactInfo))
         {
             ModelState.AddModelError(string.Empty, sharedLocalizer["Common_Error"].Value);
             return View(model);
         }
 
-        await emailService.SendAsync(emailMessages.FacilitatedMessage(
-            targetUser.Id,
-            targetUser.Email,
-            targetUser.BurnerName,
-            sender.BurnerName,
-            model.Message,
-            model.IncludeContactInfo,
-            sender.Email,
-            targetUser.PreferredLanguage.IsSupportedCultureCode()
-                ? targetUser.PreferredLanguage
-                : CultureCatalog.DefaultCultureCode,
-            replyTo: team.GoogleGroupEmail), CancellationToken.None);
-
-        // Name and link the team; never copy its address into the audit text.
-        var contactInfo = model.IncludeContactInfo ? "yes" : "no";
-        try
-        {
-            await auditLogService.LogAsync(
-                EmailAuditActions.FacilitatedMessageSent,
-                AuditSubjectTypes.User, targetUser.Id,
-                $"Message sent to {targetUser.BurnerName} from team {team.TeamName} (contact info shared: {contactInfo})",
-                currentUser.Id,
-                relatedEntityId: team.TeamId,
-                relatedEntityType: "Team");
-        }
-        catch (Exception ex)
-        {
-            logger.LogCritical(ex,
-                "Facilitated-message audit failed AFTER queueing a message to user {RecipientUserId} from user {SenderUserId} as team {TeamId} " +
-                "(contact info shared: {IncludeContactInfo}). Email is queued; reconcile audit trail.",
-                targetUser.Id, currentUser.Id, team.TeamId, model.IncludeContactInfo);
-        }
-
-        SetSuccess(string.Format(localizer["Teams_SendMessage_Success"].Value, targetUser.BurnerName));
-
-        return RedirectToProfile(id);
+        SetSuccess(string.Format(localizer["Teams_SendMessage_Success"].Value, context.Recipient!.BurnerName));
+        return RedirectToProfile(context.Recipient.Id);
     }
 
-    private async Task<TeamMessageOption?> FindTeamAsync(Guid viewerId, Guid teamId, CancellationToken ct) =>
-        (await teamOptions.GetOptionsAsync(viewerId, ct)).FirstOrDefault(t => t.TeamId == teamId);
+    private IActionResult? RefusalResponse(TeamMessageContext context)
+    {
+        if (context.Refusal == TeamMessageRefusal.MissingUser)
+            return NotFound();
+        if (context.Refusal == TeamMessageRefusal.Self)
+            return RedirectToProfile(context.Recipient!.Id);
+        if (context.Refusal == TeamMessageRefusal.OptedOut)
+        {
+            SetError(localizer["Teams_SendMessage_OptedOut"].Value);
+            return RedirectToProfile(context.Recipient!.Id);
+        }
+        return null;
+    }
+
+    private void PopulateModel(TeamSendMessageViewModel model, TeamMessageContext context, TeamMessageOption team)
+    {
+        model.TeamId = team.TeamId;
+        model.TeamName = team.TeamName;
+        model.TeamReplyToEmail = team.GoogleGroupEmail;
+        model.RecipientId = context.Recipient!.Id;
+        model.PageTitle = string.Format(localizer["Teams_SendMessage_FromTeam"].Value, context.Recipient.BurnerName, team.TeamName);
+        model.SenderEmail = context.Sender!.Email ?? string.Empty;
+    }
 
     private IActionResult RedirectToProfile(Guid id) =>
         RedirectToAction(ViewProfileAction, ProfileController, new { id });

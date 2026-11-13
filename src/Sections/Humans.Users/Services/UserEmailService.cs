@@ -50,8 +50,8 @@ internal sealed class UserEmailService(
         reader.GetVisibleEmailsAsync(userId, accessLevel, cancellationToken);
 
     public Task<AddEmailResult> AddEmailAsync(
-        Guid userId, string email, CancellationToken cancellationToken = default) =>
-        verification.AddEmailAsync(userId, email, cancellationToken);
+        Guid userId, string email, CancellationToken cancellationToken = default, Guid? actorUserId = null) =>
+        verification.AddEmailAsync(userId, email, cancellationToken, actorUserId);
 
     public Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId, Guid emailId, string token, CancellationToken cancellationToken = default) =>
@@ -62,28 +62,36 @@ internal sealed class UserEmailService(
         verification.AdminMarkVerifiedAsync(userId, emailId, actorUserId, cancellationToken);
 
     public async Task<UpdateEmailResult> SetPrimaryAsync(
-        Guid userId, Guid emailId, CancellationToken cancellationToken = default)
+        Guid userId, Guid emailId, CancellationToken cancellationToken = default, Guid? actorUserId = null)
     {
-        return await userService.UpdateUserEmailAsync(
+        var result = await userService.UpdateUserEmailAsync(
             userId,
             emailId,
             new UserEmailUpdateCommand(Primary: UserEmailPrimaryChange.MakePrimary),
             cancellationToken);
+        if (result.Succeeded)
+            await LogEmailChangeAsync(UsersAuditActions.UserEmailPrimarySet, userId, emailId,
+                $"Set primary email row {emailId}", actorUserId);
+        return result;
     }
 
     public async Task<UpdateEmailResult> SetVisibilityAsync(
         Guid userId, Guid emailId, ContactFieldVisibility? visibility,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, Guid? actorUserId = null)
     {
-        return await userService.UpdateUserEmailAsync(
+        var result = await userService.UpdateUserEmailAsync(
             userId,
             emailId,
             new UserEmailUpdateCommand(ChangeVisibility: true, Visibility: visibility),
             cancellationToken);
+        if (result.Succeeded)
+            await LogEmailChangeAsync(UsersAuditActions.UserEmailVisibilityChanged, userId, emailId,
+                $"Changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}", actorUserId);
+        return result;
     }
 
     public async Task<DeleteEmailResult> DeleteEmailAsync(
-        Guid userId, Guid emailId, CancellationToken cancellationToken = default)
+        Guid userId, Guid emailId, CancellationToken cancellationToken = default, Guid? actorUserId = null)
     {
         using var removal = await RemovalLocks.GetOrAdd(userId,
             static id => new TrackedLock($"Users.EmailRemoval[{id}]")).AcquireAsync(logger, cancellationToken);
@@ -128,7 +136,13 @@ internal sealed class UserEmailService(
             new UserEmailRemoveCommand(UserEmailRemovalMode.PlainEmail),
             cancellationToken);
         if (removed)
+        {
             await GoogleIdentity.ClearIfAddressAsync(userId, email.Email, CancellationToken.None);
+            // Without an actor the caller is transactional provisioning, which audits after its commit.
+            if (actorUserId.HasValue)
+                await LogEmailChangeAsync(UsersAuditActions.UserEmailDeleted, userId, emailId,
+                    $"Deleted email row {emailId}", actorUserId);
+        }
         return new DeleteEmailResult(removed);
     }
 
@@ -142,7 +156,7 @@ internal sealed class UserEmailService(
     }
 
     public async Task<UserEmailAddResult> AddVerifiedEmailAsync(
-        Guid userId, string email, CancellationToken cancellationToken = default)
+        Guid userId, string email, CancellationToken cancellationToken = default, Guid? actorUserId = null)
     {
         var result = await userService.AddUserEmailAsync(
             userId,
@@ -153,6 +167,9 @@ internal sealed class UserEmailService(
                 IgnoreExisting: true),
             cancellationToken);
 
+        if (result.Added && result.ErrorKey is null && actorUserId.HasValue)
+            await LogEmailChangeAsync(UsersAuditActions.UserEmailAdded, userId, result.EmailId,
+                $"Added pre-verified email {email.Trim()} (no verification flow)", actorUserId);
         return result;
     }
 
@@ -254,7 +271,7 @@ internal sealed class UserEmailService(
         reader.GetOrphanUserEmailsAsync(ct);
 
     /// <inheritdoc />
-    public async Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default)
+    public async Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default, Guid? actorUserId = null)
     {
         var row = await repository.GetUserEmailByIdReadOnlyAsync(emailId, ct);
         if (row is null) return false;
@@ -267,47 +284,67 @@ internal sealed class UserEmailService(
                 PreserveLastVerifiedEmail: false),
             ct);
         if (removed)
+        {
             await GoogleIdentity.ClearIfAddressAsync(row.UserId, row.Email, CancellationToken.None);
+            const string description = "Orphan UserEmail row deleted by EmailProblems action";
+            if (actorUserId is { } actor)
+                await auditLogService.LogAsync(UsersAuditActions.OrphanUserEmailDeleted,
+                    nameof(UserEmail), emailId, description, actor);
+            else
+                await auditLogService.LogAsync(UsersAuditActions.OrphanUserEmailDeleted,
+                    nameof(UserEmail), emailId, description, nameof(UserEmailService));
+        }
         return removed;
     }
 
     /// <inheritdoc />
     public async Task<UnlinkEmailResult> UnlinkAsync(
-        Guid userId, Guid userEmailId, Guid actorUserId,
-        CancellationToken cancellationToken = default)
+        Guid userId, Guid? userEmailId, Guid actorUserId,
+        CancellationToken cancellationToken = default,
+        string? provider = null, string? providerKey = null)
     {
         using var removal = await RemovalLocks.GetOrAdd(userId,
             static id => new TrackedLock($"Users.EmailRemoval[{id}]")).AcquireAsync(logger, cancellationToken);
-        var row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
-        if (row is null) return new(false);
-        if (string.IsNullOrEmpty(row.Provider) || string.IsNullOrEmpty(row.ProviderKey))
+        var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
+        UserEmail? row;
+        if (userEmailId.HasValue)
+        {
+            row = await repository.GetUserEmailByIdAndUserIdAsync(userEmailId.Value, userId, cancellationToken);
+            if (row is null) return new(false);
+            provider = row.Provider;
+            providerKey = row.ProviderKey;
+        }
+        else
+        {
+            row = allEmails.FirstOrDefault(e =>
+                string.Equals(e.Provider, provider, StringComparison.Ordinal)
+                && string.Equals(e.ProviderKey, providerKey, StringComparison.Ordinal));
+        }
+        if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerKey))
             return new(false);
 
-        // At least one verified email must remain, or the user is locked out (magic link needs one
-        // too). Checked even for an unverified row, which can still carry the only OAuth login, and
-        // before RemoveLoginAsync so a refusal mutates nothing.
-        var allEmails = await repository.GetUserEmailsByUserIdForMutationAsync(userId, cancellationToken);
-        var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != userEmailId);
-        if (verifiedRemaining == 0)
+        // An orphan or unverified row can still carry the only OAuth login; magic link needs a verified email.
+        if (!CanUnlink(allEmails.Count(e => e.IsVerified), row?.IsVerified == true))
         {
             logger.LogWarning(
                 "Refused unlink of email {EmailId} for user {UserId}: no other verified sign-in method remains",
-                userEmailId, userId);
+                row?.Id, userId);
             return new(false, "Users_LinkedAccounts_UnlinkBlockedLastSignInMethod");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null) return new(false);
-
-        // Capture before RemoveUserEmailAsync may detach the entity.
-        var provider = row.Provider;
-        var providerKey = row.ProviderKey;
-        var email = row.Email;
+        if (!userEmailId.HasValue)
+        {
+            var logins = await userManager.GetLoginsAsync(user);
+            if (!logins.Any(l => string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
+                && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal)))
+                return new(false);
+        }
 
         var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
         if (!removeLogin.Succeeded)
         {
-            // Hard-fail, or the user thinks they unlinked but can still sign in.
             logger.LogError(
                 "UnlinkAsync: UserManager.RemoveLoginAsync failed for user {UserId} provider {Provider}; aborting unlink to preserve consistency between AspNetUserLogins and user_emails. Errors: {Errors}",
                 userId, provider,
@@ -317,26 +354,41 @@ internal sealed class UserEmailService(
 
         // Identity removal committed; finish row, invariants, cache and audit even after a disconnect.
         cancellationToken = CancellationToken.None;
-
-        var removed = await userService.RemoveUserEmailAsync(
-            userId,
-            userEmailId,
-            new UserEmailRemoveCommand(
-                UserEmailRemovalMode.ProviderLinkedEmail,
-                PreserveLastVerifiedEmail: false),
-            cancellationToken);
-        if (!removed) return new(false);
-        await GoogleIdentity.ClearIfAddressAsync(userId, email, cancellationToken);
+        if (row is not null)
+        {
+            var removed = await userService.RemoveUserEmailAsync(
+                userId,
+                row.Id,
+                new UserEmailRemoveCommand(
+                    UserEmailRemovalMode.ProviderLinkedEmail,
+                    PreserveLastVerifiedEmail: false),
+                cancellationToken);
+            if (!removed) return new(false);
+            await GoogleIdentity.ClearIfAddressAsync(userId, row.Email, cancellationToken);
+        }
 
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailUnlinked,
             nameof(User), userId,
-            $"Unlinked {provider} (key {ShortProviderKeyHash(providerKey)}) from {email}",
+            row is null
+                ? $"Unlinked orphan {provider} login (no matching UserEmail row)"
+                : $"Unlinked {provider} (key {ShortProviderKeyHash(providerKey)}) from {row.Email}",
             actorUserId,
-            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+            relatedEntityId: row?.Id, relatedEntityType: row is null ? null : nameof(UserEmail));
 
         return new(true);
     }
+
+    private Task LogEmailChangeAsync(AuditActionDefinition action, Guid userId, Guid emailId,
+        string description, Guid? actorUserId) =>
+        actorUserId is { } actor
+            ? auditLogService.LogAsync(action, nameof(User), userId, description, actor,
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail))
+            : auditLogService.LogAsync(action, nameof(User), userId, description, nameof(UserEmailService),
+                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+
+    internal static bool CanUnlink(int verifiedEmailCount, bool removesVerifiedEmail) =>
+        verifiedEmailCount - (removesVerifiedEmail ? 1 : 0) >= 1;
 
     internal static string ShortProviderKeyHash(string providerKey)
     {

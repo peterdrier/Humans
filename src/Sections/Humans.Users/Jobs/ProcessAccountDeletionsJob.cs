@@ -25,6 +25,8 @@ internal sealed class ProcessAccountDeletionsJob(
     ILogger<ProcessAccountDeletionsJob> logger,
     IClock clock) : IRecurringJob
 {
+    private const string FailureMessage = "Failed to process one or more account deletions.";
+
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
@@ -52,9 +54,9 @@ internal sealed class ProcessAccountDeletionsJob(
 
             foreach (var userId in dueUserIds)
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var summary = await accountDeletionService.AnonymizeExpiredAccountAsync(
                         userId, cancellationToken);
 
@@ -108,6 +110,8 @@ internal sealed class ProcessAccountDeletionsJob(
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
+                    if (failures.Count > 0)
+                        throw new AggregateException(FailureMessage, failures);
                     throw;
                 }
                 catch (Exception ex)
@@ -120,12 +124,17 @@ internal sealed class ProcessAccountDeletionsJob(
             }
 
             if (failures.Count > 0)
-                throw new AggregateException("Failed to process one or more account deletions.", failures);
+                throw new AggregateException(FailureMessage, failures);
 
             metrics.RecordJobRun("process_account_deletions", "success");
             logger.LogInformation(
                 "Completed account deletion processing, processed {Count} accounts",
                 processed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Account deletion processing interrupted by shutdown");
+            throw;
         }
         catch (Exception ex)
         {

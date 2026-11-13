@@ -28,8 +28,10 @@ Native continuation may carry unfinished work across turns; only complete the
 goal once the current batch is committed and all helpers have finished.
 
 The default window is at most 12 hours. The weekly quota allowance grows by
-12 percentage points per day elapsed since the account's weekly reset:
-`minimum remaining = 100 - 12 * elapsed_days` (16% at the end of seven days).
+12 percentage points per day elapsed since the account's weekly reset, with the
+next day's allowance available upfront:
+`minimum remaining = max(16, 100 - 12 * (elapsed_days + 1))`. The cutoff is fixed
+at the run's first quota read and renewed only when the weekly reset changes.
 All account usage counts. Below this threshold, or when quota cannot be read,
 the wrapper stops new work and validates/publishes completed fixes. An explicit
 manual `IGNORE_QUOTA_CUTOFF=1` bypasses quota checks, including unavailable data;

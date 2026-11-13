@@ -163,7 +163,12 @@ internal sealed class CachingTeamService(
 
             result.Add(new UserTeamMembershipInfo(
                 membership.TeamMemberId, team.Team.Id, team.Team.Name, team.Team.Slug, team.Team.IsSystemTeam,
-                membership.Role, membership.JoinedAt));
+                membership.Role, membership.JoinedAt)
+            {
+                IsActive = team.Team.IsActive,
+                IsHidden = team.Team.IsHidden,
+                SystemTeamType = team.Team.SystemTeamType
+            });
         }
 
         return result;
@@ -200,7 +205,7 @@ internal sealed class CachingTeamService(
     public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default)
         => WithInnerAsync(inner => inner.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, eventSettingsId, ct));
 
-    public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
+    public Task<TeamEarlyEntryMutationResult> RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default)
         => WithInnerAsync(inner => inner.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct));
 
     public Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
@@ -236,7 +241,7 @@ internal sealed class CachingTeamService(
     public Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
-        string reason,
+        string? reason,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.RejectJoinRequestAsync(requestId, approverUserId, reason, cancellationToken));
 
@@ -355,16 +360,15 @@ internal sealed class CachingTeamService(
         int slotCount,
         List<SlotPriority> priorities,
         int sortOrder,
-        bool isManagement,
+        bool? isManagement,
         RolePeriod period,
         Guid actorUserId,
         bool isPublic = true,
-        bool canToggleManagement = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.UpdateRoleDefinitionAsync(
             roleDefinitionId, name, description, slotCount, priorities, sortOrder,
-            isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken), static result => result.Succeeded);
+            isManagement, period, actorUserId, isPublic, estimatedHours, cancellationToken), static result => result.Succeeded);
 
     public Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId,

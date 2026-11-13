@@ -1114,6 +1114,118 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<string>(), report.Id, Arg.Any<string>(), Arg.Any<string>());
     }
 
+    public enum DetachedFailure { Creditor, ContactLink, PurchaseDocument, ProcessedMarker, MissingReport, SkippedTag, PurchaseDocumentBeforeNextEvent }
+
+    [HumansTheory]
+    [InlineData(DetachedFailure.Creditor)]
+    [InlineData(DetachedFailure.ContactLink)]
+    [InlineData(DetachedFailure.PurchaseDocument)]
+    [InlineData(DetachedFailure.ProcessedMarker)]
+    [InlineData(DetachedFailure.MissingReport)]
+    [InlineData(DetachedFailure.SkippedTag)]
+    [InlineData(DetachedFailure.PurchaseDocumentBeforeNextEvent)]
+    public async Task Detached_failure_during_shutdown_finishes_retry_bookkeeping(DetachedFailure stage)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var report = MakeReport();
+        var ev = MakeEvent(report.Id, stage == DetachedFailure.SkippedTag
+            ? HoldedExpenseOutboxEventType.UpdateIncomingDocTag : HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        var next = MakeEvent(Guid.NewGuid(), HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Now, BatchSize, shutdown.Token)
+            .Returns(stage == DetachedFailure.PurchaseDocumentBeforeNextEvent ? [ev, next] : [ev]);
+        _repo.GetByIdAsync(report.Id, shutdown.Token).Returns(stage == DetachedFailure.MissingReport ? null : report);
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), CancellationToken.None).Returns("doc");
+        var canceled = new OperationCanceledException("Detached operation failed");
+        async Task FailAsync()
+        {
+            await shutdown.CancelAsync();
+            throw canceled;
+        }
+        async Task<string> FailWithResultAsync() { await FailAsync(); return "unreachable"; }
+        if (stage == DetachedFailure.Creditor)
+            _financeWrite.EnsureCreditorContactAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), CancellationToken.None).Returns(_ => FailWithResultAsync());
+        else if (stage == DetachedFailure.ContactLink)
+            _repo.SetHoldedContactLinkAsync(report.Id, Arg.Any<string>(), Arg.Any<int?>(), Now, CancellationToken.None)
+                .Returns(_ => FailAsync());
+        else if (stage is DetachedFailure.PurchaseDocument or DetachedFailure.PurchaseDocumentBeforeNextEvent)
+            _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), CancellationToken.None)
+                .Returns(_ => FailWithResultAsync());
+        else if (stage == DetachedFailure.MissingReport)
+            _repo.MarkOutboxFailedPermanentlyAsync(ev.Id, Arg.Any<string>(), Now, CancellationToken.None).Returns(_ => FailAsync());
+        else
+            _repo.MarkOutboxProcessedAsync(ev.Id, Now, CancellationToken.None).Returns(_ => FailAsync());
+
+        var action = () => _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, shutdown.Token);
+        if (stage == DetachedFailure.PurchaseDocumentBeforeNextEvent)
+            await action.Should().ThrowAsync<OperationCanceledException>();
+        else
+            await action.Should().NotThrowAsync();
+        await _repo.Received(1).IncrementOutboxRetryAsync(ev.Id, Arg.Any<string>(), Now + Duration.FromMinutes(2), CancellationToken.None);
+        await _repo.DidNotReceive().GetByIdAsync(next.ExpenseReportId, Arg.Any<CancellationToken>());
+    }
+
+    public enum BookkeepingFailure { RetrySave, WriteOffSave, CompletionRead }
+
+    [HumansTheory]
+    [InlineData(BookkeepingFailure.RetrySave)]
+    [InlineData(BookkeepingFailure.WriteOffSave)]
+    [InlineData(BookkeepingFailure.CompletionRead)]
+    public async Task Detached_bookkeeping_cancellation_escapes_as_a_failure(BookkeepingFailure stage)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var report = MakeReport();
+        var ev = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        _repo.GetUnprocessedOutboxAsync(Now, BatchSize, shutdown.Token).Returns([ev]);
+        _repo.GetByIdAsync(report.Id, shutdown.Token).Returns(report);
+        Exception initial = stage switch
+        {
+            BookkeepingFailure.RetrySave => new HoldedTransientException("Vendor unavailable"),
+            BookkeepingFailure.WriteOffSave => new HoldedPermanentException("Vendor refused"),
+            _ => new IOException("Unexpected dependency failure")
+        };
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), CancellationToken.None)
+            .Returns(Task.FromException<string>(initial));
+        var canceled = new OperationCanceledException("Bookkeeping failed");
+        async Task FailAsync() { await shutdown.CancelAsync(); throw canceled; }
+        if (stage == BookkeepingFailure.RetrySave)
+            _repo.IncrementOutboxRetryAsync(ev.Id, Arg.Any<string>(), Arg.Any<Instant>(), CancellationToken.None).Returns(_ => FailAsync());
+        else if (stage == BookkeepingFailure.WriteOffSave)
+            _repo.MarkOutboxFailedPermanentlyAsync(ev.Id, Arg.Any<string>(), Now, CancellationToken.None).Returns(_ => FailAsync());
+        else
+            _repo.GetLatestOutboxForReportAsync(report.Id, CancellationToken.None).Returns(async Task<HoldedExpenseOutboxEvent?> (_) =>
+            { await shutdown.CancelAsync(); throw canceled; });
+
+        var action = () => _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, shutdown.Token);
+        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.InnerException.Should().BeSameAs(canceled);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Detached_lost_completion_acknowledgement_keeps_the_completed_push(bool skippedTag)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var report = MakeReport();
+        var ev = MakeEvent(report.Id, skippedTag ? HoldedExpenseOutboxEventType.UpdateIncomingDocTag : HoldedExpenseOutboxEventType.CreateIncomingDoc);
+        ev.RetryCount = 9;
+        _repo.GetUnprocessedOutboxAsync(Now, BatchSize, shutdown.Token).Returns([ev]);
+        _repo.GetByIdAsync(report.Id, shutdown.Token).Returns(report);
+        _holdedWrite.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), CancellationToken.None).Returns("doc");
+        _repo.MarkOutboxProcessedAsync(ev.Id, Now, CancellationToken.None).Returns(async _ =>
+        {
+            ev.ProcessedAt = Now;
+            await shutdown.CancelAsync();
+            throw new OperationCanceledException("Lost completion acknowledgement");
+        });
+        _repo.GetLatestOutboxForReportAsync(report.Id, CancellationToken.None).Returns(ev);
+
+        var action = () => _backgroundProcessor.DrainHoldedOutboxAsync(BatchSize, shutdown.Token);
+        await action.Should().NotThrowAsync();
+        await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().MarkOutboxFailedPermanentlyAsync(default, default!, default);
+    }
+
     [HumansFact]
     public async Task CallerCancellation_StopsTheDrainWithoutCountingFailure()
     {
@@ -1385,17 +1497,16 @@ public class ExpenseReportServiceHoldedOutboxTests
         timeline.CanRetry.Should().BeFalse();
     }
 
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task GetFailedHoldedPushReportIdsAsync_IsFinanceAdminOnly(bool isFinanceAdmin)
+    [HumansFact]
+    public async Task GetFailedHoldedPushReportIdsAsync_ReturnsQueueWideIds()
     {
         var failed = Guid.NewGuid();
         _repo.GetFailedOutboxReportIdsAsync(Arg.Any<CancellationToken>()).Returns([failed]);
 
-        var ids = await _sut.GetFailedHoldedPushReportIdsAsync(isFinanceAdmin, TestContext.Current.CancellationToken);
+        var ids = await _sut.GetFailedHoldedPushReportIdsAsync(TestContext.Current.CancellationToken);
 
-        ids.Should().BeEquivalentTo(isFinanceAdmin ? [failed] : Array.Empty<Guid>());
+        ids.Should().BeEquivalentTo([failed]);
+        await _repo.Received(1).GetFailedOutboxReportIdsAsync(TestContext.Current.CancellationToken);
     }
 
     [HumansFact]

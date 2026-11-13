@@ -17,8 +17,8 @@ enum:
 | `LegalName` | legal first/last name; deanonymizes burners | admin/coordinator |
 | `Admin` | verified emails and non-public contact fields | admin/board |
 
-Composites: `PublicAll = Name | Bio`, `ManageAll = PublicAll | LegalName` (pickers that find by real
-name without private contact data), `AdminAll = ManageAll | Admin`.
+Composites: `PublicAll = Name | Bio` and `AdminAll = Name | Bio | LegalName | Admin`.
+Legal-name pickers select their required flags explicitly at the authorized call site.
 
 **Invariants:**
 - **Emergency-contact data is never searchable**, under any flag combination.

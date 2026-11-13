@@ -261,7 +261,7 @@ internal sealed class TeamService(
         Joining.ApproveJoinRequestAsync(requestId, approverUserId, notes, cancellationToken);
 
     public Task<TeamJoinReviewResult> RejectJoinRequestAsync(
-        Guid requestId, Guid approverUserId, string reason, CancellationToken cancellationToken = default) =>
+        Guid requestId, Guid approverUserId, string? reason, CancellationToken cancellationToken = default) =>
         Joining.RejectJoinRequestAsync(requestId, approverUserId, reason, cancellationToken);
 
     public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
@@ -302,11 +302,11 @@ internal sealed class TeamService(
 
     public Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
-        bool isPublic = true, bool canToggleManagement = true, int? estimatedHours = null,
+        List<SlotPriority> priorities, int sortOrder, bool? isManagement, RolePeriod period, Guid actorUserId,
+        bool isPublic = true, int? estimatedHours = null,
         CancellationToken cancellationToken = default) =>
         RoleDefinitions.UpdateRoleDefinitionAsync(roleDefinitionId, name, description, slotCount, priorities,
-            sortOrder, isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken);
+            sortOrder, isManagement, period, actorUserId, isPublic, estimatedHours, cancellationToken);
 
     public Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
@@ -509,7 +509,7 @@ internal sealed class TeamService(
     public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default) =>
         EarlyEntry.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, eventSettingsId, ct);
 
-    public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<TeamEarlyEntryMutationResult> RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default) =>
         EarlyEntry.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct);
 
     private Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct) =>

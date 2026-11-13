@@ -1,5 +1,4 @@
 using Humans.Governance.Contracts;
-using Humans.Governance.Services.Dtos;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -186,27 +185,13 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
                  !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
             ct), ct);
 
-    public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<MemberApplication>> GetNonWithdrawnAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var stats = await ctx.Applications
+        return await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status != ApplicationStatus.Withdrawn)
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Total = g.Count(),
-                Approved = g.Count(a => a.Status == ApplicationStatus.Approved),
-                Rejected = g.Count(a => a.Status == ApplicationStatus.Rejected),
-                Colaborador = g.Count(a => a.MembershipTier == MembershipTier.Colaborador),
-                Asociado = g.Count(a => a.MembershipTier == MembershipTier.Asociado)
-            })
-            .FirstOrDefaultAsync(ct);
-
-        return stats is null
-            ? new ApplicationAdminStats(0, 0, 0, 0, 0)
-            : new ApplicationAdminStats(
-                stats.Total, stats.Approved, stats.Rejected, stats.Colaborador, stats.Asociado);
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(

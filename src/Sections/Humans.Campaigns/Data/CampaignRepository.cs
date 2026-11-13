@@ -212,33 +212,41 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         // Filter by code in memory so the query stays simple and collation-independent.
-        var unredeemed = (await ctx.CampaignGrants
+        var matchingGrants = (await ctx.CampaignGrants
             .Include(g => g.Code)
             .Include(g => g.Campaign)
-            .Where(g => (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed)
-                && g.RedeemedAt == null)
+            .Where(g => g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed)
             .ToListAsync(ct))
             .Where(g => codeStrings.Contains(g.Code.Code))
             .ToList();
 
-        // One grant per redemption, so N orders with the same code redeem N distinct grants.
         var redeemedCount = 0;
-        foreach (var redemption in redemptions)
+        foreach (var purchases in redemptions.Where(r => !string.IsNullOrEmpty(r.Code))
+                     .GroupBy(r => r.Code, StringComparer.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrEmpty(redemption.Code))
-                continue;
+            var grants = matchingGrants
+                .Where(g => string.Equals(g.Code.Code, purchases.Key, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var redeemed = grants.Where(g => g.RedeemedAt != null).ToList();
+            var pending = purchases.ToList();
+            var matched = 0;
+            // Tickets sends the full snapshot. Match recorded timestamps first so an out-of-order new purchase
+            // keeps its date; the remaining redeemed count also covers corrected purchase timestamps.
+            foreach (var grant in redeemed)
+            {
+                var index = pending.FindIndex(purchase => purchase.RedeemedAt == grant.RedeemedAt);
+                if (index < 0) continue;
+                pending.RemoveAt(index);
+                matched++;
+            }
 
-            var grant = unredeemed
-                .Where(g => string.Equals(g.Code.Code, redemption.Code, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(g => g.Campaign.CreatedAt) // arch:db-sort-ok newest-campaign grant selector (FirstOrDefault)
-                .FirstOrDefault();
-
-            if (grant is null)
-                continue;
-
-            grant.RedeemedAt = redemption.RedeemedAt;
-            unredeemed.Remove(grant);
-            redeemedCount++;
+            var available = grants.Where(g => g.RedeemedAt == null)
+                .OrderByDescending(g => g.Campaign.CreatedAt); // arch:db-sort-ok newest-campaign grant allocation
+            foreach (var (purchase, grant) in pending.Skip(redeemed.Count - matched).Zip(available))
+            {
+                grant.RedeemedAt = purchase.RedeemedAt;
+                redeemedCount++;
+            }
         }
 
         if (redeemedCount > 0)

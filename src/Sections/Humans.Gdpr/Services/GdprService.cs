@@ -100,7 +100,13 @@ internal sealed class GdprService(
         {
             try
             {
+                ct.ThrowIfCancellationRequested();
                 await contributor.EraseForUserAsync(userId, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("GDPR erasure interrupted for user {UserId}", userId);
+                throw;
             }
             catch (Exception ex)
             {

@@ -28,14 +28,18 @@ independently enforce lifecycle and document rules; they do not authorize the ca
   replacement and the comment window.
 - Requesting a status update requires the `BoardOrAdmin` policy; anyone else gets 403 and
   the page hides the form. It is rate-limited by nothing.
-- Join is a request. Approve, Decline and Add (`ManageMembersAsync`) require a current
-  coordinator of an Active group or Board/Admin; the service re-checks the coordinator role
-  unless the controller passed `asAdmin`. A plain member gets 403.
+- Join is a request. Approve, Decline and Add (`ManageMembersAsync`) use the handler's
+  ManageMembership requirement: a current coordinator of an Active group or Board/Admin.
+  A plain member gets 403. Services retain Active-group and request/target validation,
+  without receiving privilege flags or re-checking the caller's role.
+- Member coordinator handover (`SetCoordinatorsAsync`) requires an Active group. The existing
+  Board/Admin route calls `AppointCoordinatorsAsync` and may appoint on frozen groups.
+  Both commands share membership/count validation and persistence; authorization stays at the routes.
 - A sensitive group's roster, documents, meetings and history require membership or
   Board/Admin; the Document route returns 404 to everyone else, and `AddCommentAsync`
   refuses non-members.
 - Only Board/Admin can reach admin actions. Anonymous callers cannot reach any route.
 - A member or coordinator cannot set the budget; the route lives on the admin controller.
-- Page controls use the same Member authorization result as POST actions.
+- Page controls use the same Member and ManageMembership authorization results as POST actions.
 
 Tests: `WorkgroupAuthorizationHandlerTests` and `WorkgroupsControllerAuthorizationTests`.

@@ -83,13 +83,7 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        if (string.IsNullOrWhiteSpace(model.Notes))
-        {
-            SetError(localizer["Teams_TeamAdmin_ProvideRejectionReason"].Value);
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
-        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes!);
+        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Teams_TeamAdmin_RequestRejected"].Value);
@@ -97,8 +91,8 @@ internal sealed class TeamAdminController(
         else
         {
             logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}",
-                requestId, team.Id, user.Id, result.Refusal);
-            SetError(result.Refusal!);
+                requestId, team.Id, user.Id, result.ErrorKey ?? result.Refusal);
+            SetError(result.ErrorKey is { } errorKey ? localizer[errorKey].Value : result.Refusal!);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -217,14 +211,8 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        if (team.Members.All(m => m.UserId != userId))
-        {
-            SetError("That human is not a member of this team.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
         var result = await emailProvisioningService.ProvisionNobodiesEmailAsync(
-            userId, emailPrefix, user.Id);
+            userId, emailPrefix, user.Id, team.Id);
 
         if (!result.Success)
         {
@@ -398,14 +386,15 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
+        bool? managementChange = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded
+            ? model.IsManagement : null;
         var priorities = ParseRolePriorities(model.Priorities);
         var result = priorities is null
             ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
             : await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
-                model.IsPublic, canToggleManagement, model.EstimatedHours);
+                priorities, model.SortOrder, managementChange, model.Period, user.Id,
+                model.IsPublic, model.EstimatedHours);
 
         if (result.Refusal is { } refusal)
         {
@@ -700,8 +689,14 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
-        await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
-        SetSuccess("Early entry revoked.");
+        var result = await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Early entry removal refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", grantId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
+            SetSuccess("Early entry revoked.");
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }

@@ -87,7 +87,9 @@ builder.Services.AddSingleton<GateLoginThrottle>();
 
 // Since-startup sign-in tally by method, shown on the /Admin dashboard. In-memory only.
 builder.Services.AddSingleton<LoginMethodCounter>();
-builder.Services.AddSingleton<ISectionChrome, Humans.Web.ShellChrome>();
+var shellChrome = new Humans.Web.ShellChrome();
+builder.Services.AddSingleton<ISectionChrome>(shellChrome);
+builder.Services.AddSingleton<ISectionHelp>(shellChrome);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

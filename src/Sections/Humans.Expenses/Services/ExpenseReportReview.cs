@@ -15,16 +15,16 @@ internal sealed class ExpenseReportReview(
     ExpenseReportAccess reportAccess) : IApplicationService
 {
     private const int DeclineReasonMaxLength = 1000;
+    private static readonly ExpenseReportStatus[] FirstReviewStatuses = [ExpenseReportStatus.Submitted];
+    private static readonly ExpenseReportStatus[] FinanceReviewStatuses =
+        [ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed];
 
     internal async Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
-        CancellationToken ct = default)
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default, string? auditReviewerLabel = null)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
-
-        if (!actorIsFinanceAdmin && await reportAccess.GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-            return refusal;
 
         var cap = await reportAccess.ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
         if (cap.Refusal is { } capRefusal) return capRefusal;
@@ -37,7 +37,7 @@ internal sealed class ExpenseReportReview(
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseEndorse,
             AuditEntityTypes.Report, reportId,
-            ReviewerLabel(report, actorIsFinanceAdmin)
+            (auditReviewerLabel ?? ReviewerLabel(report))
                 + " endorsed expense report." + ExpenseReportAudit.MaxAmountDetail(maxAmount),
             coordinatorUserId);
 
@@ -46,14 +46,11 @@ internal sealed class ExpenseReportReview(
     }
 
     internal async Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
-        CancellationToken ct = default)
+        Guid reportId, Guid coordinatorUserId, string reason,
+        CancellationToken ct = default, string? auditReviewerLabel = null)
     {
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
-
-        if (!actorIsFinanceAdmin && await reportAccess.GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-            return refusal;
 
         var now = clock.GetCurrentInstant();
         var ok = await repo.CoordinatorRejectAsync(reportId, coordinatorUserId, reason, now, ct);
@@ -62,16 +59,24 @@ internal sealed class ExpenseReportReview(
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseCoordinatorReject,
             AuditEntityTypes.Report, reportId,
-            $"{ReviewerLabel(report, actorIsFinanceAdmin)} rejected expense report: {reason}",
+            $"{(auditReviewerLabel ?? ReviewerLabel(report))} rejected expense report: {reason}",
             coordinatorUserId);
 
         return ExpenseMutationResult.Success;
 
     }
 
-    internal async Task<ExpenseMutationResult> DeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
-        CancellationToken ct = default)
+    internal Task<ExpenseMutationResult> DeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, string reason, CancellationToken ct = default) =>
+        DeclineLineAsync(reportId, actorUserId, lineId, reason, FirstReviewStatuses, null, ct);
+
+    internal Task<ExpenseMutationResult> DeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, string reason, CancellationToken ct = default) =>
+        DeclineLineAsync(reportId, actorUserId, lineId, reason, FinanceReviewStatuses, "Finance admin", ct);
+
+    private async Task<ExpenseMutationResult> DeclineLineAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, string reason,
+        IReadOnlyCollection<ExpenseReportStatus> allowedStatuses, string? auditReviewerLabel, CancellationToken ct)
     {
         var trimmed = reason?.Trim();
         if (string.IsNullOrEmpty(trimmed))
@@ -81,7 +86,7 @@ internal sealed class ExpenseReportReview(
                 $"The reason can be at most {DeclineReasonMaxLength} characters.");
 
         var (report, line, refusal) = await reportAccess.GetDeclinableLineAsync(
-            reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+            reportId, lineId, allowedStatuses, ct);
         if (refusal is not null) return refusal;
         if (line!.Declined)
             return ExpenseMutationResult.OperatorFailure("That line is already declined.");
@@ -93,19 +98,27 @@ internal sealed class ExpenseReportReview(
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseLineDeclined,
             AuditEntityTypes.Report, reportId,
-            $"{ReviewerLabel(report!, actorIsFinanceAdmin)} declined line "
+            $"{(auditReviewerLabel ?? ReviewerLabel(report!))} declined line "
                 + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
             actorUserId);
 
         return ExpenseMutationResult.Success;
     }
 
-    internal async Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
-        CancellationToken ct = default)
+    internal Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, CancellationToken ct = default) =>
+        UndoDeclineLineAsync(reportId, actorUserId, lineId, FirstReviewStatuses, null, ct);
+
+    internal Task<ExpenseMutationResult> UndoDeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, CancellationToken ct = default) =>
+        UndoDeclineLineAsync(reportId, actorUserId, lineId, FinanceReviewStatuses, "Finance admin", ct);
+
+    private async Task<ExpenseMutationResult> UndoDeclineLineAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
+        IReadOnlyCollection<ExpenseReportStatus> allowedStatuses, string? auditReviewerLabel, CancellationToken ct)
     {
         var (report, line, refusal) = await reportAccess.GetDeclinableLineAsync(
-            reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+            reportId, lineId, allowedStatuses, ct);
         if (refusal is not null) return refusal;
         if (!line!.Declined)
             return ExpenseMutationResult.OperatorFailure("That line is not declined.");
@@ -117,7 +130,7 @@ internal sealed class ExpenseReportReview(
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseLineDeclineUndone,
             AuditEntityTypes.Report, reportId,
-            $"{ReviewerLabel(report!, actorIsFinanceAdmin)} undid the decline of line "
+            $"{(auditReviewerLabel ?? ReviewerLabel(report!))} undid the decline of line "
                 + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
                 + $"it had been declined: {line.DeclinedReason}",
             actorUserId);
@@ -146,9 +159,8 @@ internal sealed class ExpenseReportReview(
 
     }
 
-    private static string ReviewerLabel(ExpenseReportDto report, bool actorIsFinanceAdmin) =>
-        actorIsFinanceAdmin ? "Finance admin"
-        : report.PreapprovalGrantId is null ? "Coordinator"
+    private static string ReviewerLabel(ExpenseReportDto report) =>
+        report.PreapprovalGrantId is null ? "Coordinator"
         : "Pre-approval manager";
 
 }

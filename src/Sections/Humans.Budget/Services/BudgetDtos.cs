@@ -1,4 +1,3 @@
-using Humans.Teams.Contracts;
 using Humans.Budget.Contracts;
 using NodaTime;
 
@@ -44,17 +43,6 @@ internal sealed record BudgetAuditLogSnapshot(
     string Description,
     Guid? ActorUserId,
     Instant OccurredAt);
-
-internal sealed record CoordinatorBudgetViewData(
-    BudgetYearDetail? Year,
-    HashSet<Guid> EditableTeamIds,
-    bool IsFinanceAdmin,
-    bool ShouldRedirectToSummary);
-
-internal sealed record CoordinatorCategoryDetailViewData(
-    BudgetCategorySnapshot? Category,
-    bool ShouldForbid,
-    IReadOnlyList<TeamInfo> Teams);
 
 internal sealed record EnsureTicketingGroupResult(bool Created, string Message);
 

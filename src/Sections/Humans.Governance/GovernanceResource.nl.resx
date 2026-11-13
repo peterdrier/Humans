@@ -752,4 +752,53 @@
   <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Lidmaatschapsaanvragen die op jouw stem wachten: {0}</value></data>
   <data name="Governance_ReviewApplications" xml:space="preserve"><value>Beoordelen</value></data>
   <data name="Governance_YourMembership" xml:space="preserve"><value>Jouw lidmaatschap</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Aanvullende vragen voor Asociado-aanvragers</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>Wat is je belangrijkste bijdrage aan Elsewhere geweest?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Als je niets kunt bedenken, maar wel een belangrijke bijdrage hebt geleverd aan een andere Burn, vertel ons daar dan over.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Beschrijf je belangrijkste bijdrage voor een Asociado-aanvraag.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>Wat is volgens jou, in je eigen woorden, de rol van een Asociado, en waarom wil je die verantwoordelijkheid?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Vertel ons wat deze rol voor je betekent en waarom je er klaar voor bent.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Beschrijf wat de rol van Asociado volgens jou inhoudt.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Je hebt al een aanvraag in afwachting.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Kies Colaborador of Asociado voor je aanvraag.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Je moet bevestigen dat je gegevens kloppen.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>Je aanvraag is ingediend!</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Er is iets misgegaan bij het indienen van je aanvraag. Probeer het opnieuw.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Deze aanvraag kan niet worden ingetrokken.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>Je aanvraag is ingetrokken.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>De motivatie moet tussen de 50 en 2000 tekens bevatten.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>Aanvullende informatie mag niet langer zijn dan 1000 tekens.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>De beschrijving van je belangrijke bijdrage mag maximaal 2000 tekens bevatten.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Je uitleg over hoe je de rol ziet mag maximaal 2000 tekens bevatten.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Voor aanvragen voor Colaborador en Asociado is een motivatie verplicht.</value>
+  </data>
 </root>

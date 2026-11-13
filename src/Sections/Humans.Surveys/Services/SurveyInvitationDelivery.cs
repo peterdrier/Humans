@@ -198,76 +198,97 @@ internal sealed class SurveyInvitationDelivery(
 
         var reminded = 0;
         var failures = new List<Exception>();
-        foreach (var inv in due)
+        try
         {
-            // An invitation held by a since-merged id belongs to the survivor's past: the
-            // survivor's own invitation (if any) carries the reminder, and for an Asociado vote
-            // this token could no longer answer. Left unstamped and skipped, like a missing email.
-            if (users.TryGetValue(inv.UserId, out var holder) && holder.Id != inv.UserId)
+            foreach (var inv in due)
             {
-                logger.LogInformation(
-                    "Invitation {InvitationId} belongs to merged user {UserId}; skipping reminder",
-                    inv.Id, inv.UserId);
-                continue;
-            }
-
-            if (!users.TryGetValue(inv.UserId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
-            {
-                logger.LogWarning(
-                    "User {UserId} has no notification email for survey {SurveyId}; skipping reminder",
-                    inv.UserId, inv.SurveyId);
-                continue;
-            }
-
-            // Keep metadata loading inside the per-invitee guard too: a failed read
-            // must leave this invitation due without blocking later reminders.
-            try
-            {
-                if (!surveys.TryGetValue(inv.SurveyId, out var meta))
+                ct.ThrowIfCancellationRequested();
+                // An invitation held by a since-merged id belongs to the survivor's past: the
+                // survivor's own invitation (if any) carries the reminder, and for an Asociado vote
+                // this token could no longer answer. Left unstamped and skipped, like a missing email.
+                if (users.TryGetValue(inv.UserId, out var holder) && holder.Id != inv.UserId)
                 {
-                    var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
-                    if (survey is null) continue;
-                    meta = (
-                        survey.Title,
-                        survey.DefaultCulture,
-                        SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, now));
-                    surveys[inv.SurveyId] = meta;
+                    logger.LogInformation(
+                        "Invitation {InvitationId} belongs to merged user {UserId}; skipping reminder",
+                        inv.Id, inv.UserId);
+                    continue;
                 }
 
-                if (!meta.Answerable) continue;
+                if (!users.TryGetValue(inv.UserId, out var user) || user.Email is not { } email || string.IsNullOrWhiteSpace(email))
+                {
+                    logger.LogWarning(
+                        "User {UserId} has no notification email for survey {SurveyId}; skipping reminder",
+                        inv.UserId, inv.SurveyId);
+                    continue;
+                }
 
-                var preferredCulture = user.PreferredLanguage;
-                var culture = preferredCulture.IsSupportedCultureCode()
-                    ? preferredCulture!
-                    : meta.DefaultCulture;
-                var name = user.BurnerName;
-                var token = tokenProvider.Create(inv.Id);
-                var title = meta.Title.Resolve(culture, meta.DefaultCulture);
-                var msg = emailMessages.SurveyReminder(inv.UserId, email, name, title, token, culture)
-                    with
-                { DeliveryId = inv.Id };
+                // Keep metadata loading inside the per-invitee guard too: a failed read
+                // must leave this invitation due without blocking later reminders.
+                try
+                {
+                    if (!surveys.TryGetValue(inv.SurveyId, out var meta))
+                    {
+                        var survey = await repo.GetByIdAsync(inv.SurveyId, ct);
+                        if (survey is null) continue;
+                        meta = (
+                            survey.Title,
+                            survey.DefaultCulture,
+                            SurveyWizardFlow.IsAnswerable(survey.Status, survey.OpensAt, survey.ClosesAt, now));
+                        surveys[inv.SurveyId] = meta;
+                    }
 
-                await emailService.SendAsync(msg, ct);
-                await repo.SetReminderSentAsync(inv.Id, now, ct);
-                reminded++;
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                failures.Add(ex);
-                logger.LogError(ex,
-                    "Failed to enqueue survey reminder email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
-                    inv.UserId, inv.Id, inv.SurveyId);
+                    if (!meta.Answerable) continue;
+
+                    var preferredCulture = user.PreferredLanguage;
+                    var culture = preferredCulture.IsSupportedCultureCode()
+                        ? preferredCulture!
+                        : meta.DefaultCulture;
+                    var name = user.BurnerName;
+                    var token = tokenProvider.Create(inv.Id);
+                    var title = meta.Title.Resolve(culture, meta.DefaultCulture);
+                    var msg = emailMessages.SurveyReminder(inv.UserId, email, name, title, token, culture)
+                        with
+                    { DeliveryId = inv.Id };
+
+                    ct.ThrowIfCancellationRequested();
+                    try
+                    {
+                        // Finish an accepted enqueue and its marker together, even during shutdown.
+                        await emailService.SendAsync(msg, CancellationToken.None);
+                        await repo.SetReminderSentAsync(inv.Id, now, CancellationToken.None);
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        throw new InvalidOperationException("Survey reminder delivery failed after starting.", ex);
+                    }
+                    reminded++;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failures.Add(ex);
+                    logger.LogError(ex,
+                        "Failed to enqueue survey reminder email for user {UserId} invitation {InvitationId} in survey {SurveyId}",
+                        inv.UserId, inv.Id, inv.SurveyId);
+                }
             }
         }
-
-        var summary = $"Sent {reminded} survey reminder(s)";
-        if (failures.Count > 0) summary += $"; {failures.Count} failed";
-        await auditLog.LogAsync(SurveysAuditActions.SurveyReminderSent, AuditEntityTypes.Survey, Guid.Empty,
-            summary, jobName: AuditEntityTypes.ReminderJob);
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            if (failures.Count > 0)
+                throw new AggregateException("Failed to complete one or more survey reminders before shutdown.", failures);
+            throw;
+        }
+        finally
+        {
+            var summary = $"Sent {reminded} survey reminder(s)";
+            if (failures.Count > 0) summary += $"; {failures.Count} failed";
+            await auditLog.LogAsync(SurveysAuditActions.SurveyReminderSent, AuditEntityTypes.Survey, Guid.Empty,
+                summary, jobName: AuditEntityTypes.ReminderJob);
+        }
 
         if (failures.Count > 0)
             throw new AggregateException("Failed to complete one or more survey reminders.", failures);

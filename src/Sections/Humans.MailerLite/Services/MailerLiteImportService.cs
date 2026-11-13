@@ -278,7 +278,7 @@ internal sealed class MailerLiteImportService(
                         }
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 errors++;
                 logger.LogError(ex, "MailerLite apply failed for {Email}", d.Email);

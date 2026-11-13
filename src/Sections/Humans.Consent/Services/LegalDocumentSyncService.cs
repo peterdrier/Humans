@@ -87,6 +87,7 @@ internal sealed class LegalDocumentSyncService(
 
         foreach (var document in activeDocuments)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var result = await publication.SyncSingleDocumentAsync(document, actorUserId: null, cancellationToken, notificationBatchId);

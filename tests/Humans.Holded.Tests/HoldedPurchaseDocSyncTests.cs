@@ -9,10 +9,12 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Xunit;
 
 namespace Humans.Holded.Tests;
 
 /// <summary>The purchase-document mirror: what a sync stores, how notes are fetched, and what a failed run leaves.</summary>
+[Collection("HoldedMirrorSyncGates")]
 public sealed class HoldedPurchaseDocSyncTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 10, 30, 12, 0);

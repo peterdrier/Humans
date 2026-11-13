@@ -43,6 +43,112 @@ public sealed class GoogleDriveAccessSyncServiceTests
                 new Dictionary<Guid, UserInfo>()));
     }
 
+    public enum DetachedMutation { Grant, ChangeRole, Remove }
+
+    [HumansTheory]
+    [Xunit.InlineData(DetachedMutation.Grant)]
+    [Xunit.InlineData(DetachedMutation.ChangeRole)]
+    [Xunit.InlineData(DetachedMutation.Remove)]
+    public async Task Shutdown_DetachedMutationCancellationPersistsAResourceError(DetachedMutation mutation)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var access = mutation == DetachedMutation.Remove ? Array.Empty<(Guid, DrivePermissionLevel)>()
+            : new[] { (userId, mutation == DetachedMutation.ChangeRole ? DrivePermissionLevel.Viewer : DrivePermissionLevel.Contributor) };
+        var service = CreateService(new StaticSource("folder-1", access));
+        var resource = new TeamGoogleResource
+        {
+            Id = Guid.NewGuid(),
+            TeamId = Guid.NewGuid(),
+            GoogleId = "folder-1",
+            Name = "Folder",
+            ResourceType = GoogleResourceType.DriveFolder
+        };
+        _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>()).Returns(new[] { resource });
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+        StubFolder("folder-1", mutation switch
+        {
+            DetachedMutation.ChangeRole => [new DrivePermission("perm", "user", "organizer", "alice@nobodies.team", false)],
+            DetachedMutation.Remove => [new DrivePermission("perm", "user", "reader", "old@nobodies.team", false)],
+            _ => []
+        });
+        var failure = new OperationCanceledException("Detached Drive call stopped");
+        _drivePermissions.CreatePermissionAsync("folder-1", "alice@nobodies.team", "writer", CancellationToken.None)
+            .Returns(async Task<DrivePermissionMutationResult> (_) => { await shutdown.CancelAsync(); throw failure; });
+        _drivePermissions.UpdatePermissionAsync("folder-1", "perm", "reader", CancellationToken.None)
+            .Returns(async Task<GoogleClientError?> (_) => { await shutdown.CancelAsync(); throw failure; });
+        _drivePermissions.DeletePermissionAsync("folder-1", "perm", CancellationToken.None)
+            .Returns(async Task<DrivePermissionDeleteResult> (_) => { await shutdown.CancelAsync(); throw failure; });
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Execute, shutdown.Token);
+
+        diff.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        await _resources.Received(1).SetErrorMessageManyAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(resource.Id)), diff.ErrorMessage!, CancellationToken.None);
+        await _resources.DidNotReceiveWithAnyArgs().MarkSyncedManyAsync(default!, default);
+        _logger.Messages.Should().Contain(message => message.Contains("Error syncing Drive resource"));
+    }
+
+    [HumansFact]
+    public async Task Shutdown_DetachedStatusCancellationRemainsAFault()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var service = CreateService(new StaticSource("folder-1"));
+        var resource = new TeamGoogleResource
+        {
+            Id = Guid.NewGuid(),
+            TeamId = Guid.NewGuid(),
+            GoogleId = "folder-1",
+            Name = "Folder",
+            ResourceType = GoogleResourceType.DriveFolder
+        };
+        _resources.GetActiveByResourceTypeAsync(GoogleResourceType.DriveFolder, Arg.Any<CancellationToken>()).Returns(new[] { resource });
+        StubFolder("folder-1");
+        var failure = new OperationCanceledException("Status write stopped");
+        _resources.MarkSyncedManyAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), CancellationToken.None)
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => service.ReconcileOneAsync("folder-1", SyncAction.Execute, shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Shutdown_PermissionReadDistinguishesRequestedCancellationFromTimeout(bool requested)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var service = CreateService(new StaticSource("folder-1"));
+        var failure = new OperationCanceledException(shutdown.Token);
+        _drivePermissions.ListPermissionsAsync("folder-1", shutdown.Token)
+            .Returns(async Task<DrivePermissionListResult> (_) =>
+            {
+                if (requested) await shutdown.CancelAsync();
+                throw failure;
+            });
+
+        if (requested)
+            (await Xunit.Record.ExceptionAsync(() => service.ReconcileOneAsync("folder-1", SyncAction.Preview, shutdown.Token))).Should().BeSameAs(failure);
+        else
+            (await service.ReconcileOneAsync("folder-1", SyncAction.Preview, shutdown.Token)).ErrorMessage.Should().Be(failure.Message);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_PathLookupTimeoutRetainsTheSourceFallback()
+    {
+        using var token = new CancellationTokenSource();
+        var service = CreateService(new StaticSource("folder-1"));
+        StubFolder("folder-1");
+        _drivePermissions.GetFileAsync("folder-1", token.Token)
+            .Returns(Task.FromException<DriveFileMetadataResult>(new OperationCanceledException("Path lookup timed out")));
+
+        var diff = await service.ReconcileOneAsync("folder-1", SyncAction.Preview, token.Token);
+
+        diff.ErrorMessage.Should().BeNull();
+        await _drivePermissions.Received(1).ListPermissionsAsync("folder-1", token.Token);
+    }
+
     [HumansFact]
     public async Task ReconcileOneAsync_MissingMember_GrantsAndLogs()
     {

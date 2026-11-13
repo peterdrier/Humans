@@ -21,6 +21,11 @@ internal sealed class CleanupEmailOutboxJob(
 
             metrics.RecordJobRun("cleanup_email_outbox", "success");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Email outbox cleanup cancelled during shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             metrics.RecordJobRun("cleanup_email_outbox", "failure");

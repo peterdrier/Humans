@@ -31,10 +31,10 @@ internal sealed class MemberProgramViewModel
 
 internal sealed class ApplyFormViewModel
 {
-    [StringLength(2000)]
+    [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string? Note { get; set; }
 
-    [Range(0.01, 1_000_000)]
+    [Range(0.01, 1_000_000, ErrorMessage = "Validation_Range")]
     public decimal? RequestedAmount { get; set; }
 }
 

@@ -68,7 +68,7 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("{id:guid}/Coordinators")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Coordinators(Guid id, Guid?[] coordinatorUserIds, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.SetCoordinatorsAsync(id, actor, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: true, ct),
+        ActAsync(actor => workgroups.AppointCoordinatorsAsync(id, actor, coordinatorUserIds.OfType<Guid>().ToArray(), ct),
             "Coordinators set", ct, id, slug);
 
     [HttpGet("RegisterExisting")]

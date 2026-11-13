@@ -291,7 +291,12 @@ internal sealed class TeamSnapshotReader(
         var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
         return memberships
             .Select(m => new UserTeamMembershipInfo(
-                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt))
+                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt)
+            {
+                IsActive = m.Team.IsActive,
+                IsHidden = m.Team.IsHidden,
+                SystemTeamType = m.Team.SystemTeamType
+            })
             .ToList();
     }
 

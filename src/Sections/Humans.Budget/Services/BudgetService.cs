@@ -36,9 +36,6 @@ internal sealed class BudgetService(
 
     private static BudgetCategoryDetail ToCategoryDetail(BudgetCategory category) => BudgetReader.ToCategoryDetail(category);
 
-    public Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default) =>
-        reader.GetCoordinatorBudgetViewDataAsync(userId, isFinanceAdmin, ct);
-
     public Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId) =>
         yearManagement.CreateYearAsync(year, name, actorUserId);
 
@@ -97,9 +94,8 @@ internal sealed class BudgetService(
 
     public Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default) => reader.GetCategoryByIdAsync(id, ct);
 
-    public Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(
-        Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default) =>
-        reader.GetCoordinatorCategoryDetailViewDataAsync(categoryId, userId, isFinanceAdmin, ct);
+    public Task<IReadOnlyList<TeamInfo>> GetActiveTeamsAsync(CancellationToken ct = default) =>
+        reader.GetActiveTeamsAsync(ct);
 
     public async Task<BudgetSaveResult<BudgetCategoryDetail>> CreateCategoryAsync(
         Guid budgetGroupId, string name, decimal allocatedAmount,

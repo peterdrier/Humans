@@ -23,6 +23,11 @@ public class CleanupNotificationsJob(
 
             metrics.RecordJobRun("cleanup_notifications", "success");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Notification retention cancelled during shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             metrics.RecordJobRun("cleanup_notifications", "failure");

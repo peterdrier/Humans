@@ -2273,6 +2273,75 @@ public class SurveyServiceTests
         await _repo.DidNotReceive().SetReminderSentAsync(Arg.Any<Guid>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
     }
 
+    public enum ReminderShutdownStage { Metadata, AfterMetadata, AfterEnqueue, EnqueueFailure, StampFailure, EarlierFailure }
+
+    [HumansTheory]
+    [InlineData(ReminderShutdownStage.Metadata)]
+    [InlineData(ReminderShutdownStage.AfterMetadata)]
+    [InlineData(ReminderShutdownStage.AfterEnqueue)]
+    [InlineData(ReminderShutdownStage.EnqueueFailure)]
+    [InlineData(ReminderShutdownStage.StampFailure)]
+    [InlineData(ReminderShutdownStage.EarlierFailure)]
+    public async Task ReminderShutdown_FinishesStartedDeliveryAndAuditsPartialResults(ReminderShutdownStage stage)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var now = _clock.GetCurrentInstant();
+        var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
+        var first = new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = Guid.NewGuid() };
+        var second = new SurveyInvitation { Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = Guid.NewGuid() };
+        _repo.GetInvitationsDueForReminderAsync(Arg.Any<Instant>(), shutdown.Token).Returns([first, second]);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
+            {
+                [first.UserId] = UserInfoWithName(first.UserId, "First") with { IdentityEmailColumn = "first@example.org" },
+                [second.UserId] = UserInfoWithName(second.UserId, "Second") with { IdentityEmailColumn = "second@example.org" }
+            }));
+        var canceled = new OperationCanceledException("Dependency canceled");
+        var failure = new InvalidOperationException("Earlier delivery failed");
+        _repo.GetByIdAsync(survey.Id, shutdown.Token).Returns(async _ =>
+        {
+            if (stage is not (ReminderShutdownStage.Metadata or ReminderShutdownStage.AfterMetadata)) return (Survey?)survey;
+            await shutdown.CancelAsync();
+            if (stage == ReminderShutdownStage.Metadata) throw canceled;
+            return (Survey?)survey;
+        });
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            if (stage == ReminderShutdownStage.StampFailure) return;
+            await shutdown.CancelAsync();
+            if (stage == ReminderShutdownStage.EnqueueFailure) throw canceled;
+            if (stage == ReminderShutdownStage.EarlierFailure) throw failure;
+        });
+        _repo.SetReminderSentAsync(first.Id, now, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            if (stage != ReminderShutdownStage.StampFailure) return;
+            await shutdown.CancelAsync();
+            throw canceled;
+        });
+
+        var action = () => CreateReminderSender().SendDueRemindersAsync(shutdown.Token);
+        var failed = stage is ReminderShutdownStage.EnqueueFailure or ReminderShutdownStage.StampFailure or ReminderShutdownStage.EarlierFailure;
+        if (failed)
+        {
+            var error = await action.Should().ThrowAsync<AggregateException>();
+            var inner = error.Which.InnerExceptions.Should().ContainSingle().Subject;
+            if (stage == ReminderShutdownStage.EarlierFailure) inner.Should().BeSameAs(failure);
+            else inner.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(canceled);
+        }
+        else
+            await action.Should().ThrowAsync<OperationCanceledException>();
+
+        await _emailService.DidNotReceive().SendAsync(
+            Arg.Is<EmailMessage>(m => m.DeliveryId == second.Id), Arg.Any<CancellationToken>());
+        if (stage is not (ReminderShutdownStage.Metadata or ReminderShutdownStage.AfterMetadata))
+            await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), CancellationToken.None);
+        if (stage == ReminderShutdownStage.AfterEnqueue)
+            await _repo.Received(1).SetReminderSentAsync(first.Id, now, CancellationToken.None);
+        await _audit.Received(1).LogAsync(SurveysAuditActions.SurveyReminderSent, "Survey", Guid.Empty,
+            Arg.Is<string>(s => s.Contains(stage == ReminderShutdownStage.AfterEnqueue ? "Sent 1" : "Sent 0")
+                && (!failed || s.Contains("1 failed"))), "SurveyService");
+    }
+
     public enum ReminderFailureStage { Metadata, Preparation, Enqueue, Stamp }
 
     [HumansTheory]

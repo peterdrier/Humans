@@ -1,4 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Web;
+using Humans.Base.Configuration;
+using Humans.Base.Extensions;
+using Humans.Email.Contracts;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
@@ -26,7 +32,7 @@ internal sealed class UserEmailVerification(
     private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
 
     internal async Task<AddEmailResult> AddEmailAsync(
-        Guid userId, string email, CancellationToken cancellationToken = default)
+        Guid userId, string email, CancellationToken cancellationToken = default, Guid? actorUserId = null)
     {
         email = email.Trim();
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
@@ -64,10 +70,35 @@ internal sealed class UserEmailVerification(
         if (!addResult.Added)
             return Refuse("Users_Profile_EmailAlreadyAdded");
 
+        // The row committed: finish its audit and verification queue even after a disconnect.
+        cancellationToken = CancellationToken.None;
+        var description = $"Added pending email {email} (conflict: {addResult.IsConflict})";
+        if (actorUserId is { } actor)
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, nameof(User), userId,
+                description, actor, relatedEntityId: addResult.EmailId, relatedEntityType: nameof(UserEmail));
+        else
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, nameof(User), userId,
+                description, nameof(UserEmailService), relatedEntityId: addResult.EmailId, relatedEntityType: nameof(UserEmail));
+
         var token = await userManager.GenerateUserTokenAsync(
             user,
             TokenOptions.DefaultEmailProvider,
             $"{EmailVerificationTokenPurpose}:{addResult.EmailId}");
+
+        var baseUrl = serviceProvider.GetRequiredService<IOptions<EmailSettings>>().Value.BaseUrl;
+        var verificationUrl = QueryHelpers.AddQueryString($"{baseUrl.TrimEnd('/')}/Profile/Me/Emails/Verify",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["userId"] = userId.ToString(),
+                ["emailId"] = addResult.EmailId.ToString(),
+                ["token"] = HttpUtility.UrlEncode(token)
+            });
+        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
+        var message = serviceProvider.GetRequiredService<UsersEmails>().EmailVerification(
+            userId, email, info?.BurnerName ?? string.Empty, verificationUrl, addResult.IsConflict,
+            user.PreferredLanguage.IsSupportedCultureCode()
+                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode);
+        await serviceProvider.GetRequiredService<IEmailService>().SendAsync(message, cancellationToken);
 
         return new AddEmailResult(addResult.EmailId, token, addResult.IsConflict);
 

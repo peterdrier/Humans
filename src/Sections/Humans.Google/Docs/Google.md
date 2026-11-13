@@ -152,6 +152,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 - Password-reset and backup-code audits resolve the linked member through the same `UserEmailMatchOwner.ByEmail` picker as account listings and syncs, including Gmail-alias identity and verified/newest/stable-id precedence. Unlinked addresses retain an empty audit entity id.
 
+- Per-human Workspace provisioning accepts an optional team scope. Scoped requests require the target in that team's current member snapshot from `ITeamService` before any Workspace calls, identity writes, audits or credentials. Users-admin provisioning remains unscoped; caller authorization is separate.
+
 - Workspace provisioning and account linking check Users' verified-email addition result before identity reconciliation, team resync, success audits or credential notices. A refusal aborts the workflow through its existing failure handling; a duplicate address without a refusal remains an idempotent no-op. Provisioning still captures the recovery address before creating the Workspace account or adding its email row.
 
 - Activity-log resource-name filtering combines linked resource ids with a case-insensitive literal match on unlinked descriptions. Escaped matching runs before the database row limit; the growing log is never loaded into memory for this search.
@@ -194,6 +196,28 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - **One sync code path for preview / scheduled / manual.** Diff computation is shared; the `SyncAction` parameter (`Preview` / `Execute`) selects diff-only vs. apply, and the stored `SyncMode` determines which mutations execute. The initiating `GoogleSyncSource` is threaded through the Drive gateways so scheduled reconciliation and outbox dispatch leave truthful sync-log rows; `admin-resync:` outbox keys (per-human rerun) and `:resync:` keys (account link) identify manual reruns while ordinary add events record `TeamMemberJoined`.
 - **Manual Execute runs to completion regardless of the admin's browser.** `GoogleController.SyncExecute` / `SyncExecuteAll` pass `CancellationToken.None` to the sync call, not the request's `HttpContext.RequestAborted` — an admin closing the tab mid-reconcile must not abort partway through applying group memberships and Drive permissions, which would leave Workspace half-synced with no record of where it stopped (nobodies-collective/Humans#950).
 - **Reconciliation finishes started mutations before observing shutdown.** Group provisioning (creation, settings, audit, follow-up lookup and failed-attempt tracking) and each Group/Drive membership or permission mutation use a detached token through their required logs, rejection status, retries/fallbacks and successful-removal notification. Preflight reads and previews retain the caller token; cancellation is checked before each next resource/member/permission. A fully reconciled resource finishes its status write independently of cancellation. Membership selection, role rules, sync modes and retry limits are unchanged.
+- **Nightly reconciliation reports recorded outcomes through shutdown.** It checks cancellation
+  before each next phase and group-settings repair. Requested shutdown warns without an
+  exception and propagates after completing the accumulated admin notifications independently
+  of shutdown. An interrupted run records no success; genuine earlier phase failures still
+  produce the existing partial-failure metric and summary. Phase timeouts while the job token
+  remains live follow normal failure isolation. Returned Group errors, settings-check errors and unsuccessful
+  settings repairs reach that summary; corrected-drift counts include only acknowledged repairs.
+  Notification faults remain best-effort errors, including independent cancellation from their
+  detached dependency. Per-resource mutation boundaries and failure isolation remain service-owned.
+- **Detached Group failures retain retry tracking.** Cancellation from a detached membership
+  add/remove call becomes the existing status-0 failure, including resource error, failed sync
+  log and scoped retry when enabled. It never rejects an identity or sends a successful-removal
+  notice. Cancellation from detached outcome tracking, provisioning-failure tracking or the final
+  synced stamp remains a fault with its original exception preserved. Requested cancellation
+  still stops preflight reads and the next member; retry limits and provisioning fallback are unchanged.
+- **Drive cancellation follows the operation boundary.** Requested read cancellation and
+  iteration checkpoints propagate. A read timeout while the caller token remains live uses
+  the existing path fallback or resource-error diff. Cancellation from a detached permission
+  mutation remains a fault even during shutdown: the resource records an error rather than
+  success. Detached status persistence and inheritance-repair cancellation also remain faults
+  with their original exceptions preserved. Permission planning, retry timing and successful
+  removal notifications are unchanged.
 - **Maintenance observes cancellation between repairs.** Folder-path refresh and inherited-access enforcement propagate requested cancellation from metadata reads and stop before the next resource, while independent read failures remain isolated per resource. Inheritance and group-settings repairs check cancellation before starting, then finish their remote write and audit independently of shutdown.
 - **Cancelled health probes propagate cancellation.** A stopped Google credential/API probe is never reported as an authentication failure; credential-free instances still report degraded. The per-probe SDK client is disposed after every outcome.
 - **Drive Activity reads remain cancellable.** Activity queries and Directory identity lookups pass their caller token through the shared credential loader and Google API read. A cancelled identity lookup propagates cancellation instead of returning an unresolved person.
@@ -215,6 +239,10 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - Team provisioning returns `GoogleResourceGrantResult`, carrying the resolved owner and exact attempted email row, retryability and failure details. `Accepted` means Google creates or confirms an existing Drive grant and no grant fails. Disabled Drive sync, no resources and queued group reconciliation return `Deferred`; failed grants or ineligible addresses return `Failed`. Only `Accepted` lets the outbox mark the address Valid; resource existence alone is never verification.
 - Successful outbox dispatch finishes its applicable Google-email status update before marking the event processed and counting success. A dispatch/status persistence failure keeps the event pending under the existing retry limit rather than closing it with an unreachable retry count.
 - Direct Drive grants keep preflight reads cancellable, then finish the permission call, plus-address fallback, sync log and target-rejection status independently of cancellation. Cancellation stops the next resource. The outbox likewise finishes a returned grant's status and acknowledgement or failure tracking before stopping the next event; requested preflight cancellation propagates without consuming a retry, while an independent dependency timeout remains a failure.
+- Outbox shutdown is reported as a warning without an exception or a job success/failure metric.
+  Cancellation from a detached grant or completion dependency remains a fault even if shutdown
+  arrives concurrently. A returned grant's status-save failure follows normal retry tracking;
+  failure to persist that tracking escapes as a job failure with the original exception preserved.
 - Internal `GoogleSyncOutboxAdministration` owns counts, recent-event projections, manual requeue, per-user re-enqueue and retry audits shared with stub mode. `GoogleWorkspaceSyncService` keeps existing forwarding entry points. Rejected-identity handling, membership selection, deduplication keys, cancellation and audit text are unchanged. Producer enqueueing remains in `GoogleSyncOutboxService`, and processing remains in `GoogleSyncOutboxProcessor`; no DI registration or public contract is added.
 - Outbox retry and permanent-failure error text keeps at most 4000 UTF-16 code units, without splitting a Unicode surrogate pair. Retry counts and failure transitions are independent of truncation.
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Returned failures follow the same lifecycle: transient failures increment retry count and remain pending; permanent/local refusals record failure, never success. Mixed results retry when any grant is retryable. Escaping exceptions without an attempted-row identity cannot reject a guessed current address. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.

@@ -132,10 +132,11 @@ internal sealed class AssemblyVoteEffects(
 
     /// <summary>
     /// Emails the roster that the vote is open, stamping every row of each human reached; an
-    /// unstamped row is retried by the hourly sweep. Returns how many members were reached.
+    /// unstamped row is retried by the hourly sweep. Retry batches audit completed deliveries
+    /// before propagating interruption.
     /// Takes the whole roster so a human with a stamped row is not mailed again through another.
     /// </summary>
-    private async Task<int> SendOpenedEmailsAsync(
+    private async Task SendOpenedEmailsAsync(
         AssemblyVote vote, IReadOnlyList<AssemblyVoteRoster> roster, CancellationToken ct,
         ICollection<Exception>? failures = null)
     {
@@ -144,49 +145,68 @@ internal sealed class AssemblyVoteEffects(
             .ToList();
         var notified = 0;
 
-        foreach (var (rosterRow, rows, info, address, language) in recipients)
+        try
         {
-            try
+            foreach (var (rosterRow, rows, info, address, language) in recipients)
             {
-                // Re-read per recipient, with the clock: a stop, cancel, extend or lapse mid-batch
-                // ends it rather than mailing the rest a deadline — or a vote — that no longer stands.
-                var sentAt = clock.GetCurrentInstant();
-                var current = await repository.GetByIdAsync(vote.Id, ct);
-                if (current is null || !current.AcceptsBallotsAt(sentAt)) break;
-                var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    // Re-read per recipient, with the clock: a stop, cancel, extend or lapse mid-batch
+                    // ends it rather than mailing the rest a deadline — or a vote — that no longer stands.
+                    var sentAt = clock.GetCurrentInstant();
+                    var current = await repository.GetByIdAsync(vote.Id, ct);
+                    if (current is null || !current.AcceptsBallotsAt(sentAt)) break;
+                    var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
 
-                await email.SendAsync(
-                    WithRosterDeliveryId(messages.AssemblyVoteOpened(
-                        info.Id,
-                        address,
-                        info.BurnerName,
-                        EmailTitle(current, language),
-                        closesAt,
-                        rosterRow.IsOfficial,
-                        VoteUrl(vote.Id),
-                        language), rows, current.ClosesAt),
-                    ct);
+                    ct.ThrowIfCancellationRequested();
+                    try
+                    {
+                        await email.SendAsync(
+                            WithRosterDeliveryId(messages.AssemblyVoteOpened(
+                                info.Id,
+                                address,
+                                info.BurnerName,
+                                EmailTitle(current, language),
+                                closesAt,
+                                rosterRow.IsOfficial,
+                                VoteUrl(vote.Id),
+                                language), rows, current.ClosesAt),
+                            CancellationToken.None);
 
-                // Stamped per row immediately, so a batch dying halfway does not earn the whole
-                // roster a duplicate; conditional on the deadline this email named.
-                await repository.StampNotifiedAsync(
-                    rows.Select(r => r.Id).ToList(), clock.GetCurrentInstant(), current.ClosesAt, ct);
-                notified++;
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                failures?.Add(ex);
-                logger.LogError(ex,
-                    "Failed to send the vote-opened email for assembly vote {VoteId} to roster row {RosterId}.",
-                    vote.Id, rosterRow.Id);
+                        // Stamped per row immediately, so a batch dying halfway does not earn the whole
+                        // roster a duplicate; conditional on the deadline this email named.
+                        await repository.StampNotifiedAsync(
+                            rows.Select(r => r.Id).ToList(), clock.GetCurrentInstant(), current.ClosesAt, CancellationToken.None);
+                        notified++;
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        throw new InvalidOperationException(ex.Message, ex);
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failures?.Add(ex);
+                    logger.LogError(ex,
+                        "Failed to send the vote-opened email for assembly vote {VoteId} to roster row {RosterId}.",
+                        vote.Id, rosterRow.Id);
+                }
             }
         }
-
-        return notified;
+        finally
+        {
+            // Retry calls collect failures and owe a job audit, including interrupted batches.
+            if (failures is not null && notified > 0)
+                await audit.LogAsync(
+                    GovernanceAuditActions.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
+                    $"Re-sent the opening email for assembly vote {vote.Id} to {notified} roster member(s) "
+                    + "the first send never reached.", lapseJobName);
+        }
     }
 
     // Row order cannot change retry identity; extending the announced deadline must produce a new delivery.
@@ -305,16 +325,7 @@ internal sealed class AssemblyVoteEffects(
 
         // The whole roster, not the unstamped rows: a human holding a stamped row and an
         // unstamped one was reached, and the send decides that over all their rows.
-        var sent = await SendOpenedEmailsAsync(vote, roster, ct, failures);
-        if (sent == 0) return;
-
-        // Automation that emails the electorate says so under the job actor: the Admin's
-        // AssemblyVoteOpened entry cannot show the job reached members hours later.
-        await audit.LogAsync(
-            GovernanceAuditActions.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
-            $"Re-sent the opening email for assembly vote {vote.Id} to {sent} roster member(s) "
-            + "the first send never reached.",
-            lapseJobName);
+        await SendOpenedEmailsAsync(vote, roster, ct, failures);
     }
 
     /// <summary>
@@ -328,6 +339,7 @@ internal sealed class AssemblyVoteEffects(
 
         foreach (var vote in due)
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
                 await SendVoteRemindersAsync(vote, failures, ct);
@@ -358,72 +370,86 @@ internal sealed class AssemblyVoteEffects(
             .ToList();
         var reminded = new List<Guid>(recipients.Count);
 
-        foreach (var (rosterRow, rows, info, address, language) in recipients)
+        try
         {
-            try
+            foreach (var (rosterRow, rows, info, address, language) in recipients)
             {
-                // Eligibility is re-read per recipient, not trusted from the list: sending
-                // the whole roster takes long enough for somebody to vote, or for an Admin to
-                // stop, cancel or extend the vote, and "you have not voted and the vote closes
-                // soon" is wrong in each case — all but the first for everybody left.
-                var current = await repository.GetByIdAsync(vote.Id, ct);
-                if (current is null || current.Status != AssemblyVoteStatus.Open) break;
-
-                // The clock per recipient, read after the vote: a lapse mid-batch stops the
-                // mailing, and an Extend committed before this read cannot clear this stamp.
-                var sentAt = clock.GetCurrentInstant();
-
-                // The deadline from that same read: an Extend mid-batch moves it, and the rest of
-                // the roster is reminded when the new deadline comes into range.
-                if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
-                var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
-
-                // Over every row the human holds: a ballot cast mid-batch lands on whichever
-                // of their rows EffectiveRosterAsync resolved them to.
-                if (await HasBallotOnAnyRowAsync(vote.Id, rows, ct))
+                ct.ThrowIfCancellationRequested();
+                try
                 {
-                    continue;
+                    // Eligibility is re-read per recipient, not trusted from the list: sending
+                    // the whole roster takes long enough for somebody to vote, or for an Admin to
+                    // stop, cancel or extend the vote, and "you have not voted and the vote closes
+                    // soon" is wrong in each case — all but the first for everybody left.
+                    var current = await repository.GetByIdAsync(vote.Id, ct);
+                    if (current is null || current.Status != AssemblyVoteStatus.Open) break;
+
+                    // The clock per recipient, read after the vote: a lapse mid-batch stops the
+                    // mailing, and an Extend committed before this read cannot clear this stamp.
+                    var sentAt = clock.GetCurrentInstant();
+
+                    // The deadline from that same read: an Extend mid-batch moves it, and the rest of
+                    // the roster is reminded when the new deadline comes into range.
+                    if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
+                    var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
+
+                    // Over every row the human holds: a ballot cast mid-batch lands on whichever
+                    // of their rows EffectiveRosterAsync resolved them to.
+                    if (await HasBallotOnAnyRowAsync(vote.Id, rows, ct))
+                    {
+                        continue;
+                    }
+
+                    ct.ThrowIfCancellationRequested();
+                    try
+                    {
+                        await email.SendAsync(
+                            WithRosterDeliveryId(messages.AssemblyVoteReminder(
+                                info.Id,
+                                address,
+                                info.BurnerName,
+                                EmailTitle(current, language),
+                                closesAt,
+                                rosterRow.IsOfficial,
+                                VoteUrl(vote.Id),
+                                language), rows, current.ClosesAt),
+                            CancellationToken.None);
+
+                        // Stamped per row immediately, conditional on the deadline this email named.
+                        await repository.StampReminderSentAsync(
+                            rows.Select(r => r.Id).ToList(), sentAt, current.ClosesAt, CancellationToken.None);
+                        // One entry per human, not per row: every row of a merge chain is stamped,
+                        // but the member behind them got one email and the audit count says members.
+                        reminded.Add(rosterRow.Id);
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        throw new InvalidOperationException(ex.Message, ex);
+                    }
                 }
-
-                await email.SendAsync(
-                    WithRosterDeliveryId(messages.AssemblyVoteReminder(
-                        info.Id,
-                        address,
-                        info.BurnerName,
-                        EmailTitle(current, language),
-                        closesAt,
-                        rosterRow.IsOfficial,
-                        VoteUrl(vote.Id),
-                        language), rows, current.ClosesAt),
-                    ct);
-
-                // Stamped per row immediately, conditional on the deadline this email named.
-                await repository.StampReminderSentAsync(
-                    rows.Select(r => r.Id).ToList(), sentAt, current.ClosesAt, ct);
-                // One entry per human, not per row: every row of a merge chain is stamped,
-                // but the member behind them got one email and the audit count says members.
-                reminded.Add(rosterRow.Id);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                failures.Add(ex);
-                logger.LogError(ex,
-                    "Failed to send the vote reminder for assembly vote {VoteId} to roster row {RosterId}.",
-                    vote.Id, rosterRow.Id);
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failures.Add(ex);
+                    logger.LogError(ex,
+                        "Failed to send the vote reminder for assembly vote {VoteId} to roster row {RosterId}.",
+                        vote.Id, rosterRow.Id);
+                }
             }
         }
-
-        if (reminded.Count > 0)
+        finally
         {
-            // The count actually delivered: a send that threw is unstamped and retried.
-            await audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteRemindersSent, AuditEntityTypes.AssemblyVote, vote.Id,
-                $"Sent the closing reminder for assembly vote {vote.Id} to {reminded.Count} roster member(s).",
-                lapseJobName);
+            if (reminded.Count > 0)
+            {
+                // The count actually delivered: a send that threw is unstamped and retried.
+                await audit.LogAsync(
+                    GovernanceAuditActions.AssemblyVoteRemindersSent, AuditEntityTypes.AssemblyVote, vote.Id,
+                    $"Sent the closing reminder for assembly vote {vote.Id} to {reminded.Count} roster member(s).",
+                    lapseJobName);
+            }
         }
     }
 

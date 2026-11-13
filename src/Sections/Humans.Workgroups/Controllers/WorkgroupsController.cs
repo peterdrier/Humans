@@ -105,6 +105,7 @@ internal sealed class WorkgroupsController(
             IsPendingMember = workgroup.IsPendingMember(user.Id),
             CanAdminister = canAdminister,
             CanDoMemberWork = await MayDoMemberWorkAsync(workgroup),
+            CanManageMembers = (await authorization.AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.ManageMembership)).Succeeded,
             CanSeeBudget = canSeeBudget,
             ExpenseAccounts = accounts,
             OrganisationZone = await OrganisationZoneAsync(ct)
@@ -121,7 +122,7 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Leave(string slug, Guid? replacementCoordinatorUserId, CancellationToken ct) =>
         ActAsync(slug,
-            (id, userId) => workgroups.LeaveAsync(id, userId, replacementCoordinatorUserId, asAdmin: false, ct),
+            (id, userId) => workgroups.LeaveAsync(id, userId, replacementCoordinatorUserId, ct),
             "Workgroups_Left", ct, memberOnly: false);
 
     [HttpPost("{slug}/RequestStatus")]
@@ -135,22 +136,22 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> ApproveMember(string slug, Guid userId, CancellationToken ct) =>
         ManageMembersAsync(slug,
-            (id, actorId, asAdmin) => workgroups.ApproveMemberAsync(id, actorId, userId, asAdmin, ct),
+            (id, actorId) => workgroups.ApproveMemberAsync(id, actorId, userId, ct),
             "Workgroups_MemberApproved", ct);
 
     [HttpPost("{slug}/Members/{userId:guid}/Decline")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> DeclineMember(string slug, Guid userId, CancellationToken ct) =>
         ManageMembersAsync(slug,
-            (id, actorId, asAdmin) => workgroups.DeclineMemberAsync(id, actorId, userId, asAdmin, ct),
+            (id, actorId) => workgroups.DeclineMemberAsync(id, actorId, userId, ct),
             "Workgroups_MemberDeclined", ct);
 
     [HttpPost("{slug}/Members/Add")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> AddMember(string slug, Guid? userId, CancellationToken ct) =>
         ManageMembersAsync(slug,
-            (id, actorId, asAdmin) => userId is { } added
-                ? workgroups.AddMemberAsync(id, actorId, added, asAdmin, ct)
+            (id, actorId) => userId is { } added
+                ? workgroups.AddMemberAsync(id, actorId, added, ct)
                 : Task.FromResult(new WorkgroupMutationResult(new WorkgroupRefusal(WorkgroupErrorKeys.NotFound))),
             "Workgroups_MemberAdded", ct);
 
@@ -189,7 +190,7 @@ internal sealed class WorkgroupsController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Coordinators(string slug, Guid?[] coordinatorUserIds, CancellationToken ct) =>
         ActAsync(slug,
-            (id, userId) => workgroups.SetCoordinatorsAsync(id, userId, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: false, ct),
+            (id, userId) => workgroups.SetCoordinatorsAsync(id, userId, coordinatorUserIds.OfType<Guid>().ToArray(), ct),
             "Workgroups_CoordinatorsSaved", ct);
 
     [HttpGet("{slug}/Meetings/Create")]
@@ -506,17 +507,16 @@ internal sealed class WorkgroupsController(
             : RedirectToAction(nameof(Details), new { slug = workgroup.Slug });
     }
 
-    /// <summary>Board/Admin passes <c>asAdmin</c>, so the service skips its own coordinator check.</summary>
     private async Task<IActionResult> ManageMembersAsync(
-        string slug, Func<Guid, Guid, bool, Task<WorkgroupMutationResult>> action, string successKey, CancellationToken ct)
+        string slug, Func<Guid, Guid, Task<WorkgroupMutationResult>> action, string successKey, CancellationToken ct)
     {
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
-        var asAdmin = await MayAdministerAsync(workgroup);
-        if (!asAdmin && !(workgroup.IsCoordinator(user.Id) && await MayDoMemberWorkAsync(workgroup))) return Forbid();
+        if (!(await authorization.AuthorizeAsync(User, workgroup, WorkgroupOperationRequirement.ManageMembership)).Succeeded)
+            return Forbid();
 
-        Flash(await action(workgroup.Id, user.Id, asAdmin), successKey);
+        Flash(await action(workgroup.Id, user.Id), successKey);
         return RedirectToAction(nameof(Details), new { slug = workgroup.Slug });
     }
 

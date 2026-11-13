@@ -184,6 +184,34 @@ public class EmailProvisioningServiceTests
             .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), firstName: "Target", lastName: "Two"));
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProvisionNobodiesEmailAsync_TeamScopeRequiresCurrentMembership(bool missingTeam)
+    {
+        var f = BuildFixture();
+        var userId = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        StubTargetUser(f, userId);
+        var teams = new Dictionary<Guid, TeamInfo>();
+        if (!missingTeam)
+            teams.Add(teamId, new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+                false, false, false, false, Instant.MinValue,
+                [new TeamMemberInfo(Guid.NewGuid(), Guid.NewGuid(), "Other", null, null, TeamMemberRole.Member, Instant.MinValue)]));
+        f.TeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "person", Guid.NewGuid(), teamId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("That human is not a member of this team.");
+        f.WorkspaceUserService.ReceivedCalls().Should().BeEmpty();
+        await f.UserEmailService.DidNotReceiveWithAnyArgs().AddVerifiedEmailAsync(default, default!);
+        f.Identities.ReceivedCalls().Should().BeEmpty();
+        f.Audit.ReceivedCalls().Should().BeEmpty();
+        f.Emails.ReceivedCalls().Should().BeEmpty();
+        f.Notifications.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_EmailAdditionRefused_DoesNotReportProvisioningSuccess()
     {
@@ -448,6 +476,12 @@ public class EmailProvisioningServiceTests
         var userId = Guid.NewGuid();
         var existingRowId = Guid.NewGuid();
         StubTargetUser(f, userId);
+        var teamId = Guid.NewGuid();
+        var team = new TeamInfo(teamId, "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue,
+            [new TeamMemberInfo(Guid.NewGuid(), userId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]);
+        f.TeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [teamId] = team });
+
         f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(userId, UserFixtures.Profile(), firstName: "Person", lastName: "Test"));
 
@@ -487,7 +521,7 @@ public class EmailProvisioningServiceTests
                 "bob@nobodies.team", "Person", "Test", false,
                 DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
 
-        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bob", userId);
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bob", userId, teamId);
 
         result.Success.Should().BeTrue();
 

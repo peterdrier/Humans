@@ -13,6 +13,29 @@ public sealed class PleoSyncJobTests
 
     private Task RunAsync() => new PleoSyncJob(_pleo, NullLogger<PleoSyncJob>.Instance).ExecuteAsync();
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Cancellation_propagates_and_only_shutdown_logs_a_warning(bool shutdownRequested)
+    {
+        using var shutdown = new CancellationTokenSource();
+        if (shutdownRequested) await shutdown.CancelAsync();
+        var canceled = new OperationCanceledException(shutdown.Token);
+        _pleo.SyncAsync(shutdown.Token).ThrowsAsync(canceled);
+        var logger = new CapturingLogger<PleoSyncJob>();
+        var action = () => new PleoSyncJob(_pleo, logger).ExecuteAsync(shutdown.Token);
+
+        (await Xunit.Record.ExceptionAsync(action)).Should().BeSameAs(canceled);
+        if (shutdownRequested)
+        {
+            var entry = logger.Entries.Should().ContainSingle().Subject;
+            entry.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+            entry.Exception.Should().BeNull();
+        }
+        else
+            logger.Entries.Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task Permanent_failure_completes_the_job_so_Hangfire_does_not_retry()
     {

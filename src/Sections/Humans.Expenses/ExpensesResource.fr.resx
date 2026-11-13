@@ -238,14 +238,12 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Fichier trop volumineux. La taille maximale est de {0} Mo.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Le nom du fichier doit comporter au maximum {0} caractères.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Type de fichier non pris en charge. Téléversez un fichier PDF, JPEG, PNG ou HEIC.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le soumettre.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Le rapport doit comporter au moins une ligne.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Les lignes de reçu et de facture doivent avoir une pièce jointe avant l’envoi.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir un IBAN enregistré dans son profil.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir ses nom et prénom renseignés dans son profil.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Impossible de soumettre le rapport. Il n’est peut-être plus à l’état de brouillon.</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le retirer.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut modifier ce rapport.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Ce rapport ne peut pas être modifié lorsqu’il est au statut {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Note de frais</value></data>
   <data name="Expenses_Withdraw" xml:space="preserve"><value>Retirer</value></data>

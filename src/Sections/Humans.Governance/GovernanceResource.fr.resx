@@ -752,4 +752,53 @@
   <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Candidatures en attente de ton vote : {0}</value></data>
   <data name="Governance_ReviewApplications" xml:space="preserve"><value>Examiner</value></data>
   <data name="Governance_YourMembership" xml:space="preserve"><value>Ton adhésion</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Questions supplémentaires pour les candidats Asociado</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>Quelle a été votre contribution la plus significative à Elsewhere ?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Si vous n'en trouvez pas, mais avez contribué de manière significative à un autre Burn, parlez-nous-en.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Veuillez décrire votre contribution la plus significative pour une candidature Asociado.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>Dans vos propres mots, que comprenez-vous du rôle d'un asociado et pourquoi voulez-vous cette responsabilité ?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Dites-nous ce que ce rôle signifie pour vous et pourquoi vous êtes prêt(e).</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Veuillez décrire votre compréhension du rôle d'asociado.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Vous avez déjà une candidature en attente.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Veuillez sélectionner Colaborador ou Asociado pour votre candidature.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Vous devez confirmer l'exactitude de vos informations.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>Votre candidature a été soumise avec succès !</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Une erreur s’est produite lors de l’envoi de votre candidature. Veuillez réessayer.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Cette candidature ne peut pas être retirée.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>Votre candidature a été retirée.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>La motivation doit contenir entre 50 et 2000 caractères.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>Les informations complémentaires ne doivent pas dépasser 1000 caractères.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribution significative ne doit pas dépasser 2000 caractères.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La compréhension du rôle ne doit pas dépasser 2000 caractères.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Une déclaration de motivation est requise pour les candidatures Colaborador et Asociado.</value>
+  </data>
 </root>

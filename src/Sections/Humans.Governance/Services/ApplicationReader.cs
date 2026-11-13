@@ -195,8 +195,16 @@ internal sealed class ApplicationReader(
             Votes: ProjectBoardVotes(application));
     }
 
-    public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
-        repository.GetAdminStatsAsync(ct);
+    public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
+    {
+        var applications = await repository.GetNonWithdrawnAsync(ct);
+        return new ApplicationAdminStats(
+            applications.Count,
+            applications.Count(a => a.Status == ApplicationStatus.Approved),
+            applications.Count(a => a.Status == ApplicationStatus.Rejected),
+            applications.Count(a => a.MembershipTier == MembershipTier.Colaborador),
+            applications.Count(a => a.MembershipTier == MembershipTier.Asociado));
+    }
 
     public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
         repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);

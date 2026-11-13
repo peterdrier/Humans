@@ -49,7 +49,13 @@ public sealed record UserTeamMembershipInfo(
     string TeamSlug,
     bool IsSystemTeam,
     TeamMemberRole Role,
-    Instant JoinedAt);
+    Instant JoinedAt)
+{
+    public bool IsActive { get; init; }
+    public bool IsHidden { get; init; }
+    public SystemTeamType SystemTeamType { get; init; }
+    public bool IsProfileMembership => IsActive && SystemTeamType != SystemTeamType.Volunteers;
+}
 
 /// <summary>Teams' cross-section reads. Writes are on <see cref="ITeamWrite"/>.</summary>
 public interface ITeamService : IApplicationService

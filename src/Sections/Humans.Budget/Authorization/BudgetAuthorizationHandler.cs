@@ -22,16 +22,14 @@ internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService, I
             return;
         }
 
-        if (resource.BudgetGroup?.BudgetYear?.IsDeleted == true)
-            return;
-
         if (resource.BudgetGroup?.IsRestricted == true)
             return;
 
         if (resource.BudgetGroup?.IsTicketingGroup == true)
             return;
 
-        if (!resource.TeamId.HasValue)
+        var viewing = requirement == BudgetOperationRequirement.View;
+        if (!viewing && (resource.BudgetGroup?.BudgetYear?.IsDeleted == true || !resource.TeamId.HasValue))
             return;
 
         if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -41,7 +39,7 @@ internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService, I
         var viewer = await users.GetUserInfoAsync(userId, ct);
         if (viewer is null) return;
         var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(viewer.Id, ct);
-        if (coordinatorTeamIds.Contains(resource.TeamId.Value))
+        if (viewing ? coordinatorTeamIds.Count > 0 : coordinatorTeamIds.Contains(resource.TeamId!.Value))
         {
             context.Succeed(requirement);
         }

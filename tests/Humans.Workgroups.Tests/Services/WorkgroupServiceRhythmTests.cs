@@ -1,3 +1,5 @@
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using NSubstitute.ExceptionExtensions;
 using Humans.AuditLog.Contracts;
@@ -81,6 +83,62 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
             await AuditLog.DidNotReceive().LogAsync(WorkgroupsAuditActions.WorkgroupUpdateDueNotified,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>());
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Recipients")]
+    [Xunit.InlineData("CoordinatorNotice")]
+    [Xunit.InlineData("BoardNotice")]
+    public async Task JobCancellation_DuringTheLastGroup_PropagatesWithoutAnErrorLog(string boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var boardNotice = string.Equals(boundary, "BoardNotice", StringComparison.Ordinal);
+        var now = Clock.GetCurrentInstant();
+        var workgroup = await SeedWorkgroupAsync(
+            status: boardNotice ? WorkgroupStatus.Applied : WorkgroupStatus.Active,
+            appliedAt: now.Minus(Duration.FromDays(14)),
+            registeredAt: now.Minus(Duration.FromDays(30)));
+        async Task CancelAsync(CancellationToken ct)
+        {
+            await shutdown.CancelAsync();
+            ct.Should().Be(shutdown.Token);
+            ct.ThrowIfCancellationRequested();
+        }
+        async Task<IReadOnlyDictionary<Guid, UserInfo>> CancelLookupAsync(CancellationToken ct)
+        {
+            await CancelAsync(ct);
+            return new Dictionary<Guid, UserInfo>();
+        }
+        if (string.Equals(boundary, "Recipients", StringComparison.Ordinal))
+        {
+            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(CancelLookupAsync(call.Arg<CancellationToken>())));
+        }
+        else if (boardNotice)
+        {
+            Notifications.SendToRoleAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(call => CancelAsync(call.Arg<CancellationToken>()));
+        }
+        else
+        {
+            Notifications.SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+                Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(call => CancelAsync(call.Arg<CancellationToken>()));
+        }
+
+        var act = () => NewService().RunDailyRhythmAsync(shutdown.Token);
+
+        (await act.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(shutdown.Token);
+        Logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+        var warning = Logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning).Which;
+        warning.Exception.Should().BeNull();
+        warning.Message.Should().Contain(workgroup.Id.ToString());
+        await AuditLog.DidNotReceive().LogAsync(WorkgroupsAuditActions.WorkgroupUpdateDueNotified,
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]

@@ -314,4 +314,23 @@
   <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Tier applications awaiting your vote: {0}</value><comment>{0} = number of applications</comment></data>
   <data name="Governance_ReviewApplications" xml:space="preserve"><value>Review</value></data>
   <data name="Governance_YourMembership" xml:space="preserve"><value>Your membership</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve"><value>Additional questions for Asociado applicants</value></data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve"><value>What has been your most significant contribution to Elsewhere?</value></data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve"><value>If you can't think of any, but have significantly contributed to another Burn, tell us about that.</value></data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve"><value>Please describe your most significant contribution for an Asociado application.</value></data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve"><value>In your own words, what do you understand the role of an associado to be, and why do you want that responsibility?</value></data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve"><value>Tell us what this role means to you and why you're ready for it.</value></data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve"><value>Please describe your understanding of the asociado role.</value></data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve"><value>You already have a pending application.</value></data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve"><value>Please select Colaborador or Asociado for your application.</value></data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve"><value>You must confirm the accuracy of your information.</value></data>
+  <data name="Governance_Application_Submitted" xml:space="preserve"><value>Your application has been submitted successfully!</value></data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve"><value>Something went wrong while submitting your application. Please try again.</value></data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve"><value>This application cannot be withdrawn.</value></data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve"><value>Your application has been withdrawn.</value></data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>Motivation must contain between 50 and 2000 characters.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>Additional information must not exceed 1000 characters.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>Significant contribution must not exceed 2000 characters.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Role understanding must not exceed 2000 characters.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve"><value>A motivation statement is required for Colaborador and Asociado applications.</value></data>
 </root>

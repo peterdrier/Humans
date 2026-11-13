@@ -19,7 +19,7 @@ internal static class ProfileEditViewModelBuilder
         var isTierLocked = profile is not null && applications.Any(a =>
             a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
         var hasCustomPicture = profile?.HasCustomPicture == true;
-        var isInitialSetup = profile is null || info.State == UserState.Bare || preview;
+        var isInitialSetup = info.NeedsProfileSetup || preview;
 
         return new ProfileViewModel
         {

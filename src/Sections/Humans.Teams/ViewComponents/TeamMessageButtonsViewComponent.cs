@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using Humans.Base.Enums;
-using Humans.Email.Contracts;
 using Humans.Teams.Services;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Teams.ViewComponents;
@@ -12,9 +10,7 @@ namespace Humans.Teams.ViewComponents;
 /// <c>TeamMessageController</c> re-checks the team.
 /// </summary>
 internal sealed class TeamMessageButtonsViewComponent(
-    ITeamMessageOptionsProvider options,
-    ICommunicationPreferenceService commPrefs,
-    IUserService users) : ViewComponent
+    ITeamMessageOptionsProvider options) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
@@ -24,21 +20,15 @@ internal sealed class TeamMessageButtonsViewComponent(
             return Content(string.Empty);
 
         var ct = HttpContext.RequestAborted;
-        var viewer = await users.GetUserInfoAsync(viewerId, ct);
-        if (viewer is null || viewer.AllUserIds.Contains(userId))
-            return Content(string.Empty);
-        viewerId = viewer.Id;
-
-        if (!await commPrefs.AcceptsFacilitatedMessagesAsync(userId, ct))
+        var context = await options.GetContextAsync(viewerId, userId, ct);
+        if (context.Refusal is not null)
             return Content(string.Empty);
 
-        var teams = (await options.GetOptionsAsync(viewerId, ct))
-            .OrderBy(t => t.TeamName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var teams = context.Teams.OrderBy(t => t.TeamName, StringComparer.OrdinalIgnoreCase).ToList();
         if (teams.Count == 0)
             return Content(string.Empty);
 
-        return View(new TeamMessageButtonsViewModel(userId, teams));
+        return View(new TeamMessageButtonsViewModel(context.Recipient!.Id, teams));
     }
 }
 

@@ -1,3 +1,4 @@
+using Humans.Budget.Authorization;
 using AwesomeAssertions;
 using System.Globalization;
 using Humans.Base.Extensions;
@@ -301,12 +302,11 @@ public sealed class BudgetServiceTests
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
-        budget.GetCoordinatorBudgetViewDataAsync(viewerId, true, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<CoordinatorBudgetViewData>(new OperationCanceledException(request.Token)));
+        budget.GetEffectiveCoordinatorTeamIdsAsync(viewerId, Arg.Any<CancellationToken>()).Returns([]);
         budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
-        budget.GetCoordinatorCategoryDetailViewDataAsync(_yearId, viewerId, true, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<CoordinatorCategoryDetailViewData>(new OperationCanceledException(request.Token)));
+        budget.GetCategoryByIdAsync(_yearId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<BudgetCategorySnapshot?>(new OperationCanceledException(request.Token)));
         var controller = new BudgetController(budget, auth, users,
             Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
         {
@@ -328,25 +328,91 @@ public sealed class BudgetServiceTests
         {
             switch (action)
             {
-                case "Index": _ = budget.Received(1).GetCoordinatorBudgetViewDataAsync(viewerId, true, request.Token); break;
+                case "Index": _ = budget.Received(1).GetActiveYearAsync(request.Token); break;
                 case "Summary": _ = budget.Received(1).GetActiveYearAsync(request.Token); break;
-                default: _ = budget.Received(1).GetCoordinatorCategoryDetailViewDataAsync(_yearId, viewerId, true, request.Token); break;
+                default: _ = budget.Received(1).GetCategoryByIdAsync(_yearId, request.Token); break;
             }
         }
     }
 
     [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CoordinatorViews_CancelledRead_AbortsRepositoryQuery(bool category)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task Index_ComposesExistingReads_AndRedirectsViewersWithoutCoordinatorAccess(
+        bool finance, bool coordinator)
+    {
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], null));
+        var teams = coordinator ? new HashSet<Guid> { Guid.NewGuid() } : [];
+        budget.GetEffectiveCoordinatorTeamIdsAsync(viewerId, Arg.Any<CancellationToken>()).Returns(teams);
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(
+            new BudgetYearDetail(_yearId, "2026", "Budget", BudgetYearStatus.Active, false, []));
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
+            .Returns(finance ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var controller = new BudgetController(budget, auth, users,
+            Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
+        { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
+
+        var result = await controller.Index();
+
+        if (!finance && !coordinator)
+        {
+            result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(BudgetController.Summary));
+            _ = budget.DidNotReceive().GetActiveYearAsync(Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            var model = result.Should().BeOfType<ViewResult>().Which.Model
+                .Should().BeOfType<CoordinatorBudgetViewModel>().Which;
+            model.Year.Id.Should().Be(_yearId);
+            model.IsFinanceAdmin.Should().Be(finance);
+            model.EditableTeamIds.Should().BeEquivalentTo(teams);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task CategoryDetail_AuthorizesViewBeforeLoadingTeamOptions(bool found, bool permitted)
     {
         using var request = new CancellationTokenSource();
-        await request.CancelAsync();
-        Func<Task> query = category
-            ? () => _service.GetCoordinatorCategoryDetailViewDataAsync(_yearId, Guid.NewGuid(), true, request.Token)
-            : () => _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), true, request.Token);
+        var seeded = await SeedCategoryAsync();
+        var category = (await _service.GetCategoryByIdAsync(seeded.Id, request.Token))!;
+        var (admin, budget, viewerId) = CreateAdminController(true);
+        admin.HttpContext.RequestAborted = request.Token;
+        budget.GetCategoryByIdAsync(category.Id, request.Token).Returns(found ? category : null);
+        budget.GetActiveTeamsAsync(request.Token).Returns([]);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = viewerId }, [], [], null));
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(call => permitted && call.Arg<IEnumerable<IAuthorizationRequirement>>().Contains(BudgetOperationRequirement.View)
+                ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var controller = new BudgetController(budget, auth, users,
+            Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
+        { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
 
-        await query.Should().ThrowAsync<OperationCanceledException>();
+        var result = await controller.CategoryDetail(category.Id);
+
+        if (!found) result.Should().BeOfType<NotFoundResult>();
+        else if (!permitted) result.Should().BeOfType<ForbidResult>();
+        else
+        {
+            var model = result.Should().BeOfType<ViewResult>().Which.Model
+                .Should().BeOfType<CoordinatorCategoryDetailViewModel>().Which;
+            model.Category.Should().Be(category);
+            model.CanEdit.Should().BeFalse();
+        }
+        _ = budget.Received(found && permitted ? 1 : 0).GetActiveTeamsAsync(request.Token);
     }
 
     [HumansTheory]
@@ -434,8 +500,15 @@ public sealed class BudgetServiceTests
             var coordinator = Guid.NewGuid();
             _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinator, Arg.Any<CancellationToken>()).Returns([Guid.NewGuid()]);
             _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
-            (await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinator, false))
-                .ShouldForbid.Should().Be(refused || restriction == true);
+            _userService.GetUserInfoAsync(coordinator, Arg.Any<CancellationToken>()).Returns(
+                UserInfo.Create(new User { Id = coordinator }, [], [], null));
+            var requirement = BudgetOperationRequirement.View;
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, coordinator.ToString())], "test"));
+            var context = new AuthorizationHandlerContext([requirement], principal,
+                (await _service.GetCategoryByIdAsync(category.Id, TestContext.Current.CancellationToken))!);
+            await new BudgetAuthorizationHandler(_service, _userService, new HttpContextAccessor()).HandleAsync(context);
+            context.HasSucceeded.Should().Be(!(refused || restriction == true));
         }
         else if (!refused) groups.Single(g => g.Id != group.Id).IsRestricted.Should().Be(restriction!.Value);
         if (refused) (await db.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
@@ -1353,33 +1426,8 @@ public sealed class BudgetServiceTests
     }
 
     [HumansFact]
-    public async Task GetCoordinatorBudgetViewDataAsync_RedirectsNonCoordinatorNonFinanceUser()
+    public async Task GetActiveTeamsAsync_ReturnsOnlyActiveTeams()
     {
-        var result = await _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), isFinanceAdmin: false);
-
-        result.ShouldRedirectToSummary.Should().BeTrue();
-        result.Year.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetCoordinatorBudgetViewDataAsync_LoadsActiveYearForFinanceAdmin()
-    {
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(
-            new Dictionary<Guid, TeamInfo>());
-        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
-        await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
-
-        var result = await _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), isFinanceAdmin: true);
-
-        result.ShouldRedirectToSummary.Should().BeFalse();
-        result.Year!.Id.Should().Be(year.Id);
-        result.IsFinanceAdmin.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task GetCoordinatorCategoryDetailViewDataAsync_ReturnsCategoryAndTeamsForFinanceAdmin()
-    {
-        var category = await SeedCategoryAsync();
         var teamId = Guid.NewGuid();
         var teamInfo = new TeamInfo(
             teamId, "Kitchen", null, "kitchen",
@@ -1388,48 +1436,13 @@ public sealed class BudgetServiceTests
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
             Members: []);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(
-            new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
+            new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo, [Guid.NewGuid()] = teamInfo with { IsActive = false } });
 
-        var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: true);
+        var result = await _service.GetActiveTeamsAsync(TestContext.Current.CancellationToken);
 
-        result.ShouldForbid.Should().BeFalse();
-        result.Category!.Id.Should().Be(category.Id);
-        result.Teams.Should().HaveCount(1);
-        result.Teams[0].Id.Should().Be(teamId);
-        result.Teams[0].Name.Should().Be("Kitchen");
-    }
-
-    [HumansFact]
-    public async Task GetCoordinatorCategoryDetailViewDataAsync_ForbidsNonFinanceNonCoordinator()
-    {
-        var category = await SeedCategoryAsync();
-
-        var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: false);
-
-        result.ShouldForbid.Should().BeTrue();
-        result.Category!.Id.Should().Be(category.Id);
-        result.Teams.Should().BeEmpty();
-    }
-
-    [HumansTheory]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public async Task GetCoordinatorCategoryDetailViewDataAsync_ForbidsRestrictedAndTicketingForCoordinator(
-        bool isRestricted, bool isTicketingGroup)
-    {
-        var category = await SeedCategoryAsync(isRestricted, isTicketingGroup);
-        var coordinatorId = Guid.NewGuid();
-        var deptId = Guid.NewGuid();
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorId, Arg.Any<CancellationToken>())
-            .Returns(new[] { deptId });
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
-
-        var denied = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: false);
-        var allowed = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, coordinatorId, isFinanceAdmin: true);
-
-        denied.ShouldForbid.Should().BeTrue();
-        denied.Teams.Should().BeEmpty();
-        allowed.ShouldForbid.Should().BeFalse();
+        result.Should().HaveCount(1);
+        result[0].Id.Should().Be(teamId);
+        result[0].Name.Should().Be("Kitchen");
     }
 
     [HumansFact]
