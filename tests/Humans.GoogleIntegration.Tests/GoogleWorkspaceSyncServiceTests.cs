@@ -190,6 +190,27 @@ public sealed class GoogleWorkspaceSyncServiceTests
     }
 
     [HumansFact]
+    public async Task Shutdown_DetachedDriveGrantCancellationRemainsAFault()
+    {
+        using var shutdown = new CancellationTokenSource();
+        _userService.GetUserInfoAsync(TestUserId, shutdown.Token).Returns(MakeUser(TestUserId, TestUserEmail));
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(ExpectedMemberTeam());
+        _teamService.GetTeamAsync(TestTeamId, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+        _resourceRepository.GetActiveByTeamIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns([MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId)]);
+        _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
+            .Returns(SyncMode.AddAndRemove);
+        var failure = new OperationCanceledException("Drive write timed out");
+        _drivePermissions.CreatePermissionAsync(TestGoogleFolderId, TestUserEmail, Arg.Any<string>(), CancellationToken.None)
+            .Returns(async Task<DrivePermissionMutationResult> (_) => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() =>
+            _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId, shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+    }
+
+    [HumansFact]
     public async Task AddUserToTeamResourcesAsync_CallerCancelsAfterSuccessfulGrant_FinishesGrantAndLogs()
     {
         using var cancellation = new CancellationTokenSource();

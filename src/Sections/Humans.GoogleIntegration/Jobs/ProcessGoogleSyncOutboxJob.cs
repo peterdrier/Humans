@@ -25,6 +25,11 @@ public class ProcessGoogleSyncOutboxJob(
                 "process_google_sync_outbox",
                 googleClient.IsConfigured ? "success" : "skipped");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Google sync outbox processing interrupted by shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             metrics.RecordJobRun("process_google_sync_outbox", "failure");

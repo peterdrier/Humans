@@ -1,3 +1,4 @@
+using Humans.GoogleIntegration.Jobs;
 using Humans.GoogleIntegration.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +76,66 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     {
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_StatusDependencyCancellationStillRecordsARetry()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var first = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        _clock.Advance(Duration.FromSeconds(1));
+        var next = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        var failure = new OperationCanceledException("Status save timed out");
+        _googleSyncService.AddUserToTeamResourcesAsync(first.TeamId, first.UserId, shutdown.Token,
+                Arg.Any<GoogleSyncSource>())
+            .Returns(new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, first.UserId, "member@example.org"));
+        _identities.SetStatusFromSyncAsync(first.UserId, "member@example.org", GoogleEmailStatus.Valid, CancellationToken.None)
+            .Returns(async Task<bool> (_) => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => _processor.ProcessQueuedAsync(shutdown.Token));
+
+        error.Should().BeOfType<OperationCanceledException>();
+        var stored = await _dbContext.GoogleSyncOutboxEvents.AsNoTracking()
+            .SingleAsync(e => e.Id == first.Id, Xunit.TestContext.Current.CancellationToken);
+        stored.ProcessedAt.Should().BeNull();
+        stored.RetryCount.Should().Be(1);
+        stored.LastError.Should().Be(failure.Message);
+        _metrics.Received(1).RecordSyncOperation("failure");
+        await _googleSyncService.DidNotReceive().AddUserToTeamResourcesAsync(next.TeamId, next.UserId,
+            Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Shutdown_FailureTrackingCancellationRemainsAJobFailure(bool permanent)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var first = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        var repository = Substitute.For<IGoogleSyncOutboxRepository>();
+        repository.GetProcessingBatchAsync(100, 10, shutdown.Token).Returns(new[] { first });
+        var vendorFailure = new Google.GoogleApiException("drive", "vendor refused")
+        {
+            Error = new Google.Apis.Requests.RequestError { Code = permanent ? 403 : 503 }
+        };
+        _googleSyncService.AddUserToTeamResourcesAsync(first.TeamId, first.UserId, shutdown.Token,
+                Arg.Any<GoogleSyncSource>())
+            .Returns(Task.FromException<GoogleResourceGrantResult>(vendorFailure));
+        var failure = new OperationCanceledException("Failure tracking timed out");
+        repository.MarkPermanentlyFailedAsync(first.Id, Arg.Any<Instant>(), Arg.Any<string>(), CancellationToken.None)
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+        repository.IncrementRetryAsync(first.Id, Arg.Any<Instant>(), Arg.Any<string>(), 10, CancellationToken.None)
+            .Returns(async Task<(bool, int)> (_) => { await shutdown.CancelAsync(); throw failure; });
+        var processor = new GoogleSyncOutboxProcessor(repository, _userService, _identities, _teamService,
+            _googleSyncService, _googleClient, _metrics, _clock, Substitute.For<ILogger<GoogleSyncOutboxProcessor>>());
+        var logger = new CapturingLogger<ProcessGoogleSyncOutboxJob>();
+        var job = new ProcessGoogleSyncOutboxJob(processor, _googleClient, _metrics, logger);
+
+        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+        _metrics.Received(1).RecordJobRun("process_google_sync_outbox", "failure");
+        logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error && e.Exception == error);
     }
 
     [HumansFact]

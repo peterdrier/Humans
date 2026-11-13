@@ -215,6 +215,10 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 - Team provisioning returns `GoogleResourceGrantResult`, carrying the resolved owner and exact attempted email row, retryability and failure details. `Accepted` means Google creates or confirms an existing Drive grant and no grant fails. Disabled Drive sync, no resources and queued group reconciliation return `Deferred`; failed grants or ineligible addresses return `Failed`. Only `Accepted` lets the outbox mark the address Valid; resource existence alone is never verification.
 - Successful outbox dispatch finishes its applicable Google-email status update before marking the event processed and counting success. A dispatch/status persistence failure keeps the event pending under the existing retry limit rather than closing it with an unreachable retry count.
 - Direct Drive grants keep preflight reads cancellable, then finish the permission call, plus-address fallback, sync log and target-rejection status independently of cancellation. Cancellation stops the next resource. The outbox likewise finishes a returned grant's status and acknowledgement or failure tracking before stopping the next event; requested preflight cancellation propagates without consuming a retry, while an independent dependency timeout remains a failure.
+- Outbox shutdown is reported as a warning without an exception or a job success/failure metric.
+  Cancellation from a detached grant or completion dependency remains a fault even if shutdown
+  arrives concurrently. A returned grant's status-save failure follows normal retry tracking;
+  failure to persist that tracking escapes as a job failure with the original exception preserved.
 - Internal `GoogleSyncOutboxAdministration` owns counts, recent-event projections, manual requeue, per-user re-enqueue and retry audits shared with stub mode. `GoogleWorkspaceSyncService` keeps existing forwarding entry points. Rejected-identity handling, membership selection, deduplication keys, cancellation and audit text are unchanged. Producer enqueueing remains in `GoogleSyncOutboxService`, and processing remains in `GoogleSyncOutboxProcessor`; no DI registration or public contract is added.
 - Outbox retry and permanent-failure error text keeps at most 4000 UTF-16 code units, without splitting a Unicode surrogate pair. Retry counts and failure transitions are independent of truncation.
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Returned failures follow the same lifecycle: transient failures increment retry count and remain pending; permanent/local refusals record failure, never success. Mixed results retry when any grant is retryable. Escaping exceptions without an attempted-row identity cannot reject a guessed current address. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.
@@ -286,13 +290,13 @@ The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Driv
 
 ### Public contract
 
-| Public interface | Methods | Notes |
-|---|---:|---|
-| `IGoogleSyncService` | 2 | Read contract: `GetFailedSyncEventCountAsync` (Notifications meter), `IsFolderReachableAsync` (Workgroups root-folder check). |
-| `IGoogleSyncWrite` | 4 | `AddUserToTeamResourcesAsync` (Teams system-team sync), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
-| `ITeamResourceService` | 7 | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
-| `IGoogleIntegrationService` | 2 | Read contract: `GetWorkspaceIdentityAsync` / `GetWorkspaceIdentitiesAsync` — a member's effective Workspace identity (`WorkspaceIdentity(UserId, Email, Status)`), keyed by the requested id (merge-aware). Teams, Camps, Users' admin list. |
-| `IGoogleIntegrationWrite` | 1 | `ClearIfAddressAsync` — Users reports an address leaving an account. |
+| Public interface | Notes |
+|---|---|
+| `IGoogleSyncService` | Read contract: `GetFailedSyncEventCountAsync` (Notifications meter), `IsFolderReachableAsync` (Workgroups root-folder check). |
+| `IGoogleSyncWrite` | `AddUserToTeamResourcesAsync` (Teams system-team sync), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
+| `ITeamResourceService` | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
+| `IGoogleIntegrationService` | Read contract: `GetWorkspaceIdentityAsync` / `GetWorkspaceIdentitiesAsync` — a member's effective Workspace identity (`WorkspaceIdentity(UserId, Email, Status)`), keyed by the requested id (merge-aware). Teams, Camps, Users' admin list. |
+| `IGoogleIntegrationWrite` | `ClearIfAddressAsync` — Users reports an address leaving an account. |
 
 `GoogleWorkspaceSyncService` (or `StubGoogleSyncService`) implements the internal `IGoogleSyncManagement`; `TeamResourceService` implements the internal `ITeamResourceManagement`; `WorkspaceIdentityService` implements the internal `IWorkspaceIdentityManagement` (reads + `ClearIfAddressAsync` + `SetAsync`, `SetStatusFromSyncAsync` and the copy). DI registers each face to the same instance. Everything else (sync-by-type, drift checks, outbox requeue, metrics counts) is internal.
 

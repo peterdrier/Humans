@@ -72,51 +72,59 @@ internal sealed class GoogleWorkspaceSyncService(
         cancellationToken.ThrowIfCancellationRequested();
         // Once Drive sees the grant, finish its fallback and tracking before observing shutdown.
         var grantCt = CancellationToken.None;
-        var (result, grantedEmail) = await DrivePlusAddressFallback.CreateAsync(
-            email => drivePermissions.CreatePermissionAsync(resource.GoogleId, email, apiRole, grantCt),
-            driveTargetEmail, userId, identityEmail, workspaceIdentities, grantCt);
-
-        var insteadOf = string.Equals(grantedEmail, driveTargetEmail, StringComparison.Ordinal)
-            ? ""
-            : $" in place of {driveTargetEmail}, which Drive refused";
-        switch (result.Outcome)
+        try
         {
-            // A fallback onto a base address that already had access still changes the
-            // member's Drive address, so it is logged like a grant.
-            case DrivePermissionCreateOutcome.Created:
-            case DrivePermissionCreateOutcome.AlreadyExists when insteadOf.Length > 0:
-                await googleSyncLog.LogAsync(
-                    GoogleSyncLogAction.AccessGranted, resource.Id,
-                    $"Granted Drive access ({effectiveLevel}) to {grantedEmail}{insteadOf} ({resource.Name})",
-                    nameof(GoogleWorkspaceSyncService),
-                    grantedEmail, apiRole, syncSource, success: true,
-                    userId: userId, ct: grantCt);
-                return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, userId, identityEmail);
+            var (result, grantedEmail) = await DrivePlusAddressFallback.CreateAsync(
+                email => drivePermissions.CreatePermissionAsync(resource.GoogleId, email, apiRole, grantCt),
+                driveTargetEmail, userId, identityEmail, workspaceIdentities, grantCt);
 
-            case DrivePermissionCreateOutcome.AlreadyExists:
-                logger.LogDebug("Permission already exists for {Email} on {GoogleId}", userEmail, resource.GoogleId);
-                return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, userId, identityEmail);
+            var insteadOf = string.Equals(grantedEmail, driveTargetEmail, StringComparison.Ordinal)
+                ? ""
+                : $" in place of {driveTargetEmail}, which Drive refused";
+            switch (result.Outcome)
+            {
+                // A fallback onto a base address that already had access still changes the
+                // member's Drive address, so it is logged like a grant.
+                case DrivePermissionCreateOutcome.Created:
+                case DrivePermissionCreateOutcome.AlreadyExists when insteadOf.Length > 0:
+                    await googleSyncLog.LogAsync(
+                        GoogleSyncLogAction.AccessGranted, resource.Id,
+                        $"Granted Drive access ({effectiveLevel}) to {grantedEmail}{insteadOf} ({resource.Name})",
+                        nameof(GoogleWorkspaceSyncService),
+                        grantedEmail, apiRole, syncSource, success: true,
+                        userId: userId, ct: grantCt);
+                    return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, userId, identityEmail);
 
-            case DrivePermissionCreateOutcome.Failed:
-                logger.LogWarning(
-                    "Google API error granting {Role} to {Email} on {GoogleId} — HTTP {Code}: {Message}",
-                    apiRole, userEmail, resource.GoogleId,
-                    result.Error?.StatusCode, result.Error?.RawMessage);
-                // Recorded so the failed grant shows on the monitor pages and in the GDPR export, like group failures.
-                await googleSyncLog.LogAsync(
-                    GoogleSyncLogAction.AccessGranted, resource.Id,
-                    $"Failed to grant Drive access ({effectiveLevel}) to {userEmail} ({resource.Name}): " +
-                    $"HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}",
-                    nameof(GoogleWorkspaceSyncService),
-                    userEmail, apiRole, syncSource, success: false,
-                    errorMessage: result.Error?.RawMessage,
-                    userId: userId, ct: grantCt);
-                await HandleDriveAddFailureAsync(resource, userEmail, userId, identityEmail, result.Error, grantCt);
-                return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, userId, identityEmail,
-                    Retryable: !DrivePermissionErrorPolicy.IsPermanentFailure(result.Error?.StatusCode),
-                    ErrorMessage: $"{resource.Name}: HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}");
+                case DrivePermissionCreateOutcome.AlreadyExists:
+                    logger.LogDebug("Permission already exists for {Email} on {GoogleId}", userEmail, resource.GoogleId);
+                    return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Accepted, userId, identityEmail);
+
+                case DrivePermissionCreateOutcome.Failed:
+                    logger.LogWarning(
+                        "Google API error granting {Role} to {Email} on {GoogleId} — HTTP {Code}: {Message}",
+                        apiRole, userEmail, resource.GoogleId,
+                        result.Error?.StatusCode, result.Error?.RawMessage);
+                    // Recorded so the failed grant shows on the monitor pages and in the GDPR export, like group failures.
+                    await googleSyncLog.LogAsync(
+                        GoogleSyncLogAction.AccessGranted, resource.Id,
+                        $"Failed to grant Drive access ({effectiveLevel}) to {userEmail} ({resource.Name}): " +
+                        $"HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}",
+                        nameof(GoogleWorkspaceSyncService),
+                        userEmail, apiRole, syncSource, success: false,
+                        errorMessage: result.Error?.RawMessage,
+                        userId: userId, ct: grantCt);
+                    await HandleDriveAddFailureAsync(resource, userEmail, userId, identityEmail, result.Error, grantCt);
+                    return new GoogleResourceGrantResult(GoogleResourceGrantOutcome.Failed, userId, identityEmail,
+                        Retryable: !DrivePermissionErrorPolicy.IsPermanentFailure(result.Error?.StatusCode),
+                        ErrorMessage: $"{resource.Name}: HTTP {result.Error?.StatusCode} — {result.Error?.RawMessage}");
+            }
+            throw new InvalidOperationException($"Unknown Drive permission outcome {result.Outcome}");
         }
-        throw new InvalidOperationException($"Unknown Drive permission outcome {result.Outcome}");
+        catch (OperationCanceledException ex)
+        {
+            // The grant and its bookkeeping use None; a timeout here is not caller cancellation.
+            throw new InvalidOperationException("Failed to complete the Drive permission grant.", ex);
+        }
     }
 
     /// <summary>
