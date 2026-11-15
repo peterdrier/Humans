@@ -27,7 +27,7 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.3" />
     <!-- NodaTime -->
-    <PackageVersion Include="NodaTime" Version="3.3.5" />
+    <PackageVersion Include="NodaTime" Version="3.3.7" />
     <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
     <!-- State Machine -->
     <PackageVersion Include="Stateless" Version="5.20.1" />
@@ -95,7 +95,7 @@
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <PackageVersion Include="NodaTime.Testing" Version="3.3.5" />
+    <PackageVersion Include="NodaTime.Testing" Version="3.3.7" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="Stripe.net" Version="53.0.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
