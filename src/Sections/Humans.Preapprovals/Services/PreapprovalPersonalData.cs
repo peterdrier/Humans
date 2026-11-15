@@ -39,12 +39,9 @@ internal sealed class PreapprovalPersonalData(
     internal async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var rows = await repository.GetRowsForUsersAsync(await reader.AllIdsAsync(userId, ct), ct);
-        var programs = (await repository.GetProgramsAsync(ct)).ToDictionary(p => p.Id, p => p.Name);
-        string NameOf(Guid programId) => programs.TryGetValue(programId, out var name) ? name : "(unknown)";
-
         var grants = rows.Grants.Select(g => new
         {
-            Program = NameOf(g.ProgramId),
+            Program = g.Program.Name,
             g.Label,
             g.MaxAmount,
             Status = g.Status.ToString(),
@@ -58,11 +55,11 @@ internal sealed class PreapprovalPersonalData(
         var decisions = new
         {
             ProgramsCreated = rows.ProgramsCreated.Select(p => new { p.Name, CreatedAt = p.CreatedAt.ToIso8601() }).ToList(),
-            ManagerOf = rows.ManagerRows.Select(m => new { Program = NameOf(m.ProgramId), AddedAt = m.AddedAt.ToIso8601() }).ToList(),
-            ManagersAdded = rows.ManagersAdded.Select(m => new { Program = NameOf(m.ProgramId), AddedAt = m.AddedAt.ToIso8601() }).ToList(),
+            ManagerOf = rows.ManagerRows.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
+            ManagersAdded = rows.ManagersAdded.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
             GrantsDecided = rows.GrantsDecided.Select(g => new
             {
-                Program = NameOf(g.ProgramId),
+                Program = g.Program.Name,
                 g.MaxAmount,
                 Status = g.Status.ToString(),
                 DecidedAt = g.DecidedAt.ToIso8601()

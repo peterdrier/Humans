@@ -39,7 +39,7 @@ internal sealed class ShiftManagementService(
     private readonly ShiftEventSettings shiftSettings = new(repo, auditLogService, clock);
     private readonly ShiftScheduling scheduling = new(repo, calendarResolver, viewInvalidator, clock);
     private readonly ShiftDeletion deletion = new(repo, auditLogService, viewInvalidator, logger);
-    private readonly ShiftVolunteerProfiles volunteerProfiles = new(repo, viewInvalidator, clock, logger);
+    private readonly ShiftVolunteerProfiles volunteerProfiles = new(repo, clock, logger);
     private readonly ShiftDashboardMetrics dashboardMetrics = new(repo, calendarResolver, serviceProvider, clock);
     private readonly ShiftCoordinatorActivity coordinatorActivity = new(repo, calendarResolver, serviceProvider);
     private readonly ShiftCoverageReports coverageReports = new(repo, calendarResolver, serviceProvider);

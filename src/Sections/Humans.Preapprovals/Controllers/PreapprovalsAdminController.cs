@@ -26,8 +26,7 @@ internal sealed class PreapprovalsAdminController(
     IClock clock,
     ILogger<PreapprovalsAdminController> logger) : HumansControllerBase(users)
 {
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    private LocalDate Today => clock.GetCurrentInstant().InZone(PreapprovalReader.MadridZone).Date;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

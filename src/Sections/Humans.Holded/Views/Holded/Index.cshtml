@@ -18,10 +18,9 @@
     };
 
     string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
-    var used = o.Usage?.Usage ?? 0;
 }
 
-<page-header title="Holded" subtitle="The local mirror of Holded's ledger and chart of accounts. Pages read the mirror and make no Holded calls; this one makes a single usage lookup." />
+<page-header title="Holded" subtitle="The local mirror of Holded's ledger and chart of accounts. Pages read the mirror and make no Holded calls." />
 
 <div class="card mb-4">
     <div class="card-body">
@@ -33,28 +32,37 @@
                     <span class="badge bg-secondary">Not configured</span>
                     <span class="text-muted small">No <code>HOLDED_API_KEY_V2</code>: the mirror is shown as last synced, and syncing is off.</span>
                 }
-                else if (!o.ApiReachable)
+                else if (o.Usage?.LastError is not null)
                 {
                     <span class="badge bg-warning text-dark">Unreachable</span>
-                    <span class="text-muted small">Configured, but Holded did not answer the usage lookup.</span>
+                    <span class="text-muted small">Holded did not answer the last usage refresh.</span>
+                }
+                else if (o.Usage?.ReadAt is not null)
+                {
+                    <span class="badge bg-success">Connected</span>
+                    <span class="text-muted small">at the last usage refresh</span>
                 }
                 else
                 {
-                    <span class="badge bg-success">Connected</span>
+                    <span class="badge bg-secondary">Configured</span>
                 }
             </dd>
 
             <dt class="col-sm-3">API usage</dt>
             <dd class="col-sm-9">
-                @if (o.Usage is { } u)
+                @if (o.Usage is { ReadAt: not null } u)
                 {
-                    <text>@used.ToString("N0", CultureInfo.InvariantCulture) of @N(o.MonthlyCallBudget) calls in @u.Period</text>
-                    <span class="text-muted small">(budget from <code>Holded:MonthlyCallBudget</code>)</span>
+                    <text>@N(u.Calls) of @N(o.MonthlyCallBudget) calls in @u.Period</text>
+                    <span class="text-muted small">(read @Stamp(u.ReadAt); budget from <code>Holded:MonthlyCallBudget</code>)</span>
                 }
                 else
                 {
-                    <span class="text-muted">unknown</span>
+                    <span class="text-muted">never read</span>
                 }
+                <form authorize-policy="@FinancePolicies.Manage" asp-action="RefreshUsage" method="post" class="d-inline ms-2">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-link btn-sm p-0 align-baseline">refresh (one call)</button>
+                </form>
                 <a asp-action="Calls" class="small ms-2">by month and endpoint</a>
             </dd>
 

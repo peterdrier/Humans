@@ -161,9 +161,9 @@ internal sealed class ExpensesController(
     /// their behalf).</summary>
     private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, UserInfo viewer, CancellationToken ct = default)
     {
-        var grants = (await preapprovals.ListClaimableAsync(viewer.AllUserIds, ct)).OrderBy(g => g.ClaimBy).ToList();
+        var grants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct)).OrderBy(g => g.ClaimBy).ToList();
         if (model.PreapprovalGrantId is { } wanted && grants.All(g => g.Id != wanted)
-            && await preapprovals.GetGrantAsync(wanted, ct) is { } other)
+            && await PreapprovalGrantQueries.GetGrantAsync(preapprovals, wanted, ct) is { } other)
             grants.Insert(0, other);
         model.Grants = grants;
         model.Today = Today;
@@ -191,7 +191,7 @@ internal sealed class ExpensesController(
             var timeline = await service.GetHoldedTimelineAsync(report, HttpContext.RequestAborted);
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin, HttpContext.RequestAborted);
             var grant = report.PreapprovalGrantId is { } grantId
-                ? await preapprovals.GetGrantAsync(grantId, HttpContext.RequestAborted)
+                ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, HttpContext.RequestAborted)
                 : null;
 
             // Reaching this page needs View, which only the submitter, the first reviewer and finance admins
@@ -849,10 +849,10 @@ internal sealed class ExpensesController(
         // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between the member's own.
         // The one the report holds stays listed in any state.
         var submitter = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
-        var grants = (await preapprovals.ListClaimableAsync(submitter?.AllUserIds ?? [report.SubmitterUserId], HttpContext.RequestAborted))
+        var grants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, submitter?.AllUserIds ?? [report.SubmitterUserId], HttpContext.RequestAborted))
             .OrderBy(g => g.ClaimBy).ToList();
         if (report.PreapprovalGrantId is { } held && grants.All(g => g.Id != held)
-            && await preapprovals.GetGrantAsync(held, HttpContext.RequestAborted) is { } heldGrant)
+            && await PreapprovalGrantQueries.GetGrantAsync(preapprovals, held, HttpContext.RequestAborted) is { } heldGrant)
             grants.Insert(0, heldGrant);
         model.Grants = grants;
         model.Today = Today;

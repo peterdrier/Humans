@@ -112,7 +112,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(localEs.Id, userId, shiftId);
+            InvalidateSignupCaches(localEs.Id, shiftId);
         }
         enrollment.Dispose();
         var shiftDate = FormatAuditDay(calendar, shift.DayOffset);
@@ -176,7 +176,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
         enrollment.Dispose();
         await auditLogService.LogAsync(
@@ -206,7 +206,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -265,7 +265,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -322,7 +322,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(calendar.Id, userId, shiftId);
+            InvalidateSignupCaches(calendar.Id, shiftId);
         }
         enrollment.Dispose();
         await auditLogService.LogAsync(
@@ -424,7 +424,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(calendar.Id, userId, rotaId);
+            InvalidateRangeSignupCaches(calendar.Id, rotaId);
         }
         enrollment.Dispose();
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
@@ -472,7 +472,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(calendar.Id, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(calendar.Id, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -503,7 +503,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -615,7 +615,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(calendar.Id, userId, rotaId);
+            InvalidateRangeSignupCaches(calendar.Id, rotaId);
         }
         enrollment.Dispose();
         await AuditRangeSignupsAsync(userId, actorUserId ?? userId, rota, calendar, createdSignups.SignupsForAudit, autoConfirm);
@@ -629,17 +629,15 @@ internal sealed class ShiftSignupService(
         return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
     }
 
-    private void InvalidateSignupCaches(Guid eventSettingsId, Guid userId, Guid shiftId)
+    private void InvalidateSignupCaches(Guid eventSettingsId, Guid shiftId)
     {
         shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
     }
 
-    private void InvalidateRangeSignupCaches(Guid eventSettingsId, Guid userId, Guid rotaId)
+    private void InvalidateRangeSignupCaches(Guid eventSettingsId, Guid rotaId)
     {
         shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateUser(userId);
         // A range touches every shift in the rota.
         viewInvalidator.InvalidateRota(rotaId);
     }
@@ -804,7 +802,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(calendar.Id, cacheSignup.UserId, cacheSignup.Shift.RotaId);
+            InvalidateRangeSignupCaches(calendar.Id, cacheSignup.Shift.RotaId);
         }
         enrollment.Dispose();
 
@@ -857,7 +855,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(signups[0].Shift.Rota.EventSettingsId, signups[0].UserId, signups[0].Shift.RotaId);
+            InvalidateRangeSignupCaches(signups[0].Shift.Rota.EventSettingsId, signups[0].Shift.RotaId);
         }
 
         foreach (var signup in signups)
@@ -915,7 +913,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(firstSignup.Shift.Rota.EventSettingsId, firstSignup.UserId, firstSignup.Shift.RotaId);
+            InvalidateRangeSignupCaches(firstSignup.Shift.Rota.EventSettingsId, firstSignup.Shift.RotaId);
         }
 
         foreach (var signup in signups)
@@ -1039,7 +1037,6 @@ internal sealed class ShiftSignupService(
             }
             else
             {
-                viewInvalidator.InvalidateUser(userId);
                 foreach (var (_, shiftId) in cancelled)
                     viewInvalidator.InvalidateShift(shiftId);
             }
@@ -1069,11 +1066,6 @@ internal sealed class ShiftSignupService(
                 viewInvalidator.InvalidateAll();
                 foreach (var eventId in eventIds)
                     shiftMgmt.InvalidateDashboardCaches(eventId);
-            }
-            else
-            {
-                foreach (var userId in userIds)
-                    viewInvalidator.InvalidateUser(userId);
             }
         }
     }
@@ -1125,8 +1117,6 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            viewInvalidator.InvalidateUser(sourceUserId);
-            viewInvalidator.InvalidateUser(targetUserId);
             if (movedCount != 0)
             {
                 viewInvalidator.InvalidateAll();

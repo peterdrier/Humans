@@ -57,7 +57,7 @@ internal sealed class PreapprovalReader(
     internal static GrantInfo ToInfo(PreapprovalGrant g) => ToInfo(g, g.Program);
 
     internal static GrantInfo ToInfo(PreapprovalGrant g, PreapprovalProgram p) => new(
-        g.Id, g.ProgramId, p.Name, p.Kind, g.BeneficiaryUserId, g.Label, g.MaxAmount, g.Status,
+        g.Id, g.ProgramId, p.Name, g.BeneficiaryUserId, g.Label, g.MaxAmount, g.Status,
         g.ApplicationNote, g.RequestedAmount, g.DecidedByUserId, g.DecidedAt, g.ExpenseReportId,
         p.ClaimBy, g.CreatedAt, g.UpdatedAt);
 

@@ -1883,7 +1883,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var vote = await _fx.AddVoteAsync(closesAt: _fx.Clock.GetCurrentInstant() + Duration.FromDays(3));
         var userId = Guid.NewGuid();
         var row = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true, notified: false);
-        var member = new User { Id = userId, BurnerName = "Member", Email = address }.ToUserInfo();
+        var member = UserInfoFixtures.FromUser(new User { Id = userId, BurnerName = "Member", Email = address });
         _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [userId] = member });
 

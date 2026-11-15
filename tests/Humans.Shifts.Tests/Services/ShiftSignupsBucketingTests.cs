@@ -1,3 +1,4 @@
+using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.ViewComponents;
 using AwesomeAssertions;
 using Xunit;
@@ -65,7 +66,7 @@ public class ShiftSignupsBucketingTests
         var noTeams = new Dictionary<Guid, string>();
 
         var card = ShiftSignupSummaryBucketer.Build([summary], noTeams, TestNow);
-        var mine = ShiftSignupBucketer.Build([signup], TestEvent, noTeams, TestNow);
+        var mine = ShiftSignupBucketer.Build([ShiftUserSignup.From(signup)], TestEvent, noTeams, TestNow);
 
         card.Pending.Should().ContainSingle().Which.DepartmentName.Should().Be(expected);
         mine.Pending.Should().ContainSingle().Which.DepartmentName.Should().Be(expected);

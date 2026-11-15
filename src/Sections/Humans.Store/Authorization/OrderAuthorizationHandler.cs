@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Finance.Contracts;
 using Humans.Store.Contracts;
 using Humans.Base.Authorization;
@@ -56,7 +57,7 @@ internal sealed class OrderAuthorizationHandler(
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var pastDeadline = resource.ProductOrderableUntil is { } until
             && pending.Any(IsLineEdit)
-            && await settingsService.TodayInEventZoneAsync(clock, ct) > until;
+            && clock.TodayIn((await settingsService.GetActiveEventSettingsAsync(ct))?.TimeZone) > until;
 
         // Additive: fall through so a TeamsAdmin who is also a camp lead picks up camp rights below.
         if (TeamsRoles.IsTeamsAdmin(context.User))

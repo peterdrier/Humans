@@ -241,31 +241,27 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Manual_sync_propagates_request_abort_with_a_stack_free_warning()
+    public async Task Manual_sync_propagates_request_abort_with_stack_free_warnings()
     {
         using var cancellation = new CancellationTokenSource();
-        var holded = Substitute.For<IHoldedService>();
-        holded.SyncLedgerAsync(false, cancellation.Token).Returns<bool>(_ =>
-        {
-            cancellation.Cancel();
-            throw new OperationCanceledException(cancellation.Token);
-        });
-        var logger = new CapturingLogger<Humans.Holded.Controllers.HoldedController>();
-        var controller = new Humans.Holded.Controllers.HoldedController(
-            Substitute.For<Humans.Users.Contracts.IUserService>(),
-            Substitute.For<IHoldedAdminService>(), holded, logger)
-        {
-            TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
-                new Microsoft.AspNetCore.Http.DefaultHttpContext(),
-                Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>()),
-        };
+        var logger = new CapturingLogger<Service>();
+        var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), logger);
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ =>
+            {
+                cancellation.Cancel();
+                throw new OperationCanceledException(cancellation.Token);
+            });
 
-        var act = () => controller.SyncNow(cancellation.Token);
+        var act = () => service.SyncNowAsync(cancellation.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
-        var entry = logger.Entries.Should().ContainSingle().Subject;
-        entry.Level.Should().Be(LogLevel.Warning);
-        entry.Exception.Should().BeNull();
+        logger.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+        logger.Entries.Where(e => e.Level == LogLevel.Warning).Should().NotBeEmpty()
+            .And.OnlyContain(e => e.Exception == null);
     }
 
     [HumansTheory]

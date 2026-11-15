@@ -125,7 +125,7 @@ All ledger reads stay derived from `holded_ledger_lines` (June design unchanged)
 
 ## Follow-up PR (specced here, not today's build): bank reconciliation panel
 
-A read-only worklist on `/Finance/Holded` — Peter executes all writes in the Holded GUI (decision 2026-08-10: no API writes for now).
+A read-only worklist on `/Finance/Holded` (that route no longer exists; the mirror screen is `/Holded`) — Peter executes all writes in the Holded GUI (decision 2026-08-10: no API writes for now).
 
 - **New `holded_bank_movements` table** mirroring `GET /treasury/accounts` + `GET /treasury/accounts/{id}/bank-movements` (id, account, description, amount, booking date, `status` pending/partial/reconciled, origin), refreshed by the nightly sync (~2 calls).
 - **Panel per bank account:** unreconciled movement count + list; bank-feed balance vs local ledger-sum gap.
