@@ -95,7 +95,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids
                     .Where(_names.ContainsKey)
-                    .ToDictionary(id => id, id => UserInfoStubHelpers.MakeUserInfo(id, displayName: _names[id]));
+                    .ToDictionary(id => id, id => UserFixtures.MakeUserInfo(id, displayName: _names[id]));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 

@@ -35,7 +35,7 @@ public class ProfileAdminControllerTests
             userStore, null, null, null, null, null, null, null, null);
         userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(adminUser);
         _users.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(adminUser.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(adminUser)));
     }
 
     private ProfileAdminController BuildController()
@@ -79,7 +79,7 @@ public class ProfileAdminControllerTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User { Id = _adminUserId }.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _adminUserId }));
         });
         var controller = BuildController();
         controller.HttpContext.RequestAborted = request.Token;

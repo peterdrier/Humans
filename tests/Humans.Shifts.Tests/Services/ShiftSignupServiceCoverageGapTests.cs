@@ -81,7 +81,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         rota.Name = "Rota";
         var coordinatorId = Guid.NewGuid();
         _users.GetUserInfoAsync(coordinatorId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(coordinatorId) with { PreferredLanguage = language });
+            .Returns(UserFixtures.MakeUserInfo(coordinatorId) with { PreferredLanguage = language });
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -124,7 +124,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         {
             team.Members.AddRange(BuildTeamInfoWithCoordinator(rota.TeamId, id).Members);
             _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
-                .Returns(UserInfoStubHelpers.MakeUserInfo(id) with { PreferredLanguage = "es" });
+                .Returns(UserFixtures.MakeUserInfo(id) with { PreferredLanguage = "es" });
         }
         _users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new IOException("Language lookup failed"))));

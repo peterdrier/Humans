@@ -250,7 +250,7 @@ internal sealed class NotificationMeterProvider(
         var allUserInfos = await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false);
         var reviews = await consentService.GetConsentReviewsAsync(cancellationToken);
         var consentReviewsPending = allUserInfos.Count(u =>
-            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
+            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u));
 
         var pendingDeletions = allUserInfos
             .Count(u => u.DeletionRequestedAt != null);

@@ -88,7 +88,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     {
         var map = userIds.ToDictionary(
             id => id,
-            id => new User
+            id => UserInfoFixtures.FromUser(new User
             {
                 Id = id,
                 DisplayName = "Member " + id,
@@ -98,7 +98,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
                 Email = id + "@example.org",
                 PreferredLanguage = "en",
                 State = UserState.Active
-            }.ToUserInfo());
+            }));
 
         Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map));
@@ -128,7 +128,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     }
 
     private UserInfo TombstoneInfo(Guid id, Guid? mergedTo) =>
-        new User
+        UserInfoFixtures.FromUser(new User
         {
             Id = id,
             DisplayName = "Member " + id,
@@ -138,7 +138,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             State = UserState.Active,
             MergedToUserId = mergedTo,
             MergedAt = mergedTo is null ? null : Clock.GetCurrentInstant()
-        }.ToUserInfo();
+        });
 
     public async Task<AssemblyVote> AddVoteAsync(
         AssemblyVoteStatus status = AssemblyVoteStatus.Open,

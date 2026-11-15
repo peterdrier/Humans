@@ -116,7 +116,7 @@ public class ProfileEmailsControllerGridTests
 
         // A minimal UserInfo for the test user, so the actions pass the null-guard.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _userId })));
 
         _authorizationService.AuthorizeAsync(
             Arg.Any<ClaimsPrincipal>(),
@@ -144,7 +144,7 @@ public class ProfileEmailsControllerGridTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _userId }));
         });
         await request.CancelAsync();
         var emailId = Guid.NewGuid();
@@ -630,7 +630,7 @@ public class ProfileEmailsControllerGridTests
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(target.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(target));
         });
         var auditRecordedAtQueue = false;
         var failure = new IOException("Email queue unavailable");
@@ -679,7 +679,7 @@ public class ProfileEmailsControllerGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(targetUser);
         _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
-            .Returns(targetUser.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(targetUser));
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
             .Returns(new AddEmailResult(Guid.NewGuid(), token, IsConflict: false));
 

@@ -66,7 +66,7 @@ public sealed class GoogleSyncLogServiceGdprTests
     private void StubResolvesTo(Guid requestedId, Guid survivorId, params Guid[] mergedUserIds)
     {
         var survivor = new User { Id = survivorId, PreferredLanguage = "en" };
-        var info = survivor.ToUserInfo([
+        var info = UserInfoFixtures.FromUser(survivor, [
             new UserEmail { Id = Guid.NewGuid(), UserId = survivorId, Email = "survivor@nobodies.team", IsVerified = true }
         ]) with
         { MergedUserIds = mergedUserIds };
@@ -114,7 +114,7 @@ public sealed class GoogleSyncLogServiceGdprTests
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId };
-        var info = user.ToUserInfo([
+        var info = UserInfoFixtures.FromUser(user, [
             new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "first@nobodies.team", IsVerified = true },
             new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "second@nobodies.team", IsVerified = true },
             new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "SECOND@NOBODIES.TEAM", IsVerified = true },

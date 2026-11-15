@@ -37,7 +37,7 @@ Where it points them depends on what the association needs right now. The shifts
 >
 > - **Lifecycle state-machine** (suspend/unsuspend, future re-consent suspensions and term-renewals) → `IHumanLifecycleService`.
 > - **Board voting** → Governance's `ApplicationDecisionService`, injected by its own `GovernanceBoardVotingController` (Governance owns the `governance_applications` + `governance_board_votes` tables; OnboardingService carries no delegating wrappers).
-> - **No dashboard aggregation lives here.** The review-queue badge is `ReviewQueuePillCountAsync` in Consent's `Section.cs`, counting `UserInfo.NeedsConsentReview` off `IUserService`; the member dashboard is section-contributed chrome.
+> - **No dashboard aggregation lives here.** The review-queue badge is `ReviewQueuePillCountAsync` in Consent's `Section.cs`, counting `ConsentReviewInfo.NeedsConsentReview` off `IUserService`; the member dashboard is section-contributed chrome.
 > - **Account deletion cascade** → `IAccountDeletionService` (`src/Sections/Humans.Users.Contracts/IAccountDeletionService.cs`).
 
 ## Concepts
