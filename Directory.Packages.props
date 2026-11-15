@@ -48,11 +48,11 @@
          exposed the latent Octokit constraint. Drop when Octokit ships without Newtonsoft. -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Google Workspace APIs -->
-    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.78.0.4274" />
+    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.78.0.4325" />
     <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.78.0.4309" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.78.0.4313" />
-    <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
-    <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.78.0.4327" />
+    <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.78.0.3880" />
+    <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.78.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.78.0" />
     <!-- Resilience -->
     <PackageVersion Include="Polly" Version="8.7.0" />
