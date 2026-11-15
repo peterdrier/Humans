@@ -104,8 +104,8 @@
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <!-- HTML parsing for the localization-coverage sweep; pinned to the version HtmlSanitizer already resolves so the solution-wide graph is unchanged. -->
     <PackageVersion Include="AngleSharp" Version="1.10.0" />
-    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.2" />
-    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2" />
+    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.3" />
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
     <!-- Held on purpose, not stale: Humans.Analyzers compiles against this, and an analyzer
