@@ -76,7 +76,7 @@ public class VolunteerTrackingServiceTests
         await using var db = new ShiftsDbContext(writeOptions);
         var settings = Substitute.For<ISettingsService>();
         var calendar = ToEventSettingsInfo(es);
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);
+        settings.GetActiveEventSettings().Returns(calendar);
         settings.GetEventSettingsByIdAsync(es.Id, Arg.Any<CancellationToken>()).Returns(calendar);
         var shifts = Substitute.For<IShiftManagementRepository>();
         shifts.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, Arg.Any<CancellationToken>()).Returns([]);
@@ -976,7 +976,7 @@ public class VolunteerTrackingServiceTests
 
         var settingsService = Substitute.For<ISettingsService>();
         var calendar = activeEvent is null ? null : ToEventSettingsInfo(activeEvent);
-        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);
+        settingsService.GetActiveEventSettings().Returns(calendar);
         settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => calendar is not null && calendar.Id == ci.Arg<Guid>() ? calendar : null);
         var calendarResolver = new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>());

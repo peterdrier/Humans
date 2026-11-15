@@ -24,7 +24,7 @@ internal sealed class EventSettingsTabViewComponent(
 
         if (!canEdit)
         {
-            var active = await settingsService.GetActiveEventSettingsAsync(ct);
+            var active = settingsService.GetActiveEventSettings();
             return View(new EventSettingsTabViewModel(
                 active is null ? null : EventSettingsFormMapper.ToViewModel(active), CanEdit: false, Events: [],
                 TimeZoneId: active?.TimeZoneId ?? string.Empty));
@@ -38,7 +38,7 @@ internal sealed class EventSettingsTabViewComponent(
             settings = await settingsService.GetEventSettingsByIdAsync(rowId, ct);
 
         if (settings is null && !string.Equals(query, "new", StringComparison.OrdinalIgnoreCase))
-            settings = await settingsService.GetActiveEventSettingsAsync(ct);
+            settings = settingsService.GetActiveEventSettings();
 
         // Asking for a new event, or having no active one, starts the next event from the latest one's shape.
         var viewModel = settings is not null

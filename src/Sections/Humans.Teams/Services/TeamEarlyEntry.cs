@@ -21,7 +21,7 @@ internal sealed class TeamEarlyEntry(
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var activeEvent = await Settings.GetActiveEventSettingsAsync(ct);
+        var activeEvent = Settings.GetActiveEventSettings();
         if (activeEvent is null) return [];
         var grants = await repo.GetEarlyEntryGrantsForEnabledTeamsAsync(ct);
         return Project(grants.Where(g => g.EventSettingsId == activeEvent.Id).ToList());

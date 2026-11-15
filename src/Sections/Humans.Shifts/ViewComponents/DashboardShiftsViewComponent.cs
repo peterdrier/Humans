@@ -63,7 +63,7 @@ internal sealed class DashboardShiftsViewComponent(
     {
         try
         {
-            return (await settingsService.GetActiveEventSettingsAsync(ct))?.IsOffSeason ?? false;
+            return (settingsService.GetActiveEventSettings())?.IsOffSeason ?? false;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

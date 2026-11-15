@@ -733,7 +733,7 @@ internal sealed class TeamAdminController(
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
     {
         var events = await settings.GetAllEventSettingsAsync(ct);
-        var activeEvent = await settings.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settings.GetActiveEventSettings();
         var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
         var rows = grants
             .Select(g => new TeamEarlyEntryRowViewModel

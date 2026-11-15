@@ -39,7 +39,7 @@ internal sealed class EventGuideConfiguration(
     public async Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default)
     {
         // At most one active burn; a list keeps the admin picker forward-compatible.
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
+        var active = settingsService.GetActiveEventSettings();
         return active is null ? [] : [active];
     }
 

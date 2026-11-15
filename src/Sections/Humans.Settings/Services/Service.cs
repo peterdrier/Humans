@@ -30,16 +30,16 @@ internal sealed class Service(
         finally
         {
             if (string.Equals(key, SettingKeys.EventTimeZoneId, StringComparison.Ordinal))
-                cache.Clear();
+                await cache.ReloadAsync();
         }
     }
 
     /// <summary>Every row was entered as Europe/Madrid before the timezone became global.</summary>
     private const string DefaultTimeZoneId = "Europe/Madrid";
 
-    public async Task<EventSettingsInfo?> GetActiveEventSettingsAsync(
-        CancellationToken cancellationToken = default) =>
-        ToDto(await repository.GetActiveEventSettingsAsync(cancellationToken), await GetTimeZoneIdAsync(cancellationToken));
+    /// <summary>Only the cache answers this: <see cref="CachingSettingsService"/> holds every event from startup.</summary>
+    public EventSettingsInfo? GetActiveEventSettings() =>
+        throw new NotSupportedException("The active event is read from CachingSettingsService.");
 
     public async Task<EventSettingsInfo?> GetEventSettingsByIdAsync(
         Guid id, CancellationToken cancellationToken = default) =>
@@ -62,11 +62,9 @@ internal sealed class Service(
         }
         finally
         {
-            // Not left to the listener loop: with no event rows yet it never runs.
-            cache.Clear();
             // Every event's derived dates move, including if the write committed before its acknowledgement failed.
-            foreach (var id in eventIds)
-                NotifyChangeListeners(id);
+            // Reloads even with no event rows yet, which the listener loop alone would skip.
+            await NotifyChangeListenersAsync(eventIds);
         }
         await auditLog.LogAsync(
             SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
@@ -116,7 +114,7 @@ internal sealed class Service(
         }
         finally
         {
-            NotifyChangeListeners(settings.Id);
+            await NotifyChangeListenersAsync([settings.Id]);
         }
 
         var description =
@@ -163,8 +161,7 @@ internal sealed class Service(
         }
         finally
         {
-            foreach (var id in changed is null ? affectedIds : changed.Select(row => row.Id))
-                NotifyChangeListeners(id);
+            await NotifyChangeListenersAsync(changed is null ? affectedIds : changed.Select(row => row.Id));
         }
         var previous = changed.Where(e => e.Id != eventSettingsId).Select(e => $"'{e.EventName}'").ToList();
 
@@ -204,7 +201,7 @@ internal sealed class Service(
             }
             finally
             {
-                NotifyChangeListeners(current.Id);
+                await NotifyChangeListenersAsync([current.Id]);
             }
         }
 
@@ -217,7 +214,7 @@ internal sealed class Service(
         }
         finally
         {
-            NotifyChangeListeners(settings.Id);
+            await NotifyChangeListenersAsync([settings.Id]);
         }
     }
 
@@ -263,7 +260,7 @@ internal sealed class Service(
         finally
         {
             if (deleted is null or > 0)
-                NotifyChangeListeners(id);
+                await NotifyChangeListenersAsync([id]);
         }
     }
 
@@ -271,12 +268,13 @@ internal sealed class Service(
     /// Seeding writes notify too: a seeded event nobody is told about leaves caches holding the previous cycle's
     /// dates.
     /// </summary>
-    private void NotifyChangeListeners(Guid eventSettingsId)
+    private async Task NotifyChangeListenersAsync(IEnumerable<Guid> eventSettingsIds)
     {
-        // First: a listener rebuilds by reading the event back.
-        cache.Clear();
-        foreach (var listener in changeListeners)
-            listener.EventSettingsChanged(eventSettingsId);
+        // First: a listener rebuilds by reading the event back, and the plain reads only ever see the cache.
+        await cache.ReloadAsync();
+        foreach (var id in eventSettingsIds)
+            foreach (var listener in changeListeners)
+                listener.EventSettingsChanged(id);
     }
 
     private static EventSettingsInfo? ToDto(EventSettings? src, string timeZoneId) => src is null ? null : new EventSettingsInfo(

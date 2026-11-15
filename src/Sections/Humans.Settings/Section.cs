@@ -8,6 +8,7 @@ using Humans.Settings.Services;
 using Humans.Settings.ViewComponents;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.Settings;
@@ -29,6 +30,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
         services.AddSingleton<ISettingsService>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<IEventSettingsSeeding>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingSettingsService>());
+        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<CachingSettingsService>());
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>

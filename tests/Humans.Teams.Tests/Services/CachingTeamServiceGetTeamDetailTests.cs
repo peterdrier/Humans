@@ -73,7 +73,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
     [HumansTheory]
     [Xunit.InlineData("coordinator")]
-    [Xunit.InlineData("settings")]
     [Xunit.InlineData("summary")]
     public async Task TeamPage_EnrichmentReads_PropagateAbandonedRequest(string boundary)
     {
@@ -91,8 +90,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _shifts.IsDeptCoordinatorAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => { Check("coordinator", call.Arg<CancellationToken>()); return false; });
         var activeEvent = BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(call => { Check("settings", call.Arg<CancellationToken>()); return activeEvent; });
+        _settings.GetActiveEventSettings().Returns(activeEvent);
         _shifts.GetShiftsSummaryAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => { Check("summary", call.Arg<CancellationToken>()); return new ShiftsSummaryData(0, 0, 0, 0, new HashSet<Guid>()); });
 

@@ -62,7 +62,7 @@ internal sealed class AgentUserSnapshotProvider(
     private async Task<IReadOnlyList<UpcomingShiftEntry>> LoadUpcomingShiftsAsync(
         Guid userId, CancellationToken cancellationToken)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
             return [];
 

@@ -14,7 +14,7 @@ internal sealed class UserParticipationBackfillService(
 {
     public async Task<int> GetDefaultYearAsync(CancellationToken ct = default)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         return activeEvent?.Year ?? clock.GetCurrentInstant().InUtc().Year;
     }
 

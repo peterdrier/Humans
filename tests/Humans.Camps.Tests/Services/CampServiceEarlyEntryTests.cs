@@ -36,7 +36,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
         _userService = Substitute.For<IUserService>();
 
         var settingsService = Substitute.For<ISettingsService>();
-        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _service = new CampService(

@@ -38,7 +38,7 @@ internal sealed class RideshareService(
     private static readonly JsonSerializerOptions WaypointJsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default) =>
-        (await settingsService.GetActiveEventSettingsAsync(ct))?.Id;
+        (settingsService.GetActiveEventSettings())?.Id;
 
     public async Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default)
     {

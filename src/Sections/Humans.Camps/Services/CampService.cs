@@ -151,7 +151,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = _settingsService.GetActiveEventSettings();
         if (activeEvent?.EarlyEntryStartOffset is not { } offset)
         {
             return [];
@@ -172,7 +172,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public async Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default)
     {
-        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        var activeEvent = _settingsService.GetActiveEventSettings();
         return (activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year, activeEvent?.Id);
     }
 

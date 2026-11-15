@@ -43,7 +43,7 @@ public sealed class TeamServiceEarlyEntryTests
     {
         var settings = new EventSettingsInfo(_eventId, "Current event", 2026, "Europe/Madrid",
             new LocalDate(2026, 7, 10), -10, 3, 5, new Dictionary<int, int>(), null, null);
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings);
+        _settings.GetActiveEventSettings().Returns(settings);
         _settings.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<Guid>(0) == _eventId ? settings : null);
         _service = new TeamService(
@@ -162,7 +162,7 @@ public sealed class TeamServiceEarlyEntryTests
         legacy.EventSettingsId = null;
         _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>()).Returns([current, other, legacy]);
         if (noActiveEvent)
-            _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+            _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
         var entries = await _service.GetEarlyEntriesAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -194,8 +194,8 @@ public sealed class TeamServiceEarlyEntryTests
         var second = Grant(Guid.NewGuid(), Guid.NewGuid());
         second.EventSettingsId = Guid.NewGuid();
         _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>()).Returns([first, second]);
-        var active = await _settings.GetActiveEventSettingsAsync(Xunit.TestContext.Current.CancellationToken);
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        var active = _settings.GetActiveEventSettings();
+        _settings.GetActiveEventSettings()
             .Returns(active, active! with { Id = second.EventSettingsId.Value });
 
         var firstRead = await _service.GetEarlyEntriesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -262,7 +262,7 @@ public sealed class TeamServiceEarlyEntryTests
         if (inactiveEvent)
         {
             eventId = Guid.NewGuid();
-            var active = await _settings.GetActiveEventSettingsAsync(Xunit.TestContext.Current.CancellationToken);
+            var active = _settings.GetActiveEventSettings();
             _settings.GetEventSettingsByIdAsync(eventId, Arg.Any<CancellationToken>())
                 .Returns(active! with { Id = eventId, Status = EventSettingsStatus.Inactive });
         }
