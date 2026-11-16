@@ -148,16 +148,6 @@ public class GuideFilterTests
     }
 
     [HumansFact]
-    public void Apply_Admin_SeesEverything()
-    {
-        var result = Apply(Sample, Roles(isCoord: false, RoleNames.Admin));
-
-        result.Should().Contain("Volunteer content.");
-        result.Should().Contain("Coord content.");
-        result.Should().Contain("Teams admin content.");
-    }
-
-    [HumansFact]
     public void Apply_Admin_ReproducesTheFileExactly()
     {
         // The join is lossless when nothing is dropped: a reader who sees everything must get

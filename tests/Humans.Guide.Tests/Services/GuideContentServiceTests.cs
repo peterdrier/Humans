@@ -158,7 +158,7 @@ public class GuideContentServiceTests
 
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        source.Calls.Should().BeGreaterThan(callsBefore);
+        source.Calls.Should().Be(callsBefore + GuideFiles.All.Count);
     }
 
     [HumansFact]
