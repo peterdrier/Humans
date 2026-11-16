@@ -52,6 +52,21 @@ public class GuideControllerTests
     }
 
     [HumansFact]
+    public async Task Refresh_SomeFetchesFail_SaysSoInsteadOfReportingSuccess()
+    {
+        IReadOnlyList<string> failed = ["Teams"];
+        _content.RefreshAllAsync(Arg.Any<CancellationToken>()).Returns(failed);
+        var controller = CreateController();
+        controller.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
+            controller.HttpContext, Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
+
+        await controller.Refresh(Xunit.TestContext.Current.CancellationToken);
+
+        controller.TempData["GuideRefreshStatus"].Should().BeOfType<string>().Which.Should().Contain("Teams")
+            .And.NotContain("refreshed from GitHub");
+    }
+
+    [HumansFact]
     public async Task Document_UnknownStem_Returns404AndTheNotFoundView()
     {
         var controller = CreateController();

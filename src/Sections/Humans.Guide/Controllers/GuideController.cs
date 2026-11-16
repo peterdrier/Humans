@@ -33,8 +33,10 @@ internal sealed class GuideController(
     {
         try
         {
-            await content.RefreshAllAsync(cancellationToken);
-            TempData["GuideRefreshStatus"] = "Guide refreshed from GitHub.";
+            var failed = await content.RefreshAllAsync(cancellationToken);
+            TempData["GuideRefreshStatus"] = failed.Count == 0
+                ? "Guide refreshed from GitHub."
+                : $"Refresh incomplete; could not fetch: {string.Join(", ", failed)}.";
         }
         catch (GuideContentUnavailableException ex)
         {

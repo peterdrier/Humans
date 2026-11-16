@@ -156,8 +156,9 @@ public class GuideContentServiceTests
         await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
         var callsBefore = source.Calls;
 
-        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var failed = await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
 
+        failed.Should().BeEmpty();
         source.Calls.Should().Be(callsBefore + GuideFiles.All.Count);
     }
 
@@ -194,8 +195,9 @@ public class GuideContentServiceTests
         // when every fetch below fails — which is what makes the refresh degrade to stale
         // content instead of throwing.
         source.FailFor = _ => new InvalidOperationException("flaky");
-        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var failed = await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
 
+        failed.Should().BeEquivalentTo(GuideFiles.All);
         var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
         html.Should().Be("[rendered:# Profiles\n\nContent.]");
