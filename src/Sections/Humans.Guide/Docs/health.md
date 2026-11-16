@@ -62,7 +62,7 @@ derivation matches because each step of the pipeline has exactly one home.
 ## 4. Invariants
 
 1. A stem outside `GuideFiles.All` is a 404, in any casing
-   (`src/Sections/Humans.Guide/Controllers/GuideController.cs:48`; `src/Sections/Humans.Guide/Services/GuideFiles.cs:59`).
+   (`src/Sections/Humans.Guide/Controllers/GuideController.cs:50`; `src/Sections/Humans.Guide/Services/GuideFiles.cs:59`).
 2. Everything before the first `## As a …` heading, and everything from the next non-`As a`
    `##` heading onward, is an unscoped segment visible to everyone; only role-scoped segments
    are ever dropped (`src/Sections/Humans.Guide/Services/GuideSegmenter.cs:65`;
@@ -86,7 +86,7 @@ derivation matches because each step of the pipeline has exactly one home.
    cache entry, so a failed refresh keeps the copy already cached. A stem that is not cached and
    whose fetch fails is a 503, however many other stems are cached
    (`src/Sections/Humans.Guide/Services/GuideContentService.cs:59`, `:112`, `:71`;
-   `src/Sections/Humans.Guide/Controllers/GuideController.cs:61`).
+   `src/Sections/Humans.Guide/Controllers/GuideController.cs:63`).
 9. A page that cannot be rendered fails the same way as one that cannot be fetched: the 503 view,
    never a raw 500, and the cached segments stay
    (`src/Sections/Humans.Guide/Services/GuideContentService.cs:41`;
@@ -100,7 +100,7 @@ derivation matches because each step of the pipeline has exactly one home.
 12. The stem set and the markdown folder match exactly in both directions
     (`GuideArchitectureTests.EveryGuideMarkdownFileIsRegistered_AndEveryRegisteredStemExists`).
 13. Every `## As a …` heading in the shipped corpus opens a scoped segment, and every
-    parenthetical in it resolves to a privilege token: the two ways a block fails open or fails
+    parenthetical in it resolves to a privilege token: the ways a block fails open or fails
     silent (`GuideSegmenterTests.Segment_EveryRoleHeadingInShippedContent_OpensAScopedSegment`,
     `GuideArchitectureTests.EveryRoleHeadingParentheticalResolvesToAPrivilege`).
 14. Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see
@@ -109,7 +109,7 @@ derivation matches because each step of the pipeline has exactly one home.
     `GuideShippedContentFilterTests.Admin_ReceivesEveryFileWholeAndUnaltered`).
 15. Every sidebar entry has a localized name: a page name comes from a shared section label when
     one exists and from `Guide_Page_<stem>` otherwise
-    (`src/Sections/Humans.Guide/Controllers/GuideController.cs:117`;
+    (`src/Sections/Humans.Guide/Controllers/GuideController.cs:118`;
     `GuideControllerTests.Document_LocalizesNavigationWhilePreservingContentAndRoutes`).
 
 ## 5. Seams
