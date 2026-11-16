@@ -31,7 +31,7 @@ public class GuideRolePrivilegeMapTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("Unknown")]
-    [InlineData("Camp Admin")] // The pre-rename title: only catalog titles resolve
+    [InlineData("Camp Admin")] // Not a catalog title: only catalog titles resolve
     [InlineData("Camp Coordinator")] // Not a thing: the domain term is Camp Lead
     public void TryResolve_UnknownOrEmpty_ReturnsFalse(string input)
     {

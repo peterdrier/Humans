@@ -213,7 +213,7 @@ public class GuideRoleResolverTests
         // so a former coordinator simply does not appear in the cached members list.
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        StubTeams(BuildTeam(teamId)); // no members — former coordinator pruned
+        StubTeams(BuildTeam(teamId));
 
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);

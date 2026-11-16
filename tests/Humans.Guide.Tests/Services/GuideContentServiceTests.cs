@@ -194,7 +194,7 @@ public class GuideContentServiceTests
         // when every fetch below fails — which is what makes the refresh degrade to stale
         // content instead of throwing.
         source.FailFor = _ => new InvalidOperationException("flaky");
-        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken); // should NOT throw — stale content present
+        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
