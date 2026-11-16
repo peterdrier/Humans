@@ -47,7 +47,6 @@ public class GuideControllerTests
         model.Sidebar.Entries[0].Group.Should().Be("Start here");
         model.Sidebar.Entries.Single(e => string.Equals(e.Stem, "Teams", StringComparison.Ordinal)).DisplayName.Should().Be("Teams");
         model.Sidebar.ActiveStem.Should().Be("Teams");
-        model.FileStem.Should().Be("Teams");
         model.Html.ToString().Should().Be(html);
         await _content.Received(1).GetPageAsync("Teams", GuideRoleContext.Anonymous, Arg.Any<CancellationToken>());
     }

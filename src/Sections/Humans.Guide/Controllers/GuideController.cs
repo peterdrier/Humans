@@ -68,8 +68,7 @@ internal sealed class GuideController(
         {
             Title = DisplayName(canonical),
             Html = new HtmlString(html),
-            Sidebar = BuildSidebar(canonical),
-            FileStem = canonical
+            Sidebar = BuildSidebar(canonical)
         };
 
         ViewData["Title"] = viewModel.Title;
