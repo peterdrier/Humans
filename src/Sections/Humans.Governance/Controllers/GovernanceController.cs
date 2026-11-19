@@ -57,7 +57,7 @@ internal sealed class GovernanceController(
     {
         var ct = HttpContext.RequestAborted;
         var user = await GetCurrentUserInfoAsync(ct);
-        if (user is null || !Enum.TryParse<GovernanceBody>(body, ignoreCase: false, out var parsed))
+        if (user is null || !Enum.TryParse<GovernanceBody>(body, ignoreCase: true, out var parsed))
             return NotFound();
 
         var data = await governanceIndexService.GetBodyPageAsync(parsed, user.Id, RoleChecks.IsAdminOrBoard(User), ct);
