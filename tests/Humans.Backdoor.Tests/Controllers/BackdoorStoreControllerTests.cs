@@ -50,7 +50,7 @@ public class BackdoorStoreControllerTests
             new AccountingOrderLineDto(
                 2026, orderId, OrderCounterpartyType.Team, "Ice Crew", null, null, null,
                 OrderState.Open, null, lineId, productId, "Ice", 75900002,
-                3, 4m, 10m, 13.20m, 12m, 1.20m, 0m, Instant.FromUtc(2026, 6, 1, 9, 30)),
+                3, 4m, 3.50m, 10m, 13.20m, 12m, 1.20m, 0m, Instant.FromUtc(2026, 6, 1, 9, 30)),
         ]);
 
         var result = await _sut.OrderLines(2026, Xunit.TestContext.Current.CancellationToken);
@@ -68,6 +68,7 @@ public class BackdoorStoreControllerTests
         json.Should().Contain(@"""holdedRevenueAccountNum"":75900002");
         json.Should().Contain(@"""qty"":3");
         json.Should().Contain(@"""unitPrice"":4");
+        json.Should().Contain(@"""snapshotUnitPrice"":3.50");
         json.Should().Contain(@"""vatRatePercent"":10");
         json.Should().Contain(@"""lineGross"":13.20");
         json.Should().Contain(@"""lineNet"":12");
@@ -98,5 +99,32 @@ public class BackdoorStoreControllerTests
         json.Should().Contain(@"""stripePaymentIntentId"":null");
         json.Should().Contain(@"""externalRef"":""refund-1""");
         json.Should().Contain(@"""receivedAt"":""2026-06-04T00:00:00Z""");
+    }
+
+    [HumansFact]
+    public async Task OrderHistory_requires_a_year_and_projects_every_field()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        (await _sut.OrderHistory(null, ct)).Should().BeOfType<BadRequestObjectResult>();
+        await _store.DidNotReceive().GetOrderHistoryAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+
+        var orderId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        _store.GetOrderHistoryAsync(2026, Arg.Any<CancellationToken>()).Returns([
+            new AccountingOrderHistoryDto(
+                2026, orderId, OrderCounterpartyType.Camp, "Camp Alpha", Instant.FromUtc(2026, 6, 2, 8, 0),
+                "StoreLineRemoved", actorId, "Lead", "Removed 3 lines"),
+        ]);
+
+        var json = JsonSerializer.Serialize(
+            (await _sut.OrderHistory(2026, ct)).Should().BeOfType<OkObjectResult>().Subject.Value);
+        json.Should().Contain($@"""orderId"":""{orderId}""");
+        json.Should().Contain(@"""counterpartyType"":""Camp""");
+        json.Should().Contain(@"""counterpartyLabel"":""Camp Alpha""");
+        json.Should().Contain(@"""occurredAt"":""2026-06-02T08:00:00Z""");
+        json.Should().Contain(@"""action"":""StoreLineRemoved""");
+        json.Should().Contain($@"""actorUserId"":""{actorId}""");
+        json.Should().Contain(@"""actorName"":""Lead""");
+        json.Should().Contain(@"""description"":""Removed 3 lines""");
     }
 }

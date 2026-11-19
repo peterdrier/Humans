@@ -44,6 +44,7 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
                 holdedRevenueAccountNum = l.HoldedRevenueAccountNum,
                 qty = l.Qty,
                 unitPrice = l.UnitPrice,
+                snapshotUnitPrice = l.SnapshotUnitPrice,
                 vatRatePercent = l.VatRatePercent,
                 lineGross = l.LineGross,
                 lineNet = l.LineNet,
@@ -75,6 +76,34 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
                 stripePaymentIntentId = p.StripePaymentIntentId,
                 externalRef = p.ExternalRef,
                 receivedAt = p.ReceivedAt.ToIso8601(),
+            }));
+    }
+
+    /// <summary>
+    /// One object per audit entry about an order of <paramref name="year"/>: lines added and removed, payments, refunds,
+    /// deposit returns, invoice issuance and catalog price changes to its products. Oldest first within an order.
+    /// </summary>
+    [HttpGet("order-history")]
+    public async Task<IActionResult> OrderHistory([FromQuery] int? year, CancellationToken ct)
+    {
+        if (year is null) return BadRequest(new { error = "Missing 'year'." });
+
+        var history = await store.GetOrderHistoryAsync(year.Value, ct);
+        return Ok(history
+            .OrderBy(h => h.CounterpartyLabel, StringComparer.Ordinal)
+            .ThenBy(h => h.OrderId)
+            .ThenBy(h => h.OccurredAt)
+            .Select(h => new
+            {
+                year = h.Year,
+                orderId = h.OrderId,
+                counterpartyType = h.CounterpartyType.ToString(),
+                counterpartyLabel = h.CounterpartyLabel,
+                occurredAt = h.OccurredAt.ToIso8601(),
+                action = h.Action,
+                actorUserId = h.ActorUserId,
+                actorName = h.ActorDisplayName,
+                description = h.Description,
             }));
     }
 }

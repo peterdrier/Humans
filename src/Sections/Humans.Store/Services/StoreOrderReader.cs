@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Camps.Contracts;
@@ -16,7 +17,8 @@ internal sealed class StoreOrderReader(
     ICampService campService,
     ITeamService teamService,
     IClock clock,
-    ISettingsService settingsService) : IStoreAccountingRead
+    ISettingsService settingsService,
+    IAuditViewerService auditViewer) : IStoreAccountingRead
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
@@ -360,6 +362,7 @@ internal sealed class StoreOrderReader(
                     product?.HoldedRevenueAccountNum,
                     l.Qty,
                     t.EffectiveUnitPrice,
+                    l.UnitPriceSnapshot,
                     t.EffectiveVatRate,
                     t.TotalEur,
                     t.SubtotalEur,
@@ -394,6 +397,42 @@ internal sealed class StoreOrderReader(
                     p.ExternalRef,
                     p.ReceivedAt));
             }
+        }
+        return rows;
+    }
+
+    /// <summary>Far above any real order's trail; a cap only so a runaway writer can't make the export unbounded.</summary>
+    private const int HistoryLimit = 5000;
+
+    /// <summary>
+    /// The order page's admin history for every order of the year, one audit read per order and per product: the
+    /// audit log is the history and Store keeps no copy.
+    /// </summary>
+    public async Task<IReadOnlyList<AccountingOrderHistoryDto>> GetOrderHistoryAsync(int year, CancellationToken ct = default)
+    {
+        var (orders, context) = await LoadYearOrdersForAccountingAsync(year, ct);
+        var orderActions = StoreAuditActions.OrderHistoryForAdmins.Select(a => a.Name).ToList();
+
+        var priceChanges = new Dictionary<Guid, IReadOnlyList<AuditEvent>>();
+        foreach (var productId in orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct())
+            priceChanges[productId] = await auditViewer.GetFilteredAsync(
+                AuditEntityTypes.Product, productId, userId: null,
+                [StoreAuditActions.StoreProductPriceChanged.Name], HistoryLimit, ct: ct);
+
+        var rows = new List<AccountingOrderHistoryDto>();
+        foreach (var o in orders)
+        {
+            var (counterpartyType, label) = CounterpartyOf(o, context);
+            var events = (await auditViewer.GetFilteredAsync(
+                    entityType: null, o.Id, userId: null, orderActions, HistoryLimit, includeRelated: true, ct))
+                .Concat(o.Lines.Select(l => l.ProductId).Distinct()
+                    .SelectMany(id => priceChanges[id])
+                    .Where(e => e.OccurredAt >= o.CreatedAt));
+            rows.AddRange(events
+                .OrderBy(e => e.OccurredAt)
+                .Select(e => new AccountingOrderHistoryDto(
+                    year, o.Id, counterpartyType, label, e.OccurredAt, e.Action.Name,
+                    e.ActorUserId, e.ActorDisplayName, e.Description)));
         }
         return rows;
     }

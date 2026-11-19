@@ -15,4 +15,7 @@ public interface IStoreAccountingRead : IApplicationService
 
     /// <summary><c>Paid</c> payments only; refunds are negative.</summary>
     Task<IReadOnlyList<AccountingPaymentDto>> GetPaymentsAsync(int year, CancellationToken ct = default);
+
+    /// <summary>Camp and team orders' audit history, read from the audit log; oldest first per order.</summary>
+    Task<IReadOnlyList<AccountingOrderHistoryDto>> GetOrderHistoryAsync(int year, CancellationToken ct = default);
 }

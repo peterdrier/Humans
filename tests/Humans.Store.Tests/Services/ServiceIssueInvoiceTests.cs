@@ -88,7 +88,7 @@ public class ServiceIssueInvoiceTests
             .Returns(Found());
 
         _service = new Service(
-            _repo, _audit, _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
             Options.Create(_options), NullLogger<Service>.Instance);
     }
 
