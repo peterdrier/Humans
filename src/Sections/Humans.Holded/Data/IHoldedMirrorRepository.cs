@@ -12,11 +12,9 @@ internal interface IHoldedMirrorRepository : IRepository
     Task ReplaceLedgerWindowAsync(Instant from, Instant to, int? accountNum,
         IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default);
 
-    /// <summary>One account's lines, optionally narrowed to a date window (inclusive <paramref name="from"/>,
-    /// exclusive <paramref name="toExclusive"/>) and one <c>type</c>.</summary>
+    /// <summary>One account's lines, optionally only one <c>type</c>.</summary>
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, Instant? from = null, Instant? toExclusive = null, string? type = null,
-        CancellationToken ct = default);
+        int accountNum, string? type = null, CancellationToken ct = default);
 
     /// <summary>Every line of the given entries, on any account.</summary>
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByEntryNumbersAsync(

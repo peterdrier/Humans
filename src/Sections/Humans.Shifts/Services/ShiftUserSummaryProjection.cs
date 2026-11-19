@@ -42,7 +42,7 @@ internal static class ShiftUserSummaryProjection
             WindowStart: shift.IsAllDay ? Shift.AllDayWindowStart : shift.StartTime,
             WindowEnd: shift.IsAllDay
                 ? Shift.AllDayWindowEnd
-                : shift.StartTime.PlusTicks(shift.GetDuration().BclCompatibleTicks),
+                : shift.StartTime.PlusTicks(shift.Duration.BclCompatibleTicks),
             DurationHours: shift.IsAllDay ? Shift.AllDayWindowHours : shift.DurationHours,
             ShiftDescription: shift.Description,
             AbsoluteStart: shift.GetAbsoluteStart(settings),

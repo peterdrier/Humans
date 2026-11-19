@@ -9,7 +9,10 @@ internal sealed record LineContext(
     Guid OrderId,
     Guid? CampSeasonId,
     OrderState OrderState,
-    LocalDate ProductOrderableUntil);
+    LocalDate ProductOrderableUntil,
+    string ProductName,
+    int Qty,
+    decimal UnitPriceSnapshot);
 
 internal sealed record RecordedStripePayment(
     string PaymentIntentId,

@@ -26,7 +26,7 @@ internal sealed class ExpenseReportAccess(
         var coordinator = await userService.GetUserInfoAsync(coordinatorUserId, ct);
         if (coordinator is null) return [];
         var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinator.Id, ct);
-        var managedGrantIds = await preapprovals.ListManagedGrantIdsAsync(coordinator.AllUserIds, ct);
+        var managedGrantIds = await PreapprovalGrantQueries.ListManagedGrantIdsAsync(preapprovals, coordinator.AllUserIds, ct);
 
         var queue = categoryIds.Count == 0
             ? []
@@ -111,7 +111,7 @@ internal sealed class ExpenseReportAccess(
 
         if (grantId is not { } id) return (requestedAmount, null);
 
-        var grant = await preapprovals.GetGrantAsync(id, ct);
+        var grant = await PreapprovalGrantQueries.GetGrantAsync(preapprovals, id, ct);
         if (grant is null)
             return (null, ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report."));
         if (requestedAmount > grant.MaxAmount)
@@ -130,8 +130,8 @@ internal sealed class ExpenseReportAccess(
         Guid grantId, Guid submitterUserId, Guid? heldGrantId, CancellationToken ct)
     {
         var grant = grantId == heldGrantId
-            ? await preapprovals.GetGrantAsync(grantId, ct)
-            : (await preapprovals.ListClaimableAsync(await AllIdsAsync(submitterUserId, ct), ct)).FirstOrDefault(g => g.Id == grantId);
+            ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct)
+            : (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, await AllIdsAsync(submitterUserId, ct), ct)).FirstOrDefault(g => g.Id == grantId);
         if (grant is null)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotClaimable"));
         return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);

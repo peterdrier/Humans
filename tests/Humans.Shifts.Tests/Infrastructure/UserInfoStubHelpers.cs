@@ -13,39 +13,12 @@ namespace Humans.Shifts.Tests.Infrastructure;
 /// </summary>
 internal static class UserInfoStubHelpers
 {
-    public static UserInfo ToUserInfo(
-        this User user,
-        IReadOnlyList<UserEmail>? userEmails = null,
-        Profile? profile = null)
-        => UserInfoFactory.Create(
-            user,
-            userEmails ?? user.UserEmails?.ToList() ?? [],
-            [],
-            profile: profile,
-            [],
-            [],
-            []);
-
-    public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
-    {
-        var resolvedProfile = profile ?? new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = displayName,
-            CreatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            UpdatedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-        };
-        return UserInfoFactory.Create(
-            // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
-            new User { Id = userId, PreferredLanguage = "en", BurnerName = resolvedProfile.BurnerName },
-            [],
-            [],
-            profile: resolvedProfile,
-            [],
-            [],
-            []);
-    }
+    /// <summary>
+    /// <see cref="UserInfoFixtures.FromUser"/> for a Users <c>Profile</c> entity, which the shared fixture
+    /// can't see.
+    /// </summary>
+    public static UserInfo FromEntities(User user, Profile? profile) =>
+        UserInfoFactory.Create(user, user.UserEmails?.ToList() ?? [], [], profile, [], [], []);
 
     public static IUserService StubGetUserInfosFromContext(this IUserService userService, UsersDbContext dbContext)
     {
@@ -66,7 +39,7 @@ internal static class UserInfoStubHelpers
                     .ToDictionary(p => p.UserId);
                 IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
                     u => u.Id,
-                    u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)));
+                    u => FromEntities(u, profiles.GetValueOrDefault(u.Id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
         return userService;

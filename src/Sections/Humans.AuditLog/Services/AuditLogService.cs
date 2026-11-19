@@ -126,8 +126,9 @@ internal sealed class AuditLogService(
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default) =>
-        FilterByNamesAsync(entityType, entityId, userId, actions, limit, ct);
+        FilterByNamesAsync(entityType, entityId, userId, actions, limit, includeRelated, ct);
 
     private async Task<IReadOnlyList<AuditLogEntrySnapshot>> FilterByNamesAsync(
         string? entityType,
@@ -135,6 +136,7 @@ internal sealed class AuditLogService(
         Guid? userId,
         IReadOnlyList<string>? actionNames,
         int limit,
+        bool includeRelated,
         CancellationToken ct)
     {
         IReadOnlyCollection<Guid>? userIds = null;
@@ -143,7 +145,7 @@ internal sealed class AuditLogService(
             userIds = (await userService.GetUserInfoAsync(userId.Value, ct))?.AllUserIds ?? [userId.Value];
         }
 
-        var entries = await repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actionNames, limit, ct);
+        var entries = await repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actionNames, limit, includeRelated, ct);
         return entries.Select(ToSnapshot).ToList();
     }
 

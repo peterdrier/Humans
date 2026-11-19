@@ -483,7 +483,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var governanceLocalizer = services.GetRequiredService<IStringLocalizer<GovernanceResource>>();
         var viewerId = Guid.NewGuid();
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = viewerId })));
         var controller = new GovernanceApplicationsController(_service, _userService, governanceLocalizer,
             NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
@@ -979,7 +979,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         if (deliveryFailure)
         {
             var user = new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "en", Email = "applicant@example.com" };
-            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
+            _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoFixtures.FromUser(user));
             _emailService.SendAsync(Arg.Any<EmailMessage>())
                 .Returns(Task.FromException(new IOException("email delivery unavailable")));
         }
@@ -1020,7 +1020,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var app = await SeedSubmittedApplicationAsync(userId);
         await SeedBoardVoteAsync(app.Id);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "es", Email = "applicant@example.com" }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = userId, BurnerName = "Applicant", PreferredLanguage = "es", Email = "applicant@example.com" }));
 
         if (emailFailure)
             _emailService.SendAsync(Arg.Any<EmailMessage>())
@@ -1071,7 +1071,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = "alice@test.com",
             PreferredLanguage = language
         };
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoFixtures.FromUser(user));
 
         var result = approve
             ? await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, new LocalDate(2026, 3, 1), TestContext.Current.CancellationToken)
@@ -1112,7 +1112,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             IsVerified = true,
             IsPrimary = true
         });
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user.ToUserInfo());
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoFixtures.FromUser(user));
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, new LocalDate(2026, 3, 1), TestContext.Current.CancellationToken);
 
@@ -1467,12 +1467,12 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await SaveAllAsync(TestContext.Current.CancellationToken);
         ClearAllTrackers();
         _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
-            new ValueTask<UserInfo?>(new User
+            new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User
             {
                 Id = call.Arg<Guid>(),
                 DisplayName = "Human",
                 Email = "human@example.com"
-            }.ToUserInfo()));
+            })));
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
         using var services = registrations.BuildServiceProvider();
@@ -1552,7 +1552,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             var id = call.Arg<Guid>();
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             if (abandonAfterApplicant && id == applicantId) await cancellation.CancelAsync();
-            return new User { Id = id, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
+            return UserInfoFixtures.FromUser(new User { Id = id, DisplayName = "Member", Email = "member@example.com" });
         }
         _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ReadUserAsync);
         var controller = new GovernanceBoardVotingController(_userService, _service,
@@ -1584,7 +1584,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.TermExpiresAt = Clock.GetCurrentInstant().InUtc().Date.PlusDays(expiryOffset);
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
         var controller = new GovernanceApplicationsController(_service, _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
@@ -1615,7 +1615,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.TermExpiresAt = Clock.GetCurrentInstant().InUtc().Date.PlusDays(expiryOffset);
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
         var controller = new GovernanceApplicationsController(_service, _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
@@ -1650,7 +1650,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User { Id = viewerId }.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = viewerId }));
         });
         var controller = new GovernanceApplicationsController(_service, _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
@@ -1756,7 +1756,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                 (now - Duration.FromDays(2), "Oldest"), (now - Duration.FromDays(1), "Middle"),
             });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = userId }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
         var controller = new GovernanceApplicationsController(_service, _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
@@ -1854,7 +1854,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo() }));
+                new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(user) }));
 
         var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10, TestContext.Current.CancellationToken);
 
@@ -1879,7 +1879,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             ProfilePictureUrl = "https://example.com/pic.png"
         };
         _userService.GetUserInfoAsync(applicantId, Arg.Any<CancellationToken>())
-            .Returns(applicant.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(applicant));
 
         var app = await SeedSubmittedApplicationAsync(applicantId);
         app.Approve(reviewerId, "Looks good", Clock);

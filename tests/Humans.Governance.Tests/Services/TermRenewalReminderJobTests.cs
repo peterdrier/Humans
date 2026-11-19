@@ -139,8 +139,8 @@ public sealed class TermRenewalReminderJobTests
             Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<Guid, UserInfo>
                 {
-                    [First.UserId] = new User { Id = First.UserId, BurnerName = "First", Email = "first@example.com" }.ToUserInfo(),
-                    [Next.UserId] = new User { Id = Next.UserId, BurnerName = "Next", Email = "next@example.com" }.ToUserInfo()
+                    [First.UserId] = UserInfoFixtures.FromUser(new User { Id = First.UserId, BurnerName = "First", Email = "first@example.com" }),
+                    [Next.UserId] = UserInfoFixtures.FromUser(new User { Id = Next.UserId, BurnerName = "Next", Email = "next@example.com" })
                 });
             Job = new(Applications, Users, Email, TestGovernanceEmails.Create(), Notices, Metrics, Logger, new FakeClock(Now));
         }
@@ -164,7 +164,7 @@ public sealed class TermRenewalReminderJobTests
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [candidate.UserId] = new User { Id = liveId, BurnerName = "Member", Email = "member@example.org" }.ToUserInfo()
+                [candidate.UserId] = UserInfoFixtures.FromUser(new User { Id = liveId, BurnerName = "Member", Email = "member@example.org" })
             });
         var job = new TermRenewalReminderJob(applications, users, email, TestGovernanceEmails.Create(),
             notifications, Substitute.For<IHumansMetrics>(), NullLogger<TermRenewalReminderJob>.Instance, clock);
@@ -198,7 +198,7 @@ public sealed class TermRenewalReminderJobTests
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
-        var member = new User { Id = candidate.UserId, BurnerName = "Member", Email = address }.ToUserInfo();
+        var member = UserInfoFixtures.FromUser(new User { Id = candidate.UserId, BurnerName = "Member", Email = address });
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [candidate.UserId] = member });
         var job = new TermRenewalReminderJob(applications, users, email, TestGovernanceEmails.Create(),
@@ -241,8 +241,8 @@ public sealed class TermRenewalReminderJobTests
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
-                [first.UserId] = new User { Id = first.UserId, BurnerName = "First", Email = "first@example.com" }.ToUserInfo(),
-                [next.UserId] = new User { Id = next.UserId, BurnerName = "Next", Email = "next@example.com" }.ToUserInfo()
+                [first.UserId] = UserInfoFixtures.FromUser(new User { Id = first.UserId, BurnerName = "First", Email = "first@example.com" }),
+                [next.UserId] = UserInfoFixtures.FromUser(new User { Id = next.UserId, BurnerName = "Next", Email = "next@example.com" })
             }));
         var failure = new IOException("Reminder dependency unavailable");
         if (string.Equals(failedStep, "email", StringComparison.Ordinal))
@@ -323,7 +323,7 @@ public sealed class TermRenewalReminderJobTests
         users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
-                [userId] = new User { Id = userId, BurnerName = "Applicant", Email = "applicant@example.com", PreferredLanguage = language }.ToUserInfo()
+                [userId] = UserInfoFixtures.FromUser(new User { Id = userId, BurnerName = "Applicant", Email = "applicant@example.com", PreferredLanguage = language })
             }));
         var job = new TermRenewalReminderJob(applications, users, email, TestGovernanceEmails.Create(),
             notifications, Substitute.For<IHumansMetrics>(), NullLogger<TermRenewalReminderJob>.Instance, clock);

@@ -110,7 +110,7 @@ public class ProfileEmailsControllerGridTests
 
         // A minimal UserInfo for the test user, so the actions pass the null-guard.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _userId })));
 
         _authorizationService.AuthorizeAsync(
             Arg.Any<ClaimsPrincipal>(),
@@ -138,7 +138,7 @@ public class ProfileEmailsControllerGridTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _userId }));
         });
         await request.CancelAsync();
         var emailId = Guid.NewGuid();

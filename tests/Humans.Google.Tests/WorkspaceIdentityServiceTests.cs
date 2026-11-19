@@ -60,7 +60,7 @@ public sealed class WorkspaceIdentityServiceTests
             IsVerified = a.Verified,
             IsPrimary = a.Primary,
         }).ToList();
-        var info = user.ToUserInfo(rows);
+        var info = UserInfoFixtures.FromUser(user, rows);
         _infos[id] = info;
         if (addresses.FirstOrDefault(a => a.Designated) is { } designated)
             _repo.Rows[id] = new Humans.Google.Domain.WorkspaceIdentityRecord

@@ -387,7 +387,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
-                [memberId] = new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }.ToUserInfo() with
+                [memberId] = UserInfoFixtures.FromUser(new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }) with
                 {
                     UserEmails = [new UserEmailInfo(Guid.NewGuid(), email, true, false, null, null, null, null,
                         Clock.GetCurrentInstant(), Clock.GetCurrentInstant())]

@@ -399,6 +399,24 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetFilteredEntriesAsync_IncludeRelated_AddsRowsWhereTheIdIsTheRelatedEntity()
+    {
+        var orderId = Guid.NewGuid();
+        var now = _clock.GetCurrentInstant();
+        SeedAuditLogEntry(TestActions.RoleAssigned, "Order", orderId, now);
+        SeedAuditLogEntry(TestActions.RoleEnded, "Line", Guid.NewGuid(), now - Duration.FromHours(1), relatedEntityId: orderId);
+        SeedAuditLogEntry(TestActions.MemberSuspended, "Line", Guid.NewGuid(), now - Duration.FromHours(2));
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var ct = TestContext.Current.CancellationToken;
+
+        var own = await _service.GetFilteredEntriesAsync(null, orderId, null, null, 20, ct: ct);
+        var about = await _service.GetFilteredEntriesAsync(null, orderId, null, null, 20, includeRelated: true, ct: ct);
+
+        own.Select(e => e.Action).Should().Equal(TestActions.RoleAssigned.Name);
+        about.Select(e => e.Action).Should().Equal(TestActions.RoleAssigned.Name, TestActions.RoleEnded.Name);
+    }
+
+    [HumansFact]
     public async Task ContributeForUserAsync_ExportsActorEntityAndRelatedRows_AcrossMergedIds_AsTheSamePerson()
     {
         var userId = Guid.NewGuid();

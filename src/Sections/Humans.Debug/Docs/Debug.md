@@ -75,7 +75,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Negative Access Rules
 
-- A user who is neither Board nor Admin cannot reach gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests` (local-only, `Humans.Integration.Tests`).
+- A user who is neither Board nor Admin cannot reach gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests` (`Humans.Integration.Tests`, a PR check).
 - Debug pages cannot change domain state except through a data migration's own Apply, which is Admin-only (Board reads the screen), antiforgery-protected, and audited. Operational writes must stay explicitly named maintenance actions.
 - `/api/data-migrations` never returns row data — no user id, email or legacy value. Pinned by `DataMigrationsTests`.
 - No type in the section may bind `IStringLocalizer<T>` for any `T` but `SharedResource`. Debug carries no resource set of its own - every string is English developer copy - and the one localizer it binds is the shared set read as *data* by `/Debug/Translations`. That page reads every section's set the same way, through the untyped `IStringLocalizerFactory` and the catalog's `SectionInfo.ResourceType`, never by referencing the section. Enforced by `DebugArchitectureTests`.

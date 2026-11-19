@@ -124,9 +124,10 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
             MergedToUserId = Guid.NewGuid(),
         };
-        AddInfo(mergedUser.ToUserInfo(
-            userEmails: [Email(mergedId, "merged-1@merged.local", isVerified: false)],
-            profile: MakeProfile(mergedId)));
+        AddInfo(UserInfoStubHelpers.FromEntities(
+            mergedUser,
+            MakeProfile(mergedId),
+            [Email(mergedId, "merged-1@merged.local", isVerified: false)]));
 
         var deletedId = Guid.NewGuid();
         var deletedUser = new User
@@ -139,9 +140,10 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             // is user-editable and not enough.
             Email = $"deleted-{deletedId:N}@deleted.local",
         };
-        AddInfo(deletedUser.ToUserInfo(
-            userEmails: [Email(deletedId, "deleted-1@deleted.local", isVerified: false)],
-            profile: MakeProfile(deletedId)));
+        AddInfo(UserInfoStubHelpers.FromEntities(
+            deletedUser,
+            MakeProfile(deletedId),
+            [Email(deletedId, "deleted-1@deleted.local", isVerified: false)]));
 
         SetOrphans();
         SetGhosts();
@@ -171,7 +173,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
             MergedToUserId = Guid.NewGuid(),
         };
-        AddInfo(mergedUser.ToUserInfo(profile: MakeProfile(mergedId)));
+        AddInfo(UserInfoStubHelpers.FromEntities(mergedUser, MakeProfile(mergedId)));
 
         var ghostId = Guid.NewGuid();
         var ghostUser = new User
@@ -183,7 +185,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
             MergedToUserId = Guid.NewGuid(),
         };
-        AddInfo(ghostUser.ToUserInfo());
+        AddInfo(UserInfoFixtures.FromUser(ghostUser));
 
         var orphanEmailId = Guid.NewGuid();
         SetOrphans(new UserEmailOrphan(mergedId, orphanEmailId, "leftover@merged.local"));

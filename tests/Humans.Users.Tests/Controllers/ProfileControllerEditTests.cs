@@ -112,8 +112,7 @@ public class ProfileControllerEditTests
         // The default UserInfo has no profile, so the initial-setup branch is taken.
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(
-                new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" }
-                    .ToUserInfo()));
+                UserInfoFixtures.FromUser(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" })));
 
         // SaveProfileAsync is invoked unconditionally by the happy path.
         _profileEditorService.SaveProfileAsync(
@@ -136,7 +135,7 @@ public class ProfileControllerEditTests
         {
             call.Arg<CancellationToken>().Should().Be(request.Token);
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo());
+            return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = _userId }));
         });
         await request.CancelAsync();
         Func<Task<IActionResult>> invoke = medical
@@ -403,7 +402,7 @@ public class ProfileControllerEditTests
         async ValueTask<UserInfo?> ReadViewerAsync(CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
-            return new User { Id = _userId, PreferredLanguage = "en" }.ToUserInfo();
+            return UserInfoFixtures.FromUser(new User { Id = _userId, PreferredLanguage = "en" });
         }
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(call => ReadViewerAsync(call.Arg<CancellationToken>()));

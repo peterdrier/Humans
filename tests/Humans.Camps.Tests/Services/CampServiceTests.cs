@@ -2135,7 +2135,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "refused-role" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, EventSettingsId = EventId(2026), Status = CampSeasonStatus.Active };
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId }.ToUserInfo());
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoFixtures.FromUser(new User { Id = userId }));
         var definition = new CampRoleDefinition
         {
             Id = Guid.NewGuid(),
@@ -2198,7 +2198,7 @@ public sealed class CampServiceTests : CampsTestHarness
             await seed.SaveChangesAsync(ct);
         }
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = userId }));
         var service = CreateRoleAssigningService(factory);
 
         var assign = () => service.AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, definition.Id, userId, TestActorId, ct);

@@ -95,7 +95,7 @@ public sealed class IssuesServiceTests
         AuditViewer
             .GetFilteredAsync(
                 Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>([]));
 
 
@@ -357,7 +357,7 @@ public sealed class IssuesServiceTests
         await AuditViewer.Received().GetFilteredAsync(
             Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
             Arg.Is<IReadOnlyList<string>?>(a => a != null && a.Contains(IssuesAuditActions.IssueCreated.Name)),
-            Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -371,7 +371,7 @@ public sealed class IssuesServiceTests
         var auditAt = Clock.GetCurrentInstant() + Duration.FromMinutes(1);
         AuditViewer.GetFilteredAsync(
                 Arg.Any<string?>(), issueId, Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
+                Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
             [new(Guid.NewGuid(), auditAt, IssuesAuditActions.IssueGitHubLinked, null, null, nameof(Issue), issueId,
                 null, null, null, null, null, null, null, "GitHub link: 123")]));
