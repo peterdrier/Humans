@@ -1,8 +1,5 @@
 @model Humans.Users.Models.AccountMergeQueueViewModel
 @{
-#pragma warning disable HUM0041 // Raw names of the two accounts being merged; one of them stops existing.
-}
-@{
     ViewData["Title"] = "Account Merges";
 }
 
@@ -93,14 +90,14 @@ else
                                 <input class="form-check-input" type="radio" name="@radioName"
                                        id="keep-a-@groupId" value="@row.AccountA.UserId" checked />
                                 <label class="form-check-label" for="keep-a-@groupId">
-                                    Keep <strong><vc:human user-id="@row.AccountA.UserId" link="None" raw="true" /></strong> (Account A), archive Account B
+                                    Keep <strong><vc:human user-id="@row.AccountA.UserId" link="Admin" raw="true" /></strong> (Account A), archive Account B
                                 </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="@radioName"
                                        id="keep-b-@groupId" value="@row.AccountB.UserId" />
                                 <label class="form-check-label" for="keep-b-@groupId">
-                                    Keep <strong><vc:human user-id="@row.AccountB.UserId" link="None" raw="true" /></strong> (Account B), archive Account A
+                                    Keep <strong><vc:human user-id="@row.AccountB.UserId" link="Admin" raw="true" /></strong> (Account B), archive Account A
                                 </label>
                             </div>
                         </div>

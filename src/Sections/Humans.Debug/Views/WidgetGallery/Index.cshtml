@@ -260,7 +260,7 @@
                     @ParamsBlock(
                         ("user-id", "<code>Guid</code> — required"),
                         ("layout", "<code>HumanLayout</code> — Text (default) · Avatar · AvatarName · Card"),
-                        ("link", "<code>HumanLink</code> — Public (default) · Admin · None"),
+                        ("link", "<code>HumanLink</code> — Public (default) · Admin · InsideControl · PageSubject; signed-out viewers get no link"),
                         ("popover", "<code>bool</code> — hover-popover with profile summary (default true)"),
                         ("size", "<code>int</code> — avatar pixel size (default 40); applies to non-Text layouts"),
                         ("css-class", "<code>string?</code> — extra classes on the avatar element"),
@@ -282,14 +282,8 @@
                         <div class="wg-variant-label">link="Admin"<span class="wg-variant-sub">links to AdminDetail</span></div>
                         <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" link="Admin" /></div>
 
-                        <div class="wg-variant-label">link="None"<span class="wg-variant-sub">no link, no popover</span></div>
-                        @{
-#pragma warning disable HUM0041 // The gallery shows what the variant looks like.
-                        }
-                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="Avatar" size="48" link="None" /></div>
-                        @{
-#pragma warning restore HUM0041
-                        }
+                        <div class="wg-variant-label">link="InsideControl"<span class="wg-variant-sub">no link, no popover: inside another link or button</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="Avatar" size="48" link="InsideControl" /></div>
                     </div>
                 </div>
 

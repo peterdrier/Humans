@@ -5,21 +5,6 @@ namespace Humans.Analyzers.Tests;
 public class HumanNameRenderingAnalyzerTests
 {
     private const string Stubs = """
-        namespace Humans.Base.ViewComponents
-        {
-            public enum HumanLink { None, Public, Admin }
-
-            public sealed class HumanViewComponentTagHelper
-            {
-                public HumanLink link { get; set; }
-            }
-
-            public static class Table
-            {
-                public static void Human(string header, HumanLink link = HumanLink.Public) { }
-            }
-        }
-
         namespace Humans.Users.Contracts
         {
             public sealed record UserInfo(string BurnerName);
@@ -40,36 +25,6 @@ public class HumanNameRenderingAnalyzerTests
 
     private static bool IsHum0041(Microsoft.CodeAnalysis.Diagnostic d) =>
         string.Equals(d.Id, HumanNameRenderingAnalyzer.DiagnosticId, StringComparison.Ordinal);
-
-    [HumansFact]
-    public async Task Fires_wherever_HumanLink_None_is_passed_and_not_where_it_is_compared()
-    {
-        var source = Stubs + """
-
-            namespace Humans.Finance
-            {
-                using Humans.Base.ViewComponents;
-
-                public sealed class Caller
-                {
-                    public void Run(HumanViewComponentTagHelper tag, HumanLink link, bool signedIn)
-                    {
-                        tag.link = HumanLink.None;
-                        Table.Human("Member", HumanLink.None);
-                        _ = new { userId = 1, link = HumanLink.None };
-                        tag.link = signedIn ? HumanLink.Public : HumanLink.None;
-
-                        _ = link == HumanLink.None;
-                        _ = link is HumanLink.None;
-                        switch (link) { case HumanLink.None: break; }
-                        Table.Human("Member", HumanLink.Admin);
-                    }
-                }
-            }
-            """;
-
-        (await RunAsync(source)).Where(IsHum0041).Should().HaveCount(4);
-    }
 
     [HumansFact]
     public async Task Fires_on_a_view_writing_BurnerName_but_not_on_sorting_by_it()

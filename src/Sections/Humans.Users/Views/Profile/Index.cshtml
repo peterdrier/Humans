@@ -2,9 +2,6 @@
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.ProfileViewModel
 @{
-#pragma warning disable HUM0041 // The page is this person's profile already; a link would point at itself.
-}
-@{
     ViewData["Title"] = Model.IsOwnProfile ? Localizer["Users_Profile_Title"].Value : Model.PageTitle;
 }
 
@@ -18,7 +15,7 @@
                 }
                 else
                 {
-                    <vc:human user-id="@Model.UserId" link="None" />
+                    <vc:human user-id="@Model.UserId" link="PageSubject" />
                 }
             </page-header-title>
             <vc:access-matrix section="Profile" />

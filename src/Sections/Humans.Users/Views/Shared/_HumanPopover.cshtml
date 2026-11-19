@@ -1,9 +1,6 @@
 @model Humans.Users.Models.ProfileSummaryViewModel
 @inject IAuthorizationService AuthService
 @{
-#pragma warning disable HUM0041 // The popup's own body.
-}
-@{
     var canSeeHiddenTeams =
         (await AuthService.AuthorizeAsync(User, Humans.Teams.Contracts.TeamsPolicies.Read)).Succeeded;
     IReadOnlyList<string> visibleHiddenTeams =
@@ -13,10 +10,10 @@
 }
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
-    <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
+    <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="InsideControl" />
     <div>
         <div class="fw-semibold">
-            <vc:human user-id="@Model.UserId" link="None" />
+            <vc:human user-id="@Model.UserId" link="InsideControl" />
             @if ((await AuthService.AuthorizeAsync(User, UsersPolicies.Read)).Succeeded
                 && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
             {

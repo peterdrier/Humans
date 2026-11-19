@@ -1,8 +1,5 @@
 @model Humans.Users.Models.ProfileViewModel
 @{
-#pragma warning disable HUM0041 // The viewer editing their own profile.
-}
-@{
     ViewData["Title"] = Localizer["Users_ProfileEdit_Title"].Value;
     var languageOptionsHtml = string.Join("", LanguageCatalog.Languages.Select(lang =>
         $"<option value=\"{lang.Key}\">{System.Net.WebUtility.HtmlEncode(LanguageCatalog.GetDisplayName(lang.Key))} ({lang.Key})</option>"));
@@ -40,7 +37,7 @@
                             <vc:human user-id="@Model.UserId"
                                       layout="Avatar"
                                       size="80"
-                                      link="None" />
+                                      link="PageSubject" />
                         </div>
                         <input type="file" asp-for="ProfilePictureUpload" class="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,.heic,.heif,.avif" />
                         <span asp-validation-for="ProfilePictureUpload" class="text-danger"></span>

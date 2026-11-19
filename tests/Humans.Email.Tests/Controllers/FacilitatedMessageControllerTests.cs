@@ -154,7 +154,7 @@ public sealed class FacilitatedMessageControllerTests
         var view = services.GetRequiredService<IRazorViewEngine>()
             .GetView(null, "/Views/FacilitatedMessage/SendMessage.cshtml", isMainPage: false);
         Assert.True(view.Success);
-        var http = new DefaultHttpContext { RequestServices = services };
+        var http = new DefaultHttpContext { RequestServices = services, User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "viewer")], "test")) };
         var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = result.Model };
         using var writer = new StringWriter();

@@ -100,7 +100,7 @@ public class NotificationBellViewTests
         var result = services.GetRequiredService<IRazorViewEngine>()
             .GetView(null, path, isMainPage: false);
         result.Success.Should().BeTrue();
-        var http = new DefaultHttpContext { RequestServices = services };
+        var http = new DefaultHttpContext { RequestServices = services, User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "viewer")], "test")) };
         var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary())
         {

@@ -3,13 +3,10 @@
 @inject IAuthorizationService AuthService
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<UsersResource> HtmlLocalizer
 @{
-#pragma warning disable HUM0041 // The profile card sits on the person's own profile page.
-}
-@{
     var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
     {
         userId = Model.UserId,
-        link = Humans.Base.ViewComponents.HumanLink.None,
+        link = Humans.Base.ViewComponents.HumanLink.PageSubject,
     });
     using var humanWriter = new System.IO.StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
@@ -31,7 +28,7 @@
                 <vc:human user-id="@Model.UserId"
                           layout="Avatar"
                           size="160"
-                          link="None" />
+                          link="PageSubject" />
             </div>
             <div class="col">
                 <h4>@humanHtml</h4>

@@ -1,8 +1,5 @@
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<EmailResource> HtmlLocalizer
 @{
-#pragma warning disable HUM0041 // A signed-out page reached from an email link; profiles need a sign-in.
-}
-@{
     ViewData["Title"] = Localizer["Email_Unsubscribe_Title"].Value;
     var categoryName = Localizer["Email_CommPrefs_Name_Marketing"].Value;
 }
@@ -14,7 +11,6 @@
     var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
     {
         userId,
-        link = Humans.Base.ViewComponents.HumanLink.None,
     });
     using var humanWriter = new System.IO.StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);

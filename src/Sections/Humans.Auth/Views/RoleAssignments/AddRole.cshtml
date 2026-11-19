@@ -4,9 +4,7 @@
 }
 
 @section Crumbs {
-    <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId">
-        <vc:human user-id="@Model.UserId" />
-    </a>
+    <vc:human user-id="@Model.UserId" link="Admin" />
     <span>@Localizer["Auth_AddRole_Title"]</span>
 }
 

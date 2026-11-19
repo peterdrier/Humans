@@ -1,6 +1,6 @@
 ---
 name: burnername-is-the-display-name
-description: HARD RULE. A person's name renders only through `<vc:human>` with its profile-popup link (never `HumanLink.None`, HUM0041) — never `DisplayName` or a name string in a view model.
+description: HARD RULE. A person's name renders only through `<vc:human>` with its profile-popup link (no link only inside a control or on the person's own page; HUM0041) — never `DisplayName` or a name string in a view model.
 ---
 
 `User.BurnerName` is the only name the UI ever renders. `User.DisplayName` is a legacy field that can't
@@ -14,10 +14,9 @@ Mixing the two leaks the legacy field into search results and member lists.
   `<vc:human-summary>`. They resolve the name through the cached `IUserService.GetUserInfoAsync`. Raw
   `@x.DisplayName`, a hand-built profile link, or an avatar-plus-name flex container is a violation.
   Don't pass a `display-name` override; let the component fetch.
-- **Keep the link.** The name opens the profile popup, so never pass `HumanLink.None` (`link="None"`) to
-  `<vc:human>` or a table's `Human` column. The only exceptions are the popup's own body, the viewer's own
-  name, a page already about that person, and signed-out pages; each carries
-  `#pragma warning disable HUM0041 // reason`.
+- **Keep the link.** The name opens the profile popup. `HumanLink` has only two no-link values, each a
+  reason: `InsideControl` (inside another link, button or the popup itself) and `PageSubject` (the page is
+  already about this person). Signed-out viewers get no link automatically. Anything else links.
 - **In code, `UserInfo.BurnerName`** is the accessor: the burner name when non-blank, the erasure
   sentinel on a GDPR tombstone, else blank. Never restore a `DisplayName` fallback.
 - **Raw `DisplayName` has three legitimate readers:** GDPR export while the column exists, debug
@@ -34,7 +33,7 @@ Mixing the two leaks the legacy field into search results and member lists.
   legal first and last name (falling back to `DisplayName` only when blank). Never `BurnerName`: the
   bank rejects a payee that doesn't match the account holder.
 
-**Enforced by:** HUM0041 (`HumanLink.None`, or a view writing `UserInfo.BurnerName`). A name copied into a
+**Enforced by:** the `HumanLink` type, and HUM0041 (a view writing `UserInfo.BurnerName`). A name copied into a
 view model is not caught; review catches it.
 
 **Related:** [`iuserservice-onestop-userinfo`](iuserservice-onestop-userinfo.md)

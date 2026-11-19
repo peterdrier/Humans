@@ -158,17 +158,20 @@ public sealed class TeamMessageControllerTests
         var template = new ResourceManager(typeof(TeamsResource))
             .GetString("Teams_SendMessage_FromTeam", CultureInfo.CurrentUICulture);
         Assert.NotNull(template);
-        var expected = string.Format(CultureInfo.CurrentCulture, template,
-            $"<a href=\"/\" class=\"text-decoration-none\" data-human-popover=\"true\" data-user-id=\"{_targetId}\">{HtmlEncoder.Default.Encode(currentName)}</a>", HtmlEncoder.Default.Encode(teamName));
-        foreach (var (path, model) in new (string, object?)[]
+        var encodedName = HtmlEncoder.Default.Encode(currentName);
+        string Expected(string human) =>
+            string.Format(CultureInfo.CurrentCulture, template, human, HtmlEncoder.Default.Encode(teamName));
+        // The message button is itself a link, so the name inside it renders without one.
+        foreach (var (path, model, expected) in new (string, object?, string)[]
         {
-            ("/Views/TeamMessage/SendMessage.cshtml", result.Model),
-            ("/Views/Shared/Components/TeamMessageButtons/Default.cshtml", buttons),
+            ("/Views/TeamMessage/SendMessage.cshtml", result.Model,
+                Expected($"<a href=\"/\" class=\"text-decoration-none\" data-human-popover=\"true\" data-user-id=\"{_targetId}\">{encodedName}</a>")),
+            ("/Views/Shared/Components/TeamMessageButtons/Default.cshtml", buttons, Expected($"<span>{encodedName}</span>")),
         })
         {
             var view = services.GetRequiredService<IRazorViewEngine>().GetView(null, path, isMainPage: false);
             Assert.True(view.Success);
-            var http = new DefaultHttpContext { RequestServices = services };
+            var http = new DefaultHttpContext { RequestServices = services, User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "viewer")], "test")) };
             var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
             var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
             using var writer = new StringWriter();

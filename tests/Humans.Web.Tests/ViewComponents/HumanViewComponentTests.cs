@@ -94,7 +94,11 @@ public class HumanViewComponentTests
         userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
 
         await using var app = BuildUsersRoutedApp();
-        var httpContext = new DefaultHttpContext { RequestServices = app.Services };
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = app.Services,
+            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity("test")),
+        };
         httpContext.SetEndpoint(new Endpoint(null, EndpointMetadataCollection.Empty, "test"));
 
         var sut = new HumanViewComponent(userService, app.Services.GetRequiredService<IUrlHelperFactory>(),
@@ -111,6 +115,13 @@ public class HumanViewComponentTests
 
         model.ProfilePictureUrl.Should().StartWith($"/Profile/Picture?id={profileId}");
         model.Href.Should().Be($"/Profile/{userId}");
+        model.ShowPopover.Should().BeTrue();
+
+        // Profiles need a sign-in, so a signed-out viewer gets the name without a link or popup.
+        httpContext.User = new System.Security.Claims.ClaimsPrincipal();
+        var signedOut = (HumanViewModel)((ViewViewComponentResult)await sut.InvokeAsync(userId, HumanLayout.Avatar)).ViewData!.Model!;
+        signedOut.Href.Should().BeNull();
+        signedOut.ShowPopover.Should().BeFalse();
     }
 
     [HumansTheory]
@@ -131,8 +142,8 @@ public class HumanViewComponentTests
         };
 
         var result = raw
-            ? await component.InvokeAsync(id, link: HumanLink.None, raw: true)
-            : await component.InvokeAsync(id, link: HumanLink.None);
+            ? await component.InvokeAsync(id, link: HumanLink.InsideControl, raw: true)
+            : await component.InvokeAsync(id, link: HumanLink.InsideControl);
         var model = (HumanViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
 
         model.DisplayName.Should().Be(raw ? "Archived account" : "Survivor");
