@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Pleo.Data;
+using Humans.Pleo.Models;
 using Humans.Pleo.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -484,6 +485,10 @@ public sealed class PleoSyncTests
         summary.Unmapped.Spend.Should().Be(1_072.00m);
         // Every test card entry carries a receipt; the Pleo invoice here does not.
         summary.MissingReceipt.Count.Should().Be(1);
+        (await _service.GetEntriesPageAsync(new PleoEntriesFilter(null, null, null, false, Unmapped: true), ct))
+            .Rows.Count.Should().Be(summary.Unmapped.Count);
+        (await _service.GetEntriesPageAsync(new PleoEntriesFilter(null, null, null, NoReceipt: true, false), ct))
+            .Rows.Count.Should().Be(summary.MissingReceipt.Count);
         summary.ByAccount.Should().BeEmpty();
         summary.UnlinkedCategoryCount.Should().Be(1);
 

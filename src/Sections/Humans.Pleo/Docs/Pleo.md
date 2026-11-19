@@ -54,7 +54,7 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   Holded booking, with totals: unmapped and missing receipt, each linking to its filtered list. Spend by Holded account with
   an Unmapped bucket, spend by cardholder, and "N new categories to map" when an id is waiting.
 - `/Pleo/Entries` — every entry, newest first by performed date, filterable by Holded account, cardholder, family,
-  no receipt, unmapped (no Holded code); both blocking filters leave loads out.
+  no receipt, unmapped (no Holded code); both blocking filters show only completed spend, the entries the blocking counts on `/Pleo` count.
 - `/Pleo/Entries/{id}` — every mirrored field (typed, plus the raw JSON) and its receipts, listed live from Pleo and
   shown inline through `/Pleo/Entries/{id}/Receipts/{receiptId}`. A failed lookup is said on the page. No link into
   Pleo's app: no stable URL pattern is verified.
