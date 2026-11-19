@@ -156,6 +156,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(shiftManagementService);
 
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),

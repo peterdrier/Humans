@@ -3,6 +3,7 @@ using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
+using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
 using Humans.Teams.Contracts;
@@ -12,12 +13,12 @@ using NodaTime;
 namespace Humans.Shifts.Services;
 
 internal sealed class ShiftCoverageReports(
-    IShiftManagementRepository repo,
     EventCalendarResolver calendarResolver,
     IServiceProvider serviceProvider) : IApplicationService
 {
     private static readonly decimal AllDayShiftHours = (decimal)Shift.AllDayWindowHours;
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
+    private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
 
     public async Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
@@ -34,12 +35,9 @@ internal sealed class ShiftCoverageReports(
         var departmentTeamIds = departmentId.HasValue
             ? ShiftStaffingAggregation.ResolveDepartmentTeamIds(departmentId.Value, await TeamService.GetTeamsAsync(ct))
             : null;
-        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+        var shifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             departmentTeamIds), ct);
-
-        var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         var staffingData = new List<DailyStaffingData>();
         var staffingHours = new List<DailyStaffingHours>();
@@ -54,10 +52,9 @@ internal sealed class ShiftCoverageReports(
             var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd)).ToList();
 
             var periodLabel = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
-            var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
-            var minSlots = overlapping.Sum(s => s.MinVolunteers);
-            var confirmedCount = overlapping.Sum(s =>
-                confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0);
+            var totalSlots = overlapping.Sum(s => s.Shift.MaxVolunteers);
+            var minSlots = overlapping.Sum(s => s.Shift.MinVolunteers);
+            var confirmedCount = overlapping.Sum(s => s.ConfirmedCount);
 
             var essentialHours = 0.0;
             var importantHours = 0.0;
@@ -65,9 +62,9 @@ internal sealed class ShiftCoverageReports(
 
             foreach (var shift in overlapping)
             {
-                var overlapStart = Instant.Max(dayStart, shift.GetAbsoluteStart(es));
-                var overlapEnd = Instant.Min(dayEnd, shift.GetAbsoluteEnd(es));
-                var totalHours = (overlapEnd - overlapStart).TotalHours * shift.MaxVolunteers;
+                var overlapStart = Instant.Max(dayStart, shift.Shift.GetAbsoluteStart(es));
+                var overlapEnd = Instant.Min(dayEnd, shift.Shift.GetAbsoluteEnd(es));
+                var totalHours = (overlapEnd - overlapStart).TotalHours * shift.Shift.MaxVolunteers;
 
                 switch (shift.Rota.Priority)
                 {
@@ -99,16 +96,13 @@ internal sealed class ShiftCoverageReports(
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
-        var teamIdsWithRotas = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
+        var allRotas = (await RotaRows.GetRotaRowsAsync(ct: ct))
+            .Where(r => r.Rota.EventSettingsId == eventSettingsId)
+            .ToList();
+        var teamIdsWithRotas = allRotas.Select(r => r.Rota.TeamId).Distinct().ToList();
         if (teamIdsWithRotas.Count == 0) return [];
 
         var teamLookup = ShiftStaffingAggregation.IncludeParents(await TeamService.GetTeamsAsync(ct), teamIdsWithRotas);
-
-        var allRotas = await repo.GetRotasAsync(
-            eventSettingsId,
-            teamIdsWithRotas,
-            RotaReadShape.ShiftsWithSignups,
-            ct);
 
         var pieTeams = teamLookup.Values.Where(IsInDirectory).ToList();
         var pieTeamIds = pieTeams.Select(t => t.Id).ToHashSet();
@@ -116,16 +110,16 @@ internal sealed class ShiftCoverageReports(
         var requested = new Dictionary<Guid, decimal>();
         var filled = new Dictionary<Guid, decimal>();
 
-        foreach (var rota in allRotas.Where(r => r.IsVisibleToVolunteers))
+        foreach (var row in allRotas.Where(r => r.Rota.IsVisibleToVolunteers))
         {
-            if (!teamLookup.TryGetValue(rota.TeamId, out var rotaTeam)) continue;
+            if (!teamLookup.TryGetValue(row.Rota.TeamId, out var rotaTeam)) continue;
 
             Guid? bucketId = pieTeamIds.Contains(rotaTeam.Id)
                 ? rotaTeam.Id
                 : (rotaTeam.ParentTeamId is { } pid && pieTeamIds.Contains(pid) ? pid : null);
             if (bucketId is null) continue;
 
-            foreach (var shift in rota.Shifts.Where(s => !s.AdminOnly))
+            foreach (var (shift, confirmed) in row.Shifts.Where(s => !s.Shift.AdminOnly).Select(s => (s.Shift, s.ConfirmedCount)))
             {
                 if (fromDate is not null || toDate is not null)
                 {
@@ -134,11 +128,10 @@ internal sealed class ShiftCoverageReports(
                     if (toDate is { } to && shiftDate > to) continue;
                 }
 
-                var hours = shift.IsAllDay ? AllDayShiftHours : (decimal)shift.Duration.TotalHours;
+                var hours = shift.IsAllDay ? AllDayShiftHours : (decimal)shift.DurationHours;
                 requested[bucketId.Value] = requested.GetValueOrDefault(bucketId.Value)
                     + hours * shift.MaxVolunteers;
 
-                var confirmed = shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed);
                 var capped = Math.Min(confirmed, shift.MaxVolunteers);
                 filled[bucketId.Value] = filled.GetValueOrDefault(bucketId.Value) + hours * capped;
             }
@@ -176,16 +169,14 @@ internal sealed class ShiftCoverageReports(
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
-        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+        var shifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
-        var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         var teamIdsOnRotas = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = ShiftStaffingAggregation.IncludeParents(await TeamService.GetTeamsAsync(ct), teamIdsOnRotas);
 
-        (Guid Id, string Name) DeptOf(Shift s)
+        (Guid Id, string Name) DeptOf(EventShift s)
         {
             if (!teamLookup.TryGetValue(s.Rota.TeamId, out var t))
                 return (s.Rota.TeamId, string.Empty);
@@ -210,7 +201,7 @@ internal sealed class ShiftCoverageReports(
             foreach (var s in overlapping)
             {
                 var (deptId, deptName) = DeptOf(s);
-                var confirmed = confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0;
+                var confirmed = s.ConfirmedCount;
                 if (confirmed == 0) continue;
                 var cur = byDept.TryGetValue(deptId, out var existing) ? existing : (Name: deptName, Count: 0);
                 byDept[deptId] = (cur.Name, cur.Count + confirmed);
@@ -241,13 +232,10 @@ internal sealed class ShiftCoverageReports(
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return empty;
 
-        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+        var allShifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
         if (allShifts.Count == 0) return empty;
-
-        var shiftIds = allShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
 
         var teamIds = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = ShiftStaffingAggregation.IncludeParents(await TeamService.GetTeamsAsync(ct), teamIds);
@@ -263,7 +251,7 @@ internal sealed class ShiftCoverageReports(
             .ToList();
 
         // A non-promoted subteam displays as its parent.
-        TeamInfo? DisplayTeamFor(Shift s)
+        TeamInfo? DisplayTeamFor(EventShift s)
         {
             if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return null;
             if (team.ParentTeamId is null) return team;
@@ -295,9 +283,8 @@ internal sealed class ShiftCoverageReports(
 
                 var overlapping = shifts.Where(s => OverlapsDay(s, es, dayStart, dayEnd)).ToList();
 
-                var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
-                var filledSlots = overlapping.Sum(s =>
-                    Math.Min(confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0, s.MaxVolunteers));
+                var totalSlots = overlapping.Sum(s => s.Shift.MaxVolunteers);
+                var filledSlots = overlapping.Sum(s => Math.Min(s.ConfirmedCount, s.Shift.MaxVolunteers));
 
                 if (totalSlots > 0) teamHasAnyShift = true;
                 cells.Add(new CoverageHeatmapCell(day.DayOffset, totalSlots, filledSlots));
@@ -324,17 +311,13 @@ internal sealed class ShiftCoverageReports(
         var es = await calendarResolver.GetActiveAsync(ct);
         if (es is null) return (0, 0, 0d);
 
-        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+        var allShifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
             es.Id,
             Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
         if (allShifts.Count == 0) return (0, 0, 0d);
 
-        var shiftIds = allShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
-
-        var total = allShifts.Sum(s => s.MaxVolunteers);
-        var filled = allShifts.Sum(s =>
-            Math.Min(confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0, s.MaxVolunteers));
+        var total = allShifts.Sum(s => s.Shift.MaxVolunteers);
+        var filled = allShifts.Sum(s => Math.Min(s.ConfirmedCount, s.Shift.MaxVolunteers));
 
         var ratio = total == 0 ? 0d : (double)filled / total;
         return (filled, total, ratio);
@@ -348,36 +331,27 @@ internal sealed class ShiftCoverageReports(
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
-        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+        var allShifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
-        var periodShifts = allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
+        var periodShifts = allShifts.Where(s => s.Shift.GetShiftPeriod(es) == period.Value).ToList();
 
         if (period == ShiftPeriod.Build && subPeriod is not null)
         {
             var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            periodShifts = periodShifts.Where(s => s.DayOffset >= start && s.DayOffset < end).ToList();
-        }
-
-        var shiftIds = periodShifts.Select(s => s.Id).ToList();
-        var confirmedCounts = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
-
-        int FilledSlotsOn(Shift s)
-        {
-            var confirmed = confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0;
-            return Math.Min(confirmed, s.MaxVolunteers);
+            periodShifts = periodShifts.Where(s => s.Shift.DayOffset >= start && s.Shift.DayOffset < end).ToList();
         }
 
         // All-day shifts collapse into one bucket; others group by whole-hour duration.
         var grouped = periodShifts
             .GroupBy(s => (
-                s.IsAllDay,
-                Hours: s.IsAllDay ? 0 : (int)s.Duration.TotalHours))
+                s.Shift.IsAllDay,
+                Hours: s.Shift.IsAllDay ? 0 : (int)s.Shift.DurationHours))
             .Select(g => new ShiftDurationBreakdownRow(
                 IsAllDay: g.Key.IsAllDay,
                 DurationHours: g.Key.Hours,
-                TotalSlots: g.Sum(s => s.MaxVolunteers),
-                FilledSlots: g.Sum(FilledSlotsOn)))
+                TotalSlots: g.Sum(s => s.Shift.MaxVolunteers),
+                FilledSlots: g.Sum(s => Math.Min(s.ConfirmedCount, s.Shift.MaxVolunteers))))
             .ToList();
 
         return grouped;
@@ -404,10 +378,10 @@ internal sealed class ShiftCoverageReports(
         return offsets;
     }
 
-    private static bool OverlapsDay(Shift shift, BurnSettingsInfo calendar, Instant dayStart, Instant dayEnd)
+    private static bool OverlapsDay(EventShift shift, BurnSettingsInfo calendar, Instant dayStart, Instant dayEnd)
     {
-        var start = shift.GetAbsoluteStart(calendar);
-        var end = shift.GetAbsoluteEnd(calendar);
+        var start = shift.Shift.GetAbsoluteStart(calendar);
+        var end = shift.Shift.GetAbsoluteEnd(calendar);
         return start < dayEnd && end > dayStart;
     }
 

@@ -18,5 +18,11 @@ internal sealed record ShiftAdminSignup(
     SignupStatus Status,
     Instant CreatedAt);
 
+/// <summary>One cached shift with its rota and signups, as the event-wide readers take it.</summary>
+internal sealed record EventShift(ShiftInfo Shift, RotaInfo Rota, IReadOnlyList<ShiftAdminSignup> Signups)
+{
+    public int ConfirmedCount => Signups.Count(s => s.Status == SignupStatus.Confirmed);
+}
+
 /// <summary>Needs no event calendar, so it answers for every existing shift.</summary>
 internal sealed record ShiftWithRota(ShiftInfo Shift, RotaInfo Rota);

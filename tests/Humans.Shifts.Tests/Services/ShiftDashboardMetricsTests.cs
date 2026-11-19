@@ -73,6 +73,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     [HumansTheory]

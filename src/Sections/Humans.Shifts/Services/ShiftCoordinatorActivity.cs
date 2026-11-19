@@ -10,12 +10,12 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Shifts.Services;
 
 internal sealed class ShiftCoordinatorActivity(
-    IShiftManagementRepository repo,
     EventCalendarResolver calendarResolver,
     IServiceProvider serviceProvider) : IApplicationService
 {
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
+    private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
 
     internal async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
@@ -29,8 +29,9 @@ internal sealed class ShiftCoordinatorActivity(
             (minDayOffset, maxDayOffset) = BuildSubPeriodClassifier.GetDayOffsetBounds(period, subPeriod, es);
         }
 
-        var pendingCounts = await repo.GetPendingSignupCountsByTeamAsync(
-            eventSettingsId, minDayOffset, maxDayOffset, ct);
+        var pendingCounts = (await RotaRows.GetEventShiftsAsync(
+                new ShiftEventQuery(eventSettingsId, MinDayOffset: minDayOffset, MaxDayOffset: maxDayOffset), ct))
+            .PendingCountsByTeam();
 
         if (pendingCounts.Count == 0)
             return [];
