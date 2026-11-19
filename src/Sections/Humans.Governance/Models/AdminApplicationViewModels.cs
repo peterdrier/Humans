@@ -8,6 +8,7 @@ internal sealed class AdminApplicationListViewModel : PagedListViewModel
     public List<AdminApplicationViewModel> Applications { get; set; } = [];
     public string? StatusFilter { get; set; }
     public string? TierFilter { get; set; }
+    public Guid? UserIdFilter { get; set; }
 }
 
 internal sealed class AdminApplicationViewModel

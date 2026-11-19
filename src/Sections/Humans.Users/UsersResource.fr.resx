@@ -56,13 +56,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Consulter maintenant</value>
   </data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
-    <value>Votre candidature {0} :</value>
-    <comment>{0} = tier name (Colaborador/Asociado)</comment>
-  </data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve">
-    <value>Voir les détails</value>
-  </data>
   <data name="Users_Profile_Information" xml:space="preserve">
     <value>Informations du profil</value>
   </data>
@@ -201,15 +194,6 @@
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve">
     <value>Modifier le profil</value>
-  </data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve">
-    <value>Vous voulez venir à l'événement, apporter votre énergie, travailler un créneau ou rejoindre une équipe. Pas d'engagement formel envers la gouvernance de l'association. La plupart des gens sont ici et c'est tout à fait valable.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve">
-    <value>Note : Vous pouvez toujours demander à changer cela plus tard.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Votre catégorie est verrouillée car vous avez une candidature active ou en attente.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Le nom sous lequel on vous connaît</value>
@@ -621,17 +605,14 @@
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve">
     <value>Ce membre peut demander à consulter ces notes en vertu du RGPD.</value>
   </data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve">
-    <value>Candidatures récentes</value>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve">
+    <value>Candidatures</value>
   </data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve">
     <value>Historique d'audit</value>
   </data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve">
     <value>Statistiques</value>
-  </data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve">
-    <value>Candidatures</value>
   </data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve">
     <value>Accords</value>
@@ -759,8 +740,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Informations alimentaires</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Vos informations médicales ont été enregistrées.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer les informations médicales.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Postuler pour devenir colaborador ou asociado</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Bénévole</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>Les adresses e-mail de ce compte ne peuvent plus être modifiées.</value>
   </data>

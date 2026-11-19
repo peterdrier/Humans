@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
@@ -117,12 +116,6 @@ internal sealed class ProfileViewModel
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
 
-    public ApplicationStatus? TierApplicationStatus { get; set; }
-
-    public MembershipTier? TierApplicationTier { get; set; }
-
-    public string? TierApplicationBadgeClass { get; set; }
-
     /// <summary>No profile yet or not approved; shows the membership-tier card.</summary>
     public bool IsInitialSetup { get; set; }
 
@@ -131,12 +124,6 @@ internal sealed class ProfileViewModel
 
     /// <summary>When true, Burner CV entries are not required.</summary>
     public bool NoPriorBurnExperience { get; set; }
-
-    /// <summary>
-    /// The member already has a pending or approved tier application, so the initial-setup
-    /// tier card shows a note instead of the link to <c>/Governance/Applications/Create</c>.
-    /// </summary>
-    public bool IsTierLocked { get; set; }
 
     public string? FormattedBirthday
     {

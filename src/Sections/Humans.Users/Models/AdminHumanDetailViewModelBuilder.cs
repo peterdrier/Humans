@@ -8,13 +8,11 @@ internal static class AdminHumanDetailViewModelBuilder
 {
     public static AdminHumanDetailViewModel Build(
         UserInfo info,
-        IReadOnlyList<UserApplicationSnapshot> applications,
         MembershipTier membershipTier,
         IReadOnlyList<UserEmailRowSnapshot> userEmails,
         int consentCount)
     {
         ArgumentNullException.ThrowIfNull(info);
-        ArgumentNullException.ThrowIfNull(applications);
         ArgumentNullException.ThrowIfNull(userEmails);
 
         var profile = info.Profile;
@@ -30,17 +28,7 @@ internal static class AdminHumanDetailViewModelBuilder
             AdminNotes = profile?.AdminNotes,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = membershipTier,
-            ApplicationCount = applications.Count,
             ConsentCount = consentCount,
-            Applications = applications
-                .OrderByDescending(a => a.SubmittedAt)
-                .Take(5)
-                .Select(a => new AdminHumanApplicationViewModel
-                {
-                    Id = a.Id,
-                    Status = a.Status,
-                    SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
-                }).ToList(),
             Languages = (profile?.Languages ?? [])
                 .OrderByDescending(pl => pl.Proficiency)
                 .ThenBy(pl => pl.LanguageCode, StringComparer.OrdinalIgnoreCase)

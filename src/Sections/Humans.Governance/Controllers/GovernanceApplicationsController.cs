@@ -227,11 +227,11 @@ internal sealed class GovernanceApplicationsController(
 
     [HttpGet("Admin")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> Admin(string? status, string? tier, int page = 1)
+    public async Task<IActionResult> Admin(string? status, string? tier, Guid? userId, int page = 1)
     {
         var pageSize = 20;
         var (items, totalCount) = await applicationDecisionService.GetFilteredApplicationsAsync(
-            status, tier, page, pageSize, HttpContext.RequestAborted);
+            status, tier, userId, page, pageSize, HttpContext.RequestAborted);
 
         var applications = items.Select(a => new AdminApplicationViewModel
         {
@@ -252,6 +252,7 @@ internal sealed class GovernanceApplicationsController(
             Applications = applications,
             StatusFilter = status,
             TierFilter = tier,
+            UserIdFilter = userId,
             TotalCount = totalCount,
             PageNumber = page,
             PageSize = pageSize

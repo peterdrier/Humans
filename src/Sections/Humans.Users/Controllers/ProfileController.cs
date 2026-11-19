@@ -1,7 +1,6 @@
 using Humans.Consent.Contracts;
 using Humans.Users.Services;
 using Humans.Base.Attributes;
-using Humans.Base.Models.Tables;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Base.Controllers;
@@ -13,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Users.Models;
 using Humans.Onboarding.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base;
 
@@ -32,7 +30,6 @@ internal sealed class ProfileController(
     ILogger<ProfileController> logger,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    IGovernanceService governanceService,
     IConsentService consentService,
     MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
@@ -68,9 +65,6 @@ internal sealed class ProfileController(
         var profile = info.Profile;
         var pendingConsentCount = (await consentService.GetConsentProgressAsync(info.Id, ct)).PendingCount;
 
-        var applications = await governanceService.GetUserApplicationsAsync(info.Id, ct);
-        var latestApplication = applications.MaxBy(a => a.SubmittedAt);
-
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
@@ -79,13 +73,6 @@ internal sealed class ProfileController(
             PendingConsentCount = pendingConsentCount,
             IsOwnProfile = true,
         };
-
-        if (latestApplication is not null && latestApplication.Status != ApplicationStatus.Withdrawn)
-        {
-            viewModel.TierApplicationStatus = latestApplication.Status;
-            viewModel.TierApplicationTier = latestApplication.MembershipTier;
-            viewModel.TierApplicationBadgeClass = EnumBadgeMap.For(latestApplication.Status);
-        }
 
         return viewModel;
     }
@@ -101,11 +88,7 @@ internal sealed class ProfileController(
         var info = await _userService.GetUserInfoAsync(user.Id, ct);
         if (info is null) return NotFound();
 
-        var applications = await governanceService.GetUserApplicationsAsync(user.Id, ct);
-        var viewModel = ProfileEditViewModelBuilder.Build(
-            info,
-            applications,
-            preview);
+        var viewModel = ProfileEditViewModelBuilder.Build(info, preview);
 
         ViewData["GoogleMapsApiKey"] = configuration.GetRequiredSetting(configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);

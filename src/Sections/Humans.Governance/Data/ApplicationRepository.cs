@@ -35,6 +35,7 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
     public async Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
         MembershipTier? tier,
+        Guid? userId,
         int page,
         int pageSize,
         CancellationToken ct = default)
@@ -42,9 +43,19 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.Applications.AsNoTracking().AsQueryable();
 
-        query = status is null
-            ? query.Where(a => a.Status == ApplicationStatus.Submitted)
-            : query.Where(a => a.Status == status);
+        if (userId is not null)
+        {
+            query = query.Where(a => a.UserId == userId);
+        }
+
+        if (status is not null)
+        {
+            query = query.Where(a => a.Status == status);
+        }
+        else if (userId is null)
+        {
+            query = query.Where(a => a.Status == ApplicationStatus.Submitted);
+        }
 
         if (tier is not null)
         {

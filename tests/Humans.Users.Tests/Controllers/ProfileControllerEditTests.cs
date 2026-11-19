@@ -54,8 +54,6 @@ public class ProfileControllerEditTests
 {
     private readonly IProfileEditorService _profileEditorService = Substitute.For<IProfileEditorService>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly IGovernanceService _governanceService =
-        Substitute.For<IGovernanceService>();
     private readonly IOnboardingIntake _onboardingService = Substitute.For<IOnboardingIntake>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
@@ -94,7 +92,6 @@ public class ProfileControllerEditTests
             NullLogger<ProfileController>.Instance,
             localizer,
             sharedLocalizer,
-            _governanceService,
             _consentService,
             new MedicalConditionsService(_userRepository, _userService, Substitute.For<IAuditLogService>()));
 
@@ -420,7 +417,6 @@ public class ProfileControllerEditTests
     {
         var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await _controller.Edit(preview);
 
@@ -462,15 +458,12 @@ public class ProfileControllerEditTests
     }
 
     [HumansFact]
-    public async Task Edit_InitialSetup_SavesProfileWithoutTouchingTierApplications()
+    public async Task Edit_InitialSetup_SavesTheCvWithTheProfile()
     {
-        // Tier applications live at /Governance/Applications/Create: saving the profile never touches them.
         var model = MakeValidModel();
 
         await _controller.Edit(model);
 
-        await _governanceService.DidNotReceiveWithAnyArgs()
-            .GetUserApplicationsAsync(Guid.Empty, Arg.Any<CancellationToken>());
         // CV rides on the save request — SaveProfileAsync owns persisting it.
         await _profileEditorService.Received(1).SaveProfileAsync(
             _userId, Arg.Is<ProfileSaveRequest>(r => r.VolunteerHistory != null),
@@ -510,7 +503,6 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_ServiceRefusal_UsesExistingLocalizedFeedbackAndStopsAfterSaveEffects()
     {
-        _governanceService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
         _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>())
             .Returns(new ProfileEditResult(false, ErrorKey: "Users_Profile_BurnerCVRequired"));
         var model = MakeValidModel();

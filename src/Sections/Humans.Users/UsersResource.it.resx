@@ -56,13 +56,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Esamina ora</value>
   </data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
-    <value>La Sua candidatura {0}:</value>
-    <comment>{0} = tier name (Colaborador/Asociado)</comment>
-  </data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve">
-    <value>Vedi dettagli</value>
-  </data>
   <data name="Users_Profile_Information" xml:space="preserve">
     <value>Informazioni del profilo</value>
   </data>
@@ -201,15 +194,6 @@
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve">
     <value>Modifica Profilo</value>
-  </data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve">
-    <value>Vuoi venire all'evento, contribuire con la tua energia, fare un turno o unirti a un team. Nessun impegno formale nella governance dell'associazione. La maggior parte delle persone è qui ed è assolutamente valido.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve">
-    <value>Nota: Puoi sempre fare domanda per cambiare questo in seguito.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
-    <value>La tua categoria è bloccata perché hai una domanda attiva o in sospeso.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Il nome con cui è conosciuto/a</value>
@@ -621,17 +605,14 @@
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve">
     <value>Questo membro può richiedere di vedere queste note ai sensi del GDPR.</value>
   </data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve">
-    <value>Domande recenti</value>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve">
+    <value>Domande</value>
   </data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve">
     <value>Storico audit</value>
   </data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve">
     <value>Statistiche</value>
-  </data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve">
-    <value>Domande</value>
   </data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve">
     <value>Accordi</value>
@@ -759,8 +740,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Informazioni alimentari</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Le tue informazioni mediche sono state salvate.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Impossibile salvare le informazioni mediche.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Candidati come Colaborador o Asociado</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Volontario</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>Non è più possibile modificare gli indirizzi email di questo account.</value>
   </data>

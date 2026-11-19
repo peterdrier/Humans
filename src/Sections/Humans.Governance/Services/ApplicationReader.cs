@@ -60,7 +60,7 @@ internal sealed class ApplicationReader(
     }
 
     public async Task<(IReadOnlyList<ApplicationAdminRowDto> Items, int TotalCount)> GetFilteredApplicationsAsync(
-        string? statusFilter, string? tierFilter, int page, int pageSize, CancellationToken ct = default)
+        string? statusFilter, string? tierFilter, Guid? userId, int page, int pageSize, CancellationToken ct = default)
     {
         ApplicationStatus? status = null;
         if (!string.IsNullOrWhiteSpace(statusFilter)
@@ -76,7 +76,7 @@ internal sealed class ApplicationReader(
             tier = parsedTier;
         }
 
-        var (apps, totalCount) = await repository.GetFilteredAsync(status, tier, page, pageSize, ct);
+        var (apps, totalCount) = await repository.GetFilteredAsync(status, tier, userId, page, pageSize, ct);
         if (apps.Count == 0)
         {
             return ([], totalCount);

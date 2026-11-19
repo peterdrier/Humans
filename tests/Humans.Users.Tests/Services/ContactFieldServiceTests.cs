@@ -585,7 +585,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         StubUserInfo(userId, profile);
         var info = await _userService.GetUserInfoAsync(userId);
 
-        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, [], false);
+        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, false);
 
         model.EditableContactFields.Should().ContainSingle().Which.Id.Should().Be(signalId);
         model.ContactFields.Should().ContainSingle().Which.Id.Should().Be(legacyId);
