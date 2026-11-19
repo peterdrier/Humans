@@ -1,6 +1,5 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.Governance.Contracts;
-using Humans.Governance.Services.Dtos;
 using Humans.Governance.Domain;
 using NodaTime;
 using MemberApplication = Humans.Governance.Domain.Application;
@@ -77,10 +76,8 @@ internal interface IApplicationRepository : IRepository
     Task<int> GetUnvotedCountForBoardMemberAsync(
         Guid boardMemberUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// All counts exclude <see cref="ApplicationStatus.Withdrawn"/>.
-    /// </summary>
-    Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
+    /// <summary>Unordered applications excluding <see cref="ApplicationStatus.Withdrawn"/>.</summary>
+    Task<IReadOnlyList<MemberApplication>> GetNonWithdrawnAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the latest Approved application per user and tier when its <c>TermExpiresAt</c> falls

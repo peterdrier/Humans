@@ -1804,6 +1804,33 @@ public sealed class TeamServiceTests : TeamsTestHarness
             target.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task RejectJoinRequestAsync_BlankReason_RefusesWithoutSideEffects(string? reason)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(ct);
+
+        var result = await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, reason, ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Teams_TeamAdmin_ProvideRejectionReason");
+        var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id, ct);
+        stored.Status.Should().Be(TeamJoinRequestStatus.Pending);
+        stored.ReviewNotes.Should().BeNull();
+        stored.ReviewedByUserId.Should().BeNull();
+        stored.ResolvedAt.Should().BeNull();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task RejectJoinRequestAsync_RequestNotFound_ReturnsRefusal()
     {
@@ -2340,7 +2367,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_CanToggleManagementFalse_PreservesIsManagement()
+    public async Task UpdateRoleDefinitionAsync_OmittedManagementChange_PreservesExistingValue()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -2351,8 +2378,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await _service.UpdateRoleDefinitionAsync(
             def.Id, def.Name, null, 1, [SlotPriority.None], 0,
-            isManagement: false, RolePeriod.YearRound, actor.Id,
-            canToggleManagement: false, cancellationToken: TestContext.Current.CancellationToken);
+            isManagement: null, RolePeriod.YearRound, actor.Id,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         ClearAllTrackers();
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id, TestContext.Current.CancellationToken);
@@ -2638,17 +2665,26 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result[0].TeamId.Should().Be(teamA.Id);
     }
 
-    [HumansFact]
-    public async Task GetUserTeamsAsync_IncludesTeamNavigation()
+    [HumansTheory]
+    [InlineData(true, SystemTeamType.None, true)]
+    [InlineData(true, SystemTeamType.Volunteers, false)]
+    [InlineData(true, SystemTeamType.Board, true)]
+    [InlineData(false, SystemTeamType.None, false)]
+    public async Task GetUserTeamsAsync_CarriesTeamFactsForProfileProjection(bool active, SystemTeamType type, bool expected)
     {
         var user = SeedUser();
-        var team = SeedTeam("Alpha");
+        var team = SeedTeam("Alpha", type, isActive: active);
+        team.IsHidden = true;
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken);
+        var membership = (await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken)).Single();
 
-        result.Single().TeamName.Should().Be("Alpha");
+        membership.TeamName.Should().Be("Alpha");
+        membership.IsActive.Should().Be(active);
+        membership.IsHidden.Should().BeTrue();
+        membership.SystemTeamType.Should().Be(type);
+        membership.IsProfileMembership.Should().Be(expected);
     }
 
     [HumansFact]

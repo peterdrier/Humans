@@ -752,4 +752,53 @@
   <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Sol·licituds de nivell pendents del teu vot: {0}</value></data>
   <data name="Governance_ReviewApplications" xml:space="preserve"><value>Revisa</value></data>
   <data name="Governance_YourMembership" xml:space="preserve"><value>La teva membresia</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Preguntes addicionals per a sol·licitants d'Associat</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>Quina ha estat la teva contribució més significativa a Elsewhere?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Si no se t'acudeix cap, però has contribuït significativament a un altre Burn, explica'ns-ho.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Si us plau, descriu la teva contribució més significativa per a una sol·licitud d'Associat.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>Amb les teves pròpies paraules, què entens que és el rol d'un associat i per què vols aquesta responsabilitat?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Explica'ns què significa aquest rol per a tu i per què hi estàs preparat/da.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Si us plau, descriu la teva comprensió del rol d'associat.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Ja tens una sol·licitud pendent.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Selecciona Col·laborador o Associat per a la teva sol·licitud.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Has de confirmar la veracitat de la teva informació.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>La teva sol·licitud s'ha enviat correctament!</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Alguna cosa ha anat malament en enviar la teva sol·licitud. Si us plau, torna-ho a provar.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Aquesta sol·licitud no pot ser retirada.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>La teva sol·licitud s'ha retirat.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>La motivació ha de tenir entre 50 i 2000 caràcters.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>La informació addicional no ha de superar els 1000 caràcters.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribució significativa no ha de superar els 2000 caràcters.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>L’explicació del rol no ha de superar els 2000 caràcters.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Es requereix una declaració de motivació per a les sol·licituds de Col·laborador i Associat.</value>
+  </data>
 </root>

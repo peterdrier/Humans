@@ -22,6 +22,8 @@ namespace Humans.Shifts.Tests.Services;
 
 public sealed class RotaCoordinatorMessageServiceTests
 {
+    public enum EnqueueFailure { Fault, Cancellation }
+
     private readonly IShiftManagementRepository _repo = Substitute.For<IShiftManagementRepository>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -106,6 +108,61 @@ public sealed class RotaCoordinatorMessageServiceTests
         log[3].Should().BeSameAs(failure);
         log[2]!.ToString().Should().Contain((teamWide ? teamId : rota.Id).ToString())
             .And.Contain(sender.ToString()).And.NotContain("Private message");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Dispatch_PreservesCallerCancellationDuringRecipientEnqueue(bool teamWide)
+    {
+        var teamId = StubTeam();
+        var es = StubEvent();
+        var recipient = Guid.NewGuid();
+        var sender = Guid.NewGuid();
+        var shift = MakeShift(Guid.Empty, dayOffset: 30, startHour: 10);
+        var rota = MakeTeamRota(teamId, es, "Rota1", [(shift, [recipient])]);
+        _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
+            .Returns([rota]);
+        _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
+        StubUsers(sender, recipient);
+        using var cancellation = new CancellationTokenSource();
+        var failure = new OperationCanceledException(cancellation.Token);
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), cancellation.Token).Returns(async _ =>
+        {
+            await cancellation.CancelAsync();
+            throw failure;
+        });
+        var service = CreateSut();
+
+        var error = await Xunit.Record.ExceptionAsync(async () =>
+        {
+            if (teamWide)
+                await service.SendTeamRotasMessageAsync(teamId, sender, "hi", false,
+                    TeamRotasAudienceFilter.Default, cancellation.Token);
+            else
+                await service.SendRotaMessageAsync(rota.Id, sender, "hi", false, cancellation.Token);
+        });
+
+        error.Should().BeSameAs(failure);
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, null!, Guid.Empty, null!, Guid.Empty);
+    }
+
+    [HumansFact]
+    public async Task TeamDispatch_PropagatesCancellationThroughTeamPreflight_BeforeSending()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var failure = new OperationCanceledException(cancellation.Token);
+        var teamId = Guid.NewGuid();
+        _teamService.GetTeamAsync(teamId, cancellation.Token)
+            .Returns(Task.FromException<TeamInfo?>(failure));
+
+        var error = await Xunit.Record.ExceptionAsync(() => CreateSut().SendTeamRotasMessageAsync(
+            teamId, Guid.NewGuid(), "hi", false, TeamRotasAudienceFilter.Default, cancellation.Token));
+
+        error.Should().BeSameAs(failure);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(null!);
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, null!, Guid.Empty, null!, Guid.Empty);
     }
 
     [HumansFact]
@@ -333,8 +390,10 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Is<EmailMessage>(m => m.TemplateName == "coordinator_rota_message"), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits()
+    [HumansTheory]
+    [Xunit.InlineData(EnqueueFailure.Fault)]
+    [Xunit.InlineData(EnqueueFailure.Cancellation)]
+    public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits(EnqueueFailure failure)
     {
         var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
@@ -356,7 +415,9 @@ public sealed class RotaCoordinatorMessageServiceTests
         _emailService
             .When(s => s.SendAsync(
                 Arg.Is<EmailMessage>(m => m.RecipientEmail == "a@example.com"), Arg.Any<CancellationToken>()))
-            .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
+            .Do(_ => throw (failure == EnqueueFailure.Cancellation
+                ? new OperationCanceledException("outbox timed out")
+                : new InvalidOperationException("simulated outbox blip")));
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
 
@@ -376,8 +437,10 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Any<string?>());
     }
 
-    [HumansFact]
-    public async Task SendRotaMessageAsync_ReturnsFailure_WhenAllRecipientEnqueuesThrow()
+    [HumansTheory]
+    [Xunit.InlineData(EnqueueFailure.Fault)]
+    [Xunit.InlineData(EnqueueFailure.Cancellation)]
+    public async Task SendRotaMessageAsync_ReturnsFailure_WhenAllRecipientEnqueuesThrow(EnqueueFailure failure)
     {
         var rota = MakeRota(out _);
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
@@ -397,7 +460,9 @@ public sealed class RotaCoordinatorMessageServiceTests
         // Every recipient's enqueue throws — no email gets queued.
         _emailService
             .When(s => s.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()))
-            .Do(_ => throw new InvalidOperationException("simulated outbox outage"));
+            .Do(_ => throw (failure == EnqueueFailure.Cancellation
+                ? new OperationCanceledException("outbox timed out")
+                : new InvalidOperationException("simulated outbox outage")));
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, sender, "schedule change", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
 
@@ -650,8 +715,10 @@ public sealed class RotaCoordinatorMessageServiceTests
             Arg.Any<string?>());
     }
 
-    [HumansFact]
-    public async Task SendTeamRotasMessageAsync_IsolatesPerRecipientFailures()
+    [HumansTheory]
+    [Xunit.InlineData(EnqueueFailure.Fault)]
+    [Xunit.InlineData(EnqueueFailure.Cancellation)]
+    public async Task SendTeamRotasMessageAsync_IsolatesPerRecipientFailures(EnqueueFailure failure)
     {
         var teamId = StubTeam();
         var es = StubEvent();
@@ -669,7 +736,9 @@ public sealed class RotaCoordinatorMessageServiceTests
         _emailService
             .When(s => s.SendAsync(
                 Arg.Is<EmailMessage>(m => m.RecipientEmail == "a@example.com"), Arg.Any<CancellationToken>()))
-            .Do(_ => throw new InvalidOperationException("simulated outbox blip"));
+            .Do(_ => throw (failure == EnqueueFailure.Cancellation
+                ? new OperationCanceledException("outbox timed out")
+                : new InvalidOperationException("simulated outbox blip")));
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, sender, "hi", includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
 
@@ -677,6 +746,11 @@ public sealed class RotaCoordinatorMessageServiceTests
         result.RecipientCount.Should().Be(1);
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "b@example.com"), Arg.Any<CancellationToken>());
+
+        await _auditLog.Received(1).LogAsync(
+            ShiftsAuditActions.CoordinatorTeamRotasMessageSent, "Team", teamId,
+            Arg.Is<string>(description => description.Contains("1 failed")), sender,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

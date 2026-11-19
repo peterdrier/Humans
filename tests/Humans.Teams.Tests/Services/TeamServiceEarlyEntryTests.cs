@@ -358,10 +358,41 @@ public sealed class TeamServiceEarlyEntryTests
         result.Refusal.Should().Contain("not found");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    public async Task EarlyEntryMutations_TeamDisabledOrMissing_DoNotWriteOrAudit(bool remove, bool missingTeam)
+    {
+        var teamId = Guid.NewGuid();
+        var grant = Grant(teamId, Guid.NewGuid(), "Original");
+        _repo.FindEarlyEntryGrantForMutationAsync(grant.Id, Arg.Any<CancellationToken>()).Returns(grant);
+        if (!missingTeam)
+            _repo.GetByIdAsync(teamId, Arg.Any<CancellationToken>())
+                .Returns(new Team { Id = teamId, Name = "Disabled", Slug = "disabled", EarlyEntryEnabled = false });
+        var originalDate = grant.EntryDate;
+
+        var result = remove
+            ? await _service.RemoveEarlyEntryGrantAsync(teamId, grant.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken)
+            : await _service.EditEarlyEntryGrantAsync(teamId, grant.Id, originalDate.PlusDays(1), "Changed",
+                Guid.NewGuid(), _eventId, Xunit.TestContext.Current.CancellationToken);
+        result.Succeeded.Should().BeFalse();
+        result.Refusal.Should().Contain(missingTeam ? "not found" : "not enabled");
+
+        grant.EntryDate.Should().Be(originalDate);
+        grant.ProjectName.Should().Be("Original");
+        await _repo.DidNotReceive().UpdateEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().RemoveEarlyEntryGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task EditEarlyEntryGrantAsync_UpdatesFieldsAndAudits()
     {
         var teamId = Guid.NewGuid();
+        _repo.GetByIdAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Team { Id = teamId, Name = "Art", Slug = "art", EarlyEntryEnabled = true });
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var grant = Grant(teamId, userId, "Old");
@@ -415,6 +446,8 @@ public sealed class TeamServiceEarlyEntryTests
     public async Task RemoveEarlyEntryGrantAsync_DeletesAndAudits()
     {
         var teamId = Guid.NewGuid();
+        _repo.GetByIdAsync(teamId, Arg.Any<CancellationToken>())
+            .Returns(new Team { Id = teamId, Name = "Art", Slug = "art", EarlyEntryEnabled = true });
         var userId = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var grant = Grant(teamId, userId);

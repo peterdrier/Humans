@@ -8,11 +8,13 @@ namespace Humans.Google.Contracts;
 /// </summary>
 public interface IEmailProvisioningService : IApplicationService
 {
+    /// <summary>When <paramref name="teamId"/> is supplied, the target must be a current member before provisioning. Authorization remains the caller's responsibility.</summary>
     [ExternalWrite]
     Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
-        Guid provisionedByUserId);
+        Guid provisionedByUserId,
+        Guid? teamId = null);
 }
 
 /// <summary>

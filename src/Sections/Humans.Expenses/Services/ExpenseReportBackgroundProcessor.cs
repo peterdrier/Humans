@@ -49,6 +49,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
             return;
         }
 
+        var completingEvent = false;
         try
         {
             // No API key (PR previews, local dev): don't drain, or every 401 would write off a queued event. The
@@ -70,6 +71,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
 
             foreach (var outboxEvent in events)
             {
+                completingEvent = false;
                 ct.ThrowIfCancellationRequested();
                 var completionCt = CancellationToken.None;
                 try
@@ -82,6 +84,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                         logger.LogWarning(
                             "Outbox event {OutboxEventId} references missing report {ReportId} — marking permanently failed",
                             outboxEvent.Id, outboxEvent.ExpenseReportId);
+                        completingEvent = true;
                         await WriteOffOutboxEventAsync(
                             outboxEvent, "Report not found", completionCt);
                         continue;
@@ -105,6 +108,7 @@ internal sealed class ExpenseReportBackgroundProcessor(
                                 "{ReportId} — Holded v2 has no tag/doc-update endpoint; recategorize is " +
                                 "now done by reclassifying the line directly in Holded.",
                                 outboxEvent.Id, report.Id);
+                            completingEvent = true;
                             await repo.MarkOutboxProcessedAsync(outboxEvent.Id, now, completionCt);
                             break;
 
@@ -115,14 +119,16 @@ internal sealed class ExpenseReportBackgroundProcessor(
                 }
                 catch (HoldedPermanentException ex)
                 {
+                    completingEvent = true;
                     logger.LogError(
                         ex,
                         "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
                         outboxEvent.Id, ex.StatusCode);
                     await WriteOffOutboxEventAsync(outboxEvent, ex.Message, completionCt);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested || completingEvent)
                 {
+                    completingEvent = true;
                     // A lost completion acknowledgement or a failed follow-up must not reclassify a committed push.
                     if (ex is not HoldedTransientException
                         && await repo.GetLatestOutboxForReportAsync(outboxEvent.ExpenseReportId, completionCt) is { } current
@@ -161,6 +167,11 @@ internal sealed class ExpenseReportBackgroundProcessor(
                 }
 
             }
+        }
+        catch (OperationCanceledException ex) when (completingEvent)
+        {
+            // Retry, write-off and completion checks use None, so their failures are not shutdown.
+            throw new InvalidOperationException(ex.Message, ex);
         }
         finally
         {

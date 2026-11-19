@@ -24,13 +24,14 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveSettings(GuideSettingsViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         if (!ModelState.IsValid)
         {
             model.AvailableEventSettings = EventSettingsOptionViewModel.From(guide.GetEventSettingsOptions());
             return View("Settings", model);
         }
 
-        var eventSettings = await guide.GetEventSettingsByIdAsync(model.EventSettingsId);
+        var eventSettings = await guide.GetEventSettingsByIdAsync(model.EventSettingsId, ct);
         if (eventSettings == null)
         {
             ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
@@ -93,10 +94,11 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateCategory(EventCategoryFormViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         if (!ModelState.IsValid)
             return View("CategoryForm", model);
 
-        if (await guide.CategorySlugExistsAsync(model.Slug))
+        if (await guide.CategorySlugExistsAsync(model.Slug, ct: ct))
         {
             ModelState.AddModelError(nameof(model.Slug), "A category with this slug already exists.");
             return View("CategoryForm", model);
@@ -141,16 +143,17 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditCategory(Guid id, EventCategoryFormViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         if (!ModelState.IsValid)
         {
             model.Id = id;
             return View("CategoryForm", model);
         }
 
-        var existing = await guide.GetCategoryAsync(id);
+        var existing = await guide.GetCategoryAsync(id, ct);
         if (existing == null) return NotFound();
 
-        if (await guide.CategorySlugExistsAsync(model.Slug, id))
+        if (await guide.CategorySlugExistsAsync(model.Slug, id, ct))
         {
             ModelState.AddModelError(nameof(model.Slug), "A category with this slug already exists.");
             model.Id = id;
@@ -286,13 +289,14 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditVenue(Guid id, GuideVenueFormViewModel model)
     {
+        var ct = HttpContext.RequestAborted;
         if (!ModelState.IsValid)
         {
             model.Id = id;
             return View("VenueForm", model);
         }
 
-        var existing = await guide.GetVenueAsync(id);
+        var existing = await guide.GetVenueAsync(id, ct);
         if (existing == null) return NotFound();
 
         var venue = new EventVenue

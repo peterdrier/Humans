@@ -37,6 +37,8 @@ internal sealed class StoreAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition StorePaymentsReconciled = new("StorePaymentsReconciled");
 
+    public static readonly AuditActionDefinition StoreTransferBooked = new("StoreTransferBooked");
+
     // A Store correction path resolved a legacy order's persisted year from its camp season.
     public static readonly AuditActionDefinition StoreOrderYearBackfilled = new("StoreOrderYearBackfilled");
 

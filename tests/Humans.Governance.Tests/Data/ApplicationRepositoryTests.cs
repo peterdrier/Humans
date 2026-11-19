@@ -445,8 +445,6 @@ public sealed class ApplicationRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var applications = Substitute.For<IGovernanceManagement>();
-        applications.GetAdminStatsAsync(Arg.Any<CancellationToken>())
-            .Returns(call => _repo.GetAdminStatsAsync(call.Arg<CancellationToken>()));
         applications.GetActiveApprovedTierUserIdsAsync(
                 Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(call => _repo.GetActiveApprovedTierUserIdsAsync(

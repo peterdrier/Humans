@@ -146,7 +146,7 @@ public class AgentUserSnapshotProviderTests
         var memberships = new[]
         {
             new TeamMembership("Build", TeamMemberRole.Coordinator),
-            new TeamMembership("Cantina", TeamMemberRole.Member)
+            new TeamMembership("Cantina", TeamMemberRole.Member) { IsHidden = true }
         };
         var provider = MakeProvider(userId, ev, [], teamMemberships: memberships);
 
@@ -183,28 +183,14 @@ public class AgentUserSnapshotProviderTests
             .Returns([]);
 
         var teams = Substitute.For<ITeamService>();
-        // Build a TeamInfo dict that mirrors the desired memberships so the
-        // reshape idiom (GetTeamsAsync → filter by member) returns the same data.
-        var membershipsToReturn = teamMemberships ?? [];
-        var teamInfos = membershipsToReturn
-            .Select((m, i) => new TeamInfo(
-                Id: Guid.NewGuid(),
-                Name: m.TeamName,
-                Description: null,
-                Slug: $"team-{i}",
-                IsActive: true,
-                IsSystemTeam: false,
-                SystemTeamType: SystemTeamType.None,
-                RequiresApproval: false,
-                IsPublicPage: false,
-                IsHidden: m.IsHidden,
-                IsPromotedToDirectory: false,
-                CreatedAt: Instant.MinValue,
-                Members: [new TeamMemberInfo(Guid.NewGuid(), userId, "T", null, null, m.Role, Instant.MinValue)]))
-            .ToList();
-        var teamDict = teamInfos.ToDictionary(t => t.Id);
-        teams.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teamDict));
+        teams.GetUserTeamMembershipsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((teamMemberships ?? []).Select((m, i) => new UserTeamMembershipInfo(
+                Guid.NewGuid(), Guid.NewGuid(), m.TeamName, $"team-{i}", false, m.Role, Instant.MinValue)
+            {
+                IsActive = true,
+                IsHidden = m.IsHidden,
+                SystemTeamType = SystemTeamType.None
+            }).ToList());
 
         var consents = Substitute.For<IConsentService>();
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

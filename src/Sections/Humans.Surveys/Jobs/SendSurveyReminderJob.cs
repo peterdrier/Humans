@@ -12,7 +12,15 @@ public class SendSurveyReminderJob(
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var reminded = await surveyReminders.SendDueRemindersAsync(cancellationToken);
-        logger.LogInformation("Survey reminder job sent {Count} reminder(s)", reminded);
+        try
+        {
+            var reminded = await surveyReminders.SendDueRemindersAsync(cancellationToken);
+            logger.LogInformation("Survey reminder job sent {Count} reminder(s)", reminded);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Survey reminder job interrupted by shutdown");
+            throw;
+        }
     }
 }

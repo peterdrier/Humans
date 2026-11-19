@@ -19,14 +19,10 @@ internal static class AdminHumanDetailViewModelBuilder
 
         var profile = info.Profile;
 
-        var effectiveEmail = userEmails
-            .FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
-            ?? info.Email;
-
         return new AdminHumanDetailViewModel
         {
             UserId = info.Id,
-            Email = effectiveEmail ?? string.Empty,
+            Email = info.Email ?? string.Empty,
             DisplayName = info.BurnerName,
             CreatedAt = info.CreatedAt.ToDateTimeUtc(),
             LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),

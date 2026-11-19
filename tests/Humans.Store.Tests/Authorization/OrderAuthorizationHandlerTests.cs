@@ -255,25 +255,25 @@ public class OrderAuthorizationHandlerTests
     [InlineData(RoleNames.Admin)]
     [InlineData(FinanceRoles.FinanceAdmin)]
     public Task Finance_admin_and_admin_can_refund_on_camp_order(string role) =>
-        AssertOutcomeAsync(role, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: true);
+        AssertOutcomeAsync(role, MakeOrder(team: false), OrderOperationRequirement.RecordFinancePayment, expectAllowed: true);
 
     [HumansFact]
     public Task StoreAdmin_cannot_refund_on_camp_order() =>
-        AssertOutcomeAsync(StoreRoles.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertOutcomeAsync(StoreRoles.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansFact]
     public Task TeamsAdmin_cannot_refund_on_camp_order() =>
-        AssertOutcomeAsync(TeamsRoles.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertOutcomeAsync(TeamsRoles.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansFact]
     public Task CampLead_cannot_refund_own_camp_order() =>
-        AssertLeadOperationAsync(OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertLeadOperationAsync(OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(FinanceRoles.FinanceAdmin)]
     public Task Refund_is_denied_on_team_order_even_for_finance_admin_and_admin(string role) =>
-        AssertOutcomeAsync(role, MakeOrder(team: true), OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertOutcomeAsync(role, MakeOrder(team: true), OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansFact]
     public Task Admin_can_delete_a_payment_on_camp_order() =>

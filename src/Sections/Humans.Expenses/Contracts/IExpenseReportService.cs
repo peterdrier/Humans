@@ -19,10 +19,8 @@ public interface IExpenseReportService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// A finance admin sees every non-draft, non-withdrawn report; anyone else their own (merged accounts included)
-    /// plus those booked to a budget category they coordinate or a preapproval program they manage.
-    /// An unresolved non-admin viewer receives an empty queue.
+    /// All non-draft, non-withdrawn review candidates. Callers authorize reports before exposing them;
+    /// browser and API listings also retain their active-year coordinator display scope.
     /// </summary>
-    Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
-        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default);
+    Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default);
 }

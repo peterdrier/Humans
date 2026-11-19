@@ -117,7 +117,7 @@ public class GovernancePageRenderTests(HumansTestDatabase database) : Integratio
         // These partials resolve by name: a miss throws, and the wrong resource set renders raw keys.
         detailHtml.Should().Contain(SeededContribution);
         detailHtml.Should().NotContain("Application_",
-            "the Application_* keys stayed shared and must still resolve");
+            "tier-application labels must resolve from Governance resources");
     }
 
     [HumansFact(Timeout = 120000)]

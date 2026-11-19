@@ -24,7 +24,6 @@ internal sealed class TermRenewalReminderJob(
     IClock clock) : IRecurringJob
 {
     private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
-    private const int ReminderDaysBeforeExpiry = 90;
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
@@ -33,7 +32,7 @@ internal sealed class TermRenewalReminderJob(
         try
         {
             var today = clock.GetCurrentInstant().InUtc().Date;
-            var reminderThreshold = today.PlusDays(ReminderDaysBeforeExpiry);
+            var reminderThreshold = TermExpiryCalculator.GetRenewalThreshold(today);
 
             var expiringApplications = await applicationDecisionService
                 .GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, cancellationToken);
@@ -56,6 +55,11 @@ internal sealed class TermRenewalReminderJob(
 
             foreach (var application in expiringApplications)
             {
+                // Preserve earlier delivery failures when shutdown stops the remaining recipients.
+                if (failures.Count > 0 && cancellationToken.IsCancellationRequested)
+                    break;
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (pendingSet.Contains((application.UserId, application.MembershipTier)))
                 {
                     logger.LogDebug(
@@ -86,6 +90,7 @@ internal sealed class TermRenewalReminderJob(
                     var language = applicant.PreferredLanguage.IsSupportedCultureCode()
                         ? applicant.PreferredLanguage : CultureCatalog.DefaultCultureCode;
 
+                    // Finish this recipient's enqueue, sent stamp and notice before observing shutdown again.
                     await emailService.SendAsync(emailMessages.TermRenewalReminder(
                         applicant.Id,
                         email,
@@ -94,10 +99,10 @@ internal sealed class TermRenewalReminderJob(
                         application.TermExpiresAt!.Value,
                         language) with
                     { DeliveryId = application.Id },
-                        cancellationToken);
+                        CancellationToken.None);
 
                     await applicationDecisionService.MarkRenewalReminderSentAsync(
-                        application.Id, now, cancellationToken);
+                        application.Id, now, CancellationToken.None);
                     sentCount++;
 
                     logger.LogInformation(
@@ -118,7 +123,7 @@ internal sealed class TermRenewalReminderJob(
                             body: NoticeResources.GetString("Governance_Notification_TermRenewalReminderBody", culture),
                             actionUrl: "/Governance/Applications",
                             actionLabel: NoticeResources.GetString("Governance_Notification_Renew", culture),
-                            cancellationToken: cancellationToken);
+                            cancellationToken: CancellationToken.None);
                     }
                     catch (Exception notifEx)
                     {
@@ -143,6 +148,11 @@ internal sealed class TermRenewalReminderJob(
             logger.LogInformation(
                 "Completed term renewal reminder job, sent {Count} reminders",
                 sentCount);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Term renewal reminder job cancelled during shutdown");
+            throw;
         }
         catch (Exception ex)
         {

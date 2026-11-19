@@ -40,7 +40,7 @@ internal sealed class AuditLogService(
             RelatedEntityType = relatedEntityType
         };
 
-        await PersistAsync(entry);
+        if (!await PersistAsync(entry)) return;
 
         logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
             action.Name, entityType, entityId, jobName, description);
@@ -64,23 +64,26 @@ internal sealed class AuditLogService(
             RelatedEntityType = relatedEntityType
         };
 
-        await PersistAsync(entry);
+        if (!await PersistAsync(entry)) return;
 
         logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
             action.Name, entityType, entityId, actorUserId, description);
     }
 
-    private async Task PersistAsync(AuditLogEntry entry)
+    private async Task<bool> PersistAsync(AuditLogEntry entry)
     {
         try
         {
             await repo.AddAsync(entry);
+            return true;
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
-                "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
-                entry.Id, entry.Action, entry.EntityType, entry.EntityId);
+                "Failed to persist audit entry {EntryId}: {Action} on {EntityType} {EntityId} at {OccurredAt} by user {ActorUserId}; related {RelatedEntityType} {RelatedEntityId}; {Description}",
+                entry.Id, entry.Action, entry.EntityType, entry.EntityId, entry.OccurredAt, entry.ActorUserId,
+                entry.RelatedEntityType, entry.RelatedEntityId, entry.Description);
+            return false;
         }
     }
 

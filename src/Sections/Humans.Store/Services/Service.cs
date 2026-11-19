@@ -303,9 +303,11 @@ internal sealed class Service(
         stripePayments.RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, status, ct);
 
     /// <summary>
-    /// A <see cref="PaymentMethod.DepositReturn"/> credits a returned deposit; a <see cref="PaymentMethod.Refund"/>
-    /// books money sent back by hand from the Stripe dashboard, stored negative and citing its reference. Refunds are
-    /// uncapped (a camp may have overpaid); deposit returns never exceed the order's deposits.
+    /// A <see cref="PaymentMethod.BankTransfer"/> books money received in the bank, citing the Holded bank movement id
+    /// and its value date; a <see cref="PaymentMethod.DepositReturn"/> credits a returned deposit; a
+    /// <see cref="PaymentMethod.Refund"/> books money sent back by hand from the Stripe dashboard, stored negative and
+    /// citing its reference. Transfers and refunds are uncapped (a camp may have overpaid); deposit returns never
+    /// exceed the order's deposits. A <paramref name="valueDate"/> becomes the payment's received date.
     /// </summary>
     public Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
@@ -313,9 +315,11 @@ internal sealed class Service(
         decimal amountEur,
         string? externalRef,
         string? notes,
+        LocalDate? valueDate,
         Guid actorUserId,
         CancellationToken ct = default) =>
-        orderAdministration.RecordAdminPaymentAsync(orderId, method, amountEur, externalRef, notes, actorUserId, orderReader, ct);
+        orderAdministration.RecordAdminPaymentAsync(
+            orderId, method, amountEur, externalRef, notes, valueDate, actorUserId, orderReader, ct);
 
     /// <summary>
     /// Hard delete of a payment recorded in error. The row is gone for good, so the audit entry carries everything

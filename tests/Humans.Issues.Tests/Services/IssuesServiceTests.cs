@@ -1,3 +1,4 @@
+using Humans.Issues.Jobs;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Tickets.Contracts;
@@ -43,6 +44,9 @@ namespace Humans.Issues.Tests.Services;
 /// </summary>
 public sealed class IssuesServiceTests
 {
+    public enum DeliveryFailure { Fault, Cancellation }
+    public enum EmailFailureStage { Lookup, Template, Enqueue }
+
     /// <summary>
     /// The viewer these tests act as unless they are about scoping: an Admin reaches every issue.
     /// The scoping rule itself is pinned by the "Who may reach one issue" cases further down.
@@ -182,6 +186,63 @@ public sealed class IssuesServiceTests
             ct.ThrowIfCancellationRequested();
             return Task.CompletedTask;
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(RetentionFailureKind.Shutdown)]
+    [Xunit.InlineData(RetentionFailureKind.DependencyCancellation)]
+    [Xunit.InlineData(RetentionFailureKind.Fault)]
+    public async Task RetentionJob_DistinguishesShutdownFromFaults(RetentionFailureKind kind)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var failure = kind == RetentionFailureKind.Fault
+            ? (Exception)new IOException("Retention unavailable")
+            : new OperationCanceledException(kind == RetentionFailureKind.Shutdown
+                ? shutdown.Token : new CancellationToken(true));
+        var retention = Substitute.For<IIssuesRetention>();
+        retention.PurgeExpiredAsync(shutdown.Token).Returns(async Task<int> (_) =>
+        {
+            if (kind == RetentionFailureKind.Shutdown) await shutdown.CancelAsync();
+            throw failure;
+        });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<CleanupIssuesJob>();
+        var job = new CleanupIssuesJob(retention, metrics, logger);
+
+        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeSameAs(failure);
+        await retention.Received(1).PurgeExpiredAsync(shutdown.Token);
+        metrics.DidNotReceive().RecordJobRun("cleanup_issues", "success");
+        if (kind == RetentionFailureKind.Shutdown)
+        {
+            metrics.DidNotReceive().RecordJobRun("cleanup_issues", "failure");
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+        }
+        else
+        {
+            metrics.Received(1).RecordJobRun("cleanup_issues", "failure");
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+        }
+    }
+
+    [HumansFact]
+    public async Task RetentionJob_RecordsSuccessAfterThePurgeCompletes()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var retention = Substitute.For<IIssuesRetention>();
+        retention.PurgeExpiredAsync(ct).Returns(2);
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<CleanupIssuesJob>();
+        var job = new CleanupIssuesJob(retention, metrics, logger);
+
+        await job.ExecuteAsync(ct);
+
+        await retention.Received(1).PurgeExpiredAsync(ct);
+        metrics.Received(1).RecordJobRun("cleanup_issues", "success");
+        metrics.DidNotReceive().RecordJobRun("cleanup_issues", "failure");
+        logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
     }
 
     [HumansFact]
@@ -732,10 +793,15 @@ public sealed class IssuesServiceTests
         return string.Format(info, new System.Resources.ResourceManager(typeof(IssuesResource)).GetString(key, info)!, arguments);
     }
 
-    public static TheoryData<NotificationSourceDefinition> FanoutNoticeSources => new(
-        IssuesNotificationSources.IssueSubmitted,
-        IssuesNotificationSources.IssueComment,
-        IssuesNotificationSources.IssueStatusChanged);
+    public static TheoryData<NotificationSourceDefinition, DeliveryFailure> FanoutNoticeFailures => new()
+    {
+        { IssuesNotificationSources.IssueSubmitted, DeliveryFailure.Fault },
+        { IssuesNotificationSources.IssueSubmitted, DeliveryFailure.Cancellation },
+        { IssuesNotificationSources.IssueComment, DeliveryFailure.Fault },
+        { IssuesNotificationSources.IssueComment, DeliveryFailure.Cancellation },
+        { IssuesNotificationSources.IssueStatusChanged, DeliveryFailure.Fault },
+        { IssuesNotificationSources.IssueStatusChanged, DeliveryFailure.Cancellation },
+    };
 
     public static TheoryData<NotificationSourceDefinition> AllNoticeSources => new(
         IssuesNotificationSources.IssueSubmitted,
@@ -744,8 +810,9 @@ public sealed class IssuesServiceTests
         IssuesNotificationSources.IssueAssigned);
 
     [HumansTheory]
-    [MemberData(nameof(FanoutNoticeSources))]
-    public async Task IssueNotices_FailedLanguageGroup_DoesNotBlockOtherRecipients(NotificationSourceDefinition source)
+    [MemberData(nameof(FanoutNoticeFailures))]
+    public async Task IssueNotices_FailedLanguageGroup_DoesNotBlockOtherRecipients(
+        NotificationSourceDefinition source, DeliveryFailure failure)
     {
         var reporter = SeedUser(Guid.NewGuid(), "Reporter");
         reporter.Email = "reporter@test.com";
@@ -758,12 +825,15 @@ public sealed class IssuesServiceTests
         failedRecipient.PreferredLanguage = "es";
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
             .Returns([failedRecipient.Id, second.Id]);
+        Exception deliveryError = failure == DeliveryFailure.Cancellation
+            ? new OperationCanceledException("notification dependency timed out")
+            : new IOException("first language delivery failed");
         _notificationService.SendAsync(
             Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<IReadOnlyList<Guid>>(4).Contains(failedRecipient.Id)
-                ? Task.FromException(new IOException("first language delivery failed")) : Task.CompletedTask);
+                ? Task.FromException(deliveryError) : Task.CompletedTask);
 
         Guid issueId;
         if (source == IssuesNotificationSources.IssueSubmitted)
@@ -792,6 +862,11 @@ public sealed class IssuesServiceTests
         ((IReadOnlyList<Guid>)arguments[4]!).Should().Equal(second.Id);
         arguments[6].Should().Be($"/Issues/{issueId}");
         arguments[7].Should().Be(Notice("fr", "Issue_Notice_Open"));
+        arguments[10].Should().Be(CancellationToken.None);
+        _logger.ReceivedCalls().Should().Contain(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)
+            && (LogLevel)call.GetArguments()[0]! == LogLevel.Error
+            && ReferenceEquals(call.GetArguments()[3], deliveryError));
     }
 
     [HumansTheory]
@@ -973,24 +1048,30 @@ public sealed class IssuesServiceTests
     }
 
     [HumansTheory]
-    [InlineData("name")]
-    [InlineData("template")]
-    [InlineData("enqueue")]
-    public async Task HandlerReply_EmailFailureStillNotifiesAndResolvesTheSavedReply(string failure)
+    [InlineData(EmailFailureStage.Lookup, DeliveryFailure.Fault)]
+    [InlineData(EmailFailureStage.Template, DeliveryFailure.Fault)]
+    [InlineData(EmailFailureStage.Enqueue, DeliveryFailure.Fault)]
+    [InlineData(EmailFailureStage.Lookup, DeliveryFailure.Cancellation)]
+    [InlineData(EmailFailureStage.Template, DeliveryFailure.Cancellation)]
+    [InlineData(EmailFailureStage.Enqueue, DeliveryFailure.Cancellation)]
+    public async Task HandlerReply_EmailFailureStillNotifiesAndResolvesTheSavedReply(
+        EmailFailureStage stage, DeliveryFailure failure)
     {
         var reporterId = Guid.NewGuid();
         var reporter = SeedUser(reporterId, "Reporter");
         reporter.Email = "reporter@test.com";
         var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Needs a reply");
-        var error = new IOException("Email preparation unavailable");
-        if (string.Equals(failure, "name", StringComparison.Ordinal))
+        Exception error = failure == DeliveryFailure.Cancellation
+            ? new OperationCanceledException("email dependency timed out")
+            : new IOException("Email preparation unavailable");
+        if (stage == EmailFailureStage.Lookup)
             _userService.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
                 .Returns(_ => ValueTask.FromException<UserInfo?>(error));
-        else if (string.Equals(failure, "enqueue", StringComparison.Ordinal))
+        else if (stage == EmailFailureStage.Enqueue)
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromException(error));
 
-        var service = string.Equals(failure, "template", StringComparison.Ordinal)
+        var service = stage == EmailFailureStage.Template
             ? new IssuesApplicationService(
                 _repository, _userService, _roleService, _emailService,
                 TestIssuesEmails.Create(_ => throw error), _notificationService, _notificationInbox,
@@ -1010,7 +1091,13 @@ public sealed class IssuesServiceTests
             IssuesNotificationSources.IssueComment, NotificationClass.Informational, NotificationPriority.Normal,
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(reporterId)),
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            CancellationToken.None);
+        await _notificationInbox.Received(1).ResolveBySourceKeyAsync(
+            IssuesNotificationSources.IssueSubmitted, issueId.ToString(), Admin.UserId, CancellationToken.None);
+        _logger.ReceivedCalls().Should().Contain(call =>
+            string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)
+            && (LogLevel)call.GetArguments()[0]! == LogLevel.Error
+            && ReferenceEquals(call.GetArguments()[3], error));
     }
 
     [HumansFact]
@@ -2874,3 +2961,5 @@ public sealed class IssuesServiceTests
                 .ToDictionary(x => x.Key, x => x.Info!));
     }
 }
+
+public enum RetentionFailureKind { Shutdown, DependencyCancellation, Fault }
