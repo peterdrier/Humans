@@ -132,6 +132,7 @@ public class PleoBookingTests
         PleoBooking.Readiness(Entry("a", -10m, category: null), Open).Should().Be(PleoSpendState.NoCategory);
         PleoBooking.Readiness(Entry("a", 10m, category: null), Open).Should().Be(PleoSpendState.NoCategory);
         PleoBooking.Readiness(Entry("a", -10m, code: "62999999"), Open).Should().Be(PleoSpendState.NotMapped);
+        PleoBooking.Readiness(Entry("a", -10m, code: "57200003"), Open).Should().Be(PleoSpendState.NotMapped, "only 629 accounts");
     }
 
     [HumansFact]
@@ -243,19 +244,20 @@ public class PleoBookingTests
     }
 
     [HumansFact]
-    public async Task Book_RefusedCreateReleasesTheClaim_ATimeoutKeepsItAndStops()
+    public async Task Book_RefusedCreateReleasesTheClaim_AnUnreadableOrTimedOutCreateKeepsIt()
     {
-        GivenEntries(Entry("a", -10m, day: 1), Entry("b", -11m, day: 2), Entry("c", -12m, day: 3));
+        GivenEntries(Entry("a", -10m, day: 1), Entry("b", -11m, day: 2), Entry("c", -12m, day: 3), Entry("d", -13m, day: 4));
         _write.CreatePurchaseDocumentAsync(default!, default).ReturnsForAnyArgs(
-            Task.FromException<string>(new HoldedPermanentException("400")),
+            Task.FromException<string>(new HoldedPermanentException(400, null, "400")),
+            Task.FromException<string>(new HoldedPermanentException("created, no id in the answer")),
             Task.FromException<string>(new HoldedTransientException("timeout")));
 
         var run = await Booking().BookAsync(null, null);
 
         run.Lines.Select(l => (l.PleoId, l.Outcome)).Should().Equal(
-            ("a", PleoBookingOutcome.Failed), ("b", PleoBookingOutcome.Failed));
+            ("a", PleoBookingOutcome.Failed), ("b", PleoBookingOutcome.Failed), ("c", PleoBookingOutcome.Failed));
         run.Refused.Should().Contain("Stopped");
-        _claims.Should().Equal("b");
+        _claims.Should().BeEquivalentTo(["b", "c"], "only a 4xx proves nothing was created");
     }
 
     [HumansFact]
@@ -342,5 +344,18 @@ public class PleoBookingTests
         view.Changes.Single(c => string.Equals(c.PleoId, "refund", StringComparison.Ordinal)).Corrections.Should().ContainSingle().Which
             .Should().Match<PleoCorrection>(c => c.Debit == Food && c.Credit == Geeks && c.Amount == 30m);
         view.Changes.Single(c => string.Equals(c.PleoId, "gone", StringComparison.Ordinal)).Corrections.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void Corrections_AnEntryCorrectedToZeroIsStillCompared()
+    {
+        GivenPurchase("zeroed", 100m);
+        _expenseLines.Add(Line(10, 1, 100m, 0m, "Purchase Pleo-zeroed", Food));
+        _expenseLines.Add(Line(11, 2, 0m, 100m, "Pleo zeroed: importe cambiado / amount changed", Food));
+
+        var view = PleoBooking.Classify(Snapshot(Entry("zeroed", -20m)));
+
+        view.Changes.Single().Corrections.Should().ContainSingle().Which.Should().Match<PleoCorrection>(c =>
+            c.Debit == Food && c.Credit == PleoBooking.PleoTreasury && c.Amount == 20m);
     }
 }

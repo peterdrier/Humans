@@ -103,9 +103,10 @@ internal sealed partial class PleoBooking(
         return AccountOf(e, openAccounts) is null ? PleoSpendState.NotMapped : PleoSpendState.Ready;
     }
 
+    /// <summary>Only a 629 account: corrections read 629 lines, so a booking anywhere else could drift unseen.</summary>
     private static int? AccountOf(PleoEntryInfo e, IReadOnlySet<int> openAccounts) =>
         int.TryParse(e.HoldedCode, NumberStyles.None, CultureInfo.InvariantCulture, out var n)
-        && openAccounts.Contains(n) ? n : null;
+        && IsExpenseAccount(n) && openAccounts.Contains(n) ? n : null;
 
     private static bool IsExpenseAccount(int n) => n / 100000 == 629;
 
@@ -266,18 +267,20 @@ internal sealed partial class PleoBooking(
                 .ToDictionary(a => a.Key, a => a.Sum(x => x.Line.Debit - x.Line.Credit))
                 .Where(kv => kv.Value != 0m)
                 .ToDictionary(kv => kv.Key, kv => kv.Value), StringComparer.Ordinal);
+        // An id whose lines net to zero (fully corrected away) is still read; only an id with no line at all is not.
         var rows = spend.ToDictionary(r => r.Entry.Id, StringComparer.Ordinal);
         var changes = new List<PleoChangeRow>();
 
         foreach (var id in purchases.Keys.Union(holdedById.Keys, StringComparer.Ordinal).Order(StringComparer.Ordinal))
         {
-            var held = holdedById.GetValueOrDefault(id) ?? new Dictionary<int, decimal>();
+            var read = holdedById.TryGetValue(id, out var lines);
+            var held = lines ?? new Dictionary<int, decimal>();
             if (!rows.TryGetValue(id, out var row))
             {
                 changes.Add(new PleoChangeRow(id, null, held, "no longer settled in Pleo; check it by hand", []));
                 continue;
             }
-            if (held.Count == 0) continue;
+            if (!read) continue;
             if (row.Account is not { } current || row.Entry.AmountEur is not { } amount)
             {
                 changes.Add(new PleoChangeRow(id, row.Entry, held,
@@ -581,9 +584,10 @@ internal sealed partial class PleoBooking(
                         }],
                     }, CancellationToken.None);
                 }
-                catch (HoldedPermanentException)
+                catch (HoldedPermanentException ex) when (ex.StatusCode is >= 400 and < 500)
                 {
-                    // Refused outright: nothing was created, so the entry may be booked again.
+                    // Refused outright: nothing was created, so the entry may be booked again. A create Holded accepted
+                    // but answered unreadably (no status code) keeps its claim: the purchase may exist.
                     await repo.ReleasePleoBookingClaimAsync(e.Id, CancellationToken.None);
                     throw;
                 }
