@@ -5,7 +5,7 @@
     var isTeamOrder = order.CounterpartyType == OrderCounterpartyType.Team;
     var checkoutMaximum = Math.Min(order.BalanceEur, StoreStripePayments.MaximumCheckoutAmountEur);
     var pendingTotal = order.Payments
-        .Where(p => p.Status == PaymentStatus.Pending)
+        .Where(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0)
         .Sum(p => p.AmountEur);
 }
 

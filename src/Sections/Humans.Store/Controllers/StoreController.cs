@@ -247,12 +247,17 @@ internal sealed class StoreController(
             SetError(refusal);
         else
         {
-            var message = result.RecordedCount == 0
-                ? "No new Stripe refunds to record."
-                : $"Recorded {result.RecordedCount} Stripe refund(s) totalling {result.TotalEur.ToEuro()}.";
-            if (result.UnsettledCount > 0)
-                message += $" {result.UnsettledCount} refund(s) still pending in Stripe; check again once they complete.";
-            SetSuccess(message);
+            var parts = new List<string>();
+            if (result.RecordedCount > 0)
+                parts.Add($"Recorded {result.RecordedCount} Stripe refund(s) totalling {result.TotalEur.ToEuro()}"
+                    + (result.PendingCount > 0 ? $", {result.PendingCount} still pending in Stripe." : "."));
+            if (result.SettledCount > 0)
+                parts.Add($"{result.SettledCount} pending refund(s) completed.");
+            if (result.CancelledCount > 0)
+                parts.Add($"{result.CancelledCount} refund(s) failed or were cancelled in Stripe and no longer count.");
+            var message = parts.Count == 0 ? "No new Stripe refunds to record." : string.Join(" ", parts);
+            if (result.CancelledCount > 0) SetError(message);
+            else SetSuccess(message);
         }
         return RedirectToAction(nameof(Order), new { id });
     }
