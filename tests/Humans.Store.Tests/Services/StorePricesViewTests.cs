@@ -70,7 +70,7 @@ public class StorePricesViewTests
     }
 
     [HumansFact]
-    public async Task PriceHistory_UsesHostColumnLabels()
+    public async Task OrderHistory_UsesHostColumnLabels()
     {
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
@@ -87,8 +87,9 @@ public class StorePricesViewTests
 
         var table = html[html.LastIndexOf("<thead>", StringComparison.Ordinal)..];
         var headers = table[..table.IndexOf("</thead>", StringComparison.Ordinal)];
-        foreach (var label in new[] { "Date", "Action", "Description" })
+        foreach (var label in new[] { "Date", "Who", "Action", "Description" })
             headers.Should().Contain(HtmlEncoder.Default.Encode(label));
+        html.Should().Contain("Order history").And.Contain("Price history fixture");
     }
 
     [HumansFact]
@@ -144,7 +145,7 @@ public class StorePricesViewTests
         builder.Services.AddLocalization();
         var audit = Substitute.For<IAuditViewerService>();
         audit.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(history ?? []);
         builder.Services.AddSingleton(audit);
         var authorization = Substitute.For<IAuthorizationService>();

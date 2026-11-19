@@ -14,12 +14,17 @@ public interface IAuditViewerService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetForUserAsync(Guid userId, int count, CancellationToken ct = default);
 
-    /// <summary><paramref name="actions"/> are stored names, matched exactly; null or empty means every action.</summary>
+    /// <summary>
+    /// <paramref name="actions"/> are stored names, matched exactly; null or empty means every action.
+    /// <paramref name="includeRelated"/> also matches <paramref name="entityId"/> as the related entity, so one call
+    /// returns everything logged about it, such as an order's lines and payments.
+    /// </summary>
     Task<IReadOnlyList<AuditEvent>> GetFilteredAsync(
         string? entityType,
         Guid? entityId,
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default);
 }

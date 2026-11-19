@@ -42,4 +42,15 @@ internal sealed class StoreAuditActions : AuditActionContributor
 
     // A Store admin's repair run copied a legacy payment's int Method into its string MethodName column.
     public static readonly AuditActionDefinition StorePaymentMethodBackfilled = new("StorePaymentMethodBackfilled");
+
+    /// <summary>
+    /// An order's history: what is logged about the order, its lines, payments and invoice, plus catalog price changes
+    /// to its products. Excludes product create/update noise.
+    /// </summary>
+    public static IReadOnlyList<AuditActionDefinition> OrderHistory { get; } =
+    [
+        StoreOrderCreated, StoreLineAdded, StoreLineRemoved, StoreCounterpartyEdited, StoreProductPriceChanged,
+        StoreInvoiceIssued, StorePaymentRecorded, StorePaymentSettled, StorePaymentFailed, StorePaymentExpired,
+        StorePaymentDeleted, StoreOrderYearBackfilled, StorePaymentMethodBackfilled
+    ];
 }
