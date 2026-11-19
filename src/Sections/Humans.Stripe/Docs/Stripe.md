@@ -95,7 +95,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 ## Invariants
 
 - No Stripe.NET SDK type appears on `Contracts/`; consumers see only `StripePaymentDetails`,
-  `StoreCheckoutWebhookEvent` and `StoreCheckoutSessionData` — verified by
+  `StoreCheckoutWebhookEvent`, `StoreCheckoutSessionData` and `StripeAccountBalance` — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
 - `Humans.Stripe` is the only production project with a `Stripe.net` package reference.
@@ -196,7 +196,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Outbound, contracts leaves only: Finance.Contracts (`FinancePolicies`) and Users.Contracts
   (`IUserService`, through `HumansControllerBase`). Neither reaches back to Stripe, so
   `Humans.Store → Humans.Stripe` and `Humans.Tickets → Humans.Stripe` stay acyclic.
-- Inbound: **Store** injects `IStripeService` for checkout creation, webhook parsing and
+- Inbound: **Finance** injects `IStripeMirrorService` for the Stripe rows of /Finance's Cash on hand. **Store** injects `IStripeService` for checkout creation, webhook parsing and
   reconciliation (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
   fee enrichment on `TicketOrder` (`TicketSyncService`).
 
@@ -210,7 +210,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 | Public interface | Methods | Notes |
 |---|---:|---|
-| `IStripeService` | 4 + 3 flags | The whole outward surface. |
+| `IStripeService` | 4 + 3 flags | The live connector. |
+| `IStripeMirrorService` | 1 | Mirror reads: each account's EUR balance as last swept. Never calls Stripe. |
 | `I<Section>Write` | — | The connector's one write is a call to Stripe, not to a table. |
 
 - Services never import `Microsoft.EntityFrameworkCore`; `Data/Repository.cs` (`IStripeMirrorRepository`) is the only reader and writer of the mirror tables, and only `StripeMirrorService` calls it.

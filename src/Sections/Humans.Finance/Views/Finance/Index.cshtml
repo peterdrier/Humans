@@ -11,13 +11,16 @@
     Func<FinanceAccountLineVm, IHtmlContent> sourceCell = @<text>
         @if (item.Source is { } source)
         {
-            <span class="@(source.Balance is null ? "text-danger" : "")">@(source.Balance?.ToEuro() ?? "unknown")</span>
+            var sourceTitle = source.Unknown
+                ?? (source.Pending is { } pending ? $"Includes {pending.ToEuro()} pending. " : "")
+                   + $"Mirror read {source.ReadAt?.ToDateTime() ?? "never"}.";
+            <span class="@(source.Balance is null ? "text-danger" : "")" title="@sourceTitle">@(source.Balance?.ToEuro() ?? "unknown")</span>
         }
     </text>;
     Func<FinanceAccountLineVm, IHtmlContent> differenceCell = @<text>
         @if (item.Source is { } source)
         {
-            <a asp-action="@source.ReconcileAction" class="@(item.Difference == 0m ? "text-success" : "text-danger fw-bold")">@(item.Difference?.ToEuro() ?? "unknown")</a>
+            <a href="@source.ReconcileUrl" class="@(item.Difference == 0m ? "text-success" : "text-danger fw-bold")">@(item.Difference?.ToEuro() ?? "unknown")</a>
         }
     </text>;
     Func<FinanceAccountLineVm, IHtmlContent> unreconciledCell = @<text>
