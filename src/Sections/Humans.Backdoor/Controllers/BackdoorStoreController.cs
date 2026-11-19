@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
 
-/// <summary>Any active key may read; there is no role scoping. No paging: a season is a few hundred rows.</summary>
+/// <summary>Any active key may read lines and payments; order history needs a Store admin. No paging: a season is a few hundred rows.</summary>
 [ApiController]
 [Route("api/backdoor/store")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
@@ -81,11 +81,13 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
 
     /// <summary>
     /// One object per audit entry about an order of <paramref name="year"/>: lines added and removed, payments, refunds,
-    /// deposit returns, invoice issuance and catalog price changes to its products. Oldest first within an order.
+    /// deposit returns, invoice issuance and catalog price changes to its products. Oldest first within an order. It carries
+    /// the admin-only entries the order page shows Store admins, so the key's holder must be one.
     /// </summary>
     [HttpGet("order-history")]
     public async Task<IActionResult> OrderHistory([FromQuery] int? year, CancellationToken ct)
     {
+        if (!StoreRoles.CanAdministerStore(User)) return Forbid();
         if (year is null) return BadRequest(new { error = "Missing 'year'." });
 
         var history = await store.GetOrderHistoryAsync(year.Value, GetCurrentUserId()!.Value, ct);

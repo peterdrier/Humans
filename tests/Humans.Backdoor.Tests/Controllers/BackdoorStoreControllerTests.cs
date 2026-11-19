@@ -31,7 +31,8 @@ public class BackdoorStoreControllerTests
             HttpContext = new DefaultHttpContext
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity(
-                    [new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString())], "test")),
+                    [new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString()), new Claim(ClaimTypes.Role, StoreRoles.StoreAdmin)],
+                    "test")),
             },
         };
     }
@@ -140,5 +141,17 @@ public class BackdoorStoreControllerTests
         json.Should().Contain($@"""actorUserId"":""{actorId}""");
         json.Should().Contain(@"""actorName"":""Lead""");
         json.Should().Contain(@"""description"":""Removed 3 lines""");
+    }
+
+    [HumansFact]
+    public async Task OrderHistory_is_refused_to_a_key_whose_holder_cannot_administer_the_store()
+    {
+        _sut.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString()), new Claim(ClaimTypes.Role, "Board")], "test"));
+
+        var result = await _sut.OrderHistory(2026, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _store.DidNotReceive().GetOrderHistoryAsync(Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }
