@@ -59,6 +59,7 @@ internal sealed class StoreOrderAdministration(
         string? externalRef,
         string? notes,
         LocalDate? valueDate,
+        LocalDate today,
         Guid actorUserId,
         StoreOrderReader orderReader, CancellationToken ct = default)
     {
@@ -76,8 +77,7 @@ internal sealed class StoreOrderAdministration(
             return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs a reference (the Holded bank movement id).");
         if (method == PaymentMethod.BankTransfer && valueDate is null)
             return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs its value date.");
-        var now = clock.GetCurrentInstant();
-        if (valueDate > now.InUtc().Date)
+        if (valueDate > today)
             return RefuseAdminMutation(orderId, actorUserId, "The value date cannot be in the future.");
 
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
@@ -122,7 +122,7 @@ internal sealed class StoreOrderAdministration(
             Notes = notes,
             // Midnight UTC falls on the same calendar day in UTC and in the org zone (Europe/Madrid), so the value
             // date reads back unchanged wherever ReceivedAt is shown.
-            ReceivedAt = valueDate?.AtMidnight().InUtc().ToInstant() ?? now,
+            ReceivedAt = valueDate?.AtMidnight().InUtc().ToInstant() ?? clock.GetCurrentInstant(),
             RecordedByUserId = actorUserId,
         };
         await repo.AddPaymentAsync(payment, ct);
