@@ -332,4 +332,6 @@
   <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>Significant contribution must not exceed 2000 characters.</value></data>
   <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Role understanding must not exceed 2000 characters.</value></data>
   <data name="Governance_Application_MotivationRequired" xml:space="preserve"><value>A motivation statement is required for Colaborador and Asociado applications.</value></data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Applications pending your vote</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
 </root>

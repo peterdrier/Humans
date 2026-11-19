@@ -798,4 +798,6 @@
   <data name="Governance_Application_MotivationRequired" xml:space="preserve">
     <value>Une déclaration de motivation est requise pour les candidatures Colaborador et Asociado.</value>
   </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Candidatures en attente de ton vote</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>le Conseil</value></data>
 </root>

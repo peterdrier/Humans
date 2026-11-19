@@ -430,7 +430,8 @@ The internal `ApplicationReader` owns member application history/detail, filtere
 
 | Public interface | Notes |
 |---|---|
-| `IGovernanceService` | Read contract: `GetUserApplicationsAsync`, `GetUserIdsWithPendingApplicationAsync`, `GetSubmittedApplicationForUserAsync`, `GetUnvotedApplicationCountAsync` (admin nav badge, Notifications meter), the active-tier lookups `SystemTeamSyncJob` uses, and the tier reads `GetMembershipTierAsync` / `GetMembershipTiersAsync`. DTOs only. |
+| `IGovernanceService` | Read contract: the active-tier lookups `SystemTeamSyncJob` uses and the tier reads `GetMembershipTierAsync` / `GetMembershipTiersAsync`. DTOs only. Tier applications are never read outside Governance: their reads sit on the internal `IGovernanceManagement`. |
+| `INotificationMeterContributor` (Notifications' contract) | `GovernanceNotificationMeters` pushes the Board's "applications pending your vote" meter, from the per-user cached `GetUnvotedApplicationCountAsync`. |
 
 The internal `AssemblyVoteRosterBuilder` owns the opening-time electorate snapshot: active approved terms from Governance, Board roles from Auth, the indicative Volunteers audience from Teams, and active-account filtering through Users. Official precedence, deduplication, tier attribution, clock reads and cancellation are unchanged. The builder performs no writes; `AssemblyVoteAdministration.OpenAsync` retains both deadline checks, the atomic draft-to-open roster save, and post-save audit and notices. No public contract or DI registration is added.
 
@@ -454,8 +455,8 @@ The internal `ApplicationDecisionNotices` owns approval/rejection recipient look
 
 ### Touch-and-clean guidance
 
-- Nothing outside this section reads the governance-owned tables. `OnboardingService`, `SystemTeamSyncJob` and `NotificationMeterProvider` all go through `IGovernanceService`.
-- The board-voting methods have no delegating wrapper; callers reach them directly. `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync` and `CastBoardVoteAsync` are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the cross-section member, and it sits on `IGovernanceService` (this section's own `ISectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` and `NoteTooLong` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
+- Nothing outside this section reads the governance-owned tables. `OnboardingService` and `SystemTeamSyncJob` go through `IGovernanceService`; Notifications reads nothing from Governance and gets the voting meter through `GovernanceNotificationMeters`.
+- The board-voting methods have no delegating wrapper; callers reach them directly. `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync` and `CastBoardVoteAsync` are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` sits on the internal `IGovernanceManagement` (this section's own nav pill, Governance index, and `GovernanceNotificationMeters`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` and `NoteTooLong` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
 
 ## Issue queue
 

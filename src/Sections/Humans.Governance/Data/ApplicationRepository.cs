@@ -120,23 +120,6 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
             .Distinct()
             .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new HashSet<Guid>();
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var matched = await ctx.Applications
-            .AsNoTracking()
-            .Where(a => userIds.Contains(a.UserId) && a.Status == ApplicationStatus.Submitted)
-            .Select(a => a.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        return matched.ToHashSet();
-    }
-
     public Task<MemberApplication?> GetSubmittedForUserAsync(
         Guid userId, CancellationToken ct = default) =>
         WithContextAsync(ctx => ctx.Applications

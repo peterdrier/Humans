@@ -77,7 +77,6 @@
     <value>Cues de treball</value>
   </data>
   <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Revisions de consentiment pendents</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Sol·licituds pendents del teu vot</value></data>
   <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminacions de comptes pendents</value></data>
   <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Sincronitzacions de Google fallides</value></data>
   <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Perfils d’incorporació pendents</value></data>

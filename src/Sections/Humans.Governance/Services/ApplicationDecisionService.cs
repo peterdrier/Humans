@@ -325,10 +325,6 @@ internal sealed class ApplicationDecisionService(
     public Task<ApplicationAdminDetailDto?> GetApplicationDetailAsync(
         Guid applicationId, CancellationToken ct = default) => reader.GetApplicationDetailAsync(applicationId, ct);
 
-    public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        reader.GetUserIdsWithPendingApplicationAsync(userIds, ct);
-
     public Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
         Guid userId, CancellationToken ct = default) => reader.GetSubmittedApplicationForUserAsync(userId, ct);
 

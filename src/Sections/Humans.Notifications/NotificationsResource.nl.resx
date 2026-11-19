@@ -77,7 +77,6 @@
     <value>Werkwachtrijen</value>
   </data>
   <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Toestemmingscontroles in afwachting</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Aanvragen die op je stem wachten</value></data>
   <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Accountverwijderingen in afwachting</value></data>
   <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Mislukte Google-synchronisaties</value></data>
   <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboardingprofielen in afwachting</value></data>

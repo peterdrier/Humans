@@ -128,10 +128,6 @@ internal sealed class ApplicationReader(
             History: history);
     }
 
-    public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        repository.GetUserIdsWithSubmittedAsync(userIds, ct);
-
     public async Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
         Guid userId, CancellationToken ct = default)
     {

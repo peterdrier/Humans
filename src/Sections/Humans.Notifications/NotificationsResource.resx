@@ -48,7 +48,6 @@
   <data name="Notifications_Section_Resolved" xml:space="preserve"><value>Resolved</value></data>
   <data name="Notifications_Section_WorkQueues" xml:space="preserve"><value>Work queues</value></data>
   <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Consent reviews pending</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Applications pending your vote</value></data>
   <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Pending account deletions</value></data>
   <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Failed Google sync events</value></data>
   <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboarding profiles pending</value></data>

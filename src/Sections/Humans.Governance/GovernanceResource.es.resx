@@ -798,4 +798,6 @@
   <data name="Governance_Application_MotivationRequired" xml:space="preserve">
     <value>Se requiere una declaración de motivación para las solicitudes de Colaborador y Asociado.</value>
   </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Solicitudes pendientes de tu voto</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
 </root>

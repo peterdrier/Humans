@@ -22,7 +22,7 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class GovernanceIndexServiceTests
 {
-    private readonly IGovernanceService Applications = Substitute.For<IGovernanceService>();
+    private readonly IGovernanceManagement Applications = Substitute.For<IGovernanceManagement>();
     private readonly ILegalDocumentService LegalDocuments = Substitute.For<ILegalDocumentService>();
     private readonly IUserService Users = Substitute.For<IUserService>();
     private readonly IAssemblyVoteService Votes = Substitute.For<IAssemblyVoteService>();

@@ -24,7 +24,7 @@ namespace Humans.Users.Controllers;
 internal sealed class UsersAdminController(
     IUserManagement userService,
     IUserEmailService userEmailService,
-    IGovernanceService applicationDecisionService,
+    IGovernanceService governanceService,
     IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
@@ -105,7 +105,7 @@ internal sealed class UsersAdminController(
         if (info is null)
             return NotFound();
 
-        var membershipTier = await applicationDecisionService.GetMembershipTierAsync(id, ct);
+        var membershipTier = await governanceService.GetMembershipTierAsync(id, ct);
         var userEmails = await userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await consentService.GetConsentRecordCountAsync(id, ct);
 

@@ -798,4 +798,6 @@
   <data name="Governance_Application_MotivationRequired" xml:space="preserve">
     <value>Voor aanvragen voor Colaborador en Asociado is een motivatie verplicht.</value>
   </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Aanvragen die op je stem wachten</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>het bestuur</value></data>
 </root>
