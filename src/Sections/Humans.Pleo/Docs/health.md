@@ -117,4 +117,4 @@ and the controller see.
 
 | Date | Outcome | PR |
 |---|---|---|
-| 2026-11-19 | First run. Docs trued to the sweep's category writes, the real dependencies and the code's structure; stale comments and the sync card's call count corrected; the sweep gate and the hand unlink/add audit pinned; two behaviours queued for Peter (a hand unlink is undone by the next sweep; blocking counts and their lists disagree) | pending |
+| 2026-11-19 | First run. Docs trued to the sweep's category writes, the real dependencies and the code's structure; stale comments and the sync card's call count corrected; the sweep gate and the hand unlink/add audit pinned; two behaviours queued for Peter (a hand unlink is undone by the next sweep; blocking counts and their lists disagree) | peterdrier/Humans#2442 |
