@@ -53,6 +53,7 @@ public class ShiftAdminControllerTests
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly IShiftSignupService _signupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
+    private readonly IShiftRotaRows _rotaRows = Substitute.For<IShiftRotaRows>();
     private readonly IVolunteerTrackingManagement _tracking = Substitute.For<IVolunteerTrackingManagement>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly ILogger<ShiftAdminController> _logger = Substitute.For<ILogger<ShiftAdminController>>();
@@ -150,11 +151,10 @@ public class ShiftAdminControllerTests
             Check("settings", call.Arg<CancellationToken>());
             return Task.FromResult<BurnSettingsInfo?>(Event);
         });
-        _shiftView.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(call =>
+        _rotaRows.GetRotaRowsAsync(Arg.Is<IReadOnlyCollection<Guid>?>(ids => ids != null && ids.Contains(rota.Id)), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Check("view", call.Arg<CancellationToken>());
-            return new ValueTask<ShiftRotaView>(new ShiftRotaView(rota.Id, rota, [], [],
-                [new ShiftSignup { UserId = UserId, Status = SignupStatus.Confirmed }]));
+            return Task.FromResult(RecipientRows(rota));
         });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -277,8 +277,8 @@ public class ShiftAdminControllerTests
         var shift = MakeShift(rota);
         _shiftMgmt.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(rota));
         _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(shift));
-        _shiftView.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(new ShiftRotaView(
-            rota.Id, rota, [], [], [new ShiftSignup { UserId = UserId, Status = SignupStatus.Confirmed }]));
+        _rotaRows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>())
+            .Returns(RecipientRows(rota));
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [UserId] = MakeUserInfo(UserId) });
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
@@ -301,7 +301,7 @@ public class ShiftAdminControllerTests
         {
             case 0:
                 await _shiftMgmt.Received(1).GetRotaAsync(rota.Id, cancellation.Token);
-                await _shiftView.Received(1).GetRotaAsync(rota.Id, cancellation.Token);
+                await _rotaRows.Received(1).GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), cancellation.Token);
                 await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
                 break;
             case 1:
@@ -1114,7 +1114,7 @@ public class ShiftAdminControllerTests
             _shiftMgmt,
             _burnSettings,
             _signupService,
-            _shiftView,
+            _rotaRows,
             _userService,
             authorization ?? Substitute.For<IAuthorizationService>(),
             Substitute.For<IClock>(),
@@ -1158,6 +1158,12 @@ public class ShiftAdminControllerTests
         Duration = Duration.FromHours(4),
         MaxVolunteers = 5,
     };
+
+    private static IReadOnlyList<ShiftAdminRota> RecipientRows(Rota rota) =>
+    [
+        new(ToInfo(rota), [new ShiftAdminShift(ToShiftInfo(MakeShift(rota)),
+            [new ShiftAdminSignup(Guid.NewGuid(), UserId, null, SignupStatus.Confirmed, Instant.MinValue)])])
+    ];
 
     private static RotaInfo ToInfo(Rota rota) => new(
         rota.Id, rota.EventSettingsId, rota.TeamId, rota.Name, rota.Description, rota.PracticalInfo,

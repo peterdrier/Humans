@@ -21,11 +21,8 @@ live on `ShiftRepository`'s `.Signups.cs` partial, surfaced on
 `IShiftManagementRepository`. `VolunteerTrackingRepository` owns only
 `VolunteerBuildStatuses` and `GeneralAvailability`.
 
-`ShiftViewService` provides the inner
-implementation of `IShiftView`; it is wrapped by
-`Humans.Shifts.Services.CachingShiftViewService`
-(Singleton decorator with two `TrackedCache` dictionaries for user and
-rota views).
+`ShiftViewService` builds the user views behind `IShiftView`, which
+`CachingShiftService` serves.
 
 ### CachingShiftService (Singleton)
 
@@ -59,19 +56,12 @@ Repository: `IShiftManagementRepository`.
 | ShiftTags | R/W |
 | VolunteerTagPreferences | R/W |
 
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `dashboard-overview:{eventId}:{period}` (`OverviewCacheKey`) | 5 min sliding | yes | yes | yes (via `EvictDashboardCaches`) |
-| `dashboard-coordinator-activity:{eventId}:{period}` (`CoordinatorActivityCacheKey`) | 5 min sliding | yes | yes | yes (via `EvictDashboardCaches`) |
-| `dashboard-trends:{eventId}:{window}:{period}` (`TrendsCacheKey`) | 5 min sliding | yes | yes | yes (via `EvictDashboardCaches`) |
-| `dashboard-overall-coverage` | 5 min sliding | yes | yes | yes (via `EvictDashboardCaches`, on EventSettings change) |
-
 Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
 plus `IServiceProvider` for cycle-breaking, which
 lazy-resolves the read surfaces `ITeamService`, `IUserService`,
 `ICampService`, `IRoleAssignmentService`, and
-`ITicketService`. Evicts the view cache through `CachingShiftViewService`. Injects
-`IMemoryCache` directly for the dashboard slots. `GetCoordinatorTeamIdsAsync` has no
+`ITicketService`. No cache; dashboard figures are computed from the cached rota rows on
+each request. `GetCoordinatorTeamIdsAsync` has no
 cache of its own: Teams' singleton decorator answers it from RAM. Implements
 `IUserMerge`. Also exposes the Cantina-gating predicates
 (`HasQualifyingCantinaSignupAsync`, `GetOnSiteUserIdsForDayAsync`).
@@ -101,7 +91,7 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 Cross-section calls via `IShiftManagement`, `ISettingsService` (via
 `EventCalendarResolver`, nobodies-collective/Humans#1630),
 `IAuditLogService`, `INotificationEmitter`, `IAdminAuthorizationService`,
-`IUserService` (user lookups), `CachingShiftViewService`, plus `IServiceProvider`
+`IUserService` (user lookups), plus `IServiceProvider`
 (lazy-resolves `ITeamService` for coordinator/team-name lookups).
 Holds the GDPR export and erasure that `CachingShiftService` exposes as `IUserDataContributor`. Implements `IUserMerge`, `ICalendarFeedContributor`
 (personal iCal feed contributor — the user's Confirmed and Pending shift
@@ -133,7 +123,7 @@ Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`.
 | Shifts | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 
-Cross-section calls via `IUserService`, `ITicketService` (`GetAllParticipationsAsync`), `IAuditLogService` (self-service availability saves); evicts through `CachingShiftViewService`. No
+Cross-section calls via `IUserService`, `ITicketService` (`GetAllParticipationsAsync`), `IAuditLogService` (self-service availability saves). No
 cache. Holds the gap-detection algorithm + heatmap data assembly,
 plus the full day-availability / camp-setup / day-off mutation surface.
 Build-eligibility signups (`ShiftSignups` + `EventSettings`) read through
@@ -157,7 +147,7 @@ Implements `IVolunteerTrackingExportService`, `IEarlyEntryProvider`
 (contributes confirmed-build-shift early-entry rows). No cache, no
 direct DB access beyond the export query.
 
-### ShiftViewService (Scoped — wrapped by CachingShiftViewService Singleton decorator)
+### ShiftViewService (Scoped, keyed inner of CachingShiftService)
 
 Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`. User-view signups come from the
 rota cache (`IShiftRotaRows`), not a repository read.
@@ -167,31 +157,16 @@ rota cache (`IShiftRotaRows`), not a repository read.
 | EventSettings | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 | Shifts | R | IShiftManagementRepository |
-| ShiftSignups | R | IShiftManagementRepository (rota view signups) |
 | VolunteerEventProfiles | R | IShiftManagementRepository |
 | ShiftTags | R | IShiftManagementRepository |
 | VolunteerTagPreferences | R | IShiftManagementRepository |
 | GeneralAvailability | R | IVolunteerTrackingRepository |
 | VolunteerBuildStatuses | R | IVolunteerTrackingRepository |
 
-Implements the section-internal `IShiftRowView`: assembles user + rota
-views from two repositories and forwards Settings change callbacks to
-`IShiftManagement.InvalidateDashboardCaches` for event-keyed dashboard eviction. Wrapped by `CachingShiftViewService`
-which caches the per-rota view; user views pass straight through. Service-keyed as `"shift-view-inner"` so the decorator
-can resolve it without self-recursion.
+Implements the section-internal `IShiftRowView`: assembles user views from two
+repositories plus the cached rota rows. Keyed `"shift-inner"`; `CachingShiftService`
+resolves it per call in a new scope. Nothing here is cached.
 
-### CachingShiftViewService (Singleton, `Humans.Shifts.Services`)
-
-| Cache | Type | Read | Write | Invalidate |
-|-------|------|------|-------|------------|
-| `TrackedCache<Guid, ShiftRotaView>` (`ShiftView.RotaView`, in-process, no `IMemoryCache`) | Per-Entity | yes | yes | yes (`InvalidateRota`, called by the section's own writes) |
-
-Implements `IShiftView`; its `Invalidate*` methods are called only by Shifts' own
-services, so nothing outside the section evicts it. Resolves the inner
-Scoped `IShiftRowView` via `IServiceScopeFactory` to honour scope rules.
-Settings change callbacks clear the rota views and synchronously delegate to that
-same keyed inner; the decorator resolves no other service.
-The cache is surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)
 
@@ -203,14 +178,8 @@ section's own pages. Section-internal. No cache (single active row, cold path).
 
 ### RotaCoordinatorMessageService (Scoped)
 
-Repository: `IShiftManagementRepository`.
-
-| Table | R/W |
-|-------|-----|
-| ShiftSignups | R (loaded via `GetRotaAsync(RotaReadShape.View)`) |
-| Rotas | R |
-| Shifts | R |
-| EventSettings | R (team-level dispatch path — active event resolved via `EventCalendarResolver`, not this repo) |
+No repository: rotas, shifts and signups come from the cached rota rows (`IShiftRotaRows`);
+the active event is resolved via `EventCalendarResolver`.
 
 Cross-section calls via `ITeamService`, `IUserService`,
 `IEmailService`, `IAuditLogService`; builds its own messages through the
@@ -229,18 +198,9 @@ built through `ShiftsEmails`.
 
 ### WorkloadService (Scoped) — `Shifts/Workload/`
 
-Repository: `IShiftManagementRepository`.
-
-| Table | R/W |
-|-------|-----|
-| EventSettings | R |
-| Shifts | R (via repo) |
-| Rotas | R (cached via the section-internal `IShiftRowView`) |
-
-Section-internal `IShiftRowView` (cached) and `EventCalendarResolver`. Cross-section
-calls via `ITeamService` (team
-projections for role-period estimates), `IUserService`. No own
-cache — relies on the per-rota `ShiftView.RotaView` eviction to refresh.
+No repository: shifts and signups come from the cached rota rows (`IShiftRotaRows`), the
+event from `EventCalendarResolver`. Cross-section calls via `ITeamService` (team
+projections for role-period estimates), `IUserService`. No cache of its own.
 
 ### EarlyEntryCapacityCalculator / ShiftEarlyEntryProjection / TeamPalette
 
@@ -263,7 +223,7 @@ reads. No writes, cache or separate DI registration.
 
 Repository: `IShiftManagementRepository` (event `CreatedAt` only). Computes the dashboard overview,
 trends and post-event figures from the cached rota rows (`IShiftRotaRows`). Read-only; no DI
-registration. `ShiftManagementService` caches its results; this class holds no `IMemoryCache`.
+registration, no cache.
 
 | Table | R/W |
 |-------|-----|
@@ -275,8 +235,7 @@ Cross-section reads, lazy-resolved through `IServiceProvider`: `ITeamService`, `
 ### ShiftCoordinatorActivity (internal, owned by ShiftManagementService)
 
 No repository: computes the per-coordinator activity rows for the dashboard from the cached rota
-rows (`IShiftRotaRows`). Read-only; no DI registration, no cache of its own (the owner caches under
-`dashboard-coordinator-activity:{eventId}:{period}`).
+rows (`IShiftRotaRows`). Read-only; no DI registration, no cache.
 
 Cross-section reads, lazy-resolved through `IServiceProvider`: `ITeamService` (coordinators),
 `IUserService` (display names).
@@ -284,8 +243,7 @@ Cross-section reads, lazy-resolved through `IServiceProvider`: `ITeamService` (c
 ### ShiftCoverageReports (internal, owned by ShiftManagementService)
 
 No repository: staffing snapshot and department coverage figures from the cached rota rows
-(`IShiftRotaRows`). Read-only; no DI registration, no cache of its own (the owner caches
-`dashboard-overall-coverage`).
+(`IShiftRotaRows`). Read-only; no DI registration, no cache.
 
 Cross-section reads via `ITeamService`, lazy-resolved through `IServiceProvider`.
 

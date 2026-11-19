@@ -51,8 +51,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            Cache,
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
