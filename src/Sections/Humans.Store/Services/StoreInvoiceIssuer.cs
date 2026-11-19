@@ -94,7 +94,7 @@ internal sealed class StoreInvoiceIssuer(
                 JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
                 actorUserId,
                 $"Adopted Holded {DocumentKindName(adoptedKind)} {adoptedDoc.DocNumber} "
-                + $"(EUR {adoptedDoc.Total:0.00}), already issued for order {order.Id} by an earlier "
+                + $"(EUR {adoptedDoc.Total:0.00}), already issued by an earlier "
                 + "attempt that failed before saving — no second document was created",
                 ct);
         }
@@ -162,7 +162,7 @@ internal sealed class StoreInvoiceIssuer(
             JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
             actorUserId,
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
-            + $"for EUR {totalDue:0.00} on order {order.Id}",
+            + $"for EUR {totalDue:0.00}",
             ct);
     }
 

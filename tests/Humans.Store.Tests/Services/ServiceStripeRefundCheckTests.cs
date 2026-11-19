@@ -97,7 +97,7 @@ public class ServiceStripeRefundCheckTests
             p.AmountEur == -10m && p.Status == PaymentStatus.Pending && p.ExternalRef == "re_wait"),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment,
-            Arg.Any<Guid>(), Arg.Is<string>(s => s.Contains("re_new")), actor, order.Id, AuditEntityTypes.Order);
+            Arg.Any<Guid>(), Arg.Is<string>(s => s.Contains("re_new") && !s.Contains(order.Id.ToString())), actor, order.Id, AuditEntityTypes.Order);
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
     }
 

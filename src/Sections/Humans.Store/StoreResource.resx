@@ -74,7 +74,6 @@
   <data name="Store_CounterpartyTooLong" xml:space="preserve"><value>Billing details are too long. Shorten the values and try again.</value></data>
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Counterparty updated.</value></data>
   <data name="Store_PaymentRecorded" xml:space="preserve"><value>Recorded.</value></data>
-  <data name="Store_Overpaid" xml:space="preserve"><value>{0} overpaid — owed back to the camp.</value></data>
   <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Record a payment, deposit return or refund</value></data>
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Type</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Deposit return (credit to the order)</value></data>
@@ -84,7 +83,8 @@
   <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Deposit return</value></data>
   <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Refund</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Amount (EUR)</value></data>
-  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Reference (Holded bank movement id or Stripe refund id)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Reference</value></data>
+  <data name="Store_RecordPaymentRefHint" xml:space="preserve"><value>Holded bank movement id or Stripe refund id</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notes</value></data>
   <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Record</value></data>
   <data name="Enum_OrderState_Open" xml:space="preserve"><value>Open</value></data>
@@ -116,7 +116,6 @@
   <data name="Store_IssueInvoiceConfirm" xml:space="preserve"><value>Issue this order's factura in Holded? Prices freeze at today's catalog and the order can never be re-issued.</value></data>
   <data name="Store_LinesSubtotal" xml:space="preserve"><value>Lines subtotal</value></data>
   <data name="Store_NoLines" xml:space="preserve"><value>No lines on this order yet.</value></data>
-  <data name="Store_NoOutstandingBalance" xml:space="preserve"><value>No outstanding balance.</value></data>
   <data name="Store_NoPayments" xml:space="preserve"><value>No payments recorded yet.</value></data>
     <data name="Store_NonBillable" xml:space="preserve"><value>Non-billable.</value></data>
   <data name="Store_NonBillableText" xml:space="preserve"><value>Team orders count toward supplier totals only — no invoice, no payment.</value></data>
@@ -126,21 +125,17 @@
   <data name="Store_PaymentsRecordedFinance" xml:space="preserve"><value>Payments are recorded by the finance team.</value></data>
   <data name="Store_PayWithStripe" xml:space="preserve"><value>Pay with Stripe</value></data>
   <data name="Store_PaymentDisabledPending" xml:space="preserve"><value>Payment is disabled while a payment is pending settlement.</value></data>
-  <data name="Store_PendingSettlement" xml:space="preserve"><value>pending settlement</value></data>
   <data name="Store_PendingSettlementNotice" xml:space="preserve"><value>{0} pending settlement (mandate captured, not yet cleared) — not counted toward the outstanding balance until Stripe confirms.</value></data>
-  <data name="Store_PendingTitle" xml:space="preserve"><value>Mandate captured, not yet cleared</value></data>
     <data name="Store_ProductOption" xml:space="preserve"><value>{0} — {1} incl. VAT (deadline {2})</value></data>
   <data name="Store_Remove" xml:space="preserve"><value>Remove</value></data>
   <data name="Store_RemoveLineConfirm" xml:space="preserve"><value>Remove this line?</value></data>
   <data name="Store_SaveCounterparty" xml:space="preserve"><value>Save counterparty</value></data>
   <data name="Store_StripeNotConfigured" xml:space="preserve"><value>Stripe checkout is not configured for this environment.</value></data>
   <data name="Store_StripeRedirect" xml:space="preserve"><value>You'll be redirected to Stripe Checkout.</value></data>
-  <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total cleared payments</value></data>
   <data name="Store_TotalPayments" xml:space="preserve"><value>Total payments</value></data>
   <data name="Store_UnitPriceBreakdown" xml:space="preserve"><value>({0} + {1}% VAT)</value></data>
   <data name="Store_Vat" xml:space="preserve"><value>VAT</value></data>
   <data name="Store_ColVatId" xml:space="preserve"><value>VAT / tax ID</value></data>
-  <data name="Store_Utc" xml:space="preserve"><value>UTC</value></data>
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Deposits returned</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Refund amount</value></data>
   <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>An invoice can only be issued when the order balance is zero.</value></data>
@@ -174,4 +169,8 @@
   <data name="Store_HistoryTitle" xml:space="preserve"><value>Order history</value></data>
   <data name="Store_NoHistory" xml:space="preserve"><value>Nothing recorded for this order yet.</value></data>
   <data name="Store_ColWho" xml:space="preserve"><value>Who</value></data>
+  <data name="Store_PaymentReturned" xml:space="preserve"><value>Returned</value></data>
+  <data name="Store_PaymentRefunded" xml:space="preserve"><value>Refunded</value></data>
+  <data name="Store_OrderTotal" xml:space="preserve"><value>Order total (lines, VAT and deposits)</value></data>
+  <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total cleared payments</value></data>
 </root>

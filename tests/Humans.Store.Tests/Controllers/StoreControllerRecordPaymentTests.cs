@@ -291,7 +291,7 @@ public sealed class StoreControllerRecordPaymentTests
         payment.ReceivedAt.Should().Be(Instant.FromUtc(2026, 6, 24, 0, 0));
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
-            Arg.Is<string>(d => d.Contains("BankTransfer") && d.Contains("7216.71")
+            Arg.Is<string>(d => d.Contains("bank transfer") && d.Contains("7216.71")
                 && d.Contains("6a3b8e7cbd5b6f5ec40cbb87") && d.Contains("2026-06-24")),
             _userId, _order.Id, AuditEntityTypes.Order);
         (await _service.GetOrderAsync(_order.Id, TestContext.Current.CancellationToken))!.BalanceEur.Should().Be(0m);
@@ -381,7 +381,7 @@ public sealed class StoreControllerRecordPaymentTests
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StorePaymentDeleted, AuditEntityTypes.Payment, mistaken.Id,
             Arg.Is<string>(d => d.Contains("Refund") && d.Contains("-3.00") && d.Contains("Paid")
-                && d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")
+                && !d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")
                 && d.Contains(recorder.ToString()) && d.Contains("wrong order")),
             _userId, _order.Id, AuditEntityTypes.Order);
         (await _service.GetOrderAsync(_order.Id, TestContext.Current.CancellationToken))!.BalanceEur.Should().Be(0m);

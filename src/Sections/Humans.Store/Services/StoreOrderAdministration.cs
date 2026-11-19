@@ -121,7 +121,7 @@ internal sealed class StoreOrderAdministration(
         await repo.AddPaymentAsync(payment, ct);
         await audit.LogAsync(
             StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
-            $"Recorded {method} of EUR {signed:0.00} on order {orderId}"
+            $"Recorded {MethodDescription(method)} of EUR {signed:0.00}"
                 + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})")
                 + (valueDate is { } d ? $", value date {LocalDatePattern.Iso.Format(d)}" : string.Empty),
             actorUserId, orderId, AuditEntityTypes.Order);
@@ -139,12 +139,20 @@ internal sealed class StoreOrderAdministration(
         await repo.DeletePaymentAsync(paymentId, ct);
         await audit.LogAsync(
             StoreAuditActions.StorePaymentDeleted, AuditEntityTypes.Payment, payment.Id,
-            $"Deleted {payment.Method} payment of EUR {payment.AmountEur:0.00} ({payment.Status}) on order {orderId}, "
+            $"Deleted {payment.Method} payment of EUR {payment.AmountEur:0.00} ({payment.Status}), "
                 + $"received {payment.ReceivedAt}, ref {payment.ExternalRef ?? "none"}, PI {payment.StripePaymentIntentId ?? "none"}, "
                 + $"recorded by {payment.RecordedByUserId?.ToString() ?? "none"}, notes {payment.Notes ?? "none"}",
             actorUserId, orderId, AuditEntityTypes.Order);
         return AdminMutationResult.Success;
     }
+
+    private static string MethodDescription(PaymentMethod method) => method switch
+    {
+        PaymentMethod.BankTransfer => "bank transfer",
+        PaymentMethod.DepositReturn => "deposit return",
+        PaymentMethod.Refund => "refund",
+        _ => method.ToString(),
+    };
 
     private AdminMutationResult RefuseAdminMutation(Guid orderId, Guid actorUserId, string reason)
     {

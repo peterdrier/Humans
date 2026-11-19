@@ -93,12 +93,9 @@ internal sealed class StoreController(
             removableLineIds);
         if (canRecordFinancePayment)
         {
-            model.StripeRefundLinks = order.Payments
+            model.StripeRefundUrls = order.Payments
                 .Where(p => p.Method == PaymentMethod.Stripe && p.Status == PaymentStatus.Paid && p.StripePaymentIntentId is not null)
-                .OrderBy(p => p.ReceivedAt)
-                .Select(p => new StripeRefundLink(p.StripePaymentIntentId!, p.AmountEur,
-                    storeService.StripePaymentDashboardUrl(p.StripePaymentIntentId!)))
-                .ToList();
+                .ToDictionary(p => p.Id, p => storeService.StripePaymentDashboardUrl(p.StripePaymentIntentId!));
         }
         return View(model);
     }

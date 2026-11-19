@@ -4,6 +4,7 @@ using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
 using Humans.Store.Models;
 using Humans.Store.Contracts;
+using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.ViewComponents;
@@ -37,17 +38,30 @@ public class StorePricesViewTests
             new LocalDate(2026, 7, 1), true);
         var index = await RenderAsync("Index", new IndexViewModel { Year = 2026, Catalog = [product] });
 
-        var now = Instant.FromUtc(2026, 7, 1, 0, 0);
-        var orderId = Guid.NewGuid();
-        var line = new OrderLineDto(Guid.NewGuid(), orderId, product.Id, product.Name, 1,
-            100, 10.5m, null, now, 100, 10.5m, 0, 110.5m);
-        var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
-            OrderState.Open, null, null, null, null, null, null, [line], [], 100, 10.5m, 0, 0, 110.5m, now);
-        var detail = await RenderAsync("Order", new OrderViewModel { Order = order });
         using var assertions = new AwesomeAssertions.Execution.AssertionScope();
         index.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
-        detail.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
         CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
+
+    [HumansFact]
+    public async Task OrderPayments_ShowMoneyBackAsReturnedOrRefunded_AndAddUpToTheOrder()
+    {
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
+        var now = Instant.FromUtc(2026, 7, 1, 0, 0);
+        OrderPaymentDto PaymentDto(decimal amount, PaymentMethod method) =>
+            new(Guid.NewGuid(), amount, method, PaymentStatus.Paid, null, "ref", now, null);
+        var order = new OrderDto(Guid.NewGuid(), Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
+            OrderState.Open, null, null, null, null, null, null, [],
+            [PaymentDto(130m, PaymentMethod.BankTransfer), PaymentDto(20m, PaymentMethod.DepositReturn), PaymentDto(-30m, PaymentMethod.Refund)],
+            100m, 21m, 20m, 120m, 21m, now)
+        { TotalDueEur = 141m };
+
+        var html = await RenderAsync("Order", new OrderViewModel { Order = order });
+
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        html.Should().Contain(">Returned</span>").And.Contain(">Refunded</span>");
+        html.Should().Contain(HtmlEncoder.Default.Encode("Order total (lines, VAT and deposits)"));
+        html.Should().Contain(HtmlEncoder.Default.Encode(141m.ToEuro())).And.Contain(HtmlEncoder.Default.Encode(21m.ToEuro()));
     }
 
     [HumansTheory]
