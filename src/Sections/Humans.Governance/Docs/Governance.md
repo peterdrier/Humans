@@ -275,7 +275,7 @@ These controllers serve this section.
 
 | Controller | Routes | Notes |
 |------------|--------|-------|
-| `GovernanceController` | `GET /Governance` — association home: tier and Board counts (each tile links to its body page), open votes, Board queue (Board only), workgroups slot, membership card with the viewer's Google access, Board person cards, statutes | `GET /Governance/{Asociados,Colaboradores,Board}` — the body's members as person cards (authenticated); its Google group and files for its members, Board and Admin |
+| `GovernanceController` | `GET /Governance` — association home: tier and Board counts (each tile links to its body page), open votes, Board queue (Board only), workgroups slot, membership card with the viewer's Google access, Board person cards, statutes | `GET /Governance/{Asociados,Colaboradores,Board}` — the body's members as person cards (authenticated); its Google group and files for its members, Board and Admin | `POST /Governance/Board/Add`, `POST /Governance/Board/End` — add or end a Board seat (`RoleAssignmentManage` on `Board`: UsersAdmin, Admin); the Manage card shows only to them |
 | `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin; `?userId=` lists one person's applications in every status, the link Users' admin detail page carries) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) | `GET /Governance/Applications/Admin/TermExpiry`, `POST /Governance/Applications/Admin/TermExpiry/Fix` — the temporary term-expiry repair page (AdminOnly) |
 | `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (AdminOnly) |
 | `GovernanceVotesController` | `GET /Governance/Votes` — every vote, Open first (authenticated) | `GET /Governance/Votes/{id}` — text, stats, and the ballot form for roster members | `POST /Governance/Votes/{id}/Ballot` — cast or change | `GET /Governance/Votes/{id}/Results` and `.../Results.csv` — the stored result (Closed only) |
@@ -373,6 +373,7 @@ The Board-voting dashboard controller orders member columns by display name with
 
 - Regular humans **cannot** view other humans' applications, cast Board votes, or manage role assignments.
 - Board **cannot** assign the Admin role.
+- Board **cannot** add or end Board seats; only UsersAdmin and Admin can, on `/Governance/Board` (Auth's add-role form no longer offers Board).
 - A signed-in human outside a body, who is neither Board nor Admin, **cannot** see that body's Google group or files on `/Governance/{body}` (its member list stays visible).
 - UsersAdmin **cannot** assign the Admin role.
 - A human with a pending (Submitted) application **cannot** submit another, of any tier, until the first is resolved. Concurrent submissions share a short in-process gate; only one is inserted, and the other returns `AlreadyPending`.

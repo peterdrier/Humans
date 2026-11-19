@@ -72,6 +72,7 @@ public sealed class Section :
 
         services.AddSingleton<IGovernanceBodyRepository, GovernanceBodyRepository>();
         services.AddScoped<GovernanceBodyLinksService>();
+        services.AddScoped<GovernanceBoardSeats>();
 
         // Assembly votes. The service is the embargo boundary, so nothing here exposes the
         // repository outside the section and no caching decorator wraps it — a cached tally
