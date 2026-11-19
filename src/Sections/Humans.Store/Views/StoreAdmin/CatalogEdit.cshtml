@@ -82,8 +82,8 @@
                     <div class="form-text">Where what NCA spends on this item is booked.</div>
                 </div>
                 <div class="col-md-4">
-                    <label for="HoldedTransferAccountNum" class="form-label">Team usage account</label>
-                    <partial name="_AccountPicker" model="@(new AccountPickerModel("HoldedTransferAccountNum", "HoldedTransferAccountNum", "Team usage account", Model.HoldedTransferAccountNum, Model.AccountChoices.TeamUsage))" />
+                    <label for="HoldedTransferAccountNum" class="form-label">Dept transfers</label>
+                    <partial name="_AccountPicker" model="@(new AccountPickerModel("HoldedTransferAccountNum", "HoldedTransferAccountNum", "Dept transfers", Model.HoldedTransferAccountNum, Model.AccountChoices.TeamUsage))" />
                     <div class="form-text">Credited when a department's team order uses this item.</div>
                 </div>
             </div>
