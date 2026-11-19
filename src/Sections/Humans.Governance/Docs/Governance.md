@@ -89,6 +89,23 @@ One row per member; a member with no row is a Volunteer.
 
 **Read source:** tier reads, account merges and the register-of-members export use only `governance_membership_tiers`.
 
+### GovernanceBodyLinks (`governance_body_links`) and GovernanceBodyFile (`governance_body_files`)
+
+One row per body (`GovernanceBody`: Asociados, Colaboradores, Board) holding its Google group prefix, and one
+row per Google file (Drive folder, shared drive or file) its members get. Copied from the body's old system
+team by the `governance.body-links-from-teams` data migration; nothing claims them in Google yet.
+
+| Property | Type | Purpose |
+|---|---|---|
+| Body | GovernanceBody | PK of the links row, stored as string; FK on each file row |
+| GoogleGroupPrefix | string? | Group address before the @; null when the body has no group |
+| UpdatedAt | Instant | When the row was last written |
+| File: GoogleId, ResourceType, Name, Url, PermissionLevel | | The Google file and the level members get; unique per (Body, GoogleId) |
+
+**Copy rule:** until Governance claims these in Google, a body is pending whenever its stored links differ
+from its old team's (the team's prefix, and every active non-Group resource row), and applying overwrites
+them. Each write is audited as `GovernanceBodyLinksCopied` against the body's old team id.
+
 ### ApplicationStateHistory
 
 Append-only per design-rules.md, *Append-only entities* — `IApplicationRepository` exposes no update or delete surface for this table. (Append-only is enforced at the repository layer, not via DB triggers — only `consent_records` has DB-level immutability triggers.)
@@ -404,7 +421,7 @@ The Board-voting dashboard controller orders member columns by display name with
 
 ## Cross-Section Dependencies
 
-- **Audit actions:** declared on `GovernanceAuditActions` (`src/Sections/Humans.Governance/GovernanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `TierApplicationApproved`, `TierApplicationRejected`, `TierDowngraded`, `TierTermExpiryCorrected`, `AssemblyVoteOpened`, `AssemblyVoteStopped`, `AssemblyVoteExtended`, `AssemblyVoteCancelled`, `AssemblyVoteClosed`, `AssemblyVotePeeked`, `AssemblyBallotCast`, `AssemblyBallotChanged`, `AssemblyBallotsViewed`, `AssemblyVoteRosterMerged`, `AssemblyVoteRemindersSent`.
+- **Audit actions:** declared on `GovernanceAuditActions` (`src/Sections/Humans.Governance/GovernanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `TierApplicationApproved`, `TierApplicationRejected`, `TierDowngraded`, `TierTermExpiryCorrected`, `AssemblyVoteOpened`, `AssemblyVoteStopped`, `AssemblyVoteExtended`, `AssemblyVoteCancelled`, `AssemblyVoteClosed`, `AssemblyVotePeeked`, `AssemblyBallotCast`, `AssemblyBallotChanged`, `AssemblyBallotsViewed`, `AssemblyVoteRosterMerged`, `AssemblyVoteRemindersSent`, `GovernanceBodyLinksCopied`.
 - **Notifications:** `INotificationEmitter` (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `GovernanceNotificationSources` (`src/Sections/Humans.Governance/GovernanceNotificationSources.cs`), one `NotificationSourceDefinition` each: `ApplicationApproved` (informational, to the applicant: board approves application); `ApplicationRejected` (informational, to the applicant: board rejects application); `TermRenewalReminder` (actionable, to the user: 90 days before term expiry); `AssemblyVoteOpened` (actionable, to the assembly roster: an assembly vote opens); `ApplicationSubmitted` (actionable, to board role: retired, purged nightly).
 - **Users:** `IUserService` — single-user tier reads and exports resolve the merge chain through `UserInfo.Id`. Users renders the tier on its popover, profile card, admin detail and duplicate-account queue through `IGovernanceService`, and the profile setup form links to `/Governance/Applications/Create`. `GovernanceIndexService` counts the sidebar tiers itself from `IUserService.GetAllUserInfosAsync`. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Users section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
 - **Teams:** `ISystemTeamSync` — tier approval adds the human to the Colaboradors/Asociados system team; the hourly sync removes them once the term lapses. Teams makes no Governance write.

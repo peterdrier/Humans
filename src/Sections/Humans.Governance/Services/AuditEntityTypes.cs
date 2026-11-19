@@ -10,6 +10,8 @@ internal static class AuditEntityTypes
 
     internal const string AssemblyVote = "AssemblyVote";
 
+    internal const string GovernanceBody = "GovernanceBody";
+
     /// <summary>
     /// Not written: ballot audit entries are keyed to the vote, never the ballot, so erasure
     /// leaves no join from a person to their choice.
