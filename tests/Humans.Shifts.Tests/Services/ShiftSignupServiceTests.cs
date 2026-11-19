@@ -1,3 +1,4 @@
+using Humans.Shifts.Services.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Resources;
@@ -85,7 +86,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         _teamService = Substitute.For<ITeamService>();
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
+            .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
             .With(_teamService)
@@ -186,8 +187,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await SaveAllAsync(ct);
         if (operation == SignupWrite.NoShow) Clock.Advance(Duration.FromDays(60));
         await _views.PrimeRotaAsync(rota.Id, shift);
-        await _views.PrimeUserAsync(userId, shift);
-        await _views.PrimeUserAsync(actorId);
         var failure = new IOException("Persistence acknowledgement failed");
         var options = new DbContextOptionsBuilder<ShiftsDbContext>(
                 (DbContextOptions<ShiftsDbContext>)ShiftsDb.GetService<IDbContextOptions>())
@@ -220,9 +219,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
 
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(actorId)).Should().Be(operation is not (SignupWrite.Merge or SignupWrite.BulkCancel));
         management.Received(1).InvalidateDashboardCaches(es.Id);
         AuditLog.ReceivedCalls().Should().BeEmpty();
         Notifier.ReceivedCalls().Should().BeEmpty();
@@ -265,8 +262,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         ShiftsDb.ShiftTags.Add(tag);
         ShiftsDb.VolunteerTagPreferences.Add(new VolunteerTagPreference { UserId = userId, ShiftTagId = tag.Id });
         await SaveAllAsync(ct);
-        await _views.PrimeUserAsync(userId, shift);
-        await _views.PrimeUserAsync(Guid.NewGuid(), shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var failure = new IOException("Erasure acknowledgement failed");
         var options = new DbContextOptionsBuilder<ShiftsDbContext>(
@@ -281,7 +276,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Func<Task> erase = () => service.EraseForUserAsync(userId, ct);
 
         (await erase.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
         await using var persisted = await ShiftsDbFactory.CreateDbContextAsync(ct);
         (await persisted.ShiftSignups.SingleAsync(ct)).StatusReason.Should()
@@ -312,7 +306,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var failure = new IOException("Deletion acknowledgement failed");
         repo.DeleteAllForUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
             .Returns(fails ? Task.FromException<int>(failure) : Task.FromResult(0));
-        await _views.PrimeUserAsync(user, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var management = Substitute.For<IShiftManagement>();
         var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
@@ -323,7 +316,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         if (fails) (await remove.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         else await remove();
 
-        (await _views.IsUserCachedAsync(user)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().Be(!fails);
         if (fails) management.Received(1).InvalidateDashboardCaches(es.Id);
         else management.DidNotReceiveWithAnyArgs().InvalidateDashboardCaches(default);
@@ -406,7 +398,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = target, EventSettingsId = secondEvent.Id },
             new VolunteerBuildStatus { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSettingsId = firstEvent.Id, Notes = "Other human" });
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        var info = UserInfoStubHelpers.MakeUserInfo(target) with { MergedUserIds = [source] };
+        var info = UserFixtures.MakeUserInfo(target) with { MergedUserIds = [source] };
         _users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(info);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
@@ -630,10 +622,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(state is { } actualState
-                ? UserInfoStubHelpers.MakeUserInfo(userId) with { State = actualState }
+                ? UserFixtures.MakeUserInfo(userId) with { State = actualState }
                 : null);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await _views.PrimeUserAsync(userId, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
 
         foreach (var flags in new[]
@@ -666,7 +657,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(userId) with { State = UserState.Active });
+            .Returns(UserFixtures.MakeUserInfo(userId) with { State = UserState.Active });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpAsync(inputId, shift.Id);
@@ -1093,7 +1084,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             signups.Add(second);
         }
         await SaveAllAsync(ct);
-        await _views.PrimeUserAsync(userId, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var reason = new string('x', length);
         bool success;
@@ -1257,7 +1247,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         var targetId = Guid.NewGuid();
         UserInfo? target = string.Equals(kind, "missing", StringComparison.Ordinal) ? null
-            : UserInfoStubHelpers.MakeUserInfo(targetId) with
+            : UserFixtures.MakeUserInfo(targetId) with
             {
                 State = string.Equals(kind, "deleted", StringComparison.Ordinal) ? UserState.Deleted : UserState.Merged,
                 MergedAt = Clock.GetCurrentInstant(),
@@ -1289,7 +1279,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var sourceId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         _users.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(
-            UserInfoStubHelpers.MakeUserInfo(survivorId) with { State = UserState.Bare });
+            UserFixtures.MakeUserInfo(survivorId) with { State = UserState.Bare });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = range
@@ -1309,7 +1299,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
         _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
+            .Returns(UserFixtures.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellAsync(volunteerId, shift.Id, enrollerId);
@@ -1386,11 +1376,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         var volunteerId = Guid.NewGuid();
         _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { PreferredLanguage = "es" });
+            .Returns(UserFixtures.MakeUserInfo(volunteerId) with { PreferredLanguage = "es" });
         if (lookupFailure)
             _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
                 // Identity validation succeeds; the later best-effort language lookup fails.
-                .Returns(new ValueTask<UserInfo?>(UserInfoStubHelpers.MakeUserInfo(volunteerId)),
+                .Returns(new ValueTask<UserInfo?>(UserFixtures.MakeUserInfo(volunteerId)),
                     ValueTask.FromException<UserInfo?>(new IOException("Language lookup unavailable")));
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -1657,7 +1647,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
         _users.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(userId) with { State = UserState.Active });
+            .Returns(UserFixtures.MakeUserInfo(userId) with { State = UserState.Active });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.SignUpRangeAsync(inputId, rota.Id, -3, -1);
@@ -2222,7 +2212,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var volunteerId = Guid.NewGuid();
         var enrollerId = Guid.NewGuid();
         _users.GetUserInfoAsync(volunteerId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
+            .Returns(UserFixtures.MakeUserInfo(volunteerId) with { State = UserState.AdminSuspended });
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
@@ -2510,16 +2500,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        var viewer = Guid.NewGuid();
-        await _views.PrimeUserAsync(userId);
-        await _views.PrimeUserAsync(viewer, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
 
         var result = await _service.SignUpAsync(userId, shift.Id);
 
         result.Success.Should().BeTrue();
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
@@ -2550,16 +2535,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        var viewer = Guid.NewGuid();
-        await _views.PrimeUserAsync(userId);
-        await _views.PrimeUserAsync(viewer, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
 
         var result = await _service.BailAsync(signup.Id, userId, null);
 
         result.Success.Should().BeTrue();
-        (await _views.IsUserCachedAsync(userId)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
@@ -2607,26 +2587,27 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task OwnershipProbe_PropagatesCancellationToTheRepository(bool block)
+    public async Task OwnershipProbe_FindsTheSignupAndItsTeamInTheRotaRows(bool block)
     {
-        using var request = new CancellationTokenSource();
-        var id = Guid.NewGuid();
-        var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetTeamProbeAsync(id, scope, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Task.FromResult<ShiftSignup?>(null);
-        });
-        var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt,
+        var teamId = Guid.NewGuid();
+        var blockId = Guid.NewGuid();
+        var signup = new ShiftAdminSignup(Guid.NewGuid(), Guid.NewGuid(), blockId, SignupStatus.Pending, default);
+        var rota = new RotaInfo(Guid.NewGuid(), Guid.NewGuid(), teamId, "Gate", null, null,
+            ShiftPriority.Normal, SignupPolicy.Public, RotaPeriod.Event, true, []);
+        var shift = new ShiftInfo(Guid.NewGuid(), rota.Id, null, 0, new LocalTime(10, 0), 4, 1, 2, false, false, false);
+        var rows = Substitute.For<IShiftRotaRows>();
+        rows.GetRotaRowsAsync(null, Arg.Any<CancellationToken>())
+            .Returns([new ShiftAdminRota(rota, [new ShiftAdminShift(shift, [signup])])]);
+        var service = new ShiftSignupService(Substitute.For<IShiftManagementRepository>(),
+            Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt,
             NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, _views.Cache,
-            new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
-        await request.CancelAsync();
+            new ServiceLocatorBuilder().With(rows).Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+        var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
 
-        Func<Task> action = async () => await service.GetTeamProbeAsync(id, scope, request.Token);
+        var probe = await service.GetTeamProbeAsync(block ? blockId : signup.Id, scope, TestContext.Current.CancellationToken);
 
-        await action.Should().ThrowAsync<OperationCanceledException>();
-        await repo.Received(1).GetTeamProbeAsync(id, scope, request.Token);
+        probe.Should().Be(new ShiftSignupTeamProbe(signup.Id, shift.Id, teamId));
+        (await service.GetTeamProbeAsync(Guid.NewGuid(), scope, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
@@ -2691,7 +2672,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         survivor.EnrolledByUserId = otherActor;
         var duplicate = ownsDuplicateSignup ? SeedSignup(source, shift.Id, SignupStatus.Pending) : null;
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        await _views.PrimeUserAsync(enrolled.UserId, shift);
         await _views.PrimeRotaAsync(rota.Id, shift);
         var management = Substitute.For<IShiftManagement>();
         var service = new ShiftSignupService(_repo, Substitute.For<IVolunteerTrackingRepository>(), management,
@@ -2715,7 +2695,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         rows[reviewed.Id].StatusReason.Should().Be("Absent");
         rows[survivor.Id].EnrolledByUserId.Should().Be(otherActor);
         if (duplicate is not null) rows.Should().NotContainKey(duplicate.Id);
-        (await _views.IsUserCachedAsync(enrolled.UserId)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
         management.Received(1).InvalidateDashboardCaches(eventSettings.Id);
         await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupReassigned, nameof(User), target,

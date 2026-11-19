@@ -1,19 +1,20 @@
 ---
-name: "`Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it"
-description: "HARD RULE. `Humans.Integration.Tests` is opt-in (`HUMANS_INTEGRATION_TESTS=1`) and never runs in a default `dotnet test` — agents never opt in unless Peter explicitly asks; never mention, investigate, count, or CI-gate it."
+name: "`Humans.Integration.Tests` runs on PRs and nightly, and a red run is owned"
+description: `Humans.Integration.Tests` is opt-in (`HUMANS_INTEGRATION_TESTS=1`) and stays out of a default `dotnet test`, but `integration-tests.yml` runs it on every code PR and nightly. A red run is work, never noise - fix the code or the test.
 ---
 
-# `Humans.Integration.Tests` is local-only — never propose running it in CI/cloud, never report it
+# `Humans.Integration.Tests` runs on PRs and nightly, and a red run is owned
 
-**Rule:** `tests/Humans.Integration.Tests/` is the home of tests that run **only in Peter's local environment** — they integrate with things that exist nowhere else. `build.yml`'s `--filter "FullyQualifiedName!~Humans.Integration.Tests"` is the design, not an oversight, not a stale Docker workaround, and not tech debt. Never propose adding a CI job for the project, moving it into `build.yml`, or "unblocking" it. Do not open an issue about it. Do not add it to a debt ledger.
+**Rule:** `tests/Humans.Integration.Tests/` boots the whole app in-process against a throwaway Postgres container. It needs Docker and nothing deployed. `integration-tests.yml` runs it, split across parallel jobs, on every PR that touches code and once a night on main. When it is red, someone fixes it: the session that opened the PR, or for a nightly run the `nightly-red` issue the workflow opens. `e2e-qa.yml` (Playwright against QA) is nightly only, and opens the same kind of issue.
 
-**Opt-in only:** unless `HUMANS_INTEGRATION_TESTS=1`, the csproj sets `IsTestProject=false`, so `dotnet test Humans.slnx` (or the project itself) builds it but runs nothing; IDE runners that still launch it get every fact skip-marked and no Postgres fixture (`IntegrationTestGate` in `tests/Humans.Testing`). This holds on every machine, Peter's included. **Agents never set `HUMANS_INTEGRATION_TESTS`** — only Peter opts in (and the localization sweep's runner). Never mention, investigate, or count the suite's absence or skips.
+**Still opt-in locally:** unless `HUMANS_INTEGRATION_TESTS=1`, the csproj sets `IsTestProject=false`, so `dotnet test Humans.slnx` builds the project and runs nothing; `build.yml` filters it out as well. That keeps the default gate fast and Docker-free. It is not a statement that the suite does not matter.
 
-The one subset that *can* run in CI is filtered **in** by name from its own workflow — `localization-sweep.yml` selects `~LocalizationCoverageSweep` on a cron. That single carve-out is not evidence the rest could run; it is the exception that already got its own job.
-
-**Why:** The project's whole purpose is holding the tests CI can't host. Counting its tests as "excluded coverage" mistakes the container for a backlog. This has been raised and settled more than once; each round costs a real conversation.
+**Why:** from 2026-09 to 2026-11 the rule here was the opposite: agents never ran or mentioned the suite, and no PR ran it. Every refactor left tests behind unseen, the nightly run was red for weeks with no owner, and 55 of 312 tests had drifted by the time anyone looked (Peter, 2026-11-12). None were flaky. A test nobody runs at the source of a change only records how far the app has moved.
 
 **How to apply:**
-- **Agents never run this suite unless Peter asks for it in so many words** — not in a verification gate, a steward round, a nightly debt run, or on his machine (Peter, 2026-09-29). A plain `dotnet test Humans.slnx` already leaves it out; no filter needed.
-- Auditing coverage or CI: report `Humans.Integration.Tests` as out of scope by design. Never as a gap, a risk, or a number of "tests that run nowhere".
-- Writing a test that must run in CI: put it in the section's own `tests/Humans.<Section>.Tests/` project. If it only works against a live external dependency, `Humans.Integration.Tests` is correct and **it will not run in CI — say so**, and don't call CI its gate (see the CI-reachability check in `docs/maintenance/section-doctor/README.md` Phase 4).
+- A red `integration (n/4)` check on your PR is yours, like any other red check. Reproduce it: start Docker, then `HUMANS_INTEGRATION_TESTS=1 dotnet test tests/Humans.Integration.Tests -v quiet --filter "FullyQualifiedName~<TestClass>"`.
+- Set `HUMANS_INTEGRATION_TESTS=1` when you are fixing one of these tests, changing the suite, or working a `nightly-red` issue. Do not add it to the routine verification gate; CI runs the suite for you.
+- Never skip, disable or weaken a test to get green. If the test found a real defect, fix the defect.
+- Seed test data through the owning section's seeding verbs (`IEventSettingsSeeding`, `IShiftSeeding`, `ICampSeeding`), never by writing to its `DbContext`: sections cache their data, so a direct write is invisible to the app.
+- A test that must gate a single section still belongs in `tests/Humans.<Section>.Tests/`; this project is for what needs the whole app.
+- The split lives in `.github/scripts/integration-shard.py`. A new test class needs no registration.

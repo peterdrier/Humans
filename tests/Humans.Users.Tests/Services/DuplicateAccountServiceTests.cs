@@ -129,7 +129,7 @@ public sealed class DuplicateAccountServiceTests
         SetUsers(
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
             MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
-        _auditViewer.GetFilteredAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _auditViewer.GetFilteredAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
             [
                 new(Guid.NewGuid(), Now, UsersAuditActions.DuplicateAccountFlagged, null, null, nameof(User), low,

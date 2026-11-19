@@ -99,10 +99,6 @@ public interface IHoldedWrite : IApplicationService
         int creditorAccountNum, string description, decimal amount, LocalDate date, string expectedNotes,
         CancellationToken ct = default);
 
-    /// <summary>Debit one account, credit the other, one amount. Accounts are ledger numbers. Not idempotent: Holded
-    /// has no key to find an earlier post by, so callers record the outcome and never repeat a posted entry.
-    /// <see cref="HoldedJournalEntryOutcome.Confirmed"/> is false when Holded accepted the entry without a readable
-    /// id; it is posted either way.</summary>
     /// <summary>Pays <paramref name="amount"/> of one purchase document from <paramref name="treasuryId"/> (Holded's
     /// default when blank), dated <paramref name="date"/>. Not idempotent. Returns the payment's ref, the one Holded id
     /// this face hands out: a bank-line reconcile has to name it. An <c>unconfirmed:{documentId}</c> ref means Holded
@@ -120,6 +116,10 @@ public interface IHoldedWrite : IApplicationService
         string treasuryAccountId, string movementId, IReadOnlyList<HoldedReconcileDocumentRef> documents,
         CancellationToken ct = default);
 
+    /// <summary>Debit one account, credit the other, one amount. Accounts are ledger numbers. Not idempotent: Holded
+    /// has no key to find an earlier post by, so callers record the outcome and never repeat a posted entry.
+    /// <see cref="HoldedJournalEntryOutcome.Confirmed"/> is false when Holded accepted the entry without a readable
+    /// id; it is posted either way.</summary>
     [ExternalWrite]
     Task<HoldedJournalEntryOutcome> PostJournalEntryAsync(
         LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,

@@ -159,14 +159,15 @@ direct DB access beyond the export query.
 
 ### ShiftViewService (Scoped — wrapped by CachingShiftViewService Singleton decorator)
 
-Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
+Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`. User-view signups come from the
+rota cache (`IShiftRotaRows`), not a repository read.
 
 | Table | R/W | Repo |
 |-------|-----|------|
 | EventSettings | R | IShiftManagementRepository |
 | Rotas | R | IShiftManagementRepository |
 | Shifts | R | IShiftManagementRepository |
-| ShiftSignups | R | IShiftManagementRepository (via `GetForUsersAsync` / rota view signups) |
+| ShiftSignups | R | IShiftManagementRepository (rota view signups) |
 | VolunteerEventProfiles | R | IShiftManagementRepository |
 | ShiftTags | R | IShiftManagementRepository |
 | VolunteerTagPreferences | R | IShiftManagementRepository |
@@ -176,23 +177,21 @@ Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`.
 Implements the section-internal `IShiftRowView`: assembles user + rota
 views from two repositories and forwards Settings change callbacks to
 `IShiftManagement.InvalidateDashboardCaches` for event-keyed dashboard eviction. Wrapped by `CachingShiftViewService`
-which caches both projection types per-entity (per-user view and
-per-rota view). Service-keyed as `"shift-view-inner"` so the decorator
+which caches the per-rota view; user views pass straight through. Service-keyed as `"shift-view-inner"` so the decorator
 can resolve it without self-recursion.
 
 ### CachingShiftViewService (Singleton, `Humans.Shifts.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, ShiftUserView>` (`ShiftView.UserView`, in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`InvalidateUser`, called by the section's own writes) |
 | `TrackedCache<Guid, ShiftRotaView>` (`ShiftView.RotaView`, in-process, no `IMemoryCache`) | Per-Entity | yes | yes | yes (`InvalidateRota`, called by the section's own writes) |
 
 Implements `IShiftView`; its `Invalidate*` methods are called only by Shifts' own
 services, so nothing outside the section evicts it. Resolves the inner
 Scoped `IShiftRowView` via `IServiceScopeFactory` to honour scope rules.
-Settings change callbacks clear both view caches and synchronously delegate to that
+Settings change callbacks clear the rota views and synchronously delegate to that
 same keyed inner; the decorator resolves no other service.
-Both cache instances are surfaced on `/Debug/CacheStats`.
+The cache is surfaced on `/Debug/CacheStats`.
 
 ### BurnSettingsService (Scoped)
 

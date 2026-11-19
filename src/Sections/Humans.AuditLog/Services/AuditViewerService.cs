@@ -20,9 +20,10 @@ internal sealed class AuditViewerService(
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default)
     {
-        var entries = await auditLog.GetFilteredEntriesAsync(entityType, entityId, userId, actions, limit, ct);
+        var entries = await auditLog.GetFilteredEntriesAsync(entityType, entityId, userId, actions, limit, includeRelated, ct);
         return await ResolveAsync(entries, ct);
     }
 

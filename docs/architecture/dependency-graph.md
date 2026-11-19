@@ -158,6 +158,7 @@ graph LR
     Finance --> Expenses
     Finance --> Holded
     Finance --> Pleo
+    Finance --> Stripe
     Finance -.-> Email
     Finance -.-> Tickets
     Gate --> Auth
@@ -235,6 +236,7 @@ graph LR
     Search --> Events
     Search --> Shifts
     Search --> Teams
+    Search --> Users
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Cantina
@@ -249,6 +251,7 @@ graph LR
     Shifts -.-> Notifications
     Shifts -.-> Tickets
     Store --> AuditLog
+    Store --> Budget
     Store --> Holded
     Store --> Settings
     Store --> Stripe

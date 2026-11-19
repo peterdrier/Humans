@@ -752,4 +752,53 @@
   <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Mitgliedschaftsanträge, die auf deine Stimme warten: {0}</value></data>
   <data name="Governance_ReviewApplications" xml:space="preserve"><value>Prüfen</value></data>
   <data name="Governance_YourMembership" xml:space="preserve"><value>Deine Mitgliedschaft</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Zusätzliche Fragen für Asociado-Bewerber</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>Was war dein bedeutendster Beitrag zu Elsewhere?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Wenn dir keiner einfällt, du aber wesentlich zu einem anderen Burn beigetragen hast, erzähle uns davon.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Bitte beschreibe deinen bedeutendsten Beitrag für einen Asociado-Antrag.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>Was verstehst du in deinen eigenen Worten unter der Rolle eines Asociado und warum möchtest du diese Verantwortung?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Erzähle uns, was diese Rolle für dich bedeutet und warum du bereit dafür bist.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Bitte beschreibe dein Verständnis der Asociado-Rolle.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Sie haben bereits einen ausstehenden Antrag.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Bitte wählen Sie Colaborador oder Asociado für Ihren Antrag.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Sie müssen die Richtigkeit Ihrer Angaben bestätigen.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>Ihr Antrag wurde erfolgreich eingereicht!</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Beim Einreichen Ihres Antrags ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Dieser Antrag kann nicht zurückgezogen werden.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>Ihr Antrag wurde zurückgezogen.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>Die Motivation muss zwischen 50 und 2000 Zeichen enthalten.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>Zusätzliche Informationen dürfen höchstens 1000 Zeichen enthalten.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>Der wesentliche Beitrag darf höchstens 2000 Zeichen enthalten.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Die Erläuterung des Rollenverständnisses darf höchstens 2000 Zeichen enthalten.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Eine Motivationserklärung ist für Colaborador- und Asociado-Anträge erforderlich.</value>
+  </data>
 </root>

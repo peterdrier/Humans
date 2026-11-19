@@ -30,7 +30,7 @@ public class UsersAdminAccountMergesControllerTests
         _mergeService.ReconcileMergedRequestAsync(default, default).ReturnsForAnyArgs(new AccountMergeResult());
         var adminUser = new User { Id = _adminUserId, PreferredLanguage = "en" };
         _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(adminUser.ToUserInfo()));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(adminUser)));
     }
 
     private UsersAdminAccountMergesController BuildController()

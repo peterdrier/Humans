@@ -45,7 +45,7 @@ public class MailerLiteGdprContributorTests
                 IsVerified = true,
                 IsPrimary = true
             });
-        var info = new User { Id = _userId }.ToUserInfo(rows) with { IdentityEmailColumn = primary };
+        var info = UserInfoFixtures.FromUser(new User { Id = _userId }, rows) with { IdentityEmailColumn = primary };
         _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
     }
 
@@ -58,12 +58,12 @@ public class MailerLiteGdprContributorTests
         var survivorId = Guid.NewGuid();
         const string address = "survivor@example.com";
         Emails(address, address);
-        var survivor = new User { Id = survivorId }.ToUserInfo([
+        var survivor = UserInfoFixtures.FromUser(new User { Id = survivorId }, [
             new UserEmail { Id = Guid.NewGuid(), UserId = survivorId, Email = address, IsVerified = true }
         ]);
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(survivor);
         _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
-            new User { Id = _userId }.ToUserInfo() with
+            UserInfoFixtures.FromUser(new User { Id = _userId }) with
             {
                 State = UserState.Merged,
                 MergedToUserId = survivorId,
@@ -81,7 +81,7 @@ public class MailerLiteGdprContributorTests
         const string owned = "archived@example.com";
         const string survivor = "survivor@example.com";
         _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
-            new User { Id = _userId }.ToUserInfo([
+            UserInfoFixtures.FromUser(new User { Id = _userId }, [
                 new UserEmail { Id = Guid.NewGuid(), UserId = _userId, Email = owned, IsVerified = true }
             ]) with
             {

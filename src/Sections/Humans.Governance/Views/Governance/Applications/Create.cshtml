@@ -71,19 +71,19 @@
                     </div>
 
                     <div id="asociadoQuestionsCreate" style="display: @(Model.MembershipTier == MembershipTier.Asociado ? "block" : "none");">
-                        <h6>@SharedLocalizer["Application_AsociadoQuestionsHeader"]</h6>
+                        <h6>@Localizer["Governance_Application_AsociadoQuestionsHeader"]</h6>
 
                         <div class="mb-4">
-                            <label asp-for="SignificantContribution" class="form-label">@SharedLocalizer["Application_SignificantContribution"]</label>
+                            <label asp-for="SignificantContribution" class="form-label">@Localizer["Governance_Application_SignificantContribution"]</label>
                             <textarea asp-for="SignificantContribution" maxlength="2000" class="form-control" rows="4"
-                                placeholder="@SharedLocalizer["Application_SignificantContributionPlaceholder"].Value"></textarea>
+                                placeholder="@Localizer["Governance_Application_SignificantContributionPlaceholder"].Value"></textarea>
                             <span asp-validation-for="SignificantContribution" class="text-danger"></span>
                         </div>
 
                         <div class="mb-4">
-                            <label asp-for="RoleUnderstanding" class="form-label">@SharedLocalizer["Application_RoleUnderstanding"]</label>
+                            <label asp-for="RoleUnderstanding" class="form-label">@Localizer["Governance_Application_RoleUnderstanding"]</label>
                             <textarea asp-for="RoleUnderstanding" maxlength="2000" class="form-control" rows="4"
-                                placeholder="@SharedLocalizer["Application_RoleUnderstandingPlaceholder"].Value"></textarea>
+                                placeholder="@Localizer["Governance_Application_RoleUnderstandingPlaceholder"].Value"></textarea>
                             <span asp-validation-for="RoleUnderstanding" class="text-danger"></span>
                         </div>
                     </div>

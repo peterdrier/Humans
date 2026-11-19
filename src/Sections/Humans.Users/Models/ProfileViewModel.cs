@@ -52,10 +52,6 @@ internal sealed class ProfileViewModel
     [StringLength(512, ErrorMessage = "Validation_MaxLength")]
     public string? PlaceId { get; set; }
 
-    public string? LocationDisplay => !string.IsNullOrEmpty(City) && !string.IsNullOrEmpty(CountryCode)
-        ? $"{City}, {CountryCode}"
-        : City ?? CountryCode;
-
     [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
     public string? Bio { get; set; }

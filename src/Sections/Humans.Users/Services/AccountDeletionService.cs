@@ -222,25 +222,33 @@ internal sealed class AccountDeletionService(
     {
         foreach (var subjectId in await MergeChainAsync(userId, ct))
         {
-            var erased = false;
             try
             {
                 await gdprService.EraseForUserAsync(subjectId, ct);
-                erased = true;
             }
-            finally
+            catch
             {
                 try
                 {
-                    // Contributors can commit profile erasure before a later step fails. Refresh the
-                    // attempted id too, including the survivor, without the caller's cancellation.
+                    // A contributor may commit before a later one fails. Refresh the attempted
+                    // id independently of cancellation; ReplaceAsync evicts if refresh fails.
                     await userInfoRefresher.RefreshAsync(subjectId, CancellationToken.None);
                 }
-                catch (Exception ex) when (!erased)
+                catch (Exception ex)
                 {
-                    // ReplaceAsync evicts on failure; preserve the erasure error that drives the retry.
                     logger.LogError(ex, "UserInfo refresh failed after incomplete erasure for {UserId}", subjectId);
                 }
+                throw;
+            }
+
+            try
+            {
+                // Erasure committed: finish its refresh independently of shutdown.
+                await userInfoRefresher.RefreshAsync(subjectId, CancellationToken.None);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new InvalidOperationException("UserInfo refresh failed after completed erasure.", ex);
             }
         }
     }

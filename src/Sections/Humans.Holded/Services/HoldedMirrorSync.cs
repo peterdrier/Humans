@@ -3,6 +3,7 @@ using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
 using NodaTime;
+using static Humans.Holded.Services.HoldedJson;
 
 namespace Humans.Holded.Services;
 
@@ -14,8 +15,6 @@ internal sealed class HoldedMirrorSync(
     ILogger<Service> logger,
     HoldedAccountReader accountReader) : IApplicationService
 {
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
     /// <summary>Before the org existed; the full sweep's fixed floor.</summary>
     private static readonly LocalDate LedgerInception = new(2020, 1, 1);
 
@@ -33,7 +32,7 @@ internal sealed class HoldedMirrorSync(
     // in-process gate is enough.
     private static readonly SemaphoreSlim LedgerSyncGate = new(1, 1);
 
-    // Same reasoning, its own gate: the two syncs write different tables.
+    // Same reasoning, one gate per sync: each writes its own table.
     private static readonly SemaphoreSlim PurchaseDocSyncGate = new(1, 1);
     private static readonly SemaphoreSlim ContactSyncGate = new(1, 1);
     private static readonly SemaphoreSlim BankMovementSyncGate = new(1, 1);
@@ -45,22 +44,31 @@ internal sealed class HoldedMirrorSync(
     public async Task SyncChartAsync(CancellationToken ct = default)
     {
         await RefreshChartAsync(clock.GetCurrentInstant(), ct);
-        await DrainCallLogAsync(ct);
+        await DrainCallLogAsync(CancellationToken.None);
     }
 
     /// <summary>One list call. The upsert never drops an account, so one Holded stops listing stays mirrored.</summary>
     private async Task<IReadOnlyList<HoldedAccountDto>> RefreshChartAsync(Instant now, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         var accounts = await client.ListAccountingAccountsAsync(ct);
+        ct.ThrowIfCancellationRequested();
         await repo.UpsertAccountsAsync(accounts.Select(a => ToAccountEntity(a, now)).ToList(), now, ct);
 
-        var accountsState = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
-        accountsState.SyncStatus = HoldedSyncStatus.Idle;
-        accountsState.LastSyncAt = now;
-        accountsState.StatusChangedAt = now;
-        accountsState.LastCount = accounts.Count;
-        accountsState.LastError = null;
-        await repo.SaveSyncStateAsync(accountsState, ct);
+        try
+        {
+            var accountsState = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, CancellationToken.None);
+            accountsState.SyncStatus = HoldedSyncStatus.Idle;
+            accountsState.LastSyncAt = now;
+            accountsState.StatusChangedAt = now;
+            accountsState.LastCount = accounts.Count;
+            accountsState.LastError = null;
+            await SaveCompletedSyncStateAsync(accountsState);
+        }
+        catch (OperationCanceledException ex)
+        {
+            throw new InvalidOperationException("Holded chart completion failed after account upsert.", ex);
+        }
         return accounts;
     }
 
@@ -82,12 +90,12 @@ internal sealed class HoldedMirrorSync(
                 sweepAll ? HoldedSyncKind.FullSync : HoldedSyncKind.Ledger, ct);
             state.SyncStatus = HoldedSyncStatus.Running;
             state.StatusChangedAt = now;
-            await repo.SaveSyncStateAsync(state, ct);
-
             try
             {
+                await repo.SaveSyncStateAsync(state, ct);
                 var from = sweepAll ? LedgerInception : now.Minus(TrailingWindow).InZone(MadridZone).Date;
                 var fetched = await client.ListLedgerEntriesAsync(from, today, ct: ct);
+                ct.ThrowIfCancellationRequested();
                 await repo.ReplaceLedgerWindowAsync(
                     ToWindowStart(from), now, accountNum: null, fetched.Select(l => ToEntity(l, now)).ToList(), now, ct);
 
@@ -103,9 +111,9 @@ internal sealed class HoldedMirrorSync(
                     ? null
                     : TruncateForState("Unreconciled after re-pull: " + string.Join("; ",
                         mismatches.Select(m => $"{m.AccountNum}: holded {m.HoldedBalance:0.00}, local {m.LocalBalance:0.00}")));
-                await repo.SaveSyncStateAsync(state, ct);
+                await SaveCompletedSyncStateAsync(state);
 
-                await DrainCallLogAsync(ct);
+                await DrainCallLogAsync(CancellationToken.None);
                 logger.LogInformation(
                     "Holded ledger sync ({Mode}) cached {Count} lines, {Mismatches} account(s) unreconciled",
                     sweepAll ? "full" : "trailing window", fetched.Count, mismatches.Count);
@@ -140,9 +148,10 @@ internal sealed class HoldedMirrorSync(
             var now = clock.GetCurrentInstant();
             var fetched = await client.ListLedgerEntriesAsync(
                 LedgerInception, now.InZone(MadridZone).Date, accountNum, ct);
+            ct.ThrowIfCancellationRequested();
             await repo.ReplaceLedgerWindowAsync(
                 ToWindowStart(LedgerInception), now, accountNum, fetched.Select(l => ToEntity(l, now)).ToList(), now, ct);
-            await DrainCallLogAsync(ct);
+            await DrainCallLogAsync(CancellationToken.None);
             return true;
         }
         finally
@@ -165,12 +174,12 @@ internal sealed class HoldedMirrorSync(
             var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.PurchaseDocs, ct);
             state.SyncStatus = HoldedSyncStatus.Running;
             state.StatusChangedAt = now;
-            await repo.SaveSyncStateAsync(state, ct);
-
             try
             {
+                await repo.SaveSyncStateAsync(state, ct);
                 var docs = (await client.ListPurchaseDocumentsAsync(ct)).Select(d => ToEntity(d, now)).ToList();
                 await FetchNotesAsync(docs, ct);
+                ct.ThrowIfCancellationRequested();
                 await repo.ReplacePurchaseDocsAsync(docs, now, ct);
 
                 state.SyncStatus = HoldedSyncStatus.Idle;
@@ -178,9 +187,9 @@ internal sealed class HoldedMirrorSync(
                 state.StatusChangedAt = now;
                 state.LastCount = docs.Count;
                 state.LastError = null;
-                await repo.SaveSyncStateAsync(state, ct);
+                await SaveCompletedSyncStateAsync(state);
 
-                await DrainCallLogAsync(ct);
+                await DrainCallLogAsync(CancellationToken.None);
                 logger.LogInformation("Holded purchase-document sync cached {Count} documents", docs.Count);
                 return true;
             }
@@ -211,7 +220,7 @@ internal sealed class HoldedMirrorSync(
         }
         finally
         {
-            await DrainCallLogAsync(ct);
+            await DrainCallLogAsync(CancellationToken.None);
         }
         await repo.SetPurchaseDocNotesAsync(notes, ct);
     }
@@ -244,6 +253,7 @@ internal sealed class HoldedMirrorSync(
                         Status = m.Status,
                     })
                     .ToList();
+                ct.ThrowIfCancellationRequested();
                 await repo.ReplaceBankMovementsAsync(treasuryAccountId, from, to, movements, now, ct);
 
                 state.SyncStatus = HoldedSyncStatus.Idle;
@@ -251,8 +261,8 @@ internal sealed class HoldedMirrorSync(
                 state.StatusChangedAt = now;
                 state.LastCount = movements.Count;
                 state.LastError = null;
-                await repo.SaveSyncStateAsync(state, ct);
-                await DrainCallLogAsync(ct);
+                await SaveCompletedSyncStateAsync(state);
+                await DrainCallLogAsync(CancellationToken.None);
                 return true;
             }
             catch (Exception ex)
@@ -283,10 +293,9 @@ internal sealed class HoldedMirrorSync(
             var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Contacts, ct);
             state.SyncStatus = HoldedSyncStatus.Running;
             state.StatusChangedAt = now;
-            await repo.SaveSyncStateAsync(state, ct);
-
             try
             {
+                await repo.SaveSyncStateAsync(state, ct);
                 var contacts = (await client.ListContactsAsync(ct))
                     .Select(c => new HoldedContact
                     {
@@ -302,6 +311,7 @@ internal sealed class HoldedMirrorSync(
                         Address = c.Address,
                     })
                     .ToList();
+                ct.ThrowIfCancellationRequested();
                 await repo.ReplaceContactsAsync(contacts, now, ct);
 
                 state.SyncStatus = HoldedSyncStatus.Idle;
@@ -309,8 +319,8 @@ internal sealed class HoldedMirrorSync(
                 state.StatusChangedAt = now;
                 state.LastCount = contacts.Count;
                 state.LastError = null;
-                await repo.SaveSyncStateAsync(state, ct);
-                await DrainCallLogAsync(ct);
+                await SaveCompletedSyncStateAsync(state);
+                await DrainCallLogAsync(CancellationToken.None);
                 return true;
             }
             catch (Exception ex)
@@ -348,6 +358,7 @@ internal sealed class HoldedMirrorSync(
         var failed = 0;
         foreach (var doc in candidates)
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
                 doc.Notes = (await client.GetPurchaseDocumentAsync(doc.Id, ct)).Notes?.Trim() ?? "";
@@ -399,6 +410,7 @@ internal sealed class HoldedMirrorSync(
     {
         var accounts = await RefreshChartAsync(now, ct);
 
+        ct.ThrowIfCancellationRequested();
         var localBalances = await accountReader.GetAccountBalancesAsync(ct: ct);
         var drifted = accounts
             .Where(a => !a.Archived && a.Balance != localBalances.GetValueOrDefault(a.Number, 0m))
@@ -415,6 +427,7 @@ internal sealed class HoldedMirrorSync(
         var repulled = 0;
         foreach (var account in drifted)
         {
+            ct.ThrowIfCancellationRequested();
             if (repulled >= MaxTargetedRepullsPerRun)
             {
                 logger.LogWarning(
@@ -427,6 +440,7 @@ internal sealed class HoldedMirrorSync(
 
             repulled++;
             var fetched = await client.ListLedgerEntriesAsync(LedgerInception, today, account.Number, ct);
+            ct.ThrowIfCancellationRequested();
             await repo.ReplaceLedgerWindowAsync(
                 ToWindowStart(LedgerInception), now, account.Number,
                 fetched.Select(l => ToEntity(l, now)).ToList(), now, ct);
@@ -444,16 +458,37 @@ internal sealed class HoldedMirrorSync(
         ct.ThrowIfCancellationRequested();
         var records = callLog.DrainAll();
         if (records.Count == 0) return;
-        await repo.AddApiCallsAsync(records.Select(r => new HoldedApiCall
+        try
         {
-            Id = Guid.NewGuid(),
-            CalledAt = r.CalledAt,
-            Endpoint = r.Endpoint,
-            Method = r.Method,
-            StatusCode = r.StatusCode,
-            RateLimitRemaining = r.RateLimitRemaining,
-            RateLimitWindow = r.RateLimitWindow,
-        }).ToList(), CancellationToken.None); // Drained records must reach the mirror despite request cancellation.
+            // Drained records must reach the mirror despite request cancellation.
+            await repo.AddApiCallsAsync(records.Select(r => new HoldedApiCall
+            {
+                Id = Guid.NewGuid(),
+                CalledAt = r.CalledAt,
+                Endpoint = r.Endpoint,
+                Method = r.Method,
+                StatusCode = r.StatusCode,
+                RateLimitRemaining = r.RateLimitRemaining,
+                RateLimitWindow = r.RateLimitWindow,
+            }).ToList(), CancellationToken.None);
+        }
+        catch (OperationCanceledException ex)
+        {
+            throw new InvalidOperationException("Holded call-log persistence failed after draining records.", ex);
+        }
+    }
+
+    private async Task SaveCompletedSyncStateAsync(HoldedSyncState state)
+    {
+        try
+        {
+            // The mirror phase committed; its outcome must finish despite caller cancellation.
+            await repo.SaveSyncStateAsync(state, CancellationToken.None);
+        }
+        catch (OperationCanceledException ex)
+        {
+            throw new InvalidOperationException("Holded sync outcome save failed after mirror completion.", ex);
+        }
     }
 
     private async Task PersistSyncFailureAsync(HoldedSyncState state, Exception failure)
@@ -485,6 +520,35 @@ internal sealed class HoldedMirrorSync(
     /// <summary>Local midnight of the start date. Rows dated before it are outside the sweep and must survive.</summary>
     internal static Instant ToWindowStart(LocalDate from) =>
         from.AtStartOfDayInZone(MadridZone).ToInstant();
+
+    /// <summary>Reads the month's call count into the Usage state row. A Holded failure is recorded on the row and
+    /// answers false; the last good reading and its stamp stay.</summary>
+    public async Task<bool> RefreshUsageAsync(CancellationToken ct)
+    {
+        var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Usage, ct);
+        try
+        {
+            var usage = await client.GetUsageAsync(ct);
+            var now = clock.GetCurrentInstant();
+            state.SyncStatus = HoldedSyncStatus.Idle;
+            state.LastSyncAt = now;
+            state.StatusChangedAt = now;
+            state.LastCount = (int)Math.Min(usage.Usage, int.MaxValue);
+            state.LastError = null;
+            await repo.SaveSyncStateAsync(state, ct);
+            return true;
+        }
+        catch (HoldedApiException ex)
+        {
+            logger.LogWarning(ex, "Holded usage refresh failed");
+            await PersistSyncFailureAsync(state, ex);
+            return false;
+        }
+        finally
+        {
+            await DrainCallLogAsync(CancellationToken.None);
+        }
+    }
 
     private static HoldedLedgerLine ToEntity(HoldedLedgerLineDto l, Instant now) => new()
     {

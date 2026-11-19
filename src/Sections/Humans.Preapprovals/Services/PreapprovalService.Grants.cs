@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>The ceiling is checked on every path that commits money (issue, approve, raise) and nowhere else.</summary>
+/// <summary>Every grant path that commits money (issue, approve, raise) checks the ceiling.</summary>
 internal sealed partial class PreapprovalService
 {
     private const int LabelMax = 200;

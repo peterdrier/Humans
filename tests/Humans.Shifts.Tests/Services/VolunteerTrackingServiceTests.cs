@@ -80,15 +80,10 @@ public class VolunteerTrackingServiceTests
         settings.GetEventSettingsByIdAsync(es.Id, Arg.Any<CancellationToken>()).Returns(calendar);
         var shifts = Substitute.For<IShiftManagementRepository>();
         shifts.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, Arg.Any<CancellationToken>()).Returns([]);
-        var views = new ShiftViewProbe();
-        var rotaId = Guid.NewGuid();
-        await views.PrimeUserAsync(userId);
-        await views.PrimeUserAsync(targetId);
-        await views.PrimeRotaAsync(rotaId);
         var audit = Substitute.For<IAuditLogService>();
         var service = new VolunteerTrackingService(
             new VolunteerTrackingRepository(db), shifts, new EventCalendarResolver(settings, shifts),
-            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), views.Cache, new FakeClock(TestNow), audit);
+            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), new FakeClock(TestNow), audit);
         Func<Task> mutate = operation switch
         {
             TrackingWrite.Availability => () => service.SetAvailabilityAsync(userId, es.Id, [-3]),
@@ -108,9 +103,6 @@ public class VolunteerTrackingServiceTests
         if (operation == TrackingWrite.MissingDayOff) await mutate();
         else (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
 
-        (await views.IsUserCachedAsync(userId)).Should().Be(operation == TrackingWrite.MissingDayOff);
-        (await views.IsUserCachedAsync(targetId)).Should().Be(operation != TrackingWrite.Reassign);
-        (await views.IsRotaCachedAsync(rotaId)).Should().BeTrue();
         audit.ReceivedCalls().Should().BeEmpty();
         await using var persisted = new ShiftsDbContext(options);
         var availability = await persisted.GeneralAvailability.SingleAsync(ct);
@@ -166,7 +158,7 @@ public class VolunteerTrackingServiceTests
         var service = new VolunteerTrackingService(
             repo, Substitute.For<IShiftManagementRepository>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
-            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), new ShiftViewProbe().Cache,
+            Substitute.For<IUserService>(), Substitute.For<ITicketService>(),
             new FakeClock(TestNow), Substitute.For<IAuditLogService>());
 
         Func<Task> read = () => service.GetAvailableForDayAsync(eventId, -1, cancellation.Token);
@@ -1022,7 +1014,7 @@ public class VolunteerTrackingServiceTests
             availabilities ?? []);
 
         return new VolunteerTrackingService(
-            trackingRepo, shiftMgmt, calendarResolver, userService, tickets, new ShiftViewProbe().Cache, clock,
+            trackingRepo, shiftMgmt, calendarResolver, userService, tickets, clock,
             audit ?? Substitute.For<IAuditLogService>());
     }
 

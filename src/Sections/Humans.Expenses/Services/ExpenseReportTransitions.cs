@@ -34,13 +34,13 @@ internal sealed class ExpenseReportTransitions(
     private static readonly TrackedLock TransitionLock = new("Expenses.ReportTransitions");
 
     internal async Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         int holdedAccountNumber, string? note,
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default)
     {
         using var transition = await TransitionLock.AcquireAsync(logger, ct);
-        var (editableReport, refusal) = await reportAccess.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await reportAccess.GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return refusal;
         var report = editableReport!;
 
@@ -91,7 +91,7 @@ internal sealed class ExpenseReportTransitions(
         // A rejected draft still holds (Claimed) the grant it was submitted against. Dropping or swapping it
         // releases that claim in the same transaction. A grant revoked meanwhile is left behind.
         var released = report.PreapprovalGrantId is { } held && held != preapprovalGrantId
-            && (await preapprovals.GetGrantAsync(held, ct))?.Status == GrantStatus.Claimed
+            && (await PreapprovalGrantQueries.GetGrantAsync(preapprovals, held, ct))?.Status == GrantStatus.Claimed
             ? held
             : (Guid?)null;
         if (released is { } releasedId)
@@ -128,13 +128,11 @@ internal sealed class ExpenseReportTransitions(
     }
 
     internal async Task<ExpenseMutationResult> SubmitWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default)
+        Guid reportId, Guid actorUserId, CancellationToken ct = default)
     {
         using var transition = await TransitionLock.AcquireAsync(logger, ct);
         var report = await repo.GetByIdAsync(reportId, ct);
         if (report is null) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-        if (!actorIsFinanceAdmin && !await reportAccess.IsSubmitterAsync(report, actorUserId, ct))
-            return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanSubmit");
         if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
 
         // The Subject carries the project name; reviewers cannot tell what was paid for without it.
@@ -232,7 +230,7 @@ internal sealed class ExpenseReportTransitions(
         // A held pre-approval goes back to the member. A grant revoked while pending is no longer held and is left
         // alone, so the withdrawal still goes through.
         var heldGrant = report.PreapprovalGrantId is { } grantId
-            ? await preapprovals.GetGrantAsync(grantId, ct)
+            ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct)
             : null;
         var releasesGrant = heldGrant?.Status == GrantStatus.Claimed;
         if (!releasesGrant)
@@ -383,7 +381,7 @@ internal sealed class ExpenseReportTransitions(
 
     private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
     {
-        var grant = await preapprovals.GetGrantAsync(grantId, ct);
+        var grant = await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct);
         switch (grant?.Status)
         {
             case GrantStatus.Revoked:

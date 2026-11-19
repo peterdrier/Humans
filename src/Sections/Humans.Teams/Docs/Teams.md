@@ -39,7 +39,7 @@ One membership of a human in a team, with `TeamMemberRole` and `JoinedAt`/`LeftA
 
 **Tables:** `team_join_requests`, `team_join_request_state_history`
 
-A request to join an approval-required team (`Pending → Approved / Rejected / Withdrawn`), with the requester's message and the reviewer's notes, both at most 2,000 characters. The state history is append-only per design-rules.md, *Append-only entities*.
+A request to join an approval-required team (`Pending → Approved / Rejected / Withdrawn`), with the requester's message and the reviewer's notes, both at most 2,000 characters. The state history is append-only per design-rules.md, *Append-only entities*. `TeamJoining` owns review and withdrawal workflows; repository writes persist their transitions, and approval saves the request, new membership and any Google outbox event together.
 
 ### TeamRoleDefinition / TeamRoleAssignment
 
@@ -135,7 +135,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 ## Invariants
 
-- A team has at most one role flagged `IsManagement`. Only TeamsAdmin or Admin set or clear the flag; an edit by anyone else keeps the stored value. Toggling management on refuses a role that has assignees.
+- A team has at most one role flagged `IsManagement`. Only TeamsAdmin or Admin set or clear the flag; the edit controller authorizes that field through `TeamsPolicies.Manage` and omits it for other editors. The internal update command accepts a nullable management value: null preserves the current stored flag, so no caller-supplied privilege boolean reaches the service. Toggling management on refuses a role that has assignees.
 - Editing a role into or out of management promotes or demotes its assignees' `TeamMemberRole` in the same save, audits the definition change, then reconciles each affected human's Coordinators system-team membership.
 - A role's slot count cannot shrink past an occupied slot; empty trailing slots may go. Undefined slot priorities and negative estimated hours are refused before anything is written.
 - Role definitions may exist on any team, system teams included; assigning a role on a system team never adds a non-member.
@@ -144,6 +144,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - A human joins an approval-required team only through an approved request; an open team adds them at once. A coordinator may add someone directly, which approves any pending request they hold. One pending request per human per team; concurrent submissions resolve to one Pending row.
 - Inactive teams accept no joins or new requests and offer no Join action; their pages stay readable under the usual visibility rules.
 - Removing a member removes all their role assignments on that team.
+- Team-scoped Workspace email provisioning passes the team ID to Google, which requires a current Teams membership before provisioning. The controller authorizes management of that team; it does not decide membership eligibility from its page snapshot.
 - Every membership add or remove made one at a time is audited (`TeamsAuditActions`) and its Google outbox event commits in the same transaction as the membership. Deactivating a team closes its live memberships, audits each closure against the acting admin, and reconciles its former coordinators' Coordinators system-team membership.
 - Hidden teams are invisible to non-admins everywhere Teams lists or links a team: directory, tree, detail, join, My Teams, roster, parent and child links, pending-request links, and other people's profile cards. A human still sees their own hidden memberships on their own profile.
 - The directory lists active departments and the sub-teams with `IsPromotedToDirectory`; every sub-team stays reachable from its department's page. Anonymous visitors see public-page departments and promoted sub-teams only, coordinators only if `ShowCoordinatorsOnPublicPage`, and never emails.
@@ -151,10 +152,10 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - `IsSensitive` is written only by a global Admin, checked in `TeamLifecycle.UpdateTeamAsync` on a change to the flag; non-Admin editors never see the checkbox.
 - A private role (`IsPublic = false`) shows only to Admin, Board, TeamsAdmin and the team's direct or inherited coordinators; coordinating one team never reveals another team's private roles.
 - Slugs are unique across `Slug` and `CustomSlug` and both resolve. A rename regenerates the slug unless the new one is reserved or taken, in which case the old URL stays.
-- An early-entry grant is created only while its team has `EarlyEntryEnabled`. Turning the flag off, or deactivating the team, keeps the grants but drops them from the roster. Every grant mutation is audited (`EarlyEntryGranted`, `EarlyEntryUpdated`, `EarlyEntryRevoked`); removing an absent grant is a no-op.
+- Early-entry grants can be added, edited or revoked only while their team has `EarlyEntryEnabled`; the service refuses mutations for disabled or missing teams before writes. Turning the flag off, or deactivating the team, keeps the grants but drops them from the roster. Every grant mutation is audited (`EarlyEntryGranted`, `EarlyEntryUpdated`, `EarlyEntryRevoked`); removing an absent grant is a no-op.
 - Early-entry add/edit requires an explicit event: empty, unknown or Deleted events are refused before writes; Inactive events remain valid for planning. Add defaults to the active event, while edit uses the stored event. Legacy grants stay visible with a review warning until an operator selects an event and saves; the nullable-column migration performs no backfill. Add/edit audit text names the event, and the `TeamEarlyEntry` GDPR slice includes `EventSettingsId`; erasure and merge cover all events. Reactivated teams contribute kept grants only when their selected event is active.
 - Editing a prefix that matches a previously unlinked Google group redisplays an unchecked reactivation confirmation. Confirmation is tied to that archived resource ID; a changed target requires fresh confirmation. Confirming restores the resource through Manage; leaving it unchecked keeps the link pending. Google reuses the archived row and retires only its selected previous group link in one save, preserving other manually linked groups.
-- Teams owns its access rule for send as team (`TeamMessageOptionsProvider`): an active team the viewer coordinates, whose Google Group is linked, active, synced at least once and error-free. The recipient must accept facilitated messages and cannot be the sender. Each message is audited `FacilitatedMessageSent`; the audit names the team and never its address.
+- Teams owns its access rule for send as team (`TeamMessageOptionsProvider`): an active team the viewer coordinates, whose Google Group is linked, active, synced at least once and error-free. The composer GET/POST and profile buttons share the provider's canonical recipient resolution, self-message refusal and facilitated-message opt-out rule. The controller authorizes the selected team against the offered options; the provider owns email queueing and the `FacilitatedMessageSent` audit. Queueing and audit finish independently of browser cancellation; an audit failure after queueing is logged at Critical and does not invite a duplicate send. The audit names the team and never its address.
 - Expected refusals (missing record, no permission, validation) return a result before anything is written or audited, and log at Warning without a stack. Unexpected failures propagate.
 - Mutations of the cached team graph invalidate the whole cache, even when the inner call throws after writing. Pending join-request reads bypass the cache.
 - Resource keys use the `Teams_` prefix; shared vocabulary stays in `SharedResource`.
@@ -172,6 +173,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 ## Triggers
 
+- Rejecting a join request requires a nonblank reason in `TeamJoining`, including direct service calls. A missing, empty or whitespace reason returns the existing localized refusal key before reading or changing the request; no review metadata, rejection audit or notification is emitted. The controller only formats the result. Approval notes remain optional.
 - When a join request is approved, or a coordinator adds a member, the membership is created and the human gets a welcome email and an inbox notice. Coordinators get a notice for every new request and direct join. Notices and emails go in the recipient's saved language, falling back to English, and finish after the membership commits; a notice failure never undoes the membership.
 - When a member is added, the Google outbox event grants their Drive and Group access, including the parent's resources for a sub-team add. Removals wait for Google's daily reconciliation.
 - When a department's management-role assignment changes, or a team moves into or out of being an active department, the affected humans' Coordinators system-team membership is recalculated. Sub-team manager changes do not touch the Coordinators system team.
@@ -217,6 +219,9 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 ### Public contract
 
 `Humans.Teams.Contracts` carries `ITeamService` (cross-section reads, `TeamInfo` / `TeamSearchHit` / `UserTeamMembershipInfo` projections only), `ITeamWrite` (the writes other sections make: Google Group prefix, member role, Google resync, permanent delete, the account-deletion hook and the system-team bulk apply), `ISystemTeamSync`, and `ITeamSeeding` for the dev fixture seeders. The internal `ITeamManagementService` carries the rest of the section's surface. `HumansTeamControllerBase` is public in the section project, not the leaf, because it derives from Base's `HumansControllerBase`.
+
+`GetUserTeamMembershipsAsync` returns active memberships, including those on inactive teams. Each `UserTeamMembershipInfo` carries the owning team's active/hidden flags and system-team type in both direct and cached reads. Its `IsProfileMembership` predicate selects active teams other than Volunteers for profile and Agent summaries; hidden memberships remain in that projection for the caller's existing rendering rules.
+
 
 ### Migrated (A)
 

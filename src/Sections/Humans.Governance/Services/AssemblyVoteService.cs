@@ -246,48 +246,12 @@ internal sealed class AssemblyVoteService(
 
         // Reminders first: closing a lapsed vote makes its roster ineligible for one.
         var failures = new List<Exception>();
+        var closed = 0;
         try
         {
-            await effects.SendRemindersAsync(now, failures, ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            failures.Add(ex);
-            logger.LogError(ex, "Assembly reminder discovery failed; continuing vote closure and recovery.");
-        }
-
-        var lapsed = await repository.GetLapsedOpenVotesAsync(now, ct);
-        var closed = 0;
-        foreach (var vote in lapsed)
-        {
-            // Counted only when the close landed. A vote an Extend rescued between the query
-            // and the write is still open, and a job that reports it as closed is wrong in
-            // the one place anybody looks to see what the automation did.
-            if (await Settlement.CloseAsync(vote, closedByUserId: null, GovernanceAuditActions.AssemblyVoteClosed,
-                    $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
-            {
-                closed++;
-            }
-        }
-
-        if (closed > 0)
-        {
-            logger.LogInformation("Closed {Count} lapsed assembly vote(s).", closed);
-        }
-
-        // A close interrupted after its status write leaves a vote that is Closed with no
-        // result, which no lapse query finds — it is not Open any more. The read paths finish
-        // one when somebody looks; this is so nobody has to. The whole table fits in memory.
-        foreach (var vote in await repository.GetAllAsync(ct))
-        {
-            await Settlement.FinishInterruptedCloseAsync(vote, ct);
             try
             {
-                await effects.RetryOpenedEmailsAsync(vote, failures, ct);
+                await effects.SendRemindersAsync(now, failures, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -296,10 +260,61 @@ internal sealed class AssemblyVoteService(
             catch (Exception ex)
             {
                 failures.Add(ex);
-                logger.LogError(ex, "Assembly vote {VoteId}: opening-email retry preparation failed.", vote.Id);
+                logger.LogError(ex, "Assembly reminder discovery failed; continuing vote closure and recovery.");
+            }
+
+            var lapsed = await repository.GetLapsedOpenVotesAsync(now, ct);
+            foreach (var vote in lapsed)
+            {
+                ct.ThrowIfCancellationRequested();
+                // Counted only when the close landed. A vote an Extend rescued between the query
+                // and the write is still open, and a job that reports it as closed is wrong in
+                // the one place anybody looks to see what the automation did.
+                if (await Settlement.CloseAsync(vote, closedByUserId: null, GovernanceAuditActions.AssemblyVoteClosed,
+                        $"Assembly vote {vote.Id} closed automatically at its announced time.", ct))
+                {
+                    closed++;
+                }
+            }
+
+            if (closed > 0)
+            {
+                logger.LogInformation("Closed {Count} lapsed assembly vote(s).", closed);
+            }
+
+            // A close interrupted after its status write leaves a vote that is Closed with no
+            // result, which no lapse query finds — it is not Open any more. The read paths finish
+            // one when somebody looks; this is so nobody has to. The whole table fits in memory.
+            foreach (var vote in await repository.GetAllAsync(ct))
+            {
+                ct.ThrowIfCancellationRequested();
+                await Settlement.FinishInterruptedCloseAsync(vote, ct);
+                try
+                {
+                    await effects.RetryOpenedEmailsAsync(vote, failures, ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failures.Add(ex);
+                    logger.LogError(ex, "Assembly vote {VoteId}: opening-email retry preparation failed.", vote.Id);
+                }
             }
         }
-
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
+        {
+            if (failures.Count > 0)
+                throw new AggregateException("Assembly vote sweep failed before shutdown.", failures.Append(ex));
+            logger.LogWarning("Assembly vote sweep interrupted by shutdown");
+            throw;
+        }
+        catch (Exception ex) when (failures.Count > 0)
+        {
+            throw new AggregateException("Assembly vote sweep failed after earlier delivery failures.", failures.Append(ex));
+        }
         if (failures.Count > 0)
             throw new AggregateException("Failed to complete one or more assembly vote email deliveries.", failures);
         return closed;

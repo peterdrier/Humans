@@ -11,14 +11,12 @@ namespace Humans.Shifts.Tests.Infrastructure;
 /// <summary>
 /// A real <see cref="CachingShiftViewService"/> over a stub inner, so service tests assert
 /// eviction on the cache itself rather than on a substitute. Every read answers with an
-/// empty view unless a test primed one; <see cref="IsUserCachedAsync"/> /
-/// <see cref="IsRotaCachedAsync"/> report whether a read was served without the inner.
+/// empty view unless a test primed one; <see cref="IsRotaCachedAsync"/> reports whether a read was served
+/// without the inner.
 /// </summary>
 internal sealed class ShiftViewProbe
 {
-    private readonly ConcurrentDictionary<Guid, int> _userLoads = new();
     private readonly ConcurrentDictionary<Guid, int> _rotaLoads = new();
-    private readonly ConcurrentDictionary<Guid, ShiftUserView> _users = new();
     private readonly ConcurrentDictionary<Guid, ShiftRotaView> _rotas = new();
 
     public ShiftViewProbe()
@@ -41,26 +39,11 @@ internal sealed class ShiftViewProbe
 
     public CachingShiftViewService Cache { get; }
 
-    /// <summary>Caches a view for <paramref name="userId"/> holding a signup on each shift.</summary>
-    public async Task PrimeUserAsync(Guid userId, params Shift[] signedUpShifts)
-    {
-        _users[userId] = new ShiftUserView(userId, null, null, null, [],
-            [.. signedUpShifts.Select(s => new ShiftSignup { UserId = userId, ShiftId = s.Id, Shift = s })]);
-        await Cache.GetUserAsync(userId);
-    }
-
     /// <summary>Caches a view for <paramref name="rotaId"/> holding each shift.</summary>
     public async Task PrimeRotaAsync(Guid rotaId, params Shift[] shifts)
     {
         _rotas[rotaId] = new ShiftRotaView(rotaId, null, shifts, [], []);
         await Cache.GetRotaAsync(rotaId);
-    }
-
-    public async Task<bool> IsUserCachedAsync(Guid userId)
-    {
-        var before = _userLoads.GetValueOrDefault(userId);
-        await Cache.GetUserAsync(userId);
-        return _userLoads.GetValueOrDefault(userId) == before;
     }
 
     public async Task<bool> IsRotaCachedAsync(Guid rotaId)
@@ -70,18 +53,11 @@ internal sealed class ShiftViewProbe
         return _rotaLoads.GetValueOrDefault(rotaId) == before;
     }
 
-    /// <summary>Entries removed or bulk clears on either cache since construction.</summary>
+    /// <summary>Entries removed or bulk clears on the rota cache since construction.</summary>
     public long Evictions =>
-        Cache.UserCacheStats.KeyRemovals + Cache.UserCacheStats.BulkInvalidations +
         Cache.RotaCacheStats.KeyRemovals + Cache.RotaCacheStats.BulkInvalidations;
 
-    private ShiftUserView LoadUser(Guid userId)
-    {
-        _userLoads.AddOrUpdate(userId, 1, (_, n) => n + 1);
-        return _users.TryGetValue(userId, out var view)
-            ? view
-            : new ShiftUserView(userId, null, null, null, [], []);
-    }
+    private static ShiftUserView LoadUser(Guid userId) => new(userId, null, null, null, [], []);
 
     private ShiftRotaView LoadRota(Guid rotaId)
     {

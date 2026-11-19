@@ -70,7 +70,7 @@ public class MedicalConditionsServiceTests
         var survivorId = StubMember("Asthma");
         var mergedId = Guid.NewGuid();
         _userService.GetUserInfoAsync(mergedId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = survivorId, PreferredLanguage = "en" }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = survivorId, PreferredLanguage = "en" }));
 
         (await _sut.RevealAsync(mergedId, _actorId)).Should().Be("Asthma");
 
@@ -95,7 +95,7 @@ public class MedicalConditionsServiceTests
         var survivorActor = Guid.NewGuid();
         var controller = Controller(_actorId);
         _userService.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = survivorActor, PreferredLanguage = "en" }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = survivorActor, PreferredLanguage = "en" }));
 
         await controller.RevealMedical(subjectId, CancellationToken.None);
 
@@ -154,7 +154,7 @@ public class MedicalConditionsServiceTests
     {
         var id = Guid.NewGuid();
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = id, PreferredLanguage = "en" }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = id, PreferredLanguage = "en" }));
         _repo.GetByUserIdReadOnlyAsync(id, Arg.Any<CancellationToken>())
             .Returns(new Profile { UserId = id, BurnerName = "B", MedicalConditions = medical });
         return id;

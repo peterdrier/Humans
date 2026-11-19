@@ -3,6 +3,7 @@
   src/Humans.Base/Services/GitHubGuideContentSource.cs
   src/Humans.Base/Configuration/GuideSettings.cs
   docs/guide/**
+  src/Humans.Web/Views/Shared/_LoginPartial.cshtml
 -->
 <!-- freshness:flag-on-change
   Guide page role-scoped block visibility, cache TTL, refresh trigger rules, or file set — review when GuideController/GuideSegmenter/GuideFilter/GuideRolePrivilegeMap/GuideFiles or guide markdown content changes.
@@ -21,8 +22,7 @@
   its parenthetical's privilege tokens, and dropped at request time by
   `GuideFilter` before the markdown reaches Markdig. No role metadata
   survives into the rendered HTML.
-- Heading boundaries follow CommonMark: up to three leading spaces, then `##` and a space/tab or end of line. Four-space code examples and non-breaking spaces after the hashes do not create boundaries. The original markdown is retained in each segment.
-- Only H2 lines identified by the renderer's shared Markdig pipeline can open or close role segments, using the existing `##` heading grammar. Sample headings inside code, HTML comments or raw HTML blocks never change the surrounding audience. Original markdown remains intact; the segmenter does not maintain a separate fence parser.
+- A **heading boundary** is a line the renderer's Markdig pipeline parses as an ATX `##` heading. Sample headings inside code, HTML comments or raw HTML blocks never open or close a role-scoped block, and each segment keeps the original markdown.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
   role sees that block. Every parenthetical must be a role title in Auth's
@@ -74,7 +74,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - Cache key is `guide:<FileStem>`; the cached value is the segmented `GuideDocument`, never rendered HTML — filtering happens before rendering, so rendering is per request. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
 - Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.
-- Caller cancellation stops a GitHub fetch/refresh without treating it as an availability failure or publishing a partially refreshed cache. Existing cached documents remain intact. The source delegates file, folder and tree reads to Base’s shared internal `GitHubMarkdownReader`; Guide settings, credentials and product header remain independent of the community KB.
+- Caller cancellation stops a GitHub fetch/refresh without treating it as an availability failure or publishing a partially refreshed cache. Existing cached documents remain intact.
 - Configured GitHub health probes await the repository read with the framework's timeout/abort token. Requested cancellation propagates without logging or returning an availability failure; an already-canceled probe starts no request.
 
 ## Negative Access Rules
@@ -88,7 +88,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 ## Triggers
 
 - First `GET /Guide/*` on cold cache → `GuideContentService` fetches and segments every stem in `GuideFiles.All`; entries populated with sliding TTL. Queued cold reads recheck their requested page after acquiring the refresh lock and reuse it when a preceding load succeeded, even if other files failed.
-- `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten.
+- `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten. The status message names every stem whose fetch failed, so a partial refresh never reads as success.
 - GitHub fetch failure for a stem that is still cached → the cached copy is kept (only successful fetches overwrite) and served; warning logged. A cached stem is served without any fetch at all.
 - A render failure on the request path (Markdig, or `GuideHtmlPostprocessor`'s timeout-bounded path regex) → translated to `GuideContentUnavailableException`; controller returns the same 503 `Unavailable.cshtml`, never a raw 500. The cached segments are left in place.
 - GitHub fetch failure for the requested stem while it is *not* cached → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`. Other stems being cached does not rescue it — it only stops `PopulateAsync` throwing first.
@@ -96,17 +96,16 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 ## Cross-Section Dependencies
 
 - **Users**: `GuideRoleResolver` resolves the session ID through `IUserService.GetUserInfoAsync` before membership checks, using the surviving account ID after a merge. A missing account grants no coordinator or camp-lead visibility; anonymous handling and system-role claims remain unchanged. The lookup observes request cancellation.
-
 - **Teams**: `GuideRoleResolver` calls `ITeamService.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
 - **Camps**: `GuideRoleResolver` calls `ICampLeadDirectory.IsLeadAnywhereAsync` for `IsCampLead` — camp lead is a role on a camp season, never a claim, so it cannot come from `IsInRole`. Visibility is "leads *some* camp", the same collapse Teams already makes for coordinators; the guide has no per-camp scope. Not `ICampService.GetCampUserInfoAsync`: that resolves the first camp where the user is an Active *member* and would miss a lead of a second camp.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against every role name in Auth's `RoleCatalog` (`GuideRolePrivilegeMap.MappedRoles`) to build the `SystemRoles` set.
 - **Base (inward, publishing)**: `Section`'s `ISectionAnnotations` publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
-- **Shell (inward)**: Guide has no member top-nav link (dropped 2026-11-05 to shorten the bar); signed-in members reach `/Guide` from the user menu in `_LoginPartial`, and anonymous readers only by URL.
+- **Shell (inward)**: Guide has no member top-nav link; signed-in members reach `/Guide` from the user menu in `_LoginPartial`, and anonymous readers only by URL.
 - **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
 
 ## Architecture
 
-**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter`, `GuideRolePrivilegeMap` (catalog-backed), `GuideFilter` (static) — all `internal` in `Humans.Guide.Services`
+**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter`, `GuideRolePrivilegeMap` (catalog-backed), `GuideFilter` (static) — all `internal` in `Humans.Guide.Services`; `GitHubHealthCheck` in `Humans.Guide.Health`
 **Owned tables:** None — orchestrator over the Base GitHub content source + `IMemoryCache`
 **Status:** (A) Migrated — `src/Sections/Humans.Guide` (nobodies-collective/Humans#866, G5). No repository and no `DbContext` (no tables), `GuideResource` owns localized navigation copy (fallback pages reuse Base’s shared resources), and `Contracts/` is an empty folder: nothing outside the section reads a guide page.
 

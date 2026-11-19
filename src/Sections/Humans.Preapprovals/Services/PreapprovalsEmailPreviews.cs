@@ -10,7 +10,6 @@ internal sealed class PreapprovalsEmailPreviews(PreapprovalsEmails emails) : IEm
     {
         [PreapprovalNoticeKind.Declined] = "The project is outside this year's theme.",
         [PreapprovalNoticeKind.ApplicationReceived] = "Dusty Nobody",
-        [PreapprovalNoticeKind.AmountChanged] = "1,000.00 €",
         [PreapprovalNoticeKind.Revoked] = "The project was cancelled.",
     };
 
@@ -26,7 +25,8 @@ internal sealed class PreapprovalsEmailPreviews(PreapprovalsEmails emails) : IEm
                 emails.Notice(new PreapprovalNoticeRequest(
                     Guid.Empty, persona.Email, persona.Name, kind, "2026 Creativity", "Fire Lotus", 1500m,
                     new LocalDate(2026, 11, 30), "/Preapprovals",
-                    Details.GetValueOrDefault(kind), persona.Culture)))),
+                    Details.GetValueOrDefault(kind), persona.Culture,
+                    kind == PreapprovalNoticeKind.AmountChanged ? 1000m : null)))),
         ];
     }
 

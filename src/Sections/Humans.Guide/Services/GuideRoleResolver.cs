@@ -47,7 +47,6 @@ internal sealed class GuideRoleResolver(
         }
 
         return new GuideRoleContext(
-            IsAuthenticated: true,
             IsTeamCoordinator: isCoordinator,
             IsCampLead: isCampLead,
             SystemRoles: systemRoles);

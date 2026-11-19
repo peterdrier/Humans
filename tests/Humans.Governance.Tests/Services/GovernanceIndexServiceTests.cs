@@ -144,7 +144,7 @@ public sealed class GovernanceIndexServiceTests
     {
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
+        var user = UserInfoFixtures.FromUser(new User { Id = userId, DisplayName = "Member", Email = "member@example.com" });
         var abandon = false;
         async ValueTask<UserInfo?> ReadUserAsync(CallInfo call)
         {

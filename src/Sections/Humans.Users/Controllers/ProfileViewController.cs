@@ -53,9 +53,7 @@ internal sealed class ProfileViewController(
     public async Task<IActionResult> ViewProfile(Guid id, CancellationToken ct)
     {
         var profileInfo = await _userService.GetUserInfoAsync(id, ct);
-        var profile = profileInfo?.Profile;
-
-        if (profile is null || profileInfo!.IsSuspended)
+        if (profileInfo is null || !profileInfo.IsProfileBrowsable)
         {
             return NotFound();
         }
@@ -78,7 +76,7 @@ internal sealed class ProfileViewController(
 
         var viewModel = new ProfileViewModel
         {
-            Id = profile.Id,
+            Id = profileInfo.Profile!.Id,
             UserId = id,
             PageTitle = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
@@ -108,11 +106,9 @@ internal sealed class ProfileViewController(
         if (info?.Profile is null) return NotFound();
         id = info.Id; // memberships and camp below are keyed by the live id
 
-        var memberships = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == id) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+        var memberships = (await teamService.GetUserTeamMembershipsAsync(id, ct))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
             .ToList();
         // Rendered admin-only in the view.
         var camp = await campService.GetCampUserInfoAsync(id, ct);

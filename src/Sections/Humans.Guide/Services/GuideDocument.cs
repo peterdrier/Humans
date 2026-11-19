@@ -16,7 +16,7 @@ internal sealed record GuideSegment(
 /// </summary>
 internal sealed record GuideDocument(IReadOnlyList<GuideSegment> Segments)
 {
-    /// <summary>The roles the wrapper recognises, as they appear on <see cref="GuideSegment"/>.</summary>
+    /// <summary>The role tokens <see cref="GuideSegmenter"/> sets on <see cref="GuideSegment"/>.</summary>
     public const string Volunteer = "volunteer";
     public const string Coordinator = "coordinator";
     public const string BoardAdmin = "boardadmin";

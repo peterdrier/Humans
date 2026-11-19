@@ -16,9 +16,9 @@ internal interface IGuideContentService : IApplicationService
 
     /// <summary>
     /// Re-fetches every guide file and overwrites its cache entry. Nothing is evicted first: a failed fetch keeps the
-    /// cached copy, so a GitHub outage serves stale content, not an empty guide.
+    /// cached copy, so a GitHub outage serves stale content, not an empty guide. Returns the stems that failed.
     /// </summary>
-    Task RefreshAllAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<string>> RefreshAllAsync(CancellationToken cancellationToken = default);
 }
 
 internal sealed class GuideContentUnavailableException : Exception

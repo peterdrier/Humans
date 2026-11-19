@@ -5,7 +5,7 @@ description: HARD RULE. Production Stripe env vars hold a scoped `rk_live_*` Res
 
 When configuring a Stripe API key for the Humans project in production, use a Restricted API Key (`rk_live_*`) scoped to exactly the operations the integration performs — never a full secret key (`sk_live_*`).
 
-**Why:** Stripe's official guidance is that secret keys grant god-mode (refunds, payouts, charge modifications, customer writes, everything). A compromised secret key can move money out of the account before anyone notices. RAKs limit blast radius — a compromised RAK can do only what its scopes allow. For Humans specifically, payouts and chargebacks are dashboard-manual and refunds go only through one guarded path (`architecture/stripe-money-out.md`), so production keys hold no payout or transfer scope, and `refund:write` only on the Store key once that path ships.
+**Why:** Stripe's official guidance is that secret keys grant god-mode (refunds, payouts, charge modifications, customer writes, everything). A compromised secret key can move money out of the account before anyone notices. RAKs limit blast radius — a compromised RAK can do only what its scopes allow. For Humans specifically, refunds, payouts and chargebacks are dashboard-manual (`architecture/stripe-money-out.md`), so production keys hold no refund-write, payout or transfer scope.
 
 An Organization API key (`sk_org_*`, used by the Stripe mirror as `STRIPE_ORG_READ_KEY`) is acceptable despite the `sk_` prefix: it is created with the same per-scope permissions, and the intent — least privilege, nothing that moves money — still holds (Peter, 2026-11-05). Scope it read-only.
 

@@ -31,6 +31,11 @@ public class TicketSyncJob(
                 "Ticket sync job completed: {Orders} orders, {Attendees} attendees synced",
                 result.OrdersSynced, result.AttendeesSynced);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Ticket sync job cancelled during shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Ticket sync job failed");

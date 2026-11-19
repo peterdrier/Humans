@@ -147,7 +147,7 @@ public class ShiftVolunteerSearchBuilderTests
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ShiftUserView>
             {
-                [_candidateId] = new(_candidateId, null, null, null, [], signups, ActiveBurn),
+                [_candidateId] = new(_candidateId, null, null, null, [], [.. signups.Select(ShiftUserSignup.From)], ActiveBurn),
             });
 
     // The target as GetShiftByIdAsync hands it over: the shift's own fields plus its rota.

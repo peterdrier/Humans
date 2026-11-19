@@ -40,9 +40,9 @@ Skipping a failure with a tracking issue attached is not an alternative to fixin
 
 **Definition of done:** `HUMANS_INTEGRATION_TESTS=1 dotnet test tests/Humans.Integration.Tests` returns 0 failures on `origin/main` HEAD. P0 issue closes.
 
-### P1 — Turn integration tests on in CI — **retired**
+### P1 — Turn integration tests on in CI — **shipped**
 
-`Humans.Integration.Tests` is opt-in (`HUMANS_INTEGRATION_TESTS=1`) and local-only by policy; it never runs in CI ([`integration-tests-are-not-ci-tests`](../../memory/process/integration-tests-are-not-ci-tests.md)). The localization sweep's cron job is the one carve-out.
+`Humans.Integration.Tests` stays opt-in (`HUMANS_INTEGRATION_TESTS=1`) for a local `dotnet test`, and `integration-tests.yml` runs it on every code PR and nightly, split across four parallel jobs ([`integration-tests-are-not-ci-tests`](../../memory/process/integration-tests-are-not-ci-tests.md)).
 
 ### P2 — Share one Postgres container across the assembly — **shipped**
 **Value: high · Effort: medium · Risk: medium. Depends on P0. Landed via nobodies-collective/Humans#764.**

@@ -605,6 +605,15 @@ public sealed class GrantTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
+    public async Task Decline_NotApplied_RefusedAndUnchanged()
+    {
+        var program = await SeedProgramAsync();
+        var open = await SeedGrantAsync(program);
+        (await NewService().DeclineAsync(program.Id, open.Id, null, SeedUser(), Ct)).Refusal!.Key.Should().Be(PreapprovalErrorKeys.WrongStatus);
+        (await ReadGrantAsync(open.Id)).Status.Should().Be(GrantStatus.Open);
+    }
+
+    [HumansFact]
     public async Task Decline_SetsDeclined_ResolvesRequest_NotifiesWithNote()
     {
         var program = await SeedProgramAsync();

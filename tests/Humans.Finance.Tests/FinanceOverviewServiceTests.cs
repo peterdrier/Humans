@@ -4,6 +4,7 @@ using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
+using Humans.Stripe.Contracts;
 using NodaTime;
 using Xunit;
 
@@ -47,6 +48,26 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
+    public void StripeSources_FillsLinkedAccounts_AndSaysWhyTheRestAreUnknown()
+    {
+        var at = Instant.FromUtc(2026, 11, 1, 0, 0);
+        var links = new Dictionary<int, string> { [44100003] = "acct_store", [44100004] = "acct_unswept" };
+
+        var sources = FinanceOverviewService.StripeSources([44100003, 44100004, 44100005], links,
+            [new StripeAccountBalance("acct_store", 2000m, 500m, at)]);
+
+        sources[44100003].Should().Be(new FinanceAccountSourceVm(2500m, "/Stripe", ReadAt: at, Pending: 500m));
+        sources[44100004].Balance.Should().BeNull();
+        sources[44100004].Unknown.Should().Contain("acct_unswept");
+        sources[44100005].Balance.Should().BeNull();
+        sources[44100005].Unknown.Should().NotBeNull();
+        FinanceOverviewService.StripeSources([44100003], null, []).Values.Should()
+            .ContainSingle().Which.Unknown.Should().NotBeNull();
+        new FinanceStripeOptions { StripeLedgerAccounts = { ["4410000X"] = "acct_store" } }.ByLedgerAccount()
+            .Should().BeNull();
+    }
+
+    [HumansFact]
     public void BuildLedgerCards_GroupsCashAndReceivables_AndFlipsTaxes()
     {
         HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, null, archived, 0m);
@@ -67,7 +88,8 @@ public class FinanceOverviewServiceTests
         };
 
         var feed = new FinanceBankFeedVm(3, Instant.FromUtc(2026, 1, 1, 0, 0));
-        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [], pleoWallet: 2m, 57200001, feed);
+        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [],
+            new Dictionary<int, FinanceAccountSourceVm> { [57200003] = new(2m, "/Finance/Pleo") }, 57200001, feed);
 
         cards.Banks.Select(a => a.BankFeed).Should().Equal(feed, null);
 

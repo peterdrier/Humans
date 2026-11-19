@@ -96,7 +96,7 @@ Three aggregates and one content proxy, each with a single writer:
 - **The Consent Coordinator review queue** lives here (`/Consent/ReviewQueue`), next to the
   verdicts it writes. Reject is Onboarding's orchestration (`IOnboardingIntake.RejectSignupAsync`),
   shared with Users' admin screen; Onboarding also sets `Pending` at the review threshold.
-  Fake accounts (Users' `UserInfo.IsFake`) never count, through `ConsentReviewPredicates`.
+  Fake accounts (Users' `UserInfo.IsFake`) never count, through `ConsentReviewInfo.NeedsConsentReview` / `IsConsentCheckFlagged`.
 - **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
   Settled by Peter on 2026-08-23: cause can surface after the fact, so Reject stays available, gated
   by the `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup; add no service-side

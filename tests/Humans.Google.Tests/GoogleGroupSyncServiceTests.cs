@@ -50,6 +50,97 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
 
+    public enum DetachedMutation { Add, Remove }
+    public enum TrackingStage { FailedMembership, FailedProvisioning, SuccessfulMembership }
+
+    [HumansTheory]
+    [Xunit.InlineData(DetachedMutation.Add)]
+    [Xunit.InlineData(DetachedMutation.Remove)]
+    public async Task Shutdown_DetachedMembershipCancellationRecordsFailureAndSchedulesRetry(DetachedMutation mutation)
+    {
+        using var shutdown = new CancellationTokenSource();
+        const string groupKey = "team@nobodies.team";
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource(groupKey, mutation == DetachedMutation.Add ? new[] { userId } : []));
+        var resource = StageResource(groupKey);
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+        StubGroup(groupKey, "group-1", mutation == DetachedMutation.Remove
+            ? [new GroupMembership("old@nobodies.team", "groups/group-1/memberships/old")] : []);
+        var failure = new OperationCanceledException("Membership call stopped");
+        _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", CancellationToken.None)
+            .Returns(async Task<GroupMembershipMutationResult> (_) => { await shutdown.CancelAsync(); throw failure; });
+        _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", CancellationToken.None)
+            .Returns(async Task<GoogleClientError?> (_) => { await shutdown.CancelAsync(); throw failure; });
+
+        var diff = await service.ReconcileOneAsync(groupKey, SyncAction.Execute, shutdown.Token);
+
+        diff.ErrorMessage.Should().Contain(failure.Message);
+        await _teamResourceService.Received(1).RecordResourceErrorAsync(resource.Id, diff.ErrorMessage!, CancellationToken.None);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default, default);
+        _syncScheduler.Scheduled.Should().ContainSingle().Which.GroupKey.Should().Be(groupKey);
+        await _googleSyncLog.Received(1).LogAsync(Arg.Any<GoogleSyncLogAction>(), resource.Id, Arg.Any<string>(),
+            nameof(GoogleGroupSyncService), Arg.Any<string>(), "MEMBER", GoogleSyncSource.ScheduledSync,
+            success: false, errorMessage: diff.ErrorMessage, userId: Arg.Any<Guid?>(), ct: CancellationToken.None);
+        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default, default);
+        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(default!, default, default!, default!, default, default);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(TrackingStage.FailedMembership)]
+    [Xunit.InlineData(TrackingStage.FailedProvisioning)]
+    [Xunit.InlineData(TrackingStage.SuccessfulMembership)]
+    public async Task Shutdown_DetachedTrackingCancellationRemainsAFault(TrackingStage stage)
+    {
+        using var shutdown = new CancellationTokenSource();
+        const string groupKey = "team@nobodies.team";
+        var userId = Guid.NewGuid();
+        var service = CreateService(new StaticSource(groupKey, userId));
+        var resource = StageResource(groupKey);
+        StubUsers((userId, "Alice", "alice@nobodies.team"));
+        StubGroup(groupKey, "group-1");
+        _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", CancellationToken.None)
+            .Returns(new GroupMembershipMutationResult(stage == TrackingStage.SuccessfulMembership
+                ? GroupMembershipMutationOutcome.Added : GroupMembershipMutationOutcome.Failed,
+                stage == TrackingStage.SuccessfulMembership ? null : new GoogleClientError(503, "backend failed")));
+        if (stage == TrackingStage.FailedProvisioning)
+        {
+            _provisioningClient.LookupGroupIdAsync(groupKey, Arg.Any<CancellationToken>())
+                .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")));
+            _provisioningClient.CreateGroupAsync(groupKey, Arg.Any<string>(), Arg.Any<string>(), CancellationToken.None)
+                .Returns(new GroupCreateResult(null, new GoogleClientError(503, "backend failed")));
+        }
+        var failure = new OperationCanceledException("Tracking stopped");
+        _teamResourceService.RecordResourceErrorAsync(resource.Id, Arg.Any<string>(), CancellationToken.None)
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+        if (stage == TrackingStage.SuccessfulMembership)
+            _googleSyncLog.LogAsync(Arg.Any<GoogleSyncLogAction>(), resource.Id, Arg.Any<string>(),
+                    Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<GoogleSyncSource>(),
+                    true, Arg.Any<string?>(), Arg.Any<Guid?>(), CancellationToken.None)
+                .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => service.ReconcileOneAsync(groupKey, SyncAction.Execute, shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default, default);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_DetachedSyncedStatusCancellationRemainsAFault()
+    {
+        using var shutdown = new CancellationTokenSource();
+        const string groupKey = "team@nobodies.team";
+        var service = CreateService(new StaticSource(groupKey));
+        var resource = StageResource(groupKey);
+        StubGroup(groupKey, "group-1");
+        var failure = new OperationCanceledException("Status stopped");
+        _teamResourceService.MarkResourceSyncedAsync(resource.Id, Arg.Any<Instant>(), CancellationToken.None)
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => service.ReconcileOneAsync(groupKey, SyncAction.Execute, shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+    }
+
     [HumansFact]
     public async Task ReconcileOneAsync_ProvisioningCompletesAfterCancellation_ThenReadsKeepCallerToken()
     {
@@ -667,12 +758,12 @@ public sealed class GoogleGroupSyncServiceTests
                 GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(403, "member does not have a Google account")));
         _userService.GetByEmailOrAlternateAsync("alice@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(new User
+            .Returns(UserInfoFixtures.FromUser(new User
             {
                 Id = userId,
                 DisplayName = "Alice",
                 CreatedAt = _clock.GetCurrentInstant()
-            }.ToUserInfo());
+            }));
 
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
@@ -703,12 +794,12 @@ public sealed class GoogleGroupSyncServiceTests
                 GroupMembershipMutationOutcome.Failed,
                 new GoogleClientError(400, "Error(4002): Membership cannot be created since precondition check failed.")));
         _userService.GetByEmailOrAlternateAsync("alice@external.test", Arg.Any<CancellationToken>())
-            .Returns(new User
+            .Returns(UserInfoFixtures.FromUser(new User
             {
                 Id = userId,
                 DisplayName = "Alice",
                 CreatedAt = _clock.GetCurrentInstant()
-            }.ToUserInfo());
+            }));
 
         var diff = await service.ReconcileOneAsync("team@nobodies.team", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
@@ -1106,8 +1197,7 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
                 {
-                    [archived] = new User { Id = survivor, DisplayName = "Survivor", CreatedAt = _clock.GetCurrentInstant() }
-                        .ToUserInfo(),
+                    [archived] = UserInfoFixtures.FromUser(new User { Id = survivor, DisplayName = "Survivor", CreatedAt = _clock.GetCurrentInstant() }),
                 }));
         StubGroup("team@nobodies.team", "group-1");
 
@@ -1150,7 +1240,7 @@ public sealed class GoogleGroupSyncServiceTests
                     .Where(kv => requested.Contains(kv.Key))
                     .ToDictionary(
                         kv => kv.Key,
-                        kv => kv.Value.ToUserInfo(profile: _profilesByUserId.GetValueOrDefault(kv.Key)));
+                        kv => UserInfoFixtures.FromUser(kv.Value, profile: _profilesByUserId.GetValueOrDefault(kv.Key)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 

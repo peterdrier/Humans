@@ -14,7 +14,7 @@ namespace Humans.Web.Tests.Sections;
 public class SectionHelpCorpusTests
 {
     private static IReadOnlyList<ISectionHelp> Contributions() =>
-        SectionDiscoveryExtensions.DiscoverImplementations<ISectionHelp>();
+        [.. SectionDiscoveryExtensions.DiscoverImplementations<ISectionHelp>(), new ShellChrome()];
 
     private static IReadOnlyList<SectionHelpEntry> Entries() =>
         [.. Contributions().SelectMany(c => c.HelpEntries).OrderBy(e => e.Order)];
@@ -31,6 +31,7 @@ public class SectionHelpCorpusTests
             .ToList();
 
         var shipped = SectionDiscoveryExtensions.ActiveSectionAssemblies()
+            .Append(typeof(ShellChrome).Assembly)
             .SelectMany(a => HelpPageKeys(a).Select(key => (Assembly: AssemblyName(a), Key: key)))
             .OrderBy(x => x.Assembly, StringComparer.Ordinal).ThenBy(x => x.Key, StringComparer.Ordinal)
             .ToList();
@@ -94,6 +95,31 @@ public class SectionHelpCorpusTests
                 .Distinct(StringComparer.Ordinal)
                 .Should().HaveCountLessThanOrEqualTo(1, $"'{term}' must read the same in every glossary");
         }
+    }
+
+    private static SectionHelpEntry Entry(string key) =>
+        Entries().Single(e => string.Equals(e.Key, key, StringComparison.Ordinal));
+
+    [HumansFact]
+    public void Reads_the_admin_guide_and_glossary_out_of_the_assembly()
+    {
+        var entry = Entry("Admin");
+
+        entry.Guide.Should().StartWith("## Admin Tools");
+        entry.Guide.Should().EndWith("- Email notifications are sent for role assignment changes", "the file's trailing newline is framing, not content");
+        entry.Glossary.Should().StartWith("## Admin Glossary");
+        entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
+    }
+
+    [HumansFact]
+    public void Reads_the_board_guide_and_glossary_out_of_the_assembly()
+    {
+        var entry = Entry("Board");
+
+        entry.Guide.Should().StartWith("## Board Dashboard");
+        entry.Guide.Should().EndWith("- Audit log entries are created automatically for role changes, team changes, and consent events", "the file's trailing newline is framing, not content");
+        entry.Glossary.Should().StartWith("## Board Dashboard Glossary");
+        entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
     }
 
     private static string AssemblyName(Assembly assembly) => assembly.GetName().Name!;
