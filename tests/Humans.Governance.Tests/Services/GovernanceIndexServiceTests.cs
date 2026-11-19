@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using Humans.Governance.Controllers;
 using Humans.Governance.Tests.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
+using Humans.Base.Authorization;
+using Humans.Governance.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute.Core;
@@ -65,17 +68,23 @@ public sealed class GovernanceIndexServiceTests
     [InlineData(true, false, true)]
     [InlineData(false, true, true)]
     [InlineData(false, false, false)]
-    public async Task GetBodyPageAsync_shows_links_only_to_members_and_board_or_admin(bool isMember, bool seesAll, bool expected)
+    public async Task Body_page_shows_links_only_to_members_and_board_or_admin(bool isMember, bool boardOrAdmin, bool expected)
     {
         var viewer = Guid.NewGuid();
+        Users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User { Id = viewer, DisplayName = "Viewer", Email = "viewer@example.com" }));
         Applications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(isMember ? [viewer, Guid.NewGuid()] : [Guid.NewGuid()]);
         await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.BoardOrAdmin)
+            .Returns(boardOrAdmin ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
-        var page = await CreateService().GetBodyPageAsync(GovernanceBody.Asociados, viewer, seesAll);
+        var result = await CreateController(viewer, authorization).Body("Asociados");
 
-        (page.Links is not null).Should().Be(expected);
-        page.MemberIds.Should().HaveCount(isMember ? 2 : 1, "everyone signed in sees the members");
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<GovernanceBodyViewModel>().Which;
+        (model.Links is not null).Should().Be(expected);
+        model.MemberIds.Should().HaveCount(isMember ? 2 : 1, "everyone signed in sees the members");
     }
 
     [HumansFact]
@@ -216,17 +225,7 @@ public sealed class GovernanceIndexServiceTests
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<UserApplicationSnapshot>>([]);
         });
-        var controller = new GovernanceController(Users, CreateService())
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext
-                {
-                    RequestAborted = cancellation.Token,
-                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
-                }
-            },
-        };
+        var controller = CreateController(userId, Substitute.For<IAuthorizationService>(), cancellation.Token);
 
         (await controller.Index()).Should().BeOfType<ViewResult>();
         abandon = true;
@@ -234,4 +233,16 @@ public sealed class GovernanceIndexServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Index());
     }
 
+    private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
+        new(Users, CreateService(), authorization)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = ct,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+                }
+            },
+        };
 }

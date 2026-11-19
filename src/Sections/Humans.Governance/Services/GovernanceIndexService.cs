@@ -38,7 +38,6 @@ internal sealed class GovernanceIndexService(
 
         var yourAccess = (await bodyLinks.GetAllAsync(ct))
             .Where(l => rosters[l.Body].Contains(userId) && HasAnyLink(l))
-            .OrderBy(l => l.Body)
             .Select(ToAccess)
             .ToList();
 
@@ -60,13 +59,10 @@ internal sealed class GovernanceIndexService(
             yourAccess);
     }
 
-    public async Task<GovernanceBodyPageData> GetBodyPageAsync(
-        GovernanceBody body, Guid viewerId, bool seesAllLinks, CancellationToken ct = default)
+    public async Task<GovernanceBodyPageData> GetBodyPageAsync(GovernanceBody body, CancellationToken ct = default)
     {
         var roster = (await GetRostersAsync(ct))[body];
-        var links = seesAllLinks || roster.Contains(viewerId)
-            ? (await bodyLinks.GetAllAsync(ct)).SingleOrDefault(l => l.Body == body)
-            : null;
+        var links = (await bodyLinks.GetAllAsync(ct)).SingleOrDefault(l => l.Body == body);
         return new GovernanceBodyPageData(body, roster, links is not null && HasAnyLink(links) ? ToAccess(links) : null);
     }
 
@@ -89,9 +85,7 @@ internal sealed class GovernanceIndexService(
     private static GovernanceBodyAccess ToAccess(GovernanceBodyLinks links) => new(
         links.Body,
         links.GoogleGroupPrefix is { } prefix ? $"{prefix}@{DomainConstants.GoogleGroupDomain}" : null,
-        [.. links.Files
-            .OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(f => new GovernanceBodyAccessFile(f.Name, f.Url))]);
+        [.. links.Files.Select(f => new GovernanceBodyAccessFile(f.Name, f.Url))]);
 
     private static bool HasAnyLink(GovernanceBodyLinks links) =>
         links.GoogleGroupPrefix is not null || links.Files.Count > 0;

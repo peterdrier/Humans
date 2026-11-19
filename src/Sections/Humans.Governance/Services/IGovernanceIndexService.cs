@@ -10,9 +10,8 @@ internal interface IGovernanceIndexService : IApplicationService
 {
     Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>The body's members, and its group and files when <paramref name="seesAllLinks"/> or the viewer is a member.</summary>
-    Task<GovernanceBodyPageData> GetBodyPageAsync(
-        GovernanceBody body, Guid viewerId, bool seesAllLinks, CancellationToken ct = default);
+    /// <summary>The body's members, and its group and files (null when it has none).</summary>
+    Task<GovernanceBodyPageData> GetBodyPageAsync(GovernanceBody body, CancellationToken ct = default);
 }
 
 internal sealed record GovernanceIndexData(

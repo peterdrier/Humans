@@ -4,7 +4,7 @@
     {
         <li class="list-group-item"><i class="fa-solid fa-envelope me-2 text-muted"></i>@address</li>
     }
-    @foreach (var file in Model.Files)
+    @foreach (var file in Model.Files.OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase))
     {
         <li class="list-group-item">
             <i class="fa-brands fa-google-drive me-2 text-muted"></i>
