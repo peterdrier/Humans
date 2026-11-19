@@ -59,7 +59,6 @@ internal sealed class StoreOrderAdministration(
         string? externalRef,
         string? notes,
         LocalDate? valueDate,
-        LocalDate today,
         Guid actorUserId,
         StoreOrderReader orderReader, CancellationToken ct = default)
     {
@@ -77,8 +76,6 @@ internal sealed class StoreOrderAdministration(
             return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs a reference (the Holded bank movement id).");
         if (method == PaymentMethod.BankTransfer && valueDate is null)
             return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs its value date.");
-        if (valueDate > today)
-            return RefuseAdminMutation(orderId, actorUserId, "The value date cannot be in the future.");
 
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
@@ -91,10 +88,6 @@ internal sealed class StoreOrderAdministration(
             return RefuseAdminMutation(orderId, actorUserId, "Payment reference must be 200 characters or fewer.");
         if (notes is { Length: > 1000 })
             return RefuseAdminMutation(orderId, actorUserId, "Payment notes must be 1000 characters or fewer.");
-        if (method == PaymentMethod.BankTransfer
-            && order.Payments.Any(p => p.Method == PaymentMethod.BankTransfer && string.Equals(p.ExternalRef, externalRef, StringComparison.Ordinal)))
-            return RefuseAdminMutation(orderId, actorUserId,
-                $"Bank movement {externalRef} is already recorded on this order.");
 
         if (method == PaymentMethod.DepositReturn)
         {

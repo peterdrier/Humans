@@ -309,7 +309,7 @@ internal sealed class Service(
     /// citing its reference. Transfers and refunds are uncapped (a camp may have overpaid); deposit returns never
     /// exceed the order's deposits. A <paramref name="valueDate"/> becomes the payment's received date.
     /// </summary>
-    public async Task<AdminMutationResult> RecordAdminPaymentAsync(
+    public Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
         PaymentMethod method,
         decimal amountEur,
@@ -318,10 +318,8 @@ internal sealed class Service(
         LocalDate? valueDate,
         Guid actorUserId,
         CancellationToken ct = default) =>
-        await orderAdministration.RecordAdminPaymentAsync(
-            orderId, method, amountEur, externalRef, notes, valueDate,
-            clock.TodayIn((await settingsService.GetActiveEventSettingsAsync(ct))?.TimeZone),
-            actorUserId, orderReader, ct);
+        orderAdministration.RecordAdminPaymentAsync(
+            orderId, method, amountEur, externalRef, notes, valueDate, actorUserId, orderReader, ct);
 
     /// <summary>
     /// Hard delete of a payment recorded in error. The row is gone for good, so the audit entry carries everything

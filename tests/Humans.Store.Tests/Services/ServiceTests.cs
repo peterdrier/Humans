@@ -2225,20 +2225,10 @@ public class ServiceTests
     [HumansTheory]
     [InlineData(null, "2026-02-24", "reference")]
     [InlineData("6a3b8e7cbd5b6f5ec40cbb87", null, "value date")]
-    [InlineData("6a3b8e7cbd5b6f5ec40cbb87", "2099-01-01", "future")]
-    [InlineData("already-recorded", "2026-02-24", "already recorded")]
-    public async Task RecordAdminPaymentAsync_refuses_an_incomplete_or_repeated_bank_transfer(
+    public async Task RecordAdminPaymentAsync_refuses_an_incomplete_bank_transfer(
         string? reference, string? valueDate, string refusal)
     {
         var order = MakeDepositOrder(Guid.NewGuid(), depositTotal: 0m);
-        order.Payments.Add(new Payment
-        {
-            Id = Guid.NewGuid(),
-            OrderId = order.Id,
-            AmountEur = 10m,
-            Method = PaymentMethod.BankTransfer,
-            ExternalRef = "already-recorded",
-        });
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
 
         var result = await _service.RecordAdminPaymentAsync(order.Id, PaymentMethod.BankTransfer, 10m, reference, null,
