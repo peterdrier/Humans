@@ -158,6 +158,7 @@ graph LR
     Finance --> Expenses
     Finance --> Holded
     Finance --> Pleo
+    Finance --> Stripe
     Finance -.-> Email
     Finance -.-> Tickets
     Gate --> Auth

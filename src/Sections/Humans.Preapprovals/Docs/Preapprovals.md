@@ -11,9 +11,12 @@
 
 # Preapprovals — Section Invariants
 
-Programs of pre-authorized reimbursements: a pool per event (creativity grants, travel), the
-people granted under it, and the state each grant moves through until an expense report
-consumes it. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/features/global/preapprovals.md).
+Preapprovals is the one place to promise a person money ahead of time: this person will get up
+to this much if they spend it on the agreed thing and file the expense by a set date. Creativity
+grants and travel reimbursements use it today. Any future program that needs a "we'll cover
+this" promise uses it too, instead of building its own. It keeps to itself: Expenses can ask
+which promises a person has and mark one as used. Everything else (programs, managers,
+applications, decisions) stays inside. Spec: [`docs/features/global/preapprovals.md`](../../../../docs/features/global/preapprovals.md).
 
 ## Concepts
 

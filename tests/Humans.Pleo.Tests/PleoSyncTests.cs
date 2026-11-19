@@ -531,6 +531,43 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
+    public async Task Unlink_and_add_are_audited_and_add_refuses_a_duplicate_name()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SyncAsync();
+        var actor = Guid.NewGuid();
+        await _service.LinkCategoryAsync(LaCantinaCategory, LaCantinaRow, actor, ct);
+
+        (await _service.UnlinkCategoryAsync(LaCantinaRow, actor, ct)).Should().BeNull();
+        (await _service.AddCategoryAsync("Dept - Kitchen", "62900114", actor, ct)).Should().BeNull();
+        (await _service.AddCategoryAsync("dept - kitchen", "62900114", actor, ct)).Should().Contain("already a category");
+
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryUnlinked, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), actor);
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryAdded, "PleoCategory", Arg.Any<Guid>(),
+            Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task A_second_sweep_while_one_runs_is_skipped()
+    {
+        using var started = new SemaphoreSlim(0);
+        using var release = new SemaphoreSlim(0);
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            started.Release();
+            await release.WaitAsync();
+            return (IReadOnlyList<JsonElement>)[];
+        });
+
+        var first = SyncAsync();
+        await started.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.Busy);
+        release.Release();
+        (await first).Should().Be(PleoSyncOutcome.Synced);
+    }
+
+    [HumansFact]
     public async Task Without_a_key_the_sweep_does_nothing()
     {
         _client.IsConfigured.Returns(false);

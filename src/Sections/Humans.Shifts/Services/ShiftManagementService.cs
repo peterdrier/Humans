@@ -47,7 +47,7 @@ internal sealed class ShiftManagementService(
     private readonly ShiftBrowseReader browseReader = new(calendarResolver, serviceProvider, clock);
     private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
-    private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();
+    private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
     private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
 
     private Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
@@ -123,11 +123,9 @@ internal sealed class ShiftManagementService(
     public Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId) =>
         deletion.DeleteRotaAsync(rotaId, actorUserId);
 
-    public async Task<IReadOnlyList<ShiftAdminRota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View, ct);
-        return rotas.Select(ToAdminRota).ToList();
-    }
+    public async Task<IReadOnlyList<ShiftAdminRota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default) =>
+        [.. (await RotaRows.GetRotaRowsAsync(ct: ct))
+            .Where(r => r.Rota.TeamId == teamId && r.Rota.EventSettingsId == eventSettingsId)];
 
     public async Task<IReadOnlyList<ShiftAdminRota>> GetRotaRowsAsync(
         IReadOnlyCollection<Guid>? rotaIds = null, CancellationToken ct = default)
@@ -181,11 +179,8 @@ internal sealed class ShiftManagementService(
             .ToList();
     }
 
-    public async Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default)
-    {
-        var view = await RowView.GetRotaAsync(rotaId, cancellationToken);
-        return view.Rota is null ? null : ToRotaInfo(view.Rota);
-    }
+    public async Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default) =>
+        (await RotaRows.GetRotaRowsAsync([rotaId], cancellationToken)).SingleOrDefault()?.Rota;
 
     internal static LocalTime AllDayShiftStartTime => Shift.AllDayWindowStart;
 
@@ -206,11 +201,10 @@ internal sealed class ShiftManagementService(
     public Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId, Guid actorUserId) =>
         deletion.DeleteShiftAsync(shiftId, actorUserId);
 
-    public async Task<ShiftWithRota?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default)
-    {
-        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Rota, ct);
-        return shift?.Rota is null ? null : new ShiftWithRota(ToShiftInfo(shift), ToRotaInfo(shift.Rota));
-    }
+    public async Task<ShiftWithRota?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default) =>
+        (await RotaRows.GetRotaRowsAsync(ct: ct))
+            .SelectMany(r => r.Shifts.Where(s => s.Shift.Id == shiftId).Select(s => new ShiftWithRota(s.Shift, r.Rota)))
+            .FirstOrDefault();
 
     public Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,

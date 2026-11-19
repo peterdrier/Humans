@@ -67,7 +67,7 @@ public sealed class StoreControllerRecordPaymentTests
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         var service = _service = new Service(
-            _repo, _audit, camps, teams, clock, settings,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings,
             Substitute.For<IStripeService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
             Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
 
