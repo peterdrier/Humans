@@ -517,4 +517,29 @@ public class StripeServiceContractTests
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{ts}.{payload}"));
         return $"t={ts},v1={Convert.ToHexString(hash).ToLowerInvariant()}";
     }
+
+    [HumansFact]
+    public async Task StoreRefunds_read_through_the_store_account_and_are_null_without_one()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var http = Substitute.For<IHttpClient>();
+        using var headers = new HttpResponseMessage();
+        var requests = new List<StripeRequest>();
+        http.MakeRequestAsync(Arg.Do<StripeRequest>(requests.Add), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, """
+                {"object":"list","has_more":false,"data":[
+                  {"id":"re_1","object":"refund","amount":12050,"currency":"eur","status":"succeeded","payment_intent":"pi_x","created":1756720800}]}
+                """));
+        var store = new StripeMirrorAccount { Name = "Store", Id = "acct_store", ApiKey = "rk_org" };
+        var svc = new StripeService(Options.Create(new StripeSettings()), new CapturingLogger<StripeService>(), http,
+            Options.Create(new StripeMirrorOptions { Accounts = [store] }));
+
+        var refunds = await svc.ListStoreRefundsAsync("pi_x", ct);
+
+        refunds.Should().ContainSingle().Which.Should().Be(
+            new StoreRefundData("re_1", "pi_x", 120.50m, "succeeded", NodaTime.Instant.FromUnixTimeSeconds(1756720800)));
+        requests.Should().ContainSingle().Which.StripeHeaders["Stripe-Context"].Should().Be("acct_store");
+        svc.StorePaymentDashboardUrl("pi_x").Should().Be("https://dashboard.stripe.com/acct_store/payments/pi_x");
+        (await Build().Service.ListStoreRefundsAsync("pi_x", ct)).Should().BeNull();
+    }
 }

@@ -229,6 +229,19 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansTheory]
+    [InlineData(StoreRoles.StoreAdmin)]
+    [InlineData(RoleNames.Board)]
+    public async Task Only_FinanceAdmin_and_Admin_can_check_stripe_refunds(string role)
+    {
+        var controller = BuildController(role);
+
+        var result = await controller.CheckStripeRefunds(_order.Id, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(FinanceRoles.FinanceAdmin)]
     [InlineData(RoleNames.Admin)]
     public async Task FinanceAdmin_and_Admin_can_record_a_refund(string role)

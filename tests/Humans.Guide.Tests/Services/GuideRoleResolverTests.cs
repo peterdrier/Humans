@@ -109,7 +109,6 @@ public class GuideRoleResolverTests
 
         var result = await CreateResolver().ResolveAsync(PrincipalWithRoles(cookieId, RoleNames.Board), ct);
 
-        result.IsAuthenticated.Should().BeTrue();
         result.SystemRoles.Should().Contain(RoleNames.Board);
         result.IsTeamCoordinator.Should().Be(kind == MembershipCase.SurvivorCoordinates);
         result.IsCampLead.Should().Be(kind == MembershipCase.SurvivorLeadsCamp);
@@ -149,10 +148,7 @@ public class GuideRoleResolverTests
 
         var result = await resolver.ResolveAsync(new ClaimsPrincipal(new ClaimsIdentity()), TestContext.Current.CancellationToken);
 
-        result.IsAuthenticated.Should().BeFalse();
-        result.IsTeamCoordinator.Should().BeFalse();
-        result.IsCampLead.Should().BeFalse();
-        result.SystemRoles.Should().BeEmpty();
+        result.Should().BeSameAs(GuideRoleContext.Anonymous);
     }
 
     [HumansFact]
@@ -187,7 +183,6 @@ public class GuideRoleResolverTests
 
         var result = await resolver.ResolveAsync(user, TestContext.Current.CancellationToken);
 
-        result.IsAuthenticated.Should().BeTrue();
         result.SystemRoles.Should().Contain([RoleNames.Admin, RoleNames.Board]);
     }
 
@@ -213,7 +208,7 @@ public class GuideRoleResolverTests
         // so a former coordinator simply does not appear in the cached members list.
         var userId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        StubTeams(BuildTeam(teamId)); // no members — former coordinator pruned
+        StubTeams(BuildTeam(teamId));
 
         var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);

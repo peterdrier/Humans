@@ -42,6 +42,8 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
                 productId = l.ProductId,
                 productName = l.ProductName,
                 holdedRevenueAccountNum = l.HoldedRevenueAccountNum,
+                holdedExpenseAccountNum = l.HoldedExpenseAccountNum,
+                holdedTransferAccountNum = l.HoldedTransferAccountNum,
                 qty = l.Qty,
                 unitPrice = l.UnitPrice,
                 snapshotUnitPrice = l.SnapshotUnitPrice,

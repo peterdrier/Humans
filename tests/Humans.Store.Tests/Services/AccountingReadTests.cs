@@ -55,6 +55,7 @@ public class AccountingReadTests
             UnitPriceEur = 4m,
             VatRatePercent = 10m,
             HoldedRevenueAccountNum = 75900002,
+            HoldedTransferAccountNum = 62990002,
             OrderableUntil = new LocalDate(2026, 12, 31),
             IsActive = true,
         };
@@ -140,6 +141,8 @@ public class AccountingReadTests
         team.CounterpartyName.Should().BeNull();
         team.ProductName.Should().Be("Ice");
         team.HoldedRevenueAccountNum.Should().Be(75900002);
+        team.TeamId.Should().Be(DeptId);
+        team.HoldedTransferAccountNum.Should().Be(62990002);
     }
 
     [HumansFact]

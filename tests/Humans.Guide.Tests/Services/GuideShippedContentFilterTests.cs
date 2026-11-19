@@ -43,7 +43,6 @@ public class GuideShippedContentFilterTests
     public void Admin_ReceivesEveryFileWholeAndUnaltered()
     {
         var context = new GuideRoleContext(
-            IsAuthenticated: true,
             IsTeamCoordinator: false,
             IsCampLead: false,
             SystemRoles: new HashSet<string>([Base.Constants.RoleNames.Admin], StringComparer.Ordinal));
