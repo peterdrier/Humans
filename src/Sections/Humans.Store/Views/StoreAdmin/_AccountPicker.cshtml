@@ -7,6 +7,6 @@
     }
     @foreach (var c in Model.Choices)
     {
-        <option value="@c.Number" selected="@(c.Number == Model.Selected)">@c.Label</option>
+        <option value="@c.Number" selected="@(c.Number == Model.Selected ? "selected" : null)">@c.Label</option>
     }
 </select>
