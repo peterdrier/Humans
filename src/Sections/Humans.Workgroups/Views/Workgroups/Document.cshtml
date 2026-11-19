@@ -9,7 +9,6 @@
     var editor = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId = d.UpdatedByUserId ?? d.CreatedByUserId ?? Guid.Empty,
-        link = HumanLink.None,
     });
     using var editorWriter = new System.IO.StringWriter();
     editor.WriteTo(editorWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
@@ -163,7 +162,7 @@ else
                             {
                                 <span class="badge bg-secondary me-1">@Localizer["Workgroups_HiddenByGroup"]</span>
                             }
-                            <span class="text-muted small"><vc:human user-id="@(c.AuthorUserId ?? Guid.Empty)" link="None" /> · @c.CreatedAt.ToDateTime()</span>
+                            <span class="text-muted small"><vc:human user-id="@(c.AuthorUserId ?? Guid.Empty)" /> · @c.CreatedAt.ToDateTime()</span>
                         </div>
                         <status-badge value="@c.Disposition" localizer="@Localizer" />
                     </div>

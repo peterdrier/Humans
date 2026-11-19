@@ -9,7 +9,6 @@
         var member = await Component.InvokeAsync(typeof(HumanViewComponent), new
         {
             userId = memberId,
-            link = HumanLink.None,
         });
         using var memberWriter = new System.IO.StringWriter();
         member.WriteTo(memberWriter, System.Text.Encodings.Web.HtmlEncoder.Default);

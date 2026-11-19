@@ -14,7 +14,7 @@
             @Localizer["Shifts_ShiftSignups_Title"]
             @if (isAdmin)
             {
-                <text> — </text><vc:human user-id="@Model.UserId" link="None" />
+                <text> — </text><vc:human user-id="@Model.UserId" />
             }
         </span>
         @if (Model.Upcoming.Count + Model.Pending.Count > 0)

@@ -38,7 +38,7 @@
     </text>;
     var table = TableModel.For(Model)
         .Column("Date", l => l.DocumentDate.ToInvariantDate(), o => o.Css("text-nowrap"))
-        .Human("Member", l => l.CreditorUserId, HumanLink.None)
+        .Human("Member", l => l.CreditorUserId)
         .Template("Report", reportCell)
         .Column("Line", l => l.LineId is null ? "(whole report, legacy)" : l.Description)
         .Template("Expected", expectedCell, o => o.End().Css("text-nowrap"), sortBy: l => l.ExpectedAmount)

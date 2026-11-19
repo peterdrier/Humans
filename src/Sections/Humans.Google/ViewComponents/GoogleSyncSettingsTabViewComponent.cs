@@ -1,14 +1,12 @@
 using Humans.Google.Models;
 using Humans.Google.Services;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Google.ViewComponents;
 
 /// <summary>No role check here: <see cref="Section"/> contributes the tab as AdminOnly.</summary>
 internal sealed class GoogleSyncSettingsTabViewComponent(
-    ISyncSettingsService syncSettingsService,
-    IUserService userService) : ViewComponent
+    ISyncSettingsService syncSettingsService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -18,15 +16,6 @@ internal sealed class GoogleSyncSettingsTabViewComponent(
             .OrderBy(s => s.ServiceType.ToString(), StringComparer.Ordinal)
             .ToList();
 
-        var updatedByUserIds = settings
-            .Select(s => s.UpdatedByUserId)
-            .OfType<Guid>()
-            .Distinct()
-            .ToList();
-        var updatedByUsers = updatedByUserIds.Count > 0
-            ? await userService.GetUserInfosAsync(updatedByUserIds, ct)
-            : new Dictionary<Guid, UserInfo>();
-
         var viewModel = new SyncSettingsViewModel
         {
             Settings = settings.Select(s => new SyncServiceSettingViewModel
@@ -35,9 +24,7 @@ internal sealed class GoogleSyncSettingsTabViewComponent(
                 ServiceName = SyncServiceNameFormatter.Format(s.ServiceType),
                 CurrentMode = s.SyncMode,
                 UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
-                UpdatedByName = s.UpdatedByUserId is { } uid && updatedByUsers.TryGetValue(uid, out var u)
-                    ? u.BurnerName
-                    : null
+                UpdatedByUserId = s.UpdatedByUserId,
             }).ToList()
         };
 

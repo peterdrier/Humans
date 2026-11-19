@@ -21,16 +21,13 @@ public sealed class ConsentReviewCardViewComponent(
             return Content(string.Empty);
 
         var review = await consent.GetConsentReviewAsync(userId, ct);
-        var rejectedByName = review.RejectedByUserId is { } rejectedBy
-            ? (await users.GetRawUserInfoAsync(rejectedBy, ct))?.BurnerName
-            : null;
 
         return View(new ConsentReviewCardViewModel(
             info.State == UserState.Rejected,
             review.Status,
             review.RejectionReason,
             review.RejectedAt?.ToDateTimeUtc(),
-            rejectedByName));
+            review.RejectedByUserId));
     }
 }
 
@@ -39,4 +36,4 @@ internal sealed record ConsentReviewCardViewModel(
     ConsentCheckStatus? Status,
     string? RejectionReason,
     DateTime? RejectedAt,
-    string? RejectedByName);
+    Guid? RejectedByUserId);

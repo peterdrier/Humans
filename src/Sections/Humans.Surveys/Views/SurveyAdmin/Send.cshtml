@@ -117,7 +117,7 @@
             Func<SurveyInviteStatus, IHtmlContent> emailStatusCell = @<text>@if (item.EmailStatus is { } emailStatus){<status-badge value="@emailStatus" />}else{<span class="badge bg-light text-dark">—</span>}</text>;
             Func<SurveyInviteStatus, IHtmlContent> reminderCell = @<text>@FormatInstant(item.ReminderSentAt)</text>;
             var invitationsTable = TableModel.For(Model.Invitations)
-                .Human("Name", r => r.UserId, HumanLink.None)
+                .Human("Name", r => r.UserId)
                 .Template("Sent", sentCell, sortBy: i => i.SentAt)
                 .Template("Email status", emailStatusCell, sortBy: i => i.EmailStatus)
                 .Template("Reminder", reminderCell, sortBy: i => i.ReminderSentAt)

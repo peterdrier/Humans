@@ -142,7 +142,7 @@ else if (Model.Run is { Result: { } last } finished)
             </button>
             <span class="d-flex align-items-center gap-3">
                 <span class="text-muted small">
-                    @file.GeneratedAt.ToDateTime(madrid) by <vc:human user-id="@file.GeneratedByUserId" link="None" />
+                    @file.GeneratedAt.ToDateTime(madrid) by <vc:human user-id="@file.GeneratedByUserId" />
                 </span>
                 @if (canCancel)
                 {
@@ -225,13 +225,13 @@ else if (Model.Run is { Result: { } last } finished)
             </div>
         }
         @{
-            Func<SepaTransferVm, IHtmlContent> memberCell = @<text><vc:human user-id="@item.Row.UserId" link="None" /><div class="text-muted small">@item.Row.CreditorName</div></text>;
+            Func<SepaTransferVm, IHtmlContent> memberCell = @<text><vc:human user-id="@item.Row.UserId" /><div class="text-muted small">@item.Row.CreditorName</div></text>;
             Func<SepaTransferVm, IHtmlContent> amountCell = @<text>@item.Row.Amount.ToEuro()</text>;
             Func<SepaTransferVm, IHtmlContent> statusCell = @<text>
                 @if (item.Row.WithdrawnAt is { } withdrawnAt)
                 {
                     <span class="badge text-bg-dark">Withdrawn</span>
-                    <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(item.Row.WithdrawnByUserId ?? Guid.Empty)" link="None" /></div>
+                    <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(item.Row.WithdrawnByUserId ?? Guid.Empty)" /></div>
                 }
                 else if (item.Row.BookedAt is { } bookedAt)
                 {
@@ -247,7 +247,7 @@ else if (Model.Run is { Result: { } last } finished)
                     <div class="text-muted small">@bookedAt.ToDateTime(madrid) by
                         @if (item.Row.BookedByUserId is { } bookedBy)
                         {
-                            <vc:human user-id="@bookedBy" link="None" />
+                            <vc:human user-id="@bookedBy" />
                         }
                         else
                         {

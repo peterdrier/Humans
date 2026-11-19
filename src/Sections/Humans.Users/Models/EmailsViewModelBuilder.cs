@@ -19,7 +19,6 @@ internal sealed class EmailsViewModelBuilder(
     {
         var emails = await userEmailService.GetUserEmailsAsync(user.Id, ct);
         var info = await userService.GetUserInfoAsync(user.Id, ct);
-        var burnerName = info?.BurnerName ?? string.Empty;
 
         var (canAdd, minutesUntilResend) = await GetEmailAddCooldownStatusAsync(emails, ct);
 
@@ -75,7 +74,6 @@ internal sealed class EmailsViewModelBuilder(
             CanAddEmail = !UserStateEvaluator.IsTombstone(user) && (isAdminContext || canAdd),
             MinutesUntilResend = minutesUntilResend,
             TargetUserId = user.Id,
-            TargetDisplayName = burnerName,
             IsAdminContext = isAdminContext,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
             LegacyIdentityEmailColumn = isAdminContext

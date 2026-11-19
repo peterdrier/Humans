@@ -187,7 +187,7 @@
                         @foreach (var peek in results.Peeks)
                         {
                             <tr>
-                                <td><vc:human user-id="@peek.AdminUserId" link="None" /></td>
+                                <td><vc:human user-id="@peek.AdminUserId" /></td>
                                 <td>@peek.PeekedAt.ToDateTime(madridZone)</td>
                             </tr>
                         }
@@ -238,7 +238,7 @@
                                 <td>
                                     @if (row.UserId is { } userId)
                                     {
-                                        <vc:human user-id="@userId" link="None" />
+                                        <vc:human user-id="@userId" />
                                     }
                                     else
                                     {

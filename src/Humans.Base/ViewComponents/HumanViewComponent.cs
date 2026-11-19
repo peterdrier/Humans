@@ -7,7 +7,25 @@ namespace Humans.Base.ViewComponents;
 
 public enum HumanLayout { Text, Avatar, AvatarName, Card }
 
-public enum HumanLink { None, Public, Admin }
+/// <summary>
+/// Where a person's name links. Every name links to the profile popup; the no-link values name the only
+/// reasons a name may not (memory/architecture/burnername-is-the-display-name.md). A signed-out viewer never
+/// gets a link, since profiles need a sign-in.
+/// </summary>
+public enum HumanLink
+{
+    /// <summary>The public profile, with the profile popup.</summary>
+    Public,
+
+    /// <summary>The admin record, with the profile popup.</summary>
+    Admin,
+
+    /// <summary>No link: the name sits inside another link, button or the popup itself.</summary>
+    InsideControl,
+
+    /// <summary>No link: a Gate kiosk screen, which is locked away from profile pages.</summary>
+    Kiosk,
+}
 
 /// <summary>Renders a member’s name and picture, localizing missing names; its read honors browser cancellation.</summary>
 public class HumanViewComponent(
@@ -47,8 +65,11 @@ public class HumanViewComponent(
             displayName = localizer["Common_Unknown"];
         }
 
+        var linked = link is HumanLink.Public or HumanLink.Admin
+            && userId != Guid.Empty
+            && HttpContext.User.Identity?.IsAuthenticated == true;
         string? href = null;
-        if (link != HumanLink.None && userId != Guid.Empty)
+        if (linked)
         {
             var urlHelper = urlHelperFactory.GetUrlHelper(ViewContext);
             href = link == HumanLink.Admin
@@ -67,7 +88,7 @@ public class HumanViewComponent(
             Layout = layout,
             Link = link,
             Href = href,
-            ShowPopover = popover && link != HumanLink.None && userId != Guid.Empty,
+            ShowPopover = popover && linked,
             ShowPopoverPublic = popoverPublic && userId != Guid.Empty,
             Size = size,
             CssClass = cssClass,

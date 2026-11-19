@@ -24,8 +24,6 @@ internal sealed class EmailsViewModel
     /// <summary>The user being acted on: the target in admin contexts, not the actor.</summary>
     public Guid TargetUserId { get; set; }
 
-    public string? TargetDisplayName { get; set; }
-
     public bool IsAdminContext { get; set; }
 
     /// <summary>

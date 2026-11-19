@@ -7,11 +7,11 @@
     Func<GrantInfo, IHtmlContent> whoCell =
         @<text><vc:human user-id="@item.UserId" layout="AvatarName" size="28" /></text>;
     Func<GrantInfo, IHtmlContent> issuedCell =
-        @<text><vc:human user-id="@item.IssuedByUserId" link="None" /> @item.IssuedAt.ToDateTime()@(item.SourceRef is null ? "" : $" ({item.SourceRef})")</text>;
+        @<text><vc:human user-id="@item.IssuedByUserId" /> @item.IssuedAt.ToDateTime()@(item.SourceRef is null ? "" : $" ({item.SourceRef})")</text>;
     Func<GrantInfo, IHtmlContent> revokedCell = @<text>
         @if (item.RevokedAt is { } revokedAt)
         {
-            <vc:human user-id="@(item.RevokedByUserId ?? Guid.Empty)" link="None" /> @revokedAt.ToDateTime()
+            <vc:human user-id="@(item.RevokedByUserId ?? Guid.Empty)" /> @revokedAt.ToDateTime()
             @if (!string.IsNullOrEmpty(item.RevokeReason)) { <div>@item.RevokeReason</div> }
         }
     </text>;
@@ -71,7 +71,6 @@
                 var manager = await Component.InvokeAsync(typeof(HumanViewComponent), new
                 {
                     userId = p.ManagerUserIds[i],
-                    link = HumanLink.None,
                 });
                 using var writer = new System.IO.StringWriter();
                 manager.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);

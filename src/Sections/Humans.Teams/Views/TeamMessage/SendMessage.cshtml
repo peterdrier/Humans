@@ -5,7 +5,6 @@
     var recipient = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId = Model.RecipientId,
-        link = HumanLink.None,
     });
     using var recipientWriter = new System.IO.StringWriter();
     recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);

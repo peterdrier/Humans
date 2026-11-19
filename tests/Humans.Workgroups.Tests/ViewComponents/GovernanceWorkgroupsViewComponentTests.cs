@@ -128,7 +128,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
 
         PlainText(html).Trim().Should().Be($"{first}, {second}, {unknown}");
         html.Should().Contain(HtmlEncoder.Default.Encode(first)).And.Contain(HtmlEncoder.Default.Encode(second));
-        html.Should().NotContain("<script>").And.NotContain("<b>").And.NotContain("<a ");
+        html.Should().NotContain("<script>").And.NotContain("<b>").And.Contain("data-human-popover");
     }
 
     [HumansFact]
@@ -204,7 +204,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         var services = scope.ServiceProvider;
         var result = services.GetRequiredService<IRazorViewEngine>().GetView(null, path, isMainPage: false);
         result.Success.Should().BeTrue();
-        var http = new DefaultHttpContext { RequestServices = services };
+        var http = new DefaultHttpContext { RequestServices = services, User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "viewer")], "test")) };
         var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary())
         {
