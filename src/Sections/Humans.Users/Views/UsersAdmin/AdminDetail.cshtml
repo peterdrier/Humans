@@ -1,4 +1,5 @@
 @model Humans.Users.Models.AdminHumanDetailViewModel
+@inject IAuthorizationService AuthService
 @{
     ViewData["Title"] = string.Format(Localizer["Users_AdminHumanDetail_Title"].Value, Model.DisplayName);
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
@@ -37,7 +38,10 @@
                     <dt class="col-sm-3">@SharedLocalizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-9">
                         @Model.MembershipTier
-                        <a asp-controller="GovernanceApplications" asp-action="Admin" asp-route-userId="@Model.UserId" class="ms-2 small">@Localizer["Users_AdminHuman_Applications"]</a>
+                        @if ((await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded)
+                        {
+                            <a asp-controller="GovernanceApplications" asp-action="Admin" asp-route-userId="@Model.UserId" class="ms-2 small">@Localizer["Users_AdminHuman_Applications"]</a>
+                        }
                     </dd>
 
                     <dt class="col-sm-3">Language</dt>
