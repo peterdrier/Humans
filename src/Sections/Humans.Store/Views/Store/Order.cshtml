@@ -322,6 +322,32 @@ else
         <p class="text-muted">@Localizer["Store_PaymentsRecordedFinance"]</p>
     }
 
+    @if (Model.StripeRefundLinks.Count > 0)
+    {
+        @* FinanceAdmin-only control: plain strings. Humans never issues refunds; the person does it on stripe.com. *@
+        <h2 class="h5 mb-3 mt-4">Refund through Stripe</h2>
+        @if (Model.IsRefundDue)
+        {
+            <p>The camp is owed <strong>@Model.BalanceBoxAmountEur.ToEuro()</strong>. Refund it on Stripe, no more than a payment's unrefunded amount, then check for refunds to record it here.</p>
+        }
+        <ul class="list-unstyled mb-2">
+            @foreach (var link in Model.StripeRefundLinks)
+            {
+                <li>
+                    <a href="@link.DashboardUrl" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-brands fa-stripe-s me-1"></i>Refund in Stripe</a>
+                    <code class="ms-2">@link.PaymentIntentId</code>
+                    <span class="text-muted ms-2">paid @link.AmountEur.ToEuro()</span>
+                </li>
+            }
+        </ul>
+        <form asp-action="CheckStripeRefunds" asp-route-id="@order.Id" method="post" class="mb-3" data-submit-once>
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-primary">Check for refunds</button>
+            <small class="form-text text-muted d-block">Records refunds made on Stripe for these payments that aren't on this order yet.</small>
+        </form>
+    }
+
     @if (Model.CanRecordPayment)
     {
         <h2 class="h5 mb-3 mt-4">@Localizer["Store_RecordPaymentHeading"]</h2>
