@@ -40,8 +40,12 @@ public class ServiceStripeRefundCheckTests
     {
         var order = new Order
         {
-            Id = Guid.NewGuid(), CampSeasonId = Guid.NewGuid(), Year = 2026, State = OrderState.Open,
-            Lines = [], Payments = payments.ToList(),
+            Id = Guid.NewGuid(),
+            CampSeasonId = Guid.NewGuid(),
+            Year = 2026,
+            State = OrderState.Open,
+            Lines = [],
+            Payments = payments.ToList(),
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         return order;
@@ -49,7 +53,10 @@ public class ServiceStripeRefundCheckTests
 
     private static Payment StripePaid(string pi, decimal amount) => new()
     {
-        Id = Guid.NewGuid(), AmountEur = amount, Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid,
+        Id = Guid.NewGuid(),
+        AmountEur = amount,
+        Method = PaymentMethod.Stripe,
+        Status = PaymentStatus.Paid,
         StripePaymentIntentId = pi,
     };
 
@@ -62,7 +69,11 @@ public class ServiceStripeRefundCheckTests
         var actor = Guid.NewGuid();
         var alreadyBooked = new Payment
         {
-            Id = Guid.NewGuid(), AmountEur = -20m, Method = PaymentMethod.Refund, Status = PaymentStatus.Paid, ExternalRef = "re_old",
+            Id = Guid.NewGuid(),
+            AmountEur = -20m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_old",
         };
         var order = OrderWith(StripePaid("pi_a", 500m), alreadyBooked);
         _stripe.ListStoreRefundsAsync("pi_a", Arg.Any<CancellationToken>()).Returns(new List<StoreRefundData>
