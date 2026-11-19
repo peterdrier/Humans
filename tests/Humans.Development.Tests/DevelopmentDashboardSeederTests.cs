@@ -79,7 +79,8 @@ public class DevelopmentDashboardSeederTests
 
         var eventSettingsSeeding = Substitute.For<IEventSettingsSeeding>();
         var userEmails = Substitute.For<IUserEmailService>();
-        userEmails.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        var addedEmails = new List<string>();
+        userEmails.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Do<string>(addedEmails.Add), Arg.Any<CancellationToken>())
             .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         var sut = new DevelopmentDashboardSeeder(
             shifts, Substitute.For<ISettingsService>(), eventSettingsSeeding, signups,
@@ -102,6 +103,8 @@ public class DevelopmentDashboardSeederTests
         selfSignupUsers.Should().NotBeEmpty();
         profiles.Should().HaveCount(result.UsersCreated);
         profiles.Keys.Should().BeEquivalentTo(created);
+        addedEmails.Should().NotBeEmpty().And.AllSatisfy(email => email.Should().NotEndWith(".local",
+            "Users reads a .local address as a tombstone, so the seeded human would be inactive"));
         profiles.Values.Should().AllSatisfy(profile =>
         {
             profile.BurnerName.Should().NotBeNullOrWhiteSpace();
