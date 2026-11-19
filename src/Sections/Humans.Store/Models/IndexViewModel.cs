@@ -29,7 +29,7 @@ internal sealed class OrderViewModel
 
     public bool CanRecordPayment { get; init; }
 
-    public bool CanRefund { get; init; }
+    public bool CanRecordFinancePayment { get; init; }
 
     public bool CanDeletePayment { get; init; }
 
@@ -49,14 +49,14 @@ internal sealed class OrderViewModel
         bool canDelete,
         bool canIssueInvoice,
         bool canRecordPayment,
-        bool canRefund,
+        bool canRecordFinancePayment,
         bool canDeletePayment,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
         {
             CanIssueInvoice = canIssueInvoice,
             CanRecordPayment = canRecordPayment,
-            CanRefund = canRefund,
+            CanRecordFinancePayment = canRecordFinancePayment,
             CanDeletePayment = canDeletePayment,
             Order = pageData.Order,
             Catalog = catalog,

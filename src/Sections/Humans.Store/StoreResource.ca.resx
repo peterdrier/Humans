@@ -80,14 +80,16 @@
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Contrapart actualitzada.</value></data>
   <data name="Store_PaymentRecorded" xml:space="preserve"><value>Registrat.</value></data>
   <data name="Store_Overpaid" xml:space="preserve"><value>{0} pagat de més — s'ha de retornar al campament.</value></data>
-  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Registrar devolució de fiança o reemborsament</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Registrar pagament, devolució de fiança o reemborsament</value></data>
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipus</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Devolució de fiança (abonament a la comanda)</value></data>
   <data name="Store_Method_Refund" xml:space="preserve"><value>Reemborsament (diners retornats des de Stripe)</value></data>
+  <data name="Store_Method_BankTransfer" xml:space="preserve"><value>Transferència bancària (rebuda al banc)</value></data>
+  <data name="Store_RecordPaymentValueDate" xml:space="preserve"><value>Data valor</value></data>
   <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Devolució de fiança</value></data>
   <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Reemborsament</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Import (EUR)</value></data>
-  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referència (p. ex. id del reemborsament a Stripe)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referència (id del moviment bancari a Holded o id del reemborsament a Stripe)</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notes</value></data>
   <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Registrar</value></data>
   <data name="Enum_OrderState_Open" xml:space="preserve"><value>Oberta</value></data><data name="Enum_OrderState_InvoiceIssued" xml:space="preserve"><value>Factura emesa</value></data><data name="Enum_PaymentMethod_Stripe" xml:space="preserve"><value>Stripe</value></data><data name="Enum_PaymentMethod_BankTransfer" xml:space="preserve"><value>Transferència bancària</value></data><data name="Enum_PaymentMethod_Manual" xml:space="preserve"><value>Manual</value></data><data name="Enum_PaymentStatus_Paid" xml:space="preserve"><value>Pagat</value></data><data name="Enum_PaymentStatus_Pending" xml:space="preserve"><value>Pendent de liquidació</value></data><data name="Enum_PaymentStatus_Failed" xml:space="preserve"><value>Fallit</value></data>

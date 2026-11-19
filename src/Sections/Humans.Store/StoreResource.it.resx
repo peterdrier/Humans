@@ -80,14 +80,16 @@
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Controparte aggiornata.</value></data>
   <data name="Store_PaymentRecorded" xml:space="preserve"><value>Registrato.</value></data>
   <data name="Store_Overpaid" xml:space="preserve"><value>{0} pagato in eccesso — da restituire al campo.</value></data>
-  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Registra restituzione cauzione o rimborso</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Registra pagamento, restituzione cauzione o rimborso</value></data>
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Tipo</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Restituzione cauzione (accredito sull'ordine)</value></data>
   <data name="Store_Method_Refund" xml:space="preserve"><value>Rimborso (denaro restituito da Stripe)</value></data>
+  <data name="Store_Method_BankTransfer" xml:space="preserve"><value>Bonifico bancario (ricevuto in banca)</value></data>
+  <data name="Store_RecordPaymentValueDate" xml:space="preserve"><value>Data valuta</value></data>
   <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Restituzione cauzione</value></data>
   <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Rimborso</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Importo (EUR)</value></data>
-  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Riferimento (es. id del rimborso Stripe)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Riferimento (id del movimento bancario Holded o id del rimborso Stripe)</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Note</value></data>
   <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Registra</value></data>
   <data name="Enum_OrderState_Open" xml:space="preserve"><value>Aperto</value></data><data name="Enum_OrderState_InvoiceIssued" xml:space="preserve"><value>Fattura emessa</value></data><data name="Enum_PaymentMethod_Stripe" xml:space="preserve"><value>Stripe</value></data><data name="Enum_PaymentMethod_BankTransfer" xml:space="preserve"><value>Bonifico bancario</value></data><data name="Enum_PaymentMethod_Manual" xml:space="preserve"><value>Manuale</value></data><data name="Enum_PaymentStatus_Paid" xml:space="preserve"><value>Pagato</value></data><data name="Enum_PaymentStatus_Pending" xml:space="preserve"><value>In attesa di regolamento</value></data><data name="Enum_PaymentStatus_Failed" xml:space="preserve"><value>Non riuscito</value></data>

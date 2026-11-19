@@ -330,8 +330,12 @@ else
             <div class="col-md-3">
                 <label class="form-label">@Localizer["Store_RecordPaymentType"]</label>
                 <select name="method" class="form-select" required>
+                    @if (Model.CanRecordFinancePayment)
+                    {
+                        <option value="@PaymentMethod.BankTransfer">@Localizer["Store_Method_BankTransfer"]</option>
+                    }
                     <option value="@PaymentMethod.DepositReturn">@Localizer["Store_Method_DepositReturn"]</option>
-                    @if (Model.CanRefund)
+                    @if (Model.CanRecordFinancePayment)
                     {
                         <option value="@PaymentMethod.Refund">@Localizer["Store_Method_Refund"]</option>
                     }
@@ -341,11 +345,15 @@ else
                 <label class="form-label">@Localizer["Store_RecordPaymentAmount"]</label>
                 <input type="number" name="amountEur" class="form-control" min="0.01" step="0.01" required />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["Store_RecordPaymentValueDate"]</label>
+                <input type="date" name="valueDate" class="form-control" />
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">@Localizer["Store_RecordPaymentRef"]</label>
                 <input type="text" name="externalRef" class="form-control" maxlength="200" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">@Localizer["Store_RecordPaymentNotes"]</label>
                 <input type="text" name="notes" class="form-control" maxlength="1000" />
             </div>
