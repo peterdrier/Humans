@@ -27,7 +27,7 @@ public sealed record AccountingOrderLineDto(
     string ProductName,
     int? HoldedRevenueAccountNum,
     int? HoldedExpenseAccountNum,
-    int? HoldedRechargeAccountNum,
+    int? HoldedTransferAccountNum,
     int Qty,
     decimal UnitPrice,
     decimal VatRatePercent,

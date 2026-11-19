@@ -76,11 +76,11 @@ approves** the document, then writes `store_invoices` and the frozen `store_orde
 a single `SaveIssuedInvoiceAsync` — one `SaveChanges`, because an order must never be
 `InvoiceIssued` without its invoice row. No `IMemoryCache`.
 
-### StoreRechargeBooking (internal — `IApplicationService`, Scoped)
+### StoreTransferBooking (internal — `IApplicationService`, Scoped)
 
 Owns no table access of its own: reads team-order lines through `IStoreAccountingRead`. Cross-section calls via
 `IBudgetService` (active year's department categories), `IFinanceService` (category → Holded account map),
-`IHoldedService` (recharge-account ledger mirror and its re-pull), `IHoldedWrite.PostJournalEntryAsync`, and
+`IHoldedService` (transfer-account ledger mirror and its re-pull), `IHoldedWrite.PostJournalEntryAsync`, and
 `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
 
 ### StoreOrderReader (internal — `IStoreAccountingRead`, Scoped)

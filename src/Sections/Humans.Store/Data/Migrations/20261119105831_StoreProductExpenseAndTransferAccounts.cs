@@ -5,7 +5,7 @@
 namespace Humans.Store.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class StoreProductExpenseAndRechargeAccounts : Migration
+    public partial class StoreProductExpenseAndTransferAccounts : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,7 +17,7 @@ namespace Humans.Store.Data.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(
-                name: "HoldedRechargeAccountNum",
+                name: "HoldedTransferAccountNum",
                 table: "store_products",
                 type: "integer",
                 nullable: true);
@@ -31,7 +31,7 @@ namespace Humans.Store.Data.Migrations
                 table: "store_products");
 
             migrationBuilder.DropColumn(
-                name: "HoldedRechargeAccountNum",
+                name: "HoldedTransferAccountNum",
                 table: "store_products");
         }
     }

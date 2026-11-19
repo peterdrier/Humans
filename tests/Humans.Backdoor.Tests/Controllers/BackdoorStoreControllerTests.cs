@@ -66,7 +66,7 @@ public class BackdoorStoreControllerTests
         json.Should().Contain($@"""lineId"":""{lineId}""");
         json.Should().Contain(@"""productName"":""Ice""");
         json.Should().Contain(@"""holdedRevenueAccountNum"":75900002");
-        json.Should().Contain(@"""holdedRechargeAccountNum"":62990002");
+        json.Should().Contain(@"""holdedTransferAccountNum"":62990002");
         json.Should().Contain(@"""qty"":3");
         json.Should().Contain(@"""unitPrice"":4");
         json.Should().Contain(@"""vatRatePercent"":10");

@@ -251,10 +251,10 @@ namespace Humans.Store.Data.Migrations
                     b.Property<int?>("HoldedExpenseAccountNum")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("HoldedRechargeAccountNum")
+                    b.Property<int?>("HoldedRevenueAccountNum")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("HoldedRevenueAccountNum")
+                    b.Property<int?>("HoldedTransferAccountNum")
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsActive")

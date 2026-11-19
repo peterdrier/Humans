@@ -24,10 +24,10 @@ internal sealed class Product
     public int? HoldedExpenseAccountNum { get; set; }
 
     /// <summary>
-    /// The 8-digit Holded internal-recharge account (6299xxxx, cost side), credited when a department's team order
+    /// The 8-digit Holded internal-transfer account (6299xxxx, cost side), credited when a department's team order
     /// consumes the item. Team lines of a product without one are not booked.
     /// </summary>
-    public int? HoldedRechargeAccountNum { get; set; }
+    public int? HoldedTransferAccountNum { get; set; }
 
     public LocalDate OrderableUntil { get; set; }
     public bool IsActive { get; set; } = true;

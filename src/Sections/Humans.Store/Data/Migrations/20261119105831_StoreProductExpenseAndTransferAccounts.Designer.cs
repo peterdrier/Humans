@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Store.Data.Migrations
 {
     [DbContext(typeof(StoreDbContext))]
-    [Migration("20261119013852_StoreProductExpenseAndRechargeAccounts")]
-    partial class StoreProductExpenseAndRechargeAccounts
+    [Migration("20261119105831_StoreProductExpenseAndTransferAccounts")]
+    partial class StoreProductExpenseAndTransferAccounts
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -254,10 +254,10 @@ namespace Humans.Store.Data.Migrations
                     b.Property<int?>("HoldedExpenseAccountNum")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("HoldedRechargeAccountNum")
+                    b.Property<int?>("HoldedRevenueAccountNum")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("HoldedRevenueAccountNum")
+                    b.Property<int?>("HoldedTransferAccountNum")
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsActive")

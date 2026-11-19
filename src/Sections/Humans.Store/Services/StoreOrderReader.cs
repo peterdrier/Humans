@@ -360,7 +360,7 @@ internal sealed class StoreOrderReader(
                     product?.Name ?? "(unknown product)",
                     product?.HoldedRevenueAccountNum,
                     product?.HoldedExpenseAccountNum,
-                    product?.HoldedRechargeAccountNum,
+                    product?.HoldedTransferAccountNum,
                     l.Qty,
                     t.EffectiveUnitPrice,
                     t.EffectiveVatRate,

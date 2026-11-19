@@ -31,7 +31,7 @@ internal sealed record ProductSaveRequest(
     bool IsActive,
     int? HoldedRevenueAccountNum,
     int? HoldedExpenseAccountNum = null,
-    int? HoldedRechargeAccountNum = null);
+    int? HoldedTransferAccountNum = null);
 
 internal sealed record CatalogSaveResult(
     bool Succeeded,

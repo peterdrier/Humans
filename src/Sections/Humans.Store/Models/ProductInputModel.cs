@@ -38,7 +38,7 @@ internal sealed class ProductInputModel
     public int? HoldedExpenseAccountNum { get; set; }
 
     [Range(10_000_000, 99_999_999, ErrorMessage = "Use the 8-digit Holded chart number, e.g. 62990002")]
-    public int? HoldedRechargeAccountNum { get; set; }
+    public int? HoldedTransferAccountNum { get; set; }
 
     [Required(AllowEmptyStrings = false)]
     [RegularExpression(@"^\d{4}-\d{2}-\d{2}$", ErrorMessage = "Use YYYY-MM-DD format")]

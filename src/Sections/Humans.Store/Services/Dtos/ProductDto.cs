@@ -14,7 +14,7 @@ internal sealed record ProductDto(
     bool IsActive,
     int? HoldedRevenueAccountNum = null,
     int? HoldedExpenseAccountNum = null,
-    int? HoldedRechargeAccountNum = null)
+    int? HoldedTransferAccountNum = null)
 {
     /// <summary>Display only, rounded like BalanceCalculator.</summary>
     public decimal UnitPriceInclVatEur => Math.Round(UnitPriceEur * (1 + VatRatePercent / 100m), 2, MidpointRounding.AwayFromZero);
