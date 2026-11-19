@@ -21,6 +21,7 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
             contact_name = input.ContactName,
             date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
             description = input.Description,
+            number = input.Number,
             notes = input.Notes,
             // No tags on the write side: items[].account books the doc to the right department directly.
             items = input.Lines.Select(l => new
@@ -29,6 +30,7 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
                 units = 1,
                 price = l.Amount,
                 account = l.AccountId,
+                taxes = l.Taxes,
             })
         };
 
