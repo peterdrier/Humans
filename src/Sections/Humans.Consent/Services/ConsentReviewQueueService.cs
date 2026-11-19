@@ -21,7 +21,6 @@ internal sealed class ConsentReviewQueueService(
         var (pending, flagged) = PartitionReviewQueue(all, reviews);
 
         var allUserIds = flagged.Concat(pending).Select(u => u.Id).ToList();
-        var pendingAppUserIds = await governanceService.GetUserIdsWithPendingApplicationAsync(allUserIds, ct);
 
         var consentProgress = new Dictionary<Guid, ConsentProgressInfo>();
         foreach (var userId in allUserIds)
@@ -34,7 +33,7 @@ internal sealed class ConsentReviewQueueService(
 
         var tiers = await governanceService.GetMembershipTiersAsync(ct);
 
-        return new ReviewQueueData(pending, flagged, pendingAppUserIds.ToHashSet(), consentProgress, tiers, reviews);
+        return new ReviewQueueData(pending, flagged, consentProgress, tiers, reviews);
     }
 
     // Bulk clear's eligibility is defined as "a row in the queue", so it partitions here too and the two can't
@@ -63,13 +62,12 @@ internal sealed class ConsentReviewQueueService(
         var profile = info?.Profile;
 
         if (profile is null)
-            return new ReviewDetailData(null, 0, 0, null);
+            return new ReviewDetailData(null, 0, 0);
 
         var review = await consentService.GetConsentReviewAsync(userId, ct);
 
         var progress = await consentService.GetConsentProgressAsync(userId, ct);
 
-        var pendingApp = await governanceService.GetSubmittedApplicationForUserAsync(userId, ct);
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
 
         return new ReviewDetailData(
@@ -83,8 +81,7 @@ internal sealed class ConsentReviewQueueService(
                 review.Notes,
                 profile.CreatedAt),
             progress.RequiredCount - progress.PendingCount,
-            progress.RequiredCount,
-            pendingApp?.Motivation);
+            progress.RequiredCount);
     }
 
     public Task<OnboardingResult> ClearAsync(

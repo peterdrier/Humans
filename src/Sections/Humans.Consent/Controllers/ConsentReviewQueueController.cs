@@ -52,8 +52,8 @@ internal sealed class ConsentReviewQueueController(
             return RedirectToAction(nameof(Detail), new { userId = detailUser.Id });
 
         var detail = await reviewQueue.GetReviewDetailAsync(userId, ct);
-        var (profile, consentCount, requiredConsentCount, pendingApplicationMotivation) =
-            (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplicationMotivation);
+        var (profile, consentCount, requiredConsentCount) =
+            (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount);
 
         if (profile is null)
             return NotFound();
@@ -69,9 +69,7 @@ internal sealed class ConsentReviewQueueController(
             ConsentCheckNotes = profile.ConsentCheckNotes,
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
             ConsentCount = consentCount,
-            RequiredConsentCount = requiredConsentCount,
-            HasPendingApplication = pendingApplicationMotivation is not null,
-            ApplicationMotivation = pendingApplicationMotivation
+            RequiredConsentCount = requiredConsentCount
         };
 
         return View(viewModel);
@@ -242,7 +240,6 @@ internal sealed class ConsentReviewQueueController(
             ConsentCheckStatus = data.Reviews.GetValueOrDefault(info.Id)?.Status,
             MembershipTier = data.Tiers.GetValueOrDefault(info.Id, MembershipTier.Volunteer),
             ProfileCreatedAt = info.Profile!.CreatedAt.ToDateTimeUtc(),
-            HasPendingApplication = data.PendingAppUserIds.Contains(info.Id),
             ConsentCount = progress?.Signed ?? 0,
             RequiredConsentCount = progress?.Required ?? 0
         };
