@@ -32,33 +32,33 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task AddAsync_UpdatesUserStateFromNewProfile()
+    public async Task AddAsync_WritesTheNamesToTheUserAndClassifiesIt()
     {
         var user = await SeedUserAsync();
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
 
-        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(NewProfile(user.Id), Xunit.TestContext.Current.CancellationToken, new UserNames("Burner", "First", "Last"));
 
-        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await ReloadUserAsync(user.Id);
+        (reloaded.BurnerName, reloaded.FirstName, reloaded.LastName).Should().Be(("Burner", "First", "Last"));
         reloaded.State.Should().Be(UserState.Active);
     }
 
     [HumansFact]
-    public async Task UpdateAsync_UpdatesUserStateFromChangedProfile()
+    public async Task UpdateAsync_WritesGivenNamesAndLeavesThemAloneOtherwise()
     {
-        var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        _dbContext.ChangeTracker.Clear();
-
+        var user = await SeedUserAsync();
+        var profile = NewProfile(user.Id);
+        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken, new UserNames("Old", "First", "Last"));
         var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
-        detached.FirstName = "";
-        detached.UpdatedAt = _clock.GetCurrentInstant();
 
+        // A save that carries no names, such as medical conditions.
         await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken);
+        (await ReloadUserAsync(user.Id)).BurnerName.Should().Be("Old");
 
-        var reloaded = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken, names: new UserNames("New", "", "Last"));
+
+        var reloaded = await ReloadUserAsync(user.Id);
+        (reloaded.BurnerName, reloaded.FirstName).Should().Be(("New", ""));
         reloaded.State.Should().Be(UserState.Bare);
     }
 
@@ -66,7 +66,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     public async Task UpdateAsync_Cv_AddsUpdatesAndRemovesEntries()
     {
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
         var profileId = profile.Id;
         var keepId = Guid.NewGuid();
@@ -137,7 +137,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     public async Task UpdateAsync_Cv_DoesNotBumpUpdatedAt_WhenFieldsUnchanged()
     {
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
         var profileId = profile.Id;
         var entryId = Guid.NewGuid();
@@ -178,7 +178,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         // must update the existing row in place, not delete-and-insert (which
         // would lose Id and CreatedAt).
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
         var profileId = profile.Id;
         var entryId = Guid.NewGuid();
@@ -227,9 +227,9 @@ public sealed class UserRepositoryProfileTests : IDisposable
         // notifies and audits off the returned set, so an unmoved row must not appear in it.
         var rejected = await SeedUserAsync(UserState.Rejected);
         var active = await SeedUserAsync(UserState.Active);
-        var rejectedProfile = NewProfile(rejected.Id, "Burner", "First", "Last");
+        var rejectedProfile = NewProfile(rejected.Id);
         _dbContext.Profiles.Add(rejectedProfile);
-        _dbContext.Profiles.Add(NewProfile(active.Id, "Burner", "First", "Last"));
+        _dbContext.Profiles.Add(NewProfile(active.Id));
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         _dbContext.ChangeTracker.Clear();
 
@@ -249,7 +249,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         // AdminNotes is a general-purpose field admins own. The suspension reason lives in the
         // audit log and the notification, so suspending must not overwrite what is there.
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        var profile = NewProfile(user.Id);
         profile.AdminNotes = "Prefers email contact";
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -271,46 +271,12 @@ public sealed class UserRepositoryProfileTests : IDisposable
         persistedProfile.UpdatedAt.Should().Be(profileUpdatedAt);
     }
 
-    // Every Profile write mirrors the names onto the owning User row.
-
-    [HumansFact]
-    public async Task AddAsync_MirrorsProfileNamesOntoTheUser()
-    {
-        var user = await SeedUserAsync();
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
-
-        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
-
-        var reloaded = await ReloadUserAsync(user.Id);
-        reloaded.BurnerName.Should().Be("Burner");
-        reloaded.FirstName.Should().Be("First");
-        reloaded.LastName.Should().Be("Last");
-    }
-
-    [HumansFact]
-    public async Task UpdateAsync_MirrorsRenamedProfileOntoTheUser()
-    {
-        var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Old", "First", "Last");
-        _dbContext.Profiles.Add(profile);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        _dbContext.ChangeTracker.Clear();
-
-        var detached = await _dbContext.Profiles.AsNoTracking()
-            .SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
-        detached.BurnerName = "New";
-
-        await _repo.UpdateAsync(detached, Xunit.TestContext.Current.CancellationToken);
-
-        (await ReloadUserAsync(user.Id)).BurnerName.Should().Be("New");
-    }
-
     [HumansFact]
     public async Task AnonymizeForDeletionByUserIdAsync_ClearsTheUserSideBurnerName()
     {
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
-        await _repo.AddAsync(profile, Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddAsync(
+            NewProfile(user.Id), Xunit.TestContext.Current.CancellationToken, new UserNames("Burner", "First", "Last"));
 
         await _repo.AnonymizeForDeletionByUserIdAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -331,7 +297,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     public async Task EraseProfileExtrasForUserAsync_ErasesMedicalConditions()
     {
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        var profile = NewProfile(user.Id);
         profile.MedicalConditions = "Epilepsy";
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -344,40 +310,11 @@ public sealed class UserRepositoryProfileTests : IDisposable
     }
 
     [HumansFact]
-    public async Task CopyProfileNamesToUsersAsync_FixesExactlyTheMismatchedRows()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var stale = await SeedUserAsync(UserState.Active);
-        var current = await SeedUserAsync(UserState.Active);
-        current.BurnerName = "Same";
-        current.FirstName = "First";
-        current.LastName = "Last";
-        await SeedUserAsync(); // no profile: nothing to copy
-        var seeded = await SeedUserAsync(); // blank stub profile must not erase the seeded name
-        seeded.BurnerName = "Seeded";
-        _dbContext.Profiles.Add(NewProfile(seeded.Id, "", "", ""));
-        _dbContext.Profiles.Add(NewProfile(stale.Id, "Burner", "First", "Last"));
-        _dbContext.Profiles.Add(NewProfile(current.Id, "Same", "First", "Last"));
-        await _dbContext.SaveChangesAsync(ct);
-        _dbContext.ChangeTracker.Clear();
-
-        (await _repo.GetProfileNameMismatchesAsync(ct)).Should().ContainSingle()
-            .Which.Should().Be(new ProfileNameMismatch(stale.Id, "", "", "", "Burner", "First", "Last"));
-
-        (await _repo.CopyProfileNamesToUsersAsync(ct)).Should().Be(1);
-
-        var fixedRow = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == stale.Id, ct);
-        (fixedRow.BurnerName, fixedRow.FirstName, fixedRow.LastName).Should().Be(("Burner", "First", "Last"));
-        (await _repo.GetProfileNameMismatchesAsync(ct)).Should().BeEmpty();
-        (await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == seeded.Id, ct)).BurnerName.Should().Be("Seeded");
-    }
-
-    [HumansFact]
     public async Task NewChildRows_CarryTheOwningUserId()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync(ct);
         _dbContext.ChangeTracker.Clear();
@@ -396,7 +333,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
         _dbContext.ProfileLanguages.Add(new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, LanguageCode = "es" });
         _dbContext.ProfileLanguages.Add(new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, UserId = user.Id, LanguageCode = "en" });
@@ -429,17 +366,13 @@ public sealed class UserRepositoryProfileTests : IDisposable
         return user;
     }
 
-    private Profile NewProfile(
-        Guid userId, string burnerName, string firstName, string lastName)
+    private Profile NewProfile(Guid userId)
     {
         var now = _clock.GetCurrentInstant();
         return new Profile
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = burnerName,
-            FirstName = firstName,
-            LastName = lastName,
             CreatedAt = now,
             UpdatedAt = now,
         };

@@ -44,9 +44,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Test",
-            FirstName = "Test",
-            LastName = "User",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
@@ -70,9 +67,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                BurnerName = "Test",
-                FirstName = "Test",
-                LastName = "User",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             }

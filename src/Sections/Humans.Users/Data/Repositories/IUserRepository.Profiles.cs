@@ -17,11 +17,6 @@ internal partial interface IUserRepository
     Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Every user whose row lacks a name their profile holds. A blank profile name never counts. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Per user, the contact-field, language and volunteer-history rows that carry no <c>UserId</c> yet. Read-only.
     /// </summary>
     Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default);
@@ -29,8 +24,6 @@ internal partial interface IUserRepository
     /// <summary>Stamps the owning user onto every such row. Returns the rows written.</summary>
     Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default);
 
-    /// <summary>Copies the profile's non-blank names onto every mismatched user row. Returns the rows written.</summary>
-    Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default);
 
     /// <summary>
     /// The content type (the GDPR gate checked before serving the file) and versioned storage key
@@ -46,16 +39,21 @@ internal partial interface IUserRepository
 
     Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
-    /// <summary>Also updates the owning user's stored <see cref="UserState"/>.</summary>
-    Task AddAsync(Profile profile, CancellationToken ct = default);
+    /// <summary>
+    /// Also updates the owning user's stored <see cref="UserState"/>, and its names when
+    /// <paramref name="names"/> is given.
+    /// </summary>
+    Task AddAsync(Profile profile, CancellationToken ct = default, UserNames? names = null);
 
     /// <summary>
     /// Saves a profile from <see cref="GetByUserIdAsync"/> and the owning user's stored
-    /// <see cref="UserState"/>. A non-null CV payload is reconciled by <see cref="CVEntry.Id"/>:
-    /// known ids update in place, empty or unknown ids insert, missing ids delete.
+    /// <see cref="UserState"/>, and its names when <paramref name="names"/> is given. A non-null CV
+    /// payload is reconciled by <see cref="CVEntry.Id"/>: known ids update in place, empty or unknown
+    /// ids insert, missing ids delete.
     /// </summary>
     Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null);
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null,
+        UserNames? names = null);
 
     /// <summary>
     /// Clears identifying profile fields, labels the profile "Deleted User", and
@@ -95,9 +93,7 @@ internal partial interface IUserRepository
         CancellationToken ct = default);
 }
 
-internal sealed record ProfileNameMismatch(
-    Guid UserId,
-    string UserBurnerName, string UserFirstName, string UserLastName,
-    string ProfileBurnerName, string ProfileFirstName, string ProfileLastName);
+/// <summary>The names a profile save writes to the users row.</summary>
+internal sealed record UserNames(string BurnerName, string FirstName, string LastName);
 
 internal sealed record ProfileChildRowsWithoutUser(Guid UserId, int ContactFields, int Languages, int VolunteerHistory);

@@ -1184,7 +1184,7 @@ public class ShiftAdminControllerTests
         user: new User { Id = userId, DisplayName = "Coord", PreferredLanguage = "en" },
         userEmails: [],
         externalLogins: [],
-        profile: new Profile { UserId = userId, BurnerName = "Coord" },
+        profile: new Profile { UserId = userId },
         contactFields: [],
         profileLanguages: [],
         volunteerHistory: []);

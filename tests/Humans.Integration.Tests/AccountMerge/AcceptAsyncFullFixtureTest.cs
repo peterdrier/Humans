@@ -298,8 +298,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var sourceProfile = await db.Profiles.AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == sourceId, TestContext.Current.CancellationToken);
         sourceProfile.Should().NotBeNull("source profile row stays as a tombstone");
-        sourceProfile.FirstName.Should().Be("Merged");
-        sourceProfile.LastName.Should().Be("User");
+        (sourceUser.FirstName, sourceUser.LastName).Should().Be(("Merged", "User"));
     }
 
     private async Task<Guid> SeedAdminUserAsync()
