@@ -14,7 +14,7 @@ internal sealed class TicketingBudgetService(
     public async Task<int> SyncActualsAsync(
         Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
-        var activeYear = await budgetService.GetActiveYearAsync();
+        var activeYear = await budgetService.GetActiveYearAsync(ct);
         if (activeYear is null || activeYear.Id != budgetYearId)
             throw new InvalidOperationException(
                 "Ticketing actuals can only be synced into the active budget year.");
@@ -70,6 +70,11 @@ internal sealed class TicketingBudgetService(
 
             return await budgetService.SyncTicketingActualsAsync(
                 budgetYearId, weeklyActuals, actorUserId, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Ticketing actuals sync cancelled for budget year {YearId}", budgetYearId);
+            throw;
         }
         catch (Exception ex)
         {

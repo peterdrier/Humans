@@ -18,33 +18,53 @@ internal sealed class HoldedNightlySync(
             return;
         }
 
-        // The gates are non-blocking: if a sync is already running this one returns false. Say so, or a skipped
-        // night reads as a successful sync in the job history.
-        // A failed document or contact pull (already logged and recorded as Error) must not cost the ledger its nightly sweep;
-        // it is rethrown afterwards so the job still shows as failed.
-        ExceptionDispatchInfo? docsFailure = null;
+        // A failed phase must not cost the later phases their sweep; report every failure afterwards.
+        var failures = new List<Exception>();
         try
         {
-            if (!await holded.SyncPurchaseDocumentsAsync(ct))
-                logger.LogWarning("Nightly Holded purchase-document sync skipped — a sync was already running.");
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                if (!await holded.SyncPurchaseDocumentsAsync(ct))
+                    logger.LogWarning("Nightly Holded purchase-document sync skipped — a sync was already running.");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                failures.Add(ex);
+            }
+
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                if (!await holded.SyncContactsAsync(ct))
+                    logger.LogWarning("Nightly Holded contact sync skipped — a sync was already running.");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                failures.Add(ex);
+            }
+
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                if (!await holded.SyncLedgerAsync(full: false, ct))
+                    logger.LogWarning("Nightly Holded ledger sweep skipped — a sweep was already running.");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                failures.Add(ex);
+            }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
         {
-            docsFailure = ExceptionDispatchInfo.Capture(ex);
+            if (failures.Count > 0)
+                throw new AggregateException("Nightly Holded sync failed before shutdown.", failures.Append(ex));
+            logger.LogWarning("Nightly Holded sync interrupted by shutdown");
+            throw;
         }
 
-        try
-        {
-            if (!await holded.SyncContactsAsync(ct))
-                logger.LogWarning("Nightly Holded contact sync skipped — a sync was already running.");
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-        {
-            docsFailure ??= ExceptionDispatchInfo.Capture(ex);
-        }
-
-        if (!await holded.SyncLedgerAsync(full: false, ct))
-            logger.LogWarning("Nightly Holded ledger sweep skipped — a sweep was already running.");
-        docsFailure?.Throw();
+        if (failures.Count == 1) ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        if (failures.Count > 1)
+            throw new AggregateException("Nightly Holded sync failed in multiple phases.", failures);
     }
 }

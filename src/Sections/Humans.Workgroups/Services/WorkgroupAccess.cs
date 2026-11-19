@@ -32,19 +32,6 @@ internal sealed class WorkgroupAccess(IWorkgroupRepository repository, IUserServ
         return null;
     }
 
-    internal async Task<WorkgroupMutationResult<Workgroup>> RequireMembershipManagerAsync(
-        Guid workgroupId, Guid actorUserId, bool asAdmin, CancellationToken ct)
-    {
-        var result = await RequireActiveAsync(workgroupId, ct);
-        if (result.Refusal is not null) return result;
-        if (!asAdmin && !result.Value!.Members.Any(m => m.UserId == actorUserId && m.LeftAt is null && m.IsPending != true
-                && m.Role == WorkgroupMemberRole.Coordinator))
-        {
-            return new(Refusal: new(WorkgroupErrorKeys.NotACoordinator));
-        }
-        return result;
-    }
-
     internal static WorkgroupRefusal? RequireStatus(Workgroup w, params WorkgroupStatus[] allowed)
     {
         if (!allowed.Contains(w.Status))

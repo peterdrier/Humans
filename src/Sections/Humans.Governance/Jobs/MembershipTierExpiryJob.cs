@@ -26,10 +26,18 @@ internal sealed class MembershipTierExpiryJob(
             var today = clock.GetCurrentInstant().InUtc().Date;
             var total = 0;
             foreach (var tier in ExpiringTiers)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 total += (await governance.ExpireMembershipTiersAsync(tier, today, cancellationToken)).Count;
+            }
 
             metrics.RecordJobRun("membership_tier_expiry", "success");
             logger.LogInformation("Membership tier expiry finished; downgraded {Count} member(s)", total);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Membership tier expiry cancelled during shutdown");
+            throw;
         }
         catch (Exception ex)
         {

@@ -60,7 +60,7 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
 | `stripe_balances` | per account and currency: available and pending |
 | `stripe_sync_states` | per account: status, last run, rows mirrored, last error |
 
-All four are a cache, rebuilt per account by every sweep. Sentinel table:
+These tables are a cache, rebuilt per account by every sweep. Sentinel table:
 `stripe_balance_transactions`. Everything else Stripe-derived is persisted by its owner:
 fee/payment-method fields on Tickets' `ticket_orders`, payment rows on Store's `store_payments`.
 
@@ -143,6 +143,13 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list.
   The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
   the job and Sync now.
+- Account startup saves are covered by account failure handling, so one failed `Running` save does not stop
+  healthy accounts. Preparation shutdown restores `Idle` with the previous summary and diagnostic. Reads and
+  atomic replacement retain cancellation, with checkpoints before each account and before replacement.
+  After replacement commits, the outcome save uses `CancellationToken.None`; a failure there records an account
+  error even if shutdown has also begun. An interrupted sweep preserves earlier account failures as a failed
+  run rather than reporting only cancellation. Diagnostic-save failures preserve the original outcome and
+  release the gate.
 - Wallet balance reads require both `available` and `pending` arrays, and every amount must explicitly carry
   an integer minor-unit value and a nonblank currency. Missing buckets or incomplete amounts fail the fetch before
   account replacement instead of erasing a bucket or manufacturing zero. Explicit empty buckets, zero and signed

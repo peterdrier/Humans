@@ -283,13 +283,21 @@ internal sealed class GoogleGroupSyncService(
         int nextRetryAttempt,
         CancellationToken ct)
     {
-        var error = FormatGoogleError(errorPrefix, googleError);
-        await RecordGroupErrorAsync(resource, error, ct);
-        logger.LogWarning("Google group sync failed for {GroupKey}: {Error}", claim.GroupKey, error);
-        if (scheduleRetryOnFailure)
-            await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt, claim.SyncSource);
+        try
+        {
+            var error = FormatGoogleError(errorPrefix, googleError);
+            await RecordGroupErrorAsync(resource, error, ct);
+            logger.LogWarning("Google group sync failed for {GroupKey}: {Error}", claim.GroupKey, error);
+            if (scheduleRetryOnFailure)
+                await ScheduleRetryAsync(claim.GroupKey, error, nextRetryAttempt, claim.SyncSource);
 
-        return BuildErrorDiff(claim.GroupKey, resource, error);
+            return BuildErrorDiff(claim.GroupKey, resource, error);
+        }
+        catch (OperationCanceledException ex) when (!ct.CanBeCanceled)
+        {
+            // Failed provisioning finishes its error and retry with None, unlike preflight failures.
+            throw new InvalidOperationException("Failed to record the Google Group provisioning failure.", ex);
+        }
     }
 
     private async Task<GroupMembershipPlan> BuildGroupMembershipPlanAsync(
@@ -372,7 +380,16 @@ internal sealed class GoogleGroupSyncService(
         }
 
         if (resource is not null && mode != SyncMode.None)
-            await teamResourceService.MarkResourceSyncedAsync(resource.Id, clock.GetCurrentInstant(), CancellationToken.None);
+        {
+            try
+            {
+                await teamResourceService.MarkResourceSyncedAsync(resource.Id, clock.GetCurrentInstant(), CancellationToken.None);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new InvalidOperationException("Failed to record the Google Group reconciliation outcome.", ex);
+            }
+        }
 
         return null;
     }
@@ -390,50 +407,67 @@ internal sealed class GoogleGroupSyncService(
         foreach (var member in members.Where(m => m.State == MemberSyncState.Missing))
         {
             ct.ThrowIfCancellationRequested();
-            var commitCt = CancellationToken.None;
-
-            var add = await membershipClient.CreateMembershipAsync(groupNumericId, member.Email, commitCt);
-            if (add.Outcome == GroupMembershipMutationOutcome.Failed)
+            try
             {
-                var failure = DescribeGroupAddFailure(resource, claim.GroupKey, member.Email, add.Error);
-                // Preserve the vendor failure and its retry before the separate Users write.
-                var diff = await BuildMemberMutationErrorDiffAsync(
-                    claim,
-                    resource,
-                    member.Email,
-                    failure.Error,
-                    GoogleSyncLogAction.AccessGranted,
-                    members,
-                    scheduleRetryOnFailure,
-                    nextRetryAttempt,
-                    member.UserId,
-                    commitCt);
-                if (failure.RejectTarget)
+                var commitCt = CancellationToken.None;
+
+                GroupMembershipMutationResult add;
+                try
                 {
-                    var target = plan.ExpectedByEmail[member.Email];
-                    await workspaceIdentities.SetStatusFromSyncAsync(
-                        target.UserId, target.IdentityEmail, GoogleEmailStatus.Rejected, commitCt);
-                    logger.LogWarning(
-                        "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
-                        "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
-                        member.Email, claim.GroupKey, resource?.GoogleId, add.Error?.StatusCode, add.Error?.RawMessage);
+                    add = await membershipClient.CreateMembershipAsync(groupNumericId, member.Email, commitCt);
                 }
-                return diff;
-            }
+                catch (OperationCanceledException ex)
+                {
+                    // The mutation uses None: record a retryable fault, never a target rejection.
+                    logger.LogError(ex, "Google Group membership add failed for {Email} in {GroupKey}", member.Email, claim.GroupKey);
+                    add = new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Failed, new GoogleClientError(0, ex.Message));
+                }
+                if (add.Outcome == GroupMembershipMutationOutcome.Failed)
+                {
+                    var failure = DescribeGroupAddFailure(resource, claim.GroupKey, member.Email, add.Error);
+                    // Preserve the vendor failure and its retry before the separate Users write.
+                    var diff = await BuildMemberMutationErrorDiffAsync(
+                        claim,
+                        resource,
+                        member.Email,
+                        failure.Error,
+                        GoogleSyncLogAction.AccessGranted,
+                        members,
+                        scheduleRetryOnFailure,
+                        nextRetryAttempt,
+                        member.UserId,
+                        commitCt);
+                    if (failure.RejectTarget)
+                    {
+                        var target = plan.ExpectedByEmail[member.Email];
+                        await workspaceIdentities.SetStatusFromSyncAsync(
+                            target.UserId, target.IdentityEmail, GoogleEmailStatus.Rejected, commitCt);
+                        logger.LogWarning(
+                            "Google rejected target member email {Email} while adding to Google Group {GroupKey} ({GroupId}) - HTTP {StatusCode}. " +
+                            "Google email status marked Rejected for the address when a matching user was found. Google error: {ErrorMessage}",
+                            member.Email, claim.GroupKey, resource?.GoogleId, add.Error?.StatusCode, add.Error?.RawMessage);
+                    }
+                    return diff;
+                }
 
-            if (add.Outcome == GroupMembershipMutationOutcome.Added)
+                if (add.Outcome == GroupMembershipMutationOutcome.Added)
+                {
+                    await googleSyncLog.LogAsync(
+                        GoogleSyncLogAction.AccessGranted,
+                        resource?.Id ?? Guid.Empty,
+                        $"Granted Google Group access to {member.Email} ({resource?.Name ?? claim.GroupKey})",
+                        nameof(GoogleGroupSyncService),
+                        member.Email,
+                        "MEMBER",
+                        claim.SyncSource,
+                        success: true,
+                        userId: member.UserId,
+                        ct: commitCt);
+                }
+            }
+            catch (OperationCanceledException ex)
             {
-                await googleSyncLog.LogAsync(
-                    GoogleSyncLogAction.AccessGranted,
-                    resource?.Id ?? Guid.Empty,
-                    $"Granted Google Group access to {member.Email} ({resource?.Name ?? claim.GroupKey})",
-                    nameof(GoogleGroupSyncService),
-                    member.Email,
-                    "MEMBER",
-                    claim.SyncSource,
-                    success: true,
-                    userId: member.UserId,
-                    ct: commitCt);
+                throw new InvalidOperationException("Failed to finish Google Group membership tracking.", ex);
             }
         }
 
@@ -451,40 +485,56 @@ internal sealed class GoogleGroupSyncService(
         foreach (var member in plan.Members.Where(m => m.State == MemberSyncState.Extra))
         {
             ct.ThrowIfCancellationRequested();
-            var commitCt = CancellationToken.None;
-
-            if (!plan.CurrentByEmail.TryGetValue(member.Email, out var membershipResourceName))
-                continue;
-
-            var deleteError = await membershipClient.DeleteMembershipAsync(membershipResourceName, commitCt);
-            if (deleteError is not null)
+            try
             {
-                return await BuildMemberMutationErrorDiffAsync(
-                    claim,
-                    resource,
-                    member.Email,
-                    FormatGoogleError($"Google group remove failed for {member.Email}", deleteError),
+                var commitCt = CancellationToken.None;
+
+                if (!plan.CurrentByEmail.TryGetValue(member.Email, out var membershipResourceName))
+                    continue;
+
+                GoogleClientError? deleteError;
+                try
+                {
+                    deleteError = await membershipClient.DeleteMembershipAsync(membershipResourceName, commitCt);
+                }
+                catch (OperationCanceledException ex)
+                {
+                    logger.LogError(ex, "Google Group membership removal failed for {Email} in {GroupKey}", member.Email, claim.GroupKey);
+                    deleteError = new GoogleClientError(0, ex.Message);
+                }
+                if (deleteError is not null)
+                {
+                    return await BuildMemberMutationErrorDiffAsync(
+                        claim,
+                        resource,
+                        member.Email,
+                        FormatGoogleError($"Google group remove failed for {member.Email}", deleteError),
+                        GoogleSyncLogAction.AccessRevoked,
+                        plan.Members,
+                        scheduleRetryOnFailure,
+                        nextRetryAttempt,
+                        member.UserId,
+                        commitCt);
+                }
+
+                await googleSyncLog.LogAsync(
                     GoogleSyncLogAction.AccessRevoked,
-                    plan.Members,
-                    scheduleRetryOnFailure,
-                    nextRetryAttempt,
-                    member.UserId,
-                    commitCt);
+                    resource?.Id ?? Guid.Empty,
+                    $"Removed {member.Email} from Google Group ({resource?.Name ?? claim.GroupKey})",
+                    nameof(GoogleGroupSyncService),
+                    member.Email,
+                    "MEMBER",
+                    claim.SyncSource,
+                    success: true,
+                    userId: member.UserId,
+                    ct: commitCt);
+
+                await NotifyRemovalAsync(member.Email, resource, claim.GroupKey, commitCt);
             }
-
-            await googleSyncLog.LogAsync(
-                GoogleSyncLogAction.AccessRevoked,
-                resource?.Id ?? Guid.Empty,
-                $"Removed {member.Email} from Google Group ({resource?.Name ?? claim.GroupKey})",
-                nameof(GoogleGroupSyncService),
-                member.Email,
-                "MEMBER",
-                claim.SyncSource,
-                success: true,
-                userId: member.UserId,
-                ct: commitCt);
-
-            await NotifyRemovalAsync(member.Email, resource, claim.GroupKey, commitCt);
+            catch (OperationCanceledException ex)
+            {
+                throw new InvalidOperationException("Failed to finish Google Group membership tracking.", ex);
+            }
         }
 
         return null;

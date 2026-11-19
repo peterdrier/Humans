@@ -406,7 +406,10 @@ public sealed class EventServiceTests
         guide.SaveGuideSettingsAsync(null, edition, default, default, default, 0)
             .ReturnsForAnyArgs(dependencyFailure ? Task.FromException<bool>(failure) : Task.FromResult(false));
         var controller = new EventsAdminController(guide, NullLogger<EventsAdminController>.Instance,
-            Substitute.For<IUserService>());
+            Substitute.For<IUserService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
         var model = new GuideSettingsViewModel { EventSettingsId = edition };
 
         if (dependencyFailure)

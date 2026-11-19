@@ -6,8 +6,9 @@ description: "Nightly debt work selects the latest origin/main runner per run, u
 Work in validated, committed rounds for at most 12 hours, finishing the active
 batch afterward. The wrapper checks live weekly quota before the first round
 and after each completed round. Stop new work if remaining quota falls below
-`100 - 12 * elapsed_days_since_weekly_reset`, or quota is unavailable. This
-leaves 16% at week's end; all account usage counts. Manual runs may explicitly
+`max(16, 100 - 12 * (elapsed_days_since_weekly_reset + 1))` (the next day's
+allowance is available upfront; the cutoff is fixed per run and renewed on weekly
+reset), or quota is unavailable. At least 16% is reserved; all account usage counts. Manual runs may explicitly
 set `IGNORE_QUOTA_CUTOFF=1`; it bypasses quota checks, never the 12-hour cap or
 validation. Never consume reset credits automatically.
 

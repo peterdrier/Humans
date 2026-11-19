@@ -113,16 +113,6 @@ internal sealed class BudgetReader(
                     item.SortOrder))
                 .ToList());
 
-    public async Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default)
-    {
-        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
-        if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
-            return new CoordinatorBudgetViewData(null, coordinatorTeamIds, isFinanceAdmin, ShouldRedirectToSummary: true);
-
-        var activeYear = await GetActiveYearAsync(ct);
-        return new CoordinatorBudgetViewData(activeYear, coordinatorTeamIds, isFinanceAdmin, ShouldRedirectToSummary: false);
-    }
-
     public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
     {
         var category = await repository.GetCategoryByIdAsync(id, ct);
@@ -150,26 +140,8 @@ internal sealed class BudgetReader(
         return ToCategorySnapshot(category, teamNamesById);
     }
 
-    public async Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(
-        Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default)
-    {
-        var category = await GetCategoryByIdAsync(categoryId, ct);
-        if (category is null)
-            return new CoordinatorCategoryDetailViewData(null, ShouldForbid: false, Teams: []);
-
-        var isRestricted = category.BudgetGroup?.IsRestricted == true || category.BudgetGroup?.IsTicketingGroup == true;
-        if (isRestricted && !isFinanceAdmin)
-            return new CoordinatorCategoryDetailViewData(category, ShouldForbid: true, Teams: []);
-
-        var coordinatorTeamIds = await GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
-        if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
-            return new CoordinatorCategoryDetailViewData(category, ShouldForbid: true, Teams: []);
-
-        var teams = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive)
-            .ToList();
-        return new CoordinatorCategoryDetailViewData(category, ShouldForbid: false, Teams: teams);
-    }
+    public async Task<IReadOnlyList<TeamInfo>> GetActiveTeamsAsync(CancellationToken ct = default) =>
+        (await teamService.GetTeamsAsync(ct)).Values.Where(team => team.IsActive).ToList();
 
     private static BudgetCategorySnapshot ToCategorySnapshot(
         BudgetCategory category,

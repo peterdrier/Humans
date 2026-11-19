@@ -752,4 +752,53 @@
   <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Solicitudes de nivel pendientes de tu voto: {0}</value></data>
   <data name="Governance_ReviewApplications" xml:space="preserve"><value>Revisar</value></data>
   <data name="Governance_YourMembership" xml:space="preserve"><value>Tu membresía</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Preguntas adicionales para solicitantes de Asociado</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>¿Cuál ha sido tu contribución más significativa a Elsewhere?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Si no se te ocurre ninguna, pero has contribuido significativamente a otro Burn, cuéntanos sobre eso.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Por favor describe tu contribución más significativa para una solicitud de Asociado.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>En tus propias palabras, ¿qué entiendes que es el rol de un asociado y por qué quieres esa responsabilidad?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Cuéntanos qué significa este rol para ti y por qué estás preparado/a.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Por favor describe tu comprensión del rol de asociado.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Ya tiene una solicitud pendiente.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Seleccione Colaborador o Asociado para su solicitud.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Debe confirmar la veracidad de su información.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>¡Su solicitud ha sido enviada correctamente!</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Algo salió mal al enviar su solicitud. Por favor, inténtelo de nuevo.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Esta solicitud no puede ser retirada.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>Su solicitud ha sido retirada.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>La motivación debe tener entre 50 y 2000 caracteres.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>La información adicional no debe superar los 1000 caracteres.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribución significativa no debe superar los 2000 caracteres.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La explicación del rol no debe superar los 2000 caracteres.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Se requiere una declaración de motivación para las solicitudes de Colaborador y Asociado.</value>
+  </data>
 </root>

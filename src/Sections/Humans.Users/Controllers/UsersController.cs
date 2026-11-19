@@ -30,7 +30,7 @@ internal sealed class UsersController(
         var currentMonth = month is >= 1 and <= 12 ? month.Value : thisMonth;
 
         var people = (await _userService.GetAllUserInfosAsync(ct))
-            .Where(u => !u.IsSuspended
+            .Where(u => u.IsProfileBrowsable
                         && u.Profile is { BirthdayDay: not null }
                         && u.Profile.BirthdayMonth == currentMonth)
             .OrderBy(u => u.Profile!.BirthdayDay)
@@ -69,7 +69,7 @@ internal sealed class UsersController(
     public async Task<IActionResult> Map(CancellationToken ct)
     {
         var markers = (await _userService.GetAllUserInfosAsync(ct))
-            .Where(u => !u.IsSuspended && u.Profile is { Latitude: >= -90d and <= 90d, Longitude: >= -180d and <= 180d })
+            .Where(u => u.IsProfileBrowsable && u.Profile is { Latitude: >= -90d and <= 90d, Longitude: >= -180d and <= 180d })
             .Select(u => new MapMarkerViewModel
             {
                 UserId = u.Id,

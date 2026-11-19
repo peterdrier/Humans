@@ -98,14 +98,14 @@ internal sealed class ExpenseAttachments(
     }
 
     internal async Task<ExpenseError?> StoreAttachmentAsync(
-        ExpenseReportAccess access, Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        ExpenseReportAccess access, Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default)
     {
         var (fileExtension, uploadRefusal) = ValidateAttachmentUpload(originalFileName, contentType, content);
         if (uploadRefusal is not null) return uploadRefusal;
         var extension = fileExtension!;
-        var (editableReport, refusal) = await access.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await access.GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return refusal.Error;
         var report = editableReport!;
 
@@ -208,10 +208,10 @@ internal sealed class ExpenseAttachments(
     }
 
     internal async Task<ExpenseMutationResult> RemoveAsync(
-        ExpenseReportAccess access, Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        ExpenseReportAccess access, Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         Guid lineId, CancellationToken ct)
     {
-        var (editableReport, refusal) = await access.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await access.GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return refusal;
         var report = editableReport!;
 

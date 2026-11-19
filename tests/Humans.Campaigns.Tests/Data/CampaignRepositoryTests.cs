@@ -69,6 +69,8 @@ public sealed class CampaignRepositoryTests
         var earlier = Instant.FromUtc(2026, 1, 1, 0, 0);
         var campaign = await SeedCampaignAsync(CampaignStatus.Completed);
         var grant = await SeedGrantAsync(campaign, "USED", redeemedAt: earlier);
+        var pendingCampaign = await SeedCampaignAsync(CampaignStatus.Active);
+        var pending = await SeedGrantAsync(pendingCampaign, "USED");
 
         var count = await _repository.MarkGrantsRedeemedAsync(
             [new DiscountCodeRedemption("USED", _clock.GetCurrentInstant())],
@@ -76,6 +78,7 @@ public sealed class CampaignRepositoryTests
 
         count.Should().Be(0);
         (await ReloadGrantAsync(grant.Id)).RedeemedAt.Should().Be(earlier);
+        (await ReloadGrantAsync(pending.Id)).RedeemedAt.Should().BeNull();
     }
 
     [HumansFact]
@@ -113,6 +116,40 @@ public sealed class CampaignRepositoryTests
         count.Should().Be(2);
         (await ReloadGrantAsync(grantA.Id)).RedeemedAt.Should().NotBeNull();
         (await ReloadGrantAsync(grantB.Id)).RedeemedAt.Should().NotBeNull();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task MarkGrantsRedeemedAsync_RepeatedSnapshotsOnlyRedeemNewPurchases(bool sameTimestamp)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var originalTime = _clock.GetCurrentInstant();
+        var nextTime = sameTimestamp ? originalTime : originalTime + Duration.FromMinutes(1);
+        var oldest = await SeedCampaignAsync(CampaignStatus.Active, originalTime - Duration.FromDays(3));
+        var middle = await SeedCampaignAsync(CampaignStatus.Completed, originalTime - Duration.FromDays(2));
+        var newest = await SeedCampaignAsync(CampaignStatus.Active, originalTime - Duration.FromDays(1));
+        var draft = await SeedCampaignAsync(CampaignStatus.Draft, originalTime);
+        var oldestGrant = await SeedGrantAsync(oldest, "SHARED");
+        var middleGrant = await SeedGrantAsync(middle, "shared");
+        var newestGrant = await SeedGrantAsync(newest, "Shared");
+        var draftGrant = await SeedGrantAsync(draft, "SHARED");
+        var original = new DiscountCodeRedemption("shared", originalTime);
+        var next = new DiscountCodeRedemption("SHARED", nextTime);
+
+        (await _repository.MarkGrantsRedeemedAsync([original], ct)).Should().Be(1);
+        (await _repository.MarkGrantsRedeemedAsync([original], ct)).Should().Be(0);
+        (await ReloadGrantAsync(newestGrant.Id)).RedeemedAt.Should().Be(originalTime);
+        (await ReloadGrantAsync(middleGrant.Id)).RedeemedAt.Should().BeNull();
+        (await ReloadGrantAsync(oldestGrant.Id)).RedeemedAt.Should().BeNull();
+
+        // The new order may appear before the old one in the next complete snapshot.
+        (await _repository.MarkGrantsRedeemedAsync([next, original], ct)).Should().Be(1);
+        (await _repository.MarkGrantsRedeemedAsync([original, next], ct)).Should().Be(0);
+        (await ReloadGrantAsync(newestGrant.Id)).RedeemedAt.Should().Be(originalTime);
+        (await ReloadGrantAsync(middleGrant.Id)).RedeemedAt.Should().Be(nextTime);
+        (await ReloadGrantAsync(oldestGrant.Id)).RedeemedAt.Should().BeNull();
+        (await ReloadGrantAsync(draftGrant.Id)).RedeemedAt.Should().BeNull();
     }
 
     [HumansFact]

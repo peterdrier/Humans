@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Monitor.Contracts;
@@ -27,6 +28,39 @@ public class DriveActivityMonitorJobTests
             _metrics,
             NullLogger<DriveActivityMonitorJob>.Instance,
             new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0)));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Shutdown_JobDistinguishesItsTokenFromDependencyCancellation(bool ownToken)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var failure = new OperationCanceledException(ownToken ? shutdown.Token : new CancellationToken(true));
+        _monitorService.CheckForAnomalousActivityAsync(shutdown.Token).Returns(async Task<int> (_) =>
+        {
+            if (ownToken) await shutdown.CancelAsync();
+            throw failure;
+        });
+        var logger = new CapturingLogger<DriveActivityMonitorJob>();
+        var job = new DriveActivityMonitorJob(_monitorService, _metrics, logger,
+            new FakeClock(Instant.FromUtc(2026, 4, 22, 10, 0)));
+
+        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeSameAs(failure);
+        _metrics.DidNotReceive().RecordJobRun("drive_activity_monitor", "success");
+        if (ownToken)
+        {
+            _metrics.DidNotReceive().RecordJobRun("drive_activity_monitor", "failure");
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+        }
+        else
+        {
+            _metrics.Received(1).RecordJobRun("drive_activity_monitor", "failure");
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+        }
     }
 
     [HumansFact]

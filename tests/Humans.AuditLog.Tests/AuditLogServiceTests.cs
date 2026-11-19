@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.AuditLog.Data;
 using Humans.AuditLog.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -288,24 +289,43 @@ public class AuditLogServiceTests : IDisposable
             because: "audit failures are best-effort and must never propagate to the caller");
     }
 
-    [HumansFact]
-    public async Task LogAsync_SwallowsRepoFailure_LogsAtErrorLevel()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LogAsync_RepoFailure_PreservesAuditDetailsWithoutLoggingSuccess(bool backgroundJob)
     {
         var throwingRepo = Substitute.For<IAuditLogRepository>();
-        throwingRepo.AddAsync(Arg.Any<AuditLogEntry>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("DB unavailable"));
+        AuditLogEntry? attempted = null;
+        var failure = new InvalidOperationException("DB unavailable");
+        throwingRepo.AddAsync(Arg.Do<AuditLogEntry>(entry => attempted = entry), Arg.Any<CancellationToken>())
+            .ThrowsAsync(failure);
 
         var capturing = new CapturingLogger<AuditLogService>();
         var svc = new AuditLogService(
             throwingRepo, _userService, Registry, _clock, capturing);
+        var actorId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var relatedId = Guid.NewGuid();
+        if (backgroundJob)
+            await svc.LogAsync(TestActions.MemberSuspended, nameof(User), subjectId,
+                "Suspended after review", "TestJob", relatedId, "Team");
+        else
+            await svc.LogAsync(TestActions.MemberSuspended, nameof(User), subjectId,
+                "Suspended after review", actorId, relatedId, "Team");
 
-        await svc.LogAsync(
-            TestActions.MemberSuspended, nameof(User), Guid.NewGuid(),
-            "Suspended", "TestJob");
-
-        capturing.Entries.Should().Contain(
-            e => e.Level == LogLevel.Error,
-            because: "a repo save failure must be logged at Error level per design-rules.md, *Decorators versus in-service crosscuts*");
+        attempted.Should().NotBeNull();
+        var error = capturing.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error).Which;
+        error.Exception.Should().BeSameAs(failure);
+        error.Message.Should().Contain(attempted!.Id.ToString());
+        error.Message.Should().Contain(attempted.Action);
+        error.Message.Should().Contain(attempted.EntityType);
+        error.Message.Should().Contain(subjectId.ToString());
+        error.Message.Should().Contain(attempted.Description);
+        error.Message.Should().Contain(attempted.OccurredAt.ToIso8601());
+        error.Message.Should().Contain(relatedId.ToString());
+        error.Message.Should().Contain("Team");
+        if (!backgroundJob) error.Message.Should().Contain(actorId.ToString());
+        capturing.Entries.Should().NotContain(e => e.Level == LogLevel.Information);
     }
 
     [HumansFact]

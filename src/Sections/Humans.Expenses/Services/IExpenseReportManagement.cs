@@ -5,9 +5,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Expenses.Services;
 
 /// <summary>
-/// A report belongs to its <c>SubmitterUserId</c>; the actor is whoever is changing it. Setting
-/// <c>actorIsFinanceAdmin</c> waives the ownership match and widens the editable window to Draft, Submitted and
-/// CoordinatorEndorsed. These checks are defence in depth behind the resource-based handler.
+/// Callers authorize report mutations. Ordinary edits require Draft; explicit Finance-correction commands also
+/// accept Submitted and CoordinatorEndorsed. The actor identifies audit attribution, never permission.
 /// </summary>
 internal interface IExpenseReportManagement : IExpenseReportService, IApplicationService
 {
@@ -28,10 +27,17 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default);
 
-    /// <summary>On a Draft, <paramref name="preapprovalGrantId"/> may keep, swap or drop the pre-approval; past Draft
-    /// it and its account are locked and only the note changes.</summary>
+    /// <summary>Updates a Draft after caller authorization; a pre-approval may be kept, swapped or dropped.</summary>
     Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
+        CancellationToken ct = default);
+
+    /// <summary>Updates a Draft, Submitted or CoordinatorEndorsed report after caller authorization.
+    /// Past Draft, a pre-approval and its account remain locked; other accounts stay in their booked year.</summary>
+    Task<ExpenseMutationResult> UpdateHeaderForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         int holdedAccountNumber, string? note,
         Guid? preapprovalGrantId = null,
         CancellationToken ct = default);
@@ -42,7 +48,16 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
     /// backing that Invoice line.
     /// </summary>
     Task<ExpenseAddLineResult> AddLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
+        ExpenseFileUpload? file = null,
+        CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseAddLineResult> AddLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         string description, decimal amount,
         ExpenseLineType lineType = ExpenseLineType.Receipt,
         Guid? parentLineId = null,
@@ -50,29 +65,52 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> UpdateLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> UpdateLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> RemoveLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> RemoveLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default);
 
     Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default);
+
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> AttachFileToLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default);
 
     /// <summary>Idempotent: no-op if the line has no attachment.</summary>
     Task<ExpenseMutationResult> RemoveAttachmentFromLineAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+        Guid reportId, Guid actorUserId,
         Guid lineId, CancellationToken ct = default);
 
-    /// <summary>The payee snapshot comes from the submitter's profile, never the actor's. A pre-approved report claims
+    /// <summary>Corrects a Draft, Submitted or CoordinatorEndorsed report after caller authorization.</summary>
+    Task<ExpenseMutationResult> RemoveAttachmentFromLineForFinanceCorrectionAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, CancellationToken ct = default);
+
+    /// <summary>The caller authorizes submission; the service requires a Draft. The payee snapshot comes from the
+    /// submitter's profile, never the actor's. A pre-approved report claims
     /// its grant in the same transaction and is restamped with the grant's account and cap; a first submit past the
     /// claim deadline is refused, a resubmit of the report holding the grant is not.</summary>
     Task<ExpenseMutationResult> SubmitWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default);
+        Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The submitter's own decision; there is no on-behalf path. A pre-approved report releases its grant.
     /// Approved reports are refused: approval has already queued the Holded push.</summary>
@@ -85,26 +123,39 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
     Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default);
 
-    /// <summary>A null <paramref name="maxAmount"/> leaves the report uncapped.</summary>
+    /// <summary>A null cap uses the grant ceiling on pre-approved reports and leaves other reports uncapped. The caller authorizes the reviewer.</summary>
+    /// <remarks><paramref name="auditReviewerLabel"/> records review context in audit text only.</remarks>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
-        CancellationToken ct = default);
+        Guid reportId, Guid coordinatorUserId, decimal? maxAmount,
+        CancellationToken ct = default, string? auditReviewerLabel = null);
 
+    /// <summary>The caller authorizes the reviewer; the repository enforces Submitted status.</summary>
+    /// <remarks><paramref name="auditReviewerLabel"/> records review context in audit text only.</remarks>
     Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
-        CancellationToken ct = default);
+        Guid reportId, Guid coordinatorUserId, string reason,
+        CancellationToken ct = default, string? auditReviewerLabel = null);
 
     /// <summary>
-    /// The line stays but leaves <c>Total</c> and <c>Payable</c> and is never pushed. The cap is untouched. Open to
-    /// whoever holds Endorse or Approve while the report awaits them; proof rows are not declinable.
+    /// First-review command for Submitted reports. The caller authorizes the reviewer. Declined lines leave
+    /// Total and Payable but stay on the report; proof rows cannot be declined and the cap is untouched.
     /// </summary>
     Task<ExpenseMutationResult> DeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
+        Guid reportId, Guid actorUserId, Guid lineId, string reason,
         CancellationToken ct = default);
 
-    /// <summary>Undoes a decline under the same conditions that allow one.</summary>
+    /// <summary>The Finance-review command accepts Submitted or CoordinatorEndorsed reports after caller authorization.</summary>
+    Task<ExpenseMutationResult> DeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId, string reason,
+        CancellationToken ct = default);
+
+    /// <summary>Undoes a first-review decline on a Submitted report after caller authorization.</summary>
     Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default);
+
+    /// <summary>The Finance-review command accepts Submitted or CoordinatorEndorsed reports after caller authorization.</summary>
+    Task<ExpenseMutationResult> UndoDeclineLineForFinanceReviewWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
         CancellationToken ct = default);
 
     /// <summary>A non-null <paramref name="maxAmount"/> overrides the coordinator's cap; a non-null
@@ -135,10 +186,9 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
         Guid reportId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Queue-wide, not scoped to the actor. Empty unless <paramref name="actorIsFinanceAdmin"/>: only finance admins can
-    /// act on a written-off push.
+    /// Queue-wide, not scoped to the actor. The caller must authorize Finance access before loading these IDs.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(bool actorIsFinanceAdmin, CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(CancellationToken ct = default);
 }
 
 internal sealed record ExpenseMutationResult(bool Succeeded, ExpenseError? Error)

@@ -1,4 +1,8 @@
 using AwesomeAssertions;
+using Humans.Base.Configuration;
+using Humans.Base.Extensions;
+using Humans.Email.Contracts;
+using Microsoft.Extensions.Options;
 using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
 using Humans.Google.Contracts;
@@ -110,6 +114,7 @@ public class UserEmailServiceTests
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleWrite _googleIdentity = Substitute.For<IGoogleWrite>();
+    private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 
@@ -126,6 +131,9 @@ public class UserEmailServiceTests
             .With(_mergeService)
             .With(_ticketService)
             .With(_googleIdentity)
+            .With(_emailService)
+            .With(TestUsersEmails.Create())
+            .With(Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }))
             .Build();
 
         _service = new UserEmailService(
@@ -1172,6 +1180,158 @@ public class UserEmailServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("en", "en")]
+    [Xunit.InlineData("es", "es")]
+    [Xunit.InlineData("", "en")]
+    [Xunit.InlineData(" ", "en")]
+    [Xunit.InlineData("not a culture!", "en")]
+    [Xunit.InlineData("fr-FR", "en")]
+    public async Task AddEmailAsync_QueuesVerificationForTargetWithCanonicalLink(string language, string expectedCulture)
+    {
+        using var actorCulture = new CultureScope("fr");
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        const string token = "token+with/slash= and space";
+        _userManager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId, PreferredLanguage = language });
+        _userManager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns(token);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(BuildStubUserInfo(userId, []) with { BurnerName = "Target" });
+        _userService.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(rowId, true, false));
+        EmailMessage? sent = null;
+        _emailService.SendAsync(Arg.Do<EmailMessage>(message => sent = message), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        await _service.AddEmailAsync(userId, " added@example.com ", Xunit.TestContext.Current.CancellationToken, actorId);
+
+        sent.Should().NotBeNull();
+        sent!.RecipientEmail.Should().Be("added@example.com");
+        sent.RecipientName.Should().Be("Target");
+        sent.UserId.Should().Be(userId);
+        sent.Subject.Should().EndWith($"#{expectedCulture}");
+        var link = System.Text.RegularExpressions.Regex.Match(sent.HtmlBody, "href=\"(?<url>[^\"]+)\"",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(1)).Groups["url"].Value;
+        var uri = new Uri(System.Net.WebUtility.HtmlDecode(link));
+        uri.GetLeftPart(UriPartial.Path).Should().Be($"{TestUsersEmails.BaseUrl}/Profile/Me/Emails/Verify");
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        query["userId"].ToString().Should().Be(userId.ToString());
+        query["emailId"].ToString().Should().Be(rowId.ToString());
+        System.Web.HttpUtility.UrlDecode(query["token"].ToString()).Should().Be(token);
+        await _auditLogService.Received(1).LogAsync(UsersAuditActions.UserEmailAdded,
+            nameof(User), userId, Arg.Any<string>(), actorId, rowId, nameof(UserEmail));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task AddEmailAsync_CommittedAddition_AuditsBeforeQueueAndFinishesAfterDisconnect(bool queueFails)
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        _userManager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
+        _userService.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await request.CancelAsync();
+                return new UserEmailAddResult(rowId, true, false);
+            });
+        _userManager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("token");
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return new ValueTask<UserInfo?>(BuildStubUserInfo(userId, []));
+        });
+        var failure = new IOException("Email queue unavailable");
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            _auditLogService.ReceivedCalls().Should().ContainSingle();
+            return queueFails ? Task.FromException(failure) : Task.CompletedTask;
+        });
+
+        Func<Task> act = () => _service.AddEmailAsync(userId, "added@example.com", request.Token, actorId);
+
+        if (queueFails) (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        else await act();
+        await _auditLogService.Received(1).LogAsync(UsersAuditActions.UserEmailAdded,
+            nameof(User), userId, Arg.Any<string>(), actorId, rowId, nameof(UserEmail));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("primary", true)]
+    [Xunit.InlineData("primary", false)]
+    [Xunit.InlineData("visibility", true)]
+    [Xunit.InlineData("visibility", false)]
+    [Xunit.InlineData("delete", true)]
+    [Xunit.InlineData("delete", false)]
+    [Xunit.InlineData("verified", true)]
+    [Xunit.InlineData("verified", false)]
+    [Xunit.InlineData("orphan", true)]
+    [Xunit.InlineData("orphan", false)]
+    public async Task EmailMutation_AuditsSuccessfulChangesWithActorAndRow(string operation, bool succeeds)
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail { Id = rowId, UserId = userId, Email = "added@example.com" };
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>()).Returns(succeeds ? row : null);
+        _repository.GetUserEmailByIdReadOnlyAsync(rowId, Arg.Any<CancellationToken>()).Returns(succeeds ? row : null);
+        _userService.UpdateUserEmailAsync(userId, rowId, Arg.Any<UserEmailUpdateCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new UpdateEmailResult(succeeds));
+        _userService.RemoveUserEmailAsync(userId, rowId, Arg.Any<UserEmailRemoveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(succeeds);
+        _userService.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(rowId, succeeds, false));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        switch (operation)
+        {
+            case "primary": await _service.SetPrimaryAsync(userId, rowId, ct, actorId); break;
+            case "visibility": await _service.SetVisibilityAsync(userId, rowId, ContactFieldVisibility.BoardOnly, ct, actorId); break;
+            case "delete": await _service.DeleteEmailAsync(userId, rowId, ct, actorId); break;
+            case "verified": await _service.AddVerifiedEmailAsync(userId, row.Email, ct, actorId); break;
+            case "orphan": await _service.DeleteByIdAsync(rowId, ct, actorId); break;
+        }
+        if (!succeeds)
+        {
+            _auditLogService.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        var action = operation switch
+        {
+            "primary" => UsersAuditActions.UserEmailPrimarySet,
+            "visibility" => UsersAuditActions.UserEmailVisibilityChanged,
+            "delete" => UsersAuditActions.UserEmailDeleted,
+            "verified" => UsersAuditActions.UserEmailAdded,
+            _ => UsersAuditActions.OrphanUserEmailDeleted
+        };
+        _auditLogService.ReceivedCalls().Should().ContainSingle();
+        await _auditLogService.Received(1).LogAsync(action,
+            operation is "orphan" ? nameof(UserEmail) : nameof(User),
+            operation is "orphan" ? rowId : userId, Arg.Any<string>(), actorId,
+            operation is "orphan" ? null : rowId, operation is "orphan" ? null : nameof(UserEmail));
+    }
+
+    [HumansFact]
+    public async Task DeleteEmailAsync_WithoutActor_LeavesAuditToTransactionalCaller()
+    {
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail { Id = rowId, UserId = userId, Email = "pending@example.com" };
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>()).Returns(row);
+        _userService.RemoveUserEmailAsync(userId, rowId, Arg.Any<UserEmailRemoveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _service.DeleteEmailAsync(userId, rowId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task AddEmailAsync_OwnerRefusal_DoesNotGenerateVerificationToken()
     {
@@ -1186,6 +1346,8 @@ public class UserEmailServiceTests
         result.Token.Should().BeEmpty();
         await _userManager.DidNotReceive().GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1289,6 +1451,8 @@ public class UserEmailServiceTests
             Arg.Any<Guid>(), Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>());
         await _userManager.DidNotReceive().GenerateUserTokenAsync(
             Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1307,6 +1471,8 @@ public class UserEmailServiceTests
             Arg.Any<Guid>(),
             Arg.Any<UserEmailAddCommand>(),
             Arg.Any<CancellationToken>());
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
+        _emailService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1343,10 +1509,8 @@ public class UserEmailServiceTests
         _userManager.RemoveLoginAsync(user, "Google", "sub-Z")
             .Returns(IdentityResult.Success);
 
-        // After RemoveAsync, the helper sees only the secondary (mock simulates
-        // the post-removal state).
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { secondary });
+            .Returns(new List<UserEmail> { googleRow, secondary }, new List<UserEmail> { secondary });
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1389,7 +1553,7 @@ public class UserEmailServiceTests
             .Returns(IdentityResult.Success);
 
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserEmail> { primary });
+            .Returns(new List<UserEmail> { googleRow, primary }, new List<UserEmail> { primary });
 
         var result = await _service.UnlinkAsync(userId, googleRowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1439,6 +1603,74 @@ public class UserEmailServiceTests
             Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UnlinkAsync_ProviderIdentity_ResolvesAndRemovesMatchingEmailRow()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        var linked = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "linked@example.com",
+            IsVerified = true,
+            Provider = "Google",
+            ProviderKey = "key"
+        };
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([linked, new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = true }]);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.GetLoginsAsync(user).Returns(new List<UserLoginInfo> { new("Google", "key", "Google") });
+        _userManager.RemoveLoginAsync(user, "Google", "key").Returns(IdentityResult.Success);
+        _userService.RemoveUserEmailAsync(userId, linked.Id, Arg.Any<UserEmailRemoveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _service.UnlinkAsync(userId, null, userId,
+            Xunit.TestContext.Current.CancellationToken, "Google", "key");
+
+        result.Succeeded.Should().BeTrue();
+        await _userService.Received(1).RemoveUserEmailAsync(userId, linked.Id,
+            Arg.Is<UserEmailRemoveCommand>(command => command.Mode == UserEmailRemovalMode.ProviderLinkedEmail), CancellationToken.None);
+        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, linked.Email, CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, true, false)]
+    [Xunit.InlineData(true, true, true)]
+    [Xunit.InlineData(true, true, false)]
+    [Xunit.InlineData(true, false, false)]
+    public async Task UnlinkAsync_OrphanLogin_RequiresVerifiedEmailAndExistingLogin(
+        bool verified, bool hasLogin, bool removalFails)
+    {
+        var userId = Guid.NewGuid();
+        var actorId = Guid.NewGuid();
+        var user = new User { Id = userId };
+        _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "other@example.com", IsVerified = verified }]);
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.GetLoginsAsync(user).Returns(hasLogin
+            ? new List<UserLoginInfo> { new("Google", "key", "Google") } : []);
+        _userManager.RemoveLoginAsync(user, "Google", "key").Returns(removalFails
+            ? IdentityResult.Failed(new IdentityError { Code = "failed" }) : IdentityResult.Success);
+
+        var result = await _service.UnlinkAsync(userId, null, actorId,
+            Xunit.TestContext.Current.CancellationToken, "Google", "key");
+
+        result.Succeeded.Should().Be(verified && hasLogin && !removalFails);
+        if (!verified || !hasLogin)
+            await _userManager.DidNotReceive().RemoveLoginAsync(user, "Google", "key");
+        await _userService.DidNotReceive().RemoveUserEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UserEmailRemoveCommand>(), Arg.Any<CancellationToken>());
+        if (result.Succeeded)
+            await _auditLogService.Received(1).LogAsync(UsersAuditActions.UserEmailUnlinked,
+                nameof(User), userId, Arg.Is<string>(message => message.Contains("orphan Google")), actorId,
+                relatedEntityId: null, relatedEntityType: null);
+        else
+            await _auditLogService.DidNotReceive().LogAsync(
+                Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     // VerifyEmailAsync must load the pending row by the Id passed in (it matches the token's

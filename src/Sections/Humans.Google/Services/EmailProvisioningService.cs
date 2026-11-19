@@ -31,7 +31,8 @@ internal sealed class EmailProvisioningService(
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
-        Guid provisionedByUserId)
+        Guid provisionedByUserId,
+        Guid? teamId = null)
     {
         // userId comes from a form, so an archived id must never reach Workspace: GetUserInfoAsync resolves a
         // merged-away id to its survivor, and a GDPR tombstone keeps an anonymized name that passes the checks below.
@@ -63,8 +64,17 @@ internal sealed class EmailProvisioningService(
                     ErrorMessage: $"{fullEmail} is already in use by another human.");
             }
 
+            var teams = await teamService.GetTeamsAsync();
+            if (teamId is { } requiredTeamId
+                && (!teams.TryGetValue(requiredTeamId, out var team) || team.Members.All(m => m.UserId != userId)))
+            {
+                logger.LogWarning("Workspace provisioning rejected for non-member {UserId} of team {TeamId} by actor {ActorUserId}",
+                    userId, requiredTeamId, provisionedByUserId);
+                return new EmailProvisioningResult(false, ErrorMessage: "That human is not a member of this team.");
+            }
+
             // A team Group with this address on the same domain would break mail routing and group membership.
-            var conflictingTeamName = (await teamService.GetTeamsAsync()).Values
+            var conflictingTeamName = teams.Values
                 .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, sanitizedPrefix, StringComparison.OrdinalIgnoreCase))
                 ?.Name;
             if (!string.IsNullOrEmpty(conflictingTeamName))
