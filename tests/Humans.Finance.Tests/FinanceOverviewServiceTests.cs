@@ -114,7 +114,7 @@ public class FinanceOverviewServiceTests
             Arg.Any<IReadOnlyDictionary<int, string>>(), Arg.Any<CancellationToken>());
 
         (await service.SaveStripeLinksAsync(new Dictionary<int, string?>
-            { [44100001] = "acct_store", [44100002] = "", [44100003] = "acct_old" }, actor, ct)).Should().BeNull();
+        { [44100001] = "acct_store", [44100002] = "", [44100003] = "acct_old" }, actor, ct)).Should().BeNull();
 
         await _repo.Received(1).ReplaceStripeLedgerLinksAsync(
             Arg.Is<IReadOnlyDictionary<int, string>>(d =>
