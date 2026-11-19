@@ -107,15 +107,18 @@ internal sealed class FinanceOverviewService(
 
     /// <summary>Every Stripe ledger account gets a source, unknown when no Stripe account is linked to it or the
     /// mirror holds no EUR balance for the linked one. <paramref name="links"/> maps a ledger account to its Stripe
-    /// account id.</summary>
+    /// account id; null when the setting is malformed, which leaves every account unknown.</summary>
     internal static Dictionary<int, FinanceAccountSourceVm> StripeSources(
         IEnumerable<int> stripeLedgerAccounts,
-        IReadOnlyDictionary<int, string> links,
+        IReadOnlyDictionary<int, string>? links,
         IReadOnlyList<StripeAccountBalance> balances)
     {
         var byAccount = balances.ToDictionary(b => b.AccountId, StringComparer.Ordinal);
         return stripeLedgerAccounts.Distinct().ToDictionary(num => num, num =>
         {
+            if (links is null)
+                return new FinanceAccountSourceVm(null, "/Stripe",
+                    "Finance:StripeLedgerAccounts has a key that is not a ledger account number, or a repeated one.");
             if (!links.TryGetValue(num, out var accountId))
                 return new FinanceAccountSourceVm(null, "/Stripe",
                     "No Stripe account is set for this ledger account in Finance:StripeLedgerAccounts.");

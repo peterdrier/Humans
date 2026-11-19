@@ -61,6 +61,10 @@ public class FinanceOverviewServiceTests
         sources[44100004].Unknown.Should().Contain("acct_unswept");
         sources[44100005].Balance.Should().BeNull();
         sources[44100005].Unknown.Should().NotBeNull();
+        FinanceOverviewService.StripeSources([44100003], null, []).Values.Should()
+            .ContainSingle().Which.Unknown.Should().NotBeNull();
+        new FinanceStripeOptions { StripeLedgerAccounts = { ["4410000X"] = "acct_store" } }.ByLedgerAccount()
+            .Should().BeNull();
     }
 
     [HumansFact]

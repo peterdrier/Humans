@@ -8,7 +8,15 @@ internal sealed class FinanceStripeOptions
 {
     public Dictionary<string, string> StripeLedgerAccounts { get; set; } = new(StringComparer.Ordinal);
 
-    /// <summary>Throws on a key that is not a ledger account number: a typo must not hide an account.</summary>
-    public IReadOnlyDictionary<int, string> ByLedgerAccount() => StripeLedgerAccounts.ToDictionary(
-        kv => int.Parse(kv.Key, NumberStyles.None, CultureInfo.InvariantCulture), kv => kv.Value);
+    /// <summary>Null when any key is not a ledger account number or two keys name the same one: a typo must not
+    /// hide an account, and must not take the rest of /Finance down either.</summary>
+    public IReadOnlyDictionary<int, string>? ByLedgerAccount()
+    {
+        var links = new Dictionary<int, string>();
+        foreach (var (key, accountId) in StripeLedgerAccounts)
+            if (!int.TryParse(key, NumberStyles.None, CultureInfo.InvariantCulture, out var num)
+                || !links.TryAdd(num, accountId))
+                return null;
+        return links;
+    }
 }
