@@ -60,6 +60,18 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
+    public async Task An_account_the_product_already_holds_does_not_block_other_edits()
+    {
+        var product = MakeProduct("Ice", income: 75900009);
+        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
+        var draft = StoreCatalog.MapProduct(product) with { UnitPriceEur = 12m };
+
+        var result = await _catalog.UpdateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task Bulk_save_writes_and_audits_changed_rows_only()
     {
         var gas = MakeProduct("Gas");

@@ -40,7 +40,7 @@ internal sealed class StoreCatalog(
 
     public async Task<CatalogSaveResult> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        var refusal = GetProductDraftRefusal(draft) ?? await GetAccountRefusalAsync(draft, ct);
+        var refusal = GetProductDraftRefusal(draft) ?? await GetAccountRefusalAsync(draft, current: null, ct);
         if (refusal is not null)
         {
             logger.LogWarning("Store catalog create rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
@@ -65,13 +65,16 @@ internal sealed class StoreCatalog(
 
     public async Task<AdminMutationResult> UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        var refusal = GetProductDraftRefusal(draft) ?? await GetAccountRefusalAsync(draft, ct);
-        if (refusal is not null)
-            return RefuseCatalogMutation(draft.Id, actorUserId, refusal);
+        var draftRefusal = GetProductDraftRefusal(draft);
+        if (draftRefusal is not null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, draftRefusal);
 
         var product = await repo.GetProductByIdAsync(draft.Id, ct);
         if (product is null)
             return RefuseCatalogMutation(draft.Id, actorUserId, $"Product {draft.Id} not found");
+
+        if (await GetAccountRefusalAsync(draft, product, ct) is { } accountRefusal)
+            return RefuseCatalogMutation(draft.Id, actorUserId, accountRefusal);
 
         var oldPrice = product.UnitPriceEur;
 
@@ -216,7 +219,10 @@ internal sealed class StoreCatalog(
         {
             if (!products.TryGetValue(row.ProductId, out var product))
                 refusals.Add($"Product {row.ProductId} is not in the {year} catalog.");
-            else if (choices.Refusal(row.Income, row.Cost, row.TeamUsage) is { } refusal)
+            else if (choices.Refusal(
+                         Changed(row.Income, product.HoldedRevenueAccountNum),
+                         Changed(row.Cost, product.HoldedExpenseAccountNum),
+                         Changed(row.TeamUsage, product.HoldedTransferAccountNum)) is { } refusal)
                 refusals.Add($"{product.Name}: {refusal}");
         }
         if (refusals.Count > 0)
@@ -249,11 +255,19 @@ internal sealed class StoreCatalog(
         static string Show(int? account) => account?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none";
     }
 
-    private async Task<string?> GetAccountRefusalAsync(ProductDto draft, CancellationToken ct) =>
-        draft.HoldedRevenueAccountNum is null && draft.HoldedExpenseAccountNum is null && draft.HoldedTransferAccountNum is null
+    /// <summary>Only accounts the save changes are checked: one the product already holds stays saveable after it
+    /// drops out of the chart, so it never blocks an unrelated edit.</summary>
+    private async Task<string?> GetAccountRefusalAsync(ProductDto draft, Product? current, CancellationToken ct)
+    {
+        var income = Changed(draft.HoldedRevenueAccountNum, current?.HoldedRevenueAccountNum);
+        var cost = Changed(draft.HoldedExpenseAccountNum, current?.HoldedExpenseAccountNum);
+        var teamUsage = Changed(draft.HoldedTransferAccountNum, current?.HoldedTransferAccountNum);
+        return income is null && cost is null && teamUsage is null
             ? null
-            : (await GetAccountChoicesAsync(ct)).Refusal(
-                draft.HoldedRevenueAccountNum, draft.HoldedExpenseAccountNum, draft.HoldedTransferAccountNum);
+            : (await GetAccountChoicesAsync(ct)).Refusal(income, cost, teamUsage);
+    }
+
+    private static int? Changed(int? posted, int? stored) => posted == stored ? null : posted;
 
     // Income is the whole sales-and-income group (7xxxxxxx); store items normally sit in 759xxxxx.
     private const int IncomeBlockStart = 70_000_000;
