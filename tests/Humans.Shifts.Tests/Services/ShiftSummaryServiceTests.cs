@@ -125,22 +125,20 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     [HumansFact]
     public async Task BuildSummaryAsync_RotaScope_PreservesCancellationInScopeReads()
     {
         using var cancellation = new CancellationTokenSource();
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetRotaAsync(_rPower, RotaReadShape.Shifts, Arg.Any<CancellationToken>())
-            .Returns(new Rota { Id = _rPower, TeamId = _powerId, EventSettingsId = _event.Id, Name = "Power" });
-        repo.GetConfirmedUserShiftTotalsAsync(
-                _event.Id, Arg.Any<IReadOnlyCollection<Guid>?>(), _rPower, Arg.Any<CancellationToken>())
-            .Returns([]);
+        var seeded = await ((IShiftRotaRows)_service).GetRotaRowsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var rows = Substitute.For<IShiftRotaRows>();
+        rows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>()).Returns(seeded);
         var services = new ServiceLocatorBuilder()
-            .With(_teamService).With(_userService).With(_campService).Build();
+            .With(_teamService).With(_userService).With(_campService).With(rows).Build();
         var service = new ShiftManagementService(
-            repo, AuditLog, AdminAuthorization, services, Cache,
+            Substitute.For<IShiftManagementRepository>(), AuditLog, AdminAuthorization, services, Cache,
             new ShiftViewProbe().Cache, NewCalendarResolver(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
@@ -148,7 +146,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
 
         summary.Should().NotBeNull();
         await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
-        await repo.Received(1).GetRotaAsync(_rPower, RotaReadShape.Shifts, cancellation.Token);
+        await rows.Received(1).GetRotaRowsAsync(null, cancellation.Token);
     }
 
     [HumansFact]
@@ -176,6 +174,36 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         byUser[_userC].CampId.Should().BeNull();
         byUser[_userC].CampName.Should().BeNull();
         byUser[_userC].Hours.Should().Be(2.0);
+    }
+
+    [HumansFact]
+    public async Task BuildSummaryAsync_AllDayShiftCountsWindowHours_OtherEventIgnored()
+    {
+        var allDay = SeedShift(_rWater, Duration.FromHours(24));
+        ShiftsDb.Shifts.Local.Single(s => s.Id == allDay).IsAllDay = true;
+        var otherEvent = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Other",
+            GateOpeningDate = new LocalDate(2025, 7, 1),
+            TimeZoneId = "UTC"
+        };
+        ShiftsDb.EventSettings.Add(otherEvent);
+        var otherRota = Guid.NewGuid();
+        SeedRota(otherRota, _waterId);
+        ShiftsDb.Rotas.Local.Single(r => r.Id == otherRota).EventSettingsId = otherEvent.Id;
+        var otherShift = SeedShift(otherRota, Duration.FromHours(5));
+        ShiftsDb.ShiftSignups.AddRange(
+            MakeSignup(_userB, allDay, SignupStatus.Confirmed),
+            MakeSignup(_userA, otherShift, SignupStatus.Confirmed));
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var summary = await _service.BuildSummaryAsync(_burn, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var byUser = summary!.Humans.ToDictionary(h => h.UserId);
+        byUser[_userB].Hours.Should().Be(8.0 + Shift.AllDayWindowHours);
+        byUser[_userB].Count.Should().Be(2);
+        byUser[_userA].Hours.Should().Be(4.0);
     }
 
     [HumansFact]

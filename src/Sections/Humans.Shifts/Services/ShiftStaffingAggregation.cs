@@ -1,5 +1,6 @@
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Domain;
+using Humans.Shifts.Helpers;
+using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Models;
 using Humans.Teams.Contracts;
 
@@ -11,8 +12,7 @@ internal static class ShiftStaffingAggregation
         teams.TryGetValue(teamId, out var team) ? team.ParentTeamId ?? team.Id : teamId;
 
     internal static List<DepartmentStaffingRow> BuildDepartmentRows(
-        IReadOnlyList<Shift> shifts,
-        Dictionary<Guid, int> confirmedCounts,
+        IReadOnlyList<EventShift> shifts,
         BurnSettingsInfo es,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup)
     {
@@ -32,7 +32,7 @@ internal static class ShiftStaffingAggregation
             var deptShifts = g.ToList();
             var deptId = g.Key;
             var deptName = NameOf(deptId);
-            var agg = AggregateShifts(deptShifts, confirmedCounts, es);
+            var agg = AggregateShifts(deptShifts, es);
 
             var subgroups = new List<SubgroupStaffingRow>();
             var anySubteam = deptShifts.Any(s =>
@@ -45,7 +45,7 @@ internal static class ShiftStaffingAggregation
                 foreach (var sg in subteamGroups)
                 {
                     var sTeamId = sg.Key;
-                    var sAgg = AggregateShifts(sg.ToList(), confirmedCounts, es);
+                    var sAgg = AggregateShifts(sg.ToList(), es);
                     subgroups.Add(new SubgroupStaffingRow(
                         sTeamId, NameOf(sTeamId), SlugOf(sTeamId), IsDirect: false,
                         sAgg.Total, sAgg.Filled, sAgg.TotalSlots, sAgg.FilledSlots, sAgg.Remaining,
@@ -55,7 +55,7 @@ internal static class ShiftStaffingAggregation
                 var directShifts = deptShifts.Where(s => s.Rota.TeamId == deptId).ToList();
                 if (directShifts.Count > 0)
                 {
-                    var dAgg = AggregateShifts(directShifts, confirmedCounts, es);
+                    var dAgg = AggregateShifts(directShifts, es);
                     subgroups.Insert(0, new SubgroupStaffingRow(
                         deptId, "Direct", SlugOf(deptId), IsDirect: true,
                         dAgg.Total, dAgg.Filled, dAgg.TotalSlots, dAgg.FilledSlots, dAgg.Remaining,
@@ -74,7 +74,7 @@ internal static class ShiftStaffingAggregation
     }
 
     internal static (int Total, int Filled, int TotalSlots, int FilledSlots, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
-        AggregateShifts(IReadOnlyList<Shift> shifts, Dictionary<Guid, int> confirmedCounts, BurnSettingsInfo es)
+        AggregateShifts(IReadOnlyList<EventShift> shifts, BurnSettingsInfo es)
     {
         int total = shifts.Count;
         int filled = 0;
@@ -88,9 +88,8 @@ internal static class ShiftStaffingAggregation
             [ShiftPeriod.Strike] = (0, 0, 0, 0, 0),
         };
 
-        foreach (var s in shifts)
+        foreach (var (s, confirmed) in shifts.Select(e => (e.Shift, e.ConfirmedCount)))
         {
-            var confirmed = confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0;
             var isFilled = confirmed >= s.MinVolunteers;
             var filledSlotsHere = Math.Min(confirmed, s.MaxVolunteers);
             var slotsLeft = Math.Max(0, s.MaxVolunteers - confirmed);
