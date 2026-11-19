@@ -18,7 +18,7 @@ namespace Humans.Governance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -431,6 +431,66 @@ namespace Humans.Governance.Data.Migrations
                     b.ToTable("governance_board_votes", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("GoogleId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("PermissionLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Body", "GoogleId")
+                        .IsUnique();
+
+                    b.ToTable("governance_body_files", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyLinks", b =>
+                {
+                    b.Property<string>("Body")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("GoogleGroupPrefix")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Body");
+
+                    b.ToTable("governance_body_links", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Governance.Domain.MembershipTierRecord", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -539,6 +599,15 @@ namespace Humans.Governance.Data.Migrations
                     b.Navigation("Application");
                 });
 
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyFile", b =>
+                {
+                    b.HasOne("Humans.Governance.Domain.GovernanceBodyLinks", null)
+                        .WithMany("Files")
+                        .HasForeignKey("Body")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Humans.Governance.Domain.Application", b =>
                 {
                     b.Navigation("BoardVotes");
@@ -554,6 +623,11 @@ namespace Humans.Governance.Data.Migrations
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVote", b =>
                 {
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyLinks", b =>
+                {
+                    b.Navigation("Files");
                 });
 #pragma warning restore 612, 618
         }
