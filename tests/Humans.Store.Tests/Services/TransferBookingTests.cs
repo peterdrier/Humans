@@ -25,7 +25,7 @@ public class TransferBookingTests
 
     private static AccountingOrderLineDto Line(decimal net, int month, int? transfer = TransferAccount) =>
         new(2026, Guid.NewGuid(), OrderCounterpartyType.Team, Team, "Ice Crew", null, null, null, OrderState.Open,
-            null, Guid.NewGuid(), Ice, "Ice", 75900002, 62900002, transfer, 1, net, 0m, net, net, 0m, 0m,
+            null, Guid.NewGuid(), Ice, "Ice", 75900002, 62900002, transfer, 1, net, net, 0m, net, net, 0m, 0m,
             Instant.FromUtc(2026, month, 10, 12, 0));
 
     private static readonly Dictionary<Guid, int> Departments = new() { [Team] = DeptAccount };
