@@ -158,6 +158,7 @@ graph LR
     Finance --> Expenses
     Finance --> Holded
     Finance --> Pleo
+    Finance --> Settings
     Finance --> Stripe
     Finance -.-> Email
     Finance -.-> Tickets
@@ -206,7 +207,6 @@ graph LR
     Notifications --> Google
     Notifications -.-> Camps
     Notifications -.-> Email
-    Notifications -.-> Governance
     Notifications -.-> Shifts
     Notifications -.-> Teams
     Notifications -.-> Tickets

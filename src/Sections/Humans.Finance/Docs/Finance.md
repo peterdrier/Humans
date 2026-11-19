@@ -36,7 +36,7 @@ What lives here: attribution of the purchase documents the Holded section mirror
 - A **Managed Account** is an expense account Finance created or linked outside the budget map on another caller's request (`CreateOrLinkExpenseAccountAsync`). Finance records number, id, label and an active flag — never who asked. Docs booked to one are Matched with no category: off the Unmatched queue, outside every year's actuals. Create, link, retire and restore each write an audit entry (`HoldedExpenseAccountCreated` / `Linked` / `ActiveChanged`). Expense-account reads reject missing or blank Holded expense-account IDs before Finance writes its managed registry or returns an account binding.
 - The **Unmatched Queue** (`/Finance/HoldedUnmatched`) is the working surface where the treasurer inspects unattributed docs and triggers a re-sync of the Holded purchase mirror. Its controller orders documents newest first; the service returns them with document-date metadata, without display ordering. Backdoor's Holded-sync projection applies the same order.
 - **`/Finance`** is the overview, computed on read by `FinanceOverviewService` (internal, no tables) and linking each figure to the page that clears it. Every Holded figure is the ledger mirror's balance as of its last sweep; nothing calls Holded live beyond what `ListCreditorAccountsAsync` already does. Without a successful sweep the ledger cards say so instead of showing zeros. The cash table's **Unreconciled** column, on the account `Sepa:TreasuryLedgerAccount` names, counts the Sabadell lines of the last 90 days in Holded's bank-feed mirror that Holded does not read `reconciled` (incoming and outgoing), with the feed's read time in its tooltip; `unknown` when the feed was never mirrored, empty when no treasury account is configured.
-  - **Cash on hand:** one table of 570/572 (banks) and 441 (Stripe, until those accounts move), each account with Holded's balance, a negative one in red; an archived account shows only while it holds money. An account whose provider reports its own balance shows it beside Holded's with the difference, red when not 0.00 or unknown, linking to its reconcile page: Pleo's wallet (Pleo mirror) against 57200003, to `/Finance/Pleo`; and every 441 account against its Stripe account's mirrored EUR balance (available + pending, Stripe mirror), to `/Stripe`. The 441 → `acct_…` links are config (`Finance:StripeLedgerAccounts`); a malformed setting, a 441 account with no link, or one whose Stripe account the mirror holds no EUR balance for, shows unknown in red with the reason on hover, never a zero.
+  - **Cash on hand:** one table of 570/572 (banks) and 441 (Stripe, until those accounts move), each account with Holded's balance, a negative one in red; an archived account shows only while it holds money. An account whose provider reports its own balance shows it beside Holded's with the difference, red when not 0.00 or unknown, linking to its reconcile page: Pleo's wallet (Pleo mirror) against 57200003, to `/Finance/Pleo`; and every 441 account against its Stripe account's mirrored EUR balance (available + pending, Stripe mirror), to `/Stripe`. The 441 → `acct_…` links are `finance_stripe_ledger_links` rows, edited on the Finance tab of `/Settings` (`FinancePolicies.Manage`; one Stripe-account dropdown per 441 account this card shows (unarchived, or archived while holding money) or already linked, choices from the Stripe mirror; each save audited as `FinanceStripeLedgerLinksUpdated`); a 441 account with no link, or one whose Stripe account the mirror holds no EUR balance for, shows unknown in red with the reason on hover, never a zero.
   - **SEPA transfers in progress:** every transfer in a payout file that is neither booked nor withdrawn (member, date sent, file, amount; total), oldest first, linking to `/Finance/Sepa`.
   - **Position** is one card: cash on hand, plus owed to us, less what we owe, down to the net position (cash + owed to us − what we owe), which also heads the card.
   - **What we owe** (in the Position card): creditor accounts (40000000-41999999) with a credit balance, split into member-bound and unbound (suppliers), plus the 475 tax accounts. The members' share already in an unbooked SEPA file is shown beside it. When the Holded contact mirror has never synced the creditor accounts are unknown, so that part shows the reason, its total and the net position show "—", and the Ready to pay and Transfers to book cards show "—".
@@ -148,6 +148,15 @@ contact, three write paths with different collision remedies, and no unique inde
 
 **Cross-section FKs:** `UserId`, `BookedByUserId` and `WithdrawnByUserId` → `User` (Users) — FK only, no navigation property.
 
+### StripeLedgerLink
+
+**Table:** `finance_stripe_ledger_links`
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| LedgerAccountNum | int | PK. The Holded 441xxxxx account. |
+| StripeAccountId | string (64) | The Stripe `acct_…` id whose mirrored balance is that account's "At the source" figure on `/Finance`. |
+
 ### PaymentDetails
 
 **Table:** `finance_payment_details`
@@ -187,6 +196,10 @@ Stored as string via `HasConversion<string>()`.
 ## Routing
 
 Every `/Finance/*` route except the one below is gated on `FinancePolicies.Read` (FinanceAdmin, Board, Admin) at class level, and every POST on `FinancePolicies.Manage` (FinanceAdmin, Admin), declared on this section's `FinanceController`.
+
+### Settings tab
+
+`POST /Finance/StripeLinks` (`FinancePolicies.Manage`) saves the Finance tab of `/Settings` (`FinanceSettingsTabViewComponent`, contributed through `ISectionSettings` with the same policy) and redirects back to `/Settings#finance`.
 
 ### Member payment details
 

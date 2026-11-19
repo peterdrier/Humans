@@ -272,6 +272,26 @@ internal sealed class StoreAdminController(
         };
     }
 
+    /// <summary>Posted from the Store tab on /Settings.</summary>
+    [HttpPost("Settings")]
+    [Authorize(Policy = StorePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveSettings(StoreSettingsViewModel model, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        var result = ModelState.IsValid
+            ? await storeService.SaveSettingsAsync(
+                new StoreSettingsDto(model.DepositLiabilityAccountNum, model.SimplifiedInvoiceThresholdEur), user.Id, ct)
+            : AdminMutationResult.Refused("Invalid store settings.");
+        if (result.Succeeded)
+            SetSuccess("Store settings saved.");
+        else
+            SetError(result.Refusal!);
+        return Redirect("/Settings#store");
+    }
+
     [HttpPost("Catalog/Deactivate/{id:guid}")]
     [Authorize(Policy = StorePolicies.Manage)]
     [ValidateAntiForgeryToken]

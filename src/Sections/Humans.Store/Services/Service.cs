@@ -11,7 +11,6 @@ using Humans.Store.Domain;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Store.Services;
@@ -27,7 +26,6 @@ internal sealed class Service(
     IStripeService stripeService,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
-    IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IApplicationService
 {
     private readonly StoreOrderAdministration orderAdministration = new(repo, audit, clock, logger);
@@ -92,6 +90,16 @@ internal sealed class Service(
 
     public Task<ProductAccountChoices> GetAccountChoicesAsync(CancellationToken ct = default) =>
         productCatalog.GetAccountChoicesAsync(ct);
+
+    public Task<IReadOnlyList<AccountChoice>> GetDepositAccountChoicesAsync(CancellationToken ct = default) =>
+        productCatalog.GetDepositAccountChoicesAsync(ct);
+
+    public Task<StoreSettingsDto> GetSettingsAsync(CancellationToken ct = default) =>
+        productCatalog.GetSettingsAsync(ct);
+
+    public Task<AdminMutationResult> SaveSettingsAsync(
+        StoreSettingsDto settings, Guid actorUserId, CancellationToken ct = default) =>
+        productCatalog.SaveSettingsAsync(settings, actorUserId, ct);
 
     public Task<AdminMutationResult> SaveProductAccountsAsync(
         int year, IReadOnlyList<ProductAccounts> rows, Guid actorUserId, CancellationToken ct = default) =>
@@ -359,7 +367,7 @@ internal sealed class Service(
     /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     [ExternalWrite]
     public Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
-        new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
+        new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, orderReader, logger)
             .IssueAsync(orderId, actorUserId, ct);
 
     public Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default) =>
