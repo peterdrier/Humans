@@ -661,3 +661,12 @@ src/Sections/Humans.Workgroups/Data/Migrations/20261112195832_RenameTablesToSect
 # told the values were never migrated.
 src/Sections/Humans.Users/Data/Migrations/20261113002956_DropUsersDeadEmailFlags.cs:DropColumn(name=SuppressScheduleChangeEmails,table=users)#1
 src/Sections/Humans.Users/Data/Migrations/20261113002956_DropUsersDeadEmailFlags.cs:DropColumn(name=UnsubscribedFromCampaigns,table=users)#1
+
+# governance_applications.ReviewStartedAt (timestamp, nullable) — when a tier application entered
+# the old UnderReview state.
+# Evidence: pickaxe over full history (git log -S 'ReviewStartedAt ='): the only writer was the
+# UnderReview transition, removed in 32468ea09 (2026-02-20); rows reviewed 2026-02-04..02-20 may hold
+# a value. The last readers (application detail pages) were removed in peterdrier/Humans#2443.
+# Approval: Peter, 2026-11-19, project thread decision card ("Yes, drop it"), after being told
+# what the column may still hold.
+src/Sections/Humans.Governance/Data/Migrations/20261119152633_DropApplicationReviewStartedAt.cs:DropColumn(name=ReviewStartedAt,table=governance_applications)#1

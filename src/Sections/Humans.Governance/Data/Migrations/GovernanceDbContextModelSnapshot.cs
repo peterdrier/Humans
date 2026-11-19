@@ -18,7 +18,7 @@ namespace Humans.Governance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -62,9 +62,6 @@ namespace Humans.Governance.Data.Migrations
                     b.Property<string>("ReviewNotes")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
-
-                    b.Property<Instant?>("ReviewStartedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("ReviewedByUserId")
                         .HasColumnType("uuid");
