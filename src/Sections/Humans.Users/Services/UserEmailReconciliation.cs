@@ -77,10 +77,10 @@ internal sealed class UserEmailReconciliation(
 
             await auditLogService.LogAsync(
                 UsersAuditActions.OAuthRenameCollisionBlocked,
-                nameof(User), userId,
+                AuditSubjectTypes.User, userId,
                 blockedDescription,
                 actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+                relatedEntityId: blocker.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
             return new OAuthReconcileResult(
                 ReconcileOutcome.CrossUserBlocked,
@@ -237,10 +237,10 @@ internal sealed class UserEmailReconciliation(
 
             await auditLogService.LogAsync(
                 UsersAuditActions.OAuthRenameCollision,
-                nameof(User), userId,
+                AuditSubjectTypes.User, userId,
                 collisionDiagnostic!,
                 actorUserId: userId,
-                relatedEntityId: blocker!.Id, relatedEntityType: nameof(UserEmail));
+                relatedEntityId: blocker!.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
             var displacedAuditDescription =
                 $"Row `{blocker.Email}` deleted by OAuth callback for user {userId} " +
@@ -250,10 +250,10 @@ internal sealed class UserEmailReconciliation(
                     : string.Empty);
             await auditLogService.LogAsync(
                 UsersAuditActions.UserEmailDisplacedByOAuthRename,
-                nameof(User), blocker.UserId,
+                AuditSubjectTypes.User, blocker.UserId,
                 displacedAuditDescription,
                 actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+                relatedEntityId: blocker.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
             return new OAuthReconcileResult(
                 ReconcileOutcome.CrossUserDisplaced,
@@ -267,10 +267,10 @@ internal sealed class UserEmailReconciliation(
 
         await auditLogService.LogAsync(
             signingAction,
-            nameof(User), userId,
+            AuditSubjectTypes.User, userId,
             signingDescription,
             actorUserId: userId,
-            relatedEntityId: affectedRowId, relatedEntityType: nameof(UserEmail));
+            relatedEntityId: affectedRowId, relatedEntityType: AuditSubjectTypes.UserEmail);
 
         return new OAuthReconcileResult(
             outcome,

@@ -111,7 +111,7 @@ internal sealed class UserService(
     public async Task MarkFakeAsync(Guid userId, Guid actorUserId, string reason, CancellationToken ct = default)
     {
         if (await repo.SetMarkedFakeAsync(userId, clock.GetCurrentInstant(), ct))
-            await audit.LogAsync(UsersAuditActions.AccountMarkedFake, nameof(User), userId, reason, actorUserId);
+            await audit.LogAsync(UsersAuditActions.AccountMarkedFake, AuditSubjectTypes.User, userId, reason, actorUserId);
     }
 
     public Task<bool> SetDeletionPendingAsync(

@@ -74,11 +74,11 @@ internal sealed class UserEmailVerification(
         cancellationToken = CancellationToken.None;
         var description = $"Added pending email {email} (conflict: {addResult.IsConflict})";
         if (actorUserId is { } actor)
-            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, nameof(User), userId,
-                description, actor, relatedEntityId: addResult.EmailId, relatedEntityType: nameof(UserEmail));
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, AuditSubjectTypes.User, userId,
+                description, actor, relatedEntityId: addResult.EmailId, relatedEntityType: AuditSubjectTypes.UserEmail);
         else
-            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, nameof(User), userId,
-                description, nameof(UserEmailService), relatedEntityId: addResult.EmailId, relatedEntityType: nameof(UserEmail));
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, AuditSubjectTypes.User, userId,
+                description, nameof(UserEmailService), relatedEntityId: addResult.EmailId, relatedEntityType: AuditSubjectTypes.UserEmail);
 
         var token = await userManager.GenerateUserTokenAsync(
             user,
@@ -177,10 +177,10 @@ internal sealed class UserEmailVerification(
 
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailManuallyVerified,
-            nameof(User), userId,
+            AuditSubjectTypes.User, userId,
             $"Admin manually verified email {pendingEmail.Email}",
             actorUserId,
-            relatedEntityId: pendingEmail.Id, relatedEntityType: nameof(UserEmail));
+            relatedEntityId: pendingEmail.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }

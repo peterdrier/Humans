@@ -71,7 +71,7 @@ internal sealed class UserProfileMutations(
         // legal names and stay Bare. The repository derives User.State.
         await repo.AddAsync(profile, ct);
         if (actorUserId.HasValue)
-            await audit.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
+            await audit.LogAsync(UsersAuditActions.StubProfileBackfilled, AuditSubjectTypes.User, userId,
                 "Created missing profile.", actorUserId.Value);
         return true;
     }

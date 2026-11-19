@@ -134,10 +134,10 @@ internal sealed class AccountMergeService(
             // 4. Audit.
             await auditLogService.LogAsync(
                 UsersAuditActions.AccountMergeAccepted,
-                nameof(User), archivedUserId,
+                AuditSubjectTypes.User, archivedUserId,
                 $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
                 adminUserId,
-                relatedEntityId: survivorUserId, relatedEntityType: nameof(User));
+                relatedEntityId: survivorUserId, relatedEntityType: AuditSubjectTypes.User);
 
             // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
             await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
