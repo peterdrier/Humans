@@ -10,7 +10,7 @@ namespace Humans.Events.Services;
 
 internal interface IEventManagement : IApplicationService, IEventService
 {
-    Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
+    IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions();
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>False when the selected event edition no longer exists; dependency failures propagate.</summary>
     Task<bool> SaveGuideSettingsAsync(

@@ -4,7 +4,7 @@ namespace Humans.Tickets.Services;
 
 internal interface IUserParticipationBackfillService : IApplicationService
 {
-    Task<int> GetDefaultYearAsync(CancellationToken ct = default);
+    int GetDefaultYear();
     /// <summary>Previews parsed rows by default; an explicit apply writes and audits changed records.</summary>
     Task<ParticipationBackfillResult> BackfillFromCsvAsync(int year, string? csvData, Guid actorUserId, CancellationToken ct = default, bool apply = false);
 }

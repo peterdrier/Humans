@@ -24,7 +24,7 @@ public sealed class MemberTicketStatusViewComponent(
         }
 
         var ct = HttpContext.RequestAborted;
-        var activeEvent = await ActiveEventAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent?.IsOffSeason == true)
         {
             return Content(string.Empty);
@@ -60,23 +60,6 @@ public sealed class MemberTicketStatusViewComponent(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
-            return null;
-        }
-    }
-
-    private async Task<EventSettingsInfo?> ActiveEventAsync(CancellationToken ct)
-    {
-        try
-        {
-            return settingsService.GetActiveEventSettings();
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load active event for the dashboard ticket card");
             return null;
         }
     }

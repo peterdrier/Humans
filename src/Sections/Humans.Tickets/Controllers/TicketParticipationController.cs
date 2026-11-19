@@ -29,7 +29,7 @@ internal sealed class TicketParticipationController(
 
         try
         {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync(HttpContext.RequestAborted);
+            var eventYear = GetActiveEventYearOrSetError();
             if (eventYear is null)
             {
                 return Redirect("/");
@@ -59,7 +59,7 @@ internal sealed class TicketParticipationController(
 
         try
         {
-            var eventYear = await GetActiveEventYearOrSetErrorAsync(HttpContext.RequestAborted);
+            var eventYear = GetActiveEventYearOrSetError();
             if (eventYear is null)
             {
                 return Redirect("/");
@@ -79,7 +79,7 @@ internal sealed class TicketParticipationController(
         return Redirect("/");
     }
 
-    private async Task<int?> GetActiveEventYearOrSetErrorAsync(CancellationToken ct)
+    private int? GetActiveEventYearOrSetError()
     {
         var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is not null && activeEvent.Year > 0)

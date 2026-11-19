@@ -63,7 +63,7 @@ public class EventsControllerTests
     {
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
-        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
+        _guide.GetEventSettingsOptions().Returns([burn]);
         _guide.SaveGuideSettingsAsync(null, burn.Id, default, default, default, 0).ReturnsForAnyArgs(true);
         var controller = new EventsAdminController(_guide,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)

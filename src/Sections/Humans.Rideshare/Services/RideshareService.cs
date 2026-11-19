@@ -37,8 +37,7 @@ internal sealed class RideshareService(
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
     private static readonly JsonSerializerOptions WaypointJsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default) =>
-        (settingsService.GetActiveEventSettings())?.Id;
+    public Guid? GetActiveEventId() => settingsService.GetActiveEventSettings()?.Id;
 
     public async Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default)
     {

@@ -11,7 +11,7 @@ namespace Humans.Rideshare.Services;
 internal interface IRideshareService : IApplicationService
 {
     /// <summary>Null when no event is active.</summary>
-    Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default);
+    Guid? GetActiveEventId();
 
     /// <summary>A null or unknown event gives an empty snapshot with no settings, labelled with the current year.</summary>
     Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default);

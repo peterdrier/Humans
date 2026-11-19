@@ -48,8 +48,11 @@ internal sealed class CachingEventService(
     public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
         GetSettingsViewAsync(ct);
 
-    public Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetEventSettingsOptionsAsync(ct));
+    public IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions()
+    {
+        using var scope = scopeFactory.CreateScope();
+        return scope.ServiceProvider.GetRequiredKeyedService<IEventManagement>(InnerServiceKey).GetEventSettingsOptions();
+    }
 
     public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetEventSettingsByIdAsync(id, ct));

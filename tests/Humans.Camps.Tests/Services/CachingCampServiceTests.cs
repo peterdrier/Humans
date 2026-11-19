@@ -60,10 +60,10 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             Substitute.For<IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
-        _innerSubstitute.GetActiveEventAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+        _innerSubstitute.GetActiveEvent()
+            .Returns(_ =>
             {
-                var (year, _) = await inner.GetActiveEventAsync(ci.Arg<CancellationToken>());
+                var (year, _) = inner.GetActiveEvent();
                 return (year, (Guid?)EventIdFor(year));
             });
         _innerSubstitute.GetEarlyEntriesAsync(Arg.Any<CancellationToken>())

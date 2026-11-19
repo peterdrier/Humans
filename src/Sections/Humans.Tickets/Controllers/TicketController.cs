@@ -192,11 +192,11 @@ internal sealed class TicketController(
 
     [HttpGet("Participation/Backfill")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> ParticipationBackfill()
+    public IActionResult ParticipationBackfill()
     {
         var model = new ParticipationBackfillViewModel
         {
-            Year = await participationBackfillService.GetDefaultYearAsync(HttpContext.RequestAborted),
+            Year = participationBackfillService.GetDefaultYear(),
         };
         return View(model);
     }

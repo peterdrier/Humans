@@ -137,7 +137,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
-        var year = await GetCurrentEventYearAsync(ct);
+        var year = GetCurrentEventYear();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
@@ -287,7 +287,7 @@ internal sealed class Service(
     }
 
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
-    public Task<int> GetCurrentEventYearAsync(CancellationToken ct = default) => orderReader.GetCurrentEventYearAsync(ct);
+    public int GetCurrentEventYear() => orderReader.GetCurrentEventYear();
 
     [ExternalWrite]
     public Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(

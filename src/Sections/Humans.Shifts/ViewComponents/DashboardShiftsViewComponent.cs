@@ -47,7 +47,7 @@ internal sealed class DashboardShiftsViewComponent(
             logger.LogError(ex, "Failed to load active event for the dashboard shifts card");
         }
 
-        var isOffSeason = await IsOffSeasonAsync(ct);
+        var isOffSeason = settingsService.GetActiveEventSettings()?.IsOffSeason ?? false;
         var isShiftBrowsingOpen = !isOffSeason && activeEvent is not null && activeEvent.IsShiftBrowsingOpen;
         var urgentShifts = isShiftBrowsingOpen
             ? await UrgentShiftsAsync(activeEvent!.Id, ct)
@@ -57,23 +57,6 @@ internal sealed class DashboardShiftsViewComponent(
 
         return View(new DashboardShiftsViewModel(
             userId, isVolunteerMember, isShiftBrowsingOpen, urgentShifts, hasUpcomingShifts, isOffSeason));
-    }
-
-    private async Task<bool> IsOffSeasonAsync(CancellationToken ct)
-    {
-        try
-        {
-            return (settingsService.GetActiveEventSettings())?.IsOffSeason ?? false;
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load the off-season switch for the dashboard shifts card");
-            return false;
-        }
     }
 
     private async Task<IReadOnlyList<UrgentShiftInfo>> UrgentShiftsAsync(Guid eventSettingsId, CancellationToken ct)

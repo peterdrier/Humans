@@ -12,7 +12,7 @@ internal sealed class UserParticipationBackfillService(
     ISettingsService settingsService,
     IClock clock) : IUserParticipationBackfillService
 {
-    public async Task<int> GetDefaultYearAsync(CancellationToken ct = default)
+    public int GetDefaultYear()
     {
         var activeEvent = settingsService.GetActiveEventSettings();
         return activeEvent?.Year ?? clock.GetCurrentInstant().InUtc().Year;
