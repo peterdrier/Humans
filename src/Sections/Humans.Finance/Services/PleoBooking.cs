@@ -674,7 +674,10 @@ internal sealed partial class PleoBooking(
     private Task RecordUploadAsync(string pleoId, string receiptId, bool confirmed) =>
         repo.AddPleoReceiptUploadAsync(new PleoReceiptUpload
         {
-            PleoEntryId = pleoId, ReceiptId = receiptId, UploadedAt = clock.GetCurrentInstant(), Confirmed = confirmed,
+            PleoEntryId = pleoId,
+            ReceiptId = receiptId,
+            UploadedAt = clock.GetCurrentInstant(),
+            Confirmed = confirmed,
         }, CancellationToken.None);
 
     private async Task<string?> AttachWaitingAsync(

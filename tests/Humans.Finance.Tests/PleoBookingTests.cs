@@ -72,7 +72,8 @@ public class PleoBookingTests
 
         _repo.GetSettingsAsync(default).ReturnsForAnyArgs(new FinanceSettings
         {
-            PleoHoldedContactId = Contact, PleoHoldedTreasuryId = Treasury,
+            PleoHoldedContactId = Contact,
+            PleoHoldedTreasuryId = Treasury,
         });
         _repo.GetPleoBookingClaimsAsync(default).ReturnsForAnyArgs(_ => _claims.ToHashSet(StringComparer.Ordinal));
         _repo.TryClaimPleoBookingAsync(default!, default, default).ReturnsForAnyArgs(c => _claims.Add(c.Arg<string>()));
