@@ -18,7 +18,7 @@ internal sealed class PreapprovalClaims(
 {
     private LocalDate Today => reader.Today;
 
-    internal async Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null)
+    internal async Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>> afterCommit)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
         if (grant is null)
@@ -27,10 +27,10 @@ internal sealed class PreapprovalClaims(
         if (grant.Status == GrantStatus.Claimed && grant.ExpenseReportId == expenseReportId)
         {
             // The holding report resubmitting after a rejection: filed in time, so no deadline check, but a fresh stamp.
-            await CompleteWriteAsync(grant.Id, _ => journal.AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
+            Defer(grant.Id, _ => journal.AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
                 $"Re-stamped for expense report {expenseReportId} (resubmit): cap {PreapprovalJournal.Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
-                actorUserId, expenseReportId), ct, afterCommit);
-            return new(Stamp: Stamp(grant));
+                actorUserId, expenseReportId), afterCommit);
+            return new(Claimed: PreapprovalReader.ToOption(grant, grant.Program, Today));
         }
 
         var reason = grant.Status switch
@@ -51,17 +51,17 @@ internal sealed class PreapprovalClaims(
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
 
-        await CompleteWriteAsync(grant.Id, async completionToken =>
+        Defer(grant.Id, async completionToken =>
         {
             await journal.AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, grant,
                 $"Claimed by expense report {expenseReportId}: cap {PreapprovalJournal.Euros(grant.MaxAmount)}, account {grant.Program.HoldedAccountNumber}.",
                 actorUserId, expenseReportId);
             await notices.ResolveFileByAsync(grant.Id, actorUserId, completionToken);
-        }, ct, afterCommit);
-        return new(Stamp: Stamp(grant));
+        }, afterCommit);
+        return new(Claimed: PreapprovalReader.ToOption(grant, grant.Program, Today));
     }
 
-    internal async Task<PreapprovalWriteResult> ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null)
+    internal async Task<PreapprovalWriteResult> ReleaseAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>> afterCommit)
     {
         var (grant, refusal) = await HeldByAsync(grantId, expenseReportId, ct);
         if (grant is null) return new(Refusal: refusal);
@@ -70,17 +70,17 @@ internal sealed class PreapprovalClaims(
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
 
-        await CompleteWriteAsync(grant.Id, async completionToken =>
+        Defer(grant.Id, async completionToken =>
         {
             await journal.AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantReleased, grant,
                 $"Released by withdrawal of expense report {expenseReportId}; open again until {grant.Program.ClaimBy.ToInvariantDate()}.",
                 actorUserId, expenseReportId);
             await notices.NotifyFileByAsync(PreapprovalReader.ToInfo(grant), "Preapprovals_Notice_Released", NotificationPriority.Normal, completionToken);
-        }, ct, afterCommit);
+        }, afterCommit);
         return new();
     }
 
-    internal async Task<PreapprovalWriteResult> ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null)
+    internal async Task<PreapprovalWriteResult> ConsumeAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>> afterCommit)
     {
         var (grant, refusal) = await HeldByAsync(grantId, expenseReportId, ct);
         if (grant is null) return new(Refusal: refusal);
@@ -89,14 +89,14 @@ internal sealed class PreapprovalClaims(
         grant.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateGrantAsync(grant, ct);
 
-        await CompleteWriteAsync(grant.Id, _ => journal.AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantConsumed, grant,
+        Defer(grant.Id, _ => journal.AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantConsumed, grant,
             $"Consumed by approval of expense report {expenseReportId}: {PreapprovalJournal.Euros(grant.MaxAmount)}.",
-            actorUserId, expenseReportId), ct, afterCommit);
+            actorUserId, expenseReportId), afterCommit);
         return new();
     }
 
-    private async Task CompleteWriteAsync(Guid grantId, Func<CancellationToken, Task> completion,
-        CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit)
+    private void Defer(Guid grantId, Func<CancellationToken, Task> completion,
+        Action<Func<CancellationToken, Task>> afterCommit)
     {
         async Task CompleteAsync(CancellationToken token)
         {
@@ -107,8 +107,7 @@ internal sealed class PreapprovalClaims(
             }
         }
 
-        if (afterCommit is null) await CompleteAsync(ct);
-        else afterCommit(CompleteAsync);
+        afterCommit(CompleteAsync);
     }
 
     private async Task<(PreapprovalGrant? Grant, string? Refusal)> HeldByAsync(Guid grantId, Guid expenseReportId, CancellationToken ct)
@@ -121,8 +120,5 @@ internal sealed class PreapprovalClaims(
             return (null, $"Pre-approval {grantId} is not held by expense report {expenseReportId} (status {grant.Status}).");
         return (grant, null);
     }
-
-    private static GrantStamp Stamp(PreapprovalGrant grant) => new(
-        grant.MaxAmount, grant.Program.HoldedAccountNumber, grant.Program.HoldedAccountId, grant.Program.ClaimBy);
 
 }

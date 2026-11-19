@@ -125,10 +125,6 @@ public sealed class HoldedAdminOverviewTests
         calls[1].ByEndpoint["GetUsageAsync"].Should().Be(1);
 
         var summary = await _service.GetSummaryAsync(ct);
-        summary.MonthlyCallBudget.Should().Be(2000);
-        summary.Usage!.Period.Should().Be("2026-08");
-        summary.ApiReachable.Should().BeTrue();
-        summary.IsConfigured.Should().BeTrue();
     }
 
     [HumansFact]
@@ -229,22 +225,21 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Usage_failure_leaves_usage_null_and_the_rest_populated()
+    public async Task Usage_is_read_only_on_refresh_and_a_failed_refresh_keeps_the_last_reading()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
+
+        (await _service.GetSummaryAsync(ct)).Usage.Should().BeNull();
+        (await _service.RefreshUsageAsync(ct)).Should().BeTrue();
         _client.GetUsageAsync(Arg.Any<CancellationToken>())
             .Returns<HoldedUsageDto>(_ => throw new HoldedTransientException("holded down"));
-        await _repo.UpsertAccountsAsync([Account(62900000, 133_416.45m)], FixedNow, ct);
-        await SeedLinesAsync(ct, Line(1, 62900000, debit: 133_416.45m));
+        (await _service.RefreshUsageAsync(ct)).Should().BeFalse();
 
         var summary = await _service.GetSummaryAsync(ct);
 
-        summary.Usage.Should().BeNull();
-        summary.ApiReachable.Should().BeFalse();
-        summary.IsConfigured.Should().BeTrue();
-        summary.MonthlyCallBudget.Should().Be(2000);
-        summary.AccountCount.Should().Be(1);
-        summary.LedgerLineCount.Should().Be(1);
+        summary.Usage.Should().Be(new HoldedUsageReading(36, "2026-08", FixedNow, "holded down"));
+        summary.SyncStates.Should().BeEmpty("the usage reading is not a mirror sync");
+        await _client.Received(2).GetUsageAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

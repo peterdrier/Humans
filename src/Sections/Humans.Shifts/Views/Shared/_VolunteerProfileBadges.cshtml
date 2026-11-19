@@ -1,4 +1,4 @@
-@model Humans.Shifts.Contracts.VolunteerBadgesViewModel
+@model Humans.Shifts.Models.VolunteerBadgesViewModel
 
 @if (Model != null)
 {
@@ -10,10 +10,6 @@
         @foreach (var quirk in Model.Quirks)
         {
             <span class="badge bg-secondary me-1">@quirk</span>
-        }
-        @if (!string.IsNullOrEmpty(Model.DietaryPreference))
-        {
-            <span class="badge bg-success me-1">@Model.DietaryPreference</span>
         }
         @foreach (var lang in Model.Languages)
         {

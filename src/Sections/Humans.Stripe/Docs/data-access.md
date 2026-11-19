@@ -16,7 +16,7 @@ Wraps the Stripe SDK using the keys in `IOptions<StripeSettings>`:
 `ListStoreCheckoutSessionsAsync`, and `ParseStoreCheckoutEvent`, which verifies
 the webhook signature against `StoreWebhookSecret`. Holds no cache.
 
-### StripeMirrorService (Scoped, implements `IStripeMirrorAdminService`)
+### StripeMirrorService (Scoped, implements `IStripeMirrorAdminService` and the public `IStripeMirrorService`)
 
 Repository: `IStripeMirrorRepository`.
 

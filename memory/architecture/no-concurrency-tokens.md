@@ -1,18 +1,17 @@
 ---
-name: No concurrency tokens — single server, small user base
-description: HARD RULE. Never add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity — single-server scale means conflicts don't happen; ask Peter before adding any.
+name: No concurrency tokens; the audit log is the safety net
+description: HARD RULE. A reviewer flags a lost-update race, or you reach for `IsConcurrencyToken`, `[ConcurrencyCheck]`, a row version or a lock: don't. The audit log covers it.
 ---
 
-**Do NOT** add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale with a small user base, concurrency conflicts don't happen and optimistic concurrency only causes bugs.
+Never add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, `RowVersion` fields or row versioning to any entity, and don't redesign a repository to route writes through delegates. Ask Peter before adding any.
 
-**Why:** The audit log is the architectural defense for the rare admin-clobbers-admin case (see [`audit-log-as-concurrency-safety-net`](audit-log-as-concurrency-safety-net.md)). Adding optimistic concurrency creates `DbUpdateConcurrencyException` paths that have to be handled in every service touching the entity, for a problem that doesn't manifest at this scale. Net result: more code, more bugs, no benefit.
+**Why:** one server and a small, admin-heavy user base. Conflicts don't happen, and optimistic concurrency adds a `DbUpdateConcurrencyException` path to every service for nothing. When two admins do clobber each other, the audit log shows what each changed and when, so the intended state can be re-applied. Peter, rejecting a Codex P1 on `Attach + State = Modified`: "this is why we have the audit log on things we care about."
 
 **How to apply:**
 
-- Don't add `b.Property(x => x.RowVersion).IsConcurrencyToken()` in EF configurations.
-- Don't add `[ConcurrencyCheck]` attributes on properties.
-- Don't add `byte[] RowVersion` or similar token fields to entities.
-- If a code reviewer flags a "lost update race," reply citing the audit-log safety net + this rule, not by adding a token.
-- **If you genuinely need this, ask Peter first** — there are no current entities that warrant it.
+- A review finding about a multi-admin lost update on an audited entity gets the reply "the audit log catches it; we won't redesign around it."
+- A new mutation on a tracked entity must write its business-meaningful change through `IAuditLogService.LogAsync`. That is the correctness guarantee.
+- If a race ever shows up in production, the fix is a narrow write lock keyed by entity id.
+- An entity with no audit trail, where a race would silently corrupt state, is a different conversation: raise it.
 
-**Related:** [`audit-log-as-concurrency-safety-net`](audit-log-as-concurrency-safety-net.md), [`db-enforcement-minimal`](db-enforcement-minimal.md).
+**Related:** [`db-enforcement-minimal`](db-enforcement-minimal.md)

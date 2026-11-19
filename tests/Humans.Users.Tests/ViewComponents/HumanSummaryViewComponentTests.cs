@@ -47,13 +47,14 @@ public sealed class HumanSummaryViewComponentTests
             ProfilePictureContentType = "image/jpeg",
             UpdatedAt = at,
         };
-        var info = new User
+        var user = new User
         {
             Id = userId,
             BurnerName = "Sparkle",
             State = UserState.Suspended,
             PreferredLanguage = "es",
-        }.ToUserInfo(profile: profile);
+        };
+        var info = UserInfoStubHelpers.FromEntities(user, profile);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>()).Returns(info);
         var teams = Substitute.For<ITeamService>();
@@ -61,10 +62,16 @@ public sealed class HumanSummaryViewComponentTests
             new(Guid.NewGuid(), name, null, name, active, system != SystemTeamType.None, system,
                 false, false, hidden, false, at,
                 [new TeamMemberInfo(Guid.NewGuid(), userId, "Sparkle", null, null, TeamMemberRole.Member, at)]);
-        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(
+        teams.GetUserTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(
             new[] { Team("Zulu"), Team("Hidden", hidden: true), Team("Alpha"),
                 Team("Inactive", active: false), Team("Volunteers", system: SystemTeamType.Volunteers) }
-                .ToDictionary(t => t.Id));
+                .Select(t => new UserTeamMembershipInfo(t.Members[0].TeamMemberId, t.Id, t.Name, t.Slug,
+                    t.IsSystemTeam, t.Members[0].Role, at)
+                {
+                    IsActive = t.IsActive,
+                    IsHidden = t.IsHidden,
+                    SystemTeamType = t.SystemTeamType
+                }).ToList());
         var governance = Substitute.For<IGovernanceService>();
         governance.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Asociado);
         var component = new HumanSummaryViewComponent(users, teams, governance)
@@ -90,6 +97,31 @@ public sealed class HumanSummaryViewComponentTests
         vm.City.Should().Be("Madrid");
         vm.Teams.Should().Equal("Alpha", "Zulu");
         vm.HiddenTeams.Should().Equal("Hidden");
+    }
+
+    [HumansFact]
+    public async Task InvokeAsync_ProfilelessHuman_UsesCanonicalEmailFallback()
+    {
+        var userId = Guid.NewGuid();
+        var info = UserInfoFixtures.FromUser(new User { Id = userId }) with { IdentityEmailColumn = "canonical@example.com" };
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
+        var component = new HumanSummaryViewComponent(users, Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>())
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext(),
+                    ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary())
+                }
+            }
+        };
+
+        var result = await component.InvokeAsync(userId);
+
+        result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
+            .Should().BeOfType<ProfileSummaryViewModel>().Which.Email.Should().Be("canonical@example.com");
     }
 
     [HumansFact]
@@ -170,8 +202,8 @@ public sealed class HumanSummaryViewComponentTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(UsersResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly)
-            // <vc:nobodies-email-badge> is GoogleIntegration's.
-            .AddApplicationPart(typeof(Humans.GoogleIntegration.ViewComponents.NobodiesEmailBadgeViewComponent).Assembly)
+            // <vc:nobodies-email-badge> is Google's.
+            .AddApplicationPart(typeof(Humans.Google.ViewComponents.NobodiesEmailBadgeViewComponent).Assembly)
             .AddViewLocalization();
         builder.Services.AddSingleton(users);
         var authorization = Substitute.For<IAuthorizationService>();

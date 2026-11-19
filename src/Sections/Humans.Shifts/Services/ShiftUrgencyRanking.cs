@@ -1,6 +1,7 @@
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
+using Humans.Shifts.Helpers;
 using NodaTime;
 
 namespace Humans.Shifts.Services;
@@ -14,13 +15,14 @@ internal static class ShiftUrgencyRanking
         [ShiftPriority.Essential] = 6
     };
 
-    internal static double CalculateScore(Shift shift, int confirmedCount, IEventSettingsInfo eventSettings, IClock clock)
+    internal static double CalculateScore(
+        ShiftInfo shift, ShiftPriority priority, int confirmedCount, IEventSettingsInfo eventSettings, IClock clock)
     {
         var remainingSlots = Math.Max(0, shift.MaxVolunteers - confirmedCount);
         if (remainingSlots == 0) return 0;
 
-        var priorityWeight = PriorityWeights.GetValueOrDefault(shift.Rota?.Priority ?? ShiftPriority.Normal, 1);
-        var durationHours = shift.IsAllDay ? Shift.AllDayWindowHours : shift.Duration.TotalHours;
+        var priorityWeight = PriorityWeights.GetValueOrDefault(priority, 1);
+        var durationHours = shift.IsAllDay ? Shift.AllDayWindowHours : shift.DurationHours;
         var understaffedMultiplier = confirmedCount < shift.MinVolunteers ? 2 : 1;
 
         // Proximity boost 1 + 10/(1+days): today 11x, tomorrow 6x, a week 2.25x, a month 1.32x.

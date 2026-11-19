@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
@@ -19,24 +18,20 @@ internal sealed class ShiftEventSettings(
         var entity = await repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
         return entity is null
             ? null
-            : new ShiftEventKnobs(entity.IsShiftBrowsingOpen, entity.GlobalVolunteerCap, entity.ReminderLeadTimeHours);
+            : new ShiftEventKnobs(entity.IsShiftBrowsingOpen);
     }
 
     internal async Task SaveKnobsAsync(
-        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
-        BuildSubPeriodStarts subPeriods, Guid actorUserId)
+        Guid eventSettingsId, bool isShiftBrowsingOpen, BuildSubPeriodStarts subPeriods, Guid actorUserId)
     {
         var entity = await EnsureKnobsRowAsync(eventSettingsId);
         entity.IsShiftBrowsingOpen = isShiftBrowsingOpen;
-        entity.GlobalVolunteerCap = globalVolunteerCap;
-        entity.ReminderLeadTimeHours = reminderLeadTimeHours;
         SetSubPeriods(entity, subPeriods);
         entity.UpdatedAt = clock.GetCurrentInstant();
         await repo.SaveEventSettingsAsync(entity, EntityMutationMode.Update);
         await auditLogService.LogAsync(
             ShiftsAuditActions.ShiftSettingsUpdated, nameof(EventSettings), eventSettingsId,
             $"Shift settings saved: browsing {(isShiftBrowsingOpen ? "open" : "closed")}, "
-            + $"volunteer cap {globalVolunteerCap?.ToString(CultureInfo.InvariantCulture) ?? "none"}, reminder {reminderLeadTimeHours}h, "
             + $"build sub-periods start first crew {subPeriods.FirstCrew}, set-up week {subPeriods.SetupWeek}, "
             + $"pre-event week {subPeriods.PreEventWeek}, finishing weekend {subPeriods.FinishingWeekend}.",
             actorUserId);

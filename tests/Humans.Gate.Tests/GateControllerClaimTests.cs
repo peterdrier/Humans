@@ -123,11 +123,10 @@ public class GateControllerClaimTests
     /// </summary>
     private static UserInfo MakeUserInfo(Guid userId, string displayName = "User") =>
         UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en" },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = displayName },
             [],
             [],
-            profile: UserFixtures.Profile(
-                burnerName: displayName));
+            profile: UserFixtures.Profile());
 
     private sealed class TestSession : ISession
     {

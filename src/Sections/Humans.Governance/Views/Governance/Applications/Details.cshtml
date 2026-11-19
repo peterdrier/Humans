@@ -22,11 +22,6 @@
                     <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
                     <dd class="col-sm-9">@Model.SubmittedAt.ToDateTime()</dd>
 
-                    @if (Model.ReviewStartedAt.HasValue)
-                    {
-                        <dt class="col-sm-3">@Localizer["Governance_ApplicationDetail_ReviewStarted"]</dt>
-                        <dd class="col-sm-9">@Model.ReviewStartedAt.Value.ToDate()</dd>
-                    }
 
                     @if (Model.ResolvedAt.HasValue)
                     {

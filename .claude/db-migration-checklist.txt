@@ -1,9 +1,7 @@
-You are committing database changes. Verify the following, then proceed:
-0. FIRST, check whether this is your own work: if every staged migration file is byte-identical to origin/main (git diff --quiet --cached origin/main -- <path> — --cached compares the INDEX, which is what gets committed; without it you are comparing the working tree and a staged edit that was reverted on disk reads as identical), you are absorbing someone else's already-reviewed migrations via a merge. Nothing below applies. Commit.
-1. Migration files are in the owning project's migrations folder: src/Humans.Infrastructure/Migrations/ for a section still in HumansDbContext, or src/Sections/Humans.<Section>/Data/Migrations/ for a section that has moved into its own project (nobodies-collective/Humans#866, G5). Both are correct; which one depends on the section.
-2. Migration namespace matches the owning project — Humans.Infrastructure.Migrations, or Humans.<Section>.Data.Migrations for a moved section. The namespace line is the ONE sanctioned edit to a migration file, made when the section moves.
-3. Migration file has NOT been hand-edited — no migrationBuilder.Sql() calls, no manual column changes
-4. Read the migration .cs file and verify EF did not generate incorrect RenameColumn (should be DropColumn + AddColumn for unrelated columns)
-5. If EF generated something wrong, run dotnet ef migrations remove and regenerate — do NOT hand-edit
-6. The owning context's model snapshot is consistent — HumansDbContextModelSnapshot.cs, or <Section>DbContextModelSnapshot.cs for a moved section
-Read the migration file if you have not already. This is a checklist, not a block: once the items above hold, commit.
+You are committing database changes. The rule is memory/architecture/no-hand-edited-migrations.md: EF generates every migration and snapshot line, committed verbatim.
+0. If every staged migration file is byte-identical to origin/main (git diff --quiet --cached origin/main -- <path>), you are absorbing merged migrations. Nothing below applies. Commit.
+1. The files came from `dotnet ef migrations add --context <C>` and sit in the owning context's folder: src/Sections/Humans.<Section>/Data/Migrations/, or src/Humans.Web/Migrations/System/ for SystemDbContext.
+2. Nothing was edited by hand: no migrationBuilder.Sql(), no changed operations, no snapshot edits. If EF generated something wrong (e.g. RenameColumn for unrelated columns), fix the model and regenerate.
+3. `git diff` of the context's <Context>ModelSnapshot.cs shows only what your model change explains.
+4. The ef-migration-reviewer agent has run with no CRITICAL findings.
+This is a checklist, not a block: once the items hold, commit.

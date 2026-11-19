@@ -14,7 +14,7 @@
             <dt class="col-5">Amount</dt>
             <dd class="col-7">
                 @(e.AmountEur is { } eur ? eur.ToSignedEuro() : "no EUR figure")
-                @if (e.Currency != "EUR")
+                @if (!string.IsNullOrWhiteSpace(e.Currency) && e.Currency != "EUR")
                 {
                     <span class="text-muted">(@((e.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @e.Currency)</span>
                 }

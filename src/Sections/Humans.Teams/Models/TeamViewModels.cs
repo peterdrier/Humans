@@ -173,6 +173,8 @@ internal sealed class CreateTeamViewModel : TeamFormViewModelBase;
 internal sealed class EditTeamViewModel : TeamFormViewModelBase
 {
     public Guid Id { get; set; }
+    public bool ConfirmGroupReactivation { get; set; }
+    public Guid? InactiveGroupResourceId { get; set; }
 
     public string? GoogleGroupEmail { get; set; }
     public string Slug { get; set; } = string.Empty;

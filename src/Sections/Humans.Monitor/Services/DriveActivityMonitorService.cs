@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Monitor.Contracts;
 using NodaTime;
 using Humans.Base.Extensions;
@@ -56,6 +56,7 @@ internal sealed class DriveActivityMonitorService(
 
         foreach (var resource in resources)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 await ScanResourceAsync(
@@ -75,6 +76,10 @@ internal sealed class DriveActivityMonitorService(
                     "Drive resource {GoogleId} not found when checking activity (may have been deleted)",
                     resource.GoogleId);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 hadFailures = true;
@@ -83,6 +88,8 @@ internal sealed class DriveActivityMonitorService(
                     resource.Id, resource.GoogleId);
             }
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (anomalies.Count > 0)
         {
@@ -102,17 +109,27 @@ internal sealed class DriveActivityMonitorService(
         var newMarker = ResolveNewMarker(hadFailures, now, filterTime);
         if (newMarker is not null)
         {
-            await settingsStore.SetValueAsync(
-                SettingKeys.DriveActivityMonitorLastRunAt,
-                newMarker.Value.ToIso8601(),
-                cancellationToken);
+            try
+            {
+                // Finish the checkpoint and its audit after starting: advancing the marker
+                // without the audit would hide these anomalies from subsequent scans.
+                await settingsStore.SetValueAsync(
+                    SettingKeys.DriveActivityMonitorLastRunAt,
+                    newMarker.Value.ToIso8601(),
+                    CancellationToken.None);
+            }
+            catch (OperationCanceledException ex)
+            {
+                // This detached dependency failed independently of the job's shutdown token.
+                throw new InvalidOperationException("Failed to save the Drive activity monitor checkpoint.", ex);
+            }
         }
 
         foreach (var (resourceId, description) in anomalies)
         {
             await auditLogService.LogAsync(
-                GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-                nameof(GoogleResource),
+                GoogleAuditActions.AnomalousPermissionDetected,
+                TeamGoogleResource.AuditEntityType,
                 resourceId,
                 description,
                 JobName);

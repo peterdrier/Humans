@@ -22,7 +22,7 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class GovernanceIndexServiceTests
 {
-    private readonly IGovernanceService Applications = Substitute.For<IGovernanceService>();
+    private readonly IGovernanceManagement Applications = Substitute.For<IGovernanceManagement>();
     private readonly ILegalDocumentService LegalDocuments = Substitute.For<ILegalDocumentService>();
     private readonly IUserService Users = Substitute.For<IUserService>();
     private readonly IAssemblyVoteService Votes = Substitute.For<IAssemblyVoteService>();
@@ -144,7 +144,7 @@ public sealed class GovernanceIndexServiceTests
     {
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
+        var user = UserInfoFixtures.FromUser(new User { Id = userId, DisplayName = "Member", Email = "member@example.com" });
         var abandon = false;
         async ValueTask<UserInfo?> ReadUserAsync(CallInfo call)
         {

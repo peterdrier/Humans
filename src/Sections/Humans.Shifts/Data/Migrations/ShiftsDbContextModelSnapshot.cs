@@ -118,7 +118,7 @@ namespace Humans.Shifts.Data.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.ToTable("event_settings", (string)null);
+                    b.ToTable("shift_event_settings", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.GeneralAvailability", b =>
@@ -150,7 +150,7 @@ namespace Humans.Shifts.Data.Migrations
                     b.HasIndex("UserId", "EventSettingsId")
                         .IsUnique();
 
-                    b.ToTable("general_availability", (string)null);
+                    b.ToTable("shift_general_availabilities", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.Rota", b =>
@@ -208,7 +208,7 @@ namespace Humans.Shifts.Data.Migrations
 
                     b.HasIndex("EventSettingsId", "TeamId");
 
-                    b.ToTable("rotas", (string)null);
+                    b.ToTable("shift_rotas", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.Shift", b =>
@@ -413,7 +413,7 @@ namespace Humans.Shifts.Data.Migrations
                     b.HasIndex("UserId", "EventSettingsId")
                         .IsUnique();
 
-                    b.ToTable("volunteer_build_statuses", (string)null);
+                    b.ToTable("shift_volunteer_build_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.VolunteerEventProfile", b =>
@@ -472,7 +472,7 @@ namespace Humans.Shifts.Data.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("volunteer_event_profiles", (string)null);
+                    b.ToTable("shift_volunteer_event_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.VolunteerTagPreference", b =>
@@ -497,7 +497,7 @@ namespace Humans.Shifts.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_volunteer_tag_preferences_user_tag_unique");
 
-                    b.ToTable("volunteer_tag_preferences", (string)null);
+                    b.ToTable("shift_volunteer_tag_preferences", (string)null);
                 });
 
             modelBuilder.Entity("RotaShiftTag", b =>
@@ -512,7 +512,7 @@ namespace Humans.Shifts.Data.Migrations
 
                     b.HasIndex("ShiftTagId");
 
-                    b.ToTable("rota_shift_tags", (string)null);
+                    b.ToTable("shift_rota_tags", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.GeneralAvailability", b =>

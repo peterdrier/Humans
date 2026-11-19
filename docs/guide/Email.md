@@ -2,8 +2,8 @@
   src/Sections/Humans.Email/**
   src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
   src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
-  src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
-  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
+  src/Sections/Humans.Google/Services/EmailProvisioningService.cs
+  src/Sections/Humans.Google/Services/GoogleWorkspaceUserService.cs
   src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Humans.Base/Users/UserEmail.cs
   src/Sections/Humans.Users/Data/Configurations/UserEmailConfiguration.cs
@@ -32,7 +32,7 @@ so it's worth keeping them straight:
 This guide covers both from the human side: how you get a mailbox, how to
 sign in, how group emails work, and how to send "as" your team. The Drive,
 Group, and sync mechanics underneath sit in
-[Google Integration](GoogleIntegration.md).
+[Google](Google.md).
 
 ## Key pages at a glance
 
@@ -118,7 +118,7 @@ Email**. The app:
    sync uses it.
 
 The flow and underlying job behaviour are documented in
-[Google Integration](GoogleIntegration.md#manage-nobodiesteam-accounts).
+[Google](Google.md#manage-nobodiesteam-accounts).
 
 ### Audit and link orphans
 
@@ -132,7 +132,7 @@ admins. Useful when investigating a "did anyone reply to that?" question.
 
 ## Related sections
 
-- [Google Integration](GoogleIntegration.md) — sync mechanics, permissions
+- [Google](Google.md) — sync mechanics, permissions
   drift, the service account, Drive folder management.
 - [Profiles](Profiles.md) — your verified emails and which one is your
   notification target.

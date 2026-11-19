@@ -28,12 +28,6 @@ public interface IShiftSignups
         Guid? actorUserId = null,
         ShiftSignupRequestFlags flags = ShiftSignupRequestFlags.None);
 
-    /// <summary>No-show entries with review timestamps, without display ordering.</summary>
-    Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>One atomic save; returns each cancelled signup so the caller can audit them one by one.</summary>
-    Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
-        Guid userId, string reason, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -60,14 +54,6 @@ public enum ShiftSignupRequestFlags
     Privileged = 1,
     SkipConflicts = 2
 }
-
-public record NoShowHistoryEntry(
-    string ShiftLabel,
-    Guid TeamId,
-    Instant ShiftStart,
-    string TimeZoneId,
-    Guid? ReviewedByUserId,
-    Instant? ReviewedAt);
 
 /// <summary>For a block signup <see cref="SignupId"/> is the last row created.</summary>
 public record SignupResult

@@ -26,7 +26,7 @@ public interface ITeamWrite : IApplicationService
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Requires the full Admin role. Unlink Google resources first: <c>GoogleResource → Team</c> is
+    /// Requires the full Admin role. Unlink Google resources first: <c>TeamGoogleResource → Team</c> is
     /// <c>OnDelete(Restrict)</c>.
     /// </summary>
     Task<bool> PermanentlyDeleteTeamAsync(

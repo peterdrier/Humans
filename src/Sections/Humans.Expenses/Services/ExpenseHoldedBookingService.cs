@@ -15,6 +15,8 @@ internal sealed class ExpenseHoldedBookingService(
         var reports = await repo.GetAllAsync(ct);
         var creditors = await CreditorsAsync(reports, ct);
         return reports
+            // A duplicate shared by identical bookings belongs to the newest report first.
+            .OrderByDescending(report => report.CreatedAt)
             .SelectMany(report => PayableAllocation.Allocate(report)
                 .Where(a => a.Line.HoldedDocId is not null)
                 .Select(a => new ExpenseHoldedBooking(

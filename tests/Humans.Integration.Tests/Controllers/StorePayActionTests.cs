@@ -21,6 +21,8 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
     [HumansFact]
     public async Task Pay_with_valid_amount_redirects_to_Stripe_session_url()
     {
+        // The lead persona's camp and season are only seeded into an active event.
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));
         var (orderId, balance) = await SeedOrderWithLineAsync();
 
@@ -60,6 +62,8 @@ public class StorePayActionTests(HumansTestDatabase database) : IntegrationTestB
     [HumansFact]
     public async Task Pay_with_amount_over_balance_redirects_back_to_order_without_calling_Stripe()
     {
+        // The lead persona's camp and season are only seeded into an active event.
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));
         var (orderId, balance) = await SeedOrderWithLineAsync();
 

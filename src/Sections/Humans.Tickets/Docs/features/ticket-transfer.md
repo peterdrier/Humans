@@ -175,7 +175,7 @@ carry the automated void+reissue outcome (written by `ProcessTransferAsync` / `R
 TicketTailor hold from a void-to-hold whose reissue failed, so **Retry reissue** can re-issue from that
 held seat without a dashboard step. `VendorStepsJson` (the removed vendor-step timeline's storage) stays
 **dormant, unread**; per
-[`memory/architecture/no-drops-until-prod-verified.md`](../../../../../memory/architecture/no-drops-until-prod-verified.md)
+[`memory/architecture/destructive-drops-need-approval.md`](../../../../../memory/architecture/destructive-drops-need-approval.md)
 a follow-up PR drops that one column after prod soak.
 
 ## Related

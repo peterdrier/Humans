@@ -6,7 +6,7 @@ internal sealed class AccountMergeRequestConfiguration : IEntityTypeConfiguratio
 {
     public void Configure(EntityTypeBuilder<AccountMergeRequest> builder)
     {
-        builder.ToTable("account_merge_requests");
+        builder.ToTable("user_account_merge_requests");
 
         builder.HasKey(r => r.Id);
 

@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Guide. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 3
-inbox: []
+next_id: 5
+inbox:
+  - added: 2026-11-16
+    id: GUIDE-4
+    what: "Health/GitHubHealthCheck (the 'github' health check) lives in Guide but probes GitHubSettings, the legal-documents repo Consent's LegalDocumentSyncService reads, not the repo the guide is fetched from (GuideSettings). A failing guide fetch never shows on it, and a Guide reader assumes it watches the guide. It belongs with the GitHubSettings owner, or the guide source needs its own check. Found by the Guide section-doctor run."
+    review: panel

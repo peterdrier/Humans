@@ -46,9 +46,6 @@ internal static class UserInfoFactory
 
         return new ProfileInfo(
             Id: profile.Id,
-            BurnerName: profile.BurnerName,
-            FirstName: profile.FirstName,
-            LastName: profile.LastName,
             City: profile.City,
             CountryCode: profile.CountryCode,
             Latitude: profile.Latitude,

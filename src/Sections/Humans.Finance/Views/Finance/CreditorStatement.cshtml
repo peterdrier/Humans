@@ -86,40 +86,45 @@
         </div></div>
     </div>
     <div class="col-md-4">
-        <div class="card h-100 @(m.HasWarnings ? "border-danger" : "")"><div class="card-body">
+        <div class="card h-100 @(m is { HasWarnings: true } ? "border-danger" : "")"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted"><i class="fa-solid fa-scale-balanced me-1"></i>Expenses vs ledger</h6>
-            <table class="table table-sm mb-2 small">
-                <thead><tr><th></th><th class="text-end">Count</th><th class="text-end">Amount</th></tr></thead>
-                <tbody>
-                    <tr title="Holded documents our expense reports created. Capped lines that were not booked do not count.">
-                        <td>Expense docs</td>
-                        <td class="text-end @(m.CountsMatch ? "" : "text-danger fw-bold")">@m.ExpenseDocCount</td>
-                        <td class="text-end @(m.AmountsMatch ? "" : "text-danger fw-bold")">@Amt(m.ExpenseAmount)</td>
-                    </tr>
-                    <tr title="Purchase entries on this account in the ledger mirror.">
-                        <td>Ledger purchases</td>
-                        <td class="text-end @(m.CountsMatch ? "" : "text-danger fw-bold")">@m.PurchaseCount</td>
-                        <td class="text-end @(m.AmountsMatch ? "" : "text-danger fw-bold")">@Amt(m.PurchaseAmount)</td>
-                    </tr>
-                    <tr title="Payment lines on this account, net of money the member paid back.">
-                        <td>Payments</td>
-                        <td class="text-end">@m.PaymentCount</td>
-                        <td class="text-end">@Amt(m.PaymentAmount)</td>
-                    </tr>
-                </tbody>
-            </table>
-            @if (m.HasWarnings)
+            @if (m is null)
             {
-                <div class="text-danger small fw-semibold">
-                    @foreach (var w in m.Warnings)
-                    {
-                        <div><i class="fa-solid fa-triangle-exclamation me-1"></i>@w</div>
-                    }
-                </div>
+                <div class="text-muted small">@(Model.MatchUnavailable ?? "No expense report lines or expense purchases on this account.")</div>
             }
             else
             {
-                <div class="text-success small"><i class="fa-solid fa-check me-1"></i>Expenses and ledger match</div>
+                <table class="table table-sm mb-2 small">
+                    <tbody>
+                        <tr title="Ledger purchases matched to an approved expense line.">
+                            <td>Expense purchases</td><td class="text-end">@Amt(m.ExpensePurchases)</td>
+                        </tr>
+                        <tr title="Payments matched to a booked SEPA transfer.">
+                            <td>Paid by SEPA</td><td class="text-end">@Amt(m.SepaPaid)</td>
+                        </tr>
+                        <tr title="Expense purchases in the ledger that no report line claims: duplicates and strays.">
+                            <td>Unclaimed purchases</td>
+                            <td class="text-end @(m.UnclaimedPurchaseCount > 0 ? "text-danger fw-bold" : "")">@Amt(m.UnclaimedPurchases)</td>
+                        </tr>
+                        <tr title="Everything else on the account: other purchases, journal entries, other payments.">
+                            <td>Other movements</td><td class="text-end">@Amt(m.Other)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                @if (m.HasWarnings)
+                {
+                    <div class="text-danger small fw-semibold">
+                        @foreach (var w in m.Warnings)
+                        {
+                            <div><i class="fa-solid fa-triangle-exclamation me-1"></i>@w</div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-success small"><i class="fa-solid fa-check me-1"></i>Expenses and ledger match</div>
+                }
+                <a asp-action="ExpenseRecon" class="small">Expense recon</a>
             }
         </div></div>
     </div>

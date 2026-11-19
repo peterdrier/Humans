@@ -97,8 +97,13 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         {
             var list = await page(after);
             if (list?.Data is null) throw new InvalidOperationException($"Stripe {what}: a page without data.");
+            // The SDK bool defaults to false when absent; inspect the retained response before completing a sweep.
+            using var body = JsonDocument.Parse(list.StripeResponse.Content);
+            if (!body.RootElement.TryGetProperty("has_more", out var more)
+                || more.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new InvalidOperationException($"Stripe {what}: a page without a boolean has_more.");
             items.AddRange(list.Data);
-            if (!list.HasMore) return items;
+            if (more.ValueKind == JsonValueKind.False) return items;
             if (list.Data.Count == 0) throw new InvalidOperationException($"Stripe {what}: has_more on an empty page.");
             after = id(list.Data[^1]);
         }
@@ -110,8 +115,8 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         var (paymentIntentId, name, email, metadata) = t.Source switch
         {
             Charge c => (c.PaymentIntentId,
-                c.BillingDetails?.Name ?? Meta(c.Metadata, "name"),
-                c.BillingDetails?.Email ?? c.ReceiptEmail ?? Meta(c.Metadata, "email_address") ?? Meta(c.Metadata, "email"),
+                NonBlank(c.BillingDetails?.Name) ?? Meta(c.Metadata, "name"),
+                NonBlank(c.BillingDetails?.Email) ?? NonBlank(c.ReceiptEmail) ?? Meta(c.Metadata, "email_address") ?? Meta(c.Metadata, "email"),
                 c.Metadata),
             Refund r => (r.PaymentIntentId, null, null, r.Metadata),
             Dispute d => (d.PaymentIntentId, null, null, d.Metadata),
@@ -151,8 +156,10 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         return raw.ToJsonString();
     }
 
+    private static string? NonBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
     private static string? Meta(Dictionary<string, string>? metadata, string key) =>
-        metadata is not null && metadata.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : null;
+        metadata is not null && metadata.TryGetValue(key, out var v) ? NonBlank(v) : null;
 
     internal static string? Clip(string? value, int max)
     {
@@ -190,8 +197,25 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
                 rows[key] = row = new StripeBalance { AccountId = accountId, Currency = key };
             return row;
         }
-        foreach (var a in balance.Available ?? []) Row(a.Currency).Available += a.Amount;
-        foreach (var p in balance.Pending ?? []) Row(p.Currency).Pending += p.Amount;
+        // SDK amounts default to zero when absent; validate the raw buckets before accepting wallet totals.
+        using var body = JsonDocument.Parse(balance.StripeResponse.Content);
+        foreach (var bucket in new[] { "available", "pending" })
+        {
+            if (!body.RootElement.TryGetProperty(bucket, out var amounts) || amounts.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException($"Stripe balance: missing {bucket} array.");
+            foreach (var amount in amounts.EnumerateArray())
+            {
+                if (amount.ValueKind != JsonValueKind.Object
+                    || !amount.TryGetProperty("currency", out var currency) || currency.ValueKind != JsonValueKind.String
+                    || string.IsNullOrWhiteSpace(currency.GetString())
+                    || !amount.TryGetProperty("amount", out var value) || value.ValueKind != JsonValueKind.Number
+                    || !value.TryGetInt64(out var minors))
+                    throw new InvalidOperationException($"Stripe balance: {bucket} requires an amount and a nonblank currency.");
+                var row = Row(currency.GetString()!);
+                if (string.Equals(bucket, "available", StringComparison.Ordinal)) row.Available += minors;
+                else row.Pending += minors;
+            }
+        }
         return rows.Values.ToList();
     }
 }

@@ -53,7 +53,6 @@ internal sealed class ApplicationReader(
             SignificantContribution: application.SignificantContribution,
             RoleUnderstanding: application.RoleUnderstanding,
             SubmittedAt: application.SubmittedAt,
-            ReviewStartedAt: application.ReviewStartedAt,
             ResolvedAt: application.ResolvedAt,
             ReviewedByUserId: application.ReviewedByUserId,
             ReviewNotes: application.ReviewNotes,
@@ -61,7 +60,7 @@ internal sealed class ApplicationReader(
     }
 
     public async Task<(IReadOnlyList<ApplicationAdminRowDto> Items, int TotalCount)> GetFilteredApplicationsAsync(
-        string? statusFilter, string? tierFilter, int page, int pageSize, CancellationToken ct = default)
+        string? statusFilter, string? tierFilter, Guid? userId, int page, int pageSize, CancellationToken ct = default)
     {
         ApplicationStatus? status = null;
         if (!string.IsNullOrWhiteSpace(statusFilter)
@@ -77,7 +76,7 @@ internal sealed class ApplicationReader(
             tier = parsedTier;
         }
 
-        var (apps, totalCount) = await repository.GetFilteredAsync(status, tier, page, pageSize, ct);
+        var (apps, totalCount) = await repository.GetFilteredAsync(status, tier, userId, page, pageSize, ct);
         if (apps.Count == 0)
         {
             return ([], totalCount);
@@ -124,15 +123,10 @@ internal sealed class ApplicationReader(
             RoleUnderstanding: application.RoleUnderstanding,
             Language: application.Language,
             SubmittedAt: application.SubmittedAt,
-            ReviewStartedAt: application.ReviewStartedAt,
             ReviewedByUserId: application.ReviewedByUserId,
             ReviewNotes: application.ReviewNotes,
             History: history);
     }
-
-    public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        repository.GetUserIdsWithSubmittedAsync(userIds, ct);
 
     public async Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
         Guid userId, CancellationToken ct = default)
@@ -183,8 +177,8 @@ internal sealed class ApplicationReader(
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
             UserId: application.UserId,
-            FirstName: profile?.FirstName ?? string.Empty,
-            LastName: profile?.LastName ?? string.Empty,
+            FirstName: applicantInfo?.FirstName ?? string.Empty,
+            LastName: applicantInfo?.LastName ?? string.Empty,
             MembershipTier: application.MembershipTier,
             Status: application.Status,
             Motivation: application.Motivation,
@@ -195,8 +189,16 @@ internal sealed class ApplicationReader(
             Votes: ProjectBoardVotes(application));
     }
 
-    public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) =>
-        repository.GetAdminStatsAsync(ct);
+    public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
+    {
+        var applications = await repository.GetNonWithdrawnAsync(ct);
+        return new ApplicationAdminStats(
+            applications.Count,
+            applications.Count(a => a.Status == ApplicationStatus.Approved),
+            applications.Count(a => a.Status == ApplicationStatus.Rejected),
+            applications.Count(a => a.MembershipTier == MembershipTier.Colaborador),
+            applications.Count(a => a.MembershipTier == MembershipTier.Asociado));
+    }
 
     public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
         repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);

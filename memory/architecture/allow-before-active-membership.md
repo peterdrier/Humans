@@ -1,6 +1,6 @@
 ---
 name: allow-before-active-membership
-description: When a page or action must work for a signed-in account that is not yet Active (onboarding, the status wall, own-profile maintenance), mark it `[AllowBeforeActiveMembership]` in its own section — the Shell's membership gate keeps no list.
+description: "A page or action that must work for a signed-in account that is not yet Active: mark it `[AllowBeforeActiveMembership]` in its own section; the Shell's membership gate keeps no list."
 ---
 
 A controller or action a non-Active account must still reach carries `[AllowBeforeActiveMembership]`

@@ -32,7 +32,7 @@ audited and the affected coordinators are notified.
 | **Coordinator analytics** — overview, activity, trends, heatmap, daily staffing, duration breakdown, coverage pies, post-event stats, workload | `ShiftDashboardController`, `ShiftWorkloadAdminController`, `IShiftManagement` analytics methods, `IWorkloadService` | none |
 | **Build-week tracking** — availability grid, day-off, camp-set-up marker, xlsx export, profile build strip, EE derivation | `VolunteerTrackingController`, `IVolunteerTrackingManagement`, `IVolunteerTrackingExportService`, `IVolunteerTrackingService`, `IEarlyEntryProvider` | Users (build strip), EarlyEntry (provider) |
 | **Tell people** — rota / team-rota coordinator email | `ShiftAdminController` `Email` routes, `IRotaCoordinatorMessageService` | none |
-| **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction, orphan scan | `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`, `GET /Shifts/OrphanSignups` | Gdpr, Users (merge, deletion), Calendar |
+| **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction | `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor` | Gdpr, Users (merge, deletion), Calendar |
 
 ## 3. Structure
 
@@ -84,11 +84,11 @@ The shapes imply:
 - **Event settings cutover** (nobodies-collective/Humans#1104): the app-wide event values are
   moving to the Settings section; `IBurnSettingsService`/`BurnSettingsInfo` is the surface
   every consumer holds until then. Do not widen it, do not split it early.
-- **Per-user reads still on `IShiftSignupService`** (`GetByUserAsync`, `GetTeamProbeAsync`):
+- **Per-user reads still on `IShiftSignupService`** (`GetByUserAsync`):
   the constraint is that `IShiftView` stays the only cached per-user projection, so do not add
   a second cache in front of these; move callers onto `IShiftView` when they are touched.
 - **Unused VEP dietary/medical columns** await a post-prod-soak drop
-  (`no-drops-until-prod-verified`).
+  (`destructive-drops-need-approval`).
 
 ## 6. Deliberately not done
 

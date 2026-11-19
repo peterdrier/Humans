@@ -1,7 +1,8 @@
 name: E2E Tests (QA)
 
-# Daily, not per push: the suite is too flaky to gate each merge. Runs test whatever main
-# is deployed on QA at the time.
+# Daily, not per push: the suite needs a deployed site, and waiting on QA or a preview is
+# what used to pile PRs up. Runs test whatever main is deployed on QA at the time; a red
+# night opens an issue (see open-issue below).
 on:
   schedule:
     - cron: '0 5 * * *'
@@ -45,3 +46,34 @@ jobs:
           name: playwright-report
           path: tests/e2e/playwright-report/
           retention-days: 14
+
+  # A red night is owned work: the issue is what the nightly issue drain picks up.
+  open-issue:
+    needs: e2e
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the nightly-red issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'Nightly E2E tests against QA are red'
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create nightly-red --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "A nightly test run failed" --force
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label nightly-red --state open \
+            --search "in:title \"$TITLE\"" --json number --jq '.[0].number')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "Still red: $RUN_URL"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --label nightly-red --body "$(cat <<BODY
+          The nightly run failed: $RUN_URL
+
+          The failed tests are in the "Run Playwright tests" step of the job log, and the run keeps a \`playwright-report\` artifact. To reproduce, run \`npx playwright test\` in \`tests/e2e\` with \`BASE_URL=https://humans.n.burn.camp\`. The suite tests whatever main is deployed on QA, so check first whether a page changed and the test was left behind.
+
+          Fix the code or the test at its source. Never skip, disable or weaken a test to get green. Close this issue with the PR that makes the run pass.
+          BODY
+          )"
+          fi

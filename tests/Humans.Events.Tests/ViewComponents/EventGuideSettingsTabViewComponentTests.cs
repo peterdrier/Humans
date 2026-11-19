@@ -46,7 +46,7 @@ public sealed class EventGuideSettingsTabViewComponentTests
     public async Task InvokeAsync_NoGuideSettingsYet_ReturnsAnEmptyFormDefaultingMaxPrintSlots()
     {
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventGuideSettingsView?)null);
-        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetEventSettingsOptions().Returns([]);
 
         var sut = new EventGuideSettingsTabViewComponent(_guide);
         var result = await sut.InvokeAsync();
@@ -77,7 +77,7 @@ public sealed class EventGuideSettingsTabViewComponentTests
             StrikeEndOffset: 9,
             EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null,
             EarlyEntryClose: null, Status: EventSettingsStatus.Active));
-        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetEventSettingsOptions().Returns([]);
 
         var sut = new EventGuideSettingsTabViewComponent(_guide);
         var result = await sut.InvokeAsync();

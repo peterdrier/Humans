@@ -75,7 +75,7 @@ One controller per audience: `DebugController` (`/Debug/*`, diagnostics and the 
 
 ## Negative Access Rules
 
-- A user who is neither Board nor Admin cannot reach gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests` (local-only, `Humans.Integration.Tests`).
+- A user who is neither Board nor Admin cannot reach gated Debug pages: `302 -> /Account/AccessDenied`, pinned by `DebugPageRenderTests` (`Humans.Integration.Tests`, a PR check).
 - Debug pages cannot change domain state except through a data migration's own Apply, which is Admin-only (Board reads the screen), antiforgery-protected, and audited. Operational writes must stay explicitly named maintenance actions.
 - `/api/data-migrations` never returns row data — no user id, email or legacy value. Pinned by `DataMigrationsTests`.
 - No type in the section may bind `IStringLocalizer<T>` for any `T` but `SharedResource`. Debug carries no resource set of its own - every string is English developer copy - and the one localizer it binds is the shared set read as *data* by `/Debug/Translations`. That page reads every section's set the same way, through the untyped `IStringLocalizerFactory` and the catalog's `SectionInfo.ResourceType`, never by referencing the section. Enforced by `DebugArchitectureTests`.
@@ -98,7 +98,7 @@ The single screen and status endpoint for every section's legacy → new copy, a
   401; cancelled account lookups invoke no migration. Widget-gallery account loading
   also honours request cancellation.
 - **Screen:** `/Debug/DataMigrations` (`DataMigrationsController`, `BoardOrAdmin` to read, `AdminOnly` to apply, linked from the Debug admin group) shows each migration with its pending rows and an **Apply (N)** button (`data-confirm`, `[ValidateAntiForgeryToken]`). Every migration is idempotent: a second apply finds nothing pending, and a done migration shows a Done badge instead of the button.
-- **Endpoint:** `GET /api/data-migrations` (`SectionEndpoints : ISectionEndpoints`, `AllowAnonymous`) returns `{ "version": "...", "migrations": [ { "key": "...", "pending": 0, "done": true } ] }` — the `version` is `/api/version`'s. A development session polls production's endpoint to learn when a migration is done; that reading is the approval for its retirement and drop PRs (`memory/architecture/no-drops-until-prod-verified.md`).
+- **Endpoint:** `GET /api/data-migrations` (`SectionEndpoints : ISectionEndpoints`, `AllowAnonymous`) returns `{ "version": "...", "migrations": [ { "key": "...", "pending": 0, "done": true } ] }` — the `version` is `/api/version`'s. A development session polls production's endpoint to learn when a migration is done; that reading is the approval for its retirement and drop PRs (`memory/architecture/destructive-drops-need-approval.md`).
 - **Why the counts are safe to publish:** they are membership-shaped aggregates (how many profiles still hold a legacy value) with no row data — no id, name, address or value — and say nothing about any one member. Row data stays behind `BoardOrAdmin` on the screen.
 - **Lifecycle:** a move commit adds its migration; QA and production operators apply it from the screen; once production reports `done`, a retirement PR deletes the migration (and its fallback and obsolete fields), then a drop PR removes the legacy columns. Finance’s `finance.iban-to-payment-details` copy and fallback were retired after production reported `pending: 0`, `done: true` on 2026-11-03; see `Finance.md`. Live registrations come from each section’s `ISectionDataMigrations` contribution.
 

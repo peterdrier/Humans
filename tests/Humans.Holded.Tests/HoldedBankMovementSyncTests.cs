@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Humans.Holded.Tests;
 
+[Collection("HoldedMirrorSyncGates")]
 public sealed class HoldedBankMovementSyncTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 8, 10, 12, 0);

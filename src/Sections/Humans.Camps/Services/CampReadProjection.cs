@@ -120,7 +120,6 @@ internal sealed class CampReadProjection(
             PerformanceTypes = season.PerformanceTypes,
             Members = season.Members
                 .Where(m => m.Status != CampMemberStatus.Removed)
-                .OrderBy(m => m.RequestedAt)
                 .Select(m => new CampSeasonMemberInfo(
                     m.Id,
                     m.UserId,
@@ -229,7 +228,7 @@ internal sealed class CampReadProjection(
         }
 
         var targetEventId = eventSettingsId
-            ?? (await settingsService.GetActiveEventSettingsAsync(cancellationToken))?.Id;
+            ?? (settingsService.GetActiveEventSettings())?.Id;
         var season = camp.Seasons
             .FirstOrDefault(s => targetEventId is not null && s.EventSettingsId == targetEventId)
             ?? camp.Seasons

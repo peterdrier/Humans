@@ -4,7 +4,7 @@ using NodaTime;
 
 namespace Humans.Testing;
 
-/// <summary>Every parameter is defaulted: <c>UserFixtures.Profile(burnerName: "Alice")</c>.</summary>
+/// <summary>Every parameter is defaulted: <c>UserFixtures.Profile(city: "Berlin")</c>.</summary>
 public static class UserFixtures
 {
     public static readonly Instant DefaultInstant = Instant.FromUtc(2026, 1, 1, 0, 0);
@@ -13,20 +13,20 @@ public static class UserFixtures
     /// The stored <c>User.State</c> for <paramref name="profile"/>. Nothing derives state on read, so a test that builds
     /// a <c>UserInfo</c> by hand must stamp it.
     /// </summary>
-    public static UserState StateFor(ProfileInfo? profile) =>
-        profile switch
-        {
-            not null when !string.IsNullOrWhiteSpace(profile.BurnerName)
-                && !string.IsNullOrWhiteSpace(profile.FirstName)
-                && !string.IsNullOrWhiteSpace(profile.LastName) => UserState.Active,
-            _ => UserState.Bare,
-        };
+    public static UserState StateFor(ProfileInfo? profile, string? burnerName, string? firstName, string? lastName) =>
+        profile is not null
+        && !string.IsNullOrWhiteSpace(burnerName)
+        && !string.IsNullOrWhiteSpace(firstName)
+        && !string.IsNullOrWhiteSpace(lastName)
+            ? UserState.Active
+            : UserState.Bare;
+
+    /// <summary>A named user with a profile. <c>UserInfo.BurnerName</c> reads <c>User.BurnerName</c>, so it is seeded there.</summary>
+    public static UserInfo MakeUserInfo(Guid userId, ProfileInfo? profile = null, string displayName = "User") =>
+        UserInfoFixtures.FromUser(new User { Id = userId, PreferredLanguage = "en", BurnerName = displayName }, [], profile ?? Profile());
 
     public static ProfileInfo Profile(
         Guid? id = null,
-        string burnerName = "",
-        string firstName = "",
-        string lastName = "",
         string? city = null,
         string? countryCode = null,
         double? latitude = null,
@@ -51,9 +51,6 @@ public static class UserFixtures
         IReadOnlyList<VolunteerHistoryInfo>? volunteerHistory = null) =>
         new(
             Id: id ?? Guid.NewGuid(),
-            BurnerName: burnerName,
-            FirstName: firstName,
-            LastName: lastName,
             City: city,
             CountryCode: countryCode,
             Latitude: latitude,

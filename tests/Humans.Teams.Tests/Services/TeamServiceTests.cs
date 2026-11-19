@@ -18,9 +18,9 @@ using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.GoogleIntegration.Contracts;
-using Humans.GoogleIntegration.Data;
-using Humans.GoogleIntegration.Services;
+using Humans.Google.Contracts;
+using Humans.Google.Data;
+using Humans.Google.Services;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
@@ -100,7 +100,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceManagement _teamResourceService;
     private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
-    private readonly IGoogleIntegrationService _googleIdentities = Substitute.For<IGoogleIntegrationService>();
+    private readonly IGoogleService _googleIdentities = Substitute.For<IGoogleService>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
     public TeamServiceTests()
@@ -131,7 +131,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         // NSubstitute can't attach an outer .Returns() to a factory that itself configures substitute calls.
         var userService = _userService = NewDbBackedUserService();
         var googleOutboxService = new GoogleSyncOutboxService(
-            new GoogleSyncOutboxRepository(GoogleIntegrationDbFactory));
+            new GoogleSyncOutboxRepository(GoogleDbFactory));
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
             .With(_teamCache)
@@ -156,6 +156,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(shiftManagementService);
 
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
@@ -1202,6 +1203,67 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.GroupWarning.Should().Be("Group was deactivated.");
     }
 
+    [HumansFact]
+    public async Task UpdateTeamWithGoogleGroup_ConfirmedReactivation_ForwardsConfirmationAndReturnsOk()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var inactiveResourceId = Guid.NewGuid();
+        _googleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.NeedsConfirmation("Restore this group?", inactiveResourceId));
+        _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), confirmReactivation: true,
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.Ok());
+
+        var result = await _service.UpdateTeamWithGoogleGroupAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+            confirmGroupReactivation: true, confirmedInactiveGroupResourceId: inactiveResourceId,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.GroupWarning.Should().BeNull();
+        await _googleSyncService.Received(1).EnsureTeamGroupAsync(
+            team.Id, confirmReactivation: true, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamWithGoogleGroup_ConfirmationForDifferentResource_RequestsFreshConfirmation()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var currentResourceId = Guid.NewGuid();
+        _googleSyncService.EnsureTeamGroupAsync(team.Id, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.NeedsConfirmation("Restore this group?", currentResourceId));
+
+        var result = await _service.UpdateTeamWithGoogleGroupAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+            confirmGroupReactivation: true, confirmedInactiveGroupResourceId: Guid.NewGuid(),
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.InactiveGroupResourceId.Should().Be(currentResourceId);
+        result.GroupWarning.Should().Be("Restore this group?");
+        await _googleSyncService.DidNotReceive().EnsureTeamGroupAsync(
+            team.Id, confirmReactivation: true, cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateTeamWithGoogleGroup_GroupNeedsConfirmation_ReturnsInactiveResourceId()
+    {
+        var team = SeedTeam("Alpha");
+        await SaveAllAsync(TestContext.Current.CancellationToken);
+        var inactiveResourceId = Guid.NewGuid();
+        const string warning = "Group was deactivated.";
+        _googleSyncService.EnsureTeamGroupAsync(Arg.Any<Guid>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(GroupLinkResult.NeedsConfirmation(warning, inactiveResourceId));
+
+        var result = await _service.UpdateTeamWithGoogleGroupAsync(
+            team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.GroupWarning.Should().Be(warning);
+        result.InactiveGroupResourceId.Should().Be(inactiveResourceId);
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -1743,6 +1805,33 @@ public sealed class TeamServiceTests : TeamsTestHarness
             target.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task RejectJoinRequestAsync_BlankReason_RefusesWithoutSideEffects(string? reason)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var request = SeedJoinRequest(team.Id, requester.Id);
+        await SaveAllAsync(ct);
+
+        var result = await _service.RejectJoinRequestAsync(request.Id, coordinator.Id, reason, ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Teams_TeamAdmin_ProvideRejectionReason");
+        var stored = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id, ct);
+        stored.Status.Should().Be(TeamJoinRequestStatus.Pending);
+        stored.ReviewNotes.Should().BeNull();
+        stored.ReviewedByUserId.Should().BeNull();
+        stored.ResolvedAt.Should().BeNull();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifier.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public async Task RejectJoinRequestAsync_RequestNotFound_ReturnsRefusal()
     {
@@ -2279,7 +2368,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task UpdateRoleDefinitionAsync_CanToggleManagementFalse_PreservesIsManagement()
+    public async Task UpdateRoleDefinitionAsync_OmittedManagementChange_PreservesExistingValue()
     {
         var actor = SeedUser(displayName: "Actor");
         SeedRoleAssignment(actor.Id, RoleNames.Admin,
@@ -2290,8 +2379,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await _service.UpdateRoleDefinitionAsync(
             def.Id, def.Name, null, 1, [SlotPriority.None], 0,
-            isManagement: false, RolePeriod.YearRound, actor.Id,
-            canToggleManagement: false, cancellationToken: TestContext.Current.CancellationToken);
+            isManagement: null, RolePeriod.YearRound, actor.Id,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         ClearAllTrackers();
         var stored = await TeamsDb.TeamRoleDefinitions.AsNoTracking().SingleAsync(d => d.Id == def.Id, TestContext.Current.CancellationToken);
@@ -2577,17 +2666,26 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result[0].TeamId.Should().Be(teamA.Id);
     }
 
-    [HumansFact]
-    public async Task GetUserTeamsAsync_IncludesTeamNavigation()
+    [HumansTheory]
+    [InlineData(true, SystemTeamType.None, true)]
+    [InlineData(true, SystemTeamType.Volunteers, false)]
+    [InlineData(true, SystemTeamType.Board, true)]
+    [InlineData(false, SystemTeamType.None, false)]
+    public async Task GetUserTeamsAsync_CarriesTeamFactsForProfileProjection(bool active, SystemTeamType type, bool expected)
     {
         var user = SeedUser();
-        var team = SeedTeam("Alpha");
+        var team = SeedTeam("Alpha", type, isActive: active);
+        team.IsHidden = true;
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var result = await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken);
+        var membership = (await _service.GetUserTeamMembershipsAsync(user.Id, TestContext.Current.CancellationToken)).Single();
 
-        result.Single().TeamName.Should().Be("Alpha");
+        membership.TeamName.Should().Be("Alpha");
+        membership.IsActive.Should().Be(active);
+        membership.IsHidden.Should().BeTrue();
+        membership.SystemTeamType.Should().Be(type);
+        membership.IsProfileMembership.Should().Be(expected);
     }
 
     [HumansFact]
@@ -2979,13 +3077,13 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var invalidations = cache.BulkInvalidations;
         team.Name = "Changed outside the cached snapshot";
         await SaveAllAsync(ct);
-        var replacement = new User
+        var replacement = UserInfoFixtures.FromUser(new User
         {
             Id = merged ? Guid.NewGuid() : user.Id,
             BurnerName = "Updated Human",
             Email = "updated@example.test",
             ProfilePictureUrl = "/updated-photo.png",
-        }.ToUserInfo();
+        });
         // Users keys its merge-resolved read by the requested id, even when the value is a survivor.
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = replacement });
@@ -3117,7 +3215,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             (await _service.AddMemberToTeamAsync(team.Id, targetId, actor.Id, TestContext.Current.CancellationToken))
                 .Refusal.Should().Contain("missing, deleted or merged");
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         (await TeamsDb.TeamRoleAssignments.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
@@ -3153,7 +3251,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var savedRequest = await TeamsDb.TeamJoinRequests.AsNoTracking().SingleAsync(r => r.Id == request.Id,
             TestContext.Current.CancellationToken);
         savedRequest.Status.Should().Be(alreadyMember ? TeamJoinRequestStatus.Pending : TeamJoinRequestStatus.Approved);
-        var outbox = await GoogleIntegrationDb.GoogleSyncOutboxEvents.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+        var outbox = await GoogleDb.GoogleSyncOutboxEvents.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         if (alreadyMember) outbox.Should().BeEmpty();
         else outbox.Should().ContainSingle().Which.UserId.Should().Be(target.Id);
     }
@@ -3178,7 +3276,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result.Succeeded.Should().BeTrue();
         result.Assignment!.TeamMemberId.Should().Be(member.Id);
         (await TeamsDb.TeamMembers.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -3216,7 +3314,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 
-        (await GoogleIntegrationDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken))
+        (await GoogleDb.GoogleSyncOutboxEvents.CountAsync(TestContext.Current.CancellationToken))
             .Should().Be(events);
     }
 
@@ -3580,7 +3678,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             ghost.Id, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
 
         // DeactivateResourcesForTeamAsync is intentionally NOT called from DeleteTeamAsync:
-        // flipping GoogleResource.IsActive here would make the next reconciliation tick
+        // flipping TeamGoogleResource.IsActive here would make the next reconciliation tick
         // skip the resources and leave stale Google access in place. Deactivation happens
         // in the sync service after access has been revoked.
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
@@ -3689,11 +3787,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private ISettingsService NewSettingsServiceBackedByShiftsDb()
     {
         var settingsService = Substitute.For<ISettingsService>();
-        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+        settingsService.GetActiveEventSettings()
+            .Returns(_ =>
             {
                 var active = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
+                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.IsActive);
                 return active is null ? null : ToEventSettingsInfo(active);
             });
         return settingsService;

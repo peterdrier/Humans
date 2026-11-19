@@ -1,5 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -406,7 +406,7 @@ internal sealed class TeamPageService(
         var canManageShifts = canManageShiftsByRole ||
             await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id, cancellationToken);
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);

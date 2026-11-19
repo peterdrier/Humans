@@ -4,7 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
@@ -335,7 +335,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, null,
         null, null, $"{id}@example.org", [], [],
-        profile ?? UserFixtures.Profile(burnerName: burnerName));
+        profile ?? UserFixtures.Profile());
 
     public void Dispose()
     {

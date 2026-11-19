@@ -240,14 +240,14 @@ public class AccountMergeServiceMergeTests
     {
         // A real tombstone sets both MergedToUserId and MergedAt; IsMerged keys off MergedAt.
         _userService.GetRawUserInfoAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new User
+            .Returns(UserInfoFixtures.FromUser(new User
             {
                 Id = sourceId,
                 MergedToUserId = sourceTombstoned ? targetId : null,
                 MergedAt = sourceTombstoned ? _clock.GetCurrentInstant() : null,
-            }.ToUserInfo());
+            }));
         _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = targetId }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = targetId }));
     }
 
     [HumansTheory]
@@ -403,7 +403,7 @@ public class AccountMergeServiceMergeTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var requestedId = requestArchivedId ? oldestId : survivorId;
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = survivorId }.ToUserInfo() with { MergedUserIds = [oldestId, archivedId] });
+            .Returns(UserInfoFixtures.FromUser(new User { Id = survivorId }) with { MergedUserIds = [oldestId, archivedId] });
         var repository = new AccountMergeRepository(new TestDbContextFactory(options));
 
         var slices = await BuildSut(repository).ContributeForUserAsync(
@@ -587,9 +587,9 @@ public class AccountMergeServiceMergeTests
             .Returns(new List<AccountMergeRequest> { req });
         // Source already tombstoned, target survives.
         _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = src, MergedToUserId = tgt, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = src, MergedToUserId = tgt, MergedAt = _clock.GetCurrentInstant() }));
         _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = tgt }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = tgt }));
 
         await BuildSut().ReconcileMergedRequestAsync(req.Id, admin, TestContext.Current.CancellationToken);
 
@@ -614,9 +614,9 @@ public class AccountMergeServiceMergeTests
         };
         _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = src }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = src }));
         _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = tgt }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = tgt }));
 
         var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -639,9 +639,9 @@ public class AccountMergeServiceMergeTests
         };
         _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
         _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = src, MergedToUserId = third, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = src, MergedToUserId = third, MergedAt = _clock.GetCurrentInstant() }));
         _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = tgt }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = tgt }));
 
         var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
 

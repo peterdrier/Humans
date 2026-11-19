@@ -339,7 +339,6 @@
   <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Solo los miembros y la Junta ven la lista de miembros, los documentos y el historial. El nombre y el propósito siguen en el registro.</value></data>
   <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>Tu solicitud ya está esperando a una persona coordinadora.</value></data>
   <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>No hay ninguna solicitud pendiente de esa persona.</value></data>
-  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Solo una persona coordinadora puede decidir quién entra.</value></data>
   <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Este grupo es sensible; solo sus miembros pueden hacer eso.</value></data>
   <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Alguien ha solicitado unirse</value></data>
   <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>Tu solicitud de ingreso ha sido aprobada</value></data>

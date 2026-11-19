@@ -32,7 +32,7 @@ knots; nothing else is split in advance.
   and split *that* one's contracts. Do not reverse the dependency to dodge the split.
 - The `.Contracts` project references Base only. If it needs another section, you have found a
   second cycle, not an exception.
-- Moving a type into `Humans.Base` (or the deleted `Humans.Domain` / `Humans.UI` projects) to resolve a cycle needs
+- Moving a type into `Humans.Base` to resolve a cycle needs
   Peter's per-instance approval. "The build was red" is not the justification.
 - The standing shared-contract exceptions are `User`/`UserInfo`, Auth and Audit.
   Those are the whole list; a cycle does not add to it.

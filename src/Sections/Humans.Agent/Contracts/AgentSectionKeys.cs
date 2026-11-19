@@ -15,7 +15,7 @@ public static class AgentSectionKeys
         {
             "Onboarding", "Teams", "Consent", "Governance", "Shifts",
             "Tickets", "Users", "Auth", "Budget", "Camps",
-            "CityPlanning", "Campaigns", "GoogleIntegration",
+            "CityPlanning", "Campaigns", "Google",
             "Events", "Guide", "Store", "Scanner", "Gate",
             "Calendar", "Cantina", "Containers", "Issues"
         };
@@ -36,14 +36,18 @@ public static class AgentSectionKeys
             // context: docs/guide/ has not been renamed (GuideFiles.Sections still lists
             // "LegalAndConsent"), and stored conversations emit it.
             ["LegalAndConsent"] = "Consent",
-            // /Admin is a nav holder, not a section; its help glossary is governance/ops terms.
-            ["Admin"] = "Governance",
             ["Board"] = "Governance",
+            ["UsersAdmin"] = "Users",
+            ["RoleAssignments"] = "Auth",
+            ["LegalDocuments"] = "Consent",
+            ["GoogleSync"] = "Google",
             // A barrio is a camp — Camps.md defines them; CityPlanning.md only places them.
             ["Barrios"] = "Camps",
             ["CityPlanningOverview"] = "CityPlanning",
             ["CityPlanningBarrioMap"] = "CityPlanning",
             ["ContainerMap"] = "Containers",
+            // The section's former name; stored conversations still emit it.
+            ["GoogleIntegration"] = "Google",
         };
 
     /// <summary>Every key a section guide can be fetched under, in canonical casing.</summary>

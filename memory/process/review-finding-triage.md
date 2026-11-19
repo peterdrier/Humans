@@ -1,5 +1,5 @@
 ---
-name: Review-finding triage — judge before fixing, close out every finding
+name: review-finding-triage
 description: Any review finding (Codex, Claude, Gemini, human) is a hypothesis, not a work item — verify against the code and judge before fixing; every finding gets a disposition.
 ---
 

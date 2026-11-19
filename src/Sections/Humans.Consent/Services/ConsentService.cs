@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
+using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Governance.Contracts;
+using Humans.Auth.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Consent.Data;
@@ -19,13 +21,19 @@ internal sealed class ConsentService(
     ILegalDocumentSyncManagement legalDocumentSyncService,
     IHumanLifecycleService humanLifecycleService,
     IUserService userService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignments,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
     IClock clock,
     ILogger<ConsentService> logger) : IConsentManagement, IUserDataContributor
 {
     private readonly ConsentReader reader = new(
-        repo, legalDocumentSyncService, userService, serviceProvider, clock, logger);
+        repo, legalDocumentSyncService, userService,
+        new ConsentCompliance(consentCache, legalDocumentSyncService, teamService, roleAssignments, userService, clock),
+        clock, logger);
+
+    private ConsentCompliance Compliance => reader.Compliance;
 
     internal const string Consents = "Consents";
 
@@ -108,8 +116,8 @@ internal sealed class ConsentService(
         // Consent is committed: finish suspension cleanup even if the request ends.
         try
         {
-            var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculator>();
-            if (await membershipCalc.HasAllRequiredConsentsAsync(userId, CancellationToken.None))
+            if (await Compliance.HasAllRequiredConsentsForTeamAsync(
+                    userId, SystemTeamIds.Volunteers, CancellationToken.None))
             {
                 await humanLifecycleService.RestoreConsentSuspensionAsync(userId, CancellationToken.None);
             }
@@ -127,6 +135,20 @@ internal sealed class ConsentService(
 
     public Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetConsentReviewsAsync(CancellationToken ct = default) =>
         serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewsAsync(ct);
+
+    public Task<bool> HasAllRequiredConsentsForTeamAsync(Guid userId, Guid teamId, CancellationToken ct = default) =>
+        Compliance.HasAllRequiredConsentsForTeamAsync(userId, teamId, ct);
+
+    public Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
+        IEnumerable<Guid> userIds, Guid teamId, CancellationToken ct = default) =>
+        Compliance.GetUsersWithAllRequiredConsentsForTeamAsync(userIds, teamId, ct);
+
+    public Task<ConsentProgress> GetConsentProgressAsync(Guid userId, CancellationToken ct = default) =>
+        Compliance.GetConsentProgressAsync(userId, ct);
+
+    public Task<IReadOnlyList<Guid>> GetUsersPastConsentDeadlineAsync(
+        Duration? expiringWithin = null, CancellationToken ct = default) =>
+        Compliance.GetUsersPastConsentDeadlineAsync(expiringWithin, ct);
 
     public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
         reader.GetConsentRecordCountAsync(userId, ct);

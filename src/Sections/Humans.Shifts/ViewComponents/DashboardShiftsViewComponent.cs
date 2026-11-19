@@ -1,9 +1,11 @@
 using System.Security.Claims;
-using Humans.Governance.Contracts;
+using Humans.Base.Constants;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.ViewComponents;
 
@@ -11,12 +13,12 @@ namespace Humans.Shifts.ViewComponents;
 /// Off season, an admin switch on the active event, swaps the callout and the tri-card row for a "season wrapped"
 /// note.
 /// </summary>
-public sealed class DashboardShiftsViewComponent(
-    IShiftService shiftMgmt,
+internal sealed class DashboardShiftsViewComponent(
+    IShiftManagement shiftMgmt,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
     ISettingsService settingsService,
-    IMembershipCalculator membershipCalculator,
+    ITeamService teamService,
     IClock clock,
     ILogger<DashboardShiftsViewComponent> logger) : ViewComponent
 {
@@ -28,7 +30,8 @@ public sealed class DashboardShiftsViewComponent(
         }
 
         var ct = HttpContext.RequestAborted;
-        var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
+        var isVolunteerMember = (await teamService.GetTeamAsync(SystemTeamIds.Volunteers, ct))
+            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
         BurnSettingsInfo? activeEvent = null;
         try
@@ -44,7 +47,7 @@ public sealed class DashboardShiftsViewComponent(
             logger.LogError(ex, "Failed to load active event for the dashboard shifts card");
         }
 
-        var isOffSeason = await IsOffSeasonAsync(ct);
+        var isOffSeason = settingsService.GetActiveEventSettings()?.IsOffSeason ?? false;
         var isShiftBrowsingOpen = !isOffSeason && activeEvent is not null && activeEvent.IsShiftBrowsingOpen;
         var urgentShifts = isShiftBrowsingOpen
             ? await UrgentShiftsAsync(activeEvent!.Id, ct)
@@ -54,23 +57,6 @@ public sealed class DashboardShiftsViewComponent(
 
         return View(new DashboardShiftsViewModel(
             userId, isVolunteerMember, isShiftBrowsingOpen, urgentShifts, hasUpcomingShifts, isOffSeason));
-    }
-
-    private async Task<bool> IsOffSeasonAsync(CancellationToken ct)
-    {
-        try
-        {
-            return (await settingsService.GetActiveEventSettingsAsync(ct))?.IsOffSeason ?? false;
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load the off-season switch for the dashboard shifts card");
-            return false;
-        }
     }
 
     private async Task<IReadOnlyList<UrgentShiftInfo>> UrgentShiftsAsync(Guid eventSettingsId, CancellationToken ct)

@@ -24,19 +24,19 @@
     <span>@Localizer["Containers_Breadcrumb"]</span>
 }
 
-<div class="d-flex align-items-center gap-2 mb-4">
-    <h1 class="mb-0">@Localizer["Containers_Breadcrumb"] <small class="text-muted">@Model.CampName</small></h1>
+<page-header>
+    <page-header-title>@Localizer["Containers_Breadcrumb"] <small class="text-muted">@Model.CampName</small></page-header-title>
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContainerModal">
         <i class="fa-solid fa-plus me-1"></i> @SharedLocalizer["Common_Add"]
     </button>
     @if (!Model.IsLeadButPhaseClosed)
     {
         <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.CurrentYear"
-           class="btn btn-outline-primary btn-sm ms-auto">
+           class="btn btn-outline-primary btn-sm">
             <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Containers_MapPlaceOnMap"]
         </a>
     }
-</div>
+</page-header>
 
 
 @if (Model.IsLeadButPhaseClosed)

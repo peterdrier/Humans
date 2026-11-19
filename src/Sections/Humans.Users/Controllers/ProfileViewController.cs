@@ -24,7 +24,6 @@ namespace Humans.Users.Controllers;
 internal sealed class ProfileViewController(
     IUserManagement userService,
     IProfilePictureService profilePictureService,
-    IShiftSignups shiftSignupService,
     IShiftService shiftMgmt,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamService teamService,
@@ -54,9 +53,7 @@ internal sealed class ProfileViewController(
     public async Task<IActionResult> ViewProfile(Guid id, CancellationToken ct)
     {
         var profileInfo = await _userService.GetUserInfoAsync(id, ct);
-        var profile = profileInfo?.Profile;
-
-        if (profile is null || profileInfo!.IsSuspended)
+        if (profileInfo is null || !profileInfo.IsProfileBrowsable)
         {
             return NotFound();
         }
@@ -75,71 +72,23 @@ internal sealed class ProfileViewController(
         var viewerIsCoordinator = !isOwnProfile
             && (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id, ct)).Count > 0;
 
-        var noShowContext = await BuildNoShowHistoryContextAsync(id, isOwnProfile, viewerIsCoordinator, ct);
-
         var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerIsCoordinator);
 
         var viewModel = new ProfileViewModel
         {
-            Id = profile.Id,
+            Id = profileInfo.Profile!.Id,
             UserId = id,
             PageTitle = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
-            NoShowHistory = noShowContext.History,
-            CanViewShiftSignups = noShowContext.CanView,
             CanViewSentMessages = canViewSentMessages,
         };
 
         return View("~/Views/Profile/Index.cshtml", viewModel);
     }
 
-    private async Task<(bool CanView, List<NoShowHistoryItem>? History)> BuildNoShowHistoryContextAsync(
-        Guid profileUserId,
-        bool isOwnProfile,
-        bool viewerIsCoordinator,
-        CancellationToken ct)
-    {
-        if (isOwnProfile)
-        {
-            return (false, null);
-        }
-
-        var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftsRoles.IsPrivilegedSignupApprover(User);
-        if (!viewerCanViewShiftHistory)
-        {
-            return (false, null);
-        }
-
-        var noShows = await shiftSignupService.GetNoShowHistoryAsync(profileUserId, ct);
-        if (noShows.Count == 0)
-        {
-            return (true, null);
-        }
-
-        var noShowTeamIds = noShows.Select(s => s.TeamId).Distinct().ToList();
-        var teamsById = await teamService.GetTeamsAsync(ct);
-        var noShowTeamNames = noShowTeamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
-
-        return (true, noShows.OrderByDescending(s => s.ReviewedAt).Select(s =>
-        {
-            var signupTz = DateTimeZoneProviders.Tzdb[s.TimeZoneId];
-            var zoned = s.ShiftStart.InZone(signupTz);
-            return new NoShowHistoryItem
-            {
-                ShiftLabel = s.ShiftLabel,
-                DepartmentName = noShowTeamNames.GetValueOrDefault(s.TeamId, ""),
-                ShiftDateLabel = zoned.ToDateTimeUnspecified().ToMonthDayTime(),
-                MarkedByUserId = s.ReviewedByUserId,
-                MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDateTimeUnspecified().ToMonthDayTime()
-            };
-        }).ToList());
-    }
-
     /// <summary>
-    /// A coordinator or privileged shift role, never on one's own profile. Same coordinator check as
-    /// <see cref="BuildNoShowHistoryContextAsync"/>, so the two panels share access rules.
+    /// A coordinator or privileged shift role, never on one's own profile: the same audience as Shifts' profile
+    /// card.
     /// </summary>
     private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerIsCoordinator)
     {
@@ -157,11 +106,9 @@ internal sealed class ProfileViewController(
         if (info?.Profile is null) return NotFound();
         id = info.Id; // memberships and camp below are keyed by the live id
 
-        var memberships = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == id) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+        var memberships = (await teamService.GetUserTeamMembershipsAsync(id, ct))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
             .ToList();
         // Rendered admin-only in the view.
         var camp = await campService.GetCampUserInfoAsync(id, ct);

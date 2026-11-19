@@ -119,30 +119,17 @@ which is what makes the live stats safe to show to everyone.
 
 Not a service and not in the `IApplicationService` inventory: a pure
 static counting function over ballot values with no clock, no repository
-and no DI. `AssemblyVoteService` calls it once per close and stores the
+and no DI. `AssemblyVoteResultReader` calls it once per close and `AssemblyVoteSettlement` stores the
 output.
 
 ### GovernanceMetricsService (Hosted, `PolledGaugeService`)
 
 No repository, no cache, not part of the `IApplicationService` inventory
 (a `System.Diagnostics.Metrics` gauge publisher, not a section service).
-Polls `IMembershipCalculator`, `IGovernanceManagement`,
+Polls `IConsentService`, `IGovernanceManagement`,
 `IUserService` on a timer to publish `humans.asociados`,
 `humans.applications_pending`, `humans.pending_consents`,
 `humans.consent_deadline_approaching`.
-
-### MembershipCalculator (Scoped)
-
-No repository. Pure read computation over `IMembershipQuery`,
-`IUserService`, `ILegalDocumentSyncService`, `IConsentService`
-(resolved lazily via `IServiceProvider` to break a DI cycle), and
-`IClock`. Implements `IMembershipCalculator`. No DB access, no cache.
-
-### MembershipQuery (Scoped)
-
-No repository. Read-only fan-out over `ITeamService`,
-`IRoleAssignmentService`. Exists to break the DI cycle through
-`ISystemTeamSync`. No DB access, no cache.
 
 ### GovernanceIndexService (Scoped)
 
@@ -161,7 +148,7 @@ access, no cache.
 ### GovernanceEmailPreviews (Scoped)
 
 No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
-`Section.cs:88`) — builds one sample per template via `GovernanceEmails`
+`Section.cs:113`) — builds one sample per template via `GovernanceEmails`
 for `/Email/EmailPreview`. No DB access, no cache.
 
 ---
@@ -219,3 +206,22 @@ open and close notices, the pre-close reminder sweep, and the roster `NotifiedAt
 
 Cross-section calls via `IUserService`, `IEmailService`, `INotificationEmitter`,
 `INotificationAutoResolve`, `IAuditLogService`, `IClock`, and the section's `GovernanceEmails`.
+
+### Other AssemblyVote collaborators (internal, owned by AssemblyVoteService)
+
+None is DI-registered; the service constructs each from its own dependencies. None
+caches. Their table access is the `AssemblyVoteService` block above, split by job:
+
+- `AssemblyVoteRosterBuilder`: reads the electorate at open (`IApplicationRepository`
+  active approved tiers, `IRoleAssignmentService` Board holders, `ITeamService`
+  Volunteers members, `IUserService` account state). No writes of its own.
+- `AssemblyVoteAdministration`: open, stop, extend and cancel; writes `AssemblyVotes`
+  and, at open, `AssemblyVoteRosterEntries` through `IAssemblyVoteRepository`.
+- `AssemblyVoteSettlement`: settles a lapsed vote and owns the single close path,
+  writing the stored result on `AssemblyVotes`.
+- `AssemblyVoteMemberWorkflow`: the member list and detail reads, `EffectiveRosterAsync`,
+  and ballot casting (`AssemblyBallots`, `AssemblyBallotHistories` through the locked
+  upsert).
+- `AssemblyVoteResultReader`: computes the tally through `AssemblyVoteCounting`, and reads
+  the disclosure rows and the peek list. Read-only.
+- `AssemblyVotePresentation`: static; builds the acta text. No data access.

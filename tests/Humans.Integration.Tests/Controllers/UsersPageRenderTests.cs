@@ -6,7 +6,6 @@ using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Integration.Tests.Infrastructure;
-using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
@@ -278,21 +277,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
         // A season belongs to an event, so make sure one is active.
         if ((await camps.GetSettingsAsync(ct)).ActiveEventSettingsId is null)
-        {
-            await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
-                new EventSettingsInfo(
-                    Id: Guid.NewGuid(),
-                    EventName: "Users Render Test Burn",
-                    Year: 2026,
-                    TimeZoneId: "Europe/Madrid",
-                    GateOpeningDate: new LocalDate(2026, 7, 1),
-                    BuildStartOffset: -14,
-                    EventEndOffset: 6,
-                    StrikeEndOffset: 9,
-                    EarlyEntryCapacity: new Dictionary<int, int>(),
-                    BarriosEarlyEntryAllocation: null,
-                    EarlyEntryClose: null));
-        }
+            await Factory.SeedActiveEventAsync();
 
         var eventSettingsId = (await camps.GetSettingsAsync(ct)).ActiveEventSettingsId!.Value;
 
@@ -338,6 +323,8 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
     private async Task SeedApprovedPersonalEventAsync(Guid userId, CancellationToken ct)
     {
+        await Factory.OpenEventSubmissionWindowAsync();
+
         // The Events decorator has no blanket invalidator; submit and moderate reload its approved-event projection.
         using var scope = Factory.Services.CreateScope();
         var events = scope.ServiceProvider.GetRequiredService<IEventManagement>();
@@ -375,7 +362,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
             StartAt = now + Duration.FromDays(7),
             DurationMinutes = 90,
             PriorityRank = 1,
-            Status = EventStatus.Pending,
+            Status = EventStatus.Draft,
             SubmittedAt = now,
             LastUpdatedAt = now,
         };

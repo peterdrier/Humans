@@ -37,14 +37,8 @@ internal sealed partial class PreapprovalService(
     public Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default) =>
         reader.GetGrantsForUserAsync(userId, ct);
 
-    public Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct) =>
-        reader.ListClaimableForUserAsync(userId, ct);
-
-    public Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct) =>
-        reader.GetGrantAsync(grantId, ct);
-
-    public Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct) =>
-        reader.ListManagedGrantIdsAsync(userId, ct);
+    public Task<IReadOnlyList<GrantOption>> GetGrantsAsync(CancellationToken ct) =>
+        reader.GetGrantOptionsAsync(ct);
 
     public Task<bool> HasAnythingForUserAsync(Guid userId, CancellationToken ct = default) =>
         reader.HasAnythingForUserAsync(userId, ct);
@@ -56,17 +50,17 @@ internal sealed partial class PreapprovalService(
 
     public Task<PreapprovalWriteResult> ClaimAsync(
         Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct,
-        Action<Func<CancellationToken, Task>>? afterCommit = null) =>
+        Action<Func<CancellationToken, Task>> afterCommit) =>
         Claims.ClaimAsync(grantId, expenseReportId, actorUserId, ct, afterCommit);
 
     public Task<PreapprovalWriteResult> ReleaseAsync(
         Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct,
-        Action<Func<CancellationToken, Task>>? afterCommit = null) =>
+        Action<Func<CancellationToken, Task>> afterCommit) =>
         Claims.ReleaseAsync(grantId, expenseReportId, actorUserId, ct, afterCommit);
 
     public Task<PreapprovalWriteResult> ConsumeAsync(
         Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct,
-        Action<Func<CancellationToken, Task>>? afterCommit = null) =>
+        Action<Func<CancellationToken, Task>> afterCommit) =>
         Claims.ConsumeAsync(grantId, expenseReportId, actorUserId, ct, afterCommit);
 
     private Task<UserInfo?> ResolveAvailablePersonAsync(Guid userId, CancellationToken ct) =>

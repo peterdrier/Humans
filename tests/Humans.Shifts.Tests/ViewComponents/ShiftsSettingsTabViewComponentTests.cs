@@ -53,14 +53,12 @@ public sealed class ShiftsSettingsTabViewComponentTests
         _burnSettings.GetActiveAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent);
         using var cancellation = new CancellationTokenSource();
         _sut.HttpContext.RequestAborted = cancellation.Token;
-        _shiftMgmt.GetKnobsAsync(ActiveEvent.Id, cancellation.Token).Returns(new ShiftEventKnobs(false, 42, 6));
+        _shiftMgmt.GetKnobsAsync(ActiveEvent.Id, cancellation.Token).Returns(new ShiftEventKnobs(true));
 
         var result = await _sut.InvokeAsync();
         var model = (EventSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
 
-        model.IsShiftBrowsingOpen.Should().BeFalse();
-        model.GlobalVolunteerCap.Should().Be(42);
-        model.ReminderLeadTimeHours.Should().Be(6);
+        model.IsShiftBrowsingOpen.Should().BeTrue();
     }
 
     [HumansFact]
@@ -72,7 +70,6 @@ public sealed class ShiftsSettingsTabViewComponentTests
         var model = (EventSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
 
         model.IsShiftBrowsingOpen.Should().BeFalse();
-        model.GlobalVolunteerCap.Should().BeNull();
         await _shiftMgmt.DidNotReceive().GetKnobsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

@@ -23,8 +23,11 @@ internal sealed class CachingRideshareService(
 
     public ICacheStats SnapshotCacheStats => this;
 
-    public Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetActiveEventIdAsync(ct));
+    public Guid? GetActiveEventId()
+    {
+        using var scope = scopeFactory.CreateScope();
+        return scope.ServiceProvider.GetRequiredKeyedService<IRideshareService>(InnerServiceKey).GetActiveEventId();
+    }
 
     public async Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default) =>
         eventSettingsId is { } id

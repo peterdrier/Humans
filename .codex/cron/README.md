@@ -6,7 +6,7 @@ opens one PR per run containing all substantive fixes. Ledger-only and test-only
 fail without publishing. Scheduler: systemd user timer (the only one shipped here).
 
 A separate Claude cloud routine currently runs at 08:00 UTC using
-[`/debt-review`](../../.claude/skills/debt-review/SKILL.md): per-commit keep/repair/revert,
+[`/debt-review`](../../docs/maintenance/debt-review/README.md): per-commit keep/repair/revert,
 bot findings, follow-up issues, then stewards the PR inline (3-round ceiling).
 The nightly timer starts at 00:00 UTC, so a full 12-hour run can publish after
 that review slot. Review scheduling is separate from this systemd timer.
@@ -59,7 +59,9 @@ Missing, invalid, stale or failed quota reads stop new work. Another exhausted
 returned window also stops work. No earned reset credits are consumed.
 
 Each round completes the native goal and supplies a cumulative report after one
-coherent batch. The wrapper checks fresh quota, then reactivates the same goal
+coherent batch. Every completed round requires a nonempty report and a clean
+working tree, including quota-override runs and gate repairs. The wrapper checks
+fresh quota, then reactivates the same goal
 and thread when time and quota allow another round. It does not interrupt a batch
 or kill a process at a quota threshold. A quota stop before any work is a quiet
 `skip-quota`; after committed fixes, normal validation and publication still run.

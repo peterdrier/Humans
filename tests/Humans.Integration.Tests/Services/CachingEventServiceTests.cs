@@ -132,6 +132,7 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
     public async Task AdminUpdateAsync_through_decorator_updates_cached_approved_event()
     {
         // An Approved event edited via AdminUpdateAsync stays approved, and the cached projection shows the new values.
+        await Factory.OpenEventSubmissionWindowAsync();
         var svc = Factory.Services.GetRequiredService<IEventManagement>();
         await ((CachingEventService)svc).WarmAllAsync(TestContext.Current.CancellationToken);
 
@@ -166,7 +167,7 @@ public class CachingEventServiceTests(HumansTestDatabase database) : Integration
             Description = "Desc",
             StartAt = Instant.FromUtc(2026, 7, 8, 18, 0),
             DurationMinutes = 60,
-            Status = EventStatus.Pending,
+            Status = EventStatus.Draft,
             SubmittedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
             LastUpdatedAt = Instant.FromUtc(2026, 7, 1, 0, 0),
         };

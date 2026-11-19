@@ -31,7 +31,7 @@ page, the tab strip and the ordering; it supplies exactly one tab of its own.
 |---|---|---|
 | "What is stored under this key?" / "Store this under this key" | Email's send pause, Monitor's last-run stamp, Workgroups' legacy Drive root | `ISettingsService.GetValueAsync` / `SetValueAsync` |
 | "Which zone are events read in?" | the section's own read path, Workgroups' meeting form | `ISettingsService.GetTimeZoneIdAsync` |
-| "What is the current cycle?" / "This cycle, by id?" / "Every cycle" | most of the app; derive the set from the call sites | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
+| "What is the current cycle?" / "This cycle, by id?" / "Every cycle" | most of the app; derive the set from the call sites | `ISettingsService.GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | "Save this cycle / make this one current / change the zone, on this person's say-so" | only the section's own POST endpoints | `ISettingsWriteService.SaveEventSettingsAsync` / `ActivateEventSettingsAsync` / `SaveTimeZoneAsync` |
 | "Mint / drop a cycle for a fixture" | the dev dashboard seeder | `IEventSettingsSeeding.CreateActiveEventAsync` / `DeleteEventAsync` |
 | "The cycle moved — drop what you derived from it" | announced to every listener, named by none | `IEventSettingsChangeListener.EventSettingsChanged` |
@@ -51,8 +51,9 @@ The shapes imply exactly today's layout:
   sections implement (`IEventSettingsChangeListener`, `ISectionSettings`) and the one the
   dev seeder drives (`IEventSettingsSeeding`).
 - **One service** (`Service`), implementing the internal `ISettingsWriteService` (=
-  contract + the event writes) plus `IEventSettingsSeeding`, registered once and
-  resolved as each of them.
+  contract + the event writes) plus `IEventSettingsSeeding`, reached through
+  `CachingSettingsService`, which keeps the event rows and timezone in memory because
+  every section asks for the active event on nearly every request.
 - **One repository** over the section's two tables, behind `ISettingsRepository`.
 - **One page** (`SettingsController`, `/Settings`) that renders only a tab strip, one
   composer (`SettingsTabComposition`) and one strip renderer — the page knows nothing about
@@ -114,8 +115,6 @@ The shapes imply exactly today's layout:
 
 ## 6. Deliberately not done
 
-- **No caching decorator.** The event read is a small row, and its consumers already cache
-  what they derive from it — that is what the change-listener seam is for.
 - **No blank-form tab for a non-admin.** A viewer who cannot edit and has no active cycle
   gets the empty-state line.
 - **No DB uniqueness/check constraint for the one-active rule** — project rule; the service
@@ -160,6 +159,6 @@ The shapes imply exactly today's layout:
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-08-28 | First doctor pass — section is young (nobodies-collective/Humans#1104) and close to target; drift is at the edges: a Contracts csproj comment naming consumers two moves stale, a dead GoogleIntegration reference, cloned clock-rule comments claiming callers that are not there yet | peterdrier/Humans#1560 |
+| 1 | 2026-08-28 | First doctor pass — section is young (nobodies-collective/Humans#1104) and close to target; drift is at the edges: a Contracts csproj comment naming consumers two moves stale, a dead Google reference, cloned clock-rule comments claiming callers that are not there yet | peterdrier/Humans#1560 |
 | 2 | 2026-09-21 | Second pass after the peterdrier/Humans#1628 + nobodies-collective/Humans#1631 rebuild — structure matches target; the drift is the comments the rebuild left behind, all claiming the pre-cutover world | peterdrier/Humans#1778 |
 | 3 | 2026-11-11 | The section became the register of every event cycle (list, make-active, global timezone, no overlaps); docs had not followed, the form re-checked rules the save owns, and the read-only tab inverted an empty strike window | peterdrier/Humans#2372 |

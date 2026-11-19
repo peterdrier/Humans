@@ -6,7 +6,6 @@
 | `ShiftsController.ToggleDay` | Action | `[Authorize]` inherited (`[HttpPost("ToggleDay")]`, `[ValidateAntiForgeryToken]`) | — (self-service day-rota toggle; the name gate short-circuits) |
 | `ShiftsController.Summary` / `SummaryTeam` / `SummaryRota` | Action | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` OR any team manager/coordinator | `ShiftsPolicies.DepartmentRead` (read-only Shift Summary by Camp at `/Shifts/Summary`) |
 | `ShiftsController.Settings` (POST; the read side is the `/Settings#shifts` tab) | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `ShiftsController.OrphanSignups` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ShiftAdminController` | Class | `[Authorize]` (authenticated) | Coordinator checks at runtime via `HumansTeamControllerBase` |
 | `ShiftAdminController.Index` | In-method | Department managers and approvers, or `ShiftsPolicies.Read` (Board) read-only | `ShiftsPolicies.Read` as a read-only fallback |
 | `ShiftAdminController.MoveRota` | Action | `Admin, ShiftsAdmin` | `ShiftsPolicies.ManageVolunteers` |

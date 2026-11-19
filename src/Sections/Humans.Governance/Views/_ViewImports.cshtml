@@ -17,9 +17,8 @@
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.Html
 @inject IStringLocalizer<GovernanceResource> Localizer
-@* Application_*, ApplicationStatus_*, AdminApp_Applicant and the Profile / OnboardingReview
-   singles stay in SharedResource: ProfileController renders the same tier-application form
-   during profile setup and Consent's review queue renders the rest. *@
+@* ApplicationStatus_*, AdminApp_Applicant and Profile / OnboardingReview labels remain
+   shared with Users and Consent. Tier-application copy belongs to GovernanceResource. *@
 @inject IStringLocalizer<SharedResource> SharedLocalizer
 @* Four Onboarding_Review* applicant-summary labels, rendered here over a tier application. *@
 @inject IStringLocalizer<OnboardingResource> OnboardingLocalizer

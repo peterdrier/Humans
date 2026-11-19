@@ -144,6 +144,8 @@ internal sealed class UserInfoSaveChangesInterceptor(
             Id = user.Id,
             State = user.State,
             BurnerName = user.BurnerName,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
             PreferredLanguage = user.PreferredLanguage,
             ProfilePictureUrl = user.ProfilePictureUrl,
             CreatedAt = user.CreatedAt,
@@ -151,7 +153,7 @@ internal sealed class UserInfoSaveChangesInterceptor(
             DeletionRequestedAt = user.DeletionRequestedAt,
             DeletionScheduledFor = user.DeletionScheduledFor,
             DeletionEligibleAfter = user.DeletionEligibleAfter,
-            // GoogleEmailStatus is not on UserInfo: GoogleIntegration owns the Google identity.
+            // GoogleEmailStatus is not on UserInfo: Google owns the Google identity.
             ContactSource = user.ContactSource,
             ExternalSourceId = user.ExternalSourceId,
             MergedToUserId = user.MergedToUserId,

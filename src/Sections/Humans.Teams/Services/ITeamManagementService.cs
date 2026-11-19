@@ -60,7 +60,8 @@ internal sealed record TeamEarlyEntryGrantInfo(
     Guid Id,
     Guid UserId,
     LocalDate EntryDate,
-    string ProjectName);
+    string ProjectName,
+    Guid? EventSettingsId = null);
 
 /// <summary>
 /// Internal: the cross-section half is <see cref="ITeamService"/> and <see cref="ITeamWrite"/>, inherited through
@@ -143,6 +144,8 @@ internal interface ITeamManagementService : ITeamManagement
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
+        bool confirmGroupReactivation = false,
+        Guid? confirmedInactiveGroupResourceId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Deactivates; nothing is deleted.</summary>
@@ -174,7 +177,7 @@ internal interface ITeamManagementService : ITeamManagement
     Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
-        string reason,
+        string? reason,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
@@ -230,11 +233,11 @@ internal interface ITeamManagementService : ITeamManagement
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>A null management value leaves that field unchanged; the controller authorizes supplied changes.</summary>
     Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
+        List<SlotPriority> priorities, int sortOrder, bool? isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
-        bool canToggleManagement = true,
         int? estimatedHours = null,
         CancellationToken cancellationToken = default);
 
@@ -284,14 +287,14 @@ internal interface ITeamManagementService : ITeamManagement
     /// <summary>Unordered: display order is the caller's.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
 
-    /// <summary>Returns a refusal unless the team has <see cref="Team.EarlyEntryEnabled"/> and the person is available.</summary>
-    Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Returns a refusal unless the team has <see cref="Team.EarlyEntryEnabled"/> and the person and selected event are available.</summary>
+    Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default);
 
-    /// <summary>A grant on another team counts as not found.</summary>
-    Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Requires early entry enabled. A grant on another team counts as not found.</summary>
+    Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default);
 
-    /// <summary>Idempotent. A grant on another team counts as not found.</summary>
-    Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>Requires early entry enabled for an existing grant. Absent grants, including another team's, are a successful no-op.</summary>
+    Task<TeamEarlyEntryMutationResult> RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default);
 }
 
 internal sealed record TeamRoleReconciliationMembership(
@@ -314,7 +317,8 @@ internal sealed record TeamUpdateResult(
     Team? Team = null,
     TeamUpdateConflict Conflict = TeamUpdateConflict.None,
     string? ErrorMessage = null,
-    string? GroupWarning = null)
+    string? GroupWarning = null,
+    Guid? InactiveGroupResourceId = null)
 {
     public bool Succeeded => Team is not null && Conflict == TeamUpdateConflict.None && ErrorMessage is null;
 
@@ -333,9 +337,9 @@ internal sealed record TeamJoinResult(TeamJoinOutcome? Outcome = null, string? E
 internal sealed record TeamJoinRequestResult(TeamJoinRequest? Request = null, string? ErrorKey = null);
 internal sealed record TeamDirectJoinResult(TeamMember? Member = null, string? ErrorKey = null);
 
-internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? Refusal = null)
+internal sealed record TeamJoinReviewResult(TeamMember? Member = null, string? Refusal = null, string? ErrorKey = null)
 {
-    public bool Succeeded => Refusal is null;
+    public bool Succeeded => Refusal is null && ErrorKey is null;
 }
 
 internal sealed record TeamDeactivationResult(string? Refusal = null)

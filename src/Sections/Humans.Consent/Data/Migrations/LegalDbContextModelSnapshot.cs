@@ -174,7 +174,7 @@ namespace Humans.Consent.Data.Migrations
 
                     b.HasIndex("LegalDocumentId");
 
-                    b.ToTable("document_versions", (string)null);
+                    b.ToTable("consent_document_versions", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Consent.Domain.LegalDocument", b =>
@@ -223,7 +223,7 @@ namespace Humans.Consent.Data.Migrations
 
                     b.HasIndex("TeamId", "IsActive");
 
-                    b.ToTable("legal_documents", (string)null);
+                    b.ToTable("consent_legal_documents", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Consent.Domain.ConsentRecord", b =>

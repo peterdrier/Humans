@@ -28,7 +28,7 @@ public sealed class TicketingBudgetSyncJob : IRecurringJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var activeYear = await _budgetService.GetActiveYearAsync();
+        var activeYear = await _budgetService.GetActiveYearAsync(cancellationToken);
         if (activeYear is null)
         {
             _logger.LogDebug("No active budget year, skipping ticketing budget sync");
@@ -39,8 +39,13 @@ public sealed class TicketingBudgetSyncJob : IRecurringJob
 
         try
         {
-            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id, actorUserId: null);
+            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id, actorUserId: null, cancellationToken);
             _logger.LogInformation("Ticketing budget sync completed: {Count} line items synced", count);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Ticketing budget sync cancelled for year {YearId}", activeYear.Id);
+            throw;
         }
         catch (Exception ex)
         {

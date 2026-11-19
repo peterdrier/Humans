@@ -5,7 +5,7 @@ using Microsoft.Extensions.Hosting;
 // @e2e: profile.spec.ts
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Controllers;
@@ -24,13 +24,13 @@ namespace Humans.Users.Controllers;
 internal sealed class UsersAdminController(
     IUserManagement userService,
     IUserEmailService userEmailService,
-    IGovernanceService applicationDecisionService,
+    IGovernanceService governanceService,
     IConsentService consentService,
     IHumanLifecycleService humanLifecycleService,
     IOnboardingIntake onboardingService,
     IUsersAudienceService audienceService,
     IAccountDeletionService accountDeletionService,
-    IGoogleIntegrationService googleIdentities,
+    IGoogleService googleIdentities,
     IWebHostEnvironment environment,
     ILogger<UsersAdminController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
@@ -70,7 +70,7 @@ internal sealed class UsersAdminController(
                 .ToHashSet();
         }
 
-        // GoogleIntegration's verdicts, loaded only when the Google-rejected filter asks.
+        // Google's verdicts, loaded only when the Google-rejected filter asks.
         IReadOnlySet<Guid>? googleRejectedUserIds = null;
         if (string.Equals(filter, AdminHumanListAssembler.GoogleRejectedFilter, StringComparison.OrdinalIgnoreCase))
         {
@@ -105,14 +105,12 @@ internal sealed class UsersAdminController(
         if (info is null)
             return NotFound();
 
-        var applications = await applicationDecisionService.GetUserApplicationsAsync(id, ct);
-        var membershipTier = await applicationDecisionService.GetMembershipTierAsync(id, ct);
+        var membershipTier = await governanceService.GetMembershipTierAsync(id, ct);
         var userEmails = await userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await consentService.GetConsentRecordCountAsync(id, ct);
 
         var viewModel = AdminHumanDetailViewModelBuilder.Build(
             info,
-            applications,
             membershipTier,
             userEmails,
             consentCount);

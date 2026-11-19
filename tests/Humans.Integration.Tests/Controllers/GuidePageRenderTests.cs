@@ -113,6 +113,6 @@ public class GuidePageRenderTests(HumansTestDatabase database) : IntegrationTest
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var html = await response.Content.ReadAsStringAsync(ct);
-        html.Should().Contain("That guide page does not exist");
+        html.Should().Contain("Page Not Found");
     }
 }

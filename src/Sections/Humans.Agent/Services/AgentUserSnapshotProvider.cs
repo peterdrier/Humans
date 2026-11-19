@@ -29,20 +29,16 @@ internal sealed class AgentUserSnapshotProvider(
         var user = await users.GetUserInfoAsync(userId, cancellationToken);
         if (user is not null)
             userId = user.Id; // roles, teams, consents and tickets are keyed by the live id
-        var profile = user?.Profile;
         var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
-        var teamMemberships = (await teams.GetTeamsAsync(cancellationToken)).Values
-            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+        var teamMemberships = (await teams.GetUserTeamMembershipsAsync(userId, cancellationToken))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
             .ToList();
         var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
         var ticketHoldings = await tickets.GetUserTicketHoldingsAsync(userId, cancellationToken);
         var openTickets = ticketHoldings.OpenTicketOrderIds;
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
         var tier = await governance.GetMembershipTierAsync(userId, cancellationToken);
-        var review = await consents.GetConsentReviewAsync(userId, cancellationToken);
 
         var roleAssignments = activeRoles
             .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
@@ -53,7 +49,7 @@ internal sealed class AgentUserSnapshotProvider(
             DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: tier.ToString(),
-            IsApproved: profile is not null && review.IsApproved,
+            AccountState: user?.State,
             RoleAssignments: roleAssignments,
             Teams: teamMemberships,
             PendingConsentDocs: pendingDocs,
@@ -64,7 +60,7 @@ internal sealed class AgentUserSnapshotProvider(
     private async Task<IReadOnlyList<UpcomingShiftEntry>> LoadUpcomingShiftsAsync(
         Guid userId, CancellationToken cancellationToken)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
             return [];
 

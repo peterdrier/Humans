@@ -69,7 +69,7 @@ internal sealed class GateService(
 
         var settings = await repository.GetSettingsAsync(ct);
         var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
-        var burn = await settingsService.GetActiveEventSettingsAsync(ct);
+        var burn = settingsService.GetActiveEventSettings();
         var now = clock.GetCurrentInstant();
         var zone = EventZone(burn?.TimeZoneId);
         var today = now.InZone(zone).Date;
@@ -214,7 +214,7 @@ internal sealed class GateService(
         // collision with the ticket sync writing the same fact is benign; the next sync converges the row.
         try
         {
-            var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+            var activeEvent = settingsService.GetActiveEventSettings();
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
@@ -330,33 +330,23 @@ internal sealed class GateService(
     public async Task<IReadOnlyList<Guid>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
             return [];
 
-        // Shift dates are DayOffsets from GateOpeningDate: resolve each start in the event zone and keep those near now.
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId) ?? DateTimeZone.Utc;
         var now = clock.GetCurrentInstant();
-        var openingDate = activeEvent.GateOpeningDate;
 
         var gateShifts = await shifts.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             activeEvent.Id, DepartmentId: rosterTeamId, Flags: ShiftBrowseQueryFlags.IncludeSignups), ct);
 
         return gateShifts
-            .Where(s => StartsWithinWindow(openingDate, s.Shift, zone, now))
+            .Where(s => s.AbsoluteStart >= now - RosterWindow && s.AbsoluteStart <= now + RosterWindow)
             .SelectMany(s => s.Signups)
             .Where(u => u.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .DistinctBy(u => u.UserId)
             .OrderBy(u => u.DisplayName, StringComparer.CurrentCultureIgnoreCase)
             .Select(u => u.UserId)
             .ToList();
-    }
-
-    private static bool StartsWithinWindow(LocalDate openingDate, ShiftInfo shift, DateTimeZone zone, Instant now)
-    {
-        var start = openingDate.PlusDays(shift.DayOffset).At(shift.StartTime)
-            .InZoneLeniently(zone).ToInstant();
-        return start >= now - RosterWindow && start <= now + RosterWindow;
     }
 
     public async Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default) =>

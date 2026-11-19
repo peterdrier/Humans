@@ -1,6 +1,6 @@
 ---
 name: section-public-contract
-description: A section's Contracts are its whole public face — `I<Section>Service` (DTO-only reads), `I<Section>Write` only where a cross-section write is unavoidable, everything else internal `I<Section>Management`.
+description: "A section's Contracts are its whole public face: `I<Section>Service` (DTO reads), `I<Section>Write` only for an unavoidable cross-section write, the rest internal."
 metadata:
   type: project
 ---

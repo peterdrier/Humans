@@ -10,11 +10,29 @@ using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Humans.Base.Models;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.AuditLog;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, ISectionChrome
+public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, ISectionChrome, ISectionAccessMatrix
 {
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "AuditLog",
+            SectionName = "Audit Log",
+            Order = 60,
+            Roles = ["Board", "Admin"],
+            Features =
+            [
+                Of("View the audit log", ("Board", Allowed), ("Admin", Allowed)),
+            ]
+        }
+    ];
+
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(AuditLogGalleryViewComponent))];
 

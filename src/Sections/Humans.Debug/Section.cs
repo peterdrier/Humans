@@ -7,11 +7,30 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Models;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Debug;
 
-public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionEndpoints
+public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISectionEndpoints, ISectionAccessMatrix
 {
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "Debug",
+            SectionName = "Debug",
+            Order = 95,
+            Roles = ["Board", "Admin"],
+            Features =
+            [
+                Of("Configuration status", ("Board", Allowed), ("Admin", Allowed)),
+                Of("Background jobs", ("Board", Limited), ("Admin", Allowed)),
+            ]
+        }
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, DebugAuditActions>();

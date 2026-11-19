@@ -1,5 +1,11 @@
 # Section debt ledger for Humans.Governance. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 12
+next_id: 19
 inbox:
+  - added: 2026-11-12
+    id: GOV-12
+    what: "The temporary term-expiry repair (GovernanceApplicationsController.AdminTermExpiry and AdminTermExpiryFix, the 'Term expiry (temp)' admin nav item in Section.cs, ApplicationDecisionService.GetTermExpiryDriftAsync and FixTermExpiryDriftAsync, TermExpiryDriftRow) is marked for deletion once QA and production are clean, but nothing tracked it. Delete it once the drift page shows no rows on production; keep GovernanceAuditActions.TierTermExpiryCorrected, whose name is persisted on audit rows. Found by section-doctor."
+    review: light
+    status: needs-detail
+    blocked_on: "Whether the drift page shows no rows on QA and production."

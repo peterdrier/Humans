@@ -1,6 +1,6 @@
 ---
 name: ef-regen
-description: "Scrap and regenerate the in-flight EF migrations on the current branch as one consolidated migration. Use when migrations have accumulated mid-development cruft (added/removed columns, stacked add-column-to-existing-table fixes, hand-edited SQL that needs to come out, schema changes that should have been one migration but ended up as five), or when the branch has merged main and its migrations are now stuck mid-chain so `dotnet ef migrations remove` is unsafe. Triggers on phrases like 'regen the migrations', 'redo these migrations', 'scrap and regen migrations', 'consolidate the in-flight migrations', 'redo the migration stack', or any time an agent hits the mid-chain situation in `memory/architecture/migration-regen-after-rebase.md`."
+description: "Scrap the branch's in-flight EF migrations and regenerate them as one consolidated migration. Use when they have piled up, contain hand edits, or sit mid-chain after merging main so `migrations remove` is unsafe ('regen the migrations', 'consolidate the migrations')."
 argument-hint: "<MigrationName>  (e.g. AddContainers — name of the consolidated migration)"
 ---
 
@@ -14,7 +14,7 @@ Deterministic recovery: throw away the in-flight migrations on this branch and l
 
 - Multiple migrations on the branch make incremental changes that, taken together, are one logical schema change (created table → added columns → renamed → dropped columns → re-added).
 - A migration on the branch contains hand-edited SQL (`migrationBuilder.Sql(...)`) that needs to come out — see `memory/architecture/no-hand-edited-migrations.md`.
-- Branch's migrations are now mid-chain because main raced ahead with later-timestamped migrations during the PR's life — see `memory/architecture/migration-regen-after-rebase.md`. `dotnet ef migrations remove` is unsafe in this state; this skill is the canonical alternative.
+- Branch's migrations are now mid-chain because main raced ahead with later-timestamped migrations during the PR's life — see `memory/architecture/no-hand-edited-migrations.md`. `dotnet ef migrations remove` is unsafe in this state; this skill is the canonical alternative.
 
 ## When this skill does NOT apply
 
@@ -24,7 +24,7 @@ Deterministic recovery: throw away the in-flight migrations on this branch and l
 
 ## Determine the touched context(s)
 
-There is no shared context — `HumansDbContext` doesn't exist. Every section owns its own `DbContext`; migrations live under one of two shapes — see `memory/process/ef-multi-context-commands.md` for the full partition:
+There is no shared context — `HumansDbContext` doesn't exist. Every section owns its own `DbContext`; migrations live under one of two shapes — see `memory/architecture/no-hand-edited-migrations.md` for the full partition:
 
 | Location | `--project` | `--output-dir` |
 |---|---|---|
@@ -180,7 +180,7 @@ dotnet ef migrations add <MigrationName> \
   --startup-project src/Humans.Web
 ```
 
-`<Area>` / `<Section>` and `<Context>` per the table above — `<Context>` resolved from the snapshot filename or the `Data/<Context>Factory.cs` filename, never guessed from the folder name. Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations. See `memory/process/ef-multi-context-commands.md` for the canonical flag forms.
+`<Area>` / `<Section>` and `<Context>` per the table above — `<Context>` resolved from the snapshot filename or the `Data/<Context>Factory.cs` filename, never guessed from the folder name. Use the `<MigrationName>` from `$ARGUMENTS`. The new migration gets the current UTC timestamp, which lands at the END of the chain — past all of main's interleaved migrations. See `memory/architecture/no-hand-edited-migrations.md` for the canonical flag forms.
 
 ### 7. Inspect the generated migration
 
@@ -235,11 +235,11 @@ Push to the branch as normal.
 
 EF Core's diff engine computes "what migration to generate" by comparing the live model (entities + configurations) against the cumulative snapshot. By deleting the in-flight migrations and resetting the snapshot to `origin/main`'s view, we're telling EF "pretend the branch's migrations never happened — what would you generate now to get from main's schema to the current model?" The answer is one consolidated migration that captures the net effect.
 
-This bypasses the broken state of `dotnet ef migrations remove` after main's migrations interleave with the branch's, which is the failure mode `migration-regen-after-rebase.md` describes.
+This bypasses the broken state of `dotnet ef migrations remove` after main's migrations interleave with the branch's, which is the failure mode `no-hand-edited-migrations.md` describes.
 
 ## Cross-references
 
-- `memory/process/ef-multi-context-commands.md` — exact `--context`/`--project`/`--output-dir` forms per context shape; this skill's step 5 defers to it.
+- `memory/architecture/no-hand-edited-migrations.md` — exact `--context`/`--project`/`--output-dir` forms per context shape; this skill's step 5 defers to it.
 - `memory/architecture/no-hand-edited-migrations.md` — the broader "never hand-edit migrations or snapshots" rule. The snapshot restore in step 3 is the one carve-out, sanctioned only inside this skill.
-- `memory/architecture/migration-regen-after-rebase.md` — describes the mid-chain failure mode. This skill is the canonical recovery action.
+- `memory/architecture/no-hand-edited-migrations.md` — describes the mid-chain failure mode. This skill is the canonical recovery action.
 - `memory/process/no-data-backfills.md` — why this skill produces schema-only migrations and where data movement belongs instead.

@@ -8,7 +8,7 @@ internal sealed class HoldedCreditorContactConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<HoldedCreditorContact> b)
     {
-        b.ToTable("holded_creditor_contacts");
+        b.ToTable("finance_holded_creditor_contacts");
         b.HasKey(x => x.Id);
         b.HasIndex(x => x.UserId).IsUnique();
         b.HasIndex(x => x.SupplierAccountNum);

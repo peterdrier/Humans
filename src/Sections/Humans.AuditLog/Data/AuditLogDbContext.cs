@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.AuditLog.Data;
 
-/// <summary>The <c>audit_log</c> immutability triggers live as raw SQL in the baseline migration, not in this model.</summary>
+/// <summary>The <c>audit_log_entries</c> immutability triggers live as raw SQL in the baseline migration, not in this model.</summary>
 internal sealed class AuditLogDbContext(DbContextOptions<AuditLogDbContext> options)
     : DbContext(options)
 {

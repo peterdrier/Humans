@@ -1,6 +1,6 @@
 ---
 name: Smell-check every fix before proposing it
-description: Before proposing any fix, check what the code already handles, state the leftover risk in one line, and ask "is this too complicated, does it smell wrong?" A fix that grows interfaces or mechanisms for a rare, self-inflicted case is the wrong fix.
+description: "Before proposing any fix: check what the code already handles, state the leftover risk in one line, and ask whether it is too complicated. No mechanisms for rare, self-inflicted cases."
 ---
 
 Before proposing a fix, first read what the code already does about the problem. Then state the leftover risk in one line and ask whether it is worth fixing at all. Only then propose the smallest fix, and ask of it: is this too complicated for what it prevents? Does it smell wrong?

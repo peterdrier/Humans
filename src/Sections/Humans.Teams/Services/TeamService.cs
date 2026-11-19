@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -36,7 +36,7 @@ internal sealed class TeamService(
         repo, auditLogService, clock, logger, serviceProvider, snapshotReader, membershipOutbox, membershipNotices);
     private TeamJoining Joining => new(repo, auditLogService, clock, logger, snapshotReader, membershipOutbox, membershipNotices);
     private TeamRoleDefinitions RoleDefinitions => new(repo, auditLogService, clock, serviceProvider, snapshotReader, membershipOutbox);
-    private TeamEarlyEntry EarlyEntry => new(repo, auditLogService, clock, snapshotReader);
+    private TeamEarlyEntry EarlyEntry => new(repo, auditLogService, clock, snapshotReader, serviceProvider);
     private readonly TeamMembershipOutbox membershipOutbox = new(repo, serviceProvider, clock, logger);
     private readonly TeamMembershipNotices membershipNotices = new(notificationService, serviceProvider, logger);
     private readonly TeamGoogleGroupMemberships googleGroupMemberships = new(repo, logger);
@@ -189,6 +189,8 @@ internal sealed class TeamService(
         bool? isSensitive = null,
         bool? isPromotedToDirectory = null,
         bool? earlyEntryEnabled = null,
+        bool confirmGroupReactivation = false,
+        Guid? confirmedInactiveGroupResourceId = null,
         CancellationToken cancellationToken = default)
     {
         var result = await UpdateTeamAsync(
@@ -201,10 +203,18 @@ internal sealed class TeamService(
         // The callback must see the saved prefix, including a cleared one, rather than the previous snapshot.
         serviceProvider.GetRequiredService<ITeamManagementService>().InvalidateActiveTeamsCache();
         string? groupWarning;
+        Guid? inactiveGroupResourceId = null;
         try
         {
             var groupResult = await GoogleSyncService.EnsureTeamGroupAsync(teamId, cancellationToken: cancellationToken);
+            if (confirmGroupReactivation && confirmedInactiveGroupResourceId is { } confirmedId
+                && groupResult.RequiresConfirmation && groupResult.InactiveResourceId == confirmedId)
+            {
+                groupResult = await GoogleSyncService.EnsureTeamGroupAsync(teamId, true, cancellationToken);
+            }
             groupWarning = GroupLinkWarning(groupResult);
+            if (groupResult.RequiresConfirmation)
+                inactiveGroupResourceId = groupResult.InactiveResourceId;
         }
         catch (Exception ex)
         {
@@ -212,7 +222,7 @@ internal sealed class TeamService(
             groupWarning = $"Team updated but Google Group setup failed: {ex.Message}";
         }
 
-        return result with { GroupWarning = groupWarning };
+        return result with { GroupWarning = groupWarning, InactiveGroupResourceId = inactiveGroupResourceId };
     }
 
     private static string? GroupLinkWarning(GroupLinkResult result) =>
@@ -251,7 +261,7 @@ internal sealed class TeamService(
         Joining.ApproveJoinRequestAsync(requestId, approverUserId, notes, cancellationToken);
 
     public Task<TeamJoinReviewResult> RejectJoinRequestAsync(
-        Guid requestId, Guid approverUserId, string reason, CancellationToken cancellationToken = default) =>
+        Guid requestId, Guid approverUserId, string? reason, CancellationToken cancellationToken = default) =>
         Joining.RejectJoinRequestAsync(requestId, approverUserId, reason, cancellationToken);
 
     public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
@@ -292,11 +302,11 @@ internal sealed class TeamService(
 
     public Task<TeamRoleDefinitionMutationResult> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
-        bool isPublic = true, bool canToggleManagement = true, int? estimatedHours = null,
+        List<SlotPriority> priorities, int sortOrder, bool? isManagement, RolePeriod period, Guid actorUserId,
+        bool isPublic = true, int? estimatedHours = null,
         CancellationToken cancellationToken = default) =>
         RoleDefinitions.UpdateRoleDefinitionAsync(roleDefinitionId, name, description, slotCount, priorities,
-            sortOrder, isManagement, period, actorUserId, isPublic, canToggleManagement, estimatedHours, cancellationToken);
+            sortOrder, isManagement, period, actorUserId, isPublic, estimatedHours, cancellationToken);
 
     public Task<TeamRoleDefinitionMutationResult> DeleteRoleDefinitionAsync(
         Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) =>
@@ -493,13 +503,13 @@ internal sealed class TeamService(
     public Task<IReadOnlyList<TeamEarlyEntryGrantInfo>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default) =>
         EarlyEntry.GetEarlyEntryGrantsForTeamAsync(teamId, ct);
 
-    public Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default) =>
-        EarlyEntry.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, ct);
+    public Task<TeamEarlyEntryMutationResult> AddEarlyEntryGrantAsync(Guid teamId, Guid userId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default) =>
+        EarlyEntry.AddEarlyEntryGrantAsync(teamId, userId, entryDate, projectName, actorUserId, eventSettingsId, ct);
 
-    public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, CancellationToken ct = default) =>
-        EarlyEntry.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, ct);
+    public Task<TeamEarlyEntryMutationResult> EditEarlyEntryGrantAsync(Guid teamId, Guid grantId, LocalDate entryDate, string projectName, Guid actorUserId, Guid eventSettingsId, CancellationToken ct = default) =>
+        EarlyEntry.EditEarlyEntryGrantAsync(teamId, grantId, entryDate, projectName, actorUserId, eventSettingsId, ct);
 
-    public Task RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default) =>
+    public Task<TeamEarlyEntryMutationResult> RemoveEarlyEntryGrantAsync(Guid teamId, Guid grantId, Guid actorUserId, CancellationToken ct = default) =>
         EarlyEntry.RemoveEarlyEntryGrantAsync(teamId, grantId, actorUserId, ct);
 
     private Task DeleteEarlyEntryGrantsForUserAsync(Guid userId, CancellationToken ct) =>

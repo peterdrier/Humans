@@ -48,4 +48,7 @@
   <data name="Search_MinChars" xml:space="preserve">
     <value>Saisissez au moins 2 caractères pour rechercher.</value>
   </data>
+  <data name="Search_Unavailable" xml:space="preserve">
+    <value>La recherche est indisponible. Veuillez réessayer.</value>
+  </data>
 </root>

@@ -100,8 +100,8 @@ public static class MergeFixtureExtensions
             Id = userId,
             DisplayName = $"{displayNameTag} {userId:N}".Substring(0, Math.Min(40, displayNameTag.Length + 33)),
             // Identity's CreateAsync needs a unique Email/UserName; real addresses attach as UserEmail rows.
-            Email = $"merge-{userId:N}@test.local",
-            UserName = $"merge-{userId:N}@test.local",
+            Email = $"merge-{userId:N}@example.test",
+            UserName = $"merge-{userId:N}@example.test",
             CreatedAt = now,
         };
 

@@ -1,12 +1,12 @@
+using Humans.Consent.Contracts;
 using System.Security.Claims;
-using Humans.Governance.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;
 
 /// <summary>Renders nothing when no consents are pending.</summary>
 public sealed class PendingConsentsAlertViewComponent(
-    IMembershipCalculator membershipCalculator) : ViewComponent
+    IConsentService consentService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -15,7 +15,7 @@ public sealed class PendingConsentsAlertViewComponent(
             return Content(string.Empty);
         }
 
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, HttpContext.RequestAborted);
-        return snapshot.PendingConsentCount > 0 ? View(snapshot.PendingConsentCount) : Content(string.Empty);
+        var progress = await consentService.GetConsentProgressAsync(userId, HttpContext.RequestAborted);
+        return progress.PendingCount > 0 ? View(progress.PendingCount) : Content(string.Empty);
     }
 }

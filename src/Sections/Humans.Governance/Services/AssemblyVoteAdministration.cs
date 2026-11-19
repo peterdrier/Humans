@@ -17,7 +17,7 @@ internal sealed class AssemblyVoteAdministration(
     IAuditLogService audit,
     IClock clock) : IApplicationService
 {
-    private const int MaxCancelReasonLength = 4000; // assembly_votes.CancelReason
+    private const int MaxCancelReasonLength = 4000; // governance_assembly_votes.CancelReason
 
     internal async Task<AssemblyVoteActionResult> OpenAsync(
         Guid voteId, Guid adminUserId, CancellationToken ct = default)

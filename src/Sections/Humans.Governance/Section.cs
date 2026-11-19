@@ -1,3 +1,4 @@
+using Humans.Consent.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base;
@@ -49,6 +50,7 @@ public sealed class Section :
     {
         services.AddSingleton<IAuditActionContributor, GovernanceAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GovernanceNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, GovernanceNotificationMeters>();
         services.AddSectionDbContext<GovernanceDbContext>(sentinelTable: "applications");
 
         services.AddSingleton<IApplicationRepository, ApplicationRepository>();
@@ -77,9 +79,6 @@ public sealed class Section :
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<AssemblyVoteService>());
         services.AddScoped<AssemblyVoteLapseJob>();
 
-        services.AddScoped<IMembershipQuery, MembershipQuery>();
-        services.AddScoped<MembershipCalculator>();
-        services.AddScoped<IMembershipCalculator>(sp => sp.GetRequiredService<MembershipCalculator>());
 
         // Base cannot name a moved section's enums, so the section pushes its badge rows into
         // the Humans.UI registry rather than Humans.UI referencing this section.
@@ -142,35 +141,6 @@ public sealed class Section :
                 Of("View applications", ("Volunteer", Limited), ("Board", Allowed)),
                 Of("Vote on applications", ("Volunteer", Denied), ("Board", Allowed)),
             ]
-        },
-        new()
-        {
-            Key = "Board",
-            SectionName = "Board Dashboard",
-            Order = 60,
-            Roles = ["Board"],
-            Features =
-            [
-                Of("Dashboard & stats", ("Board", Allowed)),
-                Of("Audit log", ("Board", Allowed)),
-            ]
-        },
-        new()
-        {
-            Key = "Admin",
-            SectionName = "Admin Tools",
-            Order = 90,
-            Roles = ["Admin"],
-            Features =
-            [
-                Of("Configuration status", ("Admin", Allowed)),
-                Of("Sync settings", ("Admin", Allowed)),
-                Of("Email outbox", ("Admin", Allowed)),
-                Of("Background jobs", ("Admin", Allowed)),
-                Of("All humans list", ("Admin", Allowed)),
-                Of("Role assignments", ("Admin", Allowed)),
-                Of("Legal documents", ("Admin", Allowed)),
-            ]
         }
     ];
 
@@ -197,9 +167,7 @@ public sealed class Section :
     // Read once per process: the markdown ships inside this assembly and never changes at runtime.
     private static readonly IReadOnlyList<SectionHelpEntry> Entries =
     [
-        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Admin", 30),
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Governance", 60),
-        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Board", 80),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
@@ -208,7 +176,7 @@ public sealed class Section :
         yield return new RecurringJobDescriptor(
             "governance-term-renewal-reminder", typeof(TermRenewalReminderJob), "0 5 * * 1");
 
-        // Tier term expiry. Five minutes after the midnight UTC system-team sync, which has
+        // Tier term expiry. Five minutes after the hourly system-team sync's midnight run, which has
         // already dropped the lapsed members from their team; the sync reads the dated
         // approvals, so it never waits on this.
         yield return new RecurringJobDescriptor(
@@ -237,14 +205,14 @@ public sealed class Section :
             return [];
         }
 
-        var snapshot = await services.GetRequiredService<IMembershipCalculator>()
-            .GetMembershipSnapshotAsync(userId, ct);
+        var progress = await services.GetRequiredService<IConsentService>()
+            .GetConsentProgressAsync(userId, ct);
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
-        var complete = snapshot.PendingConsentCount == 0;
+        var complete = progress.PendingCount == 0;
 
         List<ThingsToDoEntry> entries = [];
 
-        if (snapshot.RequiredConsentCount > 0)
+        if (progress.RequiredCount > 0)
         {
             entries.Add(new ThingsToDoEntry("consents", localizer["Todo_Consents_Title"].Value,
                 "fa-solid fa-file-signature", Controller: "Consent", Action: "Index", Weight: 20)
@@ -252,7 +220,7 @@ public sealed class Section :
                 Description = complete
                     ? localizer["Todo_Consents_Done"].Value
                     : string.Format(CultureInfo.CurrentCulture, localizer["Todo_Consents_Pending"].Value,
-                        snapshot.PendingConsentCount, snapshot.RequiredConsentCount),
+                        progress.PendingCount, progress.RequiredCount),
                 IsDone = complete,
                 ActionText = localizer["Todo_Consents_Action"].Value,
             });
@@ -300,7 +268,7 @@ internal static class PillCounts
         var idClaim = http.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier);
         if (idClaim is null || !Guid.TryParse(idClaim.Value, out var userId))
             return null;
-        var applications = sp.GetRequiredService<IGovernanceService>();
+        var applications = sp.GetRequiredService<IGovernanceManagement>();
         var count = await applications.GetUnvotedApplicationCountAsync(userId);
         return count > 0 ? count : null;
     }

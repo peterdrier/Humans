@@ -9,10 +9,12 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Xunit;
 
 namespace Humans.Holded.Tests;
 
 /// <summary>The purchase-document mirror: what a sync stores, how notes are fetched, and what a failed run leaves.</summary>
+[Collection("HoldedMirrorSyncGates")]
 public sealed class HoldedPurchaseDocSyncTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 10, 30, 12, 0);
@@ -153,6 +155,28 @@ public sealed class HoldedPurchaseDocSyncTests
         mirror.LastError.Should().Contain("holded down");
         mirror.LastSyncAt.Should().Be(FixedNow);
         mirror.Docs.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task ContactSync_ReadFailureKeepsThePreviousMirrorAndRecordsAnError()
+    {
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new HoldedContactDto { Id = "retained", Name = "Ana", SupplierAccountNum = 40000004 }]);
+        await _service.SyncContactsAsync(Ct);
+        var failure = new HoldedPermanentException("Holded contacts contain an unreadable contact.");
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+
+        var action = () => _service.SyncContactsAsync(Ct);
+        (await action.Should().ThrowAsync<HoldedPermanentException>()).Which.Should().BeSameAs(failure);
+
+        var mirror = await _service.GetContactsAsync(Ct);
+        var state = (await _service.GetSummaryAsync(Ct)).SyncStates.Single(s =>
+            string.Equals(s.Kind, "Contacts", StringComparison.Ordinal));
+        state.Status.Should().Be("Error");
+        state.LastError.Should().Contain("unreadable contact");
+        mirror.LastSyncAt.Should().Be(FixedNow);
+        mirror.Contacts.Should().ContainSingle().Which.Should().BeEquivalentTo(
+            new { Id = "retained", Name = "Ana", SupplierAccountNum = 40000004 });
     }
 
     [HumansFact]

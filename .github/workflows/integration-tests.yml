@@ -1,18 +1,31 @@
-# Runs the opt-in Humans.Integration.Tests suite on a GitHub runner, where Docker is
-# available for its Testcontainers Postgres. This is NOT a CI gate: nothing waits on it
-# and build.yml keeps excluding the suite. It exists so the suite's real behaviour
-# (flakes, timeouts, migration drift) is measured somewhere other than Peter's machine:
-# on demand from the Actions tab, and once a night so a history accumulates.
+# Runs the opt-in Humans.Integration.Tests suite on GitHub's hosted runners, where Docker is
+# available for its Testcontainers Postgres. The suite needs nothing deployed: it boots the
+# app in-process, so it never waits on QA or a preview.
+#
+# It runs on every PR that touches code, and once a night on main. The tests are split
+# across parallel jobs because one runner takes about as long to run them all as the whole
+# build does; each job runs its share after its own build. build.yml still excludes the
+# suite, so a plain `dotnet test Humans.slnx` stays fast.
 name: Integration tests
 
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * *'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.props'
+      - '*.slnx'
+      - 'global.json'
+      - '.github/workflows/integration-tests.yml'
+      - '.github/scripts/integration-shard.py'
 
+# Same shape as build.yml: a newer push to a PR cancels the older run.
 concurrency:
-  group: integration-tests-${{ github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -22,8 +35,14 @@ env:
 
 jobs:
   integration:
+    name: integration (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      # A red shard must not hide what the others found.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
 
@@ -46,6 +65,7 @@ jobs:
           HUMANS_INTEGRATION_TESTS: '1'
         run: |
           dotnet test tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj \
+            --filter "$(python3 .github/scripts/integration-shard.py ${{ matrix.shard }} 4)" \
             --configuration Release \
             --verbosity quiet \
             --blame-hang-timeout 5m \
@@ -78,6 +98,37 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: integration-test-results
+          name: integration-test-results-${{ matrix.shard }}
           path: TestResults
           if-no-files-found: warn
+
+  # A red night is owned work: the issue is what the nightly issue drain picks up.
+  open-issue:
+    needs: integration
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the nightly-red issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'Nightly integration tests are red'
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create nightly-red --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "A nightly test run failed" --force
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label nightly-red --state open \
+            --search "in:title \"$TITLE\"" --json number --jq '.[0].number')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "Still red: $RUN_URL"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --label nightly-red --body "$(cat <<BODY
+          The nightly run failed: $RUN_URL
+
+          Each failed test is listed at the end of its job log, in the "Summarize failures" step. To reproduce, start Docker and run \`HUMANS_INTEGRATION_TESTS=1 dotnet test tests/Humans.Integration.Tests -v quiet\`.
+
+          Fix the code or the test at its source. Never skip, disable or weaken a test to get green. Close this issue with the PR that makes the run pass.
+          BODY
+          )"
+          fi

@@ -47,7 +47,7 @@ public class NotificationBellViewTests
         const string name = "Resolver <script>&";
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(resolverId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = resolverId, BurnerName = name }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = resolverId, BurnerName = name }));
         var now = Instant.FromUtc(2026, 11, 3, 1, 0);
         var html = await RenderAsync("/Views/Notifications/_NotificationRow.cshtml",
             new NotificationRowDto

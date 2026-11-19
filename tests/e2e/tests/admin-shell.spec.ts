@@ -54,9 +54,11 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Governance', items: ['Voting', 'Applications', 'Assembly Votes'] },
       { label: 'Holded', items: ['Holded'] },
       { label: 'Issues', items: ['Issues'] },
+      { label: 'Pleo', items: ['Pleo'] },
       { label: 'Rideshare', items: ['Settings & stats', 'Day roster'] },
       { label: 'Scanner', items: ['Scanner'] },
       { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Order years', 'Payment methods'] },
+      { label: 'Stripe', items: ['Stripe'] },
       // Board also sees Approvals, but the Surveys index is app-access and renders outside the admin
       // shell, so its page has no tab strip to assert against.
       { label: 'Surveys', items: ['Surveys'] },
@@ -114,7 +116,9 @@ const sidebarMatrix: SidebarExpectation[] = [
       { label: 'Finance', items: ['Holded connector'] },
       { label: 'Holded', items: ['Holded'] },
       { label: 'Issues', items: ['Issues'] },
+      { label: 'Pleo', items: ['Pleo'] },
       { label: 'Store', items: ['Catalog', 'Summary', 'Payments'] },
+      { label: 'Stripe', items: ['Stripe'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
   },

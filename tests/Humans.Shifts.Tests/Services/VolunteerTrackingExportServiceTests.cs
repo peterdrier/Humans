@@ -164,8 +164,8 @@ public sealed class VolunteerTrackingExportServiceTests
         row.Cells[5].Kind.Should().Be(CellKind.Empty); // no shift Day6
         row.Cells[6].Kind.Should().Be(CellKind.Empty); // no shift Day7
 
-        // Totals: 1 on Day3-5, 0 elsewhere (presence = has shift that day per spec).
-        model.TotalsPerDay.Should().Equal(0, 0, 1, 1, 1, 0, 0);
+        // On-site totals include arrival day and each worked day, but not empty days.
+        model.TotalsPerDay.Should().Equal(0, 1, 1, 1, 1, 0, 0);
     }
 
     [HumansFact]

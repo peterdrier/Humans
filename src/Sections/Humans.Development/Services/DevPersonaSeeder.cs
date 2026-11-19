@@ -4,7 +4,6 @@ using System.Text;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Contracts;
@@ -31,7 +30,7 @@ internal sealed class DevPersonaSeeder(
     ICampSeeding campSeeding,
     ICampRoleSeeding campRoleSeeding,
     IConsentSubmission consentService,
-    IMembershipCalculator membershipCalculator,
+    IConsentService consentReads,
     IHumanLifecycleService humanLifecycleService,
     IClock clock,
     IOptions<CityPlanningOptions> cityPlanningOptions,
@@ -177,8 +176,7 @@ internal sealed class DevPersonaSeeder(
         var wasSuspended = info.State == UserState.Suspended;
         var submittedAny = false;
 
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
-        foreach (var versionId in snapshot.MissingConsentVersionIds)
+        foreach (var versionId in (await consentReads.GetConsentProgressAsync(userId)).MissingVersionIds)
         {
             var result = await consentService.SubmitConsentAsync(
                 userId, versionId, explicitConsent: true,
@@ -266,7 +264,7 @@ internal sealed class DevPersonaSeeder(
     public async Task ResetLegalNamesAsync(Guid userId)
     {
         var info = await userService.GetUserInfoAsync(userId);
-        var burnerName = info?.Profile?.BurnerName;
+        var burnerName = info?.Profile is null ? null : info.BurnerName;
         if (string.IsNullOrWhiteSpace(burnerName))
         {
             logger.LogWarning(

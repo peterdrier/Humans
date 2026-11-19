@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Pleo.Domain;
 
-/// <summary>A Pleo cardholder, by Pleo id only. Not bound to a member; contact fields are not mirrored.</summary>
+/// <summary>A Pleo cardholder, keyed by Pleo id. Not bound to a member; contact fields are not mirrored.</summary>
 internal sealed class PleoEmployee
 {
     public string Id { get; init; } = "";

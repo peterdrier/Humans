@@ -12,7 +12,7 @@ description: HARD RULE. Never coin a new `DisplayName`/`*DisplayName` field/prop
 - New code adds NO field/property/parameter/record-positional with name `DisplayName` or `*DisplayName` (e.g. `UserDisplayName`, `SelectedDisplayName`, `ActorDisplayName`, `SenderDisplayName`).
 - Pick the concept-specific name:
   - Human display name (with Profile) → `BurnerName` and render via `<vc:human>` (see [[burnername-is-the-display-name]] for the full DTO-anti-pattern).
-  - Human legal name (SEPA/Holded/Profile.FirstName+LastName) → `LegalName`.
+  - Human legal name (SEPA/Holded/`UserInfo.FullName`) → `LegalName`.
   - Audience / mailing list / group label → `GroupName`.
   - Team → `TeamName`.
   - Generic UI label with no person/group concept → `Title` or `Label`.

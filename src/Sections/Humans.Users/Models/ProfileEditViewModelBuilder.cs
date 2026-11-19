@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
@@ -8,27 +7,23 @@ internal static class ProfileEditViewModelBuilder
 {
     public static ProfileViewModel Build(
         UserInfo info,
-        IReadOnlyList<UserApplicationSnapshot> applications,
         bool preview)
     {
         ArgumentNullException.ThrowIfNull(info);
-        ArgumentNullException.ThrowIfNull(applications);
 
         var profile = info.Profile;
 
-        var isTierLocked = profile is not null && applications.Any(a =>
-            a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
         var hasCustomPicture = profile?.HasCustomPicture == true;
-        var isInitialSetup = profile is null || info.State == UserState.Bare || preview;
+        var isInitialSetup = info.NeedsProfileSetup || preview;
 
         return new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
             UserId = info.Id,
             HasCustomProfilePicture = hasCustomPicture,
-            BurnerName = profile?.BurnerName ?? info.BurnerName,
-            FirstName = profile?.FirstName ?? string.Empty,
-            LastName = profile?.LastName ?? string.Empty,
+            BurnerName = info.BurnerName,
+            FirstName = info.FirstName,
+            LastName = info.LastName,
             City = profile?.City,
             CountryCode = profile?.CountryCode,
             Latitude = profile?.Latitude,
@@ -45,10 +40,9 @@ internal static class ProfileEditViewModelBuilder
             EmergencyContactRelationship = profile?.EmergencyContactRelationship,
             CanViewLegalName = true,
             IsInitialSetup = isInitialSetup,
-            IsTierLocked = isTierLocked,
             NoPriorBurnExperience = profile?.NoPriorBurnExperience ?? false,
-            ShowPrivateFirst = string.IsNullOrEmpty(profile?.FirstName)
-                && string.IsNullOrEmpty(profile?.LastName)
+            ShowPrivateFirst = string.IsNullOrEmpty(info.FirstName)
+                && string.IsNullOrEmpty(info.LastName)
                 && string.IsNullOrEmpty(profile?.EmergencyContactName),
             ContactFields = BuildLegacyContactFields(profile),
             EditableContactFields = (profile?.ContactFields ?? []).Where(cf => cf.FieldType != default)

@@ -77,7 +77,8 @@
         .Build();
 }
 
-<page-header title="@p.Name" badge="@p.Status.ToString()" badge-class="@(EnumBadgeMap.For(p.Status) + " fs-6")">
+<page-header title="@p.Name">
+    <page-header-badge><status-badge value="@p.Status" class="fs-6" /></page-header-badge>
     @if (Model.CanAdminister)
     {
         <a asp-action="Edit" asp-route-programId="@p.Id" class="btn btn-outline-secondary"><i class="fa-solid fa-pen me-1"></i>Edit program</a>

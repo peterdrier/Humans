@@ -184,10 +184,10 @@ internal sealed class GovernanceBoardVotingController(
             var result = model.Approved
                 ? await applicationDecisionService.ApproveAsync(
                     model.ApplicationId, currentUser.Id,
-                    model.DecisionNote, meetingDate)
+                    model.DecisionNote, meetingDate.Value)
                 : await applicationDecisionService.RejectAsync(
                     model.ApplicationId, currentUser.Id,
-                    model.DecisionNote ?? string.Empty, meetingDate);
+                    model.DecisionNote ?? string.Empty, meetingDate.Value);
 
             if (!result.Success)
             {

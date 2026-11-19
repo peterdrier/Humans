@@ -4,7 +4,6 @@
   src/Sections/Humans.Consent/Services/**
   src/Sections/Humans.Auth/**
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
-  src/Sections/Humans.Governance/Services/MembershipCalculator.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Humans.Web/Controllers/HomeController.cs
   src/Humans.Base/Constants/SystemTeamIds.cs
@@ -59,10 +58,6 @@ The consent check is a Consent Coordinator **audit annotation** on the Volunteer
 - Dashboard shows pending count (consent check pending)
 - Filter the human list by `UserState` (bare/active/suspended/adminsuspended/rejected/deleting/merged/deleted)
 - Audit trail records status-changing events
-
-## Membership Status
-
-Governance's `MembershipCalculator.GetMembershipSnapshotAsync` computes its status, in this order: no profile gives None; suspended gives Suspended; `UserState` not Active gives Pending if Bare, else None; Active with no active roles and not a Volunteers member gives None; expired Volunteers consents give Inactive; otherwise Active. There is no Rejected status. See [Membership Status](../../../Humans.Governance/Docs/features/membership-status.md).
 
 ## Volunteer Gating (MembershipRequiredFilter)
 

@@ -32,12 +32,6 @@
           },
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/check-ef-output-dir.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking EF migration command..."
-          },
-          {
-            "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/razor-lint-hook.sh\" || true",
             "timeout": 15,
             "statusMessage": "Linting Razor views..."

@@ -30,6 +30,21 @@ public sealed class OccurrenceOverrideFormViewModelTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TimedOverride_RejectsLocalTimesOutsideTheInstantRange(bool endOnly)
+    {
+        var form = new OccurrenceOverrideFormViewModel
+        {
+            OverrideStartLocal = endOnly ? null : new DateTime(9999, 12, 31, 23, 0, 0),
+            OverrideEndLocal = new DateTime(9999, 12, 31, 23, 30, 0),
+        };
+
+        form.TryBuildOverride(DateTimeZoneProviders.Tzdb["America/Los_Angeles"], out var dto).Should().BeFalse();
+        dto.Should().BeNull();
+    }
+
+    [HumansTheory]
     [InlineData("garbage")]
     [InlineData("")]
     [InlineData("2024-01-01T00:00:0")]

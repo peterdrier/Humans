@@ -53,6 +53,7 @@ internal sealed class ShiftsGalleryViewComponent(
                     .Where(u => u.Shift.RotaId == rota.Id)
                     .OrderBy(u => u.Shift.DayOffset)
                     .ThenBy(u => u.Shift.StartTime)
+                    .ThenByDescending(u => u.UrgencyScore)
                     .Take(SampleShiftCount)
                     .Select(ShiftBrowseMapper.MapToDisplayItem)
                     .ToList();

@@ -127,17 +127,6 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         return await ctx.Managers.AsNoTracking().AnyAsync(m => userIds.Contains(m.UserId), ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetGrantIdsOfManagedProgramsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0) return [];
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.Grants.AsNoTracking()
-            .Where(g => g.Program.Managers.Any(m => userIds.Contains(m.UserId)))
-            .Select(g => g.Id)
-            .ToListAsync(ct);
-    }
-
     public async Task<bool> AnyProgramAcceptsApplicationsAsync(LocalDate today, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -181,7 +170,6 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var dropped = new List<Guid>();
 
-        // Two Applied rows for one program collapse to the older one.
         var sourceGrants = await ctx.Grants.Where(g => g.BeneficiaryUserId == sourceUserId).ToListAsync(ct);
         var targetApplications = await ctx.Grants
             .Where(g => g.BeneficiaryUserId == targetUserId && g.Status == GrantStatus.Applied)

@@ -335,18 +335,21 @@ public class ExpenseReconTests
     [InlineData(0, 0, LogLevel.Information)]
     [InlineData(2, 0, LogLevel.Warning)]
     [InlineData(0, 3, LogLevel.Warning)]
-    public async Task Job_LogsOneSummaryLine(int orphans, int membersOff, LogLevel level)
+    [InlineData(0, 0, LogLevel.Warning, 26)] // a clean report off yesterday's mirror is not a clean night
+    public async Task Job_LogsOneSummaryLine(int orphans, int membersOff, LogLevel level, int mirrorAgeHours = 1)
     {
         var finance = Substitute.For<IFinanceService>();
         finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             null, SyncedAt, null, [], [], [], [], new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, orphans, membersOff)));
         var logger = new CapturingLogger<ExpenseReconJob>();
 
-        await new ExpenseReconJob(finance, logger).ExecuteAsync(TestContext.Current.CancellationToken);
+        await new ExpenseReconJob(finance, new FakeClock(SyncedAt + Duration.FromHours(mirrorAgeHours)), logger)
+            .ExecuteAsync(TestContext.Current.CancellationToken);
 
         var entry = logger.Entries.Should().ContainSingle().Subject;
         entry.Level.Should().Be(level);
-        if (orphans == 0 && membersOff == 0) entry.Message.Should().StartWith("Expense recon: 0 problems");
+        if (level == LogLevel.Information) entry.Message.Should().StartWith("Expense recon: 0 problems");
+        if (mirrorAgeHours > 2) entry.Message.Should().Contain("has not finished");
     }
 
     [HumansFact]

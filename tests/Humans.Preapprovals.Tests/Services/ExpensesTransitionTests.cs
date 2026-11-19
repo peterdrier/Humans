@@ -63,18 +63,18 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task ListManagedGrantIds_EveryGrantOfTheirPrograms_UnderAnyIdTheyHeld()
+    public async Task GetGrants_CarriesProgramManagers_UnderTheIdsTheyWereNamedWith()
     {
         var archivedId = Guid.NewGuid();
-        var manager = SeedUser("Manager", mergedIds: [archivedId]);
         var mine = await SeedProgramAsync(status: ProgramStatus.Closed, managers: archivedId);
         var other = await SeedProgramAsync(managers: SeedUser("Other manager"));
-        var open = await SeedGrantAsync(mine);
         var consumed = await SeedGrantAsync(mine, status: GrantStatus.Consumed, expenseReportId: Report);
-        await SeedGrantAsync(other);
+        var elsewhere = await SeedGrantAsync(other);
 
-        (await NewService().ListManagedGrantIdsAsync(manager, Ct)).Should().BeEquivalentTo([open.Id, consumed.Id]);
-        (await NewService().ListManagedGrantIdsAsync(SeedUser("Nobody"), Ct)).Should().BeEmpty();
+        var grants = await NewService().GetGrantsAsync(Ct);
+
+        grants.Single(g => g.Id == consumed.Id).ManagerUserIds.Should().BeEquivalentTo([archivedId]);
+        grants.Single(g => g.Id == elsewhere.Id).ManagerUserIds.Should().NotContain(archivedId);
     }
 
     [HumansFact]
@@ -84,9 +84,9 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var person = SeedUser("Person");
         var grant = await SeedGrantAsync(program, person);
 
-        var stamp = await NewService().ClaimAsync(grant.Id, Report, person, Ct);
+        var stamp = await CommittedAsync(c => NewService().ClaimAsync(grant.Id, Report, person, Ct, c));
 
-        stamp.Stamp.Should().Be(new GrantStamp(300m, 62900150, "acc-62900150", program.ClaimBy));
+        stamp.Claimed.Should().BeEquivalentTo(new { MaxAmount = 300m, HoldedAccountNumber = 62900150, HoldedAccountId = "acc-62900150", program.ClaimBy, Status = GrantStatus.Claimed });
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Claimed);
         stored.ExpenseReportId.Should().Be(Report);
@@ -104,9 +104,9 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var grant = await SeedGrantAsync(program, person, status: GrantStatus.Claimed, expenseReportId: Report);
         SetToday(Today.PlusDays(20));
 
-        var stamp = await NewService().ClaimAsync(grant.Id, Report, person, Ct);
+        var stamp = await CommittedAsync(c => NewService().ClaimAsync(grant.Id, Report, person, Ct, c));
 
-        stamp.Stamp!.MaxAmount.Should().Be(300m);
+        stamp.Claimed!.MaxAmount.Should().Be(300m);
         (await ReadGrantAsync(grant.Id)).Status.Should().Be(GrantStatus.Claimed);
         await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantClaimed, AuditEntityTypes.Grant, grant.Id,
             Arg.Is<string>(d => d.Contains("resubmit")), person, Report, AuditEntityTypes.ExpenseReport);
@@ -123,7 +123,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync();
         var grant = await SeedGrantAsync(program, status: status, expenseReportId: status == GrantStatus.Applied ? null : OtherReport);
 
-        var result = await NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
+        var result = await CommittedAsync(c => NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct, c));
 
         result.Refusal.Should().Contain(reason);
         (await ReadGrantAsync(grant.Id)).Status.Should().Be(status);
@@ -135,7 +135,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(-1));
         var grant = await SeedGrantAsync(program);
 
-        var result = await NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
+        var result = await CommittedAsync(c => NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct, c));
 
         result.Refusal.Should().Contain("deadline");
         var stored = await ReadGrantAsync(grant.Id);
@@ -148,8 +148,8 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     {
         var program = await SeedProgramAsync(claimBy: Today);
         var grant = await SeedGrantAsync(program);
-        var stamp = await NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct);
-        stamp.Stamp!.ClaimBy.Should().Be(Today);
+        var stamp = await CommittedAsync(c => NewService().ClaimAsync(grant.Id, Report, SeedUser(), Ct, c));
+        stamp.Claimed!.ClaimBy.Should().Be(Today);
     }
 
     [HumansFact]
@@ -158,7 +158,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var program = await SeedProgramAsync(claimBy: Today.PlusDays(-1));
         var grant = await SeedGrantAsync(program);
         var service = NewService();
-        (await service.ClaimAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("deadline");
+        (await CommittedAsync(c => service.ClaimAsync(grant.Id, Report, SeedUser(), Ct, c))).Refusal.Should().Contain("deadline");
 
         await using (var db = OpenContext())
         {
@@ -167,14 +167,14 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
             await db.SaveChangesAsync(Ct);
         }
 
-        var stamp = await service.ClaimAsync(grant.Id, Report, SeedUser(), Ct);
-        stamp.Stamp!.ClaimBy.Should().Be(Today.PlusDays(30));
+        var stamp = await CommittedAsync(c => service.ClaimAsync(grant.Id, Report, SeedUser(), Ct, c));
+        stamp.Claimed!.ClaimBy.Should().Be(Today.PlusDays(30));
     }
 
     [HumansFact]
     public async Task Claim_Unknown_ReturnsRefusal()
     {
-        (await NewService().ClaimAsync(Guid.NewGuid(), Report, SeedUser(), Ct))
+        (await CommittedAsync(c => NewService().ClaimAsync(Guid.NewGuid(), Report, SeedUser(), Ct, c)))
             .Refusal.Should().Contain("does not exist");
     }
 
@@ -185,7 +185,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var person = SeedUser("Person");
         var grant = await SeedGrantAsync(program, person, status: GrantStatus.Claimed, expenseReportId: Report);
 
-        (await NewService().ReleaseAsync(grant.Id, Report, person, Ct)).Refusal.Should().BeNull();
+        (await CommittedAsync(c => NewService().ReleaseAsync(grant.Id, Report, person, Ct, c))).Refusal.Should().BeNull();
 
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Open);
@@ -203,7 +203,7 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var person = SeedUser("Person");
         var grant = await SeedGrantAsync(program, person, status: GrantStatus.Claimed, expenseReportId: Report);
 
-        (await NewService().ConsumeAsync(grant.Id, Report, person, Ct)).Refusal.Should().BeNull();
+        (await CommittedAsync(c => NewService().ConsumeAsync(grant.Id, Report, person, Ct, c))).Refusal.Should().BeNull();
 
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Consumed);
@@ -223,8 +223,8 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var open = await SeedGrantAsync(program);
         var service = NewService();
         Func<Guid, Task<PreapprovalWriteResult>> act = release
-            ? id => service.ReleaseAsync(id, Report, SeedUser(), Ct)
-            : id => service.ConsumeAsync(id, Report, SeedUser(), Ct);
+            ? id => CommittedAsync(c => service.ReleaseAsync(id, Report, SeedUser(), Ct, c))
+            : id => CommittedAsync(c => service.ConsumeAsync(id, Report, SeedUser(), Ct, c));
 
         (await act(held.Id)).Refusal.Should().Contain("not held by");
         (await act(open.Id)).Refusal.Should().Contain("not held by");
@@ -243,9 +243,9 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
         var service = NewService();
         (await service.RevokeAsync(program.Id, grant.Id, "budget cut", manager, Ct)).Refusal.Should().BeNull();
 
-        (await service.ClaimAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");
-        (await service.ConsumeAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");
-        (await service.ReleaseAsync(grant.Id, Report, SeedUser(), Ct)).Refusal.Should().Contain("revoked");
+        (await CommittedAsync(c => service.ClaimAsync(grant.Id, Report, SeedUser(), Ct, c))).Refusal.Should().Contain("revoked");
+        (await CommittedAsync(c => service.ConsumeAsync(grant.Id, Report, SeedUser(), Ct, c))).Refusal.Should().Contain("revoked");
+        (await CommittedAsync(c => service.ReleaseAsync(grant.Id, Report, SeedUser(), Ct, c))).Refusal.Should().Contain("revoked");
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Revoked);
         stored.ExpenseReportId.Should().Be(Report);
@@ -253,34 +253,40 @@ public sealed class ExpensesTransitionTests : PreapprovalsTestHarness
     }
 
     [HumansFact]
-    public async Task ListClaimable_OnlyOpenBeforeDeadline_AcrossMergedIds()
+    public async Task GetGrants_EveryState_ClaimableOnlyOpenBeforeDeadline()
     {
         var live = await SeedProgramAsync(name: "Live");
         var past = await SeedProgramAsync(name: "Past", claimBy: Today.PlusDays(-1));
-        var oldId = Guid.NewGuid();
-        var person = SeedUser("Person", mergedIds: [oldId]);
+        var person = SeedUser("Person");
         var mine = await SeedGrantAsync(live, person, label: "Fire Lotus");
-        var underOldId = await SeedGrantAsync(live, oldId);
-        await SeedGrantAsync(live, person, status: GrantStatus.Claimed, expenseReportId: Report);
-        await SeedGrantAsync(live, person, status: GrantStatus.Applied);
-        await SeedGrantAsync(live, person, status: GrantStatus.Revoked);
-        await SeedGrantAsync(past, person);
-        await SeedGrantAsync(live);
+        var claimed = await SeedGrantAsync(live, person, status: GrantStatus.Claimed, expenseReportId: Report);
+        var applied = await SeedGrantAsync(live, person, status: GrantStatus.Applied);
+        var consumed = await SeedGrantAsync(live, person, status: GrantStatus.Consumed, expenseReportId: OtherReport);
+        var lapsed = await SeedGrantAsync(past, person);
 
-        var options = await NewService().ListClaimableForUserAsync(person, Ct);
+        var grants = await NewService().GetGrantsAsync(Ct);
 
-        options.Select(o => o.Id).Should().BeEquivalentTo([mine.Id, underOldId.Id]);
-        options.Single(o => o.Id == mine.Id).Should().Be(
-            new GrantOption(mine.Id, "Live", "Fire Lotus", 300m, 62900150, "acc-62900150", live.ClaimBy, GrantStatus.Open));
+        grants.Where(g => g.ClaimableToday).Select(g => g.Id).Should().BeEquivalentTo([mine.Id]);
+        grants.Select(g => g.Id).Should().Contain([claimed.Id, applied.Id, consumed.Id, lapsed.Id]);
+        grants.Single(g => g.Id == mine.Id).Should().BeEquivalentTo(new
+        {
+            HolderUserId = person,
+            ProgramName = "Live",
+            Label = "Fire Lotus",
+            MaxAmount = 300m,
+            HoldedAccountNumber = 62900150,
+            HoldedAccountId = "acc-62900150",
+            live.ClaimBy,
+            Status = GrantStatus.Open,
+        });
     }
 
-    [HumansFact]
-    public async Task GetGrant_AnyState_OrNull()
+    private static async Task<PreapprovalWriteResult> CommittedAsync(
+        Func<Action<Func<CancellationToken, Task>>, Task<PreapprovalWriteResult>> write)
     {
-        var program = await SeedProgramAsync();
-        var grant = await SeedGrantAsync(program, status: GrantStatus.Consumed, expenseReportId: Report);
-        var service = NewService();
-        (await service.GetGrantAsync(grant.Id, Ct))!.Status.Should().Be(GrantStatus.Consumed);
-        (await service.GetGrantAsync(Guid.NewGuid(), Ct)).Should().BeNull();
+        var afterCommit = new List<Func<CancellationToken, Task>>();
+        var result = await write(afterCommit.Add);
+        foreach (var complete in afterCommit) await complete(CancellationToken.None);
+        return result;
     }
 }

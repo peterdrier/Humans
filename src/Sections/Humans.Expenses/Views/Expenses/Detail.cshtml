@@ -1,5 +1,4 @@
 @model Humans.Expenses.Models.ExpenseDetailViewModel
-@using Humans.Base.Models.Tables
 @{
     ViewData["Title"] = Localizer["Expenses_ReportTitle"].Value;
     var r = Model.Report;
@@ -10,9 +9,8 @@
     <span>@Localizer["Expenses_ColReport"]</span>
 }
 
-<page-header title="@(Localizer["Expenses_ReportTitle"].Value)"
-             badge="@Localizer.EnumDisplay(r.Status)"
-             badge-class="@(EnumBadgeMap.For(r.Status) + " fs-6")">
+<page-header title="@(Localizer["Expenses_ReportTitle"].Value)">
+    <page-header-badge><status-badge value="@r.Status" localizer="@Localizer" class="fs-6" /></page-header-badge>
     @if (Model.CanEdit)
     {
         <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-outline-primary">

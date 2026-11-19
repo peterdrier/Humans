@@ -42,7 +42,7 @@ Source: [nobodies-collective/Humans#732](https://github.com/nobodies-collective/
 - Each email body contains the coordinator's free-text message plus that recipient's own chronologically ordered shifts on this rota.
 - Shift list uses the event's timezone (matches the rota detail page convention): `"ddd MMMM d"` for all-day shifts, `"ddd MMMM d @ HH:mm"` for time-slotted shifts.
 - Delivery flows through `IEmailService` → outbox so audit, opt-out routing, and category suppression stay consistent with every other transactional send.
-- A single audit row (`ShiftsAuditActions.CoordinatorRotaMessageSent`) records the dispatch, including successful send-request count, skipped count, and a truncated copy of the message text.
+- A single audit row (`ShiftsAuditActions.CoordinatorRotaMessageSent`) records the dispatch, including successful send-request count, skipped count, and a truncated copy of the message text. Outbox cancellation exceptions remain per-recipient failures while the dispatch token is live, so later recipients and the audit still run. A cancelled dispatch token propagates normally.
 - Non-coordinators (and `ShiftsNoInfo`) do not see the entry point and are blocked at the controller by `ResolveDepartmentManagementAsync`.
 
 ### US-732.2: Recipients see exactly their own shifts

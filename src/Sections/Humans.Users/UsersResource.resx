@@ -38,8 +38,6 @@
   <data name="Users_Profile_ActionRequired" xml:space="preserve"><value>Action Required:</value></data>
   <data name="Users_Profile_PendingConsents" xml:space="preserve"><value>You have {0} pending consent(s) to review.</value><comment>{0} = pending count</comment></data>
   <data name="Users_Profile_ReviewNow" xml:space="preserve"><value>Review now</value></data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve"><value>Your {0} application:</value><comment>{0} = tier name (Colaborador/Asociado)</comment></data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve"><value>View details</value></data>
   <data name="Users_Profile_Information" xml:space="preserve"><value>Profile Information</value></data>
   <data name="Users_Profile_LegalName" xml:space="preserve"><value>Legal Name</value></data>
   <data name="Users_Profile_OnlyVisibleToYouAndBoard" xml:space="preserve"><value>only visible to you and board</value></data>
@@ -84,11 +82,8 @@
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible to you, the Shifts NoInfo admins and the Board; every time one of them opens it, that is recorded and listed below. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Visible to you, the Shifts NoInfo admins and the Board, and every look is recorded.</value></data>
-  <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Marked At</value></data>
-  <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Marked By</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>My Emails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>No in-platform messages on record.</value></data>
-  <data name="Users_Profile_NoShowHistory" xml:space="preserve"><value>No-Show History ({0})</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Sent messages</value></data>
   <data name="Users_Profile_ShiftInfo" xml:space="preserve"><value>Shift Info</value></data>
 
@@ -96,9 +91,6 @@
   <!-- Profile Edit form        -->
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve"><value>Edit Profile</value></data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve"><value>You want to come to the event, contribute your energy, work a shift or join a team. No formal commitment to the association's governance. Most people fall here and that's completely valid.</value></data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve"><value>Note: You can always apply to change this later on.</value></data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve"><value>Your tier is locked because you have an active or pending application.</value></data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve"><value>The name you go by</value></data>
   <data name="Users_ProfileEdit_BurnerNameHelp" xml:space="preserve"><value>This is your public display name, visible to everyone.</value></data>
   <data name="Users_ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve"><value>Your burner name appears to match your legal name. Consider using a different name to protect your privacy — this name is visible to all humans.</value></data>
@@ -294,10 +286,9 @@
   <data name="Users_AdminHuman_UserId" xml:space="preserve"><value>User ID</value></data>
   <data name="Users_AdminHuman_AdminNotes" xml:space="preserve"><value>Board Notes</value></data>
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve"><value>This member can request to see these notes under GDPR.</value></data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve"><value>Recent Applications</value></data>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve"><value>Applications</value></data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve"><value>Audit History</value></data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve"><value>Statistics</value></data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve"><value>Applications</value></data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve"><value>Agreements</value></data>
   <data name="Users_AdminHuman_UnsuspendMember" xml:space="preserve"><value>Unsuspend Human</value></data>
   <data name="Users_AdminHuman_SuspendConfirm" xml:space="preserve"><value>Are you sure you want to suspend this human?</value></data>
@@ -395,8 +386,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Dietary info</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Your medical info has been saved.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Failed to save medical info.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Apply for Colaborador or Asociado</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Volunteer</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>This account is no longer available for email changes.</value>
   </data>
@@ -434,4 +423,6 @@
   <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Could not load the medical details.</value></data>
   <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Show medical details (every look is recorded in the audit log)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Select a valid location.</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferences" xml:space="preserve"><value>Edit preferences</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve"><value>Select tags that match the kind of work you enjoy. Matching shifts will be highlighted with a star.</value></data>
 </root>

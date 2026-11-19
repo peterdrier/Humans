@@ -24,7 +24,6 @@ internal sealed class FinanceController(
     IHoldedService holded,
     IExpenseReportService expenseReports,
     CashFlowService cashFlow,
-    CreditorMatchService creditorMatches,
     FinanceOverviewService overview,
     PleoBooking pleoBooking,
     PleoBookingRunner pleoRunner,
@@ -36,8 +35,8 @@ internal sealed class FinanceController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
-        return View(await overview.GetAsync(viewerUserId, HttpContext.RequestAborted));
+        if (GetCurrentUserId() is null) return Challenge();
+        return View(await overview.GetAsync(HttpContext.RequestAborted));
     }
 
     [HttpGet("Pleo")]
@@ -123,9 +122,9 @@ internal sealed class FinanceController(
     [HttpGet("Creditors")]
     public async Task<IActionResult> Creditors(string? sort, string? dir)
     {
-        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
+        if (GetCurrentUserId() is null) return Challenge();
         var (rows, unresolved, unavailable) = await finance.ListCreditorAccountsAsync(HttpContext.RequestAborted);
-        var matches = await creditorMatches.GetForMemberAccountsAsync(rows, viewerUserId, HttpContext.RequestAborted);
+        var recon = await finance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
 
         var names = new Dictionary<Guid, string>();
         var boundIds = rows.SelectMany(r => r.Bindings).Select(b => b.UserId)
@@ -148,7 +147,7 @@ internal sealed class FinanceController(
                 r.OpenDocumentCount,
                 r.PendingPayoutFileName,
                 r.HasDuplicateDocuments,
-                matches.GetValueOrDefault(r.SupplierAccountNum), r.NotPayableReason))
+                CreditorMatchVm.For(recon, r.SupplierAccountNum), r.NotPayableReason))
             .ToList();
 
         var sortBy = sort is "name" or "balance" or "member" or "opendocs" ? sort : "account";
@@ -163,7 +162,6 @@ internal sealed class FinanceController(
                 b.Source.ToString()))
             .ToList();
 
-        var recon = await finance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
         return View(new CreditorsPageVm(
             accounts, unresolvedVm, sortBy, sortDir, holdedConnector.GetSepaPayoutSettings(),
             recon.IsAvailable ? recon.Totals.Problems : null, recon.Totals.Warnings, unavailable));
@@ -199,9 +197,11 @@ internal sealed class FinanceController(
         }
 
         var paid = preview.Lines.Select(l => l.SupplierAccountNum).ToHashSet();
-        var (rows, _, _) = await finance.ListCreditorAccountsAsync(ct);
-        var matches = await creditorMatches.GetForMemberAccountsAsync(
-            rows.Where(r => paid.Contains(r.SupplierAccountNum)), viewerUserId, ct);
+        var recon = await finance.GetExpenseReconAsync(null, ct);
+        var matches = paid
+            .Select(account => (Account: account, Match: CreditorMatchVm.For(recon, account)))
+            .Where(x => x.Match is not null)
+            .ToDictionary(x => x.Account, x => x.Match!);
         return View("SepaReview", new SepaReviewVm(preview.Lines, matches, cap));
     }
 
@@ -444,13 +444,13 @@ internal sealed class FinanceController(
     [HttpGet("Creditors/{accountNum:int}")]
     public async Task<IActionResult> CreditorStatement(int accountNum)
     {
-        if (GetCurrentUserId() is not { } viewerUserId) return Challenge();
+        if (GetCurrentUserId() is null) return Challenge();
         var ledger = await finance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
         // The finance-admin review queue is every submitted report; the ones booked to this account are the other
         // side of the ledger.
-        var reports = (await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, HttpContext.RequestAborted))
+        var reports = (await expenseReports.GetReviewQueueAsync(HttpContext.RequestAborted))
             .Where(r => r.HoldedSupplierAccountNum == accountNum)
             .OrderByDescending(r => r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt)
             .ToList();
@@ -462,13 +462,14 @@ internal sealed class FinanceController(
             .ThenByDescending(r => r.Line.EntryNumber)
             .ThenBy(r => r.Line.Line)
             .ToList();
-        var match = await creditorMatches.GetAsync(accountNum, viewerUserId, HttpContext.RequestAborted);
+        var recon = await finance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
         var (transfers, _) = await finance.GetSepaTransfersAsync(HttpContext.RequestAborted);
         var sepa = transfers
             .Where(t => t.SupplierAccountNum == accountNum)
             .OrderByDescending(t => t.GeneratedAt)
             .ToList();
-        return View(new CreditorStatementVm(ledger, lines, reports, match, sepa));
+        return View(new CreditorStatementVm(
+            ledger, lines, reports, CreditorMatchVm.For(recon, accountNum), recon.UnavailableReason, sepa));
     }
 
     // Holded books one transfer as a payment line per purchase it settles. We pay a member at most once a day, so

@@ -60,7 +60,7 @@ internal sealed class PleoBalanceConfiguration : IEntityTypeConfiguration<PleoBa
 {
     public void Configure(EntityTypeBuilder<PleoBalance> b)
     {
-        b.ToTable("pleo_balance");
+        b.ToTable("pleo_balances");
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedNever();
         b.Property(x => x.Currency).HasMaxLength(3);

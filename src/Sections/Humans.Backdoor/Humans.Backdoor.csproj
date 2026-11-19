@@ -23,7 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       The sections whose machine surface Backdoor serves. Each is reached only through
       the public interface in its Contracts/ folder (Agent, Issues,

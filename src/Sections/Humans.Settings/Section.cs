@@ -1,12 +1,14 @@
 using Humans.Base.Authorization;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Services;
 using Humans.Settings.ViewComponents;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Humans.AuditLog.Contracts;
 
 namespace Humans.Settings;
@@ -22,9 +24,13 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
         services.AddSingleton<ISettingsRepository, Repository>();
 
-        services.AddScoped<ISettingsWriteService, Service>();
-        services.AddScoped<ISettingsService>(sp => sp.GetRequiredService<ISettingsWriteService>());
-        services.AddScoped<IEventSettingsSeeding>(sp => (Service)sp.GetRequiredService<ISettingsWriteService>());
+        services.AddKeyedScoped<ISettingsWriteService, Service>(CachingSettingsService.InnerServiceKey);
+        services.AddSingleton<CachingSettingsService>();
+        services.AddSingleton<ISettingsWriteService>(sp => sp.GetRequiredService<CachingSettingsService>());
+        services.AddSingleton<ISettingsService>(sp => sp.GetRequiredService<CachingSettingsService>());
+        services.AddSingleton<IEventSettingsSeeding>(sp => sp.GetRequiredService<CachingSettingsService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingSettingsService>());
+        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<CachingSettingsService>());
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>

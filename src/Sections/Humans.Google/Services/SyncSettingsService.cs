@@ -1,0 +1,40 @@
+using Humans.Google.Contracts;
+using Humans.AuditLog.Contracts;
+using NodaTime;
+using Humans.Google.Data;
+
+namespace Humans.Google.Services;
+
+internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IClock clock, IAuditLogService audit) : ISyncSettingsService
+{
+    public async Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default)
+    {
+        var rows = await repository.GetAllAsync(ct);
+        return rows
+            .Select(settings => new SyncServiceSettingsInfo(
+                settings.Id,
+                settings.ServiceType,
+                settings.SyncMode,
+                settings.UpdatedAt,
+                settings.UpdatedByUserId))
+            .ToList();
+    }
+
+    public Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default)
+        => repository.GetModeAsync(serviceType, ct);
+
+    public async Task UpdateModeAsync(
+        SyncServiceType serviceType, SyncMode mode, Guid actorUserId, CancellationToken ct = default)
+    {
+        var updated = await repository.UpdateModeAsync(
+            serviceType, mode, actorUserId, clock.GetCurrentInstant(), ct);
+        if (updated is null)
+        {
+            throw new InvalidOperationException($"No sync setting found for {serviceType}");
+        }
+
+        await audit.LogAsync(GoogleAuditActions.SyncModeChanged, "SyncServiceSettings", updated.Id,
+            $"{serviceType} sync mode set to {mode}", actorUserId);
+    }
+
+}

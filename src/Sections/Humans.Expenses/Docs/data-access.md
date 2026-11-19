@@ -26,8 +26,8 @@ Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
 `IHoldedService.IsConfigured`, `IFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
 account a report books to and the budget category it maps to), `IPreapprovalService`
-(Preapprovals section — `GetGrantAsync` / `ListClaimableForUserAsync` for the grant a report
-files against) and `IPreapprovalWrite` (`ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` — the
+(Preapprovals section — `GetGrantsAsync`, every grant, for the one a report
+files against and who manages it) and `IPreapprovalWrite` (`ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` — the
 grant's lifecycle follows the report's), plus the section's own `ExpensesEmails` builder,
 `IClock` and `IOptions<TravelReimbursementConfig>`. Implements `IUserDataContributor`. No
 `IMemoryCache`.

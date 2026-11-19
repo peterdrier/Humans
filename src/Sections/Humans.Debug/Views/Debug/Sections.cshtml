@@ -11,17 +11,14 @@
     var active = Model.Sections.Count(s => s.IsActive);
 }
 
-<div class="page-head">
-    <div>
-        <h1 class="title">Sections</h1>
-        <p class="sub">
-            @active active of @Model.Sections.Count discovered — composed from DI at startup, nothing here is hand-maintained
-        </p>
-    </div>
+<page-header title="Sections" variant="compact">
+    <page-header-subtitle>
+        @active active of @Model.Sections.Count discovered — composed from DI at startup, nothing here is hand-maintained
+    </page-header-subtitle>
     <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
         <i class="fa-solid fa-arrow-left me-1"></i>Admin
     </a>
-</div>
+</page-header>
 
 @if (Model.UnmatchedAnnotations.Count > 0)
 {

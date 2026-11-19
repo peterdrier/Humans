@@ -18,7 +18,7 @@ survey title, secure answer-link button, sign-off, routing policy, and branded e
 - Blank subject or message values use the existing localized standard wording for that part.
 - Existing surveys therefore retain their current invitation output without a data backfill.
 - `Save + translate missing` treats both fields like the other localized survey content and never
-  overwrites authored translations.
+  overwrites authored translations. Culture-key matching remains case-insensitive in both the builder and translation preparation.
 - Initial invitations resolve the survey title and custom copy in the recipient's supported preferred
   culture, with the survey default culture as fallback.
 - The shared Preview menu opens either the respondent survey preview or a side-effect-free rendered

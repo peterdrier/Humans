@@ -6,6 +6,7 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
+using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
 using Humans.Teams.Contracts;
@@ -16,7 +17,6 @@ using NodaTime;
 namespace Humans.Shifts.Services;
 
 internal sealed class ShiftBrowseReader(
-    IShiftManagementRepository repo,
     EventCalendarResolver calendarResolver,
     IServiceProvider serviceProvider,
     IClock clock) : IApplicationService
@@ -24,6 +24,7 @@ internal sealed class ShiftBrowseReader(
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
+    private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
 
     internal async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
         IEnumerable<Guid> teamIds,
@@ -87,31 +88,24 @@ internal sealed class ShiftBrowseReader(
                 : null;
         }
 
-        var flags = ShiftEventQueryFlags.IncludeSignups;
-        if (!includeRestricted)
-            flags |= ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas;
-
         var urgencyTeamIds = await ResolveDepartmentTeamIdsAsync(departmentId, ct);
-        var shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
-            eventSettingsId,
-            urgencyTeamIds,
-            minDayOffset,
-            maxDayOffset,
-            flags), ct);
+        var shifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
+            eventSettingsId, urgencyTeamIds, minDayOffset, maxDayOffset,
+            includeRestricted ? ShiftEventQueryFlags.None : ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
 
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIds, ct);
 
         var now = clock.GetCurrentInstant();
         var urgentShifts = shifts
-            .Where(s => s.GetAbsoluteEnd(es) > now)
+            .Where(s => s.Shift.GetAbsoluteEnd(es) > now)
             .Select(s =>
             {
-                var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
-                var score = ShiftUrgencyRanking.CalculateScore(s, confirmedCount, es, clock);
-                var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
+                var confirmedCount = s.ConfirmedCount;
+                var score = ShiftUrgencyRanking.CalculateScore(s.Shift, s.Rota.Priority, confirmedCount, es, clock);
+                var remaining = Math.Max(0, s.Shift.MaxVolunteers - confirmedCount);
                 var teamName = teamLookup.TryGetValue(s.Rota.TeamId, out var t) ? t.Name : string.Empty;
-                return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, []);
+                return ToUrgentShiftInfo(s.Shift, s.Rota, es, score, confirmedCount, remaining, teamName, []);
             })
             .Where(u => u.UrgencyScore > 0)
             .OrderByDescending(u => u.UrgencyScore)
@@ -141,18 +135,10 @@ internal sealed class ShiftBrowseReader(
 
         var departmentTeamIds = await ResolveDepartmentTeamIdsAsync(query.DepartmentId, ct);
 
-        var flags = ShiftEventQueryFlags.IncludeSignups | ShiftEventQueryFlags.IncludeRotaTags;
-        if (!includeAdminOnly)
-            flags |= ShiftEventQueryFlags.ExcludeAdminOnly;
-        if (!includeHidden)
-            flags |= ShiftEventQueryFlags.ExcludeHiddenRotas;
-
-        IReadOnlyList<Shift> shifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
-            query.EventSettingsId,
-            departmentTeamIds,
-            fromOffset,
-            toOffset,
-            flags), ct);
+        var shifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
+            query.EventSettingsId, departmentTeamIds, fromOffset, toOffset,
+            (includeAdminOnly ? ShiftEventQueryFlags.None : ShiftEventQueryFlags.ExcludeAdminOnly)
+            | (includeHidden ? ShiftEventQueryFlags.None : ShiftEventQueryFlags.ExcludeHiddenRotas)), ct);
 
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await GetTeamLookupWithParentsAsync(teamIds, ct);
@@ -167,7 +153,7 @@ internal sealed class ShiftBrowseReader(
         if (includeSignups)
         {
             var userIds = shifts
-                .SelectMany(s => s.ShiftSignups)
+                .SelectMany(s => s.Signups)
                 .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
                 .Select(ss => ss.UserId)
                 .Distinct()
@@ -179,12 +165,12 @@ internal sealed class ShiftBrowseReader(
         return shifts
             .Select(s =>
             {
-                var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
-                var score = ShiftUrgencyRanking.CalculateScore(s, confirmedCount, es, clock);
-                var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
+                var confirmedCount = s.ConfirmedCount;
+                var score = ShiftUrgencyRanking.CalculateScore(s.Shift, s.Rota.Priority, confirmedCount, es, clock);
+                var remaining = Math.Max(0, s.Shift.MaxVolunteers - confirmedCount);
                 var teamName = teamLookup.TryGetValue(s.Rota.TeamId, out var t) ? t.Name : string.Empty;
                 var signups = includeSignups
-                    ? s.ShiftSignups
+                    ? s.Signups
                         .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
                         .Select(ss =>
                         {
@@ -194,11 +180,10 @@ internal sealed class ShiftBrowseReader(
                         })
                         .ToList()
                     : [];
-                return ToUrgentShiftInfo(s, es, score, confirmedCount, remaining, teamName, signups)
+                return ToUrgentShiftInfo(s.Shift, s.Rota, es, score, confirmedCount, remaining, teamName, signups)
                     with
                 { EarlyEntrySignupsClosed = lockedTeams.Contains(s.Rota.TeamId) };
             })
-            .OrderByDescending(u => u.UrgencyScore)
             .ToList();
     }
 
@@ -216,7 +201,8 @@ internal sealed class ShiftBrowseReader(
     /// render a row.
     /// </summary>
     private static UrgentShiftInfo ToUrgentShiftInfo(
-        Shift shift,
+        ShiftInfo shift,
+        RotaInfo rota,
         BurnSettingsInfo es,
         double score,
         int confirmedCount,
@@ -224,8 +210,8 @@ internal sealed class ShiftBrowseReader(
         string departmentName,
         IReadOnlyList<ShiftSignupInfo> signups) =>
         new(
-            ToShiftInfo(shift),
-            ToRotaInfo(shift.Rota),
+            shift,
+            rota,
             departmentName,
             es.GateOpeningDate.PlusDays(shift.DayOffset),
             shift.GetShiftPeriod(es),

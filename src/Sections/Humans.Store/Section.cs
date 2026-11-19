@@ -40,6 +40,7 @@ public sealed class Section :
         services.AddSingleton<IStoreRepository, Repository>();
         services.AddScoped<Service>();
         services.AddScoped<IStoreAccountingRead, StoreOrderReader>();
+        services.AddScoped<StoreTransferBooking>();
 
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
     }
@@ -50,6 +51,7 @@ public sealed class Section :
             new("Catalog",     "StoreAdmin", "Catalog",    null, null, "fa-solid fa-tags",           StorePolicies.Read),
             new("Summary",     "StoreAdmin", "Summary",    null, null, "fa-solid fa-chart-column",   StorePolicies.Read),
             new("Payments",    "StoreAdmin", "Payments",   null, null, "fa-solid fa-credit-card",    StorePolicies.Read),
+            new("Team transfers", "StoreAdmin", "Transfers", null, null, "fa-solid fa-right-left",   StorePolicies.Read),
             new("Order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", StorePolicies.Read),
             new("Payment methods", "StoreAdmin", "PaymentMethods", null, null, "fa-solid fa-wrench", StorePolicies.Read)
         ])
@@ -63,7 +65,7 @@ public sealed class Section :
 
     private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
+        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
         if (activeEvent is not { Year: > 0 })
             return new AdminTileValue("", Detail: "no active event", Secondary: "—");
 

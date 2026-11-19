@@ -143,6 +143,32 @@ public class FileSystemFileStorageTests : IDisposable
         bytes.Should().BeNull();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task TryReadAsync_UnreadableFile_PropagatesAndLogsFailure(bool directoryAtKey)
+    {
+        const string key = "uploads/issues/unreadable.png";
+        await _store.SaveAsync(key, [1, 2, 3], Xunit.TestContext.Current.CancellationToken);
+        var path = Path.Combine(_wwwroot, key);
+        if (directoryAtKey)
+        {
+            File.Delete(path);
+            Directory.CreateDirectory(path);
+        }
+        using var held = directoryAtKey ? null : new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        var read = () => _store.TryReadAsync(key, Xunit.TestContext.Current.CancellationToken);
+
+        var failure = (await read.Should().ThrowAsync<Exception>()).Which;
+        if (directoryAtKey) failure.Should().BeOfType<UnauthorizedAccessException>();
+        else failure.Should().BeOfType<IOException>();
+        var log = _logger.ReceivedCalls().Should().ContainSingle(c =>
+            c.GetArguments()[2]!.ToString()!.Contains("Failed to read file", StringComparison.Ordinal)).Subject.GetArguments();
+        log[0].Should().Be(LogLevel.Error);
+        log[3].Should().BeSameAs(failure);
+    }
+
     [HumansFact]
     public async Task DeleteAsync_DirectoryAtFileKey_PropagatesFailure()
     {
@@ -242,6 +268,18 @@ public class FileSystemFileStorageTests : IDisposable
 
         var bytes = await _store.TryReadAsync("uploads/camps/x/a.jpg", Xunit.TestContext.Current.CancellationToken);
         bytes.Should().BeEquivalentTo(new byte[] { 1 });
+    }
+
+    [HumansFact]
+    public async Task ListAsync_FileAtPrefix_PropagatesFailureInsteadOfAnEmptyInventory()
+    {
+        const string prefix = "uploads";
+        Directory.CreateDirectory(_wwwroot);
+        await File.WriteAllBytesAsync(Path.Combine(_wwwroot, prefix), [1], Xunit.TestContext.Current.CancellationToken);
+
+        var list = async () => await _store.ListAsync(prefix, Xunit.TestContext.Current.CancellationToken);
+
+        await list.Should().ThrowAsync<IOException>();
     }
 
     [HumansFact]

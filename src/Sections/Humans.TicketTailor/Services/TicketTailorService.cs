@@ -147,23 +147,32 @@ internal sealed class TicketTailorService : ITicketVendorService
             {
                 using var response = await _httpClient.GetAsync(url, ct);
                 response.EnsureSuccessStatusCode();
-                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<T>>(JsonOptions, ct);
+                try
+                {
+                    body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<T>>(JsonOptions, ct);
+                }
+                catch (JsonException ex)
+                {
+                    throw new HttpRequestException("TicketTailor pagination response could not be read.", ex);
+                }
             }
 
             if (body?.Data is null)
                 throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Links is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing links.");
             if (body.Data.Any(item => item is null || string.IsNullOrWhiteSpace(getId(item))))
                 throw new HttpRequestException("TicketTailor pagination response contains an item without an identity.");
             if (body.Data.Count == 0)
             {
-                if (body.Links?.Next is not null)
+                if (body.Links.Next is not null)
                     throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 yield break;
             }
 
             yield return body.Data;
-            cursor = body.Links?.Next is not null ? getId(body.Data[^1]) : null;
-            if (body.Links?.Next is not null
+            cursor = body.Links.Next is not null ? getId(body.Data[^1]) : null;
+            if (body.Links.Next is not null
                 && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
                 throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
@@ -491,7 +500,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         TtLinks? Links);
 
     internal sealed record TtLinks(
-        string? Next);
+        [property: JsonRequired] string? Next);
 
     internal sealed record TtOrder(
         string Id,

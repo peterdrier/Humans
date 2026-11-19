@@ -1,5 +1,5 @@
+using Humans.Users.Domain;
 using AwesomeAssertions;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Humans.Users.ViewComponents;
@@ -14,7 +14,7 @@ namespace Humans.Users.Tests.Services;
 public class PreferredLanguageCalculatorTests
 {
     [HumansFact]
-    public void Build_tallies_Active_and_MissingConsents_but_excludes_Suspended()
+    public void Build_tallies_active_users_and_excludes_suspended()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -25,18 +25,10 @@ public class PreferredLanguageCalculatorTests
             MakeUserInfo(u1, "en"),
             MakeUserInfo(u2, "en"),
             MakeUserInfo(u3, "es"),
-            // Suspended user must NOT be counted — verifies the filter respects the
-            // Active + MissingConsents union.
-            MakeUserInfo(u4Suspended, "fr"),
+            MakeUserInfo(u4Suspended, "fr", UserState.Suspended),
         };
-        var partition = new MembershipPartition(
-            IncompleteSignup: [],
-            Active: [u1, u2],
-            MissingConsents: [u3],
-            Suspended: [u4Suspended],
-            PendingDeletion: []);
 
-        var result = PreferredLanguageCalculator.Build(snapshot, partition);
+        var result = PreferredLanguageCalculator.Build(snapshot);
 
         result.Should().HaveCount(2);
         result.Should().Contain(l => l.Language == "en" && l.Count == 2);
@@ -52,18 +44,9 @@ public class PreferredLanguageCalculatorTests
         var snapshot = new[] { MakeUserInfo(esUser, "es") }
             .Concat(enUsers.Select(id => MakeUserInfo(id, "en")))
             .ToList();
-        var partition = new MembershipPartition(
-            IncompleteSignup: [],
-            Active: [.. enUsers, esUser],
-            MissingConsents: [],
-            Suspended: [],
-            PendingDeletion: []);
-
         var users = Substitute.For<IUserService>();
         users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(snapshot);
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(partition);
-        var component = new PreferredLanguageCardViewComponent(users, membership)
+        var component = new PreferredLanguageCardViewComponent(users)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -76,17 +59,19 @@ public class PreferredLanguageCalculatorTests
         result.Select(l => l.Language).Should().Equal("en", "es");
     }
 
-    private static UserInfo MakeUserInfo(Guid id, string preferredLanguage) => UserInfoFactory.Create(
+    private static UserInfo MakeUserInfo(
+        Guid id, string preferredLanguage, UserState state = UserState.Active) => UserInfoFactory.Create(
         user: new User
         {
             Id = id,
             DisplayName = "U",
             PreferredLanguage = preferredLanguage,
+            State = state,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         },
         userEmails: [],
         externalLogins: [],
-        profile: null,
+        profile: new Profile { UserId = id, BurnerName = "U", FirstName = "F", LastName = "L" },
         contactFields: [],
         profileLanguages: [],
         volunteerHistory: []);

@@ -31,9 +31,9 @@ Interactive map surface: a read-only overview, barrio polygon editing, and conta
 
 ### CityPlanningSettings
 
-Per-year singleton controlling the placement phase and map overlays. The current year is the active event's (`ISettingsService.GetActiveEventSettingsAsync().Year`). Reads never create the row: a year with no row reads as the unpersisted defaults; the first admin write creates it.
+Per-year singleton controlling the placement phase and map overlays. The current year is the active event's (`ISettingsService.GetActiveEventSettings().Year`). Reads never create the row: a year with no row reads as the unpersisted defaults; the first admin write creates it.
 
-**Table:** `city_planning_settings`
+**Table:** `city_settings`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -57,7 +57,7 @@ Per-year singleton controlling the placement phase and map overlays. The current
 
 One polygon per CampSeason representing the camp's placed barrio area.
 
-**Table:** `camp_polygons`
+**Table:** `city_camp_polygons`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -72,7 +72,7 @@ One polygon per CampSeason representing the camp's placed barrio area.
 
 Append-only per design-rules.md, *Append-only entities*. The repository exposes no `UpdateAsync` / `RemoveAsync` — restores call `SavePolygonAndAppendHistoryAsync` with a `"Restored from ..."` note, which both updates the polygon and appends a new history row.
 
-**Table:** `camp_polygon_histories`
+**Table:** `city_camp_polygon_history`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -205,7 +205,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `CityPlanningAuditActions` (`src/Sections/Humans.CityPlanning/CityPlanningAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `CityPlanningPlacementOpened`, `CityPlanningPlacementClosed`, `CityPlanningPlacementOverrideCleared`, `CityPlanningContainerPlacementOpened`, `CityPlanningContainerPlacementClosed`, `CityPlanningLimitZoneUpdated`, `CityPlanningLimitZoneDeleted`, `CityPlanningOfficialZonesUpdated`, `CityPlanningOfficialZonesDeleted`, `CityPlanningPlacementDatesUpdated`, `CityPlanningRegistrationInfoUpdated`.
-- **Settings:** `ISettingsService.GetActiveEventSettingsAsync` — the active event's year is city planning's current year.
+- **Settings:** `ISettingsService.GetActiveEventSettings` — the active event's year is city planning's current year.
 - **Camps:** `ICampService` — CampSeason is the anchor entity; CampLead determines who can edit which polygon; `GetCampsForYearAsync`, `GetCampSeasonByIdAsync`, `GetSettingsAsync` used by container admin and map pages. Lead/display data is derived via LINQ over the cached `GetCampsForYearAsync` projection (`CampInfo.IsLead` / `GetLeadSeasonIdForYear`); the polygon-edit gate asks `CampSeasonInfo.IsLead` on the season read by id.
 - **Containers:** `IContainerService` — placement API and container admin pages (`CityPlanningApiController`, `CityPlanningController`) read and write container placement via `IContainerService.GetAllAsync`, `GetPlacementsByYearAsync`, `SavePlacementAsync`, `ClearPlacementAsync`, plus per-camp container CRUD. City Planning hosts the placement API endpoints for an entity owned by the Containers section.
 - **Teams:** `ITeamService` — membership in the city-planning team (slug: `city-planning`) grants admin access.
@@ -218,7 +218,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 The internal `CityPlanningReader` owns camp-map enrichment, history, settings and placement-state projections, edit-permission reads, registration-target resolution and GeoJSON export. `CityPlanningService` delegates those reads and retains geometry/settings mutations and audit sequencing. Both reuse the same event-year resolution; active-event anchoring, time-zone evaluation, team and lead checks, read order and cancellation are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `CityPlanningService` (`Humans.CityPlanning.Services`)
-**Owned tables:** `city_planning_settings`, `camp_polygons`, `camp_polygon_histories`
+**Owned tables:** `city_settings`, `city_camp_polygons`, `city_camp_polygon_history`
 **Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22). Own project since G5 (nobodies-collective/Humans#866).
 
 - `CityPlanningService` lives in `Humans.CityPlanning.Services` and never imports `Microsoft.EntityFrameworkCore` — the repository is the only EF consumer. `CityPlanningArchitectureTests` pins the API controller's route prefix only, not this EF boundary.
@@ -233,7 +233,7 @@ The internal `CityPlanningReader` owns camp-map enrichment, history, settings an
 - **Container placement stays manual.** Its open/close is a plain flag (`IsContainerPlacementOpen`) with no schedule; #2102 scheduled only barrio placement.
 - Index, barrio-map, and container-map GETs propagate request cancellation from the initial member lookup through their existing data reads.
 - **Cross-section reads** route through `ICampService`, `ITeamService`, and `IUserService`. History rows carry no cross-domain navigation: `CampPolygonHistories` stores `ModifiedByUserId` only, and the service resolves names through a batched `IUserService.GetUserInfosAsync` lookup.
-- **Architecture test** — `tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs` enforces one thing: the API controller's route prefix stays `api/city-planning` (the city-planning JavaScript hard-codes this URL). The non-decorator shape and append-only repository surface above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md). The page controller's routes and the `Views/_ViewImports.cshtml` set are exercised by `CityPlanningPageRenderTests`, which lives in `tests/Humans.Integration.Tests` and therefore **does not run in CI** — `build.yml` filters that assembly out deliberately ([`integration-tests-are-not-ci-tests`](../../../../memory/process/integration-tests-are-not-ci-tests.md)). Treat it as a local check, not a gate. The gate for those routes is `tests/e2e/tests/city-planning.spec.ts`, which loads the map screens (and their deny paths) against the deployed QA site; `e2e-qa.yml` runs it daily against QA, so it catches a broken route or a missing `_ViewImports` line within a day of the merge, not on the PR.
+- **Architecture test** — `tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs` enforces one thing: the API controller's route prefix stays `api/city-planning` (the city-planning JavaScript hard-codes this URL). The non-decorator shape and append-only repository surface above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md). The page controller's routes and the `Views/_ViewImports.cshtml` set are exercised by `CityPlanningPageRenderTests`, which lives in `tests/Humans.Integration.Tests` and runs as a PR check ([`integration-tests-are-not-ci-tests`](../../../../memory/process/integration-tests-are-not-ci-tests.md)). The browser check for those routes is `tests/e2e/tests/city-planning.spec.ts`, which loads the map screens (and their deny paths) against the deployed QA site; `e2e-qa.yml` runs it daily against QA, so it catches a broken route or a missing `_ViewImports` line within a day of the merge, not on the PR.
 - **Cross-section surface** — `Humans.CityPlanning.Contracts` is its own project, not a `Contracts/` folder, because of **Containers alone**: `Humans.Containers` needs `ICityPlanningService` while this section references `Humans.Containers`, so that pair is mutual and a folder would cycle it. `Humans.Camps` consumes the leaf too — `CampService` clears a deleted camp's polygons through `ICityPlanningWrite` — but is not a reason it must exist: Camps already references `Humans.CityPlanning` outright and this section references only `Humans.Camps.Contracts` back, so that pair is acyclic either way. It holds `ICityPlanningService`, `ICityPlanningWrite` (`DeleteCampPolygonsForSeasonsAsync` only), `CityPlanningSettingsDto` and `CityPlanningOptions`. Everything else in the section is `internal`.
 - **Resources** — `CityPlanningResource`, every supported culture at key parity. `Containers_*` keys on the barrio container pages are Containers' vocabulary and are bound through `ContainersLocalizer`; `Common_*` stays in `SharedResource`. Container form and placement APIs localize typed owner refusals through `ContainersResource`, with warning logs and HTTP 422 for API refusals. Dependency exceptions propagate and are never classified by message or shown as validation feedback.
 - **Per-map screens, not generic layers.** Each map is a purpose-built screen — overview, barrio placement, container placement. There is no generic `MapFeature` entity and no toggleable-layer system; `Docs/health.md` records that alternative as declined and why.
@@ -248,7 +248,7 @@ The internal `CityPlanningReader` owns camp-map enrichment, history, settings an
 - Season-scoped cascade delete (`DeletePolygonsForCampSeasonsAsync`) — removes a season's polygon and its history rows in one unit of work, and is the one exception to append-only. Reached from Camps through `ICityPlanningWrite.DeleteCampPolygonsForSeasonsAsync` when a camp is deleted.
 - Settings read (`GetSettingsAsync` — null when the year has no row; never writes) and upsert (`GetOrCreateSettingsAsync`, `MutateSettingsAsync` — write paths only). All field-level mutations (barrio override, barrio schedule, container phase, limit zone, official zones, registration info) flow through `MutateSettingsAsync` at the service layer. It returns `Task`, so no EF entity leaves the repository.
 
-Per design-rules.md, *Append-only entities*, `camp_polygon_histories` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
+Per design-rules.md, *Append-only entities*, `city_camp_polygon_history` is append-only — the repository intentionally exposes no `UpdateHistoryAsync` / `RemoveHistoryAsync`.
 
 ## Issue queue
 

@@ -22,6 +22,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         Guid? userId = null,
         string? actions = null,
         Instant? since = null,
+        bool includeRelated = false,
         int limit = 20,
         string layout = "line",
         string? columns = null,
@@ -47,7 +48,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         try
         {
             var events = await ResolveAsync(
-                entityType, entityId, entityIds, userId, actionList, limit,
+                entityType, entityId, entityIds, userId, actionList, limit, includeRelated,
                 HttpContext.RequestAborted);
 
             model.Events = since.HasValue
@@ -74,6 +75,7 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
         Guid? userId,
         IReadOnlyList<string>? actionList,
         int limit,
+        bool includeRelated,
         CancellationToken ct)
     {
         // Non-null but empty means "no matches", never "drop the id filter": a zero-line Store
@@ -87,12 +89,12 @@ public class AuditLogViewComponent(IAuditViewerService auditViewer, ILogger<Audi
             foreach (var id in entityIds.Distinct())
             {
                 merged.AddRange(await auditViewer.GetFilteredAsync(
-                    entityType, id, userId, actionList, limit, ct));
+                    entityType, id, userId, actionList, limit, includeRelated, ct));
             }
             return merged.OrderByDescending(e => e.OccurredAt).Take(limit).ToList();
         }
 
-        return await auditViewer.GetFilteredAsync(entityType, entityId, userId, actionList, limit, ct);
+        return await auditViewer.GetFilteredAsync(entityType, entityId, userId, actionList, limit, includeRelated, ct);
     }
 
     private static string ViewNameFor(string layout) => layout switch

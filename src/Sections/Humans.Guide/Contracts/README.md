@@ -2,9 +2,9 @@
 
 Empty on purpose, and a folder rather than a project.
 
-Nothing outside the section reads a guide page. `GuideController` is the only consumer of
-`IGuideContentService`, `IGuideRoleResolver`, `GuideFilter` and `GuideFiles`, and it moved in
-with them, so there is no cross-section surface left to publish. The one Base type that keeps
+Nothing outside the section reads a guide page: `IGuideContentService`, `IGuideRoleResolver`,
+`GuideFilter` and `GuideFiles` are internal and every consumer is inside the section, so there is
+no cross-section surface to publish. The one Base type that keeps
 the "Guide" name — `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` — is
 not the section's: it is a GitHub-markdown fetcher whose signatures name only `string`, with
 consumers outside Guide (the Agent section's preload readers and its

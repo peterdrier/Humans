@@ -17,7 +17,6 @@ internal sealed class ConsentReviewQueueItemViewModel
     public ConsentCheckStatus? ConsentCheckStatus { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public DateTime ProfileCreatedAt { get; set; }
-    public bool HasPendingApplication { get; set; }
     public int ConsentCount { get; set; }
     public int RequiredConsentCount { get; set; }
 }
@@ -34,6 +33,4 @@ internal sealed class ConsentReviewQueueDetailViewModel
     public DateTime ProfileCreatedAt { get; set; }
     public int ConsentCount { get; set; }
     public int RequiredConsentCount { get; set; }
-    public bool HasPendingApplication { get; set; }
-    public string? ApplicationMotivation { get; set; }
 }

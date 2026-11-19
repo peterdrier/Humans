@@ -147,6 +147,17 @@ public sealed class Section :
                 Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
                 Of("Board voting", ("ConsentCoordinator", Denied), ("ShiftsAdmin", Denied), ("Board", Allowed)),
             ]
+        },
+        new()
+        {
+            Key = "LegalDocuments",
+            SectionName = "Legal Documents",
+            Order = 92,
+            Roles = ["Board", "Admin"],
+            Features =
+            [
+                Of("Legal documents", ("Board", Allowed), ("Admin", Allowed)),
+            ]
         }
     ];
 
@@ -164,7 +175,7 @@ public sealed class Section :
         var users = sp.GetRequiredService<IUserService>();
         var reviews = await sp.GetRequiredService<IConsentService>().GetConsentReviewsAsync();
         var count = (await users.GetAllUserInfosAsync()).Count(u =>
-            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
+            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u));
         return count > 0 ? count : null;
     }
 
@@ -173,6 +184,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
     [
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "ConsentReview", 70),
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "LegalDocuments", 83),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)

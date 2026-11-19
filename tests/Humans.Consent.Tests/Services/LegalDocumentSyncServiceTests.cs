@@ -33,7 +33,7 @@ using Humans.Users.Contracts;
 namespace Humans.Consent.Tests.Services;
 
 /// <summary>
-/// <see cref="LegalDocumentSyncService"/> is the sole writer for <c>legal_documents</c>/<c>document_versions</c>,
+/// <see cref="LegalDocumentSyncService"/> is the sole writer for <c>consent_legal_documents</c>/<c>consent_document_versions</c>,
 /// owning both the admin (<see cref="IAdminLegalDocumentService"/>) and GitHub-sync
 /// (<see cref="ILegalDocumentSyncManagement"/>) write surfaces, and evicts after each successful write.
 /// </summary>
@@ -92,6 +92,37 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             }),
             Clock,
             NullLogger<LegalDocumentSyncService>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ConsentShutdown_CommittedPublicationFinishesNoticesBeforeNextDocument(bool scheduled)
+    {
+        using var shutdown = new CancellationTokenSource();
+        StubActiveUser();
+        var first = await SeedDocumentAsync("First", "first/", "old");
+        var next = await SeedDocumentAsync("Next", "next/", "old");
+        StubGitHubFolder("first/", "First content", "new-first", "First update");
+        StubGitHubFolder("next/", "Next content", "new-next", "Next update");
+        _audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", first.Id,
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(async _ => await shutdown.CancelAsync());
+
+        var error = await Xunit.Record.ExceptionAsync(async () =>
+        {
+            if (scheduled) await _service.SyncAllDocumentsAsync(shutdown.Token);
+            else await _service.SyncDocumentAsync(first.Id, shutdown.Token);
+        });
+
+        if (scheduled) error.Should().BeAssignableTo<OperationCanceledException>();
+        else error.Should().BeNull();
+        var notice = Notifier.ReceivedCalls().Where(call => Equals(call.GetArguments()[0], ConsentNotificationSources.LegalDocumentPublished))
+            .Should().ContainSingle().Which.GetArguments();
+        notice[^1].Should().Be(CancellationToken.None);
+        await _gitHub.DidNotReceive().DiscoverLanguageFilesAsync("next/", Arg.Any<CancellationToken>());
+        await using var verify = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        (await verify.DocumentVersions.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansTheory]
@@ -1081,16 +1112,17 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     private void StubActiveUser()
     {
         var profile = UserFixtures.Profile(
-            burnerName: "Burner", firstName: "First", lastName: "Last",
             createdAt: Clock.GetCurrentInstant());
         var user = UserInfo.Create(
             user: new User
             {
                 Id = Guid.NewGuid(),
-                DisplayName = profile.BurnerName,
+                BurnerName = "Burner",
+                FirstName = "First",
+                LastName = "Last",
                 PreferredLanguage = "en",
                 CreatedAt = profile.CreatedAt,
-                State = UserFixtures.StateFor(profile),
+                State = UserState.Active,
             },
             userEmails: [],
             externalLogins: [],

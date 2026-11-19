@@ -82,10 +82,10 @@ internal sealed class EventGuideAuthoring(
 
     internal async Task<EventSaveResult> UpdateAndResubmitAsync(Guid eventId, EventEdit edit, CancellationToken ct = default)
     {
-        await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct);
+        var guideEvent = await LoadEventAsync(eventId, ct);
+        await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct, guideEvent.EventSettingsId);
         if (await repo.GetCategoryAsync(edit.CategoryId, ct) is not { IsActive: true })
             return new("Events_CategoryUnavailable", nameof(EventEdit.CategoryId));
-        var guideEvent = await LoadEventAsync(eventId, ct);
         if (guideEvent.CampId is null && (edit.VenueId is not { } venueId
             || venueId == Guid.Empty || await repo.GetVenueAsync(venueId, ct) is not { IsActive: true }))
             return new("Events_VenueUnavailable", nameof(EventEdit.VenueId));
@@ -125,8 +125,8 @@ internal sealed class EventGuideAuthoring(
 
     internal async Task AdminUpdateAsync(Guid eventId, EventEdit edit, Guid actorUserId, string? note, CancellationToken ct = default)
     {
-        await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct);
         var guideEvent = await LoadEventAsync(eventId, ct);
+        await EnsureValidRecurrenceDaysAsync(edit.IsRecurring, edit.RecurrenceDays, ct, guideEvent.EventSettingsId);
         ApplyEdit(guideEvent, edit);
         var now = clock.GetCurrentInstant();
         guideEvent.LastUpdatedAt = now; // Status deliberately untouched — admin edit never re-queues.
@@ -153,11 +153,13 @@ internal sealed class EventGuideAuthoring(
         return null;
     }
 
-    private async Task EnsureValidRecurrenceDaysAsync(bool isRecurring, string? recurrenceDays, CancellationToken ct)
+    private async Task EnsureValidRecurrenceDaysAsync(
+        bool isRecurring, string? recurrenceDays, CancellationToken ct, Guid? eventSettingsId = null)
     {
         if (!isRecurring) return;
         var settings = await repo.GetGuideSettingsAsync(ct);
-        var eventSettings = settings is null ? null : await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
+        var eventSettings = settings is null ? null
+            : await settingsService.GetEventSettingsByIdAsync(eventSettingsId ?? settings.EventSettingsId, ct);
         if (eventSettings is null || !EventRecurrenceDays.HasOnlyEventOffsets(recurrenceDays, eventSettings.EventEndOffset))
             throw new InvalidOperationException("Recurrence days must be day offsets inside the event calendar.");
     }

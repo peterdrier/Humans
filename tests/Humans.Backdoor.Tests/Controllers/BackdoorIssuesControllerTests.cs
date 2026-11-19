@@ -39,8 +39,8 @@ public class BackdoorIssuesControllerTests
     public void Json_triage_models_validate_defined_enum_values(int value, bool valid)
     {
         var status = JsonSerializer.Deserialize<UpdateIssueStatusModel>("{\"Status\":" + value + "}")!;
-        var create = JsonSerializer.Deserialize<ApiCreateIssueModel>("{\"Category\":" + value + "}")!;
-        create.ReporterUserId = KeyOwnerId;
+        var create = JsonSerializer.Deserialize<ApiCreateIssueModel>(
+            JsonSerializer.Serialize(new { ReporterUserId = KeyOwnerId, Category = value }))!;
         create.Title = "Title";
         create.Description = "Description";
 
@@ -63,6 +63,33 @@ public class BackdoorIssuesControllerTests
             "{\"ReporterUserId\":\"11111111-1111-1111-1111-111111111111\",\"Title\":\"Title\",\"Description\":\"Description\"}");
 
         deserialize.Should().Throw<JsonException>().Which.Message.Should().Contain("Category");
+    }
+
+    [HumansFact]
+    public void Json_issue_creation_requires_explicit_reporter()
+    {
+        Action deserialize = () => JsonSerializer.Deserialize<ApiCreateIssueModel>(
+            "{\"Category\":0,\"Title\":\"Title\",\"Description\":\"Description\"}");
+
+        deserialize.Should().Throw<JsonException>().Which.Message.Should().Contain("ReporterUserId");
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Create_rejects_empty_or_unknown_reporter_before_filing(bool emptyId)
+    {
+        var result = await _sut.Create(new ApiCreateIssueModel
+        {
+            ReporterUserId = emptyId ? Guid.Empty : Guid.NewGuid(),
+            Category = IssueCategory.Bug,
+            Title = "T",
+            Description = "D",
+        });
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _issues.DidNotReceiveWithAnyArgs().CreateIssueAsync(
+            default, default, default!, default!, default, default, default, default);
     }
 
     public BackdoorIssuesControllerTests()
@@ -353,6 +380,8 @@ public class BackdoorIssuesControllerTests
     {
         var reporterId = Guid.NewGuid();
         var newIssueId = Guid.NewGuid();
+        _users.GetUserInfoAsync(reporterId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = reporterId }, [], [], profile: null));
         _issues.CreateIssueAsync(
                 reporterId, IssueCategory.Bug, "T", "D", "Tickets", null, KeyOwnerId,
                 Arg.Any<CancellationToken>())

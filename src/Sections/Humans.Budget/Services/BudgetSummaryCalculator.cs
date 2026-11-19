@@ -37,31 +37,31 @@ internal static class BudgetSummaryCalculator
 
         var incomeCategories = groups
             .SelectMany(g => g.Categories)
-            .Select(c => (c.Name, Amount: c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount)))
+            .Select(c => (c.Name, Amount: c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount),
+                BudgetCategoryId: (Guid?)c.Id))
             .Where(c => c.Amount > 0)
-            .OrderByDescending(c => c.Amount)
             .ToList();
 
         if (vatCredits > 0)
-            incomeCategories.Add((Resources.GetString("Budget_VatCredit", CultureInfo.CurrentUICulture)!, vatCredits));
+            incomeCategories.Add((Resources.GetString("Budget_VatCredit", CultureInfo.CurrentUICulture)!, vatCredits, null));
 
         var incomeSlices = BuildSlices(incomeCategories);
 
         var expenseCategories = groups
             .SelectMany(g => g.Categories)
-            .Select(c => (c.Name, Amount: Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount))))
+            .Select(c => (c.Name, Amount: Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)),
+                BudgetCategoryId: (Guid?)c.Id))
             .Where(c => c.Amount > 0)
-            .OrderByDescending(c => c.Amount)
             .ToList();
 
         if (vatExpenses > 0)
-            expenseCategories.Add((Resources.GetString("Budget_VatLiability", CultureInfo.CurrentUICulture)!, vatExpenses));
+            expenseCategories.Add((Resources.GetString("Budget_VatLiability", CultureInfo.CurrentUICulture)!, vatExpenses, null));
 
         var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
         if (profit > 0)
         {
-            expenseCategories.Add((Resources.GetString("Budget_CashReserves", CultureInfo.CurrentUICulture)!, profit * 0.9m));
-            expenseCategories.Add((Resources.GetString("Budget_SpanishTaxes", CultureInfo.CurrentUICulture)!, profit * 0.1m));
+            expenseCategories.Add((Resources.GetString("Budget_CashReserves", CultureInfo.CurrentUICulture)!, profit * 0.9m, null));
+            expenseCategories.Add((Resources.GetString("Budget_SpanishTaxes", CultureInfo.CurrentUICulture)!, profit * 0.1m, null));
         }
 
         var expenseSlices = BuildSlices(expenseCategories);
@@ -95,13 +95,13 @@ internal static class BudgetSummaryCalculator
             .ToList();
 
         var allExpenseEntries = summary.ExpenseSlices
-            .Select(s => (s.Name, s.Amount))
-            .Concat(groupBuffers.Where(b => b.Raw < 0).Select(b => (b.Name, Amount: Math.Abs(b.Raw))))
+            .Select(s => (s.Name, s.Amount, s.BudgetCategoryId))
+            .Concat(groupBuffers.Where(b => b.Raw < 0).Select(b => (b.Name, Amount: Math.Abs(b.Raw), BudgetCategoryId: (Guid?)null)))
             .ToList();
 
         var allIncomeEntries = summary.IncomeSlices
-            .Select(s => (s.Name, s.Amount))
-            .Concat(groupBuffers.Where(b => b.Raw > 0).Select(b => (b.Name, Amount: b.Raw)))
+            .Select(s => (s.Name, s.Amount, s.BudgetCategoryId))
+            .Concat(groupBuffers.Where(b => b.Raw > 0).Select(b => (b.Name, Amount: b.Raw, BudgetCategoryId: (Guid?)null)))
             .ToList();
 
         return new BudgetSummaryResult
@@ -116,11 +116,12 @@ internal static class BudgetSummaryCalculator
     }
 
     private static IReadOnlyList<BudgetSliceResult> BuildSlices(
-        IReadOnlyCollection<(string Name, decimal Amount)> entries)
+        IReadOnlyCollection<(string Name, decimal Amount, Guid? BudgetCategoryId)> entries)
     {
         var total = entries.Sum(entry => entry.Amount);
         return entries.Select(entry => new BudgetSliceResult
         {
+            BudgetCategoryId = entry.BudgetCategoryId,
             Name = entry.Name,
             Amount = entry.Amount,
             Percentage = total > 0 ? entry.Amount / total * 100 : 0

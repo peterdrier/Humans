@@ -1,0 +1,22 @@
+using Humans.Base.Interfaces.Repositories;
+using Humans.Google.Contracts;
+using Humans.Google.Domain;
+using NodaTime;
+
+namespace Humans.Google.Data;
+
+internal interface IWorkspaceIdentityRepository : IRepository
+{
+    Task<WorkspaceIdentityRecord?> GetAsync(Guid userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<WorkspaceIdentityRecord>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>Inserts or overwrites the member's row. A changed <paramref name="email"/> clears
+    /// <see cref="WorkspaceIdentityRecord.DriveEmail"/>.</summary>
+    Task UpsertAsync(Guid userId, string? email, GoogleEmailStatus status, Instant now, CancellationToken ct = default);
+
+    /// <summary>Inserts or overwrites the member's row, including its Drive address.</summary>
+    Task SetDriveEmailAsync(Guid userId, string email, GoogleEmailStatus status, string driveEmail, Instant now, CancellationToken ct = default);
+
+    Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default);
+}

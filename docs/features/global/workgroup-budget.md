@@ -26,7 +26,7 @@ Design settled with Peter, 2026-09-25.
 | Budget amount | Workgroups | A register attribute shown to people browsing the group. Finance and Expenses never read it. |
 | Which Holded account the group books to | Workgroups (`HoldedAccountNumber` / `HoldedAccountId` on the row) | Same posture as `DriveFolderId`: an opaque external id, no FK. |
 | Holded account creation, naming, numbering, dedup | Finance | Finance already provisions expense accounts for budget categories; the collision rules live once. |
-| Registry of expense accounts Finance created outside the budget map | Finance (`holded_managed_accounts`) | Finance's own concern: the doc sync must not dump those accounts' docs on the Unmatched queue, and Expenses needs an "active" flag. Finance stores no workgroup id. |
+| Registry of expense accounts Finance created outside the budget map | Finance (`finance_holded_managed_accounts`) | Finance's own concern: the doc sync must not dump those accounts' docs on the Unmatched queue, and Expenses needs an "active" flag. Finance stores no workgroup id. |
 | Expense report → Holded account | Expenses (phase 2) | A report knows which account it goes to, not which budget it belongs to. |
 
 Nobody outside Workgroups learns what a workgroup is. The later "ledger for this account" view on
@@ -36,7 +36,7 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
 
 ### Finance
 
-**`holded_managed_accounts`** (new table, `FinanceDbContext`)
+**`finance_holded_managed_accounts`** (new table, `FinanceDbContext`)
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -59,8 +59,8 @@ the group page is a pull by Workgroups through `IHoldedService.GetLedgerLinesAsy
   3. Otherwise allocate the next free number in the `62900100` block against the local
      category map, the local managed registry and the chart (same loop as
      `GetProvisioningPlanAsync`), create the account, return it with `Created = true`.
-  Every path upserts a `holded_managed_accounts` row unless the account is already in
-  `holded_category_map` (a budget-category account linked on purpose stays Finance's category
+  Every path upserts a `finance_holded_managed_accounts` row unless the account is already in
+  `finance_holded_category_maps` (a budget-category account linked on purpose stays Finance's category
   account and is not re-registered). Audited (`HoldedExpenseAccountCreated` / `…Linked`).
 - `IFinanceWrite.SetExpenseAccountActiveAsync(int accountNum, bool isActive, CancellationToken)`
   — flips the registry row. No-op when the number is a category account or unknown.

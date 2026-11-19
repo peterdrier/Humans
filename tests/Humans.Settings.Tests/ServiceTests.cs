@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
@@ -32,10 +34,51 @@ public sealed class ServiceTests
     {
         _clock.GetCurrentInstant().Returns(Now);
         _repository.GetValueAsync(SettingKeys.EventTimeZoneId, Arg.Any<CancellationToken>()).Returns((string?)null);
+
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ISettingsWriteService>(CachingSettingsService.InnerServiceKey, (_, _) => BuildSut());
+        _cache = new CachingSettingsService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingSettingsService>.Instance);
     }
 
-    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _clock,
+    private readonly CachingSettingsService _cache;
+
+    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _cache, _clock,
         Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
+
+    [HumansFact]
+    public async Task TimeZoneSave_WithNoEvents_StillClearsTheSnapshot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        (await _cache.GetTimeZoneIdAsync(ct)).Should().Be("Europe/Madrid");
+
+        _repository.GetValueAsync(SettingKeys.EventTimeZoneId, Arg.Any<CancellationToken>()).Returns("Atlantic/Canary");
+        await _cache.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct);
+
+        (await _cache.GetTimeZoneIdAsync(ct)).Should().Be("Atlantic/Canary");
+    }
+
+    [HumansFact]
+    public async Task EventReads_AreServedFromMemoryUntilAWriteReloadsThem()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var first = MakeEntity(Guid.NewGuid());
+        var second = MakeEntity(Guid.NewGuid());
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([first]);
+        await ((IHostedService)_cache).StartAsync(ct);
+
+        (_cache.GetActiveEventSettings())!.Id.Should().Be(first.Id);
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([second]);
+        (_cache.GetActiveEventSettings())!.Id.Should().Be(first.Id, "a read must not reach the repository");
+        await _repository.Received(1).GetAllEventSettingsAsync(Arg.Any<CancellationToken>());
+
+        _repository.DeleteEventSettingsAsync(first.Id, Arg.Any<CancellationToken>()).Returns(1);
+        await _cache.DeleteEventAsync(first.Id, ct);
+
+        (_cache.GetActiveEventSettings())!.Id.Should().Be(second.Id, "a write must reload the snapshot");
+    }
 
     private static EventSettings MakeEntity(Guid id, bool isActive = true) => new()
     {
@@ -77,7 +120,7 @@ public sealed class ServiceTests
         var writeOptions = new DbContextOptionsBuilder<SettingsDbContext>(options)
             .AddInterceptors(new LostSettingsSaveAcknowledgement(failure, failedSave)).Options;
         var service = new Service(new Repository(new TestDbContextFactory<SettingsDbContext>(writeOptions)),
-            _auditLog, [_listenerOne, _listenerTwo], _clock,
+            _auditLog, [_listenerOne, _listenerTwo], _cache, _clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
         var draft = MakeDto(next.Id, EventSettingsStatus.Inactive) with
         { GateOpeningDate = next.GateOpeningDate, EventName = "Revised" };
@@ -178,12 +221,13 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveEventSettingsAsync_MapsEveryFieldOntoTheDto()
+    public async Task GetEventSettingsByIdAsync_MapsEveryFieldOntoTheDto()
     {
         var id = Guid.NewGuid();
-        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(MakeEntity(id));
+        var row = MakeEntity(id);
+        _repository.GetEventSettingsByIdAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
 
-        var dto = await BuildSut().GetActiveEventSettingsAsync(TestContext.Current.CancellationToken);
+        var dto = await BuildSut().GetEventSettingsByIdAsync(row.Id, TestContext.Current.CancellationToken);
 
         dto.Should().NotBeNull();
         dto.Id.Should().Be(id);
@@ -201,27 +245,25 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveEventSettingsAsync_CopiesTheDictionaries()
+    public async Task GetEventSettingsByIdAsync_CopiesTheDictionaries()
     {
         // The entity is the section's own mutable EF object; handing its
         // dictionary out by reference would let a caller edit tracked state.
         var entity = MakeEntity(Guid.NewGuid());
-        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
+        _repository.GetEventSettingsByIdAsync(entity.Id, Arg.Any<CancellationToken>()).Returns(entity);
 
-        var dto = await BuildSut().GetActiveEventSettingsAsync(TestContext.Current.CancellationToken);
+        var dto = await BuildSut().GetEventSettingsByIdAsync(entity.Id, TestContext.Current.CancellationToken);
 
         dto!.EarlyEntryCapacity.Should().NotBeSameAs(entity.EarlyEntryCapacity);
         dto.BarriosEarlyEntryAllocation.Should().NotBeSameAs(entity.BarriosEarlyEntryAllocation);
     }
 
     [HumansFact]
-    public async Task GetActiveEventSettingsAsync_ReturnsNullWhenNoEventIsActive()
+    public void GetActiveEventSettings_IsOnlyServedByTheCache()
     {
-        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettings?)null);
+        var read = () => BuildSut().GetActiveEventSettings();
 
-        var dto = await BuildSut().GetActiveEventSettingsAsync(TestContext.Current.CancellationToken);
-
-        dto.Should().BeNull();
+        read.Should().Throw<NotSupportedException>();
     }
 
     [HumansFact]
@@ -252,13 +294,13 @@ public sealed class ServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveEventSettingsAsync_MapsANullBarriosAllocation()
+    public async Task GetEventSettingsByIdAsync_MapsANullBarriosAllocation()
     {
         var entity = MakeEntity(Guid.NewGuid());
         entity.BarriosEarlyEntryAllocation = null;
-        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(entity);
+        _repository.GetEventSettingsByIdAsync(entity.Id, Arg.Any<CancellationToken>()).Returns(entity);
 
-        var dto = await BuildSut().GetActiveEventSettingsAsync(TestContext.Current.CancellationToken);
+        var dto = await BuildSut().GetEventSettingsByIdAsync(entity.Id, TestContext.Current.CancellationToken);
 
         dto!.BarriosEarlyEntryAllocation.Should().BeNull();
     }
@@ -715,12 +757,13 @@ public sealed class ServiceTests
     // The timezone is one global setting; the copy on each event row is never read.
 
     [HumansFact]
-    public async Task GetActiveEventSettingsAsync_ReadsTheGlobalTimezoneNotTheRowCopy()
+    public async Task GetEventSettingsByIdAsync_ReadsTheGlobalTimezoneNotTheRowCopy()
     {
-        _repository.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(MakeEntity(Guid.NewGuid()));
+        var row = MakeEntity(Guid.NewGuid());
+        _repository.GetEventSettingsByIdAsync(row.Id, Arg.Any<CancellationToken>()).Returns(row);
         _repository.GetValueAsync(SettingKeys.EventTimeZoneId, Arg.Any<CancellationToken>()).Returns("Atlantic/Canary");
 
-        var dto = await BuildSut().GetActiveEventSettingsAsync(TestContext.Current.CancellationToken);
+        var dto = await BuildSut().GetEventSettingsByIdAsync(row.Id, TestContext.Current.CancellationToken);
 
         dto!.TimeZoneId.Should().Be("Atlantic/Canary");
     }

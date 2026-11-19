@@ -3,7 +3,7 @@ name: Display sort belongs at the presentation layer, not in services or reposit
 description: Display ordering belongs in controllers/views, not services or repos. Repo-layer `OrderBy` is allowed only for tie-breakers/top-N/chronological streams, marked `// arch:db-sort-ok`.
 ---
 
-Display ordering is presentation. Anything **above** the service boundary may sort: controllers, views (`.cshtml`), view-model assembly, partials, tag helpers — all fine. Anything **at or below** the service boundary should not: a repo file (`src/Humans.Infrastructure/Repositories/**/*.cs`) or an Application service (`src/Humans.Application/Services/**/*.cs`) calling `.OrderBy(...)` / `.OrderByDescending(...)` for display ordering is a layer leak.
+Display ordering is presentation. Anything **above** the service boundary may sort: controllers, views (`.cshtml`), view-model assembly, partials, tag helpers — all fine. Anything **at or below** the service boundary should not: a section's repository or service calling `.OrderBy(...)` / `.OrderByDescending(...)` for display ordering is a layer leak.
 
 **Why:** Presentation concerns leaking into the data/business layer make queries brittle (changing the UI requires a query change), prevent cache reuse (two views sorting the same dataset differently double the cache footprint), and mix concerns (a repo method is no longer "give me the data" — it's "give me the data the way View X needs it"). Repos return materialized lists per the project's thick-repo doctrine; the consumer chooses the order. Services orchestrate domain logic; "in what order should the UI display this list" is not their job.
 
@@ -20,6 +20,6 @@ Display ordering is presentation. Anything **above** the service boundary may so
 - Existing repo method's `OrderBy` is an exception per the list above? Add `// arch:db-sort-ok <one-line reason>` so the ratchet knows to allow it.
 - Find yourself wanting to add a `sortBy` parameter to a repo or service method? That's the smell — push the sort up to the caller.
 
-**Scope of the ratchet:** today's `DisplaySortInControllersRule` scans only `src/Humans.Infrastructure/Repositories/**/*.cs`. The "no sort in Application services" half of the policy is enforced by review, not by the ratchet, so review should still flag service-layer `OrderBy` for display.
+**Scope of the ratchet:** today's `DisplaySortInControllersRule` scans only each section's `Data/` folder (`src/Sections/*/Data/**/*.cs`). The "no sort in services" half of the policy is enforced by review, not by the ratchet, so review should still flag service-layer `OrderBy` for display.
 
 **Related:** [`no-linq-at-db-layer`](no-linq-at-db-layer.md) — same shape (data shape leaks across the repo boundary).

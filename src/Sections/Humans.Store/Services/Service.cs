@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
@@ -18,6 +19,7 @@ namespace Humans.Store.Services;
 internal sealed class Service(
     IStoreRepository repo,
     IAuditLogService audit,
+    IAuditViewerService auditViewer,
     ICampService campService,
     ITeamService teamService,
     IClock clock,
@@ -29,7 +31,7 @@ internal sealed class Service(
     ILogger<Service> logger) : IApplicationService
 {
     private readonly StoreOrderAdministration orderAdministration = new(repo, audit, clock, logger);
-    private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
+    private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService, auditViewer, audit);
     private readonly StoreStripePayments stripePayments = new(repo, audit, stripeService, clock, logger);
     private readonly StoreMetadataRepair metadataRepair = new(repo, audit, campService, clock, logger);
     private readonly StoreCatalog productCatalog = new(repo, audit, clock, logger);
@@ -136,7 +138,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
-        var year = await GetCurrentEventYearAsync(ct);
+        var year = GetCurrentEventYear();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
@@ -199,7 +201,7 @@ internal sealed class Service(
             return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await settingsService.TodayInEventZoneAsync(clock, ct);
+        var today = clock.TodayIn(settingsService.GetActiveEventSettings()?.TimeZone);
         var deadlinePassed = today > product.OrderableUntil;
 
         var line = new OrderLine
@@ -218,7 +220,8 @@ internal sealed class Service(
 
         await audit.LogAsync(
             StoreAuditActions.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,
-            $"Added {qty} × '{product.Name}' to order {order.Id}"
+            $"Added {qty} × '{product.Name}' at EUR {product.UnitPriceEur:0.00} + {product.VatRatePercent:0.##}% VAT"
+                + (product.DepositAmountEur is { } deposit ? $" + EUR {deposit:0.00} deposit" : string.Empty)
                 + (deadlinePassed ? $" (past order deadline {product.OrderableUntil})" : string.Empty),
             actorUserId, order.Id, AuditEntityTypes.Order);
 
@@ -237,13 +240,13 @@ internal sealed class Service(
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = await settingsService.TodayInEventZoneAsync(clock, ct);
+        var today = clock.TodayIn(settingsService.GetActiveEventSettings()?.TimeZone);
         var deadlinePassed = today > ctx.ProductOrderableUntil;
 
         await repo.RemoveLineAsync(lineId, ct);
         await audit.LogAsync(
             StoreAuditActions.StoreLineRemoved, AuditEntityTypes.OrderLine, lineId,
-            $"Removed line {lineId} from order {ctx.OrderId}"
+            $"Removed {ctx.Qty} × '{ctx.ProductName}' (added at EUR {ctx.UnitPriceSnapshot:0.00})"
                 + (deadlinePassed ? $" (past order deadline {ctx.ProductOrderableUntil})" : string.Empty),
             actorUserId, ctx.OrderId, AuditEntityTypes.Order);
         return MutationResult.Success;
@@ -285,7 +288,7 @@ internal sealed class Service(
     }
 
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
-    public Task<int> GetCurrentEventYearAsync(CancellationToken ct = default) => orderReader.GetCurrentEventYearAsync(ct);
+    public int GetCurrentEventYear() => orderReader.GetCurrentEventYear();
 
     [ExternalWrite]
     public Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
@@ -301,9 +304,11 @@ internal sealed class Service(
         stripePayments.RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, status, ct);
 
     /// <summary>
-    /// A <see cref="PaymentMethod.DepositReturn"/> credits a returned deposit; a <see cref="PaymentMethod.Refund"/>
-    /// books money sent back by hand from the Stripe dashboard, stored negative and citing its reference. Refunds are
-    /// uncapped (a camp may have overpaid); deposit returns never exceed the order's deposits.
+    /// A <see cref="PaymentMethod.BankTransfer"/> books money received in the bank, citing the Holded bank movement id
+    /// and its value date; a <see cref="PaymentMethod.DepositReturn"/> credits a returned deposit; a
+    /// <see cref="PaymentMethod.Refund"/> books money sent back by hand from the Stripe dashboard, stored negative and
+    /// citing its reference. Transfers and refunds are uncapped (a camp may have overpaid); deposit returns never
+    /// exceed the order's deposits. A <paramref name="valueDate"/> becomes the payment's received date.
     /// </summary>
     public Task<AdminMutationResult> RecordAdminPaymentAsync(
         Guid orderId,
@@ -311,9 +316,11 @@ internal sealed class Service(
         decimal amountEur,
         string? externalRef,
         string? notes,
+        LocalDate? valueDate,
         Guid actorUserId,
         CancellationToken ct = default) =>
-        orderAdministration.RecordAdminPaymentAsync(orderId, method, amountEur, externalRef, notes, actorUserId, orderReader, ct);
+        orderAdministration.RecordAdminPaymentAsync(
+            orderId, method, amountEur, externalRef, notes, valueDate, actorUserId, orderReader, ct);
 
     /// <summary>
     /// Hard delete of a payment recorded in error. The row is gone for good, so the audit entry carries everything
@@ -329,6 +336,15 @@ internal sealed class Service(
     public Task<StripeReconciliationResult> RecordMissingStripePaymentsAsync(
         Guid actorUserId, CancellationToken ct = default) =>
         stripePayments.RecordMissingStripePaymentsAsync(actorUserId, ct);
+
+    /// <summary>Books refunds issued on the Stripe dashboard against the order's Stripe payments; idempotent.</summary>
+    public Task<StripeRefundCheckResult> RecordStripeRefundsAsync(
+        Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
+        stripePayments.RecordStripeRefundsAsync(orderId, actorUserId, ct);
+
+    /// <summary>Where a FinanceAdmin issues a refund of the payment by hand.</summary>
+    public string StripePaymentDashboardUrl(string paymentIntentId) =>
+        stripePayments.DashboardUrl(paymentIntentId);
 
     public Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default) =>
         stripePayments.HandleStripeCheckoutWebhookEventAsync(evt, ct);

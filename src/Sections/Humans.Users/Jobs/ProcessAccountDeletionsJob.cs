@@ -25,6 +25,8 @@ internal sealed class ProcessAccountDeletionsJob(
     ILogger<ProcessAccountDeletionsJob> logger,
     IClock clock) : IRecurringJob
 {
+    private const string FailureMessage = "Failed to process one or more account deletions.";
+
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
@@ -54,6 +56,7 @@ internal sealed class ProcessAccountDeletionsJob(
             {
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var summary = await accountDeletionService.AnonymizeExpiredAccountAsync(
                         userId, cancellationToken);
 
@@ -74,8 +77,8 @@ internal sealed class ProcessAccountDeletionsJob(
 
                     if (!string.IsNullOrWhiteSpace(summary.OriginalEmail))
                     {
-                        // Sent without an outbox row, so a transport failure is terminal; the
-                        // erasure already succeeded and must not be reported as failed or retried.
+                        // Erasure has committed: finish confirmation independently of shutdown.
+                        // No outbox row is kept, so a transport failure remains terminal.
                         try
                         {
                             await emailService.SendAsync(emailMessages.AccountDeleted(
@@ -84,7 +87,7 @@ internal sealed class ProcessAccountDeletionsJob(
                                 summary.OriginalBurnerName,
                                 summary.PreferredLanguage.IsSupportedCultureCode()
                                     ? summary.PreferredLanguage : CultureCatalog.DefaultCultureCode),
-                                cancellationToken);
+                                CancellationToken.None);
                         }
                         catch (Exception ex)
                         {
@@ -105,6 +108,12 @@ internal sealed class ProcessAccountDeletionsJob(
                         "Successfully anonymized account {UserId}",
                         userId);
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    if (failures.Count > 0)
+                        throw new AggregateException(FailureMessage, failures);
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     failures.Add(ex);
@@ -115,12 +124,17 @@ internal sealed class ProcessAccountDeletionsJob(
             }
 
             if (failures.Count > 0)
-                throw new AggregateException("Failed to process one or more account deletions.", failures);
+                throw new AggregateException(FailureMessage, failures);
 
             metrics.RecordJobRun("process_account_deletions", "success");
             logger.LogInformation(
                 "Completed account deletion processing, processed {Count} accounts",
                 processed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Account deletion processing interrupted by shutdown");
+            throw;
         }
         catch (Exception ex)
         {

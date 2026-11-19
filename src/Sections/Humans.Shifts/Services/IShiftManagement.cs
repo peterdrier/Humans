@@ -17,6 +17,17 @@ namespace Humans.Shifts.Services;
 internal interface IShiftManagement
     : IShiftService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
+    /// <summary>
+    /// Excludes admin-only shifts and hidden rotas unless asked; the role-protected dashboard opts in.
+    /// </summary>
+    Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
+        Guid eventSettingsId, int? limit = null,
+        Guid? departmentId = null,
+        LocalDate? startDate = null, LocalDate? endDate = null,
+        ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null,
+        bool includeRestricted = false, CancellationToken ct = default);
+
     Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
@@ -38,8 +49,7 @@ internal interface IShiftManagement
 
     /// <summary>Inserts the row on demand. Audited as the actor's, since the sub-periods reclassify every build shift.</summary>
     Task SaveKnobsAsync(
-        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
-        BuildSubPeriodStarts subPeriods, Guid actorUserId);
+        Guid eventSettingsId, bool isShiftBrowsingOpen, BuildSubPeriodStarts subPeriods, Guid actorUserId);
 
     /// <summary>Validates that the team is a department and the event is active.</summary>
     Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);

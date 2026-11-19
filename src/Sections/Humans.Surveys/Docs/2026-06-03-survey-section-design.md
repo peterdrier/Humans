@@ -195,7 +195,7 @@ Authoring N cultures by hand is the friction point in §6. We offer a **"pre-fil
 
 - **Flow:** author writes the survey in one source culture → clicks *Translate to other languages* → every `LocalizedText` (title, intro, thank-you, prompts, help, option labels, scale labels) missing in a target culture is filled from the source via the API → fields land **editable**, flagged "machine-translated" until the author confirms. Re-running only fills blanks (never clobbers an author-edited string) unless the author explicitly chooses "retranslate".
 - **Why human-in-the-loop:** machine translation into Catalan and idiomatic es/it is good-not-perfect for a member-facing nonprofit voice; pre-fill-then-edit matches the existing one-culture-at-a-time authoring without inventing a new flow.
-- **Reuse, don't bolt on:** the codebase already authenticates to Google with a service account (`GoogleWorkspace:ServiceAccountKeyJson`, `GoogleCredentialLoader`, the `Google.Apis.*` packages). This adds **one more enabled API on the same GCP project** — not a new integration. New client follows the existing external-client pattern (MailerLite/Directory): `IGoogleTranslationClient` (Application interface) → `GoogleTranslationClient` (Infrastructure, reusing `GoogleCredentialLoader`) + a `StubGoogleTranslationClient` for dev/test. Survey calls it through a service interface (cross-section to GoogleIntegration), never imports `Google.Apis.*`.
+- **Reuse, don't bolt on:** the codebase already authenticates to Google with a service account (`GoogleWorkspace:ServiceAccountKeyJson`, `GoogleCredentialLoader`, the `Google.Apis.*` packages). This adds **one more enabled API on the same GCP project** — not a new integration. New client follows the existing external-client pattern (MailerLite/Directory): `IGoogleTranslationClient` (Application interface) → `GoogleTranslationClient` (Infrastructure, reusing `GoogleCredentialLoader`) + a `StubGoogleTranslationClient` for dev/test. Survey calls it through a service interface (cross-section to Google), never imports `Google.Apis.*`.
 - **Cost — negligible.** Billed per source character × target language. A 10–15-question multiple-choice survey is ~4,000 source chars → ~16,000 chars to fill 4 other cultures. At the standard NMT rate ($20 / 1M chars) that's **~$0.32**, but the **free tier is 500,000 chars/month** (resets monthly), so realistic spend is **$0** — you'd need ~30 full surveys/month to exhaust it. Standard NMT is sufficient for short choice prompts; no need for the pricier LLM/adaptive tiers.
 - **Graceful absence:** if Google credentials aren't configured (dev/test, or the API isn't enabled), the stub is registered and the button is simply hidden — manual translation still works. Same `hasGoogleCredentials` gate the Workspace clients already use.
 
@@ -279,12 +279,12 @@ Both honour the existing outbox pause flag. Survey invites are **operational, ne
 | `IMailerLiteServiceRead` / `IMailerLiteAudience` (read surface — §7 Open Q) | Resolve `AudienceKey` → recipient user-id set |
 | `IUserServiceRead.GetUserInfosAsync` | Recipient names + `PreferredLanguage` for invite/reminder emails and results display |
 | `IEmailService` + new `IEmailMessageFactory.SurveyInvitation/SurveyReminder` | Invite + reminder delivery through the outbox |
-| `IGoogleTranslationService` (GoogleIntegration, new) | Pre-fill authored `LocalizedText` translations (§6.1) |
+| `IGoogleTranslationService` (Google, new) | Pre-fill authored `LocalizedText` translations (§6.1) |
 | `IAuditLogService.LogAsync` | Survey lifecycle + send audit entries |
 | `IDataProtectionProvider` | Tokenised invite/edit links (purpose `"survey-invitation"`) |
 | `IUserDataContributor` (implemented by `SurveyService`) | GDPR export of a user's **Identified** responses (`GdprExportSections.Survey`, new) |
 
-`Survey` sits **above** Users / Profiles / Tickets / Teams / MailerLite / Email / GoogleIntegration — it calls into them, never the reverse.
+`Survey` sits **above** Users / Profiles / Tickets / Teams / MailerLite / Email / Google — it calls into them, never the reverse.
 
 ## 11. GDPR
 
@@ -353,7 +353,7 @@ In-app theme clustering, sentiment, summarisation, auto-generated infographics/c
 > for the builder's translation pre-fill, so the "no Google data egress" and "manual per-culture
 > only" statements below describe v1, not the section today. `Surveys.md` is the live description.
 
-- **Google translation client (whole slice).** The `IGoogleTranslationClient`/`IGoogleTranslationService` in GoogleIntegration is deferred, which defers **both** §6.1 authoring "pre-fill translations" **and** §6.2 free-text answer translate-on-read (they share that one client). v1 authoring is **manual per-culture** only; v1 results/API serve free-text **as-submitted** (no translate toggle, no `?translateFreeText`). All Google-translation features land together as one later slice. **Consequence:** v1 has **no Google data egress** — the only external data flow in v1 is the §13.3 analysis API/export to Claude.
+- **Google translation client (whole slice).** The `IGoogleTranslationClient`/`IGoogleTranslationService` in Google is deferred, which defers **both** §6.1 authoring "pre-fill translations" **and** §6.2 free-text answer translate-on-read (they share that one client). v1 authoring is **manual per-culture** only; v1 results/API serve free-text **as-submitted** (no translate toggle, no `?translateFreeText`). All Google-translation features land together as one later slice. **Consequence:** v1 has **no Google data egress** — the only external data flow in v1 is the §13.3 analysis API/export to Claude.
 **Permanently out of scope:**
 
 - **In-app analysis/synthesis** — theme clustering, sentiment, summarisation, infographic/chart generation, and auto-extracting bugs/work-items from feedback. Done externally by Claude over the §13 API/export; the app ships data, not analysis.

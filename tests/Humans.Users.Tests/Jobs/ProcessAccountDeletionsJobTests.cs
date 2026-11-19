@@ -49,6 +49,110 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Shutdown_InitialReadDistinguishesShutdownFromDependencyFailure(bool requested)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var failure = new OperationCanceledException(shutdown.Token);
+        _userService.GetAccountsDueForAnonymizationAsync(Now, shutdown.Token)
+            .Returns(async Task<IReadOnlyList<Guid>> (_) =>
+            {
+                if (requested) await shutdown.CancelAsync();
+                throw failure;
+            });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<ProcessAccountDeletionsJob>();
+        var job = new ProcessAccountDeletionsJob(_userService, _accountDeletionService, _emailService,
+            _emailMessages, _auditLogService, metrics, logger, _clock);
+
+        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeSameAs(failure);
+        metrics.Received(requested ? 0 : 1).RecordJobRun("process_account_deletions", "failure");
+        metrics.DidNotReceive().RecordJobRun("process_account_deletions", "success");
+        if (requested)
+        {
+            logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Exception == null);
+            logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);
+        }
+        else
+            logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Error && e.Exception == failure);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_PreservesEarlierAccountFailuresBeforeStoppingTheNextAccount()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var first = Guid.NewGuid();
+        var next = Guid.NewGuid();
+        _userService.GetAccountsDueForAnonymizationAsync(Now, shutdown.Token).Returns(new[] { first, next });
+        var failure = new IOException("Erasure failed");
+        _accountDeletionService.AnonymizeExpiredAccountAsync(first, shutdown.Token)
+            .Returns(async Task<AnonymizedAccountSummary?> (_) => { await shutdown.CancelAsync(); throw failure; });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<ProcessAccountDeletionsJob>();
+        var job = new ProcessAccountDeletionsJob(_userService, _accountDeletionService, _emailService,
+            _emailMessages, _auditLogService, metrics, logger, _clock);
+
+        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
+        metrics.Received(1).RecordJobRun("process_account_deletions", "failure");
+        await _accountDeletionService.DidNotReceive().AnonymizeExpiredAccountAsync(next, Arg.Any<CancellationToken>());
+        logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_CommittedErasureFinishesConfirmationBeforeObservingCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([first, second]);
+        _accountDeletionService.AnonymizeExpiredAccountAsync(first, Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return (AnonymizedAccountSummary?)new AnonymizedAccountSummary("erased@example.com", "Erased Person", "en");
+            });
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            });
+
+        var run = () => _job.ExecuteAsync(cancellation.Token);
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        await _emailService.Received(1).SendAsync(
+            Arg.Is<EmailMessage>(message => message.DoNotPersist
+                && string.Equals(message.RecipientEmail, "erased@example.com", StringComparison.Ordinal)), CancellationToken.None);
+        await _accountDeletionService.DidNotReceive().AnonymizeExpiredAccountAsync(second, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ExecuteAsync_RequestedCancellationPropagatesWithoutAnAccountFailureAggregate()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([userId]);
+        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                await cancellation.CancelAsync();
+                return await Task.FromException<AnonymizedAccountSummary?>(new OperationCanceledException(cancellation.Token));
+            });
+
+        var run = () => _job.ExecuteAsync(cancellation.Token);
+
+        var failure = await run.Should().ThrowAsync<OperationCanceledException>();
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+    }
+
     [HumansFact]
     public async Task ConfirmationFailure_DoesNotLogErasedIdentityOrExceptionContents()
     {

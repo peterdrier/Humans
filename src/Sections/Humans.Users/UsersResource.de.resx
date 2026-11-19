@@ -56,13 +56,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Jetzt prüfen</value>
   </data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
-    <value>Ihre {0}-Bewerbung:</value>
-    <comment>{0} = tier name (Colaborador/Asociado)</comment>
-  </data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve">
-    <value>Details ansehen</value>
-  </data>
   <data name="Users_Profile_Information" xml:space="preserve">
     <value>Profilinformationen</value>
   </data>
@@ -191,11 +184,8 @@
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf durch sie wird festgehalten und unten aufgeführt. Alles, was Koordinator:innen wissen sollten — Diabetes, Epilepsie, schwere Verletzungen usw.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Erkrankungen</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf wird festgehalten.</value></data>
-  <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
-  <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Meine E-Mails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>Keine plattforminternen Nachrichten vorhanden.</value></data>
-  <data name="Users_Profile_NoShowHistory" xml:space="preserve"><value>No-Show-Verlauf ({0})</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Gesendete Nachrichten</value></data>
   <data name="Users_Profile_ShiftInfo" xml:space="preserve"><value>Schichtinfo</value></data>
 
@@ -204,15 +194,6 @@
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve">
     <value>Profil bearbeiten</value>
-  </data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve">
-    <value>Du möchtest zum Event kommen, deine Energie einbringen, eine Schicht übernehmen oder einem Team beitreten. Keine formale Verpflichtung gegenüber der Vereinsführung. Die meisten Leute sind hier und das ist völlig in Ordnung.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve">
-    <value>Hinweis: Du kannst jederzeit eine Änderung beantragen.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Ihre Kategorie ist gesperrt, da Sie einen aktiven oder ausstehenden Antrag haben.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Der Name, unter dem Sie bekannt sind</value>
@@ -624,17 +605,14 @@
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve">
     <value>Dieses Mitglied kann diese Notizen gemäß DSGVO einsehen.</value>
   </data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve">
-    <value>Letzte Anträge</value>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve">
+    <value>Anträge</value>
   </data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve">
     <value>Prüfverlauf</value>
   </data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve">
     <value>Statistiken</value>
-  </data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve">
-    <value>Anträge</value>
   </data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve">
     <value>Vereinbarungen</value>
@@ -762,8 +740,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Ernährungsangaben</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Deine medizinischen Angaben wurden gespeichert.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht gespeichert werden.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Als Colaborador oder Asociado bewerben</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Freiwillige</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>Für dieses Konto können keine E-Mail-Adressen mehr geändert werden.</value>
   </data>
@@ -819,4 +795,10 @@
   <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht geladen werden.</value></data>
   <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Medizinische Angaben anzeigen (jeder Aufruf wird im Audit-Log festgehalten)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Wähle einen gültigen Standort aus.</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferences" xml:space="preserve">
+    <value>Einstellungen bearbeiten</value>
+  </data>
+  <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
+    <value>Wähle Tags aus, die zur Art von Arbeit passen, die du magst. Passende Schichten werden mit einem Stern markiert.</value>
+  </data>
 </root>

@@ -56,7 +56,8 @@ internal sealed class SepaBankBooking(
 
     /// <summary>How far back a file may have been generated and still match. The feed is read
     /// <see cref="GenerationSlackDays"/> further back (<see cref="FeedFrom"/>).</summary>
-    private const int FeedWindowDays = 90;
+    internal const int FeedWindowDays = 90;
+
 
     /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
     private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
@@ -282,7 +283,10 @@ internal sealed class SepaBankBooking(
         var rows = Live(await repo.GetSepaPayoutTransferRowsAsync(ct));
         var pending = rows.Where(r => r.ReconcilePending).ToList();
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
-        if (pending.Count == 0 && unbooked.Count == 0) return;
+        // The sweep runs every two hours, so exactly one run a day lands in this band. That run reads the whole window
+        // whatever is open, so /Finance's count of unreconciled Sabadell lines is at most a day behind.
+        var nightRun = clock.GetCurrentInstant().InZone(MadridZone).Hour is 3 or 4;
+        if (pending.Count == 0 && unbooked.Count == 0 && !nightRun) return;
 
         // Every reconcile-pending row's bank line must lie inside the window read. A pending row's lower bound is its
         // own first payable day with no floor, or a row aging out would never see a later reconcile. Both bounds key off
@@ -292,6 +296,7 @@ internal sealed class SepaBankBooking(
         if (matchFrom < floor) matchFrom = floor;
         var pendingFrom = pending.Select(matching.FirstPayableDate).DefaultIfEmpty(matchFrom).Min();
         var from = pendingFrom < matchFrom ? pendingFrom : matchFrom;
+        if (nightRun && floor < from) from = floor;
 
         IReadOnlyList<HoldedBankMovementDto> movements;
         try
@@ -311,36 +316,47 @@ internal sealed class SepaBankBooking(
         // nor is a file a Process run got part-way through: linking it would make the line `partial`.
         foreach (var group in pending.GroupBy(r => r.HoldedBankMovementId!, StringComparer.Ordinal))
         {
-            var line = byId[group.Key].FirstOrDefault();
-            if (line is null) continue;
-            Instant? at = IsReconciled(line) ? clock.GetCurrentInstant() : null;
-            var fileStillOpen = rows.Any(r => !r.IsBooked && group.Any(g => g.FileId == r.FileId));
-            if (at is null && IsUntouched(line) && !fileStillOpen)
+            ct.ThrowIfCancellationRequested();
+            // Finish the bank-line reconcile and every transfer stamp once this unit starts.
+            var completionCt = CancellationToken.None;
+            try
             {
-                var refs = group.SelectMany(r => PaymentRefs(r.HoldedPaymentRefs)).ToList();
-                if (refs.Count > 0)
+                var line = byId[group.Key].FirstOrDefault();
+                if (line is null) continue;
+                Instant? at = IsReconciled(line) ? clock.GetCurrentInstant() : null;
+                var fileStillOpen = rows.Any(r => !r.IsBooked && group.Any(g => g.FileId == r.FileId));
+                if (at is null && IsUntouched(line) && !fileStillOpen)
                 {
-                    logger.LogInformation(
-                        "SEPA sweep: re-issuing the reconcile of Sabadell line {MovementId} against "
-                        + "{Count} payment(s) of {Rows} transfer(s).", line.Id, refs.Count, group.Count());
-                    at = await TryReconcileAsync(line.Id, line.Date, refs, incomplete: true, ct);
+                    var refs = group.SelectMany(r => PaymentRefs(r.HoldedPaymentRefs)).ToList();
+                    if (refs.Count > 0)
+                    {
+                        logger.LogInformation(
+                            "SEPA sweep: re-issuing the reconcile of Sabadell line {MovementId} against "
+                            + "{Count} payment(s) of {Rows} transfer(s).", line.Id, refs.Count, group.Count());
+                        at = await TryReconcileAsync(line.Id, line.Date, refs, incomplete: true, completionCt);
+                    }
+                }
+                if (at is null) continue;
+
+                foreach (var row in group)
+                {
+                    await repo.MarkSepaTransferReconciledAsync(row.TransferId, at.Value, completionCt);
+                    await audit.LogAsync(
+                        FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
+                        $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
+                        + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
+                        SepaBookingJobName, row.UserId, AuditSubjectTypes.User);
                 }
             }
-            if (at is null) continue;
-
-            foreach (var row in group)
+            catch (OperationCanceledException ex)
             {
-                await repo.MarkSepaTransferReconciledAsync(row.TransferId, at.Value, ct);
-                await audit.LogAsync(
-                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
-                    $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
-                    + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
-                    SepaBookingJobName, row.UserId, AuditSubjectTypes.User);
+                throw new InvalidOperationException(ex.Message, ex);
             }
         }
 
         foreach (var m in movements.Where(NeedsAMatch))
         {
+            ct.ThrowIfCancellationRequested();
             if (rows.Any(r => string.Equals(r.HoldedBankMovementId, m.Id, StringComparison.Ordinal)))
                 continue;
 
@@ -365,6 +381,11 @@ internal sealed class SepaBankBooking(
                     logger.LogWarning(
                         "SEPA sweep: transfer {TransferId} was not booked against line {MovementId}: {Reason}",
                         matches[0].TransferId, m.Id, result.Message);
+            }
+            catch (OperationCanceledException ex)
+            {
+                // Booking already uses None; its dependency failures are not job shutdown.
+                throw new InvalidOperationException(ex.Message, ex);
             }
             catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
             {
@@ -939,6 +960,22 @@ internal sealed class SepaBankBooking(
             return new SepaBookingResult(false,
                 "Holded accepted the postings but the transfer row could not be saved — it is NOT "
                 + $"marked booked; {NextStep()}.");
+        }
+
+        // Booking released the "in a payout file" gate, so the mirror is now all that says what the member is owed:
+        // without this the account reads owed and payable until the nightly ledger sync.
+        try
+        {
+            if (!await holded.SyncAccountLedgerAsync(transfer.SupplierAccountNum, CancellationToken.None))
+                logger.LogWarning(
+                    "SEPA transfer {TransferId} is booked, but a ledger sync was running: creditor account {Account} shows its old balance until the next sync.",
+                    transferId, transfer.SupplierAccountNum);
+        }
+        catch (Exception ex) // anything: the money step is done, and what follows audits it
+        {
+            logger.LogWarning(ex,
+                "SEPA transfer {TransferId} is booked, but creditor account {Account} could not be re-synced: it shows its old balance until the next sync.",
+                transferId, transfer.SupplierAccountNum);
         }
 
         // Name the PAYMENTS, never the documents: a purchase ref makes Holded mint a new payment for the whole line.

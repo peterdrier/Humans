@@ -6,16 +6,16 @@ namespace Humans.Users.Contracts;
 /// </summary>
 public static class ProfileCompletion
 {
-    public static int ComputePercent(ProfileInfo? profile, bool hasShiftTagPreferences)
+    public static int ComputePercent(UserInfo? user, bool hasShiftTagPreferences)
     {
-        if (profile is null) return 0;
+        if (user?.Profile is not { } profile) return 0;
 
         var checks = new (bool Filled, int Weight)[]
         {
             // 3 points get a member past zero on first arrival at Home.
-            (!string.IsNullOrWhiteSpace(profile.BurnerName), 1),
-            (!string.IsNullOrWhiteSpace(profile.FirstName), 1),
-            (!string.IsNullOrWhiteSpace(profile.LastName), 1),
+            (!string.IsNullOrWhiteSpace(user.BurnerName), 1),
+            (!string.IsNullOrWhiteSpace(user.FirstName), 1),
+            (!string.IsNullOrWhiteSpace(user.LastName), 1),
 
             // The single biggest visible enrichment, so the heaviest weight.
             (profile.HasCustomPicture, 5),

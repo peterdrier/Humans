@@ -51,7 +51,7 @@ internal sealed class GuideContentService(
         }
     }
 
-    public Task RefreshAllAsync(CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<string>> RefreshAllAsync(CancellationToken cancellationToken = default) =>
         PopulateAsync(requestedStem: null, cancellationToken);
 
     private async Task<GuideDocument> GetDocumentAsync(string canonical, CancellationToken cancellationToken)
@@ -72,18 +72,18 @@ internal sealed class GuideContentService(
             $"Guide content '{canonical}' is not currently available.");
     }
 
-    private async Task PopulateAsync(string? requestedStem, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<string>> PopulateAsync(string? requestedStem, CancellationToken cancellationToken)
     {
         using var gate = await _refreshLock.AcquireAsync(logger, cancellationToken);
 
         if (requestedStem is not null &&
             cache.TryGetValue<GuideDocument>(CacheKey(requestedStem), out var loaded) && loaded is not null)
-            return;
+            return [];
 
         var hasStale = GuideFiles.All.Any(s => cache.TryGetValue(CacheKey(s), out GuideDocument? _));
 
         var ttl = TimeSpan.FromHours(Math.Max(1, settings.Value.CacheTtlHours));
-        var anyFailures = false;
+        var failed = new List<string>();
         var newEntries = new Dictionary<string, GuideDocument>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var stem in GuideFiles.All)
@@ -95,7 +95,7 @@ internal sealed class GuideContentService(
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                anyFailures = true;
+                failed.Add(stem);
                 logger.LogWarning(ex,
                     "Failed to fetch or segment guide file {FileStem}; {Outcome}",
                     stem,
@@ -117,12 +117,14 @@ internal sealed class GuideContentService(
             });
         }
 
-        if (anyFailures)
+        if (failed.Count > 0)
         {
             logger.LogWarning(
                 "Guide refresh completed with failures (isRefresh={IsRefresh}); stale entries retained.",
                 requestedStem is null);
         }
+
+        return failed;
     }
 
     private static string CacheKey(string stem) => CacheKeyPrefix + stem;

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Pleo;
 
-/// <summary>No GDPR contributor: cardholders are mirrored by Pleo id and name only, bound to no member, and a sweep
+/// <summary>No GDPR contributor: cardholders are mirrored by Pleo id, name and code only, bound to no member, and a sweep
 /// drops anyone Pleo no longer returns.</summary>
 public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {

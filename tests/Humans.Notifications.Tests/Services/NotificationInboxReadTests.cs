@@ -5,8 +5,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Camps.Contracts;
-using Humans.GoogleIntegration.Contracts;
-using Humans.Governance.Contracts;
+using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
 using Humans.Teams.Contracts;
@@ -30,7 +29,6 @@ public sealed class NotificationInboxReadTests : IDisposable
     private readonly IGoogleSyncService _google = Substitute.For<IGoogleSyncService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITicketSync _tickets = Substitute.For<ITicketSync>();
-    private readonly IGovernanceService _applications = Substitute.For<IGovernanceService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -51,7 +49,7 @@ public sealed class NotificationInboxReadTests : IDisposable
         _sut = new NotificationInboxRead(
             _inbox,
             new NotificationMeterProvider(
-                _users, Substitute.For<IConsentService>(), _google, _teams, _tickets, _applications, _camps, _cache,
+                _users, Substitute.For<IConsentService>(), _google, _teams, _tickets, [], _camps, _cache,
                 NullLogger<NotificationMeterProvider>.Instance,
                 _localization.GetRequiredService<IStringLocalizer<NotificationsResource>>()));
     }

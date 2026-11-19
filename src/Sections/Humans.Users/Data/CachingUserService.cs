@@ -211,9 +211,10 @@ internal sealed class CachingUserService(
         foreach (var id in ids)
         {
             if (cached.TryGetValue(id, out var info)
-                && !string.IsNullOrWhiteSpace(info.Profile?.BurnerName))
+                && info.Profile is not null && !info.IsGdprAnonymized
+                && !string.IsNullOrWhiteSpace(info.BurnerName))
             {
-                result[id] = new EntityName("User", info.Profile.BurnerName);
+                result[id] = new EntityName("User", info.BurnerName);
             }
         }
         return result;

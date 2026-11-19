@@ -17,7 +17,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>No caching decorator.</summary>
+/// <summary>Keyed inner of <see cref="CachingShiftService"/>.</summary>
 internal sealed class ShiftSignupService(
     IShiftManagementRepository repo,
     IVolunteerTrackingRepository trackingRepo,
@@ -31,7 +31,7 @@ internal sealed class ShiftSignupService(
     IClock clock,
     ILogger<ShiftSignupService> logger,
     IUserService users,
-    IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserDataContributor, IUserMerge, ICalendarFeedContributor
+    IStringLocalizer<ShiftsResource> localizer) : IShiftSignupService, IUserMerge, ICalendarFeedContributor
 {
     private readonly ShiftSignupNotices notices = new(notificationService, calendarResolver, users, serviceProvider, logger);
     private readonly ShiftSignupPersonalData personalData = new(repo, trackingRepo, calendarResolver, users, serviceProvider, localizer);
@@ -112,7 +112,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(localEs.Id, userId, shiftId);
+            InvalidateSignupCaches(localEs.Id, shiftId);
         }
         enrollment.Dispose();
         var shiftDate = FormatAuditDay(calendar, shift.DayOffset);
@@ -176,7 +176,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
         enrollment.Dispose();
         await auditLogService.LogAsync(
@@ -206,7 +206,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -265,7 +265,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -322,7 +322,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(calendar.Id, userId, shiftId);
+            InvalidateSignupCaches(calendar.Id, shiftId);
         }
         enrollment.Dispose();
         await auditLogService.LogAsync(
@@ -424,7 +424,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(calendar.Id, userId, rotaId);
+            InvalidateRangeSignupCaches(calendar.Id, rotaId);
         }
         enrollment.Dispose();
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
@@ -472,7 +472,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(calendar.Id, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(calendar.Id, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -503,7 +503,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.UserId, signup.ShiftId);
+            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
         }
 
         await auditLogService.LogAsync(
@@ -615,7 +615,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(calendar.Id, userId, rotaId);
+            InvalidateRangeSignupCaches(calendar.Id, rotaId);
         }
         enrollment.Dispose();
         await AuditRangeSignupsAsync(userId, actorUserId ?? userId, rota, calendar, createdSignups.SignupsForAudit, autoConfirm);
@@ -629,17 +629,15 @@ internal sealed class ShiftSignupService(
         return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
     }
 
-    private void InvalidateSignupCaches(Guid eventSettingsId, Guid userId, Guid shiftId)
+    private void InvalidateSignupCaches(Guid eventSettingsId, Guid shiftId)
     {
         shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateUser(userId);
         viewInvalidator.InvalidateShift(shiftId);
     }
 
-    private void InvalidateRangeSignupCaches(Guid eventSettingsId, Guid userId, Guid rotaId)
+    private void InvalidateRangeSignupCaches(Guid eventSettingsId, Guid rotaId)
     {
         shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateUser(userId);
         // A range touches every shift in the rota.
         viewInvalidator.InvalidateRota(rotaId);
     }
@@ -804,7 +802,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(calendar.Id, cacheSignup.UserId, cacheSignup.Shift.RotaId);
+            InvalidateRangeSignupCaches(calendar.Id, cacheSignup.Shift.RotaId);
         }
         enrollment.Dispose();
 
@@ -857,7 +855,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(signups[0].Shift.Rota.EventSettingsId, signups[0].UserId, signups[0].Shift.RotaId);
+            InvalidateRangeSignupCaches(signups[0].Shift.Rota.EventSettingsId, signups[0].Shift.RotaId);
         }
 
         foreach (var signup in signups)
@@ -915,7 +913,7 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            InvalidateRangeSignupCaches(firstSignup.Shift.Rota.EventSettingsId, firstSignup.UserId, firstSignup.Shift.RotaId);
+            InvalidateRangeSignupCaches(firstSignup.Shift.Rota.EventSettingsId, firstSignup.Shift.RotaId);
         }
 
         foreach (var signup in signups)
@@ -942,13 +940,12 @@ internal sealed class ShiftSignupService(
         Guid userId, Guid? eventSettingsId = null, CancellationToken ct = default) =>
         personalData.GetByUserAsync(userId, eventSettingsId, ct);
 
-    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
-    {
-        var signup = await repo.GetTeamProbeAsync(id, scope, ct);
-        return signup is null
-            ? null
-            : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
-    }
+    public async Task<ShiftSignupTeamProbe?> GetTeamProbeAsync(Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default) =>
+        (await serviceProvider.GetRequiredService<IShiftRotaRows>().GetRotaRowsAsync(ct: ct))
+            .SelectMany(r => r.Shifts.SelectMany(s => s.Signups
+                .Where(signup => scope == ShiftSignupTeamProbeScope.Signup ? signup.Id == id : signup.SignupBlockId == id)
+                .Select(signup => new ShiftSignupTeamProbe(signup.Id, s.Shift.Id, r.Rota.TeamId))))
+            .FirstOrDefault();
 
     public Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default) =>
         personalData.GetNoShowHistoryAsync(userId, ct);
@@ -970,7 +967,7 @@ internal sealed class ShiftSignupService(
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         personalData.ContributeForUserAsync(userId, ct);
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             [ShiftSignups] =
@@ -984,8 +981,6 @@ internal sealed class ShiftSignupService(
             [VolunteerBuildStatuses] = null,
             [ShiftTagPreferences] = null
         };
-
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     /// <summary>Cancels live commitments, then deletes the profile, availability, build-status and tag rows.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
@@ -1041,7 +1036,6 @@ internal sealed class ShiftSignupService(
             }
             else
             {
-                viewInvalidator.InvalidateUser(userId);
                 foreach (var (_, shiftId) in cancelled)
                     viewInvalidator.InvalidateShift(shiftId);
             }
@@ -1072,37 +1066,7 @@ internal sealed class ShiftSignupService(
                 foreach (var eventId in eventIds)
                     shiftMgmt.InvalidateDashboardCaches(eventId);
             }
-            else
-            {
-                foreach (var userId in userIds)
-                    viewInvalidator.InvalidateUser(userId);
-            }
         }
-    }
-
-    public async Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default)
-    {
-        var signups = await repo.GetAllForOrphanScanAsync(ct);
-
-        var calendarsById = new Dictionary<Guid, BurnSettingsInfo>();
-        foreach (var id in signups.Select(s => s.Shift.Rota.EventSettingsId).Distinct())
-        {
-            var calendar = await calendarResolver.GetAsync(id, ct);
-            if (calendar is not null) calendarsById[id] = calendar;
-        }
-
-        return signups
-            .Where(s => calendarsById.ContainsKey(s.Shift.Rota.EventSettingsId))
-            .Select(s => new OrphanSignupSnapshot(
-                s.Id,
-                s.UserId,
-                s.Shift.Rota.Name,
-                calendarsById[s.Shift.Rota.EventSettingsId].GateOpeningDate.PlusDays(s.Shift.DayOffset),
-                s.Status,
-                s.CreatedAt,
-                s.ReviewedByUserId,
-                s.EnrolledByUserId,
-                s.SignupBlockId)).ToList();
     }
 
     public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
@@ -1152,8 +1116,6 @@ internal sealed class ShiftSignupService(
         }
         finally
         {
-            viewInvalidator.InvalidateUser(sourceUserId);
-            viewInvalidator.InvalidateUser(targetUserId);
             if (movedCount != 0)
             {
                 viewInvalidator.InvalidateAll();

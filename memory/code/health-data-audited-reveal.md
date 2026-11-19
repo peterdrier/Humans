@@ -1,6 +1,6 @@
 ---
 name: health-data-audited-reveal
-description: Health data (medical conditions, allergy/intolerance free text) never renders on a page; it opens behind an audited reveal POST; a single-person reveal is listed to the member, a roster reveal writes one scope row.
+description: "Health data (medical conditions, allergy free text) never renders on a page; it opens behind an audited reveal POST."
 type: code
 ---
 

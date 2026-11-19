@@ -93,8 +93,7 @@ Development is a pure consumer and depends on more sections than any other:
 | Camps | `ICampService`, `ICampSeeding`, `ICampRoleSeeding` |
 | Shifts | `IShiftSeeding`, `IShiftSignupSeeding` |
 | Settings | `ISettingsService`, `IEventSettingsSeeding` (`Contracts/` folder) - the seeded event's active state |
-| Consent | `IConsentSubmission` (`Contracts/` folder) |
-| Governance | `IMembershipCalculator` (contracts leaf) |
+| Consent | `IConsentSubmission`, `IConsentService` (`Contracts/` folder) |
 | City Planning | `CityPlanningOptions` (contracts leaf) - the dev city-planning team slug |
 | Budget | `IBudgetDemoSeeder` (`Contracts/` folder) |
 

@@ -44,7 +44,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var model = await pageBuilder.BuildIndexAsync(user.Id, HttpContext.RequestAborted);
+            var model = await pageBuilder.BuildIndexAsync(user, HttpContext.RequestAborted);
             return View(model);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -83,7 +83,7 @@ internal sealed class ExpensesController(
                 SubmitterUserId = user.Id,
                 PreapprovalGrantId = grant,
             };
-            await PopulateGrantOptionsAsync(model, user.Id, HttpContext.RequestAborted);
+            await PopulateGrantOptionsAsync(model, user, HttpContext.RequestAborted);
             // The grant's label is the project name, which is what the Subject asks for.
             model.Note = model.Grants.FirstOrDefault(g => g.Id == grant)?.Label;
             return View(model);
@@ -115,7 +115,7 @@ internal sealed class ExpensesController(
         if (!ModelState.IsValid)
         {
             model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
-            await PopulateGrantOptionsAsync(model, user.Id, HttpContext.RequestAborted);
+            await PopulateGrantOptionsAsync(model, user, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -144,7 +144,7 @@ internal sealed class ExpensesController(
                 ? $"{localizer["Expenses_Flash_CreateFailed"]} {reason}"
                 : localizer["Expenses_Flash_CreateFailed"].Value);
             model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user.Id);
+            await PopulateGrantOptionsAsync(model, user);
             return View(model);
         }
         catch (Exception ex)
@@ -152,18 +152,18 @@ internal sealed class ExpensesController(
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
             SetError(localizer["Expenses_Flash_CreateFailed"]);
             model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user.Id);
+            await PopulateGrantOptionsAsync(model, user);
             return View(model);
         }
     }
 
     /// <summary>The viewer's claimable grants, plus the preselected one when it is somebody else's (an admin filing on
     /// their behalf).</summary>
-    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, Guid viewerId, CancellationToken ct = default)
+    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, UserInfo viewer, CancellationToken ct = default)
     {
-        var grants = (await preapprovals.ListClaimableForUserAsync(viewerId, ct)).OrderBy(g => g.ClaimBy).ToList();
+        var grants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct)).OrderBy(g => g.ClaimBy).ToList();
         if (model.PreapprovalGrantId is { } wanted && grants.All(g => g.Id != wanted)
-            && await preapprovals.GetGrantAsync(wanted, ct) is { } other)
+            && await PreapprovalGrantQueries.GetGrantAsync(preapprovals, wanted, ct) is { } other)
             grants.Insert(0, other);
         model.Grants = grants;
         model.Today = Today;
@@ -191,13 +191,13 @@ internal sealed class ExpensesController(
             var timeline = await service.GetHoldedTimelineAsync(report, HttpContext.RequestAborted);
             var creditor = await GetCreditorBindingViewAsync(report.SubmitterUserId, isFinanceAdmin, HttpContext.RequestAborted);
             var grant = report.PreapprovalGrantId is { } grantId
-                ? await preapprovals.GetGrantAsync(grantId, HttpContext.RequestAborted)
+                ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, HttpContext.RequestAborted)
                 : null;
 
             // Reaching this page needs View, which only the submitter, the first reviewer and finance admins
             // hold, so the viewer may see who submitted. The IBAN stays behind CanSeePayee.
             var submitterInfo = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
-            var profileLegalName = $"{submitterInfo?.Profile?.FirstName} {submitterInfo?.Profile?.LastName}".Trim();
+            var profileLegalName = submitterInfo?.FullName ?? string.Empty;
 
             var model = new ExpenseDetailViewModel
             {
@@ -286,8 +286,11 @@ internal sealed class ExpensesController(
             return View(model);
         }
 
-        var result = await service.UpdateDraftWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.UpdateHeaderForFinanceCorrectionWithResultAsync(
+                id, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId)
+            : await service.UpdateDraftWithResultAsync(
+                id, user.Id, model.HoldedAccountNumber, model.Note, model.PreapprovalGrantId);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Expenses_Flash_ReportUpdated"]);
@@ -345,9 +348,13 @@ internal sealed class ExpensesController(
             ? null
             : new ExpenseFileUpload(file.FileName, file.ContentType, stream);
 
-        var result = await service.AddLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(),
-            input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
+        var result = await IsFinanceAdminAsync()
+            ? await service.AddLineForFinanceCorrectionWithResultAsync(
+                id, user.Id,
+                input.Description, input.Amount, input.LineType, input.ParentLineId, upload)
+            : await service.AddLineWithResultAsync(
+                id, user.Id,
+                input.Description, input.Amount, input.LineType, input.ParentLineId, upload);
 
         if (!result.Succeeded)
         {
@@ -427,8 +434,11 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
         }
 
-        var result = await service.UpdateLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), input.LineId, input.Description, input.Amount);
+        var result = await IsFinanceAdminAsync()
+            ? await service.UpdateLineForFinanceCorrectionWithResultAsync(
+                id, user.Id, input.LineId, input.Description, input.Amount)
+            : await service.UpdateLineWithResultAsync(
+                id, user.Id, input.LineId, input.Description, input.Amount);
         SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineUpdated"], localizer["Expenses_Flash_UpdateLineFailed"]);
 
         return RedirectToAction(nameof(LineEdit), new { id, lineId = input.LineId });
@@ -444,8 +454,11 @@ internal sealed class ExpensesController(
         // A removed proof row returns the submitter to its invoice's proofs page.
         var parentLineId = report.Lines.FirstOrDefault(l => l.Id == lineId)?.ParentLineId;
 
-        var result = await service.RemoveLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.RemoveLineForFinanceCorrectionWithResultAsync(
+                id, user.Id, lineId)
+            : await service.RemoveLineWithResultAsync(
+                id, user.Id, lineId);
         SetMutationResultWithDetails(result, localizer["Expenses_Flash_LineRemoved"], localizer["Expenses_Flash_RemoveLineFailed"]);
 
         return parentLineId is { } parent
@@ -468,8 +481,11 @@ internal sealed class ExpensesController(
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await service.AttachFileToLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId, file.FileName, file.ContentType, stream);
+        var result = await IsFinanceAdminAsync()
+            ? await service.AttachFileToLineForFinanceCorrectionWithResultAsync(
+                id, user.Id, lineId, file.FileName, file.ContentType, stream)
+            : await service.AttachFileToLineWithResultAsync(
+                id, user.Id, lineId, file.FileName, file.ContentType, stream);
 
         SetMutationResult(result, localizer["Expenses_Flash_AttachmentUploaded"], localizer["Expenses_Flash_UploadAttachmentFailed"]);
 
@@ -483,7 +499,9 @@ internal sealed class ExpensesController(
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Edit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.RemoveAttachmentFromLineAsync(id, user.Id, await IsFinanceAdminAsync(), lineId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.RemoveAttachmentFromLineForFinanceCorrectionAsync(id, user.Id, lineId)
+            : await service.RemoveAttachmentFromLineAsync(id, user.Id, lineId);
         SetMutationResult(result, localizer["Expenses_Flash_AttachmentRemoved"], localizer["Expenses_Flash_RemoveAttachmentFailed"]);
         return RedirectToAction(nameof(LineEdit), new { id, lineId });
     }
@@ -495,7 +513,7 @@ internal sealed class ExpensesController(
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.Submit, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.SubmitWithResultAsync(id, user.Id, await IsFinanceAdminAsync());
+        var result = await service.SubmitWithResultAsync(id, user.Id);
         SetMutationResult(result, localizer["Expenses_Flash_ReportSubmitted"], localizer["Expenses_Flash_SubmitFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -628,7 +646,7 @@ internal sealed class ExpensesController(
         }
 
         var result = await service.CoordinatorEndorseWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), input.MaxAmount);
+            id, user.Id, input.MaxAmount, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportEndorsed"], localizer["Expenses_Flash_EndorseFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -648,7 +666,7 @@ internal sealed class ExpensesController(
         }
 
         var result = await service.CoordinatorRejectWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), input.Reason);
+            id, user.Id, input.Reason, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportRejected"], localizer["Expenses_Flash_RejectFailed"]);
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -668,8 +686,9 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.DeclineLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId, input.Reason);
+        var result = await IsFinanceAdminAsync()
+            ? await service.DeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId, input.Reason)
+            : await service.DeclineLineWithResultAsync(id, user.Id, lineId, input.Reason);
         SetMutationResult(result, "Line declined.", "Could not decline the line.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -682,8 +701,9 @@ internal sealed class ExpensesController(
         var (errorResult, user, _) = await RequireReportAsync(id, ExpenseReportOperation.DeclineLine, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.UndoDeclineLineWithResultAsync(
-            id, user.Id, await IsFinanceAdminAsync(), lineId);
+        var result = await IsFinanceAdminAsync()
+            ? await service.UndoDeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId)
+            : await service.UndoDeclineLineWithResultAsync(id, user.Id, lineId);
         SetMutationResult(result, "Decline undone.", "Could not undo the decline.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -698,8 +718,27 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
+            var ct = HttpContext.RequestAborted;
             var isFinanceAdmin = await IsFinanceAdminAsync();
-            return View(await pageBuilder.BuildReviewAsync(user.Id, isFinanceAdmin, HttpContext.RequestAborted));
+            var reports = await service.GetReviewQueueAsync(ct);
+            if (!isFinanceAdmin)
+            {
+                var year = await budgetService.GetActiveYearAsync(ct);
+                var categoryIds = year?.Groups.SelectMany(g => g.Categories).Select(c => c.Id).ToHashSet() ?? [];
+                var visible = new List<ExpenseReportDto>();
+                foreach (var report in reports)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (!user.AllUserIds.Contains(report.SubmitterUserId)
+                        && report.PreapprovalGrantId is null
+                        && !(report.BudgetCategoryId is { } categoryId && categoryIds.Contains(categoryId)))
+                        continue;
+                    if (await AllowsAsync(report, ExpenseReportOperation.View))
+                        visible.Add(report);
+                }
+                reports = visible;
+            }
+            return View(await pageBuilder.BuildReviewAsync(reports, isFinanceAdmin, ct));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -815,9 +854,6 @@ internal sealed class ExpensesController(
         (await authService.AuthorizeAsync(User, report,
             new ExpenseReportOperationRequirement(operation))).Succeeded;
 
-    /// <summary>
-    /// Handed to the service so its ownership and status checks know an admin is acting for a member.
-    /// </summary>
     private async Task<bool> IsFinanceAdminAsync() =>
         (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
 
@@ -848,9 +884,11 @@ internal sealed class ExpensesController(
         model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
         // The submitter's grants, not the viewer's: an admin editing on their behalf swaps between the member's own.
         // The one the report holds stays listed in any state.
-        var grants = (await preapprovals.ListClaimableForUserAsync(report.SubmitterUserId, HttpContext.RequestAborted)).OrderBy(g => g.ClaimBy).ToList();
+        var submitter = await _userService.GetUserInfoAsync(report.SubmitterUserId, HttpContext.RequestAborted);
+        var grants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, submitter?.AllUserIds ?? [report.SubmitterUserId], HttpContext.RequestAborted))
+            .OrderBy(g => g.ClaimBy).ToList();
         if (report.PreapprovalGrantId is { } held && grants.All(g => g.Id != held)
-            && await preapprovals.GetGrantAsync(held, HttpContext.RequestAborted) is { } heldGrant)
+            && await PreapprovalGrantQueries.GetGrantAsync(preapprovals, held, HttpContext.RequestAborted) is { } heldGrant)
             grants.Insert(0, heldGrant);
         model.Grants = grants;
         model.Today = Today;

@@ -17,16 +17,43 @@ using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Models;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Auth;
 
 public sealed class Section :
     ISection,
+    ISectionAccessMatrix,
+    ISectionHelp,
     ISectionAdminNav,
     ISectionDataMigrations,
     ISectionRoles,
     IUserPart
 {
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "RoleAssignments",
+            SectionName = "Role Assignments",
+            Order = 91,
+            Roles = ["Board", "UsersAdmin", "Admin"],
+            Features =
+            [
+                Of("View role assignments", ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+                Of("Add or end role assignments", ("Board", Denied), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+            ]
+        }
+    ];
+
+    IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => HelpEntries;
+
+    // Read once per process: the markdown ships inside this assembly and never changes at runtime.
+    private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
+        [SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "RoleAssignments", 82)];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, AuthAuditActions>();

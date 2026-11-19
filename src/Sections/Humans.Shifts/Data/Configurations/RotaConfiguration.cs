@@ -8,7 +8,7 @@ internal sealed class RotaConfiguration : IEntityTypeConfiguration<Rota>
 {
     public void Configure(EntityTypeBuilder<Rota> builder)
     {
-        builder.ToTable("rotas");
+        builder.ToTable("shift_rotas");
         builder.HasKey(r => r.Id);
 
         builder.Property(r => r.Name).HasMaxLength(256).IsRequired();

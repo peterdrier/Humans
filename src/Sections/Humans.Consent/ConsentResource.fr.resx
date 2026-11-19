@@ -290,14 +290,8 @@
   <data name="Consent_Queue_LegalName" xml:space="preserve">
     <value>Nom légal</value>
   </data>
-  <data name="Consent_Queue_HasApplication" xml:space="preserve">
-    <value>A une candidature</value>
-  </data>
   <data name="Consent_Queue_Signed" xml:space="preserve">
     <value>signé(s)</value>
-  </data>
-  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
-    <value>Motivation de la candidature</value>
   </data>
   <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
     <value>Notes d'examen précédentes</value>

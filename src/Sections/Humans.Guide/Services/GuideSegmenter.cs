@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using Markdig;
+using Markdig.Syntax;
 
 namespace Humans.Guide.Services;
 
@@ -11,20 +13,12 @@ internal sealed class GuideSegmenter(GuideRolePrivilegeMap privileges)
     // Internal so the guard test can hold guide content to the exact heading grammar the
     // segmenter uses, rather than a second copy that can drift from it.
     internal static readonly Regex RoleHeading = new(
-        @"^##\s+As\s+an?\s+(?:\[)?(?<head>Volunteer|Coordinator|Board)[^\n]*?(?:\((?<paren>[^)]+)\))?\s*$",
+        @"^ {0,3}##[ \t]+As\s+an?\s+(?:\[)?(?<head>Volunteer|Coordinator|Board)[^\n]*?(?:\((?<paren>[^)]+)\))?\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(250));
 
     private static readonly Regex AnyH2 = new(
-        @"^##\s+",
-        RegexOptions.Compiled,
-        TimeSpan.FromMilliseconds(100));
-
-    // A "## …" line inside a fenced code block is sample text, not a heading. Untracked, it ends
-    // the role block it sits in and serves the rest of that block to everyone — so fence state is
-    // an authorization concern here, not a rendering nicety.
-    private static readonly Regex FenceDelimiter = new(
-        @"^ {0,3}(?<fence>`{3,}|~{3,})",
+        @"^ {0,3}##(?:[ \t]+|$)",
         RegexOptions.Compiled,
         TimeSpan.FromMilliseconds(100));
 
@@ -36,52 +30,21 @@ internal sealed class GuideSegmenter(GuideRolePrivilegeMap privileges)
 
         var lines = markdown.Split('\n');
         var segments = new List<GuideSegment>();
+        // Use the renderer's block grammar: sample headings inside code/HTML cannot end a restricted block.
+        var headingLines = Markdown.Parse(markdown, GuideRenderer.Pipeline)
+            .Descendants<HeadingBlock>()
+            .Where(heading => heading.Level == 2)
+            .Select(heading => heading.Line)
+            .ToHashSet();
 
         var start = 0;
         string? role = null;
-        string? openFence = null;
         IReadOnlyList<string> privilegeTokens = NoPrivileges;
 
         for (var i = 0; i < lines.Length; i++)
         {
+            if (!headingLines.Contains(i)) continue;
             var line = lines[i].EndsWith('\r') ? lines[i][..^1] : lines[i];
-
-            var fence = FenceDelimiter.Match(line);
-            if (fence.Success)
-            {
-                var delimiter = fence.Groups["fence"].Value;
-                var info = line.AsSpan(fence.Length);
-
-                if (openFence is not null)
-                {
-                    // A closing fence is a run of the same character, at least as long, with
-                    // nothing after it. Anything trailing means this line is still content —
-                    // closing early would let the next "##" split the block.
-                    if (delimiter[0] == openFence[0]
-                        && delimiter.Length >= openFence.Length
-                        && info.IsWhiteSpace())
-                    {
-                        openFence = null;
-                    }
-
-                    continue;
-                }
-
-                // CommonMark forbids a backtick in a backtick fence's info string, so a line like
-                // ```md`x opens no block at all. Entering fence state there is the leak inverted:
-                // the segmenter would swallow a real "## As a …" heading below it and leave the
-                // block that heading opens unscoped, i.e. visible to everyone.
-                if (delimiter[0] != '`' || !info.Contains('`'))
-                {
-                    openFence = delimiter;
-                    continue;
-                }
-            }
-
-            if (openFence is not null)
-            {
-                continue;
-            }
 
             var roleMatch = RoleHeading.Match(line);
             if (roleMatch.Success)

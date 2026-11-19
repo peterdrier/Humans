@@ -1,4 +1,3 @@
-using Humans.Cantina.Contracts;
 using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
@@ -34,7 +33,6 @@ internal sealed record VolunteerSearchBuildResult(
 internal sealed class ShiftVolunteerSearchBuilder(
     IBurnSettingsService burnSettings,
     IUserService userService,
-    ICantinaService cantina,
     IShiftRowView shiftView,
     IShiftSignupService signupService,
     IVolunteerTrackingManagement volunteerTrackingService)
@@ -92,9 +90,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
         var userIds = users.Select(u => u.UserId).ToList();
         var views = await shiftView.GetUsersAsync(userIds, ct);
 
-        // Dietary from Cantina; skills, quirks and languages from the shift view.
-        var diets = await cantina.GetDietaryProfilesAsync(userIds, ct);
-
         // The cached signups cover only the active event; for another event's shift, query that event's signups so
         // BookedShiftCount and HasOverlap stay accurate.
         var targetIsActive = activeEvent is not null && eventSettings.Id == activeEvent.Id;
@@ -111,7 +106,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
         {
             var view = views[user.UserId];
             var profile = view.Profile;
-            diets.TryGetValue(user.UserId, out var diet);
             var signupsForEvent = targetIsActive
                 ? view.ToSummary().Signups
                 : targetEventSignups![user.UserId];
@@ -130,7 +124,6 @@ internal sealed class ShiftVolunteerSearchBuilder(
                 Skills = profile?.Skills ?? [],
                 Quirks = profile?.Quirks ?? [],
                 Languages = profile?.Languages ?? [],
-                DietaryPreference = diet?.DietaryPreference,
                 BookedShiftCount = confirmedSignups.Count,
                 HasOverlap = hasOverlap,
                 IsInPool = poolUserIds.Contains(user.UserId),

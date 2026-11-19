@@ -92,6 +92,7 @@ internal sealed partial class UserRepository
             else
             {
                 ctx.Entry(src).Property(nameof(ContactField.ProfileId)).CurrentValue = targetProfileId.Value;
+                src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
                 targetKeys.Add(key);
             }

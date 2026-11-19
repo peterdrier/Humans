@@ -6,10 +6,10 @@
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
   src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleDriveAccessSource.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupMembershipSource.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleGroupSync.cs
+  src/Sections/Humans.Google/Contracts/IGoogleSyncService.cs
+  src/Sections/Humans.Google/Contracts/IGoogleDriveAccessSource.cs
+  src/Sections/Humans.Google/Contracts/IGoogleGroupMembershipSource.cs
+  src/Sections/Humans.Google/Contracts/IGoogleGroupSync.cs
   src/Sections/Humans.Calendar/Contracts/ICalendarFeedContributor.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
@@ -137,7 +137,9 @@ Meetings are created and edited through Calendar's shared form (`_CalendarEventF
 organisation zone (`ISettingsService.GetTimeZoneIdAsync`, Settings' `Event:TimeZoneId`). Times
 are read in the chosen zone and stored as UTC instants. A one-off meeting doesn't store its
 zone, so its edit reopens in the organisation zone; a repeating meeting stores it and reopens
-in it. Meetings hide the form's all-day part and use its recurrence picker.
+in it. Meetings hide the form's all-day part and use its recurrence picker. Local times whose
+timezone conversion exceeds the supported instant range return the shared form's localized
+validation error without saving a meeting.
 
 Occurrences are expanded by Calendar's `CalendarRecurrence.Occurrences`, the same expansion
 the community calendar uses; nothing per occurrence is stored. The group page timeline lists
@@ -254,7 +256,7 @@ AssemblyProposal, ResolutionProposal, DepartmentRegistration, Consultation, Even
 
 ### Settings
 
-`workgroups_settings` owns the root Drive folder id: one row (`Id = 1`),
+`workgroup_settings` owns the root Drive folder id: one row (`Id = 1`),
 `RootDriveFolderId` required, max 1000 characters. The existing admin form saves it
 through the Workgroups repository and audits the actor. A save is refused unless
 the service account can read the folder (`IGoogleSyncService.IsFolderReachableAsync`),
@@ -298,7 +300,7 @@ Settings and Register an existing group on first setup or after clearing the que
 ## Invariants
 
 - Meeting saves require explicit recurrence and public-visibility values. Omitted flags redisplay field errors before any create/update call, with a Warning after member authorization; explicit false choices remain valid. Meetings stay timed-only.
-- Approving, declining and directly adding members share one preflight: the group must exist and be Active before coordinator/admin authorization is checked. An admin override does not bypass the Active requirement.
+- Approving, declining and directly adding members use the same `ManageMembership` resource authorization in the controller and form visibility: active-group coordinators or Board/Admin. The services trust the authorized caller, accept no privilege flag, and require an existing Active group before request/target validation or mutation. Board/Admin authorization does not bypass that Active requirement.
 - Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
 
 - Roster membership-tier badges use localized enum labels in all supported cultures.
@@ -327,10 +329,10 @@ Settings and Register an existing group on first setup or after clearing the que
   (`WorkgroupService.Lifecycle`).
 - **Joining is a request; a coordinator decides.** `JoinAsync` writes a pending row and
   notifies the coordinators; nothing else changes. `ApproveMemberAsync` and `AddMemberAsync`
-  are the only ways a person becomes a member (`AdmitAsync`): both need a current coordinator
-  or `asAdmin`, and both write `MemberJoined`, audit, notify the person and request a Drive
+  are the only ways a person becomes a member (`AdmitAsync`): their controller requires a current
+  coordinator or Board/Admin, and both write `MemberJoined`, audit, notify the person and request a Drive
   sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
-  reason. A plain member gets `NotACoordinator`. Neither `SetCoordinatorsAsync` nor a
+  reason. A plain member is forbidden by the controller. Neither coordinator-change command nor a
   last-coordinator handover in `LeaveAsync` ever promotes a pending row. Ending or
   withdrawing the group closes its pending requests (`ClosePendingRequests`), so
   nothing waits on a group nobody can decide for.
@@ -343,9 +345,12 @@ Settings and Register an existing group on first setup or after clearing the que
   show its open-for-comment and update-due badges to members only (Board/Admin on the
   page). The register listing itself and the join request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
-  leaving must name a replacement (`LeaveAsync`); a `BoardOrAdmin` caller may override and
-  leave the group coordinatorless on purpose so the Secretary can appoint someone.
-  `SetCoordinatorsAsync` rejects a count outside 1–2 and any id that is not a current member.
+  leaving must name a replacement (`LeaveAsync`); the leave route always requires an Active group
+  and a handover when the last coordinator leaves. `SetCoordinatorsAsync` handles member handover
+  on Active groups; the existing Board/Admin route uses `AppointCoordinatorsAsync`, including on
+  frozen groups. Both reject a count outside 1–2 and any id that is not a current member, and share
+  persistence and post-commit effects. Member handover attributes its system-log entry to the actor;
+  Board/Admin appointment leaves that author null. Both audits retain the actual actor. Services accept no privilege flag.
 - **A Dormant (or not-yet-Active) group freezes all member mutations.** `RequireAcceptsMemberWork`
   gates every member write on `Status == Active`; only `BoardOrAdmin` actions
   (register, refer, refuse, withdraw, close, reactivate, disposition, coordinator
@@ -388,7 +393,7 @@ Settings and Register an existing group on first setup or after clearing the que
   after the group leaves Active (`RequireAcceptsMemberWork` on the responding calls too).
 - A group's Slug never collides with a reserved route segment (`apply`, `admin`).
 - Both Board/Admin budget forms require an explicit budget checkbox value. Enabling a budget also requires a valid create/link account choice; omissions and unknown choices cannot clear a budget or create a Holded account. Clearing a budget needs no account choice. The initial registration form selects create; rejected submissions retain their choices.
-- Budget: amount ≥ 0 or null and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
+- Budget: amount ≥ 0 or null, fits the existing decimal(18,2) column, and must be whole cents (at most two decimal places; trailing zeroes are valid). Updates and existing-group registration refuse oversized amounts and fractional cents before Finance, Drive creation or persistence, using literal feedback on the Board/Admin-only forms. Refused/Withdrawn rejected; Finance is called before
   anything is written, so a failed create or an unknown account number changes nothing;
   the first account bound is created as "Workgroups / {Name}" or linked to an existing
   account of that normalized name; clearing keeps the binding; rebinding never touches
@@ -461,6 +466,10 @@ One Hangfire job (`workgroups-rhythm`, 06:00 daily), calling
 `IWorkgroupService.RunDailyRhythmAsync`. **It never registers, closes, or refuses
 anything — every action here is a notice, a flag, or a record; a human still has to act.**
 
+Job shutdown cancellation during recipient lookup or notice delivery propagates even for
+the final group, with a Warning and no exception details. Other group failures remain
+isolated so the pass can continue.
+
 | Condition | Action |
 |-----------|--------|
 | Active, no Update, meeting notes or meeting (a series counts its stored first occurrence only) in 30 days | Notify coordinators, in-app, once per 30-day window |
@@ -487,17 +496,17 @@ should end is the Board's decision, taken on the register in front of them.
 - **Calendar**: implements `ICalendarFeedContributor` (inbound) — per-user meetings of
   Active groups the user belongs to; public meetings of Active groups for the community
   calendar window. Calendar names nothing of Workgroups.
-- **GoogleIntegration**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
+- **Google**: implements `IGoogleDriveAccessSource` alongside Teams, using the same reconciliation engine (inbound) — Active group
   folders → ContentManager (`fileOrganizer`) for current members (never a pending request), Dormant → Viewer,
-  root → Board readers only. Every claim carries the group's name (`Workgroups` for the root) as the fallback when GoogleIntegration cannot resolve the folder's Drive path, so removal emails and the sync log never show a raw folder id. Every folder-bearing group that is neither Active nor Dormant (Applied, Referred, Refused,
+  root → Board readers only. Every claim carries the group's name (`Workgroups` for the root) as the fallback when Google cannot resolve the folder's Drive path, so removal emails and the sync log never show a raw folder id. Every folder-bearing group that is neither Active nor Dormant (Applied, Referred, Refused,
   Withdrawn) remains claimed with an empty roster so existing direct grants are revoked. Calls `IGoogleSyncWrite.CreateSubfolderAsync` (registration) and
   `RequestSyncAsync` (every access-relevant change) outbound.
-- **GoogleIntegration (email group)**: implements `IGoogleGroupMembershipSource` alongside Teams and Camps (inbound) —
+- **Google (email group)**: implements `IGoogleGroupMembershipSource` alongside Teams and Camps (inbound) —
   an Active or Dormant group with a `GoogleGroupPrefix` claims `{prefix}@{GoogleGroupDomain}` for its current members
   (never a pending request); a Dormant roster is frozen, so the group keeps it. Other statuses claim nothing. Linking,
   and every change that requests a Drive sync, also call `IGoogleGroupSync.RequestSyncAsync` for a claimed group.
   Clearing the prefix stops the claim and leaves the Google group's members as they are. A group another source
-  also claims is a collision: GoogleIntegration skips and audits it.
+  also claims is a collision: Google skips and audits it.
 - **Settings**: `ISettingsService` — legacy root-folder read fallback until the admin saves section-owned settings.
 - **Surveys**: `ISurveyAnalysisRead` — `LinkSurveyAsync` reads the posted survey to check the
   actor authored it before writing the log entry. One-way: Surveys never references Workgroups.
@@ -508,7 +517,7 @@ should end is the Board's decision, taken on the register in front of them.
 - **Base / Users**: `IUserDataContributor` (`Humans.Base.Gdpr`), `IUserMerge` (`Humans.Users.Contracts`) — see GDPR below.
 - **Finance**: `IFinanceWrite.CreateOrLinkExpenseAccountAsync` /
   `SetExpenseAccountActiveAsync` (outbound). **Holded**: `IHoldedService.GetChartAsync`
-  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and leave the picker empty; cancellation propagates. Account creation and linking still go through Finance.
+  for the admin picker only: active group-6 accounts from the local mirror, with no outbound API call. Both the register-existing and detail views order accounts by number; the mirror read imposes no display order. Unexpected mirror-read failures log at Error with exception details and propagate, stopping the page rather than presenting an empty account picker; cancellation propagates. Account creation and linking still go through Finance.
 
 ## GDPR
 
@@ -538,7 +547,7 @@ The internal `WorkgroupDataExport` owns all six GDPR export slices, including re
 **Owning services:** `WorkgroupService` (inner, keyed `"workgroups-inner"`),
 `CachingWorkgroupService` (Singleton decorator)
 **Owned tables:** `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
 
 `MyWorkgroupsViewComponent` supplies the member-dashboard list and passes
@@ -554,7 +563,7 @@ picker labels and roster profile badges load a member dictionary.
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IWorkgroupService` | — | Not published — no other section consumes Workgroups directly (Calendar and GoogleIntegration are inbound fan-outs Workgroups implements); no `.Contracts` leaf |
+| `IWorkgroupService` | — | Not published — no other section consumes Workgroups directly (Calendar and Google are inbound fan-outs Workgroups implements); no `.Contracts` leaf |
 
 ### For (A) Migrated sections
 

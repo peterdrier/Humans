@@ -135,7 +135,7 @@ internal sealed class EventsModerationController(
         var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
         if (guideEvent == null) return NotFound();
 
-        var (eventSettings, tz) = await LoadEventSettingsAsync(ct);
+        var (eventSettings, tz) = await LoadEventSettingsAsync(ct, guideEvent.EventSettingsId);
         if (eventSettings == null)
         {
             SetError("Event settings not configured.");
@@ -203,7 +203,7 @@ internal sealed class EventsModerationController(
                 ModelState.AddModelError(nameof(model.VenueId), "Venue is required.");
         }
 
-        var (eventSettings, tz) = await LoadEventSettingsAsync(ct);
+        var (eventSettings, tz) = await LoadEventSettingsAsync(ct, guideEvent.EventSettingsId);
         if (eventSettings == null)
         {
             SetError("Event settings not configured.");
@@ -244,9 +244,10 @@ internal sealed class EventsModerationController(
         return RedirectToAction(nameof(Index), new { tab = guideEvent.Status });
     }
 
-    private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync(CancellationToken ct = default)
+    private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync(
+        CancellationToken ct = default, Guid? eventSettingsId = null)
     {
-        var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync(ct), ct);
+        var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync(ct), ct, eventSettingsId);
         return (eventSettings, GetTimeZone(eventSettings));
     }
 
@@ -319,7 +320,7 @@ internal sealed class EventsModerationController(
         string? campSlug = null;
         if (guideEvent.CampId.HasValue)
         {
-            var (eventSettings, _) = await LoadEventSettingsAsync(ct);
+            var (eventSettings, _) = await LoadEventSettingsAsync(ct, guideEvent.EventSettingsId);
             var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
             campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
         }

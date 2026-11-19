@@ -82,8 +82,10 @@ public class PersonSearchMatcherTests
         var user = new User
         {
             Id = userId,
-            // Every real Profile save copies BurnerName onto the owning User row.
+            // Every real Profile save copies the names onto the owning User row.
             BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
             DisplayName = displayName,
             State = isRejected ? UserState.Rejected : UserState.Active,
             PreferredLanguage = "en",

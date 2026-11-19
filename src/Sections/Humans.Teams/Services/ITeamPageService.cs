@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;

@@ -483,6 +483,107 @@ public sealed class EventsModerationControllerTests
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ModeratorEdits_UseTheRecordsCalendarAndTimezone(bool campEvent, bool post)
+    {
+        using var request = new CancellationTokenSource();
+        var moderatorId = Guid.NewGuid();
+        var current = BurnFixtures.Burn(year: 2026, eventEndOffset: 2);
+        var original = BurnFixtures.Burn(year: 2025, eventEndOffset: 6) with
+        {
+            GateOpeningDate = new LocalDate(2025, 8, 1),
+            TimeZoneId = "America/New_York"
+        };
+        var start = original.GateOpeningDate.At(new LocalTime(10, 30))
+            .InZoneLeniently(DateTimeZoneProviders.Tzdb[original.TimeZoneId]).ToInstant();
+        var entry = MakeEvent(campEvent ? Guid.NewGuid() : null, EventStatus.Pending) with
+        {
+            EventSettingsId = original.Id,
+            StartAt = start,
+            IsRecurring = true,
+            RecurrenceDays = "0,6"
+        };
+        _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
+            Guid.NewGuid(), current.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
+            current.TimeZoneId, Instant.MinValue, Instant.MinValue));
+        _guide.GetEventSettingsByIdAsync(current.Id, Arg.Any<CancellationToken>()).Returns(current);
+        _guide.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>()).Returns(UserInfoFor(moderatorId));
+        if (entry.CampId is { } campId)
+            _camps.GetCampsForEventAsync(original.Id, Arg.Any<CancellationToken>())
+                .Returns([new CampInfo(campId, "old-camp", "camp@example.org", "", false, 0, [])]);
+        var controller = BuildController(moderatorId, entry.Id);
+        controller.HttpContext.RequestAborted = request.Token;
+        if (!post)
+        {
+            var result = await controller.Edit(entry.Id, request.Token);
+            var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<AdminEventFormViewModel>().Subject;
+            model.StartDate.Should().Be(new DateOnly(2025, 8, 1));
+            model.StartTime.Should().Be(new TimeOnly(10, 30));
+            model.TimeZoneId.Should().Be(original.TimeZoneId);
+            model.EventDays.Should().HaveCount(7);
+            if (campEvent) model.CampName.Should().Be("old-camp");
+        }
+        else
+        {
+            var model = new AdminEventFormViewModel
+            {
+                Title = "Edited",
+                Description = "Description",
+                CategoryId = entry.CategoryId,
+                VenueId = entry.GuideSharedVenueId,
+                StartDate = new DateOnly(2025, 8, 1),
+                StartTime = new TimeOnly(10, 30),
+                DurationMinutes = 60,
+                IsRecurring = true,
+                RecurrenceDays = "0,6"
+            };
+            (await controller.Update(entry.Id, model)).Should().BeOfType<RedirectToActionResult>();
+            await _guide.Received(1).AdminUpdateAsync(entry.Id,
+                Arg.Is<EventEdit>(edit => edit.StartAt == start), moderatorId, Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        }
+        await _guide.Received(1).GetEventSettingsByIdAsync(original.Id, request.Token);
+    }
+
+    [HumansFact]
+    public async Task ModeratorFeedback_ResolvesTheCampLinkFromTheRecordsEvent()
+    {
+        var moderatorId = Guid.NewGuid();
+        var current = BurnFixtures.Burn(year: 2026);
+        var original = BurnFixtures.Burn(year: 2025);
+        var campId = Guid.NewGuid();
+        var entry = MakeEvent(campId, EventStatus.Pending) with { EventSettingsId = original.Id };
+        _users.GetUserInfoAsync(moderatorId, Arg.Any<CancellationToken>()).Returns(UserInfoFor(moderatorId));
+        _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
+            Guid.NewGuid(), current.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
+            current.TimeZoneId, Instant.MinValue, Instant.MinValue));
+        _guide.GetEventSettingsByIdAsync(current.Id, Arg.Any<CancellationToken>()).Returns(current);
+        _guide.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+        _camps.GetCampsForEventAsync(current.Id, Arg.Any<CancellationToken>()).Returns([]);
+        _camps.GetCampsForEventAsync(original.Id, Arg.Any<CancellationToken>())
+            .Returns([new CampInfo(campId, "old-camp", "camp@example.org", "", false, 0, [])]);
+        var controller = BuildController(moderatorId, entry.Id);
+        controller.Url.Action(Arg.Any<UrlActionContext>()).Returns(call =>
+        {
+            var values = new Microsoft.AspNetCore.Routing.RouteValueDictionary(call.Arg<UrlActionContext>().Values);
+            return $"/Events/Barrio/{values["slug"]}/{values["eventId"]}/Edit";
+        });
+
+        await controller.RequestEdit(new ModerationActionFormModel { EventId = entry.Id, Reason = "Please revise" });
+
+        await _guide.Received(1).ApplyModerationAsync(entry.Id, moderatorId,
+            EventModerationActionType.ResubmitRequested, "Please revise",
+            $"/Events/Barrio/old-camp/{entry.Id}/Edit", Arg.Any<CancellationToken>());
+    }
+
     private EventsModerationController BuildController(Guid moderatorId, Guid eventId)
     {
         var http = new DefaultHttpContext
@@ -509,8 +610,8 @@ public sealed class EventsModerationControllerTests
         Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0), []);
 
     private static UserInfo UserInfoFor(Guid userId) => UserInfo.Create(
-        new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue },
+        new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue, BurnerName = "Moderator", FirstName = "Mod", LastName = "Erator" },
         userEmails: [],
         externalLogins: [],
-        profile: UserFixtures.Profile(burnerName: "Moderator", firstName: "Mod", lastName: "Erator"));
+        profile: UserFixtures.Profile());
 }

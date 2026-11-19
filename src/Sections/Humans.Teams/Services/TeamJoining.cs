@@ -1,7 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Threading;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
@@ -241,9 +241,16 @@ internal sealed class TeamJoining(
     internal async Task<TeamJoinReviewResult> RejectJoinRequestAsync(
         Guid requestId,
         Guid approverUserId,
-        string reason,
+        string? reason,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            logger.LogWarning("Join request rejection refused for request {RequestId} by {ActorId}: a reason is required",
+                requestId, approverUserId);
+            return new(ErrorKey: "Teams_TeamAdmin_ProvideRejectionReason");
+        }
+
         var request = await repo.FindRequestWithTeamForMutationAsync(requestId, cancellationToken);
         if (request is null)
             return new(Refusal: "Join request not found");

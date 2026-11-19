@@ -27,7 +27,7 @@ internal sealed class ShiftTagConfiguration : IEntityTypeConfiguration<ShiftTag>
                 j => j.HasOne<ShiftTag>().WithMany().HasForeignKey("ShiftTagId").OnDelete(DeleteBehavior.Cascade),
                 j =>
                 {
-                    j.ToTable("rota_shift_tags");
+                    j.ToTable("shift_rota_tags");
                     j.HasKey("RotaId", "ShiftTagId");
                 });
 

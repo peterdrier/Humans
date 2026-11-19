@@ -71,7 +71,7 @@ None — content-only section. No tables, no DbContext, no repository, no migrat
   whose `NonceTagHelper` stamps the request nonce on every `<script>`.
 
 The rendered page, its header bar, the Welcome link and the dashboard card are pinned by
-`TourPageRenderTests` in `Humans.Integration.Tests`, which runs locally only — never in CI.
+`TourPageRenderTests` in `Humans.Integration.Tests`, a PR check.
 
 ## Negative Access Rules
 

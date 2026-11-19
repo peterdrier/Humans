@@ -33,7 +33,7 @@ internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprov
                 case ManagesPreapprovalsRequirement manage when await ManagesAsync(context.User, ct):
                     context.Succeed(manage);
                     break;
-                case PreapprovalsAccessRequirement access when await ManagesAsync(context.User, ct) || await HasAnythingAsync(context.User, ct):
+                case PreapprovalsAccessRequirement access when IsReadingRole(context.User) || await HasAnythingAsync(context.User, ct):
                     context.Succeed(access);
                     break;
             }

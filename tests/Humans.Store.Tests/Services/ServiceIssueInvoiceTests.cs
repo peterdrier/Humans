@@ -61,7 +61,7 @@ public class ServiceIssueInvoiceTests
 
     public ServiceIssueInvoiceTests()
     {
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
         _holdedService.IsConfigured.Returns(true);
@@ -88,7 +88,7 @@ public class ServiceIssueInvoiceTests
             .Returns(Found());
 
         _service = new Service(
-            _repo, _audit, _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
             Options.Create(_options), NullLogger<Service>.Instance);
     }
 

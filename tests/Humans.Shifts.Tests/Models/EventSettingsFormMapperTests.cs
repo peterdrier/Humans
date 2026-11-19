@@ -3,6 +3,7 @@ using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
 using NodaTime;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.Models;
 
@@ -32,8 +33,6 @@ public sealed class EventSettingsFormMapperTests
         var vm = EventSettingsFormMapper.ToViewModel(null, Burn);
 
         vm.IsShiftBrowsingOpen.Should().BeFalse();
-        vm.GlobalVolunteerCap.Should().BeNull();
-        vm.ReminderLeadTimeHours.Should().Be(24);
         vm.FirstCrewStartOffset.Should().Be(-28);
         vm.SetupWeekStartOffset.Should().Be(-20);
         vm.PreEventWeekStartOffset.Should().Be(-10);
@@ -43,13 +42,11 @@ public sealed class EventSettingsFormMapperTests
     [HumansFact]
     public void ToViewModel_KnobsRowPresent_MapsItsFields()
     {
-        var knobs = new ShiftEventKnobs(IsShiftBrowsingOpen: true, GlobalVolunteerCap: 300, ReminderLeadTimeHours: 12);
+        var knobs = new ShiftEventKnobs(IsShiftBrowsingOpen: true);
 
         var vm = EventSettingsFormMapper.ToViewModel(knobs, Burn);
 
         vm.IsShiftBrowsingOpen.Should().BeTrue();
-        vm.GlobalVolunteerCap.Should().Be(300);
-        vm.ReminderLeadTimeHours.Should().Be(12);
         vm.FirstCrewStartOffset.Should().Be(-28);
     }
 

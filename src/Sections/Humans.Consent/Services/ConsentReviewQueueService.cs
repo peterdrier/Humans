@@ -10,7 +10,6 @@ internal sealed class ConsentReviewQueueService(
     IConsentService consentService,
     IConsentWrite consentWrite,
     IGovernanceService governanceService,
-    IMembershipCalculator membershipCalculator,
     ILogger<ConsentReviewQueueService> logger) : IConsentReviewQueueService
 {
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
@@ -22,20 +21,19 @@ internal sealed class ConsentReviewQueueService(
         var (pending, flagged) = PartitionReviewQueue(all, reviews);
 
         var allUserIds = flagged.Concat(pending).Select(u => u.Id).ToList();
-        var pendingAppUserIds = await governanceService.GetUserIdsWithPendingApplicationAsync(allUserIds, ct);
 
         var consentProgress = new Dictionary<Guid, ConsentProgressInfo>();
         foreach (var userId in allUserIds)
         {
-            var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+            var progress = await consentService.GetConsentProgressAsync(userId, ct);
             consentProgress[userId] = new ConsentProgressInfo(
-                snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
-                snapshot.RequiredConsentCount);
+                progress.RequiredCount - progress.PendingCount,
+                progress.RequiredCount);
         }
 
         var tiers = await governanceService.GetMembershipTiersAsync(ct);
 
-        return new ReviewQueueData(pending, flagged, pendingAppUserIds.ToHashSet(), consentProgress, tiers, reviews);
+        return new ReviewQueueData(pending, flagged, consentProgress, tiers, reviews);
     }
 
     // Bulk clear's eligibility is defined as "a row in the queue", so it partitions here too and the two can't
@@ -46,12 +44,12 @@ internal sealed class ConsentReviewQueueService(
         ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
 
         var flagged = all
-            .Where(u => u.IsConsentCheckFlagged(ReviewOf(u)))
+            .Where(u => ReviewOf(u).IsConsentCheckFlagged(u))
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
         var pending = all
-            .Where(u => u.NeedsConsentReview(ReviewOf(u)) && !u.IsConsentCheckFlagged(ReviewOf(u)))
+            .Where(u => ReviewOf(u).NeedsConsentReview(u) && !ReviewOf(u).IsConsentCheckFlagged(u))
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 
@@ -60,31 +58,30 @@ internal sealed class ConsentReviewQueueService(
 
     public async Task<ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
     {
-        var profile = (await userService.GetUserInfoAsync(userId, ct))?.Profile;
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var profile = info?.Profile;
 
         if (profile is null)
-            return new ReviewDetailData(null, 0, 0, null);
+            return new ReviewDetailData(null, 0, 0);
 
         var review = await consentService.GetConsentReviewAsync(userId, ct);
 
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+        var progress = await consentService.GetConsentProgressAsync(userId, ct);
 
-        var pendingApp = await governanceService.GetSubmittedApplicationForUserAsync(userId, ct);
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
 
         return new ReviewDetailData(
             new ReviewProfileDetail(
-                profile.FirstName,
-                profile.LastName,
+                info!.FirstName,
+                info.LastName,
                 profile.City,
                 profile.CountryCode,
                 tier,
                 review.Status,
                 review.Notes,
                 profile.CreatedAt),
-            snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
-            snapshot.RequiredConsentCount,
-            pendingApp?.Motivation);
+            progress.RequiredCount - progress.PendingCount,
+            progress.RequiredCount);
     }
 
     public Task<OnboardingResult> ClearAsync(

@@ -1,12 +1,13 @@
+using Humans.Base.Constants;
+using Humans.Teams.Contracts;
 using System.Security.Claims;
-using Humans.Governance.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Governance.ViewComponents;
 
 /// <summary>Renders nothing for a guest or non-member.</summary>
 public sealed class GovernanceApplicationsTileViewComponent(
-    IMembershipCalculator membershipCalculator) : ViewComponent
+    ITeamService teamService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
@@ -15,7 +16,8 @@ public sealed class GovernanceApplicationsTileViewComponent(
             return Content(string.Empty);
         }
 
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId, HttpContext.RequestAborted);
-        return snapshot.IsVolunteerMember ? View() : Content(string.Empty);
+        var isVolunteerMember = (await teamService.GetTeamAsync(SystemTeamIds.Volunteers, HttpContext.RequestAborted))
+            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
+        return isVolunteerMember ? View() : Content(string.Empty);
     }
 }

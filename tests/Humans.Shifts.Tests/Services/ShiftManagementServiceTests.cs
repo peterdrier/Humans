@@ -78,6 +78,8 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        // The uncached row source: browse reads see the seeded database directly.
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     private static TeamInfo ToTeamInfo(Team team) =>
@@ -134,8 +136,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             ToTeamInfo(new Team { Id = targetTeamId, Name = "Target", Slug = "target" }));
         var views = new ShiftViewProbe();
         await views.PrimeRotaAsync(rota.Id, shift);
-        await views.PrimeUserAsync(user.Id, shift);
-        await views.PrimeUserAsync(targetUser.Id);
         var eventId = operation == ManagementWrite.NewKnobs ? Guid.NewGuid() : settings.Id;
         Cache.Set(ShiftManagementService.OverviewCacheKey(eventId, null), new object());
         var failure = new IOException("Persistence acknowledgement failed");
@@ -150,7 +150,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         Func<Task> mutate = operation switch
         {
             ManagementWrite.Knobs or ManagementWrite.NewKnobs => () => service.SaveKnobsAsync(
-                eventId, false, null, 24, BuildSubPeriodStarts.Default, user.Id),
+                eventId, false, BuildSubPeriodStarts.Default, user.Id),
             ManagementWrite.BrowsingSwitch => () => service.SetShiftBrowsingOpenAsync(eventId, false),
             ManagementWrite.MoveRota => () => service.MoveRotaToTeamAsync(new MoveRotaInput(rota.Id, rota.TeamId, targetTeamId, user.Id)),
             ManagementWrite.DeleteRota => () => service.DeleteRotaAsync(rota.Id, user.Id),
@@ -172,14 +172,11 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
 
-        (await views.IsUserCachedAsync(user.Id)).Should().BeFalse();
         if (operation is ManagementWrite.TagPreferences or ManagementWrite.CreateProfile
             or ManagementWrite.UpdateProfile or ManagementWrite.ReassignProfile)
             (await views.IsRotaCachedAsync(rota.Id)).Should().BeTrue();
         else
             (await views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
-        if (operation == ManagementWrite.ReassignProfile)
-            (await views.IsUserCachedAsync(targetUser.Id)).Should().BeFalse();
         if (operation is ManagementWrite.Knobs or ManagementWrite.NewKnobs)
             Cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeFalse();
         await using var persisted = await ShiftsDbFactory.CreateDbContextAsync(ct);
@@ -284,7 +281,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var pending = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>()).Returns(pending.Task);
         var views = new ShiftViewProbe();
-        await views.PrimeUserAsync(Guid.NewGuid());
         await views.PrimeRotaAsync(Guid.NewGuid());
         using var cache = new MemoryCache(new MemoryCacheOptions());
         cache.Set(ShiftManagementService.OverviewCacheKey(eventId, null), new object());
@@ -303,7 +299,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         catch (Exception ex) { error = ex; }
         if (saveFails) error.Should().BeSameAs(failure);
         else { error.Should().BeNull(); (await deletion).Should().Be(1); }
-        views.Cache.UserCacheStats.BulkInvalidations.Should().Be(1);
         views.Cache.RotaCacheStats.BulkInvalidations.Should().Be(1);
         cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, null), out _).Should().BeFalse();
     }
@@ -662,12 +657,14 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 2);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var locator = Substitute.For<IServiceProvider>();
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
-            new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
+            locator, Cache,
             new ShiftViewProbe().Cache,
             new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        locator.GetService(typeof(IShiftRotaRows)).Returns(service);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -1411,14 +1408,12 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     {
         var eventId = Guid.NewGuid();
 
-        await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true, globalVolunteerCap: 50, reminderLeadTimeHours: 12,
+        await _service.SaveKnobsAsync(eventId, isShiftBrowsingOpen: true,
             new BuildSubPeriodStarts(-28, -20, -10, -3), actorUserId: ActorId);
 
         ShiftsDb.ChangeTracker.Clear();
         var saved = await ShiftsDb.EventSettings.AsNoTracking().SingleAsync(e => e.Id == eventId, Xunit.TestContext.Current.CancellationToken);
         saved.IsShiftBrowsingOpen.Should().BeTrue();
-        saved.GlobalVolunteerCap.Should().Be(50);
-        saved.ReminderLeadTimeHours.Should().Be(12);
         saved.SubPeriodFirstCrewStart.Should().Be(-28);
         saved.SubPeriodSetupWeekStart.Should().Be(-20);
         saved.SubPeriodPreEventWeekStart.Should().Be(-10);
@@ -1442,7 +1437,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         ShiftsDb.EventSettings.Add(existing);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true, globalVolunteerCap: null, reminderLeadTimeHours: 24,
+        await _service.SaveKnobsAsync(existing.Id, isShiftBrowsingOpen: true,
             new BuildSubPeriodStarts(-25, -16, -9, -4), actorUserId: ActorId);
 
         (await ShiftsDb.EventSettings.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
@@ -1573,54 +1568,44 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     public async Task GetActivePendingShiftSignupCountsByTeam_returns_empty_dict_when_no_active_event()
     {
         // No EventSettings seeded in ShiftsDb → NewCalendarResolver() resolves no active event.
-        var repo = Substitute.For<IShiftManagementRepository>();
-        var service = BuildServiceWithRepo(repo);
-
-        var result = await service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
-        await repo.DidNotReceiveWithAnyArgs()
-            .GetPendingSignupCountsByTeamAsync(Guid.Empty, null, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task GetActivePendingShiftSignupCountsByTeam_delegates_to_repo_when_active_event_exists()
+    public async Task GetActivePendingShiftSignupCountsByTeam_counts_a_signup_range_once()
     {
-        var es = new EventSettings
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var first = SeedShift(rota, 1);
+        var second = SeedShift(rota, 2);
+        var blockId = Guid.NewGuid();
+        foreach (var shift in new[] { first, second })
+        {
+            ShiftsDb.ShiftSignups.Add(new ShiftSignup
+            {
+                Id = Guid.NewGuid(),
+                ShiftId = shift.Id,
+                UserId = Guid.NewGuid(),
+                SignupBlockId = blockId,
+                Status = SignupStatus.Pending,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
+            });
+        }
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
-            EventName = "Active 2026",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsActive = true,
+            ShiftId = first.Id,
+            UserId = Guid.NewGuid(),
+            Status = SignupStatus.Pending,
             CreatedAt = TestNow,
             UpdatedAt = TestNow
-        };
-        ShiftsDb.EventSettings.Add(es);
+        });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        var expected = new Dictionary<Guid, int> { [Guid.NewGuid()] = 3 };
 
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetPendingSignupCountsByTeamAsync(es.Id, null, null, Arg.Any<CancellationToken>())
-            .Returns(expected);
-        var service = BuildServiceWithRepo(repo);
+        var result = await _service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEquivalentTo(expected);
+        result.Should().BeEquivalentTo(new Dictionary<Guid, int> { [rota.TeamId] = 2 });
     }
-
-    private ShiftManagementService BuildServiceWithRepo(IShiftManagementRepository repo) =>
-        new(
-            repo,
-            AuditLog,
-            AdminAuthorization,
-            new ServiceLocatorBuilder().Build(),
-            Cache,
-            new ShiftViewProbe().Cache,
-            NewCalendarResolver(),
-            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 }

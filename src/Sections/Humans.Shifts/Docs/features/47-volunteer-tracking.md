@@ -81,14 +81,14 @@ Summary:
 |-------|------|---------|
 | `Id` | `Guid` | PK |
 | `UserId` | `Guid` | Bare cross-section FK to `users.id` (no nav property) |
-| `EventSettingsId` | `Guid` | Same-section FK to `event_settings.id` (cascade delete) |
+| `EventSettingsId` | `Guid` | Same-section FK to `shift_event_settings.id` (cascade delete) |
 | `BarrioSetupStartDate` | `LocalDate?` | Day the volunteer joined camp set-up; nullable |
 | `SetByUserId` | `Guid?` | Actor who set the camp-set-up marker |
 | `SetAt` | `Instant?` | When the marker was set |
 | `Notes` | `string?` | Free-text from the coordinator who set/cleared the date |
 | `DayOffs` | `List<DayOffEntry>` | Sparse day-off entries (jsonb); each carries `DayOffset`, `Reason`, `MarkedByUserId`, `MarkedAt` |
 
-**Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
+**Table:** `shift_volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
 Audit actions (`ShiftsAuditActions`): `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. `EntityType = nameof(VolunteerBuildStatus)`.
 
@@ -127,10 +127,14 @@ All write paths route through `IVolunteerTrackingManagement` → `IVolunteerTrac
 
 An "Export" card above the heatmap (`_ExportCard.cshtml`) lets the coordinator download the tracking data as `.xlsx`, filtered by department, period (Build/Event/Strike, with a Build sub-period breakdown), or an explicit date range. `VolunteerTrackingController.ExportXlsx` resolves the requested range and hands it to `IVolunteerTrackingExportService` → `VolunteerTrackingXlsxBuilder`.
 
+The workbook's on-site totals include each exported human on their displayed arrival day (the day before their first confirmed shift) and each day they work. Empty days do not contribute.
+
+Custom dates must form a complete, valid pair with representable timezone-converted bounds. Invalid queries return HTTP 400 before building the workbook. A selected period overrides date text; omitted dates use the whole event, and reversed valid dates are normalized.
+
 ### Profile embed — single-volunteer strip
 
 <!-- wheat: docs/superpowers/specs/2026-05-27-coordinator-availability-on-profile-design.md -->
-`VolunteerBuildStripViewComponent` (`Humans.Shifts.Contracts`) renders one volunteer's row of `_VolunteerHeatmap.cshtml` as `<vc:volunteer-build-strip user-id="…">` on `/Profile/{id}` — gated by the same coordinator check as `<vc:shift-signups>` (`!IsOwnProfile && CanViewShiftSignups`); never shown on a human's own profile. `HeatmapPartialModel.ShowAvailabilityControls` distinguishes the two hosts: `true` on the profile (adds a Mark/Unmark-available popover toggle driven by a per-cell `DeclaredAvailable` flag, orthogonal to `VolunteerCellState`), `false` on the tracking page (cohort heatmap unchanged).
+`VolunteerBuildStripViewComponent` (internal) renders one volunteer's row of `_VolunteerHeatmap.cshtml` inside Shifts' profile card on `/Profile/{id}` (the `UserPartSlots.Profile` part), which shows only to a coordinator or a privileged signup approver and never on a human's own profile. `HeatmapPartialModel.ShowAvailabilityControls` distinguishes the two hosts: `true` on the profile (adds a Mark/Unmark-available popover toggle driven by a per-cell `DeclaredAvailable` flag, orthogonal to `VolunteerCellState`), `false` on the tracking page (cohort heatmap unchanged).
 
 ## Routes
 

@@ -1,14 +1,17 @@
+using Humans.Base.Constants;
+using Humans.Teams.Contracts;
 using System.Security.Claims;
 using Humans.Governance.Contracts;
+using Humans.Governance.Services;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
 namespace Humans.Governance.ViewComponents;
 
 /// <summary>Renders nothing for a plain Volunteer.</summary>
-public sealed class MemberTermStatusViewComponent(
-    IMembershipCalculator membershipCalculator,
-    IGovernanceService applicationService,
+internal sealed class MemberTermStatusViewComponent(
+    ITeamService teamService,
+    IGovernanceManagement applicationService,
     IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
@@ -20,7 +23,8 @@ public sealed class MemberTermStatusViewComponent(
         }
 
         var tier = await applicationService.GetMembershipTierAsync(userId, ct);
-        var isVolunteerMember = (await membershipCalculator.GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
+        var isVolunteerMember = (await teamService.GetTeamAsync(SystemTeamIds.Volunteers, ct))
+            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
         if (!isVolunteerMember || tier == MembershipTier.Volunteer)
         {
@@ -28,8 +32,8 @@ public sealed class MemberTermStatusViewComponent(
         }
 
         var applications = await applicationService.GetUserApplicationsAsync(userId, ct);
-        var (expiresAt, expiresSoon, expired) = ComputeTermState(applications, tier);
-        var hasPendingApplication = applications.MaxBy(a => a.SubmittedAt)?.Status == ApplicationStatus.Submitted;
+        var (expiresAt, expiresSoon, expired, hasPendingApplication) = TermExpiryCalculator.ComputeTermState(
+            applications, tier, clock.GetCurrentInstant().InUtc().Date);
 
         return View(new MemberTermStatusViewModel(
             tier,
@@ -39,29 +43,7 @@ public sealed class MemberTermStatusViewComponent(
             hasPendingApplication));
     }
 
-    private (LocalDate? ExpiresAt, bool ExpiresSoon, bool Expired) ComputeTermState(
-        IReadOnlyList<UserApplicationSnapshot> applications,
-        MembershipTier currentTier)
-    {
-        var latestApprovedApp = applications
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier == currentTier
-                && a.TermExpiresAt is not null)
-            .OrderByDescending(a => a.TermExpiresAt)
-            .FirstOrDefault();
 
-        if (latestApprovedApp?.TermExpiresAt is null)
-        {
-            return (null, false, false);
-        }
-
-        var today = clock.GetCurrentInstant().InUtc().Date;
-        var expiryDate = latestApprovedApp.TermExpiresAt.Value;
-        var expired = expiryDate < today;
-        var expiresSoon = !expired && expiryDate <= today.PlusDays(90);
-
-        return (expiryDate, expiresSoon, expired);
-    }
 }
 
 internal sealed record MemberTermStatusViewModel(

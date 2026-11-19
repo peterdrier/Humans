@@ -13,4 +13,4 @@ description: HARD RULE. Top-level `/Admin/*` is legacy; never add new `/Admin/fo
 - For new admin functionality on existing sections: `/<Section>/Admin/...` only. Do not add to `/Admin/...`.
 - Do **NOT** propose blanket migration of the existing legacy `/Admin/*` pages as part of unrelated work — that's a separate refactor Peter will scope when he wants it.
 - An admin controller for a section is a separate file from the buyer/user-facing controller — split, don't mix `[Authorize(Policy = ...)]`-gated actions into a single controller. e.g. `TicketTransferController` (buyer) at `/Tickets/Transfers`, `TicketTransferAdminController` at `/Tickets/Admin/Transfers`.
-- `CLAUDE.md`'s note ("`/Admin/*` is a nav holder, not a section") describes today's legacy state, not the desired future state.
+- `AGENTS.md`'s note ("`/Admin/*` is a nav holder, not a section") describes today's legacy state, not the desired future state.

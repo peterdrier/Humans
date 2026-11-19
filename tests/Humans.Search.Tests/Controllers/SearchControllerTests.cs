@@ -55,6 +55,7 @@ public sealed class SearchControllerTests
         await _search.Received(1).SearchAsync("Kitchen", SearchResultType.Team, Arg.Any<CancellationToken>());
         vm.Filter.Should().Be(SearchResultType.Team);
         vm.Query.Should().Be("Kitchen");
+        vm.SearchFailed.Should().BeFalse();
     }
 
     [HumansFact]
@@ -136,6 +137,7 @@ public sealed class SearchControllerTests
 
         vm.Query.Should().Be("kitchen");
         vm.Filter.Should().Be(SearchResultType.Camp);
+        vm.SearchFailed.Should().BeTrue();
         vm.TeamResults.Should().BeEmpty();
         var log = _logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
         log[0].Should().Be(LogLevel.Error);

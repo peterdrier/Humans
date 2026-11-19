@@ -27,8 +27,10 @@ internal sealed record OrderDto(
     decimal BalanceEur,
     Instant CreatedAt)
 {
+    public bool HasCheckoutAttempt { get; init; }
+
     /// <summary>The state half of <c>DeleteOrderAsync</c>'s guard; authorization is separate.</summary>
-    public bool IsDeletable => State == OrderState.Open && Payments.Count == 0 && BalanceEur == 0m;
+    public bool IsDeletable => State == OrderState.Open && Payments.Count == 0 && BalanceEur == 0m && !HasCheckoutAttempt;
 
     /// <summary>The state half of issuance; the issuer's zero-balance and Holded checks still refuse authoritatively.</summary>
     public bool IsInvoiceIssuable => State == OrderState.Open && Lines.Count > 0;

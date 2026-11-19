@@ -4,6 +4,7 @@ using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
+using Humans.Stripe.Contracts;
 using NodaTime;
 using Xunit;
 
@@ -47,6 +48,26 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
+    public void StripeSources_FillsLinkedAccounts_AndSaysWhyTheRestAreUnknown()
+    {
+        var at = Instant.FromUtc(2026, 11, 1, 0, 0);
+        var links = new Dictionary<int, string> { [44100003] = "acct_store", [44100004] = "acct_unswept" };
+
+        var sources = FinanceOverviewService.StripeSources([44100003, 44100004, 44100005], links,
+            [new StripeAccountBalance("acct_store", 2000m, 500m, at)]);
+
+        sources[44100003].Should().Be(new FinanceAccountSourceVm(2500m, "/Stripe", ReadAt: at, Pending: 500m));
+        sources[44100004].Balance.Should().BeNull();
+        sources[44100004].Unknown.Should().Contain("acct_unswept");
+        sources[44100005].Balance.Should().BeNull();
+        sources[44100005].Unknown.Should().NotBeNull();
+        FinanceOverviewService.StripeSources([44100003], null, []).Values.Should()
+            .ContainSingle().Which.Unknown.Should().NotBeNull();
+        new FinanceStripeOptions { StripeLedgerAccounts = { ["4410000X"] = "acct_store" } }.ByLedgerAccount()
+            .Should().BeNull();
+    }
+
+    [HumansFact]
     public void BuildLedgerCards_GroupsCashAndReceivables_AndFlipsTaxes()
     {
         HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, null, archived, 0m);
@@ -66,7 +87,11 @@ public class FinanceOverviewServiceTests
             [47500001] = -40m,
         };
 
-        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [], pleoWallet: 2m);
+        var feed = new FinanceBankFeedVm(3, Instant.FromUtc(2026, 1, 1, 0, 0));
+        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [],
+            new Dictionary<int, FinanceAccountSourceVm> { [57200003] = new(2m, "/Finance/Pleo") }, 57200001, feed);
+
+        cards.Banks.Select(a => a.BankFeed).Should().Equal(feed, null);
 
         cards.Banks.Select(a => a.AccountNum).Should().Equal(57200001, 57200003);
         cards.Stripe.Select(a => a.AccountNum).Should().Equal(44100001);
@@ -112,12 +137,61 @@ public class FinanceOverviewServiceTests
         (owed with { Unavailable = "contacts unreadable" }).Total.Should().BeNull("an unknown creditor total is not zero");
 
         var recon = new ExpenseReconReport(null, null, null, [], [], [], [], new ExpenseReconTotals(0, 0, 0, 2, 0, 0m, 1, 0));
+        var sent = new SepaPayoutTransferRow(
+            Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUtc(2026, 3, 1, 9, 0), Guid.NewGuid(), Guid.NewGuid(),
+            40000002, null, "Ana", "ES**1234", 30m, null, null, null, null, null, null, null);
+        var pending = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "p", 5m, new LocalDate(2026, 1, 1),
+            "Queued", ExpenseReconLineStatus.Pending, null, null, null, null, [], 0m);
         var work = FinanceOverviewService.BuildWork([], [.. rows,
-            Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon);
+            Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon with { Lines = [pending] },
+            [sent, sent with { CandidateBankMovementId = "m1" },
+                sent with { BatchLine = new SepaBatchLineVm("m2", new LocalDate(2026, 3, 2), -60m, null, false, null) },
+                sent with { BookedAt = sent.GeneratedAt },
+                sent with { WithdrawnAt = sent.GeneratedAt }]);
         work.ReadyToPay.Should().Be(1);
         work.ReadyToPayAmount.Should().Be(50m);
-        work.AwaitingBooking.Should().Be(1);
+        work.PushingToHolded.Should().Be(1);
+        work.AwaitingBankLine.Should().Be(1);
+        work.TransfersToBook.Should().Be(2);
         work.Problems.Should().Be(4);
+
+        // The recon already names 40000004's doubled purchase: the account is not counted again.
+        var line = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "d", 10m, new LocalDate(2026, 1, 1), "",
+            ExpenseReconLineStatus.Duplicated, null, 40000004, 1, null, [2], 10m);
+        FinanceOverviewService.BuildWork([], rows, recon with { Lines = [line] }, []).Problems.Should().Be(3);
+
+        // An unreadable bank feed leaves the split unknown while a transfer is open, never zero.
+        FinanceOverviewService.BuildWork([], rows, recon, [sent], "feed unreadable").TransfersToBook.Should().BeNull();
+        FinanceOverviewService.BuildWork([], rows, recon, [], "feed unreadable").TransfersToBook.Should().Be(0);
+    }
+
+    [HumansFact]
+    public void CreditorMatch_IsTheAccountsSliceOfTheExpenseRecon()
+    {
+        var user = Guid.NewGuid();
+        var transfer = new ExpenseReconOpenTransfer(Guid.NewGuid(), "f.xml", Instant.FromUtc(2026, 1, 1, 0, 0), 5m);
+        var member = new ExpenseReconMember(user, "M", 40000001, -20m, -50m, 30m, -10m, MissingLines: 1,
+            UnclaimedPurchaseCount: 1, [transfer], [new(new LocalDate(2026, 1, 2), 9, "entry", null, 10m)],
+            ExpenseReconMemberStatus.Off, []);
+        var duplicated = new ExpenseReconLine(Guid.NewGuid(), null, user, "M", "d", 10m, new LocalDate(2026, 1, 1), "",
+            ExpenseReconLineStatus.Duplicated, null, 40000001, 1, null, [2], 10m);
+        var orphan = new ExpenseReconOrphan(40000009, 3, new LocalDate(2026, 1, 3), "ER: x", 7m,
+            ExpenseReconOrphanKind.UnboundContact);
+        var recon = new ExpenseReconReport(null, Instant.FromUtc(2026, 1, 4, 0, 0), null, [], [duplicated], [orphan],
+            [member], new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0));
+
+        // The member's side: positive is owed to the member.
+        CreditorMatchVm.For(recon, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 1, 1, 1, 1));
+        CreditorMatchVm.For(recon, 40000001)!.Warnings.Should().HaveCount(4);
+        // A second member on the same account: the ledger split is the account's, their Missing line still counts.
+        var shared = member with { UserId = Guid.NewGuid(), MissingLines = 2 };
+        CreditorMatchVm.For(recon with { Members = [member, shared] }, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 3, 1, 1, 1));
+        // No member, but an expense purchase nobody claims.
+        CreditorMatchVm.For(recon, 40000009).Should().BeEquivalentTo(new CreditorMatchVm(0m, 0m, 7m, 0m, 0, 1, 0, 0));
+        CreditorMatchVm.For(recon, 40000002).Should().BeNull("the recon has nothing on the account");
+        CreditorMatchVm.For(recon with { UnavailableReason = "never synced" }, 40000001).Should().BeNull();
     }
 
     [HumansFact]
@@ -136,6 +210,27 @@ public class FinanceOverviewServiceTests
         budget.Planned.Should().Be(300m);
         budget.Spent.Should().Be(130m);
         budget.OverBudget.Should().ContainSingle().Which.Should().Be(new FinanceOverBudgetVm(sound.Id, "Sound", 30m));
+    }
+
+    [HumansFact]
+    public void BuildBudget_UsesGroupSortOrderToBreakEqualOverBudgetTies()
+    {
+        var yearId = Guid.NewGuid();
+        var groups = Enumerable.Range(0, 4).Select(sortOrder =>
+        {
+            var id = Guid.NewGuid();
+            return new BudgetGroupDetail(id, yearId, $"Group {sortOrder}", sortOrder, false, false, false, null,
+                [Category(id, $"Category {sortOrder}", -100m)]);
+        }).ToList();
+        var year = new BudgetYearDetail(yearId, "2026", "2026", BudgetYearStatus.Active, false,
+            groups.AsEnumerable().Reverse().ToList());
+        var actuals = groups.Select(group => new CategoryActualRow(
+            group.Categories[0].Id, group.SortOrder == 3 ? 150m : 125m, [])).ToList();
+
+        var budget = FinanceOverviewService.BuildBudget(year, actuals);
+
+        budget.OverBudget.Select(row => row.CategoryId).Should().Equal(
+            groups[3].Categories[0].Id, groups[0].Categories[0].Id, groups[1].Categories[0].Id);
     }
 
     private static CreditorAccountRow Row(int num, decimal owed, IReadOnlyList<CreditorContactBinding> bindings,

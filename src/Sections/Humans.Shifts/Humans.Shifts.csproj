@@ -44,17 +44,14 @@
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <!-- ICantinaService (Contracts/ folder): the missing-dietary banner, volunteer search and the
-         admin badges. Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
+    <!-- ICantinaService (Contracts/ folder): the missing-dietary banner.
+         Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
     <ProjectReference Include="..\Humans.Cantina\Humans.Cantina.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Humans.Shifts
       type (they may name Humans.Shifts.Contracts, which is
       below this project).
         Camps         — ICampService: camp labels and rosters for the summary-by-camp.
-        Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.
-        AuditLog      — IAuditViewerService for the orphan-signup scan.
         Auth          — the coordinator/manager authorization surface.
         EarlyEntry    — VolunteerTrackingExportService implements IEarlyEntryProvider;
                         the section project, since EarlyEntry's contracts are a folder.
@@ -74,7 +71,6 @@
                         names no Humans.Shifts type at all.
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <!--
@@ -86,7 +82,7 @@
     -->
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />

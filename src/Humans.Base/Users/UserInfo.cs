@@ -40,9 +40,6 @@ public sealed record UserExternalLoginInfo(
 /// <summary>No picture bytes, and the birthday carries day and month only (no year).</summary>
 public sealed record ProfileInfo(
     Guid Id,
-    string BurnerName,
-    string FirstName,
-    string LastName,
     string? City,
     string? CountryCode,
     double? Latitude,
@@ -65,16 +62,7 @@ public sealed record ProfileInfo(
     bool NoPriorBurnExperience,
     IReadOnlyList<ContactFieldInfo> ContactFields,
     IReadOnlyList<ProfileLanguageInfo> Languages,
-    IReadOnlyList<VolunteerHistoryInfo> VolunteerHistory)
-{
-    public string FullName => $"{FirstName} {LastName}".Trim();
-
-    /// <summary>BurnerName, else FirstName, else "there".</summary>
-    public string EmailGreetingName =>
-        !string.IsNullOrWhiteSpace(BurnerName) ? BurnerName :
-        !string.IsNullOrWhiteSpace(FirstName) ? FirstName : "there";
-
-}
+    IReadOnlyList<VolunteerHistoryInfo> VolunteerHistory);
 
 
 /// <summary>Everything about a person, cached. Sensitive fields ride along: visibility filtering is the view's job.</summary>
@@ -100,6 +88,15 @@ public sealed record UserInfo(
 {
     /// <summary>The single source of truth for access; only <see cref="UserState.Active"/> has full access.</summary>
     public UserState State { get; init; }
+
+    /// <summary>Legal given name, from the users row. Visible to the member and the Board only.</summary>
+    public string FirstName { get; init; } = string.Empty;
+
+    /// <summary>Legal family name, from the users row. Visible to the member and the Board only.</summary>
+    public string LastName { get; init; } = string.Empty;
+
+    /// <summary>The legal name: <see cref="FirstName"/> and <see cref="LastName"/> joined. Never stored.</summary>
+    public string FullName => $"{FirstName} {LastName}".Trim();
 
     /// <summary>Not a real person (the gate terminal, dev personas). Queues and counts of people skip these.</summary>
     public bool IsFake { get; init; }
@@ -194,7 +191,7 @@ public sealed record UserInfo(
     public bool IsActive =>
         Profile is not null && State != UserState.Rejected && !IsTombstone;
 
-    /// <summary>The canonical suspended predicate (memory/code/no-issuspended.md).</summary>
+    /// <summary>The canonical suspended predicate (memory/code/no-paving-obsolete-fields.md).</summary>
     public bool IsSuspended =>
         State is UserState.Suspended or UserState.AdminSuspended;
 
@@ -207,6 +204,11 @@ public sealed record UserInfo(
     /// <summary>The population person search and the single-person lookups resolve.</summary>
     public bool IsSearchable => Profile is not null && !IsRejected;
 
+    /// <summary>Full profile page, birthday calendar and map; popovers and search retain their own visibility.</summary>
+    public bool IsProfileBrowsable => Profile is not null && !IsSuspended;
+
+    public bool NeedsProfileSetup => Profile is null || IsStub;
+
     public bool HasProfile => Profile is not null;
 
     /// <summary>
@@ -215,9 +217,9 @@ public sealed record UserInfo(
     /// </summary>
     public bool HasRequiredNameFields =>
         Profile is not null
-        && !string.IsNullOrWhiteSpace(Profile.BurnerName)
-        && !string.IsNullOrWhiteSpace(Profile.FirstName)
-        && !string.IsNullOrWhiteSpace(Profile.LastName);
+        && !string.IsNullOrWhiteSpace(BurnerName)
+        && !string.IsNullOrWhiteSpace(FirstName)
+        && !string.IsNullOrWhiteSpace(LastName);
 
     /// <summary>
     /// Snapshots and orders here, so the cached payload is immutable. Takes projections because the Profile-side
@@ -269,6 +271,8 @@ public sealed record UserInfo(
             Profile: profile)
         {
             State = user.State,
+            FirstName = user.FirstName ?? string.Empty,
+            LastName = user.LastName ?? string.Empty,
             IsFake = user.MarkedFakeAt is not null,
         };
 

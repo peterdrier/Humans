@@ -22,7 +22,7 @@ public class UserSetMembershipCalculatorTests
 
     public UserSetMembershipCalculatorTests()
     {
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(MakeBurnSettings(2026));
+        _burnSettings.GetActiveEventSettings().Returns(MakeBurnSettings(2026));
         _tickets.GetAllParticipationsAsync(Arg.Any<CancellationToken>()).Returns(_ => _ticketRows.ToList());
         _preferences.GetPreferencesForCategoryAsync(MessageCategory.Marketing, Arg.Any<CancellationToken>())
             .Returns(_ => new Dictionary<Guid, CommunicationPreferenceSnapshot>(_marketing));
@@ -135,10 +135,7 @@ public class UserSetMembershipCalculatorTests
     {
         var id = Guid.NewGuid();
         var profile = hasProfile
-            ? UserFixtures.Profile(
-                burnerName: "Dusty",
-                firstName: "Dusty",
-                lastName: "Rhoads")
+            ? UserFixtures.Profile()
             : null;
 
         if (ticketYear.HasValue)
@@ -158,7 +155,9 @@ public class UserSetMembershipCalculatorTests
             user: new User
             {
                 Id = id,
-                DisplayName = "U",
+                BurnerName = hasProfile ? "Dusty" : null,
+                FirstName = hasProfile ? "Dusty" : null,
+                LastName = hasProfile ? "Rhoads" : null,
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

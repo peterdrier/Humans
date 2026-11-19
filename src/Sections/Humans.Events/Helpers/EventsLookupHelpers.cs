@@ -47,12 +47,13 @@ internal static class EventsLookupHelpers
         return new Dictionary<Guid, UserInfo>(infos);
     }
 
-    /// <summary>Null when the guide is not configured.</summary>
+    /// <summary>The record's event when supplied, otherwise the guide's; null when the guide is not configured.</summary>
     public static async Task<EventSettingsInfo?> LoadBurnSettingsAsync(
-        IEventManagement guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default)
+        IEventManagement guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default,
+        Guid? eventSettingsId = null)
     {
         if (guideSettings == null) return null;
-        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
+        return await guide.GetEventSettingsByIdAsync(eventSettingsId ?? guideSettings.EventSettingsId, ct);
     }
 
     // Event-scoped CampInfo carries only that season, so Active cannot pick another event's name.

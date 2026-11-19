@@ -12,7 +12,7 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `HoldedCategoryMap`, `HoldedCreditorContacts`,
 `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`. `HoldedExpenseDocs` and
 `HoldedDocSyncStates` are still mapped but unread and unwritten since the purchase-document mirror
-moved to Holded; dropping them is its own PR (`no-drops-until-prod-verified`).
+moved to Holded; dropping them is its own PR (`destructive-drops-need-approval`).
 `PaymentDetailsRepository` (`Data/PaymentDetailsRepository.cs`, implements
 `IPaymentDetailsRepository`) owns `PaymentDetails` (`finance_payment_details`) on the same context.
 
@@ -82,12 +82,6 @@ request. Injected by `FinanceController` only.
 No repository, no tables. Runs one `/Finance/Sepa` booking at a time through
 `IFinanceAdminService` in its own scope off the request, and holds the current/last
 run for the page. Injected by `FinanceController` only.
-
-### CreditorMatchService (Scoped, section-internal)
-
-No repository, no tables, no cache. Matches Holded creditor ledger lines against
-expense reports for `/Finance` via `IHoldedService.GetLedgerLinesAsync` and
-`IExpenseReportService.GetReviewQueueAsync`. Injected by `FinanceController` only.
 
 ### Service (Scoped)
 

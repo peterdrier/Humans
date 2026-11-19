@@ -1,23 +1,26 @@
 ---
-name: Don't overuse LINQ at the DB layer — thick repos return materialized lists
+name: no-linq-at-db-layer
 description: Prefer hand-written repo methods materializing at the boundary over `IQueryable` composed across services — LINQ on EF-mapped properties scatters DB-shape concerns.
 ---
 
-Don't reach for LINQ-on-EF-entities (`db.Users.Where(u => u.Email.Contains(...))`, `db.Users.Select(u => u.Email)`) when designing service methods. Prefer **hand-written repository methods that materialize at the boundary** — the repo runs the query and returns a `List`/`IReadOnlyList` of plain DTOs (or domain objects with all needed data Include'd).
+A query lives in one repository method that runs it and returns a materialized `List` /
+`IReadOnlyList`. Repositories never return `IQueryable<T>`, and services never compose predicates over
+entity properties.
 
-**Why:** Surfaced 2026-04-29 during PR 2 of the email-identity-decoupling work. When `User.Email` was overridden to compute from `UserEmails` and the column was `Ignore()`-d in EF mapping, every LINQ filter site that translated `u.Email` to SQL (5+ sites: `ProfileService` admin search, `DuplicateAccountService`, `DriveActivityMonitorRepository`, `DevLoginController`, etc.) broke at translation time. EF can't translate a C# property override body to SQL. Peter: "this is why your overuse of LINQ at the db layer is causing us so many problems."
-
-The cost wasn't the rewrite — it was that LINQ-on-property-accessors made DB shape concerns invisible at every call site. When the column mapping changed, the failure mode was scattered runtime exceptions in disparate services. A thicker-repo pattern would have isolated the shape concern to the repository layer; the column-mapping change would have meant fixing one repo method instead of N services.
-
-At our small scale this is doubly correct because (a) materializing the dataset is cheap, and (b) "service owns its data" + thick-repo aligns with the project's design rules.
+**Why:** when `User.Email` became a computed property and its column was unmapped, every scattered LINQ
+filter on `u.Email` failed at translation time, in several unrelated services. Peter: *"this is why
+your overuse of LINQ at the db layer is causing us so many problems."* With thick repositories a
+mapping change is one fix in one place, and at this scale materializing is cheap.
 
 **How to apply:**
+- A service needs filtered or projected data → a repo method that takes the parameters and returns the
+  result.
+- LINQ inside the repo method is fine. The rule is one site per query and a materialized return, not
+  "no LINQ".
+- "Include, `ToListAsync`, then filter client-side" in a caller is a stopgap; move the query into the
+  repo.
+- When reworking a column-coupled query, ask what the caller actually wants to know and write that
+  query, rather than handing back a column to filter on.
 
-- When designing a new service method that needs filtered/projected data, write a repo method that takes the parameters and returns the materialized result. Don't return `IQueryable<T>` from repos; don't compose `.Where(...)` chains in services across `db.Set<T>()`.
-- When reviewing existing code, treat `db.Set<T>().Where/Select/...` inside an Application service as a smell. The LINQ belongs in the repo (or it's not a service method, it's a query).
-- Hand-written queries against EF-mapped properties are still LINQ — that's fine; the rule is *one site per query*, *materialized result returned*, not "no LINQ at all."
-- For `Include(UserEmails) + ToListAsync() + filter client-side` workarounds: that's a stopgap. The real fix is moving the query into a repo method and returning a materialized list.
-- Don't conflate this with EF's primary-key lookups (`db.Find(id)`) or simple read-by-key — those are fine in services. The smell is composing predicates against entity properties.
-- When refactoring a column-coupled query, ask "what does this caller actually want to know?" then write the repo query for that — not "give me the user's primary email and let me filter on it." (Example: `DuplicateAccountService` should join across **verified** `UserEmails`, not filter on primary email alone.)
-
-**Related:** [design-rules.md, *Repository layer*](../../docs/architecture/design-rules.md#repository-layer) — repository entity-in/entity-out doctrine.
+**Related:** [`design-rules.md`, *Repository layer*](../../docs/architecture/design-rules.md#repository-layer) ·
+[`repository-required-for-db-access`](repository-required-for-db-access.md)

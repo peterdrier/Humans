@@ -1,3 +1,4 @@
+using Humans.Base.Enums;
 using System.Globalization;
 using System.Resources;
 using AwesomeAssertions;
@@ -35,11 +36,11 @@ public class ShiftSignupsViewTests
             .Returns(UserInfo.Create(new User { Id = userId, BurnerName = name }, [], [], null));
         var title = new ResourceManager(typeof(ShiftsResource))
             .GetString("Shifts_ShiftSignups_Title", CultureInfo.CurrentUICulture)!;
-        var admin = await RenderAsync(new ShiftSignupsViewModel { UserId = userId, ViewMode = ShiftSignupsViewMode.Admin }, users);
+        var admin = await RenderAsync(new ShiftSignupsViewModel { UserId = userId, ViewMode = ProfileCardViewMode.Admin }, users);
         admin.Should().Contain(HtmlEncoder.Default.Encode(name)).And.Contain(HtmlEncoder.Default.Encode(title))
             .And.NotContain("<script>");
         users.ClearReceivedCalls();
-        var self = await RenderAsync(new ShiftSignupsViewModel { UserId = userId, ViewMode = ShiftSignupsViewMode.Self }, users);
+        var self = await RenderAsync(new ShiftSignupsViewModel { UserId = userId, ViewMode = ProfileCardViewMode.Self }, users);
         self.Should().Contain(HtmlEncoder.Default.Encode(title)).And.NotContain(HtmlEncoder.Default.Encode(name));
         await users.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }

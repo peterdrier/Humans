@@ -1,3 +1,4 @@
+using Humans.Notifications.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Notifications.Models;
@@ -7,8 +8,7 @@ using Microsoft.Extensions.Localization;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
-using Humans.Governance.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Notifications.Controllers;
 using Humans.Notifications.Services;
 using Humans.Teams.Contracts;
@@ -81,12 +81,13 @@ public sealed class NotificationsControllerTests
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var camps = Substitute.For<ICampService>();
         camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, []));
-        var applications = Substitute.For<IGovernanceService>();
-        applications.GetUnvotedApplicationCountAsync(actorId, Arg.Any<CancellationToken>()).Returns(4);
+        var contributor = Substitute.For<INotificationMeterContributor>();
+        contributor.GetMetersAsync(Arg.Any<ClaimsPrincipal>(), actorId, Arg.Any<CancellationToken>()).Returns(
+            [new NotificationMeter { Title = "Pending", Count = 4, ActionUrl = "/", Audience = "the Board", Priority = 9 }]);
         using var cache = new MemoryCache(new MemoryCacheOptions());
         using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var meters = new NotificationMeterProvider(users, consent, Substitute.For<IGoogleSyncService>(), teams,
-            Substitute.For<ITicketSync>(), applications, camps, cache, NullLogger<NotificationMeterProvider>.Instance,
+            Substitute.For<ITicketSync>(), [contributor], camps, cache, NullLogger<NotificationMeterProvider>.Instance,
             localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
         var http = new DefaultHttpContext
         {
@@ -150,7 +151,7 @@ public sealed class NotificationsControllerTests
         var meterProvider = new NotificationMeterProvider(
             Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<IGoogleSyncService>(),
             Substitute.For<ITeamService>(), Substitute.For<ITicketSync>(),
-            Substitute.For<IGovernanceService>(), Substitute.For<ICampService>(), cache,
+            [], Substitute.For<ICampService>(), cache,
             NullLogger<NotificationMeterProvider>.Instance,
             localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
         var users = Substitute.For<IUserService>();
@@ -181,7 +182,7 @@ public sealed class NotificationsControllerTests
         var meterProvider = new NotificationMeterProvider(
             Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<IGoogleSyncService>(),
             Substitute.For<ITeamService>(), Substitute.For<ITicketSync>(),
-            Substitute.For<IGovernanceService>(), Substitute.For<ICampService>(), cache,
+            [], Substitute.For<ICampService>(), cache,
             NullLogger<NotificationMeterProvider>.Instance,
             localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
         var context = new DefaultHttpContext();

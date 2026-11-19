@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Resources;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -12,7 +12,7 @@ namespace Humans.Camps.Services;
 internal sealed class CampRoleService(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
-    IGoogleIntegrationService googleIdentities,
+    IGoogleService googleIdentities,
     IUserService userService,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,

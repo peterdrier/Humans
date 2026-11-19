@@ -79,7 +79,9 @@ internal sealed class SurveyAdminController(
         var result = await surveyService.ApproveAndSendAsync(id, viewer, ct);
         if (result.Succeeded)
         {
-            SetSuccess(localizer["Surveys_Admin_Queue_Approved", result.Send!.EmailsQueued, result.Send.Failed]);
+            var message = localizer["Surveys_Admin_Queue_Approved", result.Send!.EmailsQueued, result.Send.Failed];
+            if (result.Send.Failed > 0) SetError(message);
+            else SetSuccess(message);
         }
         else
         {
@@ -497,7 +499,9 @@ internal sealed class SurveyAdminController(
         var result = await surveyService.SendInvitesAsync(id, actor.Id, ct);
         if (result.Succeeded)
         {
-            SetSuccess($"Sent {result.InvitationsCreated} new invitation(s); {result.EmailsQueued} email(s) queued, {result.Failed} failed.");
+            var message = $"Processed {result.InvitationsProcessed} invitation(s); {result.EmailsQueued} email(s) queued, {result.Failed} failed.";
+            if (result.Failed > 0) SetError(message);
+            else SetSuccess(message);
         }
         else
         {

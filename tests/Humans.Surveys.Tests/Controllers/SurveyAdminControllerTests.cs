@@ -526,15 +526,16 @@ public sealed class SurveyAdminControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task SendInvites_displays_expected_refusals_or_invitation_totals(bool refused)
+    [Xunit.InlineData(false, 0)]
+    [Xunit.InlineData(false, 1)]
+    [Xunit.InlineData(true, 0)]
+    public async Task SendInvites_displays_expected_refusals_or_invitation_totals(bool refused, int failed)
     {
         var id = Guid.NewGuid();
         var surveys = Substitute.For<ISurveyService>();
         const string reason = "Invitations can only be sent for an Open survey.";
         surveys.SendInvitesAsync(id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(refused ? new SendResult(0, 0, 0, reason) : new SendResult(3, 2, 1));
+            .Returns(refused ? new SendResult(0, 0, 0, reason) : new SendResult(3, 3 - failed, failed));
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var result = await sut.SendInvites(id, Xunit.TestContext.Current.CancellationToken);
@@ -549,8 +550,10 @@ public sealed class SurveyAdminControllerTests
         }
         else
         {
-            sut.TempData[TempDataKeys.SuccessMessage].Should().Be("Sent 3 new invitation(s); 2 email(s) queued, 1 failed.");
-            sut.TempData.Should().NotContainKey(TempDataKeys.ErrorMessage);
+            var noticeKey = failed > 0 ? TempDataKeys.ErrorMessage : TempDataKeys.SuccessMessage;
+            var absentKey = failed > 0 ? TempDataKeys.SuccessMessage : TempDataKeys.ErrorMessage;
+            sut.TempData[noticeKey].Should().Be($"Processed 3 invitation(s); {3 - failed} email(s) queued, {failed} failed.");
+            sut.TempData.Should().NotContainKey(absentKey);
         }
     }
 
@@ -568,6 +571,27 @@ public sealed class SurveyAdminControllerTests
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         sut.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    public async Task Approve_reports_delivery_failures_without_hiding_the_approval(int failed)
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyReviewResult(new SendResult(3, 3 - failed, failed)));
+        var localizer = SpanishLocalizer();
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin, localizer: localizer);
+
+        var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Queue));
+        var noticeKey = failed > 0 ? TempDataKeys.ErrorMessage : TempDataKeys.SuccessMessage;
+        var absentKey = failed > 0 ? TempDataKeys.SuccessMessage : TempDataKeys.ErrorMessage;
+        sut.TempData[noticeKey].Should().Be(localizer["Surveys_Admin_Queue_Approved", 3 - failed, failed].Value);
+        sut.TempData.Should().NotContainKey(absentKey);
     }
 
     [HumansFact]

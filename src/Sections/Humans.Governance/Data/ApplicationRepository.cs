@@ -35,6 +35,7 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
     public async Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
         MembershipTier? tier,
+        Guid? userId,
         int page,
         int pageSize,
         CancellationToken ct = default)
@@ -42,9 +43,19 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.Applications.AsNoTracking().AsQueryable();
 
-        query = status is null
-            ? query.Where(a => a.Status == ApplicationStatus.Submitted)
-            : query.Where(a => a.Status == status);
+        if (userId is not null)
+        {
+            query = query.Where(a => a.UserId == userId);
+        }
+
+        if (status is not null)
+        {
+            query = query.Where(a => a.Status == status);
+        }
+        else if (userId is null)
+        {
+            query = query.Where(a => a.Status == ApplicationStatus.Submitted);
+        }
 
         if (tier is not null)
         {
@@ -109,23 +120,6 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
             .Distinct()
             .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new HashSet<Guid>();
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var matched = await ctx.Applications
-            .AsNoTracking()
-            .Where(a => userIds.Contains(a.UserId) && a.Status == ApplicationStatus.Submitted)
-            .Select(a => a.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        return matched.ToHashSet();
-    }
-
     public Task<MemberApplication?> GetSubmittedForUserAsync(
         Guid userId, CancellationToken ct = default) =>
         WithContextAsync(ctx => ctx.Applications
@@ -185,27 +179,13 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
                  !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
             ct), ct);
 
-    public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<MemberApplication>> GetNonWithdrawnAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var stats = await ctx.Applications
+        return await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status != ApplicationStatus.Withdrawn)
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Total = g.Count(),
-                Approved = g.Count(a => a.Status == ApplicationStatus.Approved),
-                Rejected = g.Count(a => a.Status == ApplicationStatus.Rejected),
-                Colaborador = g.Count(a => a.MembershipTier == MembershipTier.Colaborador),
-                Asociado = g.Count(a => a.MembershipTier == MembershipTier.Asociado)
-            })
-            .FirstOrDefaultAsync(ct);
-
-        return stats is null
-            ? new ApplicationAdminStats(0, 0, 0, 0, 0)
-            : new ApplicationAdminStats(
-                stats.Total, stats.Approved, stats.Rejected, stats.Colaborador, stats.Asociado);
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(

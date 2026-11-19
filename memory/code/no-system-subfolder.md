@@ -3,9 +3,9 @@ name: Never create a subfolder/namespace named "System"
 description: Never create a `System/` subfolder — it shadows the BCL `System` namespace and breaks `System.X` refs in sibling folders. Use `SystemSettings/`/`Platform/`/`Infra/`.
 ---
 
-Never propose a subfolder named `System` inside any namespace in this codebase (`Humans.Infrastructure.Data.Configurations.System`, `Humans.Domain.Entities.System`, `Humans.Application.Services.System`, etc.).
+Never propose a subfolder named `System` inside any namespace in this codebase (`Humans.<Section>.Data.Configurations.System`, `Humans.Base.System`, etc.).
 
-**Why:** C# namespace resolution is relative-then-absolute. Any file inside `Humans.Infrastructure.Data.Configurations.<anything>` that writes `System.Linq.Expressions.Expression<…>` (or `System.Text.Json`, `System.Collections.Generic`, etc.) will try `Humans.Infrastructure.Data.Configurations.System.Linq.Expressions.Expression` first, **find the inner `System` namespace**, then fail because `.Linq.Expressions` doesn't exist under it. This hit `VolunteerEventProfileConfiguration` when a `Configurations/System/` folder was briefly introduced during the 2026-04-23 reorganization — broke compile across every sibling section folder.
+**Why:** C# namespace resolution is relative-then-absolute. Any file inside `Humans.<Section>.Data.Configurations.<anything>` that writes `System.Linq.Expressions.Expression<…>` (or `System.Text.Json`, `System.Collections.Generic`, etc.) will try `Humans.<Section>.Data.Configurations.System.Linq.Expressions.Expression` first, **find the inner `System` namespace**, then fail because `.Linq.Expressions` doesn't exist under it. This hit `VolunteerEventProfileConfiguration` when a `Configurations/System/` folder was briefly introduced during the 2026-04-23 reorganization — broke compile across every sibling section folder.
 
 **How to apply:**
 
