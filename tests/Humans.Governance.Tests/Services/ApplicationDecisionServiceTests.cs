@@ -805,7 +805,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
         await SeedBoardVoteAsync(app.Id);
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null, ct);
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, new LocalDate(2026, 3, 1), ct);
 
         ClearAllTrackers();
         (await GovernanceDb.Applications.SingleAsync(a => a.Id == app.Id, ct)).Status.Should().Be(ApplicationStatus.Approved);
