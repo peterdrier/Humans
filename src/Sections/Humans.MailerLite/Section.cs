@@ -1,3 +1,4 @@
+using Humans.Base.Demo;
 using System.Net.Http.Headers;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
@@ -13,6 +14,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
+
+[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: demo people must never reach MailerLite.")]
 
 namespace Humans.MailerLite;
 
@@ -52,6 +55,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
                 new MediaTypeWithQualityHeaderValue("application/json"));
         });
         services.AddSingleton<IMailerLiteService, MailerLiteClient>();
+        services.AddDemoSafetyCheck<MailerLiteDemoSafetyCheck>(configuration);
 
         // No user-scoped tables, but Article 17 erasure must still delete the MailerLite subscriber.
         services.AddScoped<MailerLiteGdprContributor>();

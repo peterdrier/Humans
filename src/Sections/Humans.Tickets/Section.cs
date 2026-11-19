@@ -32,6 +32,8 @@ using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 
+[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: ticket data arrives through the ticket vendor sync.")]
+
 namespace Humans.Tickets;
 
 public sealed class Section :

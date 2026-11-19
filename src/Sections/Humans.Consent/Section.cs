@@ -23,6 +23,8 @@ using Humans.Users.Contracts;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Consent;
 
 public sealed class Section :

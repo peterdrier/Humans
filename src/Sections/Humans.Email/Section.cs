@@ -25,6 +25,8 @@ using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 
+[assembly: Humans.Base.Demo.NoDemoStory("Crosscut: filled by the actions other sections' stories take.")]
+
 namespace Humans.Email;
 
 /// <summary><c>EmailSettings</c> is bound in Shell, not here: many sections read it.</summary>

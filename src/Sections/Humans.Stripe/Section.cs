@@ -10,6 +10,8 @@ using Humans.Stripe.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Stripe sync, never from demo stories.")]
+
 namespace Humans.Stripe;
 
 /// <summary>

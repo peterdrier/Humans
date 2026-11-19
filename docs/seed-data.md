@@ -17,7 +17,7 @@
 |----------|----------|
 | Bootstrap rows every environment needs | EF Core `HasData` in entity configurations |
 | One-time corrective insert/update during schema evolution | Migration SQL |
-| Rich demo data for local dev or preview environments | Dev-only runtime seeder |
+| Rich demo data for local dev, preview or QA | The section's demo story (below) |
 | Test-only records | Test fixtures, not app seed data |
 
 ## Existing Patterns
@@ -45,7 +45,9 @@
 
 The two dashboard endpoints are stricter than the rest: they additionally require `ASPNETCORE_ENVIRONMENT=Development`, so they never run on QA or preview. Their buttons are on `Views/ShiftDashboard/Index.cshtml`; the budget and camp-role buttons are on the `GET /dev/seed` page.
 
-The `GET /dev/seed` page is reached from the admin nav's **Development** group (Development's `Section.cs`): one **Seed data** item, `AdminOnly`, carrying `EnvironmentGate: env => env.IsDevelopment()` — so the link renders only in local development.
+The `GET /dev/seed` page is reached from the admin nav's **Development** group (Development's `Section.cs`): one **Seed data** item, `AdminOnly`, carrying `EnvironmentGate: env => !env.IsProduction()`.
+
+**The demo world** — the page's "Build or top up demo world" and "Reset demo world" buttons (`POST /dev/seed/demo`, `AdminOnly`) run every section's `IDemoStory` in the background, on top of whatever the database already holds. Development's demo ledger records each row made, so a re-run only adds or repairs, and reset retires through existing actions before building a fresh generation. Each section with a DbContext has a story or `[assembly: NoDemoStory("reason")]` (`memory/architecture/every-data-section-has-a-demo-story.md`); the invariants are in `src/Sections/Humans.Development/Docs/Development.md`.
 
 ## Guardrails for Dev Seeders
 

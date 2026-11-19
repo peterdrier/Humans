@@ -35,6 +35,8 @@ using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("The demo cast is created through Users by Development's cast story.")]
+
 namespace Humans.Users;
 
 public sealed class Section :
