@@ -184,6 +184,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
     [
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "ConsentReview", 70),
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "LegalDocuments", 83),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)

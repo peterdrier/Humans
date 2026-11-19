@@ -77,7 +77,6 @@
     <value>Code di lavoro</value>
   </data>
   <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Revisioni del consenso in sospeso</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Domande in attesa del tuo voto</value></data>
   <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminazioni di account in sospeso</value></data>
   <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Sincronizzazioni Google non riuscite</value></data>
   <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profili di iscrizione in sospeso</value></data>

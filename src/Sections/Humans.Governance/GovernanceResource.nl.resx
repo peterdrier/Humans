@@ -197,9 +197,6 @@
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
     <value>Aanvraaginformatie</value>
   </data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
-    <value>Beoordeling gestart</value>
-  </data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
     <value>Beoordeeld door</value>
   </data>
@@ -801,4 +798,6 @@
   <data name="Governance_Application_MotivationRequired" xml:space="preserve">
     <value>Voor aanvragen voor Colaborador en Asociado is een motivatie verplicht.</value>
   </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Aanvragen die op je stem wachten</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>het bestuur</value></data>
 </root>

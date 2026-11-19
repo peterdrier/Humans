@@ -64,7 +64,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | Language | string? (10) | UI language at submission (ISO 639-1 code) |
 | SubmittedAt | Instant | When submitted |
 | UpdatedAt | Instant | Last update |
-| ReviewStartedAt | Instant? | When review began (currently unused — no controller path triggers it) |
+| ReviewStartedAt | Instant? | Obsolete: last written 2026-02-20 when the UnderReview state was removed; nothing reads it |
 | ResolvedAt | Instant? | When resolved (approved/rejected/withdrawn) |
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
@@ -259,7 +259,7 @@ These controllers serve this section.
 | Controller | Routes | Notes |
 |------------|--------|-------|
 | `GovernanceController` | `GET /Governance` — association home: tier and Board counts, open votes, Board queue (Board only), workgroups slot, membership card, Board list, statutes |
-| `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) | `GET /Governance/Applications/Admin/TermExpiry`, `POST /Governance/Applications/Admin/TermExpiry/Fix` — the temporary term-expiry repair page (AdminOnly) |
+| `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin; `?userId=` lists one person's applications in every status, the link Users' admin detail page carries) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) | `GET /Governance/Applications/Admin/TermExpiry`, `POST /Governance/Applications/Admin/TermExpiry/Fix` — the temporary term-expiry repair page (AdminOnly) |
 | `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (AdminOnly) |
 | `GovernanceVotesController` | `GET /Governance/Votes` — every vote, Open first (authenticated) | `GET /Governance/Votes/{id}` — text, stats, and the ballot form for roster members | `POST /Governance/Votes/{id}/Ballot` — cast or change | `GET /Governance/Votes/{id}/Results` and `.../Results.csv` — the stored result (Closed only) |
 | `GovernanceVotesAdminController` | `GET /Governance/Votes/Admin` — all votes, all states (BoardOrAdmin) | `GET/POST /Governance/Votes/Admin/Create`, `.../Admin/{id}/Edit`, `POST .../Admin/{id}/Delete` — drafting (BoardOrAdmin) | `POST .../Admin/{id}/{Open,Stop,Extend,Cancel}` and `GET .../Admin/{id}/Peek` — lifecycle (AdminOnly) | `GET .../Admin/{id}/Ballots` — per-member ballots, Closed only, audited (BoardOrAdmin) |
@@ -430,7 +430,8 @@ The internal `ApplicationReader` owns member application history/detail, filtere
 
 | Public interface | Notes |
 |---|---|
-| `IGovernanceService` | Read contract: `GetUserApplicationsAsync`, `GetUserIdsWithPendingApplicationAsync`, `GetSubmittedApplicationForUserAsync`, `GetUnvotedApplicationCountAsync` (admin nav badge, Notifications meter), the active-tier lookups `SystemTeamSyncJob` uses, and the tier reads `GetMembershipTierAsync` / `GetMembershipTiersAsync`. DTOs only. |
+| `IGovernanceService` | Read contract: the active-tier lookups `SystemTeamSyncJob` uses and the tier reads `GetMembershipTierAsync` / `GetMembershipTiersAsync`. DTOs only. Tier applications are never read outside Governance: their reads sit on the internal `IGovernanceManagement`. |
+| `INotificationMeterContributor` (Notifications' contract) | `GovernanceNotificationMeters` pushes the Board's "applications pending your vote" meter, from the per-user cached `GetUnvotedApplicationCountAsync`. |
 
 The internal `AssemblyVoteRosterBuilder` owns the opening-time electorate snapshot: active approved terms from Governance, Board roles from Auth, the indicative Volunteers audience from Teams, and active-account filtering through Users. Official precedence, deduplication, tier attribution, clock reads and cancellation are unchanged. The builder performs no writes; `AssemblyVoteAdministration.OpenAsync` retains both deadline checks, the atomic draft-to-open roster save, and post-save audit and notices. No public contract or DI registration is added.
 
@@ -454,8 +455,8 @@ The internal `ApplicationDecisionNotices` owns approval/rejection recipient look
 
 ### Touch-and-clean guidance
 
-- Nothing outside this section reads the governance-owned tables. `OnboardingService`, `SystemTeamSyncJob` and `NotificationMeterProvider` all go through `IGovernanceService`.
-- The board-voting methods have no delegating wrapper; callers reach them directly. `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync` and `CastBoardVoteAsync` are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the cross-section member, and it sits on `IGovernanceService` (this section's own `ISectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` and `NoteTooLong` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
+- Nothing outside this section reads the governance-owned tables. `OnboardingService` and `SystemTeamSyncJob` go through `IGovernanceService`; Notifications reads nothing from Governance and gets the voting meter through `GovernanceNotificationMeters`.
+- The board-voting methods have no delegating wrapper; callers reach them directly. `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync` and `CastBoardVoteAsync` are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` sits on the internal `IGovernanceManagement` (this section's own nav pill, Governance index, and `GovernanceNotificationMeters`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` and `NoteTooLong` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
 
 ## Issue queue
 

@@ -4,9 +4,8 @@ using Microsoft.Extensions.Localization;
 using Humans.Google.Contracts;
 using Humans.Base.Caching;
 using System.Security.Claims;
-using Humans.Notifications.Services.Dtos;
+using Humans.Notifications.Contracts;
 using Humans.Camps.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 
 using Humans.Base.Interfaces;
@@ -27,7 +26,7 @@ internal sealed class NotificationMeterProvider(
     IGoogleSyncService googleSyncService,
     ITeamService teamService,
     ITicketSync ticketSyncService,
-    IGovernanceService governanceService,
+    IEnumerable<INotificationMeterContributor> contributors,
     ICampService campService,
     IMemoryCache cache,
     ILogger<NotificationMeterProvider> logger,
@@ -63,21 +62,10 @@ internal sealed class NotificationMeterProvider(
             });
         }
 
-        if (isBoard && viewerId is { } boardMemberUserId)
+        if (viewerId is { } contributorViewerId)
         {
-            // Governance caches this per user under its own key.
-            var pendingVoteCount = await governanceService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
-            if (pendingVoteCount > 0)
-            {
-                meters.Add(new NotificationMeter
-                {
-                    Title = localizer["Notifications_Meter_ApplicationsPendingVote"],
-                    Count = pendingVoteCount,
-                    ActionUrl = "/Governance/BoardVoting",
-                    Audience = localizer[$"Notifications_Audience_{RoleNames.Board}"],
-                    Priority = 9,
-                });
-            }
+            foreach (var contributor in contributors)
+                meters.AddRange(await contributor.GetMetersAsync(user, contributorViewerId, cancellationToken));
         }
 
         if (isAdmin && counts.PendingDeletions > 0)

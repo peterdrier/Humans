@@ -238,9 +238,6 @@ public sealed class ConsentReviewQueueServiceTests
     {
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(users));
-        _governance.GetUserIdsWithPendingApplicationAsync(
-                Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>()));
         _consentService.GetConsentProgressAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new ConsentProgress(0, []));
     }

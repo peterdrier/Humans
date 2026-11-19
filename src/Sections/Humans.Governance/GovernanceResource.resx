@@ -88,7 +88,6 @@
   <data name="Governance_Create_Step4" xml:space="preserve"><value>You'll receive an email once a decision is made</value></data>
   <data name="Governance_ApplicationDetail_Details" xml:space="preserve"><value>Details</value></data>
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve"><value>Application Information</value></data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve"><value>Review Started</value></data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve"><value>Reviewed By</value></data>
   <data name="Governance_ApplicationDetail_YourMotivation" xml:space="preserve"><value>Your Motivation</value></data>
   <data name="Governance_ApplicationDetail_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
@@ -333,4 +332,6 @@
   <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>Significant contribution must not exceed 2000 characters.</value></data>
   <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Role understanding must not exceed 2000 characters.</value></data>
   <data name="Governance_Application_MotivationRequired" xml:space="preserve"><value>A motivation statement is required for Colaborador and Asociado applications.</value></data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Applications pending your vote</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
 </root>

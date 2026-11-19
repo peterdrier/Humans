@@ -31,7 +31,6 @@ Members need to maintain personal information for organizational records while p
 - Shows membership status badge
 - Displays list of team memberships; public cards omit hidden teams and hidden parent-name prefixes, while self/admin cards retain them
 - Shows consent status for legal documents
-- Shows tier application status banner (Submitted/Approved/Rejected) linking to Governance page, if the user has a non-withdrawn tier application
 
 ### US-2.2: Edit Personal Information
 **As a** member
@@ -179,15 +178,12 @@ Profile picture, burner name, pronouns, location (Google Places), birthday, cont
 ### Section 2: Contributor Information (always visible)
 Burner CV entries with "No prior burn experience" checkbox, contribution interests. Includes a note that this info may be considered for tier applications.
 
-### Section 3: Membership tier (initial setup only)
-Describes the Volunteer, Colaborador and Asociado tiers and links to `/Governance/Applications/Create` (new tab); the form carries no tier or application fields. Only shown when `IsInitialSetup` is true: the account is `Bare`, has no profile, or the GET explicitly requests preview mode. Consent Coordinator review does not affect setup mode. POST error redisplays derive the mode from the account. After onboarding, users apply via `/Governance/Applications/Create`.
-
-### Section 4: Private Information (always visible)
+### Section 3: Private Information (always visible)
 Legal first name(s), last name, emergency contact, board notes. Prefixed with lock icon and "only visible to you and the board" note.
 
 ### Section Ordering
-- **Normal order:** General → Contributor → Membership tier (if initial) → Private
-- **ShowPrivateFirst:** Private → General → Contributor → Membership tier (if initial)
+- **Normal order:** General → Contributor → Private
+- **ShowPrivateFirst:** Private → General → Contributor
 - `ShowPrivateFirst` is true when FirstName, LastName, and EmergencyContactName are all empty (new user hasn't filled them in yet)
 
 ### Burner CV Validation

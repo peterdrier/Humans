@@ -393,30 +393,6 @@
                 </div>
             </div>
 
-            @* Tier applications are Governance's; Volunteer admission never waits on them. *@
-            @if (Model.IsInitialSetup)
-            {
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h3>@SharedLocalizer["Profile_MembershipTier"]</h3>
-                        <ul class="list-unstyled mb-3">
-                            <li class="mb-2"><strong>@Localizer["Users_ProfileEdit_TierVolunteer"]</strong> — <span class="text-muted">@Localizer["Users_ProfileEdit_TierVolunteerDesc"]</span></li>
-                            <li class="mb-2"><strong>Colaborador</strong> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierColaboradorDesc"]</span></li>
-                            <li class="mb-2"><strong>Asociado</strong> <span class="text-muted">(@SharedLocalizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierAsociadoDesc"]</span></li>
-                        </ul>
-                        <p class="text-muted small"><em>@Localizer["Users_ProfileEdit_TierChangeNote"]</em></p>
-                        @if (Model.IsTierLocked)
-                        {
-                            <div class="form-text text-warning">@Localizer["Users_ProfileEdit_TierLocked"]</div>
-                        }
-                        else
-                        {
-                            <a asp-controller="GovernanceApplications" asp-action="Create" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">@Localizer["Users_ProfileEdit_TierApplyLink"]</a>
-                        }
-                    </div>
-                </div>
-            }
-
             @if (!Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />

@@ -17,7 +17,7 @@ public class SectionHelpTests
     {
         ((ISectionHelp)new Section()).HelpEntries
             .Select(e => (e.Key, e.Order))
-            .Should().Equal(("Profile", 20));
+            .Should().Equal(("Profile", 20), ("UsersAdmin", 81));
     }
 
     [HumansFact]
@@ -29,5 +29,15 @@ public class SectionHelpTests
         entry.Guide.Should().EndWith("- Your Google Workspace access is provisioned based on your team memberships", "the file's trailing newline is framing, not content");
         entry.Glossary.Should().StartWith("## Profile Glossary");
         entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
+    }
+
+    [HumansFact]
+    public void Reads_the_UsersAdmin_help_out_of_the_assembly()
+    {
+        var entry = ((ISectionHelp)new Section()).HelpEntries
+            .Single(e => string.Equals(e.Key, "UsersAdmin", StringComparison.Ordinal));
+
+        entry.Guide.Should().StartWith("## All Humans");
+        entry.Glossary.Should().StartWith("## All Humans Glossary");
     }
 }

@@ -21,11 +21,13 @@ internal interface IApplicationRepository : IRepository
     Task<int> CountByStatusAsync(ApplicationStatus status, CancellationToken ct = default);
 
     /// <summary>
-    /// Null <paramref name="status"/> means <see cref="ApplicationStatus.Submitted"/>.
+    /// Null <paramref name="status"/> means <see cref="ApplicationStatus.Submitted"/>, or any status
+    /// when <paramref name="userId"/> narrows the list to one person.
     /// </summary>
     Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
         MembershipTier? tier,
+        Guid? userId,
         int page,
         int pageSize,
         CancellationToken ct = default);
@@ -48,9 +50,6 @@ internal interface IApplicationRepository : IRepository
 
     /// <summary>Distinct voters on this application, for badge invalidation after finalize.</summary>
     Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default);
-
-    Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     Task<MemberApplication?> GetSubmittedForUserAsync(
         Guid userId, CancellationToken ct = default);

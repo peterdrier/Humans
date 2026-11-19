@@ -58,8 +58,8 @@ No repository. Pure read-aggregation over owning services.
 | `NotificationMeters` (`CountsCacheKey`) | 2 min | yes | yes | none (TTL only; team join-request count is read live from `ITeamService`) |
 
 Cross-section calls via `IUserService`, `IGoogleSyncService`,
-`ITeamService`, `ITicketSync`, `IGovernanceService`,
-`IConsentService`, `ICampService`. **No direct DB access** — every counter fans out
+`ITeamService`, `ITicketSync`,
+`IConsentService`, `ICampService`, plus every `INotificationMeterContributor`. **No direct DB access** — every counter fans out
 through an owning-service interface call. The per-lead camp join-request
 count is not cached here: it reads Camps' in-RAM `CampInfo` projection,
 which Camps evicts on its own writes.

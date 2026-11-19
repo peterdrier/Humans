@@ -1,3 +1,4 @@
+using Humans.Notifications.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
@@ -14,7 +15,6 @@ using Humans.Notifications.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Camps.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Caching;
 using Humans.Base.Constants;
@@ -36,7 +36,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSync _ticketSyncService = Substitute.For<ITicketSync>();
-    private readonly IGovernanceService _applicationDecisionService = Substitute.For<IGovernanceService>();
+    private readonly INotificationMeterContributor _meterContributor = Substitute.For<INotificationMeterContributor>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly IMemoryCache _cache;
@@ -52,13 +52,14 @@ public class NotificationMeterProviderTests : IDisposable
         });
         _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ConsentReviewInfo>());
+        _meterContributor.GetMetersAsync(default!, default, default).ReturnsForAnyArgs([]);
         _provider = new NotificationMeterProvider(
             _userService,
             _consentService,
             _googleSyncService,
             _teamService,
             _ticketSyncService,
-            _applicationDecisionService,
+            [_meterContributor],
             _campService,
             _cache,
             NullLogger<NotificationMeterProvider>.Instance,
@@ -185,12 +186,11 @@ public class NotificationMeterProviderTests : IDisposable
                     true, false, false, false, Instant.FromUtc(2026, 1, 1, 0, 0), [], PendingRequestCount: 1)
             }));
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
-        _applicationDecisionService.GetUnvotedApplicationCountAsync(userId, Arg.Any<CancellationToken>()).Returns(1);
         _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>()).Returns([MakeCampInfoWithPendingRequest(userId)]);
         var principal = CreatePrincipalWithId(userId, RoleNames.Admin, RoleNames.Board, ConsentRoles.ConsentCoordinator);
         var keys = new[]
         {
-            "ConsentReviewsPending", "ApplicationsPendingVote", "PendingAccountDeletions",
+            "ConsentReviewsPending", "PendingAccountDeletions",
             "FailedGoogleSyncEvents", "OnboardingProfilesPending", "TeamJoinRequestsPending",
             "TicketSyncError", "CampJoinRequest"
         };
@@ -219,8 +219,6 @@ public class NotificationMeterProviderTests : IDisposable
             .Returns(Task.FromResult(MakeNeedsConsentReview(1)));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _applicationDecisionService.GetUnvotedApplicationCountAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
 
         var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Board), TestContext.Current.CancellationToken);
 
@@ -350,7 +348,7 @@ public class NotificationMeterProviderTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_Board_PendingVoteMeter_UsesPerUserCount()
+    public async Task GetMetersForUserAsync_AddsEachContributorsMetersForTheViewer()
     {
         var boardUserId = Guid.NewGuid();
 
@@ -358,10 +356,10 @@ public class NotificationMeterProviderTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _applicationDecisionService.GetUnvotedApplicationCountAsync(
-            boardUserId, Arg.Any<CancellationToken>()).Returns(4);
-
         var principal = CreatePrincipalWithId(boardUserId, RoleNames.Board);
+        _meterContributor.GetMetersAsync(principal, boardUserId, Arg.Any<CancellationToken>()).Returns(
+            [new NotificationMeter { Title = "Applications pending your vote", Count = 4, ActionUrl = "/", Audience = "the Board", Priority = 9 }]);
+
         var meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
 
         meters.Should().ContainSingle(m =>

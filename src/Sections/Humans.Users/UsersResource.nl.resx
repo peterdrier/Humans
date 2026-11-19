@@ -56,13 +56,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Nu bekijken</value>
   </data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
-    <value>Je {0}-aanvraag:</value>
-    <comment>{0} = tier name (Colaborador/Asociado)</comment>
-  </data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve">
-    <value>Details bekijken</value>
-  </data>
   <data name="Users_Profile_Information" xml:space="preserve">
     <value>Profielgegevens</value>
   </data>
@@ -201,15 +194,6 @@
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve">
     <value>Profiel bewerken</value>
-  </data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve">
-    <value>Je wilt naar het evenement komen, je energie bijdragen, een dienst draaien of bij een team aansluiten. Geen formele verplichting tegenover het bestuur van de vereniging. De meeste mensen vallen hieronder en dat is helemaal prima.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve">
-    <value>Let op: je kunt later altijd een aanvraag indienen om dit te wijzigen.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Je niveau is vergrendeld omdat je een actieve aanvraag of een aanvraag in afwachting hebt.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>De naam waarmee je bekendstaat</value>
@@ -621,17 +605,14 @@
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve">
     <value>Dit lid kan onder de AVG verzoeken om deze notities in te zien.</value>
   </data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve">
-    <value>Recente aanvragen</value>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve">
+    <value>Aanvragen</value>
   </data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve">
     <value>Auditgeschiedenis</value>
   </data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve">
     <value>Statistieken</value>
-  </data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve">
-    <value>Aanvragen</value>
   </data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve">
     <value>Overeenkomsten</value>
@@ -767,8 +748,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Dieetinformatie</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Je medische gegevens zijn opgeslagen.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Opslaan van medische gegevens mislukt.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Aanvragen als Colaborador of Asociado</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Vrijwilliger</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>De e-mailadressen van dit account kunnen niet meer worden gewijzigd.</value>
   </data>

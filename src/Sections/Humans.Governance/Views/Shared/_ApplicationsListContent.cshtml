@@ -5,6 +5,18 @@
     <span class="text-muted">@string.Format(SharedLocalizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
 </page-header>
 
+@if (Model.UserIdFilter is { } userIdFilter)
+{
+    @* One person's applications in every status; Users' admin page links here. *@
+    <div class="card mb-4">
+        <div class="card-body d-flex flex-wrap gap-3 align-items-center">
+            <vc:human user-id="@userIdFilter" />
+            <a asp-action="Admin" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Common_Clear"]</a>
+        </div>
+    </div>
+}
+else
+{
 <div class="card mb-4">
     <div class="card-body d-flex flex-wrap gap-3 align-items-center">
         <div class="btn-group" role="group">
@@ -34,6 +46,7 @@
         </div>
     </div>
 </div>
+}
 
 <div class="card">
     <div class="card-body p-0">
