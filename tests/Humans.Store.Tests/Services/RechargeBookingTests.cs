@@ -4,6 +4,7 @@ using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Store.Contracts;
+using Humans.Store.Data;
 using Humans.Store.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -28,14 +29,17 @@ public class RechargeBookingTests
             Instant.FromUtc(2026, month, 10, 12, 0));
 
     private static readonly Dictionary<Guid, int> Departments = new() { [Team] = DeptAccount };
+    private static readonly Dictionary<Guid, int?> Catalog = new() { [Ice] = RechargeAccount };
+
+    private static StoreRechargeBooking.BookedLine Booked(int month, decimal amount, int account = RechargeAccount) =>
+        new(new StoreRechargeBooking.BookedKey(2026, new YearMonth(2026, month), Team, Ice), account, amount,
+            "Ice Crew / Ice");
 
     [HumansFact]
     public void Each_month_books_the_change_since_the_last_entry_and_resumes_after_what_is_booked()
     {
         var lines = new[] { Line(40m, 5), Line(20m, 7) };
-        var mayBooked = new StoreRechargeBooking.BookedKey(2026, new YearMonth(2026, 5), Team, Ice);
-
-        var rows = StoreRechargeBooking.Plan(2026, lines, [(mayBooked, 50m)], Departments, new YearMonth(2026, 8));
+        var rows = StoreRechargeBooking.Plan(2026, lines, Catalog, [Booked(5, 50m)], Departments, new YearMonth(2026, 8));
 
         // May is booked at 50 (since repriced to 40): June corrects it, July adds the new line.
         rows.Select(r => (r.Month, r.Amount)).Should().Equal(
@@ -47,13 +51,37 @@ public class RechargeBookingTests
     }
 
     [HumansFact]
+    public void A_team_whose_last_line_is_removed_gets_the_booked_amount_reversed()
+    {
+        var rows = StoreRechargeBooking.Plan(2026, [], Catalog, [Booked(5, 40m)], Departments, new YearMonth(2026, 6));
+
+        var row = rows.Single();
+        (row.Month, row.Amount, row.State, row.TeamName).Should().Be(
+            (new YearMonth(2026, 6), -40m, RechargeState.Ready, "Ice Crew"));
+        row.Sides.Should().Be((RechargeAccount, DeptAccount));
+    }
+
+    [HumansFact]
+    public void A_changed_recharge_account_reverses_the_old_one_and_books_the_new_one_in_full()
+    {
+        const int oldAccount = 62990001;
+        var rows = StoreRechargeBooking.Plan(
+            2026, [Line(40m, 5)], Catalog, [Booked(5, 40m, oldAccount)], Departments, new YearMonth(2026, 6));
+
+        rows.Select(r => (r.RechargeAccount, r.Amount)).Should().BeEquivalentTo(
+            [((int?)oldAccount, -40m), ((int?)RechargeAccount, 40m)]);
+    }
+
+    [HumansFact]
     public void A_product_without_a_recharge_account_or_a_team_without_a_department_account_is_not_ready()
     {
         var rows = StoreRechargeBooking.Plan(
-            2026, [Line(40m, 5, recharge: null)], [], Departments, new YearMonth(2026, 5));
+            2026, [Line(40m, 5, recharge: null)], new Dictionary<Guid, int?>(), [], Departments,
+            new YearMonth(2026, 5));
         rows.Single().State.Should().Be(RechargeState.NoRechargeAccount);
 
-        rows = StoreRechargeBooking.Plan(2026, [Line(40m, 5)], [], new Dictionary<Guid, int>(), new YearMonth(2026, 5));
+        rows = StoreRechargeBooking.Plan(
+            2026, [Line(40m, 5)], Catalog, [], new Dictionary<Guid, int>(), new YearMonth(2026, 5));
         rows.Single().State.Should().Be(RechargeState.NoDepartmentAccount);
     }
 
@@ -78,6 +106,7 @@ public class RechargeBookingTests
         var mayDescription = StoreRechargeBooking.Description(2026, new YearMonth(2026, 5), Team, Ice, "Ice Crew", "Ice");
         var holded = Substitute.For<IHoldedService>();
         holded.IsConfigured.Returns(true);
+        holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([]);
         holded.SyncAccountLedgerAsync(RechargeAccount, Arg.Any<CancellationToken>()).Returns(true);
         holded.GetLedgerLinesAsync(RechargeAccount, Arg.Any<CancellationToken>()).Returns(
             [new HoldedLedgerLineInfo(7, 2, RechargeAccount, Instant.MinValue, null, mayDescription, 0m, 40m)]);
@@ -86,7 +115,10 @@ public class RechargeBookingTests
         write.PostJournalEntryAsync(default, 0, 0, 0m, "", default)
             .ReturnsForAnyArgs(new HoldedJournalEntryOutcome(true));
 
-        var sut = new StoreRechargeBooking(orders, budget, finance, holded, write,
+        var repo = Substitute.For<IStoreRepository>();
+        repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
+
+        var sut = new StoreRechargeBooking(orders, repo, budget, finance, holded, write,
             Substitute.For<IAuditLogService>(), new FakeClock(Instant.FromUtc(2026, 9, 2, 8, 0)),
             NullLogger<StoreRechargeBooking>.Instance);
 

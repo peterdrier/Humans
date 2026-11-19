@@ -7,6 +7,7 @@ using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Store.Contracts;
+using Humans.Store.Data;
 using NodaTime;
 
 namespace Humans.Store.Services;
@@ -61,6 +62,7 @@ internal sealed record RechargePlan(
 /// </remarks>
 internal sealed partial class StoreRechargeBooking(
     IStoreAccountingRead orders,
+    IStoreRepository repo,
     IBudgetService budget,
     IFinanceService finance,
     IHoldedService holded,
@@ -71,6 +73,8 @@ internal sealed partial class StoreRechargeBooking(
 {
     private const string Prefix = "Store recharge ";
     private const string AuditEntityType = "StoreRecharge";
+    private const int RechargeBlockStart = 62990000;
+    private const int RechargeBlockEnd = 62999999;
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
     private static readonly SemaphoreSlim Gate = new(1, 1);
 
@@ -85,6 +89,10 @@ internal sealed partial class StoreRechargeBooking(
 
     internal sealed record BookedKey(int Year, YearMonth Month, Guid TeamId, Guid ProductId);
 
+    /// <summary>One keyed line on a recharge account: <paramref name="Amount"/> is credit − debit,
+    /// <paramref name="Label"/> the "{team} / {product}" text after the key.</summary>
+    internal sealed record BookedLine(BookedKey Key, int Account, decimal Amount, string Label);
+
     /// <summary>The key a recharge-account line names, or null for a line booked any other way.</summary>
     internal static BookedKey? KeyOf(HoldedLedgerLineInfo line)
     {
@@ -98,14 +106,17 @@ internal sealed partial class StoreRechargeBooking(
     }
 
     /// <summary>
-    /// Pure. <paramref name="lines"/> are the year's team lines; <paramref name="booked"/> the keyed lines already on
-    /// the recharge accounts (credit − debit is the amount booked). A team and product with entries resumes after its
-    /// latest booked month, so nothing is ever back-dated before what Holded already holds.
+    /// Pure. <paramref name="lines"/> are the year's team lines, <paramref name="rechargeAccounts"/> the year's
+    /// catalog (product → recharge account today), <paramref name="booked"/> the keyed lines already on any recharge
+    /// account. A team and product with entries resumes after its latest booked month, so nothing is ever back-dated
+    /// before what Holded already holds. Whatever sits on an account that is no longer the product's (its recharge
+    /// account changed) is reversed there, and the product's current account books the full amount.
     /// </summary>
     internal static IReadOnlyList<RechargeRow> Plan(
         int year,
         IReadOnlyList<AccountingOrderLineDto> lines,
-        IReadOnlyList<(BookedKey Key, decimal Amount)> booked,
+        IReadOnlyDictionary<Guid, int?> rechargeAccounts,
+        IReadOnlyList<BookedLine> booked,
         IReadOnlyDictionary<Guid, int> departmentAccounts,
         YearMonth lastClosedMonth)
     {
@@ -122,7 +133,6 @@ internal sealed partial class StoreRechargeBooking(
         {
             var mine = teamLines.Where(l => l.TeamId == team && l.ProductId == product).ToList();
             var mineBooked = bookedThisYear.Where(b => b.Key.TeamId == team && b.Key.ProductId == product).ToList();
-            var bookedTotal = mineBooked.Sum(b => b.Amount);
 
             var first = mine.Count > 0 ? mine.Min(l => MonthOf(l.AddedAt)) : lastClosedMonth;
             if (mineBooked.Count > 0)
@@ -131,25 +141,42 @@ internal sealed partial class StoreRechargeBooking(
                 if (resume.CompareTo(first) > 0) first = resume;
             }
 
-            var teamName = mine.FirstOrDefault()?.CounterpartyLabel ?? "(unknown team)";
-            var productName = mine.FirstOrDefault()?.ProductName ?? "(unknown product)";
-            var rechargeAccount = mine.FirstOrDefault()?.HoldedRechargeAccountNum;
+            var (teamName, productName) = mine.Count > 0
+                ? (mine[0].CounterpartyLabel, mine[0].ProductName)
+                : SplitLabel(mineBooked[^1].Label);
+            var current = rechargeAccounts.GetValueOrDefault(product)
+                ?? mine.FirstOrDefault()?.HoldedRechargeAccountNum;
             int? departmentAccount = departmentAccounts.TryGetValue(team, out var d) ? d : null;
-            var state = rechargeAccount is null ? RechargeState.NoRechargeAccount
-                : departmentAccount is null ? RechargeState.NoDepartmentAccount
-                : RechargeState.Ready;
 
+            RechargeRow Row(YearMonth month, int? account, decimal amount) =>
+                new(year, month, team, teamName, product, productName, departmentAccount, account, amount,
+                    account is null ? RechargeState.NoRechargeAccount
+                    : departmentAccount is null ? RechargeState.NoDepartmentAccount
+                    : RechargeState.Ready);
+
+            if (first.CompareTo(lastClosedMonth) > 0) continue;
+
+            foreach (var stale in mineBooked.Where(b => b.Account != current).GroupBy(b => b.Account))
+                if (stale.Sum(b => b.Amount) is var amount and not 0m)
+                    rows.Add(Row(first, stale.Key, -amount));
+
+            var bookedTotal = mineBooked.Where(b => b.Account == current).Sum(b => b.Amount);
             for (var month = first; month.CompareTo(lastClosedMonth) <= 0; month = month.PlusMonths(1))
             {
                 var target = mine.Where(l => MonthOf(l.AddedAt).CompareTo(month) <= 0).Sum(l => l.LineNet);
                 var delta = target - bookedTotal;
                 if (delta == 0m) continue;
-                rows.Add(new RechargeRow(year, month, team, teamName, product, productName,
-                    departmentAccount, rechargeAccount, delta, state));
+                rows.Add(Row(month, current, delta));
                 bookedTotal = target;
             }
         }
         return rows;
+    }
+
+    private static (string Team, string Product) SplitLabel(string label)
+    {
+        var slash = label.LastIndexOf(" / ", StringComparison.Ordinal);
+        return slash < 0 ? (label, "(unknown product)") : (label[..slash], label[(slash + 3)..]);
     }
 
     private static YearMonth MonthOf(Instant at)
@@ -168,10 +195,11 @@ internal sealed partial class StoreRechargeBooking(
     public async Task<RechargePlan> GetPlanAsync(int year, CancellationToken ct = default)
     {
         var lines = await orders.GetOrderLinesAsync(year, ct);
+        var catalog = await CatalogAccountsAsync(year, lines, ct);
         var (departments, unavailable) = await DepartmentAccountsAsync(year, ct);
-        var booked = await BookedAsync(RechargeAccountsOf(lines), ct);
+        var booked = await BookedAsync(await AccountsToReadAsync(catalog, ct), ct);
         var lastClosed = LastClosedMonth();
-        return new RechargePlan(year, lastClosed, Plan(year, lines, booked, departments, lastClosed), unavailable);
+        return new RechargePlan(year, lastClosed, Plan(year, lines, catalog, booked, departments, lastClosed), unavailable);
     }
 
     /// <summary>Posts every ready row of <paramref name="year"/>. Refused, nothing posted, while another run holds
@@ -184,14 +212,15 @@ internal sealed partial class StoreRechargeBooking(
         {
             if (!holded.IsConfigured) return ([], "Holded is not configured here; nothing was booked.");
             var lines = await orders.GetOrderLinesAsync(year, ct);
-            var accounts = RechargeAccountsOf(lines);
+            var catalog = await CatalogAccountsAsync(year, lines, ct);
+            var accounts = await AccountsToReadAsync(catalog, ct);
             foreach (var account in accounts)
                 if (!await holded.SyncAccountLedgerAsync(account, ct))
                     return ([], "A Holded ledger sync is running; nothing was booked. Try again in a minute.");
 
             var (departments, _) = await DepartmentAccountsAsync(year, ct);
             var booked = await BookedAsync(accounts, ct);
-            var ready = Plan(year, lines, booked, departments, LastClosedMonth())
+            var ready = Plan(year, lines, catalog, booked, departments, LastClosedMonth())
                 .Where(r => r.State == RechargeState.Ready).ToList();
 
             var results = new List<RechargeBookedLine>();
@@ -234,7 +263,7 @@ internal sealed partial class StoreRechargeBooking(
             }
 
             if (results.Count > 0)
-                foreach (var account in ready.Select(r => r.RechargeAccount!.Value).Distinct())
+                foreach (var account in results.Select(r => r.Row.RechargeAccount!.Value).Distinct())
                     await holded.SyncAccountLedgerAsync(account, CancellationToken.None);
             return (results, null);
         }
@@ -249,18 +278,38 @@ internal sealed partial class StoreRechargeBooking(
         }
     }
 
-    private static IReadOnlyList<int> RechargeAccountsOf(IReadOnlyList<AccountingOrderLineDto> lines) =>
-        lines.Where(l => l.TeamId is not null && l.HoldedRechargeAccountNum is not null)
-            .Select(l => l.HoldedRechargeAccountNum!.Value).Distinct().Order().ToList();
-
-    private async Task<IReadOnlyList<(BookedKey Key, decimal Amount)>> BookedAsync(
-        IReadOnlyList<int> accounts, CancellationToken ct)
+    /// <summary>Every product of the year's catalog plus any product a line names from elsewhere, with its recharge
+    /// account today.</summary>
+    private async Task<IReadOnlyDictionary<Guid, int?>> CatalogAccountsAsync(
+        int year, IReadOnlyList<AccountingOrderLineDto> lines, CancellationToken ct)
     {
-        var booked = new List<(BookedKey, decimal)>();
+        var accounts = (await repo.GetAllProductsForYearAsync(year, ct))
+            .ToDictionary(p => p.Id, p => p.HoldedRechargeAccountNum);
+        foreach (var l in lines.Where(l => l.TeamId is not null))
+            accounts.TryAdd(l.ProductId, l.HoldedRechargeAccountNum);
+        return accounts;
+    }
+
+    /// <summary>The recharge accounts the year's products name, plus every chart account in the 6299xxxx block, so
+    /// an entry booked on an account a product has since moved off is still seen.</summary>
+    private async Task<IReadOnlyList<int>> AccountsToReadAsync(
+        IReadOnlyDictionary<Guid, int?> catalog, CancellationToken ct) =>
+        catalog.Values.OfType<int>()
+            .Concat((await holded.GetChartAsync(ct)).Select(a => a.Number)
+                .Where(n => n is >= RechargeBlockStart and <= RechargeBlockEnd))
+            .Distinct().Order().ToList();
+
+    private async Task<IReadOnlyList<BookedLine>> BookedAsync(IReadOnlyList<int> accounts, CancellationToken ct)
+    {
+        var booked = new List<BookedLine>();
         foreach (var account in accounts)
             foreach (var line in await holded.GetLedgerLinesAsync(account, ct))
                 if (KeyOf(line) is { } key)
-                    booked.Add((key, line.Credit - line.Debit));
+                {
+                    var colon = line.Description!.IndexOf(": ", StringComparison.Ordinal);
+                    booked.Add(new BookedLine(key, account, line.Credit - line.Debit,
+                        colon < 0 ? "(unknown team)" : line.Description[(colon + 2)..]));
+                }
         return booked;
     }
 
