@@ -8,6 +8,7 @@ using Humans.Base.Authorization;
 using Humans.Store.Authorization;
 using Humans.Store.Models;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
@@ -81,7 +82,7 @@ internal sealed class StoreController(
         var canDeletePayment = (await authService.AuthorizeAsync(User, order, OrderOperationRequirement.DeletePayment)).Succeeded;
         var pageData = await storeService.GetOrderPageDataAsync(order, canEdit, canPay, ct);
         var (catalog, removableLineIds) = await FilterLineEditAffordancesAsync(order, pageData.Catalog, canEdit, ct);
-        return View(OrderViewModel.FromPageData(
+        var model = OrderViewModel.FromPageData(
             pageData,
             canDeleteAuth && order.IsDeletable,
             canIssueAuth && order.IsInvoiceIssuable,
@@ -89,7 +90,17 @@ internal sealed class StoreController(
             canRecordFinancePayment,
             canDeletePayment,
             catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
-            removableLineIds));
+            removableLineIds);
+        if (canRecordFinancePayment)
+        {
+            model.StripeRefundLinks = order.Payments
+                .Where(p => p.Method == PaymentMethod.Stripe && p.Status == PaymentStatus.Paid && p.StripePaymentIntentId is not null)
+                .OrderBy(p => p.ReceivedAt)
+                .Select(p => new StripeRefundLink(p.StripePaymentIntentId!, p.AmountEur,
+                    storeService.StripePaymentDashboardUrl(p.StripePaymentIntentId!)))
+                .ToList();
+        }
+        return View(model);
     }
 
     private async Task<(IActionResult? Error, UserInfo User, OrderDto Order)> RequireOrderAsync(
@@ -216,6 +227,33 @@ internal sealed class StoreController(
             id, method, amountEur, externalRef, notes, valueDate, user.Id, CancellationToken.None);
         if (result.Succeeded) SetSuccess(localizer["Store_PaymentRecorded"].Value);
         else SetError(result.Refusal!);
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    [HttpPost("Order/{id:guid}/CheckStripeRefunds")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckStripeRefunds(Guid id, CancellationToken ct)
+    {
+        var (errorResult, user, order) = await RequireOrderAsync(id, ct);
+        if (errorResult is not null) return errorResult;
+
+        if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment)).Succeeded
+            || !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
+            return Forbid();
+
+        // FinanceAdmin-only control: plain strings, exempt from localization.
+        var result = await storeService.RecordStripeRefundsAsync(id, user.Id, CancellationToken.None);
+        if (result.Refusal is { } refusal)
+            SetError(refusal);
+        else
+        {
+            var message = result.RecordedCount == 0
+                ? "No new Stripe refunds to record."
+                : $"Recorded {result.RecordedCount} Stripe refund(s) totalling {result.TotalEur.ToEuro()}.";
+            if (result.UnsettledCount > 0)
+                message += $" {result.UnsettledCount} refund(s) still pending in Stripe; check again once they complete.";
+            SetSuccess(message);
+        }
         return RedirectToAction(nameof(Order), new { id });
     }
 

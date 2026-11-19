@@ -89,7 +89,7 @@ public class ServiceTests
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
-            .Returns(new LineContext(lineId, order.Id, Guid.NewGuid(), OrderState.Open, product.OrderableUntil));
+            .Returns(new LineContext(lineId, order.Id, Guid.NewGuid(), OrderState.Open, product.OrderableUntil, "Ice", 1, 10m));
         _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
         {
             await cancellation.CancelAsync();
@@ -750,7 +750,7 @@ public class ServiceTests
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>()).Returns(_ => lookupFailure
             ? Task.FromException<LineContext?>(failure)
             : Task.FromResult<LineContext?>(new LineContext(lineId, order.Id, product.Id,
-                OrderState.Open, product.OrderableUntil)));
+                OrderState.Open, product.OrderableUntil, "Ice", 1, 10m)));
         _repo.UpdateProductAsync(product, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         _repo.AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         _repo.RemoveLineAsync(lineId, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
@@ -873,7 +873,7 @@ public class ServiceTests
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
                 lineId, actualOrderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31)));
+                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var rejection = await _service.RemoveLineAsync(routeOrderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         rejection.Succeeded.Should().BeFalse();
@@ -889,7 +889,7 @@ public class ServiceTests
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
                 lineId, orderId, Guid.NewGuid(),
-                OrderState.InvoiceIssued, new LocalDate(2026, 12, 31)));
+                OrderState.InvoiceIssued, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var rejection = await _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         rejection.Succeeded.Should().BeFalse();
@@ -908,15 +908,15 @@ public class ServiceTests
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
                 lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 1, 1)));
+                OrderState.Open, new LocalDate(2026, 1, 1), "Ice", 3, 10m));
 
         await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
         await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StoreLineRemoved, AuditEntityTypes.OrderLine, lineId,
-            Arg.Is<string>(d => d.Contains("past order deadline")), actor,
-            Arg.Any<Guid?>(), Arg.Any<string?>());
+            Arg.Is<string>(d => d.Contains("past order deadline") && d.StartsWith("Removed 3 × 'Ice'", StringComparison.Ordinal)),
+            actor, orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]
@@ -928,7 +928,7 @@ public class ServiceTests
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
                 lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31)));
+                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
@@ -962,7 +962,7 @@ public class ServiceTests
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
                 lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31)));
+                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var result = await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 

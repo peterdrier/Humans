@@ -232,6 +232,19 @@ public sealed class StoreControllerRecordPaymentTests
     }
 
     [HumansTheory]
+    [InlineData(StoreRoles.StoreAdmin)]
+    [InlineData(RoleNames.Board)]
+    public async Task Only_FinanceAdmin_and_Admin_can_check_stripe_refunds(string role)
+    {
+        var controller = BuildController(role);
+
+        var result = await controller.CheckStripeRefunds(_order.Id, TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
     [InlineData(FinanceRoles.FinanceAdmin)]
     [InlineData(RoleNames.Admin)]
     public async Task FinanceAdmin_and_Admin_can_record_a_refund(string role)
@@ -416,7 +429,7 @@ public sealed class StoreControllerRecordPaymentTests
     [InlineData(StoreRoles.StoreAdmin, false, false)]
     [InlineData(FinanceRoles.FinanceAdmin, true, false)]
     [InlineData(RoleNames.Admin, true, true)]
-    public async Task Order_page_offers_refund_and_payment_delete_by_role(string role, bool canRefund, bool canDeletePayment)
+    public async Task Order_page_offers_refund_and_payment_delete_by_role(string role, bool canRecordFinancePayment, bool canDeletePayment)
     {
         var controller = BuildController(role);
 
@@ -424,7 +437,7 @@ public sealed class StoreControllerRecordPaymentTests
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OrderViewModel>().Which;
         model.CanRecordPayment.Should().BeTrue();
-        model.CanRecordFinancePayment.Should().Be(canRefund);
+        model.CanRecordFinancePayment.Should().Be(canRecordFinancePayment);
         model.CanDeletePayment.Should().Be(canDeletePayment);
     }
 
