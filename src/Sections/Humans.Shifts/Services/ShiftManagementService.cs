@@ -41,13 +41,13 @@ internal sealed class ShiftManagementService(
     private readonly ShiftDeletion deletion = new(repo, auditLogService, viewInvalidator, logger);
     private readonly ShiftVolunteerProfiles volunteerProfiles = new(repo, clock, logger);
     private readonly ShiftDashboardMetrics dashboardMetrics = new(repo, calendarResolver, serviceProvider, clock);
-    private readonly ShiftCoordinatorActivity coordinatorActivity = new(repo, calendarResolver, serviceProvider);
-    private readonly ShiftCoverageReports coverageReports = new(repo, calendarResolver, serviceProvider);
-    private readonly ShiftCampSummary campSummary = new(repo, serviceProvider);
+    private readonly ShiftCoordinatorActivity coordinatorActivity = new(calendarResolver, serviceProvider);
+    private readonly ShiftCoverageReports coverageReports = new(calendarResolver, serviceProvider);
+    private readonly ShiftCampSummary campSummary = new(serviceProvider);
     private readonly ShiftBrowseReader browseReader = new(calendarResolver, serviceProvider, clock);
     private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
-    private IShiftRowView RowView => serviceProvider.GetRequiredService<IShiftRowView>();
+    private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
     private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
 
     private Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
@@ -123,11 +123,9 @@ internal sealed class ShiftManagementService(
     public Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId) =>
         deletion.DeleteRotaAsync(rotaId, actorUserId);
 
-    public async Task<IReadOnlyList<ShiftAdminRota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        var rotas = await repo.GetRotasAsync(eventSettingsId, [teamId], RotaReadShape.View, ct);
-        return rotas.Select(ToAdminRota).ToList();
-    }
+    public async Task<IReadOnlyList<ShiftAdminRota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId, CancellationToken ct = default) =>
+        [.. (await RotaRows.GetRotaRowsAsync(ct: ct))
+            .Where(r => r.Rota.TeamId == teamId && r.Rota.EventSettingsId == eventSettingsId)];
 
     public async Task<IReadOnlyList<ShiftAdminRota>> GetRotaRowsAsync(
         IReadOnlyCollection<Guid>? rotaIds = null, CancellationToken ct = default)
@@ -181,11 +179,8 @@ internal sealed class ShiftManagementService(
             .ToList();
     }
 
-    public async Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default)
-    {
-        var view = await RowView.GetRotaAsync(rotaId, cancellationToken);
-        return view.Rota is null ? null : ToRotaInfo(view.Rota);
-    }
+    public async Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default) =>
+        (await RotaRows.GetRotaRowsAsync([rotaId], cancellationToken)).SingleOrDefault()?.Rota;
 
     internal static LocalTime AllDayShiftStartTime => Shift.AllDayWindowStart;
 
@@ -206,11 +201,10 @@ internal sealed class ShiftManagementService(
     public Task<ShiftDeletionResult> DeleteShiftAsync(Guid shiftId, Guid actorUserId) =>
         deletion.DeleteShiftAsync(shiftId, actorUserId);
 
-    public async Task<ShiftWithRota?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default)
-    {
-        var shift = await repo.GetShiftAsync(shiftId, ShiftReadShape.Rota, ct);
-        return shift?.Rota is null ? null : new ShiftWithRota(ToShiftInfo(shift), ToRotaInfo(shift.Rota));
-    }
+    public async Task<ShiftWithRota?> GetShiftByIdAsync(Guid shiftId, CancellationToken ct = default) =>
+        (await RotaRows.GetRotaRowsAsync(ct: ct))
+            .SelectMany(r => r.Shifts.Where(s => s.Shift.Id == shiftId).Select(s => new ShiftWithRota(s.Shift, r.Rota)))
+            .FirstOrDefault();
 
     public Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
@@ -239,20 +233,13 @@ internal sealed class ShiftManagementService(
     {
         if (teamIds.Count == 0) return null;
 
-        var rotas = await repo.GetRotasAsync(
-            eventSettingsId,
-            teamIds,
-            RotaReadShape.ShiftsWithSignups,
-            ct);
-        if (rotas.Count == 0) return null;
-
-        var allShifts = rotas.SelectMany(r => r.Shifts).ToList();
+        var allShifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(eventSettingsId, teamIds), ct);
         if (allShifts.Count == 0) return null;
 
-        var allSignups = allShifts.SelectMany(s => s.ShiftSignups).ToList();
+        var allSignups = allShifts.SelectMany(s => s.Signups).ToList();
 
         return new ShiftsSummaryData(
-            TotalSlots: allShifts.Sum(s => s.MaxVolunteers),
+            TotalSlots: allShifts.Sum(s => s.Shift.MaxVolunteers),
             ConfirmedCount: allSignups.Count(s => s.Status == SignupStatus.Confirmed),
             PendingCount: allSignups
                 .Where(s => s.Status == SignupStatus.Pending)
@@ -264,10 +251,7 @@ internal sealed class ShiftManagementService(
                 .Select(s => s.UserId)
                 .Distinct()
                 .Count(),
-            TeamIdsWithShifts: rotas
-                .Where(r => r.Shifts.Count > 0)
-                .Select(r => r.TeamId)
-                .ToHashSet());
+            TeamIdsWithShifts: allShifts.Select(s => s.Rota.TeamId).ToHashSet());
     }
 
     public Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
@@ -280,7 +264,11 @@ internal sealed class ShiftManagementService(
     public async Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId, CancellationToken ct = default)
     {
-        var teamIds = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
+        var teamIds = (await RotaRows.GetRotaRowsAsync(ct: ct))
+            .Where(r => r.Rota.EventSettingsId == eventSettingsId)
+            .Select(r => r.Rota.TeamId)
+            .Distinct()
+            .ToList();
         if (teamIds.Count == 0) return [];
 
         // Parents came along for the lookup; only rota-owning teams belong in the dropdown.
@@ -397,7 +385,8 @@ internal sealed class ShiftManagementService(
         if (eventSettings is null)
             return new Dictionary<Guid, int>();
 
-        return await repo.GetPendingSignupCountsByTeamAsync(eventSettings.Id, null, null, cancellationToken);
+        return (await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(eventSettings.Id), cancellationToken))
+            .PendingCountsByTeam();
     }
 
     public Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile) =>

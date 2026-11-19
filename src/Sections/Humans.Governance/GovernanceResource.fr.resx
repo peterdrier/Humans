@@ -197,9 +197,6 @@
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
     <value>Informations sur la candidature</value>
   </data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
-    <value>Examen commencé</value>
-  </data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
     <value>Examinée par</value>
   </data>
@@ -801,4 +798,6 @@
   <data name="Governance_Application_MotivationRequired" xml:space="preserve">
     <value>Une déclaration de motivation est requise pour les candidatures Colaborador et Asociado.</value>
   </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Candidatures en attente de ton vote</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>le Conseil</value></data>
 </root>

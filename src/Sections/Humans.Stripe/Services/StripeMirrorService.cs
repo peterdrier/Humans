@@ -2,6 +2,7 @@ using System.Text.Json;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Stripe.Contracts;
 using Humans.Stripe.Data;
 using Humans.Stripe.Domain;
 using Humans.Stripe.Models;
@@ -35,7 +36,7 @@ internal sealed class StripeMirrorService(
     IOptions<StripeMirrorOptions> options,
     IClock clock,
     IUserService users,
-    ILogger<StripeMirrorService> logger) : IStripeMirrorAdminService, IUserDataContributor
+    ILogger<StripeMirrorService> logger) : IStripeMirrorAdminService, IStripeMirrorService, IUserDataContributor
 {
     /// <summary>One sweep at a time across the nightly job and Sync now; a second caller skips instead of waiting.</summary>
     private static readonly SemaphoreSlim SyncGate = new(1, 1);
@@ -165,6 +166,12 @@ internal sealed class StripeMirrorService(
 
     private static bool Is(StripeBalanceTransaction t, string category) =>
         string.Equals(t.ReportingCategory, category, StringComparison.Ordinal);
+
+    public async Task<IReadOnlyList<StripeAccountBalance>> GetEurBalancesAsync(CancellationToken ct = default) =>
+        (await repo.GetBalancesAsync(ct))
+            .Where(b => string.Equals(b.Currency, EurCode, StringComparison.Ordinal))
+            .Select(b => new StripeAccountBalance(b.AccountId, Eur(b.Available), Eur(b.Pending), b.SyncedAt))
+            .ToList();
 
     public async Task<StripeSummary> GetSummaryAsync(CancellationToken ct = default)
     {

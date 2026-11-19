@@ -176,7 +176,7 @@ Application created → Board Voting → Approve/Reject
 4. **Applications use the dedicated route** — profile edit is just profile data
 5. **Asociados are not in Colaboradors team** — separate system teams
 6. **One pending Application per user** — cannot have multiple active tier applications
-7. **Downgrades happen only at term expiry** — no admin or self-service downgrade; `MembershipTierExpiryJob` removes the tier when the term ends
+7. **Downgrades happen only at term expiry** — no admin or self-service downgrade; `MembershipTierExpiryJob` removes the tier when the term ends. Approving a lower tier for a member with an in-term higher tier records the approval but leaves the higher tier in place; the expiry job falls back to it
 8. **Terms are synchronized** — all expire Dec 31 of odd years
 9. **Renewal is a new Application** — same Board voting process
 10. **No Volunteer badge** — only Colaborador/Asociado badges on dashboard

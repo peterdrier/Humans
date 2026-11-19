@@ -1,7 +1,7 @@
-namespace Humans.Notifications.Services.Dtos;
+namespace Humans.Notifications.Contracts;
 
 /// <summary>Computed per request, never stored; hidden at zero.</summary>
-internal sealed class NotificationMeter
+public sealed class NotificationMeter
 {
     public required string Title { get; init; }
 

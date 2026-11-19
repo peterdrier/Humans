@@ -77,7 +77,6 @@
     <value>Files d'attente</value>
   </data>
   <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Vérifications du consentement en attente</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Candidatures en attente de ton vote</value></data>
   <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Suppressions de comptes en attente</value></data>
   <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Synchronisations Google échouées</value></data>
   <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profils d’inscription en attente</value></data>

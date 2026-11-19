@@ -1,4 +1,4 @@
-using Humans.Notifications.Services.Dtos;
+using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
 
 namespace Humans.Notifications.Models;

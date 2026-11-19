@@ -657,12 +657,14 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 2);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var locator = Substitute.For<IServiceProvider>();
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
-            new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
+            locator, Cache,
             new ShiftViewProbe().Cache,
             new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        locator.GetService(typeof(IShiftRotaRows)).Returns(service);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -1566,54 +1568,44 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
     public async Task GetActivePendingShiftSignupCountsByTeam_returns_empty_dict_when_no_active_event()
     {
         // No EventSettings seeded in ShiftsDb → NewCalendarResolver() resolves no active event.
-        var repo = Substitute.For<IShiftManagementRepository>();
-        var service = BuildServiceWithRepo(repo);
-
-        var result = await service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeEmpty();
-        await repo.DidNotReceiveWithAnyArgs()
-            .GetPendingSignupCountsByTeamAsync(Guid.Empty, null, null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task GetActivePendingShiftSignupCountsByTeam_delegates_to_repo_when_active_event_exists()
+    public async Task GetActivePendingShiftSignupCountsByTeam_counts_a_signup_range_once()
     {
-        var es = new EventSettings
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var first = SeedShift(rota, 1);
+        var second = SeedShift(rota, 2);
+        var blockId = Guid.NewGuid();
+        foreach (var shift in new[] { first, second })
+        {
+            ShiftsDb.ShiftSignups.Add(new ShiftSignup
+            {
+                Id = Guid.NewGuid(),
+                ShiftId = shift.Id,
+                UserId = Guid.NewGuid(),
+                SignupBlockId = blockId,
+                Status = SignupStatus.Pending,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
+            });
+        }
+        ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
             Id = Guid.NewGuid(),
-            EventName = "Active 2026",
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -14,
-            EventEndOffset = 6,
-            StrikeEndOffset = 9,
-            IsActive = true,
+            ShiftId = first.Id,
+            UserId = Guid.NewGuid(),
+            Status = SignupStatus.Pending,
             CreatedAt = TestNow,
             UpdatedAt = TestNow
-        };
-        ShiftsDb.EventSettings.Add(es);
+        });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-        var expected = new Dictionary<Guid, int> { [Guid.NewGuid()] = 3 };
 
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetPendingSignupCountsByTeamAsync(es.Id, null, null, Arg.Any<CancellationToken>())
-            .Returns(expected);
-        var service = BuildServiceWithRepo(repo);
+        var result = await _service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var result = await service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEquivalentTo(expected);
+        result.Should().BeEquivalentTo(new Dictionary<Guid, int> { [rota.TeamId] = 2 });
     }
-
-    private ShiftManagementService BuildServiceWithRepo(IShiftManagementRepository repo) =>
-        new(
-            repo,
-            AuditLog,
-            AdminAuthorization,
-            new ServiceLocatorBuilder().Build(),
-            Cache,
-            new ShiftViewProbe().Cache,
-            NewCalendarResolver(),
-            Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 }

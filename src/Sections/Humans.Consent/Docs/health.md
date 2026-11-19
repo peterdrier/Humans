@@ -50,8 +50,8 @@ Three aggregates and one content proxy, each with a single writer:
   contributor), `CachingConsentService` (per-user lazy cache, synchronous refresh on submit).
 - **Member-review side**: `ConsentReviewRepository` + `ConsentReviewService` (verdict rows), `ConsentReminderRepository` +
   `ConsentReminderService` (the reminder cooldown stamp).
-- **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers,
-  pending applications) and the membership calculator, and writes through the section's own
+- **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers)
+  and the membership calculator, and writes through the section's own
   `IConsentWrite`. It owns no repository.
 - **Statutes proxy**: `LegalDocumentService`, GitHub to IMemoryCache, no DB.
 - Controllers translate only; jobs are schedule + metric + failure boundary over the sync runner

@@ -5,7 +5,7 @@ description: Tier (Colaborador/Asociado) is derived from an Approved Application
 
 A human exists. They either have an open (`Submitted`) Application or they don't. An `Approved` Application with an active term *is* what makes someone a Colaborador or Asociado — there is no parallel "tier" state for the Application section to negotiate with.
 
-The initial-setup profile form (`Views/Profile/Edit.cshtml`) no longer hosts the application: it describes the tiers and links to `/Governance/Applications/Create` (Users decomposition commit 11).
+No section outside Governance reads tier applications (Peter, 2026-11-19): profile setup carries no tier card, and members apply from Governance's own pages.
 
 **What this rules out:**
 
@@ -17,5 +17,5 @@ The initial-setup profile form (`Views/Profile/Edit.cshtml`) no longer hosts the
 
 **How to apply:**
 
-- "Can this user start a new tier application?" — answer at the call site by calling `IApplicationDecisionService.GetUserApplicationsAsync` (or letting `SubmitAsync` reject with `AlreadyPending`). Don't add a tier-state query method to a foundational interface.
+- "Can this user start a new tier application?" — Governance's question, answered inside Governance (`IGovernanceManagement.GetUserApplicationsAsync`, or `SubmitAsync` rejecting with `AlreadyPending`). Don't add an application read to `IGovernanceService`.
 - "What tier is this user?" — derived. Governance's `governance_membership_tiers` row is a write-cache populated by approval and expiry (read via `IGovernanceService.GetMembershipTierAsync`); it isn't user-editable, and it isn't authoritative; the authoritative answer is "do they have an active Approved Application of tier X?". The legacy `Profile.MembershipTier` column is frozen.

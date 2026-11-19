@@ -56,13 +56,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Revisar ara</value>
   </data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
-    <value>La teva sol·licitud de {0}:</value>
-    <comment>{0} = tier name (Colaborador/Asociado)</comment>
-  </data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve">
-    <value>Veure detalls</value>
-  </data>
   <data name="Users_Profile_Information" xml:space="preserve">
     <value>Informació del perfil</value>
   </data>
@@ -201,15 +194,6 @@
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve">
     <value>Edita el perfil</value>
-  </data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve">
-    <value>Vols venir a l'esdeveniment, contribuir amb la teva energia, treballar un torn o unir-te a un equip. Sense compromís formal amb la governança de l'associació. La majoria de la gent és aquí i és completament vàlid.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve">
-    <value>Nota: Sempre pots sol·licitar canviar això més endavant.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
-    <value>La teva categoria està bloquejada perquè tens una sol·licitud activa o pendent.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>El nom pel qual et coneixen</value>
@@ -621,17 +605,14 @@
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve">
     <value>Aquest membre pot sol·licitar veure aquestes notes segons el RGPD.</value>
   </data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve">
-    <value>Sol·licituds recents</value>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve">
+    <value>Sol·licituds</value>
   </data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve">
     <value>Historial d'auditoria</value>
   </data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve">
     <value>Estadístiques</value>
-  </data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve">
-    <value>Sol·licituds</value>
   </data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve">
     <value>Acords</value>
@@ -759,8 +740,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Informació alimentària</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>S’ha desat la teva informació mèdica.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>No s’ha pogut desar la informació mèdica.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Sol·licitar ser col·laborador o associat</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Voluntari</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>Ja no es poden modificar les adreces de correu d’aquest compte.</value>
   </data>

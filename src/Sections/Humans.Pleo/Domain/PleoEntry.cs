@@ -10,8 +10,8 @@ internal sealed class PleoEntry
     public string? EmployeeId { get; set; }
     public string? TeamId { get; set; }
 
-    /// <summary>Pleo's <c>accountId</c>. Despite the name it is a category id; the category's Holded code comes from
-    /// <see cref="PleoCategory"/>, because the API that maps categories to accounts is closed to this key.</summary>
+    /// <summary>Pleo's <c>accountId</c>. Despite the name it is a category id; its Holded code comes from
+    /// <see cref="PleoCategory"/>, the mapping in use.</summary>
     public string? CategoryId { get; set; }
 
     public string? Family { get; set; }

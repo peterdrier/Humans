@@ -120,10 +120,4 @@
     <PackageReference Include="AspNetCore.HealthChecks.Uris" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Docs\help\*.md" />
-    <EmbeddedResource Include="Docs\help\*.md"
-                      LogicalName="$(AssemblyName).Docs.help.%(Filename)%(Extension)" />
-  </ItemGroup>
-
 </Project>

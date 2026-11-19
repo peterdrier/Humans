@@ -71,9 +71,9 @@ public sealed class ApplicationRepositoryTests : IDisposable
     public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierApplications()
     {
         SeedApp();
-        var first = await _repo.GetFilteredAsync(null, null, 1, 50, Xunit.TestContext.Current.CancellationToken);
+        var first = await _repo.GetFilteredAsync(null, null, null, 1, 50, Xunit.TestContext.Current.CancellationToken);
         first.Items.Should().ContainSingle();
-        var result = await _repo.GetFilteredAsync(null, null, int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.GetFilteredAsync(null, null, null, int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
         result.Items.Should().BeEmpty();
         result.TotalCount.Should().Be(1);
     }
@@ -174,7 +174,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         approved.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var (items, total) = await _repo.GetFilteredAsync(status: null, tier: null, page: 1, pageSize: 10, ct: Xunit.TestContext.Current.CancellationToken);
+        var (items, total) = await _repo.GetFilteredAsync(status: null, tier: null, userId: null, page: 1, pageSize: 10, ct: Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(1);
         items.Should().HaveCount(1);
@@ -189,7 +189,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
         approved.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var (items, total) = await _repo.GetFilteredAsync(ApplicationStatus.Approved, null, 1, 10, Xunit.TestContext.Current.CancellationToken);
+        var (items, total) = await _repo.GetFilteredAsync(ApplicationStatus.Approved, null, null, 1, 10, Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(1);
         items[0].Id.Should().Be(approved.Id);
@@ -202,10 +202,26 @@ public sealed class ApplicationRepositoryTests : IDisposable
         SeedApp(tier: MembershipTier.Asociado);
 
         var (items, total) = await _repo.GetFilteredAsync(
-            ApplicationStatus.Submitted, MembershipTier.Asociado, 1, 10, Xunit.TestContext.Current.CancellationToken);
+            ApplicationStatus.Submitted, MembershipTier.Asociado, null, 1, 10, Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(1);
         items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
+    }
+
+    [HumansFact]
+    public async Task GetFilteredAsync_OnePersonShowsEveryStatus()
+    {
+        var submitted = SeedApp();
+        var approved = SeedApp(userId: submitted.UserId);
+        approved.Approve(Guid.NewGuid(), "ok", new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0)));
+        SeedApp();
+        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var (items, total) = await _repo.GetFilteredAsync(
+            null, null, submitted.UserId, 1, 10, Xunit.TestContext.Current.CancellationToken);
+
+        total.Should().Be(2);
+        items.Select(a => a.Id).Should().BeEquivalentTo([submitted.Id, approved.Id]);
     }
 
     [HumansFact]
@@ -215,7 +231,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
             SeedApp();
 
         var (items, total) = await _repo.GetFilteredAsync(
-            ApplicationStatus.Submitted, null, page: 1, pageSize: 2, ct: Xunit.TestContext.Current.CancellationToken);
+            ApplicationStatus.Submitted, null, null, page: 1, pageSize: 2, ct: Xunit.TestContext.Current.CancellationToken);
 
         total.Should().Be(3);
         items.Should().HaveCount(2);

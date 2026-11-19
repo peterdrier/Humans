@@ -73,8 +73,8 @@ Independence check: pass. Findings 1, 3, 9 and 10 came from the target (the vote
 
 ## Needs Peter
 
-- [ ] 10 — drop `ReviewStartedAt` from the two detail pages and mark the column obsolete?
-- [ ] 11 — may approving a lower tier replace a member's in-term higher tier, or must it be refused?
+- [x] 10 — drop `ReviewStartedAt` from the two detail pages and mark the column obsolete? Peter: yes, and likely drop the column; pages cleared and property marked obsolete, the drop is its own PR.
+- [x] 11 — may approving a lower tier replace a member's in-term higher tier, or must it be refused? Peter: keep the higher tier until it expires; done in `ApplicationDecisionService.FinalizeDecisionAsync`.
 
 ## File coverage
 

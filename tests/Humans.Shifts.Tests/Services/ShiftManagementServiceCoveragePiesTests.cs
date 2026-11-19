@@ -57,6 +57,7 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     [HumansFact]

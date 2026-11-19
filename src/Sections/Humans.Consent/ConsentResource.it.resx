@@ -290,14 +290,8 @@
   <data name="Consent_Queue_LegalName" xml:space="preserve">
     <value>Nome legale</value>
   </data>
-  <data name="Consent_Queue_HasApplication" xml:space="preserve">
-    <value>Ha una domanda</value>
-  </data>
   <data name="Consent_Queue_Signed" xml:space="preserve">
     <value>firmato/i</value>
-  </data>
-  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
-    <value>Motivazione della domanda</value>
   </data>
   <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
     <value>Note di revisione precedenti</value>

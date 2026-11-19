@@ -30,5 +30,4 @@ public class SectionHelpTests
         entry.Glossary.Should().StartWith("## Governance Glossary");
         entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
     }
-
 }

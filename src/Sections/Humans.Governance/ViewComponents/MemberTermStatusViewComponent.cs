@@ -9,9 +9,9 @@ using NodaTime;
 namespace Humans.Governance.ViewComponents;
 
 /// <summary>Renders nothing for a plain Volunteer.</summary>
-public sealed class MemberTermStatusViewComponent(
+internal sealed class MemberTermStatusViewComponent(
     ITeamService teamService,
-    IGovernanceService applicationService,
+    IGovernanceManagement applicationService,
     IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()

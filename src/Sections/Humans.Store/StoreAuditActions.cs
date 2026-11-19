@@ -39,6 +39,9 @@ internal sealed class StoreAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition StoreTransferBooked = new("StoreTransferBooked");
 
+    // A Backdoor key pulled a year's order history, which names members.
+    public static readonly AuditActionDefinition StoreOrderHistoryExported = new("StoreOrderHistoryExported");
+
     // A Store correction path resolved a legacy order's persisted year from its camp season.
     public static readonly AuditActionDefinition StoreOrderYearBackfilled = new("StoreOrderYearBackfilled");
 

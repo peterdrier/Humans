@@ -156,7 +156,7 @@ for writes. No cache.
 ### ConsentReviewQueueService (Scoped, internal; implements `IConsentReviewQueueService`)
 
 No repository. The Consent Coordinator review queue: reads reviews through `IConsentService`, people
-through `IUserService`, tiers and pending applications through `IGovernanceService`, signed/required counts
+through `IUserService`, tiers through `IGovernanceService`, signed/required counts
 through `IConsentService.GetConsentProgressAsync`, and clears or flags through the section's own `IConsentWrite`. No cache.
 
 ### ConsentReminderService (Scoped, internal; implements `IUserDataContributor`)
