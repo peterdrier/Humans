@@ -1584,14 +1584,23 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         {
             ShiftsDb.ShiftSignups.Add(new ShiftSignup
             {
-                Id = Guid.NewGuid(), ShiftId = shift.Id, UserId = Guid.NewGuid(), SignupBlockId = blockId,
-                Status = SignupStatus.Pending, CreatedAt = TestNow, UpdatedAt = TestNow
+                Id = Guid.NewGuid(),
+                ShiftId = shift.Id,
+                UserId = Guid.NewGuid(),
+                SignupBlockId = blockId,
+                Status = SignupStatus.Pending,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
             });
         }
         ShiftsDb.ShiftSignups.Add(new ShiftSignup
         {
-            Id = Guid.NewGuid(), ShiftId = first.Id, UserId = Guid.NewGuid(),
-            Status = SignupStatus.Pending, CreatedAt = TestNow, UpdatedAt = TestNow
+            Id = Guid.NewGuid(),
+            ShiftId = first.Id,
+            UserId = Guid.NewGuid(),
+            Status = SignupStatus.Pending,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 

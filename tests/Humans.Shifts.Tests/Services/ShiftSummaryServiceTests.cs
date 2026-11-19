@@ -183,7 +183,10 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         ShiftsDb.Shifts.Local.Single(s => s.Id == allDay).IsAllDay = true;
         var otherEvent = new EventSettings
         {
-            Id = Guid.NewGuid(), EventName = "Other", GateOpeningDate = new LocalDate(2025, 7, 1), TimeZoneId = "UTC"
+            Id = Guid.NewGuid(),
+            EventName = "Other",
+            GateOpeningDate = new LocalDate(2025, 7, 1),
+            TimeZoneId = "UTC"
         };
         ShiftsDb.EventSettings.Add(otherEvent);
         var otherRota = Guid.NewGuid();
