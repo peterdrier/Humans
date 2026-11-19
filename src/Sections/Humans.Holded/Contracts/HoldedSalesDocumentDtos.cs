@@ -58,6 +58,15 @@ public sealed record HoldedSalesDocumentDto
     /// <summary>A draft books no revenue and has no number until <see cref="IHoldedWrite.ApproveSalesDocumentAsync"/>.
     /// Null when Holded doesn't report the field.</summary>
     public bool? IsDraft { get; init; }
+    /// <summary>The contact the document is issued to; null on a receipt without one.</summary>
+    public string? ContactId { get; init; }
+    /// <summary>The contact's 430xxxxx account. Filled only by <see cref="IHoldedWrite.GetSalesDocumentAsync"/>, which
+    /// reads the contact live; null without a contact.</summary>
+    public int? ContactAccountNum { get; init; }
+    /// <summary><c>payments_pending</c>: what is still unpaid. Null when Holded doesn't report the field.</summary>
+    public decimal? PaymentsPending { get; init; }
+    /// <summary>The payments on the document (<c>payments_detail</c>), in Holded's order.</summary>
+    public IReadOnlyList<HoldedPaymentDetailDto> Payments { get; init; } = [];
     /// <summary>The document's lines as Holded holds them, in its order. Empty when Holded reports none, or when one
     /// of them has no readable units, price or tax (logged).</summary>
     public required IReadOnlyList<HoldedSalesDocumentLineDto> Lines { get; init; }

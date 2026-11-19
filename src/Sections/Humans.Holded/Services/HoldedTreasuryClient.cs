@@ -68,6 +68,7 @@ internal sealed class HoldedTreasuryClient(HoldedTransport transport, ILogger<Ho
                 {
                     Id = ReadRequiredString(Prop(n, "id"), "id"),
                     Date = date,
+                    BookedAt = ParseBookedAt(n),
                     Amount = ReadRequiredDecimalV2(Prop(n, "amount"), "amount"),
                     Description = Prop(n, "description")?.GetValue<string>(),
                     // Never defaulted: "pending" is the one status the SEPA sweep reads as bookable, so inventing it
@@ -115,10 +116,50 @@ internal sealed class HoldedTreasuryClient(HoldedTransport transport, ILogger<Ho
         using var resp = await transport.SendAsync(req, ct);
     }
 
+    /// <summary><c>POST /payments</c>: money in (<c>collection</c>) or out (<c>payment</c>) on a contact, outside any
+    /// document. Returns the payment's id, or <c>unconfirmed:payment</c> when Holded accepted it without a readable
+    /// one; it is posted either way.</summary>
+    public async Task<string> CreatePaymentAsync(
+        HoldedTreasuryPaymentKind kind, string contactId, string treasuryId, decimal amount, LocalDate date,
+        string? description, CancellationToken ct = default)
+    {
+        var payload = new
+        {
+            type = kind == HoldedTreasuryPaymentKind.Collection ? "collection" : "payment",
+            contact_id = contactId,
+            bank_account_id = treasuryId,
+            // v2 takes amounts as decimal strings, as on document payments.
+            amount = amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+            date = LocalDatePattern.Iso.Format(date),
+            description,
+        };
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, "/api/v2/payments")
+        { Content = JsonContent.Create(payload, options: OmitNulls) };
+        using var resp = await transport.SendAsync(req, ct);
+        try
+        {
+            var id = Prop(JsonNode.Parse(await resp.Content.ReadAsStringAsync(ct)), "id")?.GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(id)) return id;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            logger.LogWarning("Holded accepted a {Kind} of {Amount} on contact {ContactId} but its id could not be read: {Error}",
+                kind, amount, contactId, ex.Message);
+        }
+        return UnconfirmedPaymentRefPrefix + "payment";
+    }
+
     /// <summary>A bank line has no <c>date</c> key, only <c>booking_date</c> and <c>value_date</c> (ISO 8601 with an
     /// offset). Booking is what Holded stamps on the reconciled payment and entry, so it is the date; value is the
     /// fallback. The date part is taken as given, never shifted to Madrid: a midnight-UTC Sabadell line would move
     /// a day. Throws <c>HoldedPermanentException</c> when neither parses.</summary>
+    private static Instant? ParseBookedAt(JsonNode line)
+    {
+        var parsed = OffsetDateTimePattern.ExtendedIso.Parse(Prop(line, "booking_date")?.GetValue<string>() ?? "");
+        return parsed.Success ? parsed.Value.ToInstant() : null;
+    }
+
     private static LocalDate ParseBankMovementDate(JsonNode line)
     {
         var s = Prop(line, "booking_date")?.GetValue<string>();

@@ -90,6 +90,39 @@ public interface IHoldedWrite : IApplicationService
     Task<HoldedSalesDocumentDto> ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
+    /// <summary>The sales document as Holded holds it now, read live, with its payments and
+    /// <see cref="HoldedSalesDocumentDto.ContactAccountNum"/>.</summary>
+    Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
+    /// <summary>The sales document's PDF, rendered by Holded, read live.</summary>
+    Task<byte[]> GetSalesDocumentPdfAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
+    /// <summary>Holded emails the sales document's PDF to <paramref name="emails"/>. Not idempotent: each call sends
+    /// again.</summary>
+    [ExternalWrite]
+    Task SendSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default);
+
+    /// <summary>Pays <paramref name="amount"/> (above zero: Holded takes no money back on a sales document) of one sales
+    /// document into <paramref name="treasuryId"/>, dated <paramref name="date"/>. Not idempotent. Returns the
+    /// payment's id for a bank-line reconcile, or an <c>unconfirmed:{documentId}</c> ref when Holded took it but the id
+    /// could not be read; it is posted either way. Throws only when nothing was posted.</summary>
+    [ExternalWrite]
+    Task<string> PaySalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, decimal amount, string treasuryId, LocalDate date,
+        string? description, CancellationToken ct = default);
+
+    /// <summary>A payment on a contact outside any document, through <paramref name="treasuryId"/>: money in
+    /// (<see cref="HoldedTreasuryPaymentKind.Collection"/>) or out (<see cref="HoldedTreasuryPaymentKind.Payment"/>).
+    /// Not idempotent. Returns its id for a bank-line reconcile, or <c>unconfirmed:payment</c> when Holded took it
+    /// without a readable id.</summary>
+    [ExternalWrite]
+    Task<string> CreateTreasuryPaymentAsync(
+        HoldedTreasuryPaymentKind kind, string contactId, string treasuryId, decimal amount, LocalDate date,
+        string? description, CancellationToken ct = default);
+
     /// <summary>Deletes the matching purchase document (contact, description, total and date) and re-syncs the ledger
     /// window. Refused, untouched, when its notes are not <paramref name="expectedNotes"/> (someone else's document)
     /// or it carries a payment. The re-sync is the trailing window: a document dated before it stays in the mirror

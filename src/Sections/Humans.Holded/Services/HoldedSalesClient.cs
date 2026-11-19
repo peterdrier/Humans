@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Holded.Contracts;
+using NodaTime;
 using NodaTime.Text;
 using static Humans.Holded.Services.HoldedJson;
 
@@ -93,6 +94,9 @@ internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<Holde
                 Tax = ReadDecimalV2(Prop(node, "tax")),
                 Total = ReadRequiredDecimalV2(Prop(node, "total"), "total"),
                 IsDraft = Prop(node, "draft")?.GetValue<bool>(),
+                ContactId = Prop(node, "contact_id")?.GetValue<string>() is { Length: > 0 } contactId ? contactId : null,
+                PaymentsPending = Prop(node, "payments_pending") is { } pending ? ReadDecimalV2(pending) : null,
+                Payments = ReadPaymentsDetail(Prop(node, "payments_detail")),
                 Lines = ReadLines(node, kind, documentId),
                 RawJson = body,
             };
@@ -105,6 +109,45 @@ internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<Holde
                 $"Holded {SalesSegment(kind)} document {documentId} could not be read.", ex);
         }
     }
+
+    /// <summary>The document's PDF as Holded renders it. v2 answers either the file itself or, like v1, JSON whose
+    /// <c>data</c> is the file in base64; both are accepted.</summary>
+    public async Task<byte[]> GetSalesDocumentPdfAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v2/{SalesSegment(kind)}/{documentId}/pdf");
+        using var resp = await transport.SendAsync(req, ct);
+        var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
+        if (bytes.AsSpan().StartsWith("%PDF"u8)) return bytes;
+        try
+        {
+            var data = Prop(JsonNode.Parse(bytes), "data")?.GetValue<string>();
+            if (!string.IsNullOrWhiteSpace(data)) return Convert.FromBase64String(data);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new HoldedPermanentException($"Holded {SalesSegment(kind)} document {documentId} PDF could not be read.", ex);
+        }
+        throw new HoldedPermanentException($"Holded returned no PDF for {SalesSegment(kind)} document {documentId}.");
+    }
+
+    /// <summary>Holded emails the document's PDF to <paramref name="emails"/> from its own mailer.</summary>
+    public async Task SendSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}/{documentId}/send")
+        { Content = JsonContent.Create(new { emails }, options: OmitNulls) };
+        using var resp = await transport.SendAsync(req, ct);
+    }
+
+    /// <summary>Holded takes only payments above zero on a sales document: money back is a separate payment.</summary>
+    public Task<string> PaySalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, decimal amount, string treasuryId, LocalDate date,
+        string? description, CancellationToken ct = default) =>
+        HoldedDocumentPayment.PayAsync(
+            transport, logger, SalesSegment(kind), documentId,
+            async c => (await GetSalesDocumentAsync(kind, documentId, c)).Payments,
+            amount, treasuryId, date, description, ct);
 
     /// <summary>v2's line <c>tax</c> is the line's primary tax percent (the document-level <c>tax</c> is an amount).
     /// This read runs right after an approval, so a line it cannot read never fails it, which would strand an approved

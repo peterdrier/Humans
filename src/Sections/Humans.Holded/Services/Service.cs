@@ -148,6 +148,7 @@ internal sealed class Service(
             {
                 Id = m.Id,
                 Date = m.Date,
+                BookedAt = m.BookedAt,
                 Amount = m.Amount,
                 Description = m.Description,
                 Status = m.Status,

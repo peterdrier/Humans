@@ -127,6 +127,7 @@ internal sealed class HoldedContactsClient(HoldedTransport transport, ILogger<Ho
         Id = ReadRequiredString(Prop(node, "id") ?? JsonValue.Create(fallbackId), "id"),
         Name = Prop(node, "name")?.GetValue<string>(),
         SupplierAccountNum = ReadInt(Prop(Prop(node, "supplier_record"), "num")),
+        ClientAccountNum = ReadInt(Prop(Prop(node, "client_record"), "num")),
         TradeName = Prop(node, "trade_name")?.GetValue<string>(),
         Email = Prop(node, "email")?.GetValue<string>(),
         Phone = Prop(node, "phone")?.GetValue<string>(),

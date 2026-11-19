@@ -163,6 +163,41 @@ internal sealed class HoldedWrite(
         return await client.GetSalesDocumentAsync(kind, id, ct);
     }
 
+    public async Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
+    {
+        var document = await client.GetSalesDocumentAsync(kind, documentId, ct);
+        if (document.ContactId is null) return document;
+        var contact = await client.GetContactAsync(document.ContactId, ct);
+        return document with { ContactAccountNum = contact.ClientAccountNum };
+    }
+
+    public Task<byte[]> GetSalesDocumentPdfAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
+        client.GetSalesDocumentPdfAsync(kind, documentId, ct);
+
+    public Task SendSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default) =>
+        client.SendSalesDocumentAsync(kind, documentId, emails, ct);
+
+    public Task<string> PaySalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, decimal amount, string treasuryId, LocalDate date,
+        string? description, CancellationToken ct = default)
+    {
+        if (amount <= 0m)
+            throw new ArgumentOutOfRangeException(nameof(amount), amount, "Holded takes only payments above zero on a sales document.");
+        return client.PaySalesDocumentAsync(kind, documentId, amount, treasuryId, date, description, ct);
+    }
+
+    public Task<string> CreateTreasuryPaymentAsync(
+        HoldedTreasuryPaymentKind kind, string contactId, string treasuryId, decimal amount, LocalDate date,
+        string? description, CancellationToken ct = default)
+    {
+        if (amount <= 0m)
+            throw new ArgumentOutOfRangeException(nameof(amount), amount, "A payment's direction is its kind; the amount is above zero.");
+        return client.CreateTreasuryPaymentAsync(kind, contactId, treasuryId, amount, date, description, ct);
+    }
+
     public async Task<HoldedSalesDocumentDto> ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
     {

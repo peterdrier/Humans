@@ -89,6 +89,24 @@ internal sealed class HoldedClient : IHoldedClient
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
         _sales.GetSalesDocumentAsync(kind, documentId, ct);
 
+    public Task<byte[]> GetSalesDocumentPdfAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
+        _sales.GetSalesDocumentPdfAsync(kind, documentId, ct);
+
+    public Task SendSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default) =>
+        _sales.SendSalesDocumentAsync(kind, documentId, emails, ct);
+
+    public Task<string> PaySalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, decimal amount, string treasuryId, LocalDate date,
+        string? description, CancellationToken ct = default) =>
+        _sales.PaySalesDocumentAsync(kind, documentId, amount, treasuryId, date, description, ct);
+
+    public Task<string> CreateTreasuryPaymentAsync(
+        HoldedTreasuryPaymentKind kind, string contactId, string treasuryId, decimal amount, LocalDate date,
+        string? description, CancellationToken ct = default) =>
+        _treasury.CreatePaymentAsync(kind, contactId, treasuryId, amount, date, description, ct);
+
     public Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default) =>
         _contacts.GetContactAsync(contactId, ct);
 
