@@ -60,17 +60,26 @@
                     <input asp-for="OrderableUntil" type="date" class="form-control" />
                     <span asp-validation-for="OrderableUntil" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label asp-for="HoldedRevenueAccountNum" class="form-label">Holded revenue account</label>
                     <input asp-for="HoldedRevenueAccountNum" type="number" step="1" class="form-control"
                            placeholder="e.g. 75900002" />
                     <span asp-validation-for="HoldedRevenueAccountNum" class="text-danger small"></span>
-                    <div class="form-text">
-                        The per-item account Acountax issued. Invoices book this item's revenue here, so
-                        per-item break-even reads straight off the ledger. Internal department recharges
-                        go to the derived twin (<code>75910002</code> for <code>75900002</code>) — it is
-                        not stored. Required before this item can be invoiced.
-                    </div>
+                    <div class="form-text">Camp invoices book this item's revenue here. Required before it can be invoiced.</div>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="HoldedExpenseAccountNum" class="form-label">Holded expense account</label>
+                    <input asp-for="HoldedExpenseAccountNum" type="number" step="1" class="form-control"
+                           placeholder="e.g. 62900002" />
+                    <span asp-validation-for="HoldedExpenseAccountNum" class="text-danger small"></span>
+                    <div class="form-text">Where the item's gross spend books.</div>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="HoldedRechargeAccountNum" class="form-label">Holded recharge account</label>
+                    <input asp-for="HoldedRechargeAccountNum" type="number" step="1" class="form-control"
+                           placeholder="e.g. 62990002" />
+                    <span asp-validation-for="HoldedRechargeAccountNum" class="text-danger small"></span>
+                    <div class="form-text">Credited when departments' team orders use the item. Required before team lines are booked.</div>
                 </div>
                 <div class="col-12">
                     <div class="form-check">

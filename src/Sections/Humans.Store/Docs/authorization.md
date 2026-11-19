@@ -12,6 +12,8 @@
 | `StoreAdminController` | Class | `StoreAdmin, FinanceAdmin, Board, Admin` | `StorePolicies.Read`; every POST and the catalog edit forms carry `StorePolicies.Manage` (`StoreAdmin, FinanceAdmin, Admin`) |
 | `StoreAdminController.Payments` | Action | `StoreAdmin, FinanceAdmin, Board, Admin` inherited (`[HttpGet("Payments")]`) | `StorePolicies.Read` (Stripe ↔ Store ledger reconciliation report) |
 | `StoreAdminController.RecordMissingPayments` | Action | `StoreAdmin, FinanceAdmin, Admin` (`[HttpPost("Payments/RecordMissing")]`) | `StorePolicies.Manage` (records missing Stripe payments) |
+| `StoreAdminController.Recharges` | Action | `StoreAdmin, FinanceAdmin, Board, Admin` inherited (`[HttpGet("Recharges")]`) | `StorePolicies.Read` (team-order recharges still to book) |
+| `StoreAdminController.BookRecharges` | Action | `StoreAdmin, FinanceAdmin, Admin` (`[HttpPost("Recharges/Book")]`) | `StorePolicies.Manage` (posts recharge journal entries to Holded) |
 | `StoreAdminController.OrderYears` | Action | `StoreAdmin, FinanceAdmin, Board, Admin` inherited (`[HttpGet("OrderYears")]`) | `StorePolicies.Read` (reviews legacy order-year repairs) |
 | `StoreAdminController.RepairOrderYears` | Action | `StoreAdmin, FinanceAdmin, Admin` (`[HttpPost("OrderYears/Repair")]`) | `StorePolicies.Manage` (repairs reviewed legacy order years) |
 | `StoreAdminController.PaymentMethods` | Action | `StoreAdmin, FinanceAdmin, Board, Admin` inherited (`[HttpGet("PaymentMethods")]`) | `StorePolicies.Read` (reviews payments missing a method name) |

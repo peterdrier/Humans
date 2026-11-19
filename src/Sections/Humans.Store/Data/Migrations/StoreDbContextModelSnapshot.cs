@@ -18,7 +18,7 @@ namespace Humans.Store.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -247,6 +247,12 @@ namespace Humans.Store.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<int?>("HoldedExpenseAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HoldedRechargeAccountNum")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("HoldedRevenueAccountNum")
                         .HasColumnType("integer");

@@ -53,6 +53,35 @@ internal sealed class StoreAdminController(
         return View(new PaymentsReconciliationViewModel { Report = report, Rows = rows });
     }
 
+    [HttpGet("Recharges")]
+    public async Task<IActionResult> Recharges(
+        int? year, [FromServices] StoreRechargeBooking rechargeBooking, CancellationToken ct)
+    {
+        var selectedYear = year ?? await storeService.GetCurrentEventYearAsync(ct);
+        return View(await rechargeBooking.GetPlanAsync(selectedYear, ct));
+    }
+
+    [HttpPost("Recharges/Book")]
+    [Authorize(Policy = StorePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookRecharges(
+        int year, [FromServices] StoreRechargeBooking rechargeBooking, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        var (lines, refused) = await rechargeBooking.BookAsync(year, user.Id, ct);
+        var posted = lines.Count(l => l.Outcome != RechargeOutcome.Failed);
+        var failed = lines.Where(l => l.Outcome == RechargeOutcome.Failed).ToList();
+        if (refused is not null) SetError(refused + (lines.Count > 0 ? $" {posted} entr(ies) posted first." : ""));
+        else if (failed.Count > 0)
+            SetError($"Posted {posted}; {failed.Count} failed: "
+                + string.Join("; ", failed.Select(f => $"{f.Row.TeamName} / {f.Row.ProductName}: {f.Error}")));
+        else if (posted > 0) SetSuccess($"Posted {posted} recharge entr(ies) to Holded.");
+        else SetInfo("Nothing was ready to book.");
+        return RedirectToAction(nameof(Recharges), new { year });
+    }
+
     [HttpGet("OrderYears")]
     public async Task<IActionResult> OrderYears(CancellationToken ct)
     {
@@ -147,6 +176,8 @@ internal sealed class StoreAdminController(
             VatRatePercent = p.VatRatePercent,
             DepositAmountEur = p.DepositAmountEur,
             HoldedRevenueAccountNum = p.HoldedRevenueAccountNum,
+            HoldedExpenseAccountNum = p.HoldedExpenseAccountNum,
+            HoldedRechargeAccountNum = p.HoldedRechargeAccountNum,
             OrderableUntil = LocalDatePattern.Iso.Format(p.OrderableUntil),
             IsActive = p.IsActive
         };
@@ -175,7 +206,9 @@ internal sealed class StoreAdminController(
                 input.DepositAmountEur,
                 input.OrderableUntil,
                 input.IsActive,
-                input.HoldedRevenueAccountNum),
+                input.HoldedRevenueAccountNum,
+                input.HoldedExpenseAccountNum,
+                input.HoldedRechargeAccountNum),
             user.Id,
             ct);
 

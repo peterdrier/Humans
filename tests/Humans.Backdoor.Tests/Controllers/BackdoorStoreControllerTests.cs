@@ -48,8 +48,8 @@ public class BackdoorStoreControllerTests
         var productId = Guid.NewGuid();
         _store.GetOrderLinesAsync(2026, Arg.Any<CancellationToken>()).Returns([
             new AccountingOrderLineDto(
-                2026, orderId, OrderCounterpartyType.Team, "Ice Crew", null, null, null,
-                OrderState.Open, null, lineId, productId, "Ice", 75900002,
+                2026, orderId, OrderCounterpartyType.Team, Guid.NewGuid(), "Ice Crew", null, null, null,
+                OrderState.Open, null, lineId, productId, "Ice", 75900002, 62900002, 62990002,
                 3, 4m, 10m, 13.20m, 12m, 1.20m, 0m, Instant.FromUtc(2026, 6, 1, 9, 30)),
         ]);
 
@@ -66,6 +66,7 @@ public class BackdoorStoreControllerTests
         json.Should().Contain($@"""lineId"":""{lineId}""");
         json.Should().Contain(@"""productName"":""Ice""");
         json.Should().Contain(@"""holdedRevenueAccountNum"":75900002");
+        json.Should().Contain(@"""holdedRechargeAccountNum"":62990002");
         json.Should().Contain(@"""qty"":3");
         json.Should().Contain(@"""unitPrice"":4");
         json.Should().Contain(@"""vatRatePercent"":10");

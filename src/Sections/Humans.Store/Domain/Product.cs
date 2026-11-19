@@ -15,10 +15,19 @@ internal sealed class Product
     public decimal? DepositAmountEur { get; set; }
 
     /// <summary>
-    /// The 8-digit Holded revenue account, from Acountax. Null until issued; invoicing a line with none is refused
-    /// rather than booked to a catch-all. The internal-recharge twin is derived, never stored.
+    /// The 8-digit Holded revenue account (759000xx), from Acountax; several products may share one. Null until
+    /// issued; invoicing a line with none is refused rather than booked to a catch-all.
     /// </summary>
     public int? HoldedRevenueAccountNum { get; set; }
+
+    /// <summary>The 8-digit Holded expense account (6290xxxx) the item's gross spend books to.</summary>
+    public int? HoldedExpenseAccountNum { get; set; }
+
+    /// <summary>
+    /// The 8-digit Holded internal-recharge account (6299xxxx, cost side), credited when a department's team order
+    /// consumes the item. Team lines of a product without one are not booked.
+    /// </summary>
+    public int? HoldedRechargeAccountNum { get; set; }
 
     public LocalDate OrderableUntil { get; set; }
     public bool IsActive { get; set; } = true;

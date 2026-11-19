@@ -110,7 +110,9 @@ internal sealed class StoreCatalog(
             request.DepositAmountEur,
             parseResult.Value,
             request.IsActive,
-            request.HoldedRevenueAccountNum);
+            request.HoldedRevenueAccountNum,
+            request.HoldedExpenseAccountNum,
+            request.HoldedRechargeAccountNum);
 
         try
         {
@@ -162,6 +164,8 @@ internal sealed class StoreCatalog(
         product.VatRatePercent = draft.VatRatePercent;
         product.DepositAmountEur = draft.DepositAmountEur;
         product.HoldedRevenueAccountNum = draft.HoldedRevenueAccountNum;
+        product.HoldedExpenseAccountNum = draft.HoldedExpenseAccountNum;
+        product.HoldedRechargeAccountNum = draft.HoldedRechargeAccountNum;
         product.OrderableUntil = draft.OrderableUntil;
         product.IsActive = draft.IsActive;
     }
@@ -184,10 +188,15 @@ internal sealed class StoreCatalog(
             return "Deposit must be at most 9,999,999,999.99 with no more than two decimal places";
         if (draft.HoldedRevenueAccountNum is < 10_000_000 or > 99_999_999)
             return "Holded revenue account must be an 8-digit chart number";
+        if (draft.HoldedExpenseAccountNum is < 10_000_000 or > 99_999_999)
+            return "Holded expense account must be an 8-digit chart number";
+        if (draft.HoldedRechargeAccountNum is < 10_000_000 or > 99_999_999)
+            return "Holded recharge account must be an 8-digit chart number";
         return null;
     }
 
     internal static ProductDto MapProduct(Product p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,
-            p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum);
+            p.DepositAmountEur, p.OrderableUntil, p.IsActive, p.HoldedRevenueAccountNum,
+            p.HoldedExpenseAccountNum, p.HoldedRechargeAccountNum);
 }
