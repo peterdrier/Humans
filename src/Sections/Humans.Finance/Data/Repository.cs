@@ -227,4 +227,25 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         existing.ReconciledAt = reconciledAt;
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyDictionary<int, string>> GetStripeLedgerLinksAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.StripeLedgerLinks.AsNoTracking().ToDictionaryAsync(l => l.LedgerAccountNum, l => l.StripeAccountId, ct);
+    }
+
+    public async Task ReplaceStripeLedgerLinksAsync(IReadOnlyDictionary<int, string> links, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.StripeLedgerLinks.ToListAsync(ct);
+        ctx.StripeLedgerLinks.RemoveRange(rows.Where(r => !links.ContainsKey(r.LedgerAccountNum)));
+        foreach (var (num, accountId) in links)
+        {
+            if (rows.FirstOrDefault(r => r.LedgerAccountNum == num) is { } row)
+                row.StripeAccountId = accountId;
+            else
+                ctx.StripeLedgerLinks.Add(new StripeLedgerLink { LedgerAccountNum = num, StripeAccountId = accountId });
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
 }

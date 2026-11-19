@@ -69,7 +69,7 @@ public sealed class StoreControllerRecordPaymentTests
         var service = _service = new Service(
             _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings,
             Substitute.For<IStripeService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
-            Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
+            NullLogger<Service>.Instance);
 
         var users = identityUsers ?? Substitute.For<IUserService>();
         if (identityUsers is null)

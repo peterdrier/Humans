@@ -92,7 +92,7 @@ else
         var missing = new List<string>();
         if (p.HoldedRevenueAccountNum is null) missing.Add("income");
         if (p.HoldedExpenseAccountNum is null) missing.Add("cost");
-        if (p.HoldedTransferAccountNum is null) missing.Add("team usage");
+        if (p.HoldedTransferAccountNum is null) missing.Add("dept transfers");
         return missing;
     }
 }

@@ -39,7 +39,7 @@ internal sealed class SurveyService : ISurveyService, IUserDataContributor, IUse
         this.logger = logger;
         this.invitationDelivery = invitationDelivery;
         review = new(repo, auditLog, clock, audience, invitationDelivery);
-        definitionReader = new(repo, tokenProvider, userService);
+        definitionReader = new(repo, tokenProvider);
         resultsReader = new(repo, userService, auditLog);
         dataExport = new(repo, userService);
         authoring = new(repo, auditLog, clock, fileStorage, logger);

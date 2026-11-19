@@ -13,5 +13,5 @@ internal sealed class SyncServiceSettingViewModel
     public string ServiceName { get; set; } = string.Empty;
     public SyncMode CurrentMode { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public string? UpdatedByName { get; set; }
+    public Guid? UpdatedByUserId { get; set; }
 }

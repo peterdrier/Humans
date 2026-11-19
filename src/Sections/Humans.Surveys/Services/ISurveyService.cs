@@ -244,7 +244,6 @@ internal sealed record SurveyPendingApprovalItem(
     Guid Id,
     string Title,
     Guid CreatedByUserId,
-    string CreatedByName,
     Instant? SubmittedAt);
 
 /// <summary>Everything the builder edits. Question/option <c>Id</c> null = new (assigned on save).</summary>

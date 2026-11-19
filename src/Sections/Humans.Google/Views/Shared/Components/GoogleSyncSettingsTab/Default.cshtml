@@ -31,9 +31,9 @@
                 {
                     <div class="card-footer text-muted small">
                         Last updated: @setting.UpdatedAt.Value.ToDateTime()
-                        @if (setting.UpdatedByName != null)
+                        @if (setting.UpdatedByUserId is { } updatedBy)
                         {
-                            <text> by @setting.UpdatedByName</text>
+                            <text> by </text><vc:human user-id="@updatedBy" />
                         }
                     </div>
                 }

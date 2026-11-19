@@ -38,7 +38,7 @@
 
         </text>;
         var linesTable = TableModel.For(Model.Lines)
-            .Human("Human", r => r.UserId, HumanLink.None)
+            .Human("Human", r => r.UserId)
             .Link("Account", r => r.SupplierAccountNum, r => Url.Action("CreditorStatement", new { accountNum = r.SupplierAccountNum }))
             .Column("Full name", r => r.CreditorName)
             .Column("IBAN", r => r.IbanMasked, o => o.Css("font-monospace text-nowrap"))

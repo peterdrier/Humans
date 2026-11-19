@@ -43,4 +43,7 @@ public sealed class FinanceAuditActions : AuditActionContributor
 
     // One per Pleo entry posted (or possibly posted) to Holded 57200003: names the entry, both accounts and the outcome.
     public static readonly AuditActionDefinition PleoEntryBooked = new("PleoEntryBooked");
+
+    // The Stripe account each 441 ledger account is compared with on /Finance was changed on /Settings#finance.
+    public static readonly AuditActionDefinition FinanceStripeLedgerLinksUpdated = new("FinanceStripeLedgerLinksUpdated");
 }

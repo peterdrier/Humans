@@ -49,7 +49,7 @@
                     @if (Model.ReviewedByUserId is { } reviewerId)
                     {
                         <dt class="col-5">@Localizer["Governance_AdminAppDetail_Reviewer"]</dt>
-                        <dd class="col-7"><vc:human user-id="@reviewerId" link="None" /></dd>
+                        <dd class="col-7"><vc:human user-id="@reviewerId" /></dd>
                     }
                 </dl>
             </div>

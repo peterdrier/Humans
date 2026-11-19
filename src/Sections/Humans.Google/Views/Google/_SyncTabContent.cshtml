@@ -58,7 +58,7 @@
     Func<Tuple<ResourceSyncDiff, MemberSyncStatus>, IHtmlContent> downgradeNameCell = @<text>
         @if (item.Item2.UserId is { } userId)
         {
-            <vc:human user-id="@userId" link="None" />
+            <vc:human user-id="@userId" />
         }
         else
         {
@@ -69,7 +69,7 @@
     var downgradesTable = TableModel.For(downgrades)
         .Column("Resource", x => x.Item1.ResourceName)
         .Column("Email", x => x.Item2.Email)
-        .Template("Name", downgradeNameCell, sortBy: x => x.Item2.DisplayName)
+        .Template("Name", downgradeNameCell)
         .Column("Current", x => x.Item2.CurrentRole)
         .Column("Expected", x => x.Item2.ExpectedRole)
         .Template("Teams", downgradeTeamsCell, o => o.NoSort())

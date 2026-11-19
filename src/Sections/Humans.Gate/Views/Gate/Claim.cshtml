@@ -17,7 +17,7 @@
         @foreach (var userId in Model.Roster)
         {
             <button type="submit" name="userId" value="@userId" class="gate-roster-pick">
-                <vc:human user-id="@userId" link="None" />
+                <vc:human user-id="@userId" link="InsideControl" />
             </button>
         }
     </form>

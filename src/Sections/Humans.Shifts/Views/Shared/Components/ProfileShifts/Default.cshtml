@@ -14,7 +14,7 @@
                 Func<NoShowHistoryItem, IHtmlContent> reviewerCell = @<text>
                     @if (item.MarkedByUserId is { } reviewerId)
                     {
-                        <vc:human user-id="@reviewerId" link="None" />
+                        <vc:human user-id="@reviewerId" />
                     }
                 </text>;
                 var noShowTable = TableModel.For(Model.NoShowHistory)

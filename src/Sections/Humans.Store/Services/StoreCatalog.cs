@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
@@ -207,6 +208,51 @@ internal sealed class StoreCatalog(
             Block(TeamUsageBlockStart, TeamUsageBlockEnd));
     }
 
+    /// <summary>Fianzas and depósitos recibidos, long and short term (18x, 56x): the accounts a refundable deposit may
+    /// be booked to. Reads the mirror only, never Holded.</summary>
+    public async Task<IReadOnlyList<AccountChoice>> GetDepositAccountChoicesAsync(CancellationToken ct = default) =>
+        (await holded.GetChartAsync(ct))
+            .Where(a => !a.Archived && a.Number is >= 18_000_000 and <= 18_999_999 or >= 56_000_000 and <= 56_999_999)
+            .OrderBy(a => a.Number)
+            .Select(a => new AccountChoice(a.Number, a.Name))
+            .ToList();
+
+    public async Task<StoreSettingsDto> GetSettingsAsync(CancellationToken ct = default)
+    {
+        var s = await repo.GetSettingsAsync(ct);
+        return new StoreSettingsDto(s.DepositLiabilityAccountNum, s.SimplifiedInvoiceThresholdEur);
+    }
+
+    public async Task<AdminMutationResult> SaveSettingsAsync(
+        StoreSettingsDto settings, Guid actorUserId, CancellationToken ct = default)
+    {
+        var threshold = settings.SimplifiedInvoiceThresholdEur;
+        var current = await repo.GetSettingsAsync(ct);
+        var refusal = threshold < 0m || threshold > 9_999_999_999.99m || decimal.Round(threshold, 2) != threshold
+            ? "The simplified invoice threshold must be zero or more, with no more than two decimal places."
+            : settings.DepositLiabilityAccountNum is { } n && n != current.DepositLiabilityAccountNum
+              && (await GetDepositAccountChoicesAsync(ct)).All(c => c.Number != n)
+                ? $"Deposit liability account {n} is not in the Holded chart (removed or archived). Pick another."
+                : null;
+        if (refusal is not null)
+        {
+            logger.LogWarning("Store settings save rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
+            return AdminMutationResult.Refused(refusal);
+        }
+
+        await repo.SaveSettingsAsync(new StoreSettings
+        {
+            DepositLiabilityAccountNum = settings.DepositLiabilityAccountNum,
+            SimplifiedInvoiceThresholdEur = threshold,
+        }, ct);
+        await audit.LogAsync(
+            StoreAuditActions.StoreSettingsUpdated, AuditEntityTypes.Settings, Guid.Empty,
+            string.Create(CultureInfo.InvariantCulture,
+                $"Store settings: deposit liability account {settings.DepositLiabilityAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "none"}, simplified invoice threshold EUR {threshold:0.00}"),
+            actorUserId);
+        return AdminMutationResult.Success;
+    }
+
     /// <summary>Sets the three accounts on many products of one year in one save. Any row naming an account the
     /// choices don't hold refuses the whole save; unchanged rows are not written.</summary>
     public async Task<AdminMutationResult> SaveAccountsAsync(
@@ -247,7 +293,7 @@ internal sealed class StoreCatalog(
             await audit.LogAsync(
                 StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, product.Id,
                 $"Set accounts on store product '{product.Name}': income {Show(row.Income)}, cost {Show(row.Cost)}, "
-                    + $"team usage {Show(row.TeamUsage)}",
+                    + $"dept transfers {Show(row.TeamUsage)}",
                 actorUserId);
         }
         return AdminMutationResult.Success;

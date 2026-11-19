@@ -396,9 +396,6 @@
   <!-- ======================== -->
   <!-- Email grid               -->
   <!-- ======================== -->
-  <data name="Users_EmailGrid_AdminContextBanner" xml:space="preserve">
-    <value>Gestione delle email di un altro utente</value>
-  </data>
   <data name="Users_EmailGrid_AdminContextBannerNamed" xml:space="preserve">
     <value>Gestione delle email di {0}</value>
     <comment>{0} = target user display name</comment>
