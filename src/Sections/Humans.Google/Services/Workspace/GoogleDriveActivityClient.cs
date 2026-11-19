@@ -91,15 +91,7 @@ internal sealed class GoogleDriveActivityClient(
                 PageToken = pageToken,
             };
 
-            QueryDriveActivityResponse response;
-            try
-            {
-                response = await activityService.Activity.Query(request).ExecuteAsync(ct);
-            }
-            catch (global::Google.GoogleApiException ex) when (ex.Error?.Code == 404)
-            {
-                throw new DriveActivityResourceNotFoundException($"Drive item '{googleItemId}' not found (404)", ex);
-            }
+            var response = await QueryPageAsync(activityService, request, googleItemId, ct);
 
             if (response.Activities is not null)
             {
@@ -111,6 +103,40 @@ internal sealed class GoogleDriveActivityClient(
 
             pageToken = response.NextPageToken;
         } while (!string.IsNullOrEmpty(pageToken));
+    }
+
+    /// <summary>Waits between transient-failure attempts; tests replace it to skip the backoff.</summary>
+    internal Func<TimeSpan, CancellationToken, Task> Delay { get; init; } = Task.Delay;
+
+    private static readonly TimeSpan[] TransientRetryBackoff = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)];
+
+    /// <summary>
+    /// Retries a page while Google reports a transient error, so a one-off blip does not fail the resource's scan
+    /// and hold back the monitor's last-run marker. A missing item maps to
+    /// <see cref="DriveActivityResourceNotFoundException"/>; other permanent errors throw at once.
+    /// </summary>
+    private async Task<QueryDriveActivityResponse> QueryPageAsync(
+        DriveActivityService activityService, QueryDriveActivityRequest request, string googleItemId, CancellationToken ct)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await activityService.Activity.Query(request).ExecuteAsync(ct);
+            }
+            catch (global::Google.GoogleApiException ex) when (ex.Error?.Code == 404)
+            {
+                throw new DriveActivityResourceNotFoundException($"Drive item '{googleItemId}' not found (404)", ex);
+            }
+            catch (global::Google.GoogleApiException ex) when (attempt < TransientRetryBackoff.Length
+                && new GoogleClientError(ex.Error?.Code ?? (int)ex.HttpStatusCode, ex.Error?.Message).IsTransient)
+            {
+                var backoff = TransientRetryBackoff[attempt];
+                logger.LogWarning("Transient Google Drive Activity error (HTTP {StatusCode}), retrying in {Backoff}: {Error}",
+                    ex.Error?.Code ?? (int)ex.HttpStatusCode, backoff, ex.Error?.Message);
+                await Delay(backoff, ct);
+            }
+        }
     }
 
     public async Task<string?> TryResolvePersonEmailAsync(string peopleId, CancellationToken ct = default)

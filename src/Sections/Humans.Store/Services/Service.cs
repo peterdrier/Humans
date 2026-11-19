@@ -332,6 +332,15 @@ internal sealed class Service(
         Guid actorUserId, CancellationToken ct = default) =>
         stripePayments.RecordMissingStripePaymentsAsync(actorUserId, ct);
 
+    /// <summary>Books refunds issued on the Stripe dashboard against the order's Stripe payments; idempotent.</summary>
+    public Task<StripeRefundCheckResult> RecordStripeRefundsAsync(
+        Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
+        stripePayments.RecordStripeRefundsAsync(orderId, actorUserId, ct);
+
+    /// <summary>Where a FinanceAdmin issues a refund of the payment by hand.</summary>
+    public string StripePaymentDashboardUrl(string paymentIntentId) =>
+        stripePayments.DashboardUrl(paymentIntentId);
+
     public Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default) =>
         stripePayments.HandleStripeCheckoutWebhookEventAsync(evt, ct);
 

@@ -21,8 +21,8 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
   cache; the webhook registrar exists only for PR previews.
 - **Out of scope:** issuing payouts and chargebacks (dashboard-manual; the mirror only reads
   them), invoicing (Store/Holded), payment bookkeeping (Store) and booking the mirror into
-  Holded (a later step, after Peter has reviewed the mirror). Refunds are in scope, through one guarded path only
-  (nobodies-collective/Humans#1254, not built yet).
+  Holded (a later step, after Peter has reviewed the mirror). Refunds are issued on the dashboard too; this
+  section only links to a Store payment's dashboard page and reads its refunds back for Store to book.
 
 ## Concepts
 
@@ -75,7 +75,7 @@ fee/payment-method fields on Tickets' `ticket_orders`, payment rows on Store's `
 | `Stripe:WebhookCleanupOwner` / `…Repository` | — | — | PR previews only (GitHub repo for the open-PR list) |
 | `STRIPE_ORG_READ_KEY` | every mirrored account without its own key, via `Stripe-Context: <acct>` | read-only Organization key (`sk_org_*`): balance, balance transaction sources, charges, refunds, disputes, payouts, PaymentIntents and more | QA, production |
 | `STRIPE_ICE_READ_KEY` | ICE (run by an outside platform that refuses the org key) | balance, balance transactions + sources, payouts read | QA, production |
-| `Stripe:MirrorAccounts` | — | — | appsettings: `Name`, `Id`, optional `KeyVariable` (the env var holding that account's own key) |
+| `Stripe:MirrorAccounts` | — | — | appsettings: `Name`, `Id`, optional `KeyVariable` (the env var holding that account's own key). The `Store` entry also gives `ListStoreRefundsAsync` its key and `StorePaymentDashboardUrl` its account id. |
 
 The mirror sends the SDK's pinned `Stripe-Version` (`ApiVersion.Current` of the Stripe.net
 package) on every call, which an org key requires.
@@ -169,8 +169,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   recording, transitioning and reconciling a payment is Store's.
 - The webhook registrar **cannot** run outside a `*.n.burn.camp` host, and **cannot** run
   at all without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` (never set in QA or production).
-- Payouts and chargebacks **cannot** be issued from the app. Refunds cannot either until the
-  guarded refund path (nobodies-collective/Humans#1254) ships, and then only through it
+- Refunds, payouts and chargebacks **cannot** be issued from the app; `ListStoreRefundsAsync` only reads
   ([`memory/architecture/stripe-money-out.md`](../../../../memory/architecture/stripe-money-out.md)).
 
 ## Triggers
@@ -196,8 +195,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Outbound, contracts leaves only: Finance.Contracts (`FinancePolicies`) and Users.Contracts
   (`IUserService`, through `HumansControllerBase`). Neither reaches back to Stripe, so
   `Humans.Store → Humans.Stripe` and `Humans.Tickets → Humans.Stripe` stay acyclic.
-- Inbound: **Store** injects `IStripeService` for checkout creation, webhook parsing and
-  reconciliation (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
+- Inbound: **Store** injects `IStripeService` for checkout creation, webhook parsing,
+  reconciliation and refund read-back with dashboard links (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
   fee enrichment on `TicketOrder` (`TicketSyncService`).
 
 ## Architecture
@@ -210,7 +209,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 | Public interface | Methods | Notes |
 |---|---:|---|
-| `IStripeService` | 4 + 3 flags | The whole outward surface. |
+| `IStripeService` | 6 + 3 flags | The whole outward surface. |
 | `I<Section>Write` | — | The connector's one write is a call to Stripe, not to a table. |
 
 - Services never import `Microsoft.EntityFrameworkCore`; `Data/Repository.cs` (`IStripeMirrorRepository`) is the only reader and writer of the mirror tables, and only `StripeMirrorService` calls it.
