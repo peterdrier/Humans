@@ -66,7 +66,12 @@ internal sealed class GovernanceBodyLinksService(
         foreach (var (body, teamId) in TeamIds)
         {
             var team = await teams.GetTeamAsync(teamId, ct);
-            var links = new GovernanceBodyLinks { Body = body, GoogleGroupPrefix = team?.GoogleGroupPrefix, UpdatedAt = now };
+            if (team is null)
+            {
+                continue; // a missing team must not wipe the stored copy
+            }
+
+            var links = new GovernanceBodyLinks { Body = body, GoogleGroupPrefix = team.GoogleGroupPrefix, UpdatedAt = now };
             // The group address lives on the team; a Group resource row only records the link.
             links.Files.AddRange(resources.GetValueOrDefault(teamId, [])
                 .Where(r => r.IsActive && r.ResourceType != GoogleResourceType.Group)

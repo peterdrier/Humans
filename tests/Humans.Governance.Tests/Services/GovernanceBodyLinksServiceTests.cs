@@ -95,4 +95,15 @@ public sealed class GovernanceBodyLinksServiceTests
         asociados.GoogleGroupPrefix.Should().Be("asociados-2");
         asociados.Files.Select(f => f.GoogleId).Should().Equal("new");
     }
+
+    [HumansFact]
+    public async Task A_missing_team_leaves_the_stored_copy_alone()
+    {
+        await _sut.CopyFromTeamsAsync(Guid.NewGuid(), Ct);
+        _teams.GetTeamAsync(SystemTeamIds.Board, Arg.Any<CancellationToken>()).Returns((TeamInfo?)null);
+
+        (await _sut.GetPendingCopiesAsync(Ct)).Should().BeEmpty();
+        (await _sut.CopyFromTeamsAsync(Guid.NewGuid(), Ct)).Should().Be(0);
+        (await _sut.GetAllAsync(Ct)).Single(b => b.Body == GovernanceBody.Board).GoogleGroupPrefix.Should().Be("board");
+    }
 }
