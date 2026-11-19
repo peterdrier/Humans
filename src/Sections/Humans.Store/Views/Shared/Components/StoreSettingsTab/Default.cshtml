@@ -3,10 +3,9 @@
 @* Explicit asp-controller/asp-action: inside /Settings, ambient route data would resolve against the wrong controller. *@
 <form class="mw-540" method="post" asp-controller="StoreAdmin" asp-action="SaveSettings">
     <div class="mb-3">
-        <label class="form-label" for="DepositLiabilityAccountNum">Deposit liability account</label>
-        <partial name="~/Views/StoreAdmin/_AccountPicker.cshtml"
-                 model="@(new AccountPickerModel("DepositLiabilityAccountNum", "DepositLiabilityAccountNum", "Deposit liability account", Model.DepositLiabilityAccountNum, Model.DepositAccountChoices))" />
-        <div class="form-text">Refundable deposits on camp orders are booked here (fianzas recibidas, 18x or 56x), never to income. Unset, orders with deposits can't be invoiced.</div>
+        <label class="form-label" asp-for="StripeGatewayTreasuryId">Stripe gateway treasury (Holded id)</label>
+        <input class="form-control font-monospace" maxlength="64" asp-for="StripeGatewayTreasuryId" style="max-width: 22rem;" />
+        <div class="form-text">The Holded treasury account whose feed carries the Store's Stripe charges and refunds (ledger 441xxxxx). Unset, invoices are issued but their payments are not booked.</div>
     </div>
 
     <div class="mb-3">
@@ -17,4 +16,3 @@
 
     <button type="submit" class="btn btn-primary">Save settings</button>
 </form>
-<partial name="~/Views/StoreAdmin/_AccountPickerScripts.cshtml" />

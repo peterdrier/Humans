@@ -41,6 +41,12 @@ internal sealed class StoreAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition StoreSettingsUpdated = new("StoreSettingsUpdated");
 
+    // A booking run put an invoiced order's money onto its invoice in Holded, or stopped and said why.
+    public static readonly AuditActionDefinition StoreInvoiceBooked = new("StoreInvoiceBooked");
+
+    // Holded was asked to email an invoice to the camp.
+    public static readonly AuditActionDefinition StoreInvoiceSent = new("StoreInvoiceSent");
+
     // A Backdoor key pulled a year's order history, which names members.
     public static readonly AuditActionDefinition StoreOrderHistoryExported = new("StoreOrderHistoryExported");
 
@@ -57,7 +63,8 @@ internal sealed class StoreAuditActions : AuditActionContributor
     public static IReadOnlyList<AuditActionDefinition> OrderHistory { get; } =
     [
         StoreOrderCreated, StoreLineAdded, StoreLineRemoved, StoreCounterpartyEdited, StoreProductPriceChanged,
-        StoreInvoiceIssued, StorePaymentRecorded, StorePaymentSettled, StorePaymentFailed, StorePaymentExpired
+        StoreInvoiceIssued, StoreInvoiceSent, StorePaymentRecorded, StorePaymentSettled, StorePaymentFailed,
+        StorePaymentExpired
     ];
 
     /// <summary>
@@ -65,5 +72,5 @@ internal sealed class StoreAuditActions : AuditActionContributor
     /// runs are internal bookkeeping.
     /// </summary>
     public static IReadOnlyList<AuditActionDefinition> OrderHistoryForAdmins { get; } =
-        [.. OrderHistory, StorePaymentDeleted, StoreOrderYearBackfilled, StorePaymentMethodBackfilled];
+        [.. OrderHistory, StoreInvoiceBooked, StorePaymentDeleted, StoreOrderYearBackfilled, StorePaymentMethodBackfilled];
 }

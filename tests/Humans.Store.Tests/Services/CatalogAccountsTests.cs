@@ -113,25 +113,19 @@ public class CatalogAccountsTests
     }
 
     [HumansFact]
-    public async Task Settings_take_a_deposit_account_only_from_the_fianzas_blocks_and_audit_the_save()
+    public async Task Settings_save_the_stripe_gateway_treasury_and_audit_it()
     {
-        _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new StoreSettings());
         var actor = Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;
 
-        (await _catalog.GetDepositAccountChoicesAsync(ct)).Select(c => c.Number).Should().Equal(56000000);
+        var saved = await _catalog.SaveSettingsAsync(new StoreSettingsDto(" 6a22e0f6e5e9f791670d311a ", 400m), actor, ct);
 
-        var refused = await _catalog.SaveSettingsAsync(new StoreSettingsDto(70500000, 400m), actor, ct);
-        refused.Succeeded.Should().BeFalse();
-        await _repo.DidNotReceive().SaveSettingsAsync(Arg.Any<StoreSettings>(), Arg.Any<CancellationToken>());
-
-        var saved = await _catalog.SaveSettingsAsync(new StoreSettingsDto(56000000, 400m), actor, ct);
         saved.Succeeded.Should().BeTrue();
         await _repo.Received(1).SaveSettingsAsync(
-            Arg.Is<StoreSettings>(s => s.DepositLiabilityAccountNum == 56000000 && s.SimplifiedInvoiceThresholdEur == 400m),
+            Arg.Is<StoreSettings>(s => s.StripeGatewayTreasuryId == "6a22e0f6e5e9f791670d311a" && s.SimplifiedInvoiceThresholdEur == 400m),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(StoreAuditActions.StoreSettingsUpdated, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Is<string>(d => d.Contains("56000000")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+            Arg.Is<string>(d => d.Contains("6a22e0f6e5e9f791670d311a")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private static HoldedChartAccountInfo Account(int number, string name, bool archived = false) =>

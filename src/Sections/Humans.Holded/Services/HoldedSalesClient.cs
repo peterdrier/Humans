@@ -133,7 +133,7 @@ internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<Holde
 
     /// <summary>Holded emails the document's PDF to <paramref name="emails"/> from its own mailer.</summary>
     public async Task SendSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default)
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}/{documentId}/send")
         { Content = JsonContent.Create(new { emails }, options: OmitNulls) };
@@ -188,6 +188,7 @@ internal sealed class HoldedSalesClient(HoldedTransport transport, ILogger<Holde
         notes = input.Notes,
         tags = input.Tags,
         currency = "EUR",
+        discount = input.DiscountPercent,
         items = input.Lines.Select(l => new
         {
             name = l.Name,

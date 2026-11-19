@@ -119,12 +119,11 @@ is left to repair the page says so and nothing else in the section depends on it
   (`Services/StoreInvoiceIssuer.cs:83`), and adoption is refused when totals differ
   (`Services/StoreInvoiceIssuer.cs:89`).
 - A new document is issued only on a zero balance and is approved before anything is written
-  locally — `Services/StoreInvoiceIssuer.cs:113` and `Services/StoreInvoiceIssuer.cs:170`. Every
-  line's revenue account and the deposit liability account must exist in Holded's chart —
-  `Services/StoreInvoiceIssuer.cs:300` and `Services/StoreInvoiceIssuer.cs:332`.
+  locally (`Services/StoreInvoiceIssuer.cs`). Every line's revenue account must exist in Holded's
+  chart, kept deposits included (`StoreInvoiceIssuer.BuildInvoiceLinesAsync`).
 - A counterparty-less order above the simplified-invoice ceiling is refused —
   `Services/StoreInvoiceIssuer.cs:133`.
-- Deposits carry no VAT — `Services/StoreInvoiceIssuer.cs:358`.
+- Returned deposits never reach the invoice; kept deposits are income at 21% — `Services/StoreInvoicePlan.cs`.
 - The accounting export selects orders by their persisted year, never through the counterparty,
   so an order whose camp or team has since gone still exports — `Data/Repository.cs:155`.
 - A legacy order's year is only ever written from its own camp season, and each write is audited

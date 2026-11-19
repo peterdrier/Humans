@@ -94,7 +94,7 @@ internal sealed class HoldedClient : IHoldedClient
         _sales.GetSalesDocumentPdfAsync(kind, documentId, ct);
 
     public Task SendSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default) =>
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default) =>
         _sales.SendSalesDocumentAsync(kind, documentId, emails, ct);
 
     public Task<string> PaySalesDocumentAsync(

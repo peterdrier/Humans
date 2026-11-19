@@ -45,6 +45,8 @@ public sealed record HoldedSalesDocumentInput
     /// way to find a document by whatever created it.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
     public required IReadOnlyList<HoldedSalesDocumentLineInput> Lines { get; init; }
+    /// <summary>A discount percentage on the whole document, so its VAT falls pro rata over the lines. Null for none.</summary>
+    public decimal? DiscountPercent { get; init; }
 }
 
 public sealed record HoldedSalesDocumentDto

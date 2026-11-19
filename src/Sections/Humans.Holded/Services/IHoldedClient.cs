@@ -83,7 +83,7 @@ internal interface IHoldedClient
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
     Task SendSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default);
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default);
 
     /// <summary>As <see cref="PayPurchaseDocumentAsync"/>, on a sales document.</summary>
     Task<string> PaySalesDocumentAsync(

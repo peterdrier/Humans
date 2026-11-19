@@ -58,8 +58,6 @@ internal sealed class StoreInvoiceIssuer(
 
         // Freeze seam: rewrite each snapshot from the live catalog so the document and the order agree forever after.
         var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(order.Year, ct));
-        var balanceRefusal = totals.BalanceEur == 0m ? null
-            : $"An invoice can only be issued when the order balance is zero (currently EUR {totals.BalanceEur:0.00}).";
         var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
         foreach (var line in order.Lines)
         {
@@ -69,7 +67,12 @@ internal sealed class StoreInvoiceIssuer(
             line.DepositAmountSnapshot = t.EffectiveDeposit;
         }
 
-        // Recovery precedes the balance and line-account gates: payments or catalog assignments can change after Holded
+        var products = (await repo.GetProductsByIdsAsync(
+                order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct))
+            .ToDictionary(p => p.Id);
+        var plan = StoreInvoicePlan.Build(order, totals, ProductNames(order, products));
+
+        // Recovery precedes the gate and line-account checks: payments or catalog assignments can change after Holded
         // approves a document whose local save failed.
         var tag = OrderDocumentTag(order.Id);
         if (await FindAlreadyIssuedDocumentAsync(tag, ct) is { } alreadyIssued)
@@ -77,12 +80,12 @@ internal sealed class StoreInvoiceIssuer(
             var (adoptedKind, adoptedDoc) = alreadyIssued;
             // The order stayed Open, so it may have been edited or repriced since that document was created. Divergence
             // is a human's problem, not something to reconcile silently.
-            if ((GetDocumentTotalsRefusal(order, adoptedDoc, totals)
-                 ?? GetRecoveredLinesRefusal(order, adoptedDoc, totals)) is { } recoveryRefusal)
+            if ((GetDocumentTotalsRefusal(order, adoptedDoc, plan)
+                 ?? GetRecoveredLinesRefusal(order, adoptedDoc, plan)) is { } recoveryRefusal)
                 return Refuse(order.Id, actorUserId, recoveryRefusal);
             if (adoptedDoc.IsDraft == true)
             {
-                if (balanceRefusal is not null) return Refuse(order.Id, actorUserId, balanceRefusal);
+                if (plan.Refusal is not null) return Refuse(order.Id, actorUserId, plan.Refusal);
 
                 // Created but not approved. A draft books no revenue and carries no number, so freezing against it
                 // leaves the order invoiced with no legal invoice: finish the issuance instead.
@@ -90,7 +93,7 @@ internal sealed class StoreInvoiceIssuer(
                     adoptedKind, adoptedDoc.Id, CancellationToken.None);
             }
             return await CommitInvoiceAsync(
-                order, adoptedDoc, totals,
+                order, adoptedKind, adoptedDoc, plan,
                 JsonSerializer.Serialize(new { kind = adoptedKind.ToString(), adopted = true, tag }),
                 actorUserId,
                 $"Adopted Holded {DocumentKindName(adoptedKind)} {adoptedDoc.DocNumber} "
@@ -99,19 +102,14 @@ internal sealed class StoreInvoiceIssuer(
                 ct);
         }
 
-        if (balanceRefusal is not null) return Refuse(order.Id, actorUserId, balanceRefusal);
+        if (plan.Refusal is not null) return Refuse(order.Id, actorUserId, plan.Refusal);
 
-        var totalDue = totals.TotalDueEur;
+        var totalDue = plan.TotalEur;
         if (totalDue <= 0m)
             return Refuse(order.Id, actorUserId, "Cannot invoice an order with a zero total.");
 
-        var products = (await repo.GetProductsByIdsAsync(
-                order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct))
-            .ToDictionary(p => p.Id);
-
         var settings = await repo.GetSettingsAsync(ct);
-        var (documentLines, lineRefusal) = await BuildInvoiceLinesAsync(
-            order, totalsByLine, products, settings.DepositLiabilityAccountNum, ct);
+        var (documentLines, lineRefusal) = await BuildInvoiceLinesAsync(plan, products, ct);
         if (lineRefusal is not null) return Refuse(order.Id, actorUserId, lineRefusal);
 
         // A receipt carries no counterparty, so it's only lawful below the simplified-invoice threshold.
@@ -148,17 +146,18 @@ internal sealed class StoreInvoiceIssuer(
             ContactId = contactId,
             ContactName = counterparty?.Name ?? displayName,
             Date = clock.GetCurrentInstant(),
-            Description = $"Nobodies Collective store — {displayName}",
-            Notes = $"Humans store order {order.Id}",
+            Description = $"{displayName} — Nobodies Collective store",
+            Notes = plan.Notes(displayName, order.Id),
             Tags = [tag],
             Lines = documentLines,
+            DiscountPercent = plan.DiscountPercent == 0m ? null : plan.DiscountPercent,
         };
 
         // A draft books no revenue, so issuing approves it.
         var document = await holdedWrite.IssueSalesDocumentAsync(kind, input, CancellationToken.None);
 
         return await CommitInvoiceAsync(
-            order, document, totals,
+            order, kind, document, plan,
             JsonSerializer.Serialize(new { kind = kind.ToString(), input }),
             actorUserId,
             $"Issued Holded {DocumentKindName(kind)} {document.DocNumber} "
@@ -176,24 +175,21 @@ internal sealed class StoreInvoiceIssuer(
     /// <summary>
     /// Freezing against different totals would leave the order contradicting its legal invoice. A retry's lines and
     /// prices may also have changed since creation. Correcting an issued document is a factura rectificativa, a human
-    /// decision, so both new issuance and recovery fail loudly.
+    /// decision, so both new issuance and recovery fail loudly. With a discount the subtotal isn't compared: whether
+    /// Holded reports it before or after the discount is unverified, and VAT and total already pin the document.
     /// </summary>
     private static string? GetDocumentTotalsRefusal(
-        Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
+        Order order, HoldedSalesDocumentDto document, StoreInvoicePlan plan)
     {
-        // Deposits are ordinary tax-0 lines on the document, so they land in Holded's subtotal.
-        var expectedSubtotal = decimal.Round(totals.LinesSubtotalEur + totals.DepositTotalEur, 2);
-        var expectedTax = decimal.Round(totals.VatTotalEur, 2);
-        var expectedTotal = decimal.Round(expectedSubtotal + expectedTax, 2);
-        if (decimal.Round(document.Subtotal, 2) == expectedSubtotal
-            && decimal.Round(document.Tax, 2) == expectedTax
-            && decimal.Round(document.Total, 2) == expectedTotal)
+        if ((plan.DiscountPercent != 0m || decimal.Round(document.Subtotal, 2) == plan.SubtotalEur)
+            && decimal.Round(document.Tax, 2) == plan.TaxEur
+            && decimal.Round(document.Total, 2) == plan.TotalEur)
             return null;
 
         return $"Holded already holds document {DocumentName(document)} for order {order.Id}, but it no longer matches "
             + $"the order: the document reads EUR {document.Subtotal:0.00} + {document.Tax:0.00} VAT "
-            + $"= {document.Total:0.00}, while the order now totals EUR {expectedSubtotal:0.00} + "
-            + $"{expectedTax:0.00} VAT = {expectedTotal:0.00}. Resolve it by hand — correcting an issued document is a factura "
+            + $"= {document.Total:0.00}, while the order now totals EUR {plan.SubtotalEur:0.00} + "
+            + $"{plan.TaxEur:0.00} VAT = {plan.TotalEur:0.00}. Resolve it by hand — correcting an issued document is a factura "
             + "rectificativa, and no second document will be issued in the meantime.";
     }
 
@@ -204,9 +200,9 @@ internal sealed class StoreInvoiceIssuer(
     /// document a wrong refusal would leave a legal factura behind an order that can never freeze.
     /// </summary>
     private static string? GetRecoveredLinesRefusal(
-        Order order, HoldedSalesDocumentDto document, BalanceCalculator.Result totals)
+        Order order, HoldedSalesDocumentDto document, StoreInvoicePlan plan)
     {
-        if (ExpectedLineSet(order, totals).SequenceEqual(
+        if (LineSet(plan.Lines.Select(l => new SalesLine(l.Units, l.Price, l.VatRate))).SequenceEqual(
                 LineSet(document.Lines.Select(l => new SalesLine(l.Units, l.Price, l.TaxPercent)))))
             return null;
 
@@ -218,22 +214,6 @@ internal sealed class StoreInvoiceIssuer(
 
     private static string DocumentName(HoldedSalesDocumentDto document) =>
         string.IsNullOrEmpty(document.DocNumber) ? document.Id : document.DocNumber;
-
-    /// <summary>The lines <see cref="BuildInvoiceLinesAsync"/> sends: each order line, plus a tax-0 deposit line when
-    /// it carries a deposit.</summary>
-    private static IReadOnlyList<SalesLine> ExpectedLineSet(Order order, BalanceCalculator.Result totals)
-    {
-        var totalsByLine = totals.Lines.ToDictionary(t => t.LineId);
-        var lines = new List<SalesLine>();
-        foreach (var line in order.Lines)
-        {
-            var t = totalsByLine[line.Id];
-            lines.Add(new SalesLine(line.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate));
-            if (t.EffectiveDeposit is { } deposit && deposit > 0m)
-                lines.Add(new SalesLine(line.Qty, deposit, 0m));
-        }
-        return LineSet(lines);
-    }
 
     private static IReadOnlyList<SalesLine> LineSet(IEnumerable<SalesLine> lines) =>
         lines.Select(l => l with { Price = decimal.Round(l.Price, 2) })
@@ -272,14 +252,15 @@ internal sealed class StoreInvoiceIssuer(
     /// <summary>Shared by first issuance and adoption, which differ only in the request payload they can honestly record and the audit line.</summary>
     private async Task<AdminMutationResult> CommitInvoiceAsync(
         Order order,
+        HoldedSalesDocumentKind kind,
         HoldedSalesDocumentDto document,
-        BalanceCalculator.Result totals,
+        StoreInvoicePlan plan,
         string requestPayload,
         Guid actorUserId,
         string auditDetail,
         CancellationToken ct)
     {
-        if (GetDocumentTotalsRefusal(order, document, totals) is { } totalsRefusal)
+        if (GetDocumentTotalsRefusal(order, document, plan) is { } totalsRefusal)
             return Refuse(order.Id, actorUserId, totalsRefusal);
         if (document.IsDraft == true || string.IsNullOrWhiteSpace(document.DocNumber))
             return Refuse(order.Id, actorUserId,
@@ -310,18 +291,13 @@ internal sealed class StoreInvoiceIssuer(
         return AdminMutationResult.Success;
     }
 
-    /// <summary>
-    /// Refundable deposits are a liability, not income, so each gets its own tax-0 line to the fianzas account instead of
-    /// the item's revenue account.
-    /// </summary>
+    /// <summary>Every line, kept deposits included, books to its product's revenue account.</summary>
     private async Task<(IReadOnlyList<HoldedSalesDocumentLineInput> Lines, string? Refusal)> BuildInvoiceLinesAsync(
-        Order order,
-        IReadOnlyDictionary<Guid, BalanceCalculator.LineTotals> totalsByLine,
+        StoreInvoicePlan plan,
         IReadOnlyDictionary<Guid, Product> products,
-        int? depositAccountNum,
         CancellationToken ct)
     {
-        var missingAccount = order.Lines
+        var missingAccount = plan.Lines
             .Select(l => products.GetValueOrDefault(l.ProductId))
             .Where(p => p?.HoldedRevenueAccountNum is null)
             .Select(p => p?.Name ?? "(unknown product)")
@@ -333,19 +309,9 @@ internal sealed class StoreInvoiceIssuer(
                 + string.Join(", ", missingAccount)
                 + ". Set it on /Store/Admin/Catalog before issuing.");
 
-        var needsDepositAccount = order.Lines.Any(l => totalsByLine[l.Id].DepositEur > 0m);
-        if (needsDepositAccount && depositAccountNum is null)
-            return ([],
-                "This order carries refundable deposits but no deposit liability account is set. "
-                + "Pick it on the Settings page, Store tab, before issuing: deposits are not income "
-                + "and must not be booked to a revenue account.");
-
         // Holded resolves each number to its chart id when issuing; syncing the chart first picks up an account Acountax
         // created minutes ago.
-        var wanted = order.Lines
-            .Select(l => products[l.ProductId].HoldedRevenueAccountNum!.Value)
-            .Concat(needsDepositAccount ? [depositAccountNum!.Value] : Array.Empty<int>())
-            .ToHashSet();
+        var wanted = plan.Lines.Select(l => products[l.ProductId].HoldedRevenueAccountNum!.Value).ToHashSet();
         await holded.SyncChartAsync(ct);
         var chart = (await holded.GetChartAsync(ct)).Select(a => a.Number).ToHashSet();
 
@@ -356,32 +322,19 @@ internal sealed class StoreInvoiceIssuer(
                 + string.Join(", ", unknown.OrderBy(n => n))
                 + ". Ask Acountax to create them, then re-issue.");
 
-        var lines = new List<HoldedSalesDocumentLineInput>();
-        foreach (var line in order.Lines)
+        return (plan.Lines.Select(l => new HoldedSalesDocumentLineInput
         {
-            var product = products[line.ProductId];
-            var t = totalsByLine[line.Id];
-            lines.Add(new HoldedSalesDocumentLineInput
-            {
-                Name = product.Name,
-                Units = line.Qty,
-                Price = t.EffectiveUnitPrice,
-                Taxes = [SalesTaxKey(t.EffectiveVatRate)],
-                AccountNum = product.HoldedRevenueAccountNum!.Value,
-            });
-
-            if (t.EffectiveDeposit is not { } depositPerUnit || depositPerUnit <= 0m) continue;
-            lines.Add(new HoldedSalesDocumentLineInput
-            {
-                Name = $"{product.Name} — refundable deposit",
-                Units = line.Qty,
-                Price = depositPerUnit,
-                Taxes = [SalesTaxKey(0m)],
-                AccountNum = depositAccountNum!.Value,
-            });
-        }
-        return (lines, null);
+            Name = l.Name,
+            Units = l.Units,
+            Price = l.Price,
+            Taxes = [SalesTaxKey(l.VatRate)],
+            AccountNum = products[l.ProductId].HoldedRevenueAccountNum!.Value,
+        }).ToList(), null);
     }
+
+    private static IReadOnlyDictionary<Guid, string> ProductNames(Order order, IReadOnlyDictionary<Guid, Product> products) =>
+        order.Lines.Select(l => l.ProductId).Distinct()
+            .ToDictionary(id => id, id => products.GetValueOrDefault(id)?.Name ?? "(unknown product)");
 
     /// <summary>21 → <c>s_iva_21</c>, 7.5 → <c>s_iva_75</c>: the decimal separator is dropped, not rounded away.</summary>
     private static string SalesTaxKey(decimal vatRatePercent) =>

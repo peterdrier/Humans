@@ -59,12 +59,14 @@ internal sealed class StoreOrderAdministration(
         string? externalRef,
         string? notes,
         LocalDate? valueDate,
+        Guid? productId,
         Guid actorUserId,
         StoreOrderReader orderReader, CancellationToken ct = default)
     {
-        if (method is not (PaymentMethod.BankTransfer or PaymentMethod.DepositReturn or PaymentMethod.Refund))
+        if (method is not (PaymentMethod.BankTransfer or PaymentMethod.DepositReturn or PaymentMethod.Refund
+            or PaymentMethod.WriteOff))
             return RefuseAdminMutation(orderId, actorUserId,
-                $"Only bank transfers, deposit returns and refunds can be recorded by hand, not {method}.");
+                $"Only bank transfers, deposit returns, refunds and write-offs can be recorded by hand, not {method}.");
         if (amountEur <= 0)
             return RefuseAdminMutation(orderId, actorUserId, "Amount must be greater than zero.");
         if (amountEur > 9_999_999_999.99m || decimal.Round(amountEur, 2) != amountEur)
@@ -76,6 +78,8 @@ internal sealed class StoreOrderAdministration(
             return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs a reference (the Holded bank movement id).");
         if (method == PaymentMethod.BankTransfer && valueDate is null)
             return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs its value date.");
+        if (method == PaymentMethod.WriteOff && string.IsNullOrWhiteSpace(notes))
+            return RefuseAdminMutation(orderId, actorUserId, "A write-off needs a reason.");
 
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
@@ -88,18 +92,34 @@ internal sealed class StoreOrderAdministration(
             return RefuseAdminMutation(orderId, actorUserId, "Payment reference must be 200 characters or fewer.");
         if (notes is { Length: > 1000 })
             return RefuseAdminMutation(orderId, actorUserId, "Payment notes must be 1000 characters or fewer.");
+        if (method == PaymentMethod.DepositReturn && productId is null)
+            return RefuseAdminMutation(orderId, actorUserId, "A deposit return needs the product whose deposit it returns.");
 
+        var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(order.Year, ct));
         if (method == PaymentMethod.DepositReturn)
         {
-            var depositTotal = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(order.Year, ct)).DepositTotalEur;
-            var alreadyReturned = order.Payments
+            var lineTotals = totals.Lines.ToDictionary(t => t.LineId);
+            var depositTotal = order.Lines.Where(l => l.ProductId == productId).Sum(l => lineTotals[l.Id].DepositEur);
+            var returns = order.Payments
                 .Where(p => p.Method == PaymentMethod.DepositReturn && p.Status == PaymentStatus.Paid)
-                .Sum(p => p.AmountEur);
+                .ToList();
+            // Returns recorded before they named a product returned every deposit on their order.
+            var alreadyReturned = returns.Any(p => p.ProductId is null)
+                ? depositTotal
+                : returns.Where(p => p.ProductId == productId).Sum(p => p.AmountEur);
             var remaining = depositTotal - alreadyReturned;
             if (amountEur > remaining)
                 return RefuseAdminMutation(orderId, actorUserId,
-                    $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of deposit still held "
-                    + $"(EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
+                    $"Deposit return of EUR {amountEur:0.00} exceeds the EUR {remaining:0.00} of this product's deposit "
+                    + $"still held (EUR {depositTotal:0.00} deposited, EUR {alreadyReturned:0.00} already returned).");
+        }
+        if (method == PaymentMethod.WriteOff)
+        {
+            if (order.State != OrderState.Open)
+                return RefuseAdminMutation(orderId, actorUserId,
+                    "A write-off goes on the invoice as a discount, so it can only be recorded before invoicing.");
+            if (totals.BalanceEur <= 0m)
+                return RefuseAdminMutation(orderId, actorUserId, "The camp owes nothing, so there is no shortfall to write off.");
         }
 
         var signed = method == PaymentMethod.Refund ? -amountEur : amountEur;
@@ -113,6 +133,7 @@ internal sealed class StoreOrderAdministration(
             Status = PaymentStatus.Paid,
             ExternalRef = externalRef,
             Notes = notes,
+            ProductId = method == PaymentMethod.DepositReturn ? productId : null,
             // Midnight UTC falls on the same calendar day in UTC and in the org zone (Europe/Madrid), so the value
             // date reads back unchanged wherever ReceivedAt is shown.
             ReceivedAt = valueDate?.AtMidnight().InUtc().ToInstant() ?? clock.GetCurrentInstant(),
@@ -121,7 +142,9 @@ internal sealed class StoreOrderAdministration(
         await repo.AddPaymentAsync(payment, ct);
         await audit.LogAsync(
             StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
-            $"Recorded {MethodDescription(method)} of EUR {signed:0.00}"
+            (method == PaymentMethod.WriteOff
+                ? $"Wrote off a shortfall of EUR {signed:0.00}: {notes}"
+                : $"Recorded {MethodDescription(method)} of EUR {signed:0.00}")
                 + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})")
                 + (valueDate is { } d ? $", value date {LocalDatePattern.Iso.Format(d)}" : string.Empty),
             actorUserId, orderId, AuditEntityTypes.Order);

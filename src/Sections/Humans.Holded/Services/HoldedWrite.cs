@@ -177,7 +177,7 @@ internal sealed class HoldedWrite(
         client.GetSalesDocumentPdfAsync(kind, documentId, ct);
 
     public Task SendSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default) =>
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default) =>
         client.SendSalesDocumentAsync(kind, documentId, emails, ct);
 
     public Task<string> PaySalesDocumentAsync(

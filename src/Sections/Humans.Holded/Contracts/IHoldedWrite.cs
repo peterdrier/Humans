@@ -99,11 +99,12 @@ public interface IHoldedWrite : IApplicationService
     Task<byte[]> GetSalesDocumentPdfAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
-    /// <summary>Holded emails the sales document's PDF to <paramref name="emails"/>. Not idempotent: each call sends
+    /// <summary>Holded emails the sales document's PDF to <paramref name="emails"/>, or to its contact's addresses when
+    /// null. Not idempotent: each call sends
     /// again.</summary>
     [ExternalWrite]
     Task SendSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string> emails, CancellationToken ct = default);
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default);
 
     /// <summary>Pays <paramref name="amount"/> (above zero: Holded takes no money back on a sales document) of one sales
     /// document into <paramref name="treasuryId"/>, dated <paramref name="date"/>. Not idempotent. Returns the
