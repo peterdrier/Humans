@@ -116,7 +116,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [InlineData("matched", true)]
     [InlineData("emails", true)]
     [InlineData("aliases", true)]
-    [InlineData("hold", true)]
     [InlineData("matched", false)]
     [InlineData("emails", false)]
     [InlineData("aliases", false)]
@@ -169,11 +168,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 });
                 break;
             case "hold":
-                _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
-                {
-                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
-                    return null;
-                });
+                _shiftManagementService.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
                 break;
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
@@ -1408,7 +1403,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns((EventSettingsInfo?)null);
     }
 

@@ -44,7 +44,7 @@ public sealed class RideshareControllerTests
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), "L:" + ci.Arg<string>()));
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(ci => new LocalizedString(ci.Arg<string>(), "L:" + ci.Arg<string>()));
         _users.GetUserInfoAsync(_me, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(User(_me)));
-        _rideshare.GetActiveEventIdAsync(Arg.Any<CancellationToken>()).Returns(EventId);
+        _rideshare.GetActiveEventId().Returns(EventId);
     }
 
     [HumansFact]

@@ -44,7 +44,7 @@ internal sealed class StoreOrderReader(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var year = await GetCurrentEventYearAsync(ct);
+        var year = GetCurrentEventYear();
         var products = await repo.GetAllProductsForYearAsync(year, ct);
         var catalog = products.Where(product => product.IsActive).Select(StoreCatalog.MapProduct).ToList();
         var currentPrices = ToPrices(products);
@@ -112,9 +112,9 @@ internal sealed class StoreOrderReader(
     }
 
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
-    public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
+    public int GetCurrentEventYear()
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 
@@ -125,7 +125,7 @@ internal sealed class StoreOrderReader(
     public async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         int orderYear, CancellationToken ct)
     {
-        var catalogYear = orderYear > 0 ? orderYear : await GetCurrentEventYearAsync(ct);
+        var catalogYear = orderYear > 0 ? orderYear : GetCurrentEventYear();
         return ToPrices(await repo.GetAllProductsForYearAsync(catalogYear, ct));
     }
 

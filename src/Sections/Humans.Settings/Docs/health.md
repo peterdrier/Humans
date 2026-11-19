@@ -31,7 +31,7 @@ page, the tab strip and the ordering; it supplies exactly one tab of its own.
 |---|---|---|
 | "What is stored under this key?" / "Store this under this key" | Email's send pause, Monitor's last-run stamp, Workgroups' legacy Drive root | `ISettingsService.GetValueAsync` / `SetValueAsync` |
 | "Which zone are events read in?" | the section's own read path, Workgroups' meeting form | `ISettingsService.GetTimeZoneIdAsync` |
-| "What is the current cycle?" / "This cycle, by id?" / "Every cycle" | most of the app; derive the set from the call sites | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
+| "What is the current cycle?" / "This cycle, by id?" / "Every cycle" | most of the app; derive the set from the call sites | `ISettingsService.GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | "Save this cycle / make this one current / change the zone, on this person's say-so" | only the section's own POST endpoints | `ISettingsWriteService.SaveEventSettingsAsync` / `ActivateEventSettingsAsync` / `SaveTimeZoneAsync` |
 | "Mint / drop a cycle for a fixture" | the dev dashboard seeder | `IEventSettingsSeeding.CreateActiveEventAsync` / `DeleteEventAsync` |
 | "The cycle moved — drop what you derived from it" | announced to every listener, named by none | `IEventSettingsChangeListener.EventSettingsChanged` |

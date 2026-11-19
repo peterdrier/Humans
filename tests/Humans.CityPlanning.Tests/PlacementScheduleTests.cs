@@ -39,7 +39,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     public PlacementScheduleTests()
         : base(Instant.FromUtc(2026, 6, 10, 10, 0))
     {
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid", gateOpeningDate: new LocalDate(2026, 7, 1)));
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, []));

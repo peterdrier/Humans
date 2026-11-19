@@ -56,7 +56,7 @@ public sealed class StoreControllerRecordPaymentTests
     private StoreController BuildController(string role, IUserService? identityUsers = null)
     {
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        settings.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         var camps = Substitute.For<ICampService>();
         camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
         var teams = Substitute.For<ITeamService>();

@@ -51,7 +51,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     private void SetActiveEventYear(int? year) =>
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(year is { } y ? BurnFixtures.Burn(year: y) : null);
 
     private async Task<CityPlanningSettings> SeedMapSettingsAsync(int year = 2026, bool placementOpen = false)

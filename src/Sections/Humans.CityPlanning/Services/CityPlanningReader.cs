@@ -22,8 +22,8 @@ internal sealed class CityPlanningReader(
     ISettingsService settingsService) : IApplicationService
 {
     /// <summary>The active event's year. Null when no event is active.</summary>
-    internal async Task<int?> GetCurrentYearAsync(CancellationToken cancellationToken) =>
-        await settingsService.GetActiveEventSettingsAsync(cancellationToken) is { Year: > 0 } activeEvent
+    internal int? GetCurrentYear() =>
+        settingsService.GetActiveEventSettings() is { Year: > 0 } activeEvent
             ? activeEvent.Year
             : null;
 
@@ -228,7 +228,7 @@ internal sealed class CityPlanningReader(
     internal async Task<CityPlanningSettingsDto?> GetSettingsAsync(
         CancellationToken cancellationToken = default, int? year = null)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken) is { Year: > 0 } active
+        var activeEvent = settingsService.GetActiveEventSettings() is { Year: > 0 } active
             ? active
             : null;
         if ((year ?? activeEvent?.Year) is not { } settingsYear)
@@ -254,7 +254,7 @@ internal sealed class CityPlanningReader(
         var campSettings = await campService.GetSettingsAsync(ct);
         return campSettings.OpenSeasons.Count > 0
             ? campSettings.OpenSeasons.Max()
-            : await GetCurrentYearAsync(ct);
+            : GetCurrentYear();
     }
 
     internal async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)

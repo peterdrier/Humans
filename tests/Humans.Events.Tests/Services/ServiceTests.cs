@@ -401,7 +401,7 @@ public sealed class EventServiceTests
         var guide = Substitute.For<IEventManagement>();
         var edition = Guid.NewGuid();
         guide.GetEventSettingsByIdAsync(edition).Returns(BurnFixtures.Burn(year: 2026));
-        guide.GetEventSettingsOptionsAsync().Returns(Array.Empty<EventSettingsInfo>());
+        guide.GetEventSettingsOptions().Returns(Array.Empty<EventSettingsInfo>());
         var failure = new InvalidOperationException("Private settings persistence diagnostic");
         guide.SaveGuideSettingsAsync(null, edition, default, default, default, 0)
             .ReturnsForAnyArgs(dependencyFailure ? Task.FromException<bool>(failure) : Task.FromResult(false));

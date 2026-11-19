@@ -36,8 +36,7 @@ internal sealed class EventService(
     public Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default) =>
         guideConfiguration.GetGuideSettingsAsync(ct);
 
-    public Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default) =>
-        guideConfiguration.GetEventSettingsOptionsAsync(ct);
+    public IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions() => guideConfiguration.GetEventSettingsOptions();
 
     public Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default) =>
         guideConfiguration.GetEventSettingsByIdAsync(id, ct);

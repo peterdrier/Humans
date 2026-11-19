@@ -433,7 +433,7 @@ internal sealed class TicketSyncService(
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 

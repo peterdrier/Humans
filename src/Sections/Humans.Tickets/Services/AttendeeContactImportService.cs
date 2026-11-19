@@ -104,7 +104,7 @@ internal sealed class AttendeeContactImportService(
             await ticketRepository.UpsertAttendeesAsync(importState.ToUpsert, ct);
         }
 
-        var active = await settingsService.GetActiveEventSettingsAsync();
+        var active = settingsService.GetActiveEventSettings();
         if (active is not null)
         {
             foreach (var group in importState.ToUpsert.GroupBy(a => a.MatchedUserId!.Value))

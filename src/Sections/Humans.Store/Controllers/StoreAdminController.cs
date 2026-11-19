@@ -23,7 +23,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Catalog")]
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
-        var year = await storeService.GetCurrentEventYearAsync(ct);
+        var year = storeService.GetCurrentEventYear();
         var products = (await storeService.GetAllProductsForYearAsync(year, ct))
             .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name, StringComparer.Ordinal)
@@ -34,7 +34,7 @@ internal sealed class StoreAdminController(
     [HttpGet("Summary")]
     public async Task<IActionResult> Summary(int? year, CancellationToken ct)
     {
-        var defaultYear = await storeService.GetCurrentEventYearAsync(ct);
+        var defaultYear = storeService.GetCurrentEventYear();
         var selectedYear = year ?? defaultYear;
 
         var summary = await storeService.GetStoreSummaryAsync(selectedYear, ct);
@@ -57,7 +57,7 @@ internal sealed class StoreAdminController(
     public async Task<IActionResult> Transfers(
         int? year, [FromServices] StoreTransferBooking transferBooking, CancellationToken ct)
     {
-        var selectedYear = year ?? await storeService.GetCurrentEventYearAsync(ct);
+        var selectedYear = year ?? storeService.GetCurrentEventYear();
         return View(await transferBooking.GetPlanAsync(selectedYear, ct));
     }
 
@@ -146,9 +146,9 @@ internal sealed class StoreAdminController(
 
     [HttpGet("Catalog/Edit")]
     [Authorize(Policy = StorePolicies.Manage)]
-    public async Task<IActionResult> Edit(CancellationToken ct)
+    public IActionResult Edit()
     {
-        var year = await storeService.GetCurrentEventYearAsync(ct);
+        var year = storeService.GetCurrentEventYear();
         var model = new ProductInputModel
         {
             Year = year,

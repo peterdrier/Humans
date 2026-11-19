@@ -63,7 +63,7 @@ public class EventsControllerTests
     {
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
-        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
+        _guide.GetEventSettingsOptions().Returns([burn]);
         _guide.SaveGuideSettingsAsync(null, burn.Id, default, default, default, 0).ReturnsForAnyArgs(true);
         var controller = new EventsAdminController(_guide,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
@@ -118,10 +118,7 @@ public class EventsControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(AdminFormAction.SettingsInvalid, AdminFormRead.Options)]
     [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Edition)]
-    [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Options)]
-    [Xunit.InlineData(AdminFormAction.SettingsRefused, AdminFormRead.Options)]
     [Xunit.InlineData(AdminFormAction.CreateCategory, AdminFormRead.Slug)]
     [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Category)]
     [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Slug)]
@@ -136,7 +133,6 @@ public class EventsControllerTests
         };
         controller.HttpContext.RequestAborted = request.Token;
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
-        if (action == AdminFormAction.SettingsInvalid) controller.ModelState.AddModelError("MaxPrintSlots", "Required");
         async Task<T> ReadAsync<T>(T value, AdminFormRead current, CancellationToken ct)
         {
             if (current == boundary)
@@ -151,8 +147,7 @@ public class EventsControllerTests
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventSettingsInfo?>(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
-        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<EventSettingsInfo>>([burn], AdminFormRead.Options, call.Arg<CancellationToken>()));
+        _guide.GetEventSettingsOptions().Returns([burn]);
         _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), AdminFormRead.Category, call.Arg<CancellationToken>()));
         _guide.CategorySlugExistsAsync("category", Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -168,17 +163,9 @@ public class EventsControllerTests
         };
 
         (await invoke.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
-        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+        _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
             nameof(IEventManagement.SaveGuideSettingsAsync) or nameof(IEventManagement.CreateCategoryAsync)
-            or nameof(IEventManagement.UpdateCategoryAsync) or nameof(IEventManagement.UpdateVenueAsync)).ToList();
-        if (action == AdminFormAction.SettingsRefused)
-        {
-            writes.Should().ContainSingle().Which.GetArguments()[^1].Should().Be(CancellationToken.None);
-        }
-        else
-        {
-            writes.Should().BeEmpty();
-        }
+            or nameof(IEventManagement.UpdateCategoryAsync) or nameof(IEventManagement.UpdateVenueAsync)).Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -1451,8 +1438,8 @@ public class EventsControllerTests
     }
 }
 
-public enum AdminFormAction { SettingsInvalid, SettingsMissing, SettingsRefused, CreateCategory, EditCategory, EditVenue }
+public enum AdminFormAction { SettingsMissing, CreateCategory, EditCategory, EditVenue }
 
-public enum AdminFormRead { Edition, Options, Category, Slug, Venue }
+public enum AdminFormRead { Edition, Category, Slug, Venue }
 
 public enum OptionsRead { Categories, Venues }

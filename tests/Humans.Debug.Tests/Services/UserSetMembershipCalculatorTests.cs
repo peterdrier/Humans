@@ -22,7 +22,7 @@ public class UserSetMembershipCalculatorTests
 
     public UserSetMembershipCalculatorTests()
     {
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(MakeBurnSettings(2026));
+        _burnSettings.GetActiveEventSettings().Returns(MakeBurnSettings(2026));
         _tickets.GetAllParticipationsAsync(Arg.Any<CancellationToken>()).Returns(_ => _ticketRows.ToList());
         _preferences.GetPreferencesForCategoryAsync(MessageCategory.Marketing, Arg.Any<CancellationToken>())
             .Returns(_ => new Dictionary<Guid, CommunicationPreferenceSnapshot>(_marketing));
