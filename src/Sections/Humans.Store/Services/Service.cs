@@ -59,7 +59,7 @@ internal sealed class Service(
 
         // A pending async payment is excluded from BalanceEur, so without this the full balance stays payable a second
         // time while the mandate settles: a double charge.
-        var hasPendingPayment = order.Payments.Any(p => p.Status == PaymentStatus.Pending);
+        var hasPendingPayment = order.Payments.Any(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0);
 
         return new OrderPageData(
             order,
