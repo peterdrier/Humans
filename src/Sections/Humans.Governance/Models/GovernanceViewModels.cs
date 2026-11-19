@@ -1,4 +1,5 @@
 using Humans.Governance.Contracts;
+using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
 using NodaTime;
 
@@ -29,4 +30,18 @@ internal sealed class GovernanceIndexViewModel
     public IReadOnlyList<Guid> BoardMemberIds { get; set; } = [];
     public IReadOnlyList<AssemblyVoteListItem> OpenVotes { get; set; } = [];
     public int UnvotedApplicationCount { get; set; }
+
+    /// <summary>The group and files of each body the viewer is in.</summary>
+    public IReadOnlyList<GovernanceBodyLinks> YourAccess { get; set; } = [];
+}
+
+internal sealed class GovernanceBodyViewModel
+{
+    public required GovernanceBody Body { get; init; }
+
+    /// <summary>Ordered by burner name.</summary>
+    public required IReadOnlyList<Guid> MemberIds { get; init; }
+
+    /// <summary>Null when the viewer may not see them, or the body has none.</summary>
+    public GovernanceBodyLinks? Links { get; init; }
 }

@@ -1,4 +1,6 @@
+using Humans.Base.Authorization;
 using Humans.Base.Models.Tables;
+using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -43,9 +45,30 @@ internal sealed class GovernanceController(
                 .OrderBy(id => boardInfos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
             OpenVotes = data.OpenVotes.OrderBy(v => v.ClosesAt).ToList(),
-            UnvotedApplicationCount = data.UnvotedApplicationCount
+            UnvotedApplicationCount = data.UnvotedApplicationCount,
+            YourAccess = data.YourAccess
         };
 
         return View(viewModel);
+    }
+
+    [HttpGet("{body:regex(^(Asociados|Colaboradores|Board)$)}")]
+    public async Task<IActionResult> Body(string body)
+    {
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null || !Enum.TryParse<GovernanceBody>(body, ignoreCase: false, out var parsed))
+            return NotFound();
+
+        var data = await governanceIndexService.GetBodyPageAsync(parsed, user.Id, RoleChecks.IsAdminOrBoard(User), ct);
+        var infos = await UserService.GetUserInfosAsync(data.MemberIds, ct);
+
+        return View(new GovernanceBodyViewModel
+        {
+            Body = data.Body,
+            MemberIds = [.. data.MemberIds
+                .OrderBy(id => infos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)],
+            Links = data.Links,
+        });
     }
 }
