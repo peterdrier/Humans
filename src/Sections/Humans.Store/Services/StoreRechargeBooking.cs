@@ -262,9 +262,7 @@ internal sealed partial class StoreRechargeBooking(
                 if (stop) return (results, "Stopped: Holded did not answer.");
             }
 
-            if (results.Count > 0)
-                foreach (var account in results.Select(r => r.Row.RechargeAccount!.Value).Distinct())
-                    await holded.SyncAccountLedgerAsync(account, CancellationToken.None);
+            await ResyncAsync(results);
             return (results, null);
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
@@ -275,6 +273,20 @@ internal sealed partial class StoreRechargeBooking(
         finally
         {
             Gate.Release();
+        }
+    }
+
+    /// <summary>Best effort: a failed re-pull must not hide what was posted.</summary>
+    private async Task ResyncAsync(IReadOnlyList<RechargeBookedLine> results)
+    {
+        try
+        {
+            foreach (var account in results.Select(r => r.Row.RechargeAccount!.Value).Distinct())
+                await holded.SyncAccountLedgerAsync(account, CancellationToken.None);
+        }
+        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
+        {
+            logger.LogWarning(ex, "Could not re-read the recharge accounts after a store recharge run");
         }
     }
 
