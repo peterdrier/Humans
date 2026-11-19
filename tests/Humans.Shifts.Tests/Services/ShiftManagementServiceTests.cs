@@ -657,12 +657,14 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 2);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var locator = Substitute.For<IServiceProvider>();
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
-            new ServiceLocatorBuilder().With(_teamService).Build(), Cache,
+            locator, Cache,
             new ShiftViewProbe().Cache,
             new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        locator.GetService(typeof(IShiftRotaRows)).Returns(service);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
