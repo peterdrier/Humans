@@ -158,7 +158,7 @@ else
    to its products while it has existed. *@
 <vc:audit-log entity-ids="@order.Lines.Select(l => l.ProductId).Prepend(order.Id).Distinct().ToList()"
               include-related="true"
-              actions="@string.Join(',', StoreAuditActions.OrderHistory.Select(a => a.Name))"
+              actions="@string.Join(',', (Model.CanRecordPayment ? StoreAuditActions.OrderHistoryForAdmins : StoreAuditActions.OrderHistory).Select(a => a.Name))"
               since="@order.CreatedAt" limit="500"
               layout="table" columns="when,actor,action,description"
               column-labels="@($"when:{Localizer["Store_ColDate"].Value},actor:{Localizer["Store_ColWho"].Value},action:{Localizer["Store_ColAction"].Value},description:{Localizer["Store_ColDescription"].Value}")"

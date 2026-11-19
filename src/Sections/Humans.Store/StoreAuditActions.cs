@@ -44,13 +44,19 @@ internal sealed class StoreAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition StorePaymentMethodBackfilled = new("StorePaymentMethodBackfilled");
 
     /// <summary>
-    /// An order's history: what is logged about the order, its lines, payments and invoice, plus catalog price changes
-    /// to its products. Excludes product create/update noise.
+    /// An order's history as anyone who can view the order sees it: what is logged about the order, its lines, payments
+    /// and invoice, plus catalog price changes to its products. Excludes product create/update noise.
     /// </summary>
     public static IReadOnlyList<AuditActionDefinition> OrderHistory { get; } =
     [
         StoreOrderCreated, StoreLineAdded, StoreLineRemoved, StoreCounterpartyEdited, StoreProductPriceChanged,
-        StoreInvoiceIssued, StorePaymentRecorded, StorePaymentSettled, StorePaymentFailed, StorePaymentExpired,
-        StorePaymentDeleted, StoreOrderYearBackfilled, StorePaymentMethodBackfilled
+        StoreInvoiceIssued, StorePaymentRecorded, StorePaymentSettled, StorePaymentFailed, StorePaymentExpired
     ];
+
+    /// <summary>
+    /// Adds the admin-only entries: a deleted payment's entry carries its admin notes and references, and the repair
+    /// runs are internal bookkeeping.
+    /// </summary>
+    public static IReadOnlyList<AuditActionDefinition> OrderHistoryForAdmins { get; } =
+        [.. OrderHistory, StorePaymentDeleted, StoreOrderYearBackfilled, StorePaymentMethodBackfilled];
 }
