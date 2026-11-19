@@ -32,13 +32,14 @@ public class AccountingReadTests
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly StoreOrderReader _reader;
 
     public AccountingReadTests()
     {
         _reader = new StoreOrderReader(
             _repo, _camps, _teams,
-            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(), _auditViewer);
+            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(), _auditViewer, _audit);
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfo(SeasonId, "Camp Alpha")]);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -273,13 +274,17 @@ public class AccountingReadTests
                 false, Arg.Any<CancellationToken>())
             .Returns([palletRepriced]);
 
-        var history = await _reader.GetOrderHistoryAsync(2026, Xunit.TestContext.Current.CancellationToken);
+        var actor = Guid.NewGuid();
+        var history = await _reader.GetOrderHistoryAsync(2026, actor, Xunit.TestContext.Current.CancellationToken);
 
         history.Where(h => h.OrderId == CampOrderId).Select(h => h.Description).Should().Equal(
             "StoreLineAdded", "StoreProductPriceChanged", "StoreLineRemoved", "StoreProductPriceChanged");
         history.Where(h => h.OrderId == TeamOrderId).Should().ContainSingle()
             .Which.OccurredAt.Should().Be(iceRepriced.OccurredAt);
         history.Should().AllSatisfy(h => h.Year.Should().Be(2026));
+        await _audit.Received(1).LogAsync(
+            StoreAuditActions.StoreOrderHistoryExported, Arg.Any<string>(), Guid.Empty,
+            Arg.Is<string>(d => d.Contains("5 entries")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private static CampInfo MakeCampInfo(Guid seasonId, string name)

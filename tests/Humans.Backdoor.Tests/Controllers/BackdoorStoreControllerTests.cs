@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Backdoor.Controllers;
 using Humans.Store.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
@@ -19,8 +21,20 @@ public class BackdoorStoreControllerTests
     private readonly IStoreAccountingRead _store = Substitute.For<IStoreAccountingRead>();
     private readonly BackdoorStoreController _sut;
 
-    public BackdoorStoreControllerTests() =>
+    private static readonly Guid KeyOwnerId = Guid.NewGuid();
+
+    public BackdoorStoreControllerTests()
+    {
         _sut = new BackdoorStoreController(_store, Substitute.For<IUserService>());
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, KeyOwnerId.ToString())], "test")),
+            },
+        };
+    }
 
     [HumansFact]
     public async Task OrderLines_without_a_year_is_a_BadRequest()
@@ -106,11 +120,11 @@ public class BackdoorStoreControllerTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         (await _sut.OrderHistory(null, ct)).Should().BeOfType<BadRequestObjectResult>();
-        await _store.DidNotReceive().GetOrderHistoryAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _store.DidNotReceive().GetOrderHistoryAsync(Arg.Any<int>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
         var orderId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
-        _store.GetOrderHistoryAsync(2026, Arg.Any<CancellationToken>()).Returns([
+        _store.GetOrderHistoryAsync(2026, KeyOwnerId, Arg.Any<CancellationToken>()).Returns([
             new AccountingOrderHistoryDto(
                 2026, orderId, OrderCounterpartyType.Camp, "Camp Alpha", Instant.FromUtc(2026, 6, 2, 8, 0),
                 "StoreLineRemoved", actorId, "Lead", "Removed 3 lines"),

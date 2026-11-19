@@ -31,7 +31,7 @@ internal sealed class Service(
     ILogger<Service> logger) : IApplicationService
 {
     private readonly StoreOrderAdministration orderAdministration = new(repo, audit, clock, logger);
-    private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService, auditViewer);
+    private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService, auditViewer, audit);
     private readonly StoreStripePayments stripePayments = new(repo, audit, stripeService, clock, logger);
     private readonly StoreMetadataRepair metadataRepair = new(repo, audit, campService, clock, logger);
     private readonly StoreCatalog productCatalog = new(repo, audit, clock, logger);

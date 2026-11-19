@@ -88,7 +88,7 @@ internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserS
     {
         if (year is null) return BadRequest(new { error = "Missing 'year'." });
 
-        var history = await store.GetOrderHistoryAsync(year.Value, ct);
+        var history = await store.GetOrderHistoryAsync(year.Value, GetCurrentUserId()!.Value, ct);
         return Ok(history
             .OrderBy(h => h.CounterpartyLabel, StringComparer.Ordinal)
             .ThenBy(h => h.OrderId)

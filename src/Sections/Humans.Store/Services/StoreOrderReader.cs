@@ -18,7 +18,8 @@ internal sealed class StoreOrderReader(
     ITeamService teamService,
     IClock clock,
     ISettingsService settingsService,
-    IAuditViewerService auditViewer) : IStoreAccountingRead
+    IAuditViewerService auditViewer,
+    IAuditLogService audit) : IStoreAccountingRead
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
@@ -408,7 +409,8 @@ internal sealed class StoreOrderReader(
     /// The order page's admin history for every order of the year, one audit read per order and per product: the
     /// audit log is the history and Store keeps no copy.
     /// </summary>
-    public async Task<IReadOnlyList<AccountingOrderHistoryDto>> GetOrderHistoryAsync(int year, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AccountingOrderHistoryDto>> GetOrderHistoryAsync(
+        int year, Guid actorUserId, CancellationToken ct = default)
     {
         var (orders, context) = await LoadYearOrdersForAccountingAsync(year, ct);
         var orderActions = StoreAuditActions.OrderHistoryForAdmins.Select(a => a.Name).ToList();
@@ -434,6 +436,11 @@ internal sealed class StoreOrderReader(
                     year, o.Id, counterpartyType, label, e.OccurredAt, e.Action.Name,
                     e.ActorUserId, e.ActorDisplayName, e.Description)));
         }
+
+        await audit.LogAsync(
+            StoreAuditActions.StoreOrderHistoryExported, AuditEntityTypes.Order, Guid.Empty,
+            $"Store order history exported for {year}: {rows.Count} entries across {orders.Count} orders",
+            actorUserId);
         return rows;
     }
 
