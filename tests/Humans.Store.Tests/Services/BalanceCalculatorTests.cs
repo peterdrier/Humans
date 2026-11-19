@@ -112,8 +112,25 @@ public class BalanceCalculatorTests
         BalanceCalculator.Compute(order).BalanceEur.Should().Be(0m);
     }
 
-    // Only Paid rows count. A Pending mandate (captured, not yet cleared) and a Failed
-    // settlement (bounced) must NOT reduce the order balance.
+    // Paid rows count, and so does a pending refund. A Pending mandate (captured, not yet cleared)
+    // and a Failed settlement (bounced) must NOT reduce the order balance.
+
+    [HumansFact]
+    public void Pending_refund_counts_at_once_failed_refund_never()
+    {
+        var order = new Order
+        {
+            Lines = [new() { Id = Guid.NewGuid(), Qty = 1, UnitPriceSnapshot = 100m, VatRateSnapshot = 0m }],
+            Payments =
+            [
+                new() { AmountEur = 700m, Method = PaymentMethod.Stripe, Status = PaymentStatus.Paid },
+                new() { AmountEur = -600m, Method = PaymentMethod.Refund, Status = PaymentStatus.Pending },
+                new() { AmountEur = -600m, Method = PaymentMethod.Refund, Status = PaymentStatus.Failed },
+            ],
+        };
+
+        BalanceCalculator.Compute(order).BalanceEur.Should().Be(0m);
+    }
 
     [HumansFact]
     public void Only_paid_payments_count_toward_balance()
