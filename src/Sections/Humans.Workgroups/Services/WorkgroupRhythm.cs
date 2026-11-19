@@ -36,6 +36,11 @@ internal sealed class WorkgroupRhythm(
                     await FlagOverdueRegistrationAsync(workgroup, info, now, ct);
                 }
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                logger.LogWarning("The workgroup rhythm pass was cancelled while processing {WorkgroupId}", workgroup.Id);
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "The workgroup rhythm pass failed for {WorkgroupId}", workgroup.Id);

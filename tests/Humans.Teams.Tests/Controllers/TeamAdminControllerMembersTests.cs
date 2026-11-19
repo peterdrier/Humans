@@ -220,6 +220,47 @@ public class TeamAdminControllerMembersTests
         controller.TempData.Should().NotContainKey("SuccessMessage");
     }
 
+    [HumansFact]
+    public async Task RejectRequest_ServiceReasonRefusal_UsesExistingLocalizedFeedback()
+    {
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        teams.RejectJoinRequestAsync(requestId, userId, null)
+            .Returns(new TeamJoinReviewResult(ErrorKey: "Teams_TeamAdmin_ProvideRejectionReason"));
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        localizer["Teams_TeamAdmin_ProvideRejectionReason"].Returns(
+            new LocalizedString("Teams_TeamAdmin_ProvideRejectionReason", "Translated reason required"));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            localizer, Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.RejectRequest(team.Slug, requestId, new ApproveRejectRequestModel());
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Members");
+        controller.TempData["ErrorMessage"].Should().Be("Translated reason required");
+        controller.TempData.Should().NotContainKey("SuccessMessage");
+        await teams.Received(1).RejectJoinRequestAsync(requestId, userId, null);
+    }
+
     [HumansTheory]
     [InlineData(true, 2000)]
     [InlineData(false, 2000)]
@@ -296,6 +337,7 @@ public class TeamAdminControllerMembersTests
     [InlineData("unassign", false)]
     [InlineData("add", false)]
     [InlineData("edit", false)]
+    [InlineData("remove", false)]
     public async Task TeamMutation_RefusalFeedbackAndDependencyFailures(string operation, bool dependencyFailure)
     {
         var actorId = Guid.NewGuid();
@@ -328,7 +370,7 @@ public class TeamAdminControllerMembersTests
         teams.EditEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<string>(), actorId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
         teams.RemoveEarlyEntryGrantAsync(team.Id, Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
-            .Returns(_ => throw failure);
+            .Returns(_ => dependencyFailure ? throw failure : new TeamEarlyEntryMutationResult("Expected refusal"));
         teams.AssignToRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
             .Returns(_ => dependencyFailure ? throw failure : new TeamRoleAssignmentMutationResult(Refusal: "Expected refusal"));
         teams.UnassignFromRoleAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
@@ -543,8 +585,61 @@ public class TeamAdminControllerMembersTests
             || string.Equals(call.GetMethodInfo().Name, nameof(ITeamManagementService.UpdateRoleDefinitionAsync), StringComparison.Ordinal));
     }
 
-    [HumansFact]
-    public async Task ProvisionEmail_ShowsCredentialRecoveryWarningForCommittedAccount()
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task EditRole_OnlyManagementPolicyAllowsSupplyingManagementChange(bool authorized, bool requested)
+    {
+        var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
+        var teams = Substitute.For<ITeamManagementService>();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
+        var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
+            false, false, false, false, Instant.MinValue, []);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
+        teams.UpdateRoleDefinitionAsync(default, default!, default, default, default!, default, default, default, default)
+            .ReturnsForAnyArgs(new TeamRoleDefinitionMutationResult());
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), TeamsPolicies.Manage)
+            .Returns(authorized ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
+        };
+        var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
+            Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
+            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.EditRole(team.Slug, roleId, new EditRoleDefinitionModel
+        {
+            Name = "Updated",
+            SlotCount = 1,
+            Priorities = ["None"],
+            IsManagement = requested,
+            EstimatedHours = 7
+        });
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        await teams.Received(1).UpdateRoleDefinitionAsync(roleId, "Updated", null, 1,
+            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : (bool?)null,
+            RolePeriod.YearRound, userId, true, 7, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProvisionEmail_PassesTeamScopeAndShowsCommittedAccountWarning(bool memberInControllerSnapshot)
     {
         var actorId = Guid.NewGuid();
         var targetId = Guid.NewGuid();
@@ -554,7 +649,9 @@ public class TeamAdminControllerMembersTests
             UserInfo.Create(new User { Id = actorId }, [], [], null));
         var team = new TeamInfo(Guid.NewGuid(), "Team", null, "team", true, false, SystemTeamType.None,
             false, false, false, false, Instant.MinValue,
-            [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]);
+            memberInControllerSnapshot
+                ? [new TeamMemberInfo(Guid.NewGuid(), targetId, "Person", null, null, TeamMemberRole.Member, Instant.MinValue)]
+                : []);
         teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         teams.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
         var authorization = Substitute.For<IAuthorizationService>();
@@ -562,7 +659,7 @@ public class TeamAdminControllerMembersTests
             .Returns(AuthorizationResult.Success());
         var provisioning = Substitute.For<IEmailProvisioningService>();
         const string warning = "Account created; ask an admin to reset the password.";
-        provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId)
+        provisioning.ProvisionNobodiesEmailAsync(targetId, "person", actorId, team.Id)
             .Returns(new EmailProvisioningResult(true, "person@nobodies.team", "personal@example.org", WarningMessage: warning));
         var http = new DefaultHttpContext
         {
@@ -580,6 +677,7 @@ public class TeamAdminControllerMembersTests
         var result = await controller.ProvisionEmail(team.Slug, targetId, "person");
 
         result.Should().BeOfType<RedirectToActionResult>();
+        await provisioning.Received(1).ProvisionNobodiesEmailAsync(targetId, "person", actorId, team.Id);
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
         await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();

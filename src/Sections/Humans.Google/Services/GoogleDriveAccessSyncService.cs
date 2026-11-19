@@ -106,7 +106,7 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             return claim with { Path = await DriveFolderPath.ResolveAsync(drivePermissions, claim.FolderId, logger, ct) };
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Could not resolve the Drive path for {FolderId}; falling back to the source's name", claim.FolderId);
             return claim;
@@ -156,7 +156,7 @@ internal sealed class GoogleDriveAccessSyncService(
         {
             diff = await ReconcileClaimAsync(claim, action, syncSource, passStart, ct);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogError(ex, "Error syncing Drive resource {GoogleId}", claim.FolderId);
             diff = BuildDiff(claim, [], ex.Message);
@@ -164,13 +164,20 @@ internal sealed class GoogleDriveAccessSyncService(
 
         if (action == SyncAction.Execute && claim.Resources.Count > 0)
         {
-            // Finish recording the completed execution even if its last mutation observed shutdown.
-            var commitCt = CancellationToken.None;
-            var ids = claim.Resources.Select(r => r.Id).ToList();
-            if (diff.ErrorMessage is not null)
-                await resourceRepository.SetErrorMessageManyAsync(ids, diff.ErrorMessage, commitCt);
-            else if (await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, commitCt) != SyncMode.None)
-                await resourceRepository.MarkSyncedManyAsync(ids, clock.GetCurrentInstant(), commitCt);
+            try
+            {
+                // Finish recording the completed execution even if its last mutation observed shutdown.
+                var commitCt = CancellationToken.None;
+                var ids = claim.Resources.Select(r => r.Id).ToList();
+                if (diff.ErrorMessage is not null)
+                    await resourceRepository.SetErrorMessageManyAsync(ids, diff.ErrorMessage, commitCt);
+                else if (await syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, commitCt) != SyncMode.None)
+                    await resourceRepository.MarkSyncedManyAsync(ids, clock.GetCurrentInstant(), commitCt);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new InvalidOperationException("Failed to record the Drive reconciliation outcome.", ex);
+            }
         }
         return diff;
     }
@@ -307,70 +314,78 @@ internal sealed class GoogleDriveAccessSyncService(
         foreach (var member in plan.Members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
         {
             ct.ThrowIfCancellationRequested();
-            var commitCt = CancellationToken.None;
-
-            if (member.State == MemberSyncState.WrongRole && plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
+            try
             {
-                // AddOnly can elevate access but cannot reduce it. Unknown roles also
-                // wait for AddAndRemove rather than assuming a change is an elevation.
-                if (mode == SyncMode.AddOnly &&
-                    !(DrivePermissionRoleMapper.Parse(member.CurrentRole) < DrivePermissionRoleMapper.Parse(member.ExpectedRole)))
+                var commitCt = CancellationToken.None;
+
+                if (member.State == MemberSyncState.WrongRole && plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
+                {
+                    // AddOnly can elevate access but cannot reduce it. Unknown roles also
+                    // wait for AddAndRemove rather than assuming a change is an elevation.
+                    if (mode == SyncMode.AddOnly &&
+                        !(DrivePermissionRoleMapper.Parse(member.CurrentRole) < DrivePermissionRoleMapper.Parse(member.ExpectedRole)))
+                        continue;
+                    if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, commitCt) is { } updateError) errors.Add(updateError);
                     continue;
-                if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, commitCt) is { } updateError) errors.Add(updateError);
-                continue;
-            }
+                }
 
-            var role = member.ExpectedRole!;
-            var retried = false;
-            async Task<DrivePermissionMutationResult> CreateAsync(string email)
-            {
-                (var created, retried) = await WithTransientRetryAsync(
-                    () => drivePermissions.CreatePermissionAsync(claim.FolderId, email, role, commitCt), r => r.Error, commitCt);
-                return created;
+                var role = member.ExpectedRole!;
+                var retried = false;
+                async Task<DrivePermissionMutationResult> CreateAsync(string email)
+                {
+                    (var created, retried) = await WithTransientRetryAsync(
+                        () => drivePermissions.CreatePermissionAsync(claim.FolderId, email, role, commitCt), r => r.Error, commitCt);
+                    return created;
+                }
+                var (result, grantedEmail) = member.UserId is { } memberUserId
+                    ? await DrivePlusAddressFallback.CreateAsync(
+                        CreateAsync, member.Email, memberUserId, plan.IdentityEmailsByEmail[member.Email], workspaceIdentities, commitCt)
+                    : (await CreateAsync(member.Email), member.Email);
+                var insteadOf = string.Equals(grantedEmail, member.Email, StringComparison.Ordinal)
+                    ? ""
+                    : $" in place of {member.Email}, which Drive refused";
+                switch (result.Outcome)
+                {
+                    // After a transient retry, AlreadyExists means the failed attempt was applied
+                    // by Google anyway; the grant is still ours to record. So is a fallback onto a
+                    // base address that already had access: the member's Drive address changed.
+                    case DrivePermissionCreateOutcome.Created:
+                    case DrivePermissionCreateOutcome.AlreadyExists when retried || insteadOf.Length > 0:
+                        await googleSyncLog.LogAsync(
+                            GoogleSyncLogAction.AccessGranted, claim.ResourceId,
+                            $"Granted Drive access ({role}) to {grantedEmail}{insteadOf} ({claim.DisplayName})",
+                            nameof(GoogleDriveAccessSyncService),
+                            grantedEmail, role, syncSource, success: true,
+                            userId: member.UserId, ct: commitCt);
+                        break;
+                    case DrivePermissionCreateOutcome.AlreadyExists:
+                        logger.LogDebug("Permission already exists for {Email} on {FolderId}", grantedEmail, claim.FolderId);
+                        break;
+                    case DrivePermissionCreateOutcome.Failed:
+                        var error = $"Google Drive add failed for {MaskEmail(member.Email)} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
+                        logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}", claim.FolderId, member.Email, error);
+                        // An internal error is usually a hiccup, so one run proves nothing; the same refusal on the
+                        // next run is how Drive turns away an address it will never accept.
+                        var rejected = result.Error is { IsDriveTargetRejection: true }
+                            || (result.Error is { IsInternalError: true } && member.UserId is { } failedUserId
+                                && await LastGrantFailedWithInternalErrorAsync(claim, member.Email, failedUserId, passStart, commitCt));
+                        var description = $"{error} ({claim.DisplayName})";
+                        await googleSyncLog.LogAsync(
+                            GoogleSyncLogAction.AccessGranted, claim.ResourceId, description,
+                            nameof(GoogleDriveAccessSyncService),
+                            member.Email, role, syncSource, success: false,
+                            errorMessage: error, userId: member.UserId, ct: commitCt);
+                        errors.Add(error);
+                        if (rejected && member.UserId is { } rejectedUserId)
+                            await workspaceIdentities.SetStatusFromSyncAsync(
+                                rejectedUserId, plan.IdentityEmailsByEmail[member.Email], GoogleEmailStatus.Rejected, commitCt);
+                        break;
+                }
             }
-            var (result, grantedEmail) = member.UserId is { } memberUserId
-                ? await DrivePlusAddressFallback.CreateAsync(
-                    CreateAsync, member.Email, memberUserId, plan.IdentityEmailsByEmail[member.Email], workspaceIdentities, commitCt)
-                : (await CreateAsync(member.Email), member.Email);
-            var insteadOf = string.Equals(grantedEmail, member.Email, StringComparison.Ordinal)
-                ? ""
-                : $" in place of {member.Email}, which Drive refused";
-            switch (result.Outcome)
+            catch (OperationCanceledException ex)
             {
-                // After a transient retry, AlreadyExists means the failed attempt was applied
-                // by Google anyway; the grant is still ours to record. So is a fallback onto a
-                // base address that already had access: the member's Drive address changed.
-                case DrivePermissionCreateOutcome.Created:
-                case DrivePermissionCreateOutcome.AlreadyExists when retried || insteadOf.Length > 0:
-                    await googleSyncLog.LogAsync(
-                        GoogleSyncLogAction.AccessGranted, claim.ResourceId,
-                        $"Granted Drive access ({role}) to {grantedEmail}{insteadOf} ({claim.DisplayName})",
-                        nameof(GoogleDriveAccessSyncService),
-                        grantedEmail, role, syncSource, success: true,
-                        userId: member.UserId, ct: commitCt);
-                    break;
-                case DrivePermissionCreateOutcome.AlreadyExists:
-                    logger.LogDebug("Permission already exists for {Email} on {FolderId}", grantedEmail, claim.FolderId);
-                    break;
-                case DrivePermissionCreateOutcome.Failed:
-                    var error = $"Google Drive add failed for {MaskEmail(member.Email)} (HTTP {result.Error?.StatusCode}): {result.Error?.RawMessage}";
-                    logger.LogWarning("Google Drive access sync failed for {FolderId} member {Email}: {Error}", claim.FolderId, member.Email, error);
-                    // An internal error is usually a hiccup, so one run proves nothing; the same refusal on the
-                    // next run is how Drive turns away an address it will never accept.
-                    var rejected = result.Error is { IsDriveTargetRejection: true }
-                        || (result.Error is { IsInternalError: true } && member.UserId is { } failedUserId
-                            && await LastGrantFailedWithInternalErrorAsync(claim, member.Email, failedUserId, passStart, commitCt));
-                    var description = $"{error} ({claim.DisplayName})";
-                    await googleSyncLog.LogAsync(
-                        GoogleSyncLogAction.AccessGranted, claim.ResourceId, description,
-                        nameof(GoogleDriveAccessSyncService),
-                        member.Email, role, syncSource, success: false,
-                        errorMessage: error, userId: member.UserId, ct: commitCt);
-                    errors.Add(error);
-                    if (rejected && member.UserId is { } rejectedUserId)
-                        await workspaceIdentities.SetStatusFromSyncAsync(
-                            rejectedUserId, plan.IdentityEmailsByEmail[member.Email], GoogleEmailStatus.Rejected, commitCt);
-                    break;
+                // This unit uses None; its cancellation is a dependency fault, not shutdown.
+                throw new InvalidOperationException("Failed to apply required Drive permissions.", ex);
             }
         }
         return errors;
@@ -439,24 +454,32 @@ internal sealed class GoogleDriveAccessSyncService(
         foreach (var member in plan.Members.Where(m => m.State is MemberSyncState.Extra or MemberSyncState.Downgrade))
         {
             ct.ThrowIfCancellationRequested();
-            var commitCt = CancellationToken.None;
-
-            if (!plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
-                continue;
-
-            if (member.ExpectedRole is not null)
+            try
             {
-                // A downgrade, or a mixed permission whose direct elevation is extra: lower
-                // it to the expected role and do not claim all access was removed.
-                if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, commitCt) is { } error) errors.Add(error);
-                continue;
-            }
+                var commitCt = CancellationToken.None;
 
-            // Telling someone their access was removed when the delete failed (or the
-            // permission turned out to be inherited and untouchable) is a false notice.
-            var deletion = await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, syncSource, commitCt);
-            if (deletion.Error is not null) errors.Add(deletion.Error);
-            if (deletion.Deleted) await NotifyRemovalAsync(member.Email, claim, commitCt);
+                if (!plan.PermissionIdByEmail.TryGetValue(member.Email, out var permissionId))
+                    continue;
+
+                if (member.ExpectedRole is not null)
+                {
+                    // A downgrade, or a mixed permission whose direct elevation is extra: lower
+                    // it to the expected role and do not claim all access was removed.
+                    if (await UpdateAndLogAsync(claim, member, permissionId, syncSource, commitCt) is { } error) errors.Add(error);
+                    continue;
+                }
+
+                // Telling someone their access was removed when the delete failed (or the
+                // permission turned out to be inherited and untouchable) is a false notice.
+                var deletion = await DeleteAndLogAsync(claim, member.Email, member.UserId, permissionId, syncSource, commitCt);
+                if (deletion.Error is not null) errors.Add(deletion.Error);
+                if (deletion.Deleted) await NotifyRemovalAsync(member.Email, claim, commitCt);
+            }
+            catch (OperationCanceledException ex)
+            {
+                // This unit uses None; its cancellation is a dependency fault, not shutdown.
+                throw new InvalidOperationException("Failed to remove excess Drive permissions.", ex);
+            }
         }
         return errors;
     }

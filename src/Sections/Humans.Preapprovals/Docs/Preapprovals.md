@@ -121,6 +121,7 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Invariants
 
+- Member application notes are optional and limited to 2,000 characters. A supplied requested amount must be between 0.01 and 1,000,000. Validation feedback uses the shared `Validation_MaxLength` and `Validation_Range` resources in the current supported UI culture.
 - Status follows: `Applied → Open | Declined`; `Open → Claimed | Revoked`; `Claimed → Open`
   (withdraw before approval) `| Consumed | Revoked`. Consumed, Declined and Revoked are
   terminal. Every move is a person's action or Expenses' on their behalf; nothing runs on a
@@ -203,7 +204,11 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Nightly `preapprovals-reminders` (05:00): 14-day and 3-day reminders to Open holders,
   once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. A failed
   notification or email leaves no sent marker; the pass finishes the other grants, then fails
-  so Hangfire retries.
+  so Hangfire retries. A shutdown checkpoint precedes each grant: cancellation rolls back the
+  active reminder transaction and stops later grants, keeping earlier failures in an aggregate
+  with the cancellation; with no earlier failure it propagates with a stack-free Warning.
+  Delivery and marker writes keep the job token inside their transaction; the post-commit audit
+  keeps its own boundary.
 - GDPR: export slices `Preapprovals` (own grants, always a list) and `PreapprovalDecisions`
   (created, managed, decided; null when empty), across every id the person has held. Erasure
   deletes Applied and manager rows and keeps every decided grant (Art. 17(3)(b), fiscal
@@ -245,11 +250,11 @@ The scoped internal `PreapprovalNotices` owns recipient resolution, localized de
 
 A `Contracts/` folder in the section (no leaf project: nothing Preapprovals references reaches Expenses, so no cycle asks for one). Expenses is the only consumer.
 
-| Interface | Methods | Notes |
-|---|---:|---|
-| `IPreapprovalService` (public) | 1 | `GetGrantsAsync`: every grant, any state, with its holder, its program's managers and whether it can be claimed today. Expenses picks a member's or a manager's grants itself. |
-| `IPreapprovalWrite` (public) | 3 | The three Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with the grant as booked on a successful claim). Each takes a required `afterCommit` list for its audit and notices. An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
-| `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | all the rest | Administration, issuing, applying, approving, declining, revoking. |
+| Interface | Notes |
+|---|---|
+| `IPreapprovalService` (public) | `GetGrantsAsync`: every grant, any state, with its holder, its program's managers and whether it can be claimed today. Expenses picks a member's or a manager's grants itself. |
+| `IPreapprovalWrite` (public) | The Expenses transitions `ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` (returning `PreapprovalWriteResult`, with the grant as booked on a successful claim). Each takes a required `afterCommit` list for its audit and notices. An interface rather than a view component because each must run inside the `TransactionScope` Expenses opens around its own status change. |
+| `IPreapprovalManagement : IPreapprovalService, IPreapprovalWrite` (internal) | Administration, issuing, applying, approving, declining, revoking. |
 
 `GrantOption`, `PreapprovalWriteResult` and `GrantStatus` are the public types beside them.
 

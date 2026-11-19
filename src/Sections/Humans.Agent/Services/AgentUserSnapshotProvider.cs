@@ -30,11 +30,9 @@ internal sealed class AgentUserSnapshotProvider(
         if (user is not null)
             userId = user.Id; // roles, teams, consents and tickets are keyed by the live id
         var activeRoles = await roles.GetActiveForUserAsync(userId, cancellationToken);
-        var teamMemberships = (await teams.GetTeamsAsync(cancellationToken)).Values
-            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+        var teamMemberships = (await teams.GetUserTeamMembershipsAsync(userId, cancellationToken))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
             .ToList();
         var pendingDocs = await consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
         var ticketHoldings = await tickets.GetUserTicketHoldingsAsync(userId, cancellationToken);

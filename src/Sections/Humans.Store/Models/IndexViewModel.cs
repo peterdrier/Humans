@@ -16,6 +16,8 @@ internal sealed class IndexViewModel
         new Dictionary<Guid, bool>();
 }
 
+internal sealed record StripeRefundLink(string PaymentIntentId, decimal AmountEur, string DashboardUrl);
+
 internal sealed class OrderViewModel
 {
     public OrderDto Order { get; init; } = null!;
@@ -29,7 +31,7 @@ internal sealed class OrderViewModel
 
     public bool CanRecordPayment { get; init; }
 
-    public bool CanRefund { get; init; }
+    public bool CanRecordFinancePayment { get; init; }
 
     public bool CanDeletePayment { get; init; }
 
@@ -44,19 +46,22 @@ internal sealed class OrderViewModel
 
     public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
 
+    /// <summary>The order's paid Stripe payments, each with its dashboard page; filled only for refund-capable viewers.</summary>
+    public IReadOnlyList<StripeRefundLink> StripeRefundLinks { get; set; } = [];
+
     public static OrderViewModel FromPageData(
         OrderPageData pageData,
         bool canDelete,
         bool canIssueInvoice,
         bool canRecordPayment,
-        bool canRefund,
+        bool canRecordFinancePayment,
         bool canDeletePayment,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
         {
             CanIssueInvoice = canIssueInvoice,
             CanRecordPayment = canRecordPayment,
-            CanRefund = canRefund,
+            CanRecordFinancePayment = canRecordFinancePayment,
             CanDeletePayment = canDeletePayment,
             Order = pageData.Order,
             Catalog = catalog,

@@ -204,6 +204,11 @@ public sealed record UserInfo(
     /// <summary>The population person search and the single-person lookups resolve.</summary>
     public bool IsSearchable => Profile is not null && !IsRejected;
 
+    /// <summary>Full profile page, birthday calendar and map; popovers and search retain their own visibility.</summary>
+    public bool IsProfileBrowsable => Profile is not null && !IsSuspended;
+
+    public bool NeedsProfileSetup => Profile is null || IsStub;
+
     public bool HasProfile => Profile is not null;
 
     /// <summary>

@@ -18,5 +18,6 @@ internal interface IAuditLogReader : IApplicationService
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default);
 }

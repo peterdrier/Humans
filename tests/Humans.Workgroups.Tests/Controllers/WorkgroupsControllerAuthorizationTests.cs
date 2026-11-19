@@ -562,6 +562,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         (await controller.DeclineMember(workgroup.Slug, requester, Ct)).Should().BeOfType<ForbidResult>();
         (await controller.AddMember(workgroup.Slug, SeedUser(), Ct)).Should().BeOfType<ForbidResult>();
         (await OpenContext().Members.SingleAsync(m => m.UserId == requester, Ct)).IsPending.Should().BeTrue();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]

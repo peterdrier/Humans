@@ -22,6 +22,11 @@ internal sealed class SyncLegalDocumentsJob(
 
             metrics.RecordJobRun("sync_legal_documents", "success");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Legal document sync cancelled during shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             metrics.RecordJobRun("sync_legal_documents", "failure");

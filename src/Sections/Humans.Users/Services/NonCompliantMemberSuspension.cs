@@ -46,8 +46,20 @@ internal sealed class NonCompliantMemberSuspension(
         var usersById = await userService
             .GetUserInfosAsync(usersToSuspend, cancellationToken);
 
-        var suspendedIds = await userService
-            .SuspendProfilesForMissingConsentAsync(usersToSuspend, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlySet<Guid> suspendedIds;
+        try
+        {
+            // The bulk write excludes these users from the next sweep, so finish its
+            // audits and notices independently of shutdown once the write starts.
+            suspendedIds = await userService
+                .SuspendProfilesForMissingConsentAsync(usersToSuspend, CancellationToken.None);
+        }
+        catch (OperationCanceledException ex)
+        {
+            // This detached dependency failed independently of the job's shutdown token.
+            throw new InvalidOperationException("Failed to persist consent-expiry suspensions.", ex);
+        }
 
         if (suspendedIds.Count == 0)
         {
@@ -85,7 +97,7 @@ internal sealed class NonCompliantMemberSuspension(
                         user.BurnerName,
                         NoticeResources.GetString("Users_Notification_ConsentSuspensionReason", culture)!,
                         culture.Name),
-                        cancellationToken);
+                        CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -105,7 +117,7 @@ internal sealed class NonCompliantMemberSuspension(
                     body: NoticeResources.GetString("Users_AccountStatus_ConsentSuspendedBody", culture)!,
                     actionUrl: "/Consent",
                     actionLabel: NoticeResources.GetString("Users_AccountStatus_ReviewConsents", culture)!,
-                    cancellationToken: cancellationToken);
+                    cancellationToken: CancellationToken.None);
             }
             catch (Exception ex)
             {

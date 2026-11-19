@@ -32,6 +32,11 @@ public class DriveActivityMonitorJob(
 
             metrics.RecordJobRun("drive_activity_monitor", "success");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Drive activity monitor interrupted by shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             metrics.RecordJobRun("drive_activity_monitor", "failure");

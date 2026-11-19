@@ -41,11 +41,11 @@ public class GuideFilterTests
         GuideFilter.Apply(GuideTestRoles.Segmenter.Segment(markdown), context);
 
     private static GuideRoleContext Roles(bool isCoord, params string[] systemRoles) =>
-        new(IsAuthenticated: true, IsTeamCoordinator: isCoord, IsCampLead: false,
+        new(IsTeamCoordinator: isCoord, IsCampLead: false,
             SystemRoles: new HashSet<string>(systemRoles, StringComparer.Ordinal));
 
     private static GuideRoleContext CampLeadOnly() =>
-        new(IsAuthenticated: true, IsTeamCoordinator: false, IsCampLead: true,
+        new(IsTeamCoordinator: false, IsCampLead: true,
             SystemRoles: new HashSet<string>(StringComparer.Ordinal));
 
     [HumansFact]
@@ -145,16 +145,6 @@ public class GuideFilterTests
         result.Should().Contain("V-body");
         result.Should().NotContain("C-body");
         result.Should().NotContain("BA-body");
-    }
-
-    [HumansFact]
-    public void Apply_Admin_SeesEverything()
-    {
-        var result = Apply(Sample, Roles(isCoord: false, RoleNames.Admin));
-
-        result.Should().Contain("Volunteer content.");
-        result.Should().Contain("Coord content.");
-        result.Should().Contain("Teams admin content.");
     }
 
     [HumansFact]

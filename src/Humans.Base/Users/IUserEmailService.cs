@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Base.Attributes;
 
 namespace Humans.Users.Contracts;
 
@@ -20,13 +21,16 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns the verification token and whether the address belongs to another account (verifying then opens a
-    /// merge request), or an ErrorKey. A refusal creates no row and no token.
+    /// Adds a pending address, audits it and queues its verification email. Returns the token and conflict
+    /// status, or an ErrorKey. A refusal creates no row, token, audit or email. After insertion,
+    /// audit and queueing finish independently of request cancellation; dependency failures propagate.
     /// </summary>
+    [ExternalWrite]
     Task<AddEmailResult> AddEmailAsync(
         Guid userId,
         string email,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? actorUserId = null);
 
     /// <summary>
     /// <paramref name="emailId"/> is the pending row the link was issued for: the token is bound to it, which
@@ -55,14 +59,16 @@ public interface IUserEmailService
     Task<UpdateEmailResult> SetPrimaryAsync(
         Guid userId,
         Guid emailId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? actorUserId = null);
 
     /// <summary>Refuses a missing row.</summary>
     Task<UpdateEmailResult> SetVisibilityAsync(
         Guid userId,
         Guid emailId,
         ContactFieldVisibility? visibility,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? actorUserId = null);
 
     /// <summary>
     /// Provider-attached rows must go through <see cref="UnlinkAsync"/>. Also refuses the primary row, the last
@@ -72,16 +78,19 @@ public interface IUserEmailService
     Task<DeleteEmailResult> DeleteEmailAsync(
         Guid userId,
         Guid emailId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? actorUserId = null);
 
     /// <summary>
     /// No verification flow. A @nobodies.team address becomes the notification target. An existing address returns Added=false without an error;
-    /// expected refusals return ErrorKey without adding an address.
+    /// expected refusals return ErrorKey without adding an address. An explicit actor records a row-level audit;
+    /// transactional provisioning callers retain their enclosing workflow's post-commit audit.
     /// </summary>
     Task<UserEmailAddResult> AddVerifiedEmailAsync(
         Guid userId,
         string email,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? actorUserId = null);
 
     /// <summary>
     /// For freshly provisioned accounts, so the row goes through the same primary invariant and cache invalidation
@@ -147,18 +156,21 @@ public interface IUserEmailService
     Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
 
     /// <summary>False if the row no longer exists.</summary>
-    Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default);
+    Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default, Guid? actorUserId = null);
 
     /// <summary>
-    /// Removes the login row and the email row of a provider-attached address. Refuses when it would leave
+    /// Removes a provider login and its matching email row, if present. Pass a null email id and the
+    /// provider/key to resolve a login, including one without an email row. Refuses when it would leave
     /// <paramref name="userId"/> (the target, not <paramref name="actorUserId"/>) with no verified email: magic
     /// link needs one too, so that would be a full lockout.
     /// </summary>
     Task<UnlinkEmailResult> UnlinkAsync(
         Guid userId,
-        Guid userEmailId,
+        Guid? userEmailId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? provider = null,
+        string? providerKey = null);
 
     /// <summary>
     /// The one OAuth-callback path that mutates email rows, after the login row points at <paramref name="userId"/>.

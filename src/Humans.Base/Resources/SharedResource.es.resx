@@ -661,9 +661,6 @@
   <data name="Profile_MembershipTier" xml:space="preserve">
     <value>Categoría de membresía</value>
   </data>
-  <data name="Profile_MotivationRequired" xml:space="preserve">
-    <value>Se requiere una declaración de motivación para las solicitudes de Colaborador y Asociado.</value>
-  </data>
   <data name="ProfileEdit_TierDescription" xml:space="preserve">
     <value>Elige cómo quieres participar:</value>
   </data>
@@ -675,27 +672,6 @@
   </data>
   <data name="ProfileEdit_TierAsociadoSubtitle" xml:space="preserve">
     <value>miembro con voto</value>
-  </data>
-  <data name="Application_AsociadoQuestionsHeader" xml:space="preserve">
-    <value>Preguntas adicionales para solicitantes de Asociado</value>
-  </data>
-  <data name="Application_SignificantContribution" xml:space="preserve">
-    <value>¿Cuál ha sido tu contribución más significativa a Elsewhere?</value>
-  </data>
-  <data name="Application_SignificantContributionPlaceholder" xml:space="preserve">
-    <value>Si no se te ocurre ninguna, pero has contribuido significativamente a otro Burn, cuéntanos sobre eso.</value>
-  </data>
-  <data name="Application_SignificantContributionRequired" xml:space="preserve">
-    <value>Por favor describe tu contribución más significativa para una solicitud de Asociado.</value>
-  </data>
-  <data name="Application_RoleUnderstanding" xml:space="preserve">
-    <value>En tus propias palabras, ¿qué entiendes que es el rol de un asociado y por qué quieres esa responsabilidad?</value>
-  </data>
-  <data name="Application_RoleUnderstandingPlaceholder" xml:space="preserve">
-    <value>Cuéntanos qué significa este rol para ti y por qué estás preparado/a.</value>
-  </data>
-  <data name="Application_RoleUnderstandingRequired" xml:space="preserve">
-    <value>Por favor describe tu comprensión del rol de asociado.</value>
   </data>
   <data name="Profile_Updated" xml:space="preserve">
     <value>Perfil actualizado correctamente.</value>
@@ -726,27 +702,6 @@
   </data>
   <data name="Admin_StatsPending" xml:space="preserve">
     <value>Pendientes</value>
-  </data>
-  <data name="Application_AlreadyPending" xml:space="preserve">
-    <value>Ya tiene una solicitud pendiente.</value>
-  </data>
-  <data name="Application_InvalidTier" xml:space="preserve">
-    <value>Seleccione Colaborador o Asociado para su solicitud.</value>
-  </data>
-  <data name="Application_ConfirmAccuracy" xml:space="preserve">
-    <value>Debe confirmar la veracidad de su información.</value>
-  </data>
-  <data name="Application_Submitted" xml:space="preserve">
-    <value>¡Su solicitud ha sido enviada correctamente!</value>
-  </data>
-  <data name="Application_SubmitError" xml:space="preserve">
-    <value>Algo salió mal al enviar su solicitud. Por favor, inténtelo de nuevo.</value>
-  </data>
-  <data name="Application_CannotWithdraw" xml:space="preserve">
-    <value>Esta solicitud no puede ser retirada.</value>
-  </data>
-  <data name="Application_Withdrawn" xml:space="preserve">
-    <value>Su solicitud ha sido retirada.</value>
   </data>
   <data name="Teams_Title" xml:space="preserve">
     <value>Equipos</value>
@@ -1579,10 +1534,6 @@
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Responsables de campamento</value></data>
-  <data name="Application_MotivationLength" xml:space="preserve"><value>La motivación debe tener entre 50 y 2000 caracteres.</value></data>
-  <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>La información adicional no debe superar los 1000 caracteres.</value></data>
-  <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribución significativa no debe superar los 2000 caracteres.</value></data>
-  <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La explicación del rol no debe superar los 2000 caracteres.</value></data>
   <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>¿Algo de tu salud que deban saber los coordinadores?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Opcional. Solo lo veis tú y los No-Info Admins.</value></data>
