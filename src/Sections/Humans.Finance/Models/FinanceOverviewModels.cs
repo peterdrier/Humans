@@ -42,8 +42,11 @@ internal sealed record FinanceAccountLineVm(
     public decimal? Difference => Source?.Balance is { } b ? b - Amount : null;
 }
 
-/// <summary>The provider's own balance, null when unknown, and the Finance action that reconciles the two.</summary>
-internal sealed record FinanceAccountSourceVm(decimal? Balance, string ReconcileAction);
+/// <summary>The provider's own balance from its mirror and the page that reconciles the two. <see cref="Balance"/> is
+/// null when unknown, and <see cref="Unknown"/> then says why. <see cref="Pending"/> is the part of the balance not
+/// available yet, where the provider reports one; <see cref="ReadAt"/> is when the mirror read it.</summary>
+internal sealed record FinanceAccountSourceVm(
+    decimal? Balance, string ReconcileUrl, string? Unknown = null, Instant? ReadAt = null, decimal? Pending = null);
 
 /// <summary>Bank lines of the last <see cref="Services.SepaBankBooking.FeedWindowDays"/> days that Holded has not fully
 /// reconciled, as of <see cref="SyncedAt"/>. Both null when the feed has never been mirrored.</summary>

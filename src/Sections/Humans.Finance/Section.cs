@@ -53,6 +53,8 @@ public sealed class Section :
                     opts.CreditorIban = flat;
             });
 
+        services.Configure<FinanceStripeOptions>(configuration.GetSection("Finance"));
+
         services.AddScoped<IHoldedRepository, Repository>();
         // Sweep failure counts must outlive scoped requests and jobs.
         services.AddSingleton(sp => new TrackedCache<string, Dictionary<string, int>>(
@@ -118,6 +120,9 @@ public sealed class Section :
             importance: ConfigurationImportance.Recommended);
         configuration.GetOptionalSetting(registry, "Sepa:TreasuryLedgerAccount", "SEPA",
             importance: ConfigurationImportance.Recommended);
+
+        foreach (var link in configuration.GetSection("Finance:StripeLedgerAccounts").GetChildren())
+            configuration.GetOptionalSetting(registry, link.Path, "Finance (Stripe gateways)");
 
         // Wins over the Sepa:CreditorIban appsetting.
         registry.RegisterEnvironmentVariable("SEPA_CREDITOR_IBAN", "SEPA", isSensitive: true);

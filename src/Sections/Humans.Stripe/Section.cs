@@ -40,6 +40,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<IStripeMirrorRepository, Repository>();
         services.AddScoped<StripeMirrorService>();
         services.AddScoped<IStripeMirrorAdminService>(sp => sp.GetRequiredService<StripeMirrorService>());
+        services.AddScoped<IStripeMirrorService>(sp => sp.GetRequiredService<StripeMirrorService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<StripeMirrorService>());
         services.AddScoped<StripeMirrorSyncJob>();
     }
