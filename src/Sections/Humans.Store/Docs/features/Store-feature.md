@@ -19,7 +19,7 @@ The Store section lets Camp Leads order infrastructure-as-a-service items from t
 
 This is fundamentally **camp data** with provenance recording (per `memory/architecture/provenance-fks-not-user-scoped.md`): order lines, payments, and invoices belong to the `CampSeason`, not to the lead who clicked the button. The `AddedByUserId` / `RecordedByUserId` / `IssuedByUserId` columns are audit/provenance only — deleting a user does not delete the order data.
 
-Refunds, payouts and chargebacks remain Stripe-dashboard-manual (`memory/architecture/stripe-money-out.md`, nobodies-collective/Humans#1254). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment by a Store admin, and a refund issued in Stripe is read back and recorded as a negative `Refund` payment when a FinanceAdmin presses "Check for refunds" on the order (the order page links each Stripe payment to its dashboard page).
+Refunds, payouts and chargebacks remain Stripe-dashboard-manual (`memory/architecture/stripe-money-out.md`, nobodies-collective/Humans#1254). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment by a Store admin, and a refund issued in Stripe is read back and recorded as a negative `Refund` payment when a FinanceAdmin presses "Check Stripe for refunds" on the order (each paid Stripe payment row has a "Refund in Stripe" button to its dashboard page).
 
 The section invariant doc is [`Store.md`](../Store.md).
 

@@ -8,6 +8,7 @@ using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
+using NodaTime.Text;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
@@ -139,7 +140,7 @@ internal sealed class Service(
             Year = season.Year
         };
         return await SaveNewOrderAsync(order, actorUserId,
-            $"Created store order for camp season {campSeasonId}", ct);
+            "Created store order", ct);
     }
 
     public Task<AdminMutationResult> DeleteOrderAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
@@ -237,7 +238,7 @@ internal sealed class Service(
             StoreAuditActions.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,
             $"Added {qty} × '{product.Name}' at EUR {product.UnitPriceEur:0.00} + {product.VatRatePercent:0.##}% VAT"
                 + (product.DepositAmountEur is { } deposit ? $" + EUR {deposit:0.00} deposit" : string.Empty)
-                + (deadlinePassed ? $" (past order deadline {product.OrderableUntil})" : string.Empty),
+                + (deadlinePassed ? $" (past order deadline {LocalDatePattern.Iso.Format(product.OrderableUntil)})" : string.Empty),
             actorUserId, order.Id, AuditEntityTypes.Order);
 
         return MutationResult.Success;
@@ -262,7 +263,7 @@ internal sealed class Service(
         await audit.LogAsync(
             StoreAuditActions.StoreLineRemoved, AuditEntityTypes.OrderLine, lineId,
             $"Removed {ctx.Qty} × '{ctx.ProductName}' (added at EUR {ctx.UnitPriceSnapshot:0.00})"
-                + (deadlinePassed ? $" (past order deadline {ctx.ProductOrderableUntil})" : string.Empty),
+                + (deadlinePassed ? $" (past order deadline {LocalDatePattern.Iso.Format(ctx.ProductOrderableUntil)})" : string.Empty),
             actorUserId, ctx.OrderId, AuditEntityTypes.Order);
         return MutationResult.Success;
     }
@@ -290,7 +291,7 @@ internal sealed class Service(
         await repo.UpdateOrderAsync(order, ct);
         await audit.LogAsync(
             StoreAuditActions.StoreCounterpartyEdited, AuditEntityTypes.Order, orderId,
-            $"Updated counterparty on order {orderId}",
+            "Updated counterparty",
             actorUserId);
         return MutationResult.Success;
     }

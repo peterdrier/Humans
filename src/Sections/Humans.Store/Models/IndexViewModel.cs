@@ -16,8 +16,6 @@ internal sealed class IndexViewModel
         new Dictionary<Guid, bool>();
 }
 
-internal sealed record StripeRefundLink(string PaymentIntentId, decimal AmountEur, string DashboardUrl);
-
 internal sealed class OrderViewModel
 {
     public OrderDto Order { get; init; } = null!;
@@ -44,10 +42,12 @@ internal sealed class OrderViewModel
 
     public decimal BalanceBoxAmountEur => Math.Abs(Order.BalanceEur);
 
+    public decimal OrderTotalEur => Order.LinesSubtotalEur + Order.VatTotalEur + Order.DepositTotalEur;
+
     public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
 
-    /// <summary>The order's paid Stripe payments, each with its dashboard page; filled only for refund-capable viewers.</summary>
-    public IReadOnlyList<StripeRefundLink> StripeRefundLinks { get; set; } = [];
+    /// <summary>Stripe dashboard page per paid Stripe payment id; filled only for refund-capable viewers.</summary>
+    public IReadOnlyDictionary<Guid, string> StripeRefundUrls { get; set; } = new Dictionary<Guid, string>();
 
     public static OrderViewModel FromPageData(
         OrderPageData pageData,
