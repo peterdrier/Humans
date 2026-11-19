@@ -629,7 +629,7 @@ public class AgentToolDispatcherTests
             LastLimit = count;
             return Task.FromResult(Events);
         }
-        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<string>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<string>? actions, int limit, bool includeRelated = false, CancellationToken ct = default) => Task.FromResult(Events);
     }
 
 }

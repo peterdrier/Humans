@@ -24,6 +24,7 @@ internal interface IAuditLogRepository : IRepository
 
     /// <summary>
     /// A non-empty <paramref name="userIds"/> matches the actor, the related entity or a User entity.
+    /// <paramref name="includeRelated"/> lets <paramref name="entityId"/> match the related entity too.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
         string? entityType,
@@ -31,6 +32,7 @@ internal interface IAuditLogRepository : IRepository
         IReadOnlyCollection<Guid>? userIds,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default);
 
     /// <summary>Actor, entity or related entity; newest first. For the GDPR export.</summary>

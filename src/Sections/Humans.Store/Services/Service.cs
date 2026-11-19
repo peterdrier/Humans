@@ -219,7 +219,8 @@ internal sealed class Service(
 
         await audit.LogAsync(
             StoreAuditActions.StoreLineAdded, AuditEntityTypes.OrderLine, line.Id,
-            $"Added {qty} × '{product.Name}' to order {order.Id}"
+            $"Added {qty} × '{product.Name}' at EUR {product.UnitPriceEur:0.00} + {product.VatRatePercent:0.##}% VAT"
+                + (product.DepositAmountEur is { } deposit ? $" + EUR {deposit:0.00} deposit" : string.Empty)
                 + (deadlinePassed ? $" (past order deadline {product.OrderableUntil})" : string.Empty),
             actorUserId, order.Id, AuditEntityTypes.Order);
 
@@ -244,7 +245,7 @@ internal sealed class Service(
         await repo.RemoveLineAsync(lineId, ct);
         await audit.LogAsync(
             StoreAuditActions.StoreLineRemoved, AuditEntityTypes.OrderLine, lineId,
-            $"Removed line {lineId} from order {ctx.OrderId}"
+            $"Removed {ctx.Qty} × '{ctx.ProductName}' (added at EUR {ctx.UnitPriceSnapshot:0.00})"
                 + (deadlinePassed ? $" (past order deadline {ctx.ProductOrderableUntil})" : string.Empty),
             actorUserId, ctx.OrderId, AuditEntityTypes.Order);
         return MutationResult.Success;
