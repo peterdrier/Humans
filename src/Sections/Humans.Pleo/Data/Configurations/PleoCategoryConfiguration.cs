@@ -17,7 +17,7 @@ internal sealed class PleoCategoryConfiguration : IEntityTypeConfiguration<PleoC
         b.Property(x => x.PleoCategoryId).HasMaxLength(64);
         b.HasIndex(x => x.PleoCategoryId).IsUnique();
 
-        // Pleo → Settings → Accounting → Categories, group "Holded Accounts", 3 Nov 2026. Ids are linked by hand.
+        // Pleo → Settings → Accounting → Categories, group "Holded Accounts", 3 Nov 2026. Seeded unlinked.
         b.HasData(
             Seed("f2fe14a1-c8b7-43ea-b6eb-dfb73da28541", "Dept - La Cantina", "62900114"),
             Seed("ec1e51be-d96b-453f-8318-c79371282045", "Dept - Power", "62900117"),
