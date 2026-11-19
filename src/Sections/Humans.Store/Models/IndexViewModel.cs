@@ -42,8 +42,6 @@ internal sealed class OrderViewModel
 
     public decimal BalanceBoxAmountEur => Math.Abs(Order.BalanceEur);
 
-    public decimal OrderTotalEur => Order.LinesSubtotalEur + Order.VatTotalEur + Order.DepositTotalEur;
-
     public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
 
     /// <summary>Stripe dashboard page per paid Stripe payment id; filled only for refund-capable viewers.</summary>

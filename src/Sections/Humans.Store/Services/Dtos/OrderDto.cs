@@ -29,6 +29,9 @@ internal sealed record OrderDto(
 {
     public bool HasCheckoutAttempt { get; init; }
 
+    /// <summary>What the order costs: lines, VAT and deposits, as the balance computes it.</summary>
+    public decimal TotalDueEur { get; init; }
+
     /// <summary>The state half of <c>DeleteOrderAsync</c>'s guard; authorization is separate.</summary>
     public bool IsDeletable => State == OrderState.Open && Payments.Count == 0 && BalanceEur == 0m && !HasCheckoutAttempt;
 

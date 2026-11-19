@@ -53,7 +53,7 @@ public class StorePricesViewTests
         var order = new OrderDto(Guid.NewGuid(), Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
             OrderState.Open, null, null, null, null, null, null, [],
             [PaymentDto(130m, PaymentMethod.BankTransfer), PaymentDto(20m, PaymentMethod.DepositReturn), PaymentDto(-30m, PaymentMethod.Refund)],
-            100m, 21m, 20m, 120m, 21m, now);
+            100m, 21m, 20m, 120m, 21m, now) { TotalDueEur = 141m };
 
         var html = await RenderAsync("Order", new OrderViewModel { Order = order });
 
