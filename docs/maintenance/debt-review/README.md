@@ -127,6 +127,9 @@ Push, then reply in every thread with its verdict and the sha, react, resolve (m
 
 One PR comment, starting `## Debt review`:
 
+- right under the heading, a link back to this run so Peter can find it later: the session
+  (`https://claude.ai/code/<session id>`, the `Claude-Session` value) and, when the run is a
+  project thread, that thread's link. Every later round's comment carries the same line.
 - the commit verdict table (all commits, one row each)
 - the live production reading for each retired data migration, fetched this run
 - the /fix triage table

@@ -47,6 +47,14 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
   2000 characters) and saves that even when the request was cancelled; the original exception
   still propagates and the gate is released. A sync its caller cancelled logs a warning without a
   stack; any other failure logs an error.
+- Ledger, purchase-document and contact startup saves are inside their failure guards. Vendor reads and atomic
+  mirror replacements retain cancellation, with checkpoints before replacements and reconciliation phases.
+  After a completed mirror phase, its outcome save and consumed call-log records finish independently of
+  cancellation. This includes chart upserts, bank feeds and targeted ledger pulls. Cancellation from detached
+  outcome or call-log persistence is a genuine failure with the original exception as its cause.
+- Ledger reconciliation remains cancellable after its initial window commits: completed window updates stay
+  cached, the interrupted run records `Error`, and its last-success timestamp does not advance. It does not
+  claim that the entire mirror stayed unchanged or that reconciliation completed.
 
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)
 
@@ -248,7 +256,7 @@ it wrote.
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, `SyncContactsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. A failed document or contact pull still lets the ledger sweep run, then fails the job.
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, `SyncContactsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. Ordinary phase failures still allow later phases to run. A single failure propagates unchanged; multiple phase failures are reported together. Shutdown checkpoints precede each phase. Requested cancellation stops later attempts and propagates with a stack-free Warning when no earlier phase failed; otherwise the aggregate retains every earlier failure and the cancellation.
 - `HoldedMirrorCatchUp` (hosted service): at boot, with an API key and a purchase-document or contact mirror that has never synced (a fresh deployment), enqueues one `HoldedSyncJob` instead of leaving Finance's actuals empty until 03:00. Catch-up read or enqueue failures log a warning and let the app boot; scheduled and manual sync remain available. Requested startup cancellation propagates.
 - `/Holded` buttons: `SyncNow` (the admin service's `SyncNowAsync`: purchase docs, contacts, then incremental ledger + reconcile; each runs whatever the others did, and a failure names which), `FullSync` (ledger), `RefreshUsage` (one GET /usage into the `Usage` state row; a failure keeps the last reading and marks it).
 - Finance's `POST /Finance/HoldedSync/Run` ("Sync Now" on its unmatched queue) calls `SyncPurchaseDocumentsAsync`.

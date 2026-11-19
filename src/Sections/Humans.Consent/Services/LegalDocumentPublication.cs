@@ -189,6 +189,7 @@ internal sealed class LegalDocumentPublication(
             "Synced document {Name} version {Version} (SHA: {Sha}, languages: {Languages})",
             document.Name, versionNumber, commitSha, languages);
 
+        // Publication committed; finish its notices before observing shutdown at the next document.
         if (isNew && document.IsRequired)
         {
             await TryFanoutAsync(
@@ -196,7 +197,7 @@ internal sealed class LegalDocumentPublication(
                 ConsentNotificationSources.LegalDocumentPublished,
                 "Consent_Notification_Published",
                 "Consent_Notification_PublishedBody",
-                cancellationToken);
+                CancellationToken.None);
         }
 
         if (newVersion.RequiresReConsent && document.IsRequired)
@@ -206,7 +207,7 @@ internal sealed class LegalDocumentPublication(
                 ConsentNotificationSources.ReConsentRequired,
                 "Consent_Notification_ReConsentRequired",
                 "Consent_Notification_ReConsentRequiredBody",
-                cancellationToken);
+                CancellationToken.None);
         }
 
         return $"Synced {versionNumber} with {content.Count} language(s): {languages}";

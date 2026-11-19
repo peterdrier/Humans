@@ -238,14 +238,12 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>El archivo es demasiado grande. El tamaño máximo es de {0} MB.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>El nombre del archivo debe tener {0} caracteres como máximo.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Tipo de archivo no compatible. Sube un archivo PDF, JPEG, PNG o HEIC.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Solo quien presenta el informe puede enviarlo.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>El informe debe tener al menos una línea.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Las líneas de recibo y factura deben tener un archivo adjunto antes de enviar el informe.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La persona que presenta el informe debe tener un IBAN en su perfil.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La persona que presenta el informe debe tener nombre y apellidos en su perfil.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>No se pudo enviar el informe. Es posible que ya no sea un borrador.</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Solo quien presenta el informe puede retirarlo.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Solo quien presenta el informe puede editarlo.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Este informe no se puede editar cuando está en estado {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Informe de gastos</value></data>
   <data name="Expenses_Withdraw" xml:space="preserve"><value>Retirar</value></data>

@@ -129,7 +129,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - Campaign notice titles fit the 200-Unicode-character notification limit; an oversized title is shortened with an ellipsis and retained in full before the body text.
 - When a campaign wave is sent (`SendWaveAsync`), emails are queued to the outbox via `IEmailService.SendAsync(CampaignsEmails.CampaignCode(...))` for each eligible human, and a `CampaignReceived` in-app notification is dispatched (best-effort) to every recipient who actually received a grant. Copy is rendered from Campaigns resources in each recipient’s supported preferred language (English fallback), grouped by language with isolated dispatch failures. The notice links to My Codes in `/Profile/Me`, where the persisted grant is available even if email enqueue failed; it never promises email delivery. Campaigns sends full copy to Notifications, which bounds stored preview titles to 200 Unicode characters and preserves oversized titles in the body.
 - Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestAccountController.CanUpdatePreference` would refuse the change regardless.
-- When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignWrite.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
+- `TicketSyncService` passes the complete order-code snapshot to `ICampaignWrite.MarkGrantsRedeemedAsync`. Existing redeemed grants count toward each code's purchase count, so repeated snapshots never consume additional grants. Timestamp matches are consumed first so newly arrived purchases keep their own dates even when the snapshot order changes; identical timestamps retain their multiplicity. Remaining purchases select unredeemed grants case-insensitively from Active/Completed campaigns, newest campaign first. Existing redemption dates are never cleared or rewritten, including when a snapshot changes or shrinks.
 - When an enqueue throws during `SendWaveAsync`, the error is logged for that grant and the wave goes on; an admin can Resend that grant. The wave result carries the enqueue-failure count separately from assigned grants. Any enqueue failure produces an admin error message with both counts and outbox/Resend guidance rather than a full-success toast; grants and in-app notices remain available. This adds no persisted delivery status. A single-grant resend propagates recipient lookup, message preparation and enqueue failures to the admin, so a resend that queued nothing never reports success.
 - When an account merge accepts, `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Users section).
 
@@ -161,10 +161,10 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 ### Public contract
 
-| Public interface | Methods | Notes |
-|---|---:|---|
-| `ICampaignService` | 3 | Read contract: `GetCodeTrackingAsync` (Tickets); `GetActiveOrCompletedGrantsForUserAsync` and `GetAllGrantsForUserAsync` are read by Campaigns' own member and admin cards (below). DTOs only. |
-| `ICampaignWrite` | 1 | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes). Unavoidable: it is driven by another section's job. |
+| Public interface | Notes |
+|---|---|
+| `ICampaignService` | Read contract: `GetCodeTrackingAsync` (Tickets); `GetActiveOrCompletedGrantsForUserAsync` and `GetAllGrantsForUserAsync` are read by Campaigns' own member and admin cards (below). DTOs only. |
+| `ICampaignWrite` | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes). Unavoidable: it is driven by another section's job. |
 
 `CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. Campaign/code CRUD, activation, wave sending and resend are not public: the section's controller injects the concrete service.
 

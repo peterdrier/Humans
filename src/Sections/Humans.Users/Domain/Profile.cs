@@ -91,11 +91,6 @@ internal sealed class Profile
 
     public string FullName => $"{FirstName} {LastName}".Trim();
 
-    /// <summary>BurnerName > FirstName > "there".</summary>
-    public string EmailGreetingName =>
-        !string.IsNullOrWhiteSpace(BurnerName) ? BurnerName :
-        !string.IsNullOrWhiteSpace(FirstName) ? FirstName : "there";
-
     public bool HasCustomProfilePicture => ProfilePictureContentType is not null;
 
     public ICollection<ContactField> ContactFields { get; } = new List<ContactField>();

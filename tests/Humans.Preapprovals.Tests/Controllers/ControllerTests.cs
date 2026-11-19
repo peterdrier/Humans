@@ -1,3 +1,5 @@
+using Humans.Base;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
@@ -34,6 +36,38 @@ namespace Humans.Preapprovals.Tests.Controllers;
 /// </summary>
 public sealed class ControllerTests : PreapprovalsTestHarness
 {
+    [HumansFact]
+    public void MemberApplication_LocalizesValidationInEverySupportedCulture()
+    {
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        foreach (var culture in CultureCatalog.SupportedCultureCodes)
+        {
+            using var cultureScope = new CultureScope(culture);
+            var model = new ApplyFormViewModel { Note = new string('x', 2001), RequestedAmount = 0m };
+            var context = new ActionContext
+            {
+                HttpContext = new DefaultHttpContext { RequestServices = services },
+            };
+            validator.Validate(context, null, string.Empty, model);
+
+            var noteError = localizer["Validation_MaxLength", string.Empty, 2000];
+            var amountError = localizer["Validation_Range", string.Empty, 0.01d, 1_000_000d];
+            noteError.ResourceNotFound.Should().BeFalse();
+            amountError.ResourceNotFound.Should().BeFalse();
+            context.ModelState.ErrorCount.Should().Be(2);
+            context.ModelState[nameof(model.Note)]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                .Should().Be(noteError.Value, $"the note error must use {culture}");
+            context.ModelState[nameof(model.RequestedAmount)]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                .Should().Be(amountError.Value, $"the amount error must use {culture}");
+        }
+    }
+
     private readonly IStringLocalizer<PreapprovalsResource> _localizer = Substitute.For<IStringLocalizer<PreapprovalsResource>>();
 
     [HumansFact]

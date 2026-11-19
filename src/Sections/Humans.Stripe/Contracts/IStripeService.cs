@@ -54,7 +54,24 @@ public interface IStripeService : IApplicationService
     /// lacks the read scope. A session without EUR currency rejects the whole list; other Stripe failures propagate.
     /// </summary>
     Task<IReadOnlyList<StoreCheckoutSessionData>?> ListStoreCheckoutSessionsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Every refund Stripe holds against a Store-account PaymentIntent, read with the org read key. Null means
+    /// unknown, not "none": the key or the Store account is not configured, or the key lacks the refund read scope.
+    /// A refund without EUR currency rejects the whole list; other Stripe failures propagate. Read only: Humans never
+    /// issues a refund (<c>memory/architecture/stripe-money-out.md</c>).
+    /// </summary>
+    Task<IReadOnlyList<StoreRefundData>?> ListStoreRefundsAsync(string paymentIntentId, CancellationToken ct = default);
+
+    /// <summary>The Stripe dashboard page for a Store-account payment, where a person issues its refund.</summary>
+    string StorePaymentDashboardUrl(string paymentIntentId);
 }
+
+/// <summary>
+/// <paramref name="Status"/> is Stripe's refund status (<c>pending</c>, <c>requires_action</c>, <c>succeeded</c>,
+/// <c>failed</c>, <c>canceled</c>). <paramref name="AmountEur"/> is positive, already converted from minor units.
+/// </summary>
+public sealed record StoreRefundData(string RefundId, string PaymentIntentId, decimal AmountEur, string Status, Instant CreatedAt);
 
 /// <summary>One amount per Stripe balance-transaction fee bucket, in EUR.</summary>
 /// <remarks>

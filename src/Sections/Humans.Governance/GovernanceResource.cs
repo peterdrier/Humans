@@ -6,7 +6,7 @@ namespace Humans.Governance;
 /// localization check finds markers through <c>GetExportedTypes()</c>.
 /// </summary>
 /// <remarks>
-/// <c>Application_*</c>, <c>ApplicationStatus_*</c> and the <c>Profile*</c>/<c>Common_*</c>
-/// singles stay in <c>SharedResource</c>: profile setup and Consent's review queue render them too.
+/// Tier-application copy uses <c>Governance_Application_*</c> here. <c>ApplicationStatus_*</c> and the
+/// <c>Profile*</c>/<c>Common_*</c> labels stay shared with Users and Consent.
 /// </remarks>
 public class GovernanceResource;

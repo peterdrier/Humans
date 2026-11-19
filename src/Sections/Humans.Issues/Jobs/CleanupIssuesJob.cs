@@ -23,6 +23,11 @@ public class CleanupIssuesJob(IIssuesRetention issues, IHumansMetrics metrics, I
 
             metrics.RecordJobRun("cleanup_issues", "success");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Issue retention cancelled during shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             metrics.RecordJobRun("cleanup_issues", "failure");

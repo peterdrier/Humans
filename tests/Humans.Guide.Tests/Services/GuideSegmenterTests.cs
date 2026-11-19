@@ -238,7 +238,7 @@ public class GuideSegmenterTests
     [HumansFact]
     public void Segment_ShippedCampsLeadHeading_CarriesTheCampLeadToken()
     {
-        // End-to-end on the real file: this heading once resolved to no privilege at all.
+        // End-to-end on the real file: its camp-lead heading must resolve to a privilege.
         var markdown = File.ReadAllText(
             Path.Combine(LocateRepoRoot(), "docs", "guide", "Camps.md"));
 
@@ -393,7 +393,7 @@ public class GuideSegmenterTests
     [HumansFact]
     public void Segment_BacktickOpenerWithABacktickInItsInfoString_IsNotAFence()
     {
-        // The leak inverted. CommonMark forbids a
+        // CommonMark forbids a
         // backtick inside a backtick fence's info string, so this line opens no block and the
         // heading below it is a real heading. A segmenter that entered fence state here would
         // swallow that heading and serve the Board/Admin block to everyone.
@@ -420,7 +420,7 @@ public class GuideSegmenterTests
     public void Segment_TildeOpenerWithABacktickInItsInfoString_IsStillAFence()
     {
         // The backtick restriction is backtick-fences-only; a tilde fence's info string may
-        // carry one. Rejecting it here would reopen the original leak for tilde blocks.
+        // carry one. Rejecting it here would let a fenced sample heading end a tilde block.
         const string input = """
             ## As a Coordinator
 

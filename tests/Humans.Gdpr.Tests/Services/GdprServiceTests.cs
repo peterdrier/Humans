@@ -64,6 +64,51 @@ public class GdprServiceTests
         ExternalLogins: [],
         Profile: null);
 
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Shutdown_ErasureDistinguishesRequestedCancellationFromContributorFailure(bool requested)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var contributor = Substitute.For<IUserDataContributor>();
+        var next = Substitute.For<IUserDataContributor>();
+        next.ErasesLast.Returns(true);
+        var failure = new OperationCanceledException(shutdown.Token);
+        contributor.EraseForUserAsync(userId, shutdown.Token).Returns(async _ =>
+        {
+            if (requested) await shutdown.CancelAsync();
+            throw failure;
+        });
+        var logger = new CapturingLogger<GdprService>();
+        var service = CreateService(users: null, logger, contributor, next);
+
+        var error = await Xunit.Record.ExceptionAsync(() => service.EraseForUserAsync(userId, shutdown.Token));
+
+        error.Should().BeSameAs(failure);
+        await next.DidNotReceive().EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        var entry = logger.Entries.Should().ContainSingle().Which;
+        entry.Level.Should().Be(requested ? LogLevel.Warning : LogLevel.Error);
+        entry.Exception.Should().BeSameAs(requested ? null : failure);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_ErasureStopsBeforeTheFinalIdentityContributor()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var contributor = Substitute.For<IUserDataContributor>();
+        var identity = Substitute.For<IUserDataContributor>();
+        identity.ErasesLast.Returns(true);
+        contributor.EraseForUserAsync(userId, shutdown.Token).Returns(async _ => await shutdown.CancelAsync());
+        var service = CreateService(contributor, identity);
+
+        var error = await Xunit.Record.ExceptionAsync(() => service.EraseForUserAsync(userId, shutdown.Token));
+
+        error.Should().BeOfType<OperationCanceledException>();
+        await identity.DidNotReceive().EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task ExportForUserAsync_StampsExportedAtFromClock()
     {

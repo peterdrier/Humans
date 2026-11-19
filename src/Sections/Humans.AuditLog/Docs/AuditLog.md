@@ -99,7 +99,7 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 
 ### `<vc:audit-log>` — the render path for other sections
 
-A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render; it propagates a cancelled host request instead of logging it as a failed empty history.
+A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render; it propagates a cancelled host request instead of logging it as a failed empty history. `include-related="true"` lets each entity id also match rows that name it as their related entity, so one component shows everything logged about, say, a Store order: its lines, payments and invoice.
 
 - **Predicates** (first match wins): `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
 - **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`. The Google sync grid is Google's own `<vc:google-sync-log>`, not a layout here.
@@ -134,6 +134,7 @@ No other cross-section writes from this section outward. Audit is a sink.
 ## Architecture
 
 **Owning services:** `AuditLogService` (write + raw queries) and `AuditViewerService` (read+render), both `Humans.AuditLog.Services`, plus the singleton `AuditActionRegistry` (also registered as an `IHostedService` so it is built at startup). Verbs and flags come from the `AuditActionDefinition` on each `AuditEvent`, which backs both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
+**Append failures:** user and background-job writes remain best-effort. A failed save logs Error with the exception and the attempted entry's ID, action, subject, timestamp, actor, related entity and description (including the job name). Only a successful save emits the informational audit-success log.
 **Owned tables:** `audit_log_entries`
 **Status:** G5 — own project `src/Sections/Humans.AuditLog`, cross-section surface in its `Contracts/` folder (nobodies-collective/Humans#866).
 

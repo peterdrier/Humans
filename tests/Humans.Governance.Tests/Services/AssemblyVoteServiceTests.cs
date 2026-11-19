@@ -1800,6 +1800,115 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Which.UserId.Should().Be(asociado);
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Assembly_delivery_shutdown_finishes_the_accepted_email_and_audits_the_partial_batch(bool opening)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var vote = await _fx.AddVoteAsync(closesAt: _fx.Clock.GetCurrentInstant() + (opening ? Duration.FromDays(5) : Duration.FromHours(12)));
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _fx.StubActiveUsers(first, second);
+        await _fx.AddRosterRowAsync(vote.Id, first, isOfficial: true, notified: !opening);
+        await _fx.AddRosterRowAsync(vote.Id, second, isOfficial: true, notified: !opening);
+        _fx.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+
+        var action = () => _fx.Service.RunLapseAndReminderSweepAsync(shutdown.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        var queued = _fx.Email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        var rows = await _fx.Db.AssemblyVoteRosterEntries.AsNoTracking().Where(r => r.VoteId == vote.Id).ToListAsync(TestContext.Current.CancellationToken);
+        rows.Count(r => opening ? r.NotifiedAt is not null : r.ReminderSentAt is not null).Should().Be(1);
+        await _fx.Audit.Received(1).LogAsync(opening ? GovernanceAuditActions.AssemblyVoteOpened : GovernanceAuditActions.AssemblyVoteRemindersSent,
+            AuditEntityTypes.AssemblyVote, vote.Id, Arg.Is<string>(d => d.Contains("to 1 roster member", StringComparison.Ordinal)), AssemblyVoteService.LapseJobName);
+
+        _fx.Email.ClearReceivedCalls();
+        _fx.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
+        var retry = _fx.Email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0].Should().BeOfType<EmailMessage>().Subject;
+        retry.UserId.Should().NotBe(queued.UserId!.Value);
+    }
+
+    public enum AssemblyShutdownBoundary { Enqueue, Stamp, AfterEligibility }
+
+    [HumansTheory]
+    [InlineData(true, AssemblyShutdownBoundary.Enqueue)]
+    [InlineData(false, AssemblyShutdownBoundary.Enqueue)]
+    [InlineData(true, AssemblyShutdownBoundary.Stamp)]
+    [InlineData(false, AssemblyShutdownBoundary.Stamp)]
+    [InlineData(true, AssemblyShutdownBoundary.AfterEligibility)]
+    [InlineData(false, AssemblyShutdownBoundary.AfterEligibility)]
+    public async Task Assembly_delivery_distinguishes_preparation_from_detached_failures(bool opening, AssemblyShutdownBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var now = _fx.Clock.GetCurrentInstant();
+        var vote = await _fx.AddVoteAsync(closesAt: now + Duration.FromHours(12));
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _fx.StubActiveUsers(first, second);
+        IReadOnlyList<AssemblyVoteRoster> roster =
+        [await _fx.AddRosterRowAsync(vote.Id, first, isOfficial: true, notified: !opening),
+         await _fx.AddRosterRowAsync(vote.Id, second, isOfficial: true, notified: !opening)];
+        var repo = Substitute.For<IAssemblyVoteRepository>();
+        repo.GetRosterAsync(vote.Id, shutdown.Token).Returns(roster);
+        repo.GetRosterNeedingReminderAsync(vote.Id, shutdown.Token).Returns(roster);
+        repo.GetOpenVotesClosingBetweenAsync(now, now + Duration.FromHours(24), shutdown.Token).Returns([vote]);
+        repo.GetByIdAsync(vote.Id, shutdown.Token).Returns(async Task<AssemblyVote?> (_) =>
+        {
+            if (boundary == AssemblyShutdownBoundary.AfterEligibility) await shutdown.CancelAsync();
+            return vote;
+        });
+        var canceled = new OperationCanceledException("Detached delivery failed");
+        async Task FailAsync() { await shutdown.CancelAsync(); throw canceled; }
+        if (boundary == AssemblyShutdownBoundary.Enqueue)
+            _fx.Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
+        if (boundary == AssemblyShutdownBoundary.Stamp)
+        {
+            repo.StampNotifiedAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
+            repo.StampReminderSentAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
+        }
+        var effects = new AssemblyVoteEffects(repo, _fx.Users, _fx.Email, _fx.Messages, _fx.Notifications,
+            _fx.NotificationResolve, _fx.Audit, _fx.Clock, NullLogger.Instance, AssemblyVoteDrafts.MaxTitleLength, AssemblyVoteService.LapseJobName);
+        var failures = new List<Exception>();
+        Func<Task> action = opening ? () => effects.RetryOpenedEmailsAsync(vote, failures, shutdown.Token)
+            : () => effects.SendRemindersAsync(now, failures, shutdown.Token);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        if (boundary == AssemblyShutdownBoundary.AfterEligibility)
+        {
+            failures.Should().BeEmpty();
+            await _fx.Email.DidNotReceiveWithAnyArgs().SendAsync(default!);
+        }
+        else
+            failures.Should().ContainSingle().Which.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(canceled);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Assembly_sweep_preserves_earlier_delivery_failure_when_a_later_phase_fails(bool shutdownRequested)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var repo = Substitute.For<IAssemblyVoteRepository>();
+        var now = _fx.Clock.GetCurrentInstant();
+        var earlier = new IOException("Reminder discovery failed");
+        Exception later = shutdownRequested ? new OperationCanceledException(shutdown.Token) : new IOException("Lapse discovery failed");
+        repo.GetOpenVotesClosingBetweenAsync(now, now + Duration.FromHours(24), shutdown.Token)
+            .Returns(Task.FromException<IReadOnlyList<AssemblyVote>>(earlier));
+        repo.GetLapsedOpenVotesAsync(now, shutdown.Token).Returns(async Task<IReadOnlyList<AssemblyVote>> (_) =>
+        { if (shutdownRequested) await shutdown.CancelAsync(); throw later; });
+        var service = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            NullLogger<AssemblyVoteService>.Instance);
+
+        var action = () => service.RunLapseAndReminderSweepAsync(shutdown.Token);
+        (await action.Should().ThrowAsync<AggregateException>()).Which.InnerExceptions.Should().Equal(earlier, later);
+    }
+
     [HumansFact]
     public async Task RunLapseAndReminderSweepAsync_AuditsTheRemindersItSent()
     {
@@ -2730,16 +2839,16 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         if (opening)
         {
             await repo.Received(1).StampNotifiedAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(reachedRow.Id)), now, vote.ClosesAt, ct);
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(reachedRow.Id)), now, vote.ClosesAt, CancellationToken.None);
             await repo.DidNotReceive().StampNotifiedAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(failedRow.Id)), Arg.Any<Instant>(), Arg.Any<Instant>(), ct);
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(failedRow.Id)), Arg.Any<Instant>(), Arg.Any<Instant>(), CancellationToken.None);
         }
         else
         {
             await repo.Received(1).StampReminderSentAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(reachedRow.Id)), now, vote.ClosesAt, ct);
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(reachedRow.Id)), now, vote.ClosesAt, CancellationToken.None);
             await repo.DidNotReceive().StampReminderSentAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(failedRow.Id)), Arg.Any<Instant>(), Arg.Any<Instant>(), ct);
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(failedRow.Id)), Arg.Any<Instant>(), Arg.Any<Instant>(), CancellationToken.None);
         }
     }
 

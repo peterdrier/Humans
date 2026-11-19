@@ -300,7 +300,7 @@ Settings and Register an existing group on first setup or after clearing the que
 ## Invariants
 
 - Meeting saves require explicit recurrence and public-visibility values. Omitted flags redisplay field errors before any create/update call, with a Warning after member authorization; explicit false choices remain valid. Meetings stay timed-only.
-- Approving, declining and directly adding members share one preflight: the group must exist and be Active before coordinator/admin authorization is checked. An admin override does not bypass the Active requirement.
+- Approving, declining and directly adding members use the same `ManageMembership` resource authorization in the controller and form visibility: active-group coordinators or Board/Admin. The services trust the authorized caller, accept no privilege flag, and require an existing Active group before request/target validation or mutation. Board/Admin authorization does not bypass that Active requirement.
 - Register edits, member forms and member mutations share one controller resolver: resolve the actor, find the group, then check member-work permission before nested IDs or submitted values. Join, leave, status requests and commenting retain their existing exceptions to the member-work check and their route policies.
 
 - Roster membership-tier badges use localized enum labels in all supported cultures.
@@ -329,10 +329,10 @@ Settings and Register an existing group on first setup or after clearing the que
   (`WorkgroupService.Lifecycle`).
 - **Joining is a request; a coordinator decides.** `JoinAsync` writes a pending row and
   notifies the coordinators; nothing else changes. `ApproveMemberAsync` and `AddMemberAsync`
-  are the only ways a person becomes a member (`AdmitAsync`): both need a current coordinator
-  or `asAdmin`, and both write `MemberJoined`, audit, notify the person and request a Drive
+  are the only ways a person becomes a member (`AdmitAsync`): their controller requires a current
+  coordinator or Board/Admin, and both write `MemberJoined`, audit, notify the person and request a Drive
   sync. `DeclineMemberAsync` sets `LeftAt` on the pending row, audits and notifies without a
-  reason. A plain member gets `NotACoordinator`. Neither `SetCoordinatorsAsync` nor a
+  reason. A plain member is forbidden by the controller. Neither coordinator-change command nor a
   last-coordinator handover in `LeaveAsync` ever promotes a pending row. Ending or
   withdrawing the group closes its pending requests (`ClosePendingRequests`), so
   nothing waits on a group nobody can decide for.
@@ -345,9 +345,12 @@ Settings and Register an existing group on first setup or after clearing the que
   show its open-for-comment and update-due badges to members only (Board/Admin on the
   page). The register listing itself and the join request are unchanged.
 - **One or two coordinators at all times on an Active group.** The last coordinator
-  leaving must name a replacement (`LeaveAsync`); a `BoardOrAdmin` caller may override and
-  leave the group coordinatorless on purpose so the Secretary can appoint someone.
-  `SetCoordinatorsAsync` rejects a count outside 1–2 and any id that is not a current member.
+  leaving must name a replacement (`LeaveAsync`); the leave route always requires an Active group
+  and a handover when the last coordinator leaves. `SetCoordinatorsAsync` handles member handover
+  on Active groups; the existing Board/Admin route uses `AppointCoordinatorsAsync`, including on
+  frozen groups. Both reject a count outside 1–2 and any id that is not a current member, and share
+  persistence and post-commit effects. Member handover attributes its system-log entry to the actor;
+  Board/Admin appointment leaves that author null. Both audits retain the actual actor. Services accept no privilege flag.
 - **A Dormant (or not-yet-Active) group freezes all member mutations.** `RequireAcceptsMemberWork`
   gates every member write on `Status == Active`; only `BoardOrAdmin` actions
   (register, refer, refuse, withdraw, close, reactivate, disposition, coordinator
@@ -462,6 +465,10 @@ Caller cancellation still propagates.
 One Hangfire job (`workgroups-rhythm`, 06:00 daily), calling
 `IWorkgroupService.RunDailyRhythmAsync`. **It never registers, closes, or refuses
 anything — every action here is a notice, a flag, or a record; a human still has to act.**
+
+Job shutdown cancellation during recipient lookup or notice delivery propagates even for
+the final group, with a Warning and no exception details. Other group failures remain
+isolated so the pass can continue.
 
 | Condition | Action |
 |-----------|--------|

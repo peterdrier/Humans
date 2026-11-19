@@ -153,10 +153,10 @@ internal sealed class EmailsViewModelBuilder(
         return logins.Select(l =>
         {
             rowsByKey.TryGetValue((l.LoginProvider, l.ProviderKey), out var row);
-            // A row's unlink invariant is the service's (CanUnlink); an orphan login touches no row.
+            // Row-backed and orphan logins share the service's sign-in safety rule.
             var canUnlink = row is not null
                 ? emails.FirstOrDefault(e => e.Id == row.Id)?.CanUnlink == true
-                : emails.Any(e => e.IsVerified);
+                : UserEmailService.CanUnlink(emails.Count(e => e.IsVerified), removesVerifiedEmail: false);
             return new LinkedOAuthAccountViewModel
             {
                 Provider = l.LoginProvider,

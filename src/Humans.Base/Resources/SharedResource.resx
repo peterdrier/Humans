@@ -341,18 +341,10 @@
   <data name="Profile_Location" xml:space="preserve"><value>Location</value></data>
   <data name="Profile_Coordinator" xml:space="preserve"><value>Coordinator</value></data>
   <data name="Profile_MembershipTier" xml:space="preserve"><value>Membership Tier</value></data>
-  <data name="Profile_MotivationRequired" xml:space="preserve"><value>A motivation statement is required for Colaborador and Asociado applications.</value></data>
   <data name="ProfileEdit_TierDescription" xml:space="preserve"><value>Choose how you'd like to participate:</value></data>
   <data name="ProfileEdit_TierColaboradorDesc" xml:space="preserve"><value>You want to get more involved: join working groups, attend General Assembly meetings, and be part of organisational conversations. You're not ready (or eligible) for voting rights yet, but you want a non-voting seat at the table.</value></data>
   <data name="ProfileEdit_TierAsociadoDesc" xml:space="preserve"><value>You've meaningfully led or contributed to an area of the event or community, you understand that this role is about making governance decisions on behalf of the whole community, and you're prepared to take that responsibility seriously. If you're not sure, collaborator is probably the better fit for now.</value></data>
   <data name="ProfileEdit_TierAsociadoSubtitle" xml:space="preserve"><value>voting member</value></data>
-  <data name="Application_AsociadoQuestionsHeader" xml:space="preserve"><value>Additional questions for Asociado applicants</value></data>
-  <data name="Application_SignificantContribution" xml:space="preserve"><value>What has been your most significant contribution to Elsewhere?</value></data>
-  <data name="Application_SignificantContributionPlaceholder" xml:space="preserve"><value>If you can't think of any, but have significantly contributed to another Burn, tell us about that.</value></data>
-  <data name="Application_SignificantContributionRequired" xml:space="preserve"><value>Please describe your most significant contribution for an Asociado application.</value></data>
-  <data name="Application_RoleUnderstanding" xml:space="preserve"><value>In your own words, what do you understand the role of an associado to be, and why do you want that responsibility?</value></data>
-  <data name="Application_RoleUnderstandingPlaceholder" xml:space="preserve"><value>Tell us what this role means to you and why you're ready for it.</value></data>
-  <data name="Application_RoleUnderstandingRequired" xml:space="preserve"><value>Please describe your understanding of the asociado role.</value></data>
 
   <!-- Profile Controller TempData -->
   <data name="Profile_Updated" xml:space="preserve"><value>Profile updated successfully.</value></data>
@@ -381,13 +373,6 @@
   <!-- Application Detail View -->
 
   <!-- Application Controller TempData -->
-  <data name="Application_AlreadyPending" xml:space="preserve"><value>You already have a pending application.</value></data>
-  <data name="Application_InvalidTier" xml:space="preserve"><value>Please select Colaborador or Asociado for your application.</value></data>
-  <data name="Application_ConfirmAccuracy" xml:space="preserve"><value>You must confirm the accuracy of your information.</value></data>
-  <data name="Application_Submitted" xml:space="preserve"><value>Your application has been submitted successfully!</value></data>
-  <data name="Application_SubmitError" xml:space="preserve"><value>Something went wrong while submitting your application. Please try again.</value></data>
-  <data name="Application_CannotWithdraw" xml:space="preserve"><value>This application cannot be withdrawn.</value></data>
-  <data name="Application_Withdrawn" xml:space="preserve"><value>Your application has been withdrawn.</value></data>
 
   <!-- ======================== -->
   <!-- Consent                  -->
@@ -957,10 +942,6 @@
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Camp Leads</value></data>
-  <data name="Application_MotivationLength" xml:space="preserve"><value>Motivation must contain between 50 and 2000 characters.</value></data>
-  <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Additional information must not exceed 1000 characters.</value></data>
-  <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Significant contribution must not exceed 2000 characters.</value></data>
-  <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Role understanding must not exceed 2000 characters.</value></data>
   <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Anything coordinators should know about your health?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optional. Only you and the No-Info Admins can see it.</value></data>

@@ -70,7 +70,7 @@ public class StorePricesViewTests
     }
 
     [HumansFact]
-    public async Task PriceHistory_UsesHostColumnLabels()
+    public async Task OrderHistory_UsesHostColumnLabels()
     {
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
@@ -87,8 +87,14 @@ public class StorePricesViewTests
 
         var table = html[html.LastIndexOf("<thead>", StringComparison.Ordinal)..];
         var headers = table[..table.IndexOf("</thead>", StringComparison.Ordinal)];
-        foreach (var label in new[] { "Date", "Action", "Description" })
+        foreach (var label in new[] { "Date", "Who", "Action", "Description" })
             headers.Should().Contain(HtmlEncoder.Default.Encode(label));
+        html.Should().Contain("Order history").And.Contain("Price history fixture");
+        // A lead's view never asks for the admin-only entries.
+        await _lastAudit!.Received().GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<string>?>(a => a != null && a.Contains(StoreAuditActions.StoreLineRemoved.Name)
+                && !a.Contains(StoreAuditActions.StorePaymentDeleted.Name)),
+            Arg.Any<int>(), true, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -134,6 +140,8 @@ public class StorePricesViewTests
         html.Contains("Stripe and the ledger are reconciled.", StringComparison.Ordinal).Should().Be(expectedSuccess);
     }
 
+    private static IAuditViewerService? _lastAudit;
+
     private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEvent>? history = null, string? viewPath = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -142,9 +150,9 @@ public class StorePricesViewTests
             EnvironmentName = "Testing",
         });
         builder.Services.AddLocalization();
-        var audit = Substitute.For<IAuditViewerService>();
+        var audit = _lastAudit = Substitute.For<IAuditViewerService>();
         audit.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(history ?? []);
         builder.Services.AddSingleton(audit);
         var authorization = Substitute.For<IAuthorizationService>();

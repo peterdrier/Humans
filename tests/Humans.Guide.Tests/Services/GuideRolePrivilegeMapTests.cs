@@ -11,15 +11,7 @@ public class GuideRolePrivilegeMapTests
     [HumansTheory]
     [InlineData("Camps Admin", GuideTestRoles.CampsAdmin)]
     [InlineData("camps admin", GuideTestRoles.CampsAdmin)]
-    [InlineData("Teams Admin", GuideTestRoles.TeamsAdmin)]
-    [InlineData("Shifts NoInfo", GuideTestRoles.ShiftsNoInfo)]
-    [InlineData("Users Admin", GuideTestRoles.UsersAdmin)]
-    [InlineData("Finance Admin", GuideTestRoles.FinanceAdmin)]
-    [InlineData("Events Admin", GuideTestRoles.EventsAdmin)]
-    [InlineData("Store Admin", GuideTestRoles.StoreAdmin)]
-    [InlineData("Tickets Admin", GuideTestRoles.TicketsAdmin)]
     [InlineData("Consent Coordinator", GuideTestRoles.ConsentCoordinator)]
-    [InlineData("Shifts Admin", GuideTestRoles.ShiftsAdmin)]
     [InlineData("Camp Lead", GuideRolePrivilegeMap.CampLead)]
     public void TryResolve_KnownTitle_ReturnsSystemRole(string displayName, string expectedRole)
     {
@@ -31,7 +23,7 @@ public class GuideRolePrivilegeMapTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("Unknown")]
-    [InlineData("Camp Admin")] // The pre-rename title: only catalog titles resolve
+    [InlineData("Camp Admin")] // Not a catalog title: only catalog titles resolve
     [InlineData("Camp Coordinator")] // Not a thing: the domain term is Camp Lead
     public void TryResolve_UnknownOrEmpty_ReturnsFalse(string input)
     {

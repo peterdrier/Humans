@@ -2,6 +2,11 @@ using Xunit;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
+using Humans.AuditLog.Contracts;
+using Humans.Google.Contracts;
+using Humans.Teams.Contracts;
+using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Teams.Services;
@@ -28,7 +33,9 @@ public sealed class TeamMessageButtonsViewComponentTests
         Cancelled
     }
 
-    private readonly ITeamMessageOptionsProvider _options = Substitute.For<ITeamMessageOptionsProvider>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
+    private readonly TeamMessageOptionsProvider _options;
     private readonly ICommunicationPreferenceService _commPrefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly Guid _viewerId = Guid.NewGuid();
@@ -36,6 +43,11 @@ public sealed class TeamMessageButtonsViewComponentTests
 
     public TeamMessageButtonsViewComponentTests()
     {
+        _options = new TeamMessageOptionsProvider(_teams, _resources, _users, _commPrefs,
+            Substitute.For<IEmailService>(), Substitute.For<IEmailMessageFactory>(), Substitute.For<IAuditLogService>(),
+            NullLogger<TeamMessageOptionsProvider>.Instance);
+        _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = _targetId }, [], [], profile: null));
         _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _viewerId }, [], [], profile: null));
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
@@ -57,8 +69,7 @@ public sealed class TeamMessageButtonsViewComponentTests
                 ? null : UserInfo.Create(new User { Id = survivorId }, [], [], profile: null));
         });
         var option = new TeamMessageOption(Guid.NewGuid(), "Team", "team@example.com");
-        _options.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(new[] { option });
-        _options.GetOptionsAsync(survivorId, Arg.Any<CancellationToken>()).Returns(new[] { option });
+        StubOptions(survivorId, option);
         var component = Build(_viewerId);
         component.HttpContext.RequestAborted = request.Token;
         if (account == ViewerAccount.Cancelled)
@@ -72,12 +83,11 @@ public sealed class TeamMessageButtonsViewComponentTests
             if (account == ViewerAccount.Merged)
             {
                 result.Should().BeOfType<ViewViewComponentResult>();
-                await _options.Received(1).GetOptionsAsync(survivorId, request.Token);
-                await _options.DidNotReceive().GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>());
+                await _teams.Received(1).GetTeamsAsync(request.Token);
             }
             else AssertEmpty(result);
         }
-        if (account != ViewerAccount.Merged) _options.ReceivedCalls().Should().BeEmpty();
+        if (account != ViewerAccount.Merged) _teams.ReceivedCalls().Should().BeEmpty();
         await _users.Received(1).GetUserInfoAsync(_viewerId, request.Token);
     }
 
@@ -95,7 +105,7 @@ public sealed class TeamMessageButtonsViewComponentTests
     {
         var a = new TeamMessageOption(Guid.NewGuid(), "alpha", "a@nobodies.team");
         var b = new TeamMessageOption(Guid.NewGuid(), "Beta", "b@nobodies.team");
-        _options.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([b, a]);
+        StubOptions(_viewerId, b, a);
 
         var result = await Build(_viewerId).InvokeAsync(_targetId, ProfileCardViewMode.Public);
 
@@ -111,7 +121,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         var result = await Build(_viewerId).InvokeAsync(_viewerId, ProfileCardViewMode.Self);
 
         AssertEmpty(result);
-        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
     }
 
     [HumansFact]
@@ -122,13 +132,13 @@ public sealed class TeamMessageButtonsViewComponentTests
         var result = await Build(_viewerId).InvokeAsync(_targetId, ProfileCardViewMode.Public);
 
         AssertEmpty(result);
-        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
     }
 
     [HumansFact]
     public async Task RendersNothing_WhenTheViewerCoordinatesNoLinkedTeam()
     {
-        _options.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        StubOptions(_viewerId);
 
         AssertEmpty(await Build(_viewerId).InvokeAsync(_targetId, ProfileCardViewMode.Admin));
     }
@@ -137,7 +147,21 @@ public sealed class TeamMessageButtonsViewComponentTests
     public async Task RendersNothing_ForAnAnonymousViewer()
     {
         AssertEmpty(await Build(null).InvokeAsync(_targetId, ProfileCardViewMode.Public));
-        await _options.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
+    }
+
+    private void StubOptions(Guid viewerId, params TeamMessageOption[] options)
+    {
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(options.ToDictionary(t => t.TeamId, t =>
+            new TeamInfo(t.TeamId, t.TeamName, null, t.TeamName, true, false, SystemTeamType.None,
+                false, false, false, false, Instant.MinValue,
+                [new TeamMemberInfo(Guid.NewGuid(), viewerId, "Viewer", null, null, TeamMemberRole.Coordinator, Instant.MinValue)],
+                GoogleGroupPrefix: t.GoogleGroupEmail.Split('@')[0])));
+        _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(options.ToDictionary(t => t.TeamId, t => (IReadOnlyList<GoogleResourceSnapshot>)
+                [new GoogleResourceSnapshot(Guid.NewGuid(), t.TeamId, "123", t.TeamName, GoogleResourceType.Group,
+                    $"https://groups.google.com/a/nobodies.team/g/{t.GoogleGroupEmail.Split('@')[0]}",
+                    Instant.MinValue, Instant.MinValue, IsActive: true)]));
     }
 
     private static void AssertEmpty(Microsoft.AspNetCore.Mvc.IViewComponentResult result) =>
@@ -147,7 +171,7 @@ public sealed class TeamMessageButtonsViewComponentTests
     {
         var claims = viewer is { } id ? new[] { new Claim(ClaimTypes.NameIdentifier, id.ToString()) } : [];
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")) };
-        return new TeamMessageButtonsViewComponent(_options, _commPrefs, _users)
+        return new TeamMessageButtonsViewComponent(_options)
         {
             ViewComponentContext = new ViewComponentContext { ViewContext = new ViewContext { HttpContext = http } },
         };

@@ -26,11 +26,13 @@ internal sealed class PleoMirrorSync(
         try
         {
             var state = await repo.GetSyncStateAsync(ct) ?? new PleoSyncState();
+            var previousError = state.LastError;
+            var mirrorReplaced = false;
             state.SyncStatus = PleoSyncStatus.Running;
             state.StatusChangedAt = clock.GetCurrentInstant();
-            await repo.SaveSyncStateAsync(state, ct);
             try
             {
+                await repo.SaveSyncStateAsync(state, ct);
                 // Everything is fetched before anything is written, so a failed call leaves the mirror as it was.
                 var rawEntries = await client.SearchEntriesAsync(ct);
                 var accounts = await client.SearchAccountsAsync(ct);
@@ -41,6 +43,7 @@ internal sealed class PleoMirrorSync(
                 var (entries, skipped) = ToEntries(rawEntries);
                 var now = clock.GetCurrentInstant();
                 var categoryChanges = PlanCategories(await repo.GetCategoriesAsync(ct), pleoCategories, accounts, now);
+                ct.ThrowIfCancellationRequested();
                 await repo.ReplaceMirrorAsync(new PleoMirrorSnapshot(
                     entries,
                     employees.Select(ToEmployee).ToList(),
@@ -53,6 +56,7 @@ internal sealed class PleoMirrorSync(
                         PendingDebitsMinors = balance.PendingDebits,
                     },
                     categoryChanges.Select(c => c.Category).ToList()), now, ct);
+                mirrorReplaced = true;
                 foreach (var change in categoryChanges)
                     await audit.LogAsync(change.Action, "PleoCategory", change.Category.Id, change.Description,
                         nameof(Jobs.PleoSyncJob));
@@ -63,7 +67,8 @@ internal sealed class PleoMirrorSync(
                 state.LastCount = entries.Count;
                 state.SkippedCount = skipped;
                 state.LastError = categoryError;
-                await repo.SaveSyncStateAsync(state, ct);
+                // The mirror committed; finish its outcome independently of caller shutdown.
+                await repo.SaveSyncStateAsync(state, CancellationToken.None);
                 logger.LogInformation("Pleo sweep mirrored {Entries} entries ({Skipped} skipped), {Accounts} accounts, {Employees} cardholders",
                     entries.Count, skipped, accounts.Count, employees.Count);
                 return categoryError is null ? PleoSyncOutcome.Synced : PleoSyncOutcome.SyncedWithoutCategories;
@@ -72,15 +77,18 @@ internal sealed class PleoMirrorSync(
             {
                 try
                 {
-                    state.SyncStatus = PleoSyncStatus.Error;
+                    var interrupted = ex is OperationCanceledException && ct.IsCancellationRequested && !mirrorReplaced;
+                    state.SyncStatus = interrupted ? PleoSyncStatus.Idle : PleoSyncStatus.Error;
                     state.StatusChangedAt = clock.GetCurrentInstant();
-                    state.LastError = PleoTextBounds.Bound(ex.Message, 2000);
+                    state.LastError = interrupted ? previousError : PleoTextBounds.Bound(ex.Message, 2000);
                     await repo.SaveSyncStateAsync(state, CancellationToken.None);
                 }
                 catch (Exception saveEx)
                 {
-                    logger.LogError(saveEx, "Failed to persist Pleo sync error state");
+                    logger.LogError(saveEx, "Failed to persist Pleo sync outcome");
                 }
+                if (mirrorReplaced && ex is OperationCanceledException)
+                    throw new InvalidOperationException("Pleo sync completion failed after mirror replacement.", ex);
                 throw;
             }
         }

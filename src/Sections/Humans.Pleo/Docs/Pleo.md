@@ -82,11 +82,17 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   follows Pleo's name and account. A Pleo category with no account, or an account missing from the chart, is skipped.
   A sweep never deletes or unlinks a category row.
 - A sweep fetches entries, chart, categories, cardholders and balance before writing anything, then
-  replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed call leaves the
+  replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed required vendor read leaves the
   mirror as it was and records the error on the sync row. The category fetch is the exception: if it fails, the sweep
   goes on without it, leaves `pleo_categories` as it is, and keeps the category error on the sync row (shown on the
   sync card) while the status stays `Idle`. If that diagnostic save also fails, the secondary failure
   is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
+- Cancellation during startup or preparation restores `Idle` with the previous mirror summary and diagnostic;
+  the initial `Running` save is covered by the same cleanup. Reads and atomic mirror replacement retain caller
+  cancellation, with a checkpoint before replacement. After replacement commits, category audit and the final
+  success-state save finish independently of shutdown. Cancellation from that completion phase is a genuine
+  failure, preserving the original exception as its cause. The nightly job propagates shutdown with a Warning
+  and no completion message; unrelated failures retain their existing retry policy.
 - JSON API responses must have an object root. A null, array or scalar response fails as a typed
   `PleoPermanentException`, so live receipt reads use their existing failure feedback instead of leaking a
   JSON object-access exception. This check also covers all sweep reads before mirror replacement.
@@ -141,7 +147,7 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 
 ## Architecture
 
-The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its seven existing read entry points and retains category mutations and forwards sync to `PleoMirrorSync`. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
+The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its existing read entry points and retains category mutations and forwards sync to `PleoMirrorSync`. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
 
 ### Public contract
 

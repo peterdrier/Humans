@@ -23,6 +23,8 @@ internal sealed class GoogleResourceReconciliationJob(
     ILogger<GoogleResourceReconciliationJob> logger,
     IClock clock) : IRecurringJob
 {
+    private const string GroupSettingsPhase = "Group settings check";
+
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         // Without credentials every client is a stub that reports success, so a reconcile would
@@ -38,103 +40,146 @@ internal sealed class GoogleResourceReconciliationJob(
 
         var phaseFailures = new List<string>();
         int inheritanceCorrected = 0;
-        var settingsResult = new GroupSettingsDriftResult();
+        var groupSettingsCorrected = 0;
 
-        // One Drive pass for Teams and Workgroups, including linked files.
         try
         {
-            // Per-resource failures come back as diff errors rather than exceptions.
-            var driveResult = await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
-            if (driveResult.ErrorCount > 0)
+            // One Drive pass for Teams and Workgroups, including linked files.
+            try
             {
-                logger.LogError("Google reconciliation phase 'Drive access source reconcile' had {ErrorCount} resource error(s)",
-                    driveResult.ErrorCount);
+                cancellationToken.ThrowIfCancellationRequested();
+                // Per-resource failures come back as diff errors rather than exceptions.
+                var driveResult = await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
+                if (driveResult.ErrorCount > 0)
+                {
+                    logger.LogError("Google reconciliation phase 'Drive access source reconcile' had {ErrorCount} resource error(s)",
+                        driveResult.ErrorCount);
+                    phaseFailures.Add("Drive access source reconcile");
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogError(ex, "Google reconciliation phase 'Drive access source reconcile' failed");
                 phaseFailures.Add("Drive access source reconcile");
             }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Google reconciliation phase 'Drive access source reconcile' failed");
-            phaseFailures.Add("Drive access source reconcile");
-        }
 
-        // ReconcileAllAsync also creates, best effort, any missing group a claim references.
-        try
-        {
-            await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Google reconciliation phase 'Group membership reconcile' failed");
-            phaseFailures.Add("Group membership reconcile");
-        }
-
-        // Detects renames and moves.
-        try
-        {
-            var pathUpdates = await googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
-            if (pathUpdates > 0)
+            // ReconcileAllAsync also creates, best effort, any missing group a claim references.
+            try
             {
-                logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Google reconciliation phase 'Drive folder path updates' failed");
-            phaseFailures.Add("Drive folder path updates");
-        }
-
-        try
-        {
-            inheritanceCorrected = await googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
-            if (inheritanceCorrected > 0)
-            {
-                logger.LogWarning("Corrected inherited access drift on {Count} Drive folder(s)", inheritanceCorrected);
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Google reconciliation phase 'Inherited access enforcement' failed");
-            phaseFailures.Add("Inherited access enforcement");
-        }
-
-        try
-        {
-            settingsResult = await googleSyncService.CheckGroupSettingsAsync(cancellationToken);
-            if (!settingsResult.Skipped && settingsResult.DriftCount > 0)
-            {
-                logger.LogWarning("Google Group settings drift detected: {DriftCount} group(s) with settings drift out of {Total}",
-                    settingsResult.DriftCount, settingsResult.TotalGroups);
-
-                foreach (var report in settingsResult.Reports.Where(r => r.HasDrift))
+                cancellationToken.ThrowIfCancellationRequested();
+                var groupResult = await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
+                if (groupResult.ErrorCount > 0)
                 {
-                    try
+                    logger.LogError("Google reconciliation phase 'Group membership reconcile' had {ErrorCount} resource error(s)",
+                        groupResult.ErrorCount);
+                    phaseFailures.Add("Group membership reconcile");
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogError(ex, "Google reconciliation phase 'Group membership reconcile' failed");
+                phaseFailures.Add("Group membership reconcile");
+            }
+
+            // Detects renames and moves.
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var pathUpdates = await googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
+                if (pathUpdates > 0)
+                {
+                    logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogError(ex, "Google reconciliation phase 'Drive folder path updates' failed");
+                phaseFailures.Add("Drive folder path updates");
+            }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                inheritanceCorrected = await googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
+                if (inheritanceCorrected > 0)
+                {
+                    logger.LogWarning("Corrected inherited access drift on {Count} Drive folder(s)", inheritanceCorrected);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogError(ex, "Google reconciliation phase 'Inherited access enforcement' failed");
+                phaseFailures.Add("Inherited access enforcement");
+            }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var settingsResult = await googleSyncService.CheckGroupSettingsAsync(cancellationToken);
+                if (settingsResult.ErrorCount > 0)
+                {
+                    logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
+                    if (!phaseFailures.Contains(GroupSettingsPhase))
+                        phaseFailures.Add(GroupSettingsPhase);
+                }
+                if (!settingsResult.Skipped && settingsResult.DriftCount > 0)
+                {
+                    logger.LogWarning("Google Group settings drift detected: {DriftCount} group(s) with settings drift out of {Total}",
+                        settingsResult.DriftCount, settingsResult.TotalGroups);
+
+                    foreach (var report in settingsResult.Reports.Where(r => r.HasDrift))
                     {
-                        var remediation = await googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, cancellationToken);
-                        if (remediation.Succeeded)
-                            logger.LogInformation("Auto-remediated settings drift for group '{GroupEmail}'", report.GroupEmail);
-                        else
-                            logger.LogError("Failed to auto-remediate settings for group '{GroupEmail}': {ErrorMessage}",
-                                report.GroupEmail, remediation.ErrorMessage);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        logger.LogError(ex, "Failed to auto-remediate settings for group '{GroupEmail}'", report.GroupEmail);
+                        try
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var remediation = await googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, cancellationToken);
+                            if (remediation.Succeeded)
+                            {
+                                groupSettingsCorrected++;
+                                logger.LogInformation("Auto-remediated settings drift for group '{GroupEmail}'", report.GroupEmail);
+                            }
+                            else
+                            {
+                                if (!phaseFailures.Contains(GroupSettingsPhase))
+                                    phaseFailures.Add(GroupSettingsPhase);
+                                logger.LogError("Failed to auto-remediate settings for group '{GroupEmail}': {ErrorMessage}",
+                                    report.GroupEmail, remediation.ErrorMessage);
+                            }
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                        {
+                            if (!phaseFailures.Contains(GroupSettingsPhase))
+                                phaseFailures.Add(GroupSettingsPhase);
+                            logger.LogError(ex, "Failed to auto-remediate settings for group '{GroupEmail}'", report.GroupEmail);
+                        }
                     }
                 }
             }
-            if (settingsResult.ErrorCount > 0)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
-                logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
+                logger.LogError(ex, "Google reconciliation phase 'Group settings check' failed");
+                if (!phaseFailures.Contains(GroupSettingsPhase))
+                    phaseFailures.Add(GroupSettingsPhase);
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            logger.LogError(ex, "Google reconciliation phase 'Group settings check' failed");
-            phaseFailures.Add("Group settings check");
+            logger.LogWarning("Google resource reconciliation interrupted by shutdown");
+            await ReportAsync(phaseFailures, inheritanceCorrected, groupSettingsCorrected, completed: false);
+            throw;
         }
 
-        var totalDrift = inheritanceCorrected + settingsResult.DriftCount;
+        await ReportAsync(phaseFailures, inheritanceCorrected, groupSettingsCorrected, completed: true);
+    }
+
+    private async Task ReportAsync(
+        IReadOnlyCollection<string> phaseFailures,
+        int inheritanceCorrected,
+        int groupSettingsCorrected,
+        bool completed)
+    {
+        // Recorded outcomes must reach admins even when shutdown stops later phases.
+        var totalDrift = inheritanceCorrected + groupSettingsCorrected;
         if (totalDrift > 0)
         {
             try
@@ -145,12 +190,12 @@ internal sealed class GoogleResourceReconciliationJob(
                     NotificationPriority.Normal,
                     $"Google reconciliation fixed {totalDrift} drift issue(s)",
                     RoleNames.Admin,
-                    body: $"Inheritance corrections: {inheritanceCorrected}, group settings drift: {settingsResult.DriftCount}",
+                    body: $"Inheritance corrections: {inheritanceCorrected}, group settings drift: {groupSettingsCorrected}",
                     actionUrl: "/Google/Sync",
                     actionLabel: "View sync status",
-                    cancellationToken: cancellationToken);
+                    cancellationToken: CancellationToken.None);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to dispatch GoogleDriftDetected notification");
             }
@@ -160,7 +205,7 @@ internal sealed class GoogleResourceReconciliationJob(
         if (phaseFailures.Count > 0)
         {
             var failedPhaseList = string.Join(", ", phaseFailures);
-            logger.LogError("Google reconciliation completed with {FailureCount} phase failure(s): {Phases}",
+            logger.LogError("Google reconciliation recorded {FailureCount} phase failure(s): {Phases}",
                 phaseFailures.Count, failedPhaseList);
 
             try
@@ -172,20 +217,21 @@ internal sealed class GoogleResourceReconciliationJob(
                     $"Google reconciliation: {phaseFailures.Count} phase(s) failed",
                     RoleNames.Admin,
                     body: $"The following phase(s) encountered errors and did not complete: {failedPhaseList}. " +
-                          "Other phases ran normally. Check application logs for details.",
+                          "Check application logs for details.",
                     actionUrl: "/Google/Sync",
                     actionLabel: "View sync status",
-                    cancellationToken: cancellationToken);
+                    cancellationToken: CancellationToken.None);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to dispatch SyncError notification for phase failures");
             }
 
             metrics.RecordJobRun("google_resource_reconciliation", "partial_failure");
-            logger.LogInformation("Completed Google resource reconciliation with phase failures");
+            if (completed)
+                logger.LogInformation("Completed Google resource reconciliation with phase failures");
         }
-        else
+        else if (completed)
         {
             metrics.RecordJobRun("google_resource_reconciliation", "success");
             logger.LogInformation("Completed Google resource reconciliation");
