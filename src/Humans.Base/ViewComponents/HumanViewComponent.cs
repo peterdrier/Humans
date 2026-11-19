@@ -8,7 +8,7 @@ namespace Humans.Base.ViewComponents;
 public enum HumanLayout { Text, Avatar, AvatarName, Card }
 
 /// <summary>
-/// Where a person's name links. Every name links to the profile popup; the two no-link values name the only
+/// Where a person's name links. Every name links to the profile popup; the no-link values name the only
 /// reasons a name may not (memory/architecture/burnername-is-the-display-name.md). A signed-out viewer never
 /// gets a link, since profiles need a sign-in.
 /// </summary>
@@ -23,8 +23,8 @@ public enum HumanLink
     /// <summary>No link: the name sits inside another link, button or the popup itself.</summary>
     InsideControl,
 
-    /// <summary>No link: the page is already about this person.</summary>
-    PageSubject,
+    /// <summary>No link: a Gate kiosk screen, which is locked away from profile pages.</summary>
+    Kiosk,
 }
 
 /// <summary>Renders a member’s name and picture, localizing missing names; its read honors browser cancellation.</summary>

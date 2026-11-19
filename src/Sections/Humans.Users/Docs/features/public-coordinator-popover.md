@@ -43,7 +43,7 @@ Fixes [nobodies-collective/Humans#771](https://github.com/nobodies-collective/Hu
 
 **Acceptance Criteria:**
 - Authenticated `GET /Profile/{id}/Popover` continues to return the existing full partial.
-- `<vc:human>` with `link="InsideControl"` or `link="PageSubject"`, or any signed-out viewer, gets no link and no popover by default.
+- `<vc:human>` with `link="InsideControl"` or `link="Kiosk"`, or any signed-out viewer, gets no link and no popover by default.
 - `<vc:human popover-public="true">` opts in to the reduced popover when there is no link.
 
 ## Endpoints

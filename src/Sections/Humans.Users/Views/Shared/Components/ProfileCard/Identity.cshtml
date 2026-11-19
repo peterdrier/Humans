@@ -4,7 +4,6 @@
     var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
     {
         userId = Model.UserId,
-        link = Humans.Base.ViewComponents.HumanLink.PageSubject,
     });
     using var humanWriter = new System.IO.StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
@@ -16,7 +15,7 @@
     <div class="card-body d-flex flex-column gap-3">
         <div class="text-center">
             <div class="d-flex justify-content-center">
-                <vc:human user-id="@Model.UserId" layout="Avatar" size="160" link="PageSubject" />
+                <vc:human user-id="@Model.UserId" layout="Avatar" size="160" />
             </div>
             <h1 class="h2 mt-3 mb-1">@humanHtml</h1>
             @if (!string.IsNullOrEmpty(Model.Pronouns))

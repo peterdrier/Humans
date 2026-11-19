@@ -15,8 +15,9 @@ Mixing the two leaks the legacy field into search results and member lists.
   `@x.DisplayName`, a hand-built profile link, or an avatar-plus-name flex container is a violation.
   Don't pass a `display-name` override; let the component fetch.
 - **Keep the link.** The name opens the profile popup. `HumanLink` has only two no-link values, each a
-  reason: `InsideControl` (inside another link, button or the popup itself) and `PageSubject` (the page is
-  already about this person). Signed-out viewers get no link automatically. Anything else links.
+  reason: `InsideControl` (inside another link, button or the popup itself) and `Kiosk` (Gate kiosk
+  screens, locked away from profiles). A person's own profile page links too. Signed-out viewers get no link
+  automatically. Anything else links; a new no-link use needs Peter's OK.
 - **In code, `UserInfo.BurnerName`** is the accessor: the burner name when non-blank, the erasure
   sentinel on a GDPR tombstone, else blank. Never restore a `DisplayName` fallback.
 - **Raw `DisplayName` has three legitimate readers:** GDPR export while the column exists, debug
