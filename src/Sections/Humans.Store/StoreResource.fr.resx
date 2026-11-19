@@ -132,4 +132,5 @@
   <data name="Store_PaymentReturned" xml:space="preserve"><value>Restitué</value></data>
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Remboursé</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Total de la commande (lignes, TVA et cautions)</value></data>
+  <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total des paiements réglés</value></data>
 </root>

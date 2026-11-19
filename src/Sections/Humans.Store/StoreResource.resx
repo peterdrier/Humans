@@ -172,4 +172,5 @@
   <data name="Store_PaymentReturned" xml:space="preserve"><value>Returned</value></data>
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Refunded</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Order total (lines, VAT and deposits)</value></data>
+  <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total cleared payments</value></data>
 </root>

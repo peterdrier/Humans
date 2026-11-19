@@ -132,4 +132,5 @@
   <data name="Store_PaymentReturned" xml:space="preserve"><value>Zurückgegeben</value></data>
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Erstattet</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Bestellsumme (Positionen, MwSt. und Pfand)</value></data>
+  <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Summe abgerechneter Zahlungen</value></data>
 </root>

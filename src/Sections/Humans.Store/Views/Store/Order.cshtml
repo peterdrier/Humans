@@ -255,7 +255,7 @@ else
         }
         paymentsTable = paymentsTable
             .Footer(FooterRow(Localizer["Store_OrderTotal"].Value, Model.OrderTotalEur, "fw-normal text-muted"))
-            .Footer(FooterRow(Localizer["Store_TotalPayments"].Value, order.PaymentsTotalEur, string.Empty))
+            .Footer(FooterRow(Localizer["Store_TotalClearedPayments"].Value, order.PaymentsTotalEur, string.Empty))
             .Footer(FooterRow(Localizer[Model.IsRefundDue ? "Store_RefundAmount" : "Store_BalanceOwed"].Value, Model.BalanceBoxAmountEur, "fw-bold"));
         <partial name="_Table" model="paymentsTable.Build()" />
         @if (canRefundInStripe)

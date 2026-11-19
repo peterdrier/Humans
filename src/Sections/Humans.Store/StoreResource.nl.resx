@@ -140,4 +140,5 @@
   <data name="Store_PaymentReturned" xml:space="preserve"><value>Teruggegeven</value></data>
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Terugbetaald</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Ordertotaal (regels, btw en statiegeld)</value></data>
+  <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Totaal verwerkte betalingen</value></data>
 </root>
