@@ -154,13 +154,16 @@ else
     <empty-state>@Localizer["Store_NoLines"]</empty-state>
 }
 
-<vc:audit-log entity-type="@AuditEntityTypes.Product"
-              entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
-              actions="StoreProductPriceChanged" since="@order.CreatedAt" limit="50"
-              layout="table" columns="when,action,description"
-              column-labels="@($"when:{Localizer["Store_ColDate"].Value},action:{Localizer["Store_ColAction"].Value},description:{Localizer["Store_ColDescription"].Value}")"
-              title="@Localizer["Store_PriceChangesTitle"].Value"
-              empty-text="@Localizer["Store_NoPriceChanges"].Value" />
+@* The audit log is the order's history: entries about the order, its lines, payments and invoice, plus price changes
+   to its products while it has existed. *@
+<vc:audit-log entity-ids="@order.Lines.Select(l => l.ProductId).Prepend(order.Id).Distinct().ToList()"
+              include-related="true"
+              actions="@string.Join(',', (Model.CanRecordPayment ? StoreAuditActions.OrderHistoryForAdmins : StoreAuditActions.OrderHistory).Select(a => a.Name))"
+              since="@order.CreatedAt" limit="500"
+              layout="table" columns="when,actor,action,description"
+              column-labels="@($"when:{Localizer["Store_ColDate"].Value},actor:{Localizer["Store_ColWho"].Value},action:{Localizer["Store_ColAction"].Value},description:{Localizer["Store_ColDescription"].Value}")"
+              title="@Localizer["Store_HistoryTitle"].Value"
+              empty-text="@Localizer["Store_NoHistory"].Value" />
 
 @if (Model.CanEdit)
 {
