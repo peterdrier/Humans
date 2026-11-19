@@ -2233,7 +2233,10 @@ public class ServiceTests
         var order = MakeDepositOrder(Guid.NewGuid(), depositTotal: 0m);
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = 10m, Method = PaymentMethod.BankTransfer,
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 10m,
+            Method = PaymentMethod.BankTransfer,
             ExternalRef = "already-recorded",
         });
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
