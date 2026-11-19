@@ -1,5 +1,6 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Holded.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
@@ -11,6 +12,7 @@ namespace Humans.Store.Services;
 internal sealed class StoreCatalog(
     IStoreRepository repo,
     IAuditLogService audit,
+    IHoldedService holded,
     IClock clock,
     ILogger<Service> logger) : IApplicationService
 {
@@ -38,7 +40,7 @@ internal sealed class StoreCatalog(
 
     public async Task<CatalogSaveResult> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        var refusal = GetProductDraftRefusal(draft);
+        var refusal = GetProductDraftRefusal(draft) ?? await GetAccountRefusalAsync(draft, ct);
         if (refusal is not null)
         {
             logger.LogWarning("Store catalog create rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
@@ -63,7 +65,7 @@ internal sealed class StoreCatalog(
 
     public async Task<AdminMutationResult> UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        var refusal = GetProductDraftRefusal(draft);
+        var refusal = GetProductDraftRefusal(draft) ?? await GetAccountRefusalAsync(draft, ct);
         if (refusal is not null)
             return RefuseCatalogMutation(draft.Id, actorUserId, refusal);
 
@@ -186,14 +188,80 @@ internal sealed class StoreCatalog(
             return "VAT rate must be at most 999.99 with no more than two decimal places";
         if (draft.DepositAmountEur is { } deposit && (deposit > 9_999_999_999.99m || decimal.Round(deposit, 2) != deposit))
             return "Deposit must be at most 9,999,999,999.99 with no more than two decimal places";
-        if (draft.HoldedRevenueAccountNum is < 10_000_000 or > 99_999_999)
-            return "Holded revenue account must be an 8-digit chart number";
-        if (draft.HoldedExpenseAccountNum is < 10_000_000 or > 99_999_999)
-            return "Holded expense account must be an 8-digit chart number";
-        if (draft.HoldedTransferAccountNum is < 10_000_000 or > 99_999_999)
-            return "Holded transfer account must be an 8-digit chart number";
         return null;
     }
+
+    /// <summary>The accounts each product field may hold: the mirror's unarchived chart, one block per field. Reads
+    /// the mirror only, never Holded.</summary>
+    public async Task<ProductAccountChoices> GetAccountChoicesAsync(CancellationToken ct = default)
+    {
+        var chart = (await holded.GetChartAsync(ct)).Where(a => !a.Archived).OrderBy(a => a.Number).ToList();
+        IReadOnlyList<AccountChoice> Block(int from, int to) =>
+            chart.Where(a => a.Number >= from && a.Number <= to).Select(a => new AccountChoice(a.Number, a.Name)).ToList();
+        return new ProductAccountChoices(
+            Block(IncomeBlockStart, IncomeBlockEnd),
+            Block(CostBlockStart, CostBlockEnd),
+            Block(TeamUsageBlockStart, TeamUsageBlockEnd));
+    }
+
+    /// <summary>Sets the three accounts on many products of one year in one save. Any row naming an account the
+    /// choices don't hold refuses the whole save; unchanged rows are not written.</summary>
+    public async Task<AdminMutationResult> SaveAccountsAsync(
+        int year, IReadOnlyList<ProductAccounts> rows, Guid actorUserId, CancellationToken ct = default)
+    {
+        var products = (await repo.GetAllProductsForYearAsync(year, ct)).ToDictionary(p => p.Id);
+        var choices = await GetAccountChoicesAsync(ct);
+        var refusals = new List<string>();
+        foreach (var row in rows)
+        {
+            if (!products.TryGetValue(row.ProductId, out var product))
+                refusals.Add($"Product {row.ProductId} is not in the {year} catalog.");
+            else if (choices.Refusal(row.Income, row.Cost, row.TeamUsage) is { } refusal)
+                refusals.Add($"{product.Name}: {refusal}");
+        }
+        if (refusals.Count > 0)
+        {
+            logger.LogWarning("Store catalog account save rejected for actor {ActorId}: {Reasons}",
+                actorUserId, string.Join(" ", refusals));
+            return AdminMutationResult.Refused(string.Join(" ", refusals));
+        }
+
+        var now = clock.GetCurrentInstant();
+        foreach (var row in rows)
+        {
+            var product = products[row.ProductId];
+            if (product.HoldedRevenueAccountNum == row.Income && product.HoldedExpenseAccountNum == row.Cost
+                && product.HoldedTransferAccountNum == row.TeamUsage)
+                continue;
+            product.HoldedRevenueAccountNum = row.Income;
+            product.HoldedExpenseAccountNum = row.Cost;
+            product.HoldedTransferAccountNum = row.TeamUsage;
+            product.UpdatedAt = now;
+            await repo.UpdateProductAsync(product, ct);
+            await audit.LogAsync(
+                StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, product.Id,
+                $"Set accounts on store product '{product.Name}': income {Show(row.Income)}, cost {Show(row.Cost)}, "
+                    + $"team usage {Show(row.TeamUsage)}",
+                actorUserId);
+        }
+        return AdminMutationResult.Success;
+
+        static string Show(int? account) => account?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none";
+    }
+
+    private async Task<string?> GetAccountRefusalAsync(ProductDto draft, CancellationToken ct) =>
+        draft.HoldedRevenueAccountNum is null && draft.HoldedExpenseAccountNum is null && draft.HoldedTransferAccountNum is null
+            ? null
+            : (await GetAccountChoicesAsync(ct)).Refusal(
+                draft.HoldedRevenueAccountNum, draft.HoldedExpenseAccountNum, draft.HoldedTransferAccountNum);
+
+    // Income is the whole sales-and-income group (7xxxxxxx); store items normally sit in 759xxxxx.
+    private const int IncomeBlockStart = 70_000_000;
+    private const int IncomeBlockEnd = 79_999_999;
+    private const int CostBlockStart = 62_900_000;
+    private const int CostBlockEnd = 62_909_999;
+    private const int TeamUsageBlockStart = 62_990_000;
+    private const int TeamUsageBlockEnd = 62_999_999;
 
     internal static ProductDto MapProduct(Product p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,

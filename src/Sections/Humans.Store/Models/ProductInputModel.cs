@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Humans.Store.Services.Dtos;
 using Humans.Base.Attributes;
 
 namespace Humans.Store.Models;
@@ -31,13 +33,10 @@ internal sealed class ProductInputModel
     [Range(0.0, 1_000_000.0)]
     public decimal? DepositAmountEur { get; set; }
 
-    [Range(10_000_000, 99_999_999, ErrorMessage = "Use the 8-digit Holded chart number, e.g. 75900002")]
     public int? HoldedRevenueAccountNum { get; set; }
 
-    [Range(10_000_000, 99_999_999, ErrorMessage = "Use the 8-digit Holded chart number, e.g. 62900002")]
     public int? HoldedExpenseAccountNum { get; set; }
 
-    [Range(10_000_000, 99_999_999, ErrorMessage = "Use the 8-digit Holded chart number, e.g. 62990002")]
     public int? HoldedTransferAccountNum { get; set; }
 
     [Required(AllowEmptyStrings = false)]
@@ -46,4 +45,8 @@ internal sealed class ProductInputModel
 
     [BindRequired]
     public bool IsActive { get; set; } = true;
+
+    [BindNever]
+    [ValidateNever]
+    public ProductAccountChoices AccountChoices { get; set; } = new([], [], []);
 }
