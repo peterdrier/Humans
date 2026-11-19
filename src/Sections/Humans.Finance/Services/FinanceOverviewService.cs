@@ -130,16 +130,21 @@ internal sealed class FinanceOverviewService(
         });
     }
 
-    /// <summary>The 441 ledger accounts (unarchived, from the chart mirror), the Stripe accounts the mirror holds a
-    /// balance for, and the stored links. Reads mirrors only.</summary>
+    /// <summary>The 441 ledger accounts /Finance shows (unarchived, or archived while holding money) plus any already
+    /// linked, so a save never drops a link the form didn't render; the Stripe accounts the mirror holds a balance
+    /// for; and the stored links. Reads mirrors only.</summary>
     public async Task<(IReadOnlyList<HoldedChartAccountInfo> LedgerAccounts, IReadOnlyList<string> StripeAccounts,
         IReadOnlyDictionary<int, string> Links)> GetStripeLinkSettingsAsync(CancellationToken ct = default)
     {
+        var links = await repo.GetStripeLedgerLinksAsync(ct);
+        var balances = await holded.GetAccountBalancesAsync(ct);
         var ledger = (await holded.GetChartAsync(ct))
-            .Where(a => !a.Archived && Under(a.Number, "441")).OrderBy(a => a.Number).ToList();
+            .Where(a => Under(a.Number, "441")
+                && (!a.Archived || balances.GetValueOrDefault(a.Number) != 0m || links.ContainsKey(a.Number)))
+            .OrderBy(a => a.Number).ToList();
         var stripeAccounts = (await stripe.GetEurBalancesAsync(ct))
             .Select(b => b.AccountId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
-        return (ledger, stripeAccounts, await repo.GetStripeLedgerLinksAsync(ct));
+        return (ledger, stripeAccounts, links);
     }
 
     /// <summary>Blank entries unlink. The stored links become exactly the non-blank ones.</summary>

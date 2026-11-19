@@ -6,6 +6,7 @@ using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Humans.Stripe.Contracts;
 using NodaTime;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Finance.Tests;
@@ -62,6 +63,32 @@ public class FinanceOverviewServiceTests
         sources[44100005].Balance.Should().BeNull();
         sources[44100005].Unknown.Should().NotBeNull();
         sources[44100005].ReconcileUrl.Should().Be("/Settings#finance");
+    }
+
+    [HumansFact]
+    public async Task StripeLinkSettings_ListEvery441AccountFinanceShows_AndEveryLinkedOne()
+    {
+        var holded = Substitute.For<IHoldedService>();
+        var repo = Substitute.For<Humans.Finance.Data.IHoldedRepository>();
+        holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedChartAccountInfo(44100001, "Open", null, null, false, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holds money", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100004, "Archived, empty", null, null, true, 0m),
+        ]);
+        holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [44100002] = 12m });
+        repo.GetStripeLedgerLinksAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, string> { [44100003] = "acct_old" });
+        var service = new FinanceOverviewService(holded, Substitute.For<IFinanceService>(),
+            Substitute.For<IFinanceAdminService>(), Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            Substitute.For<IBudgetService>(), null!, Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
+            Substitute.For<IStripeMirrorService>(), Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
+            repo, Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), NodaTime.SystemClock.Instance);
+
+        var (ledger, _, _) = await service.GetStripeLinkSettingsAsync(TestContext.Current.CancellationToken);
+
+        ledger.Select(a => a.Number).Should().Equal(44100001, 44100002, 44100003);
     }
 
     [HumansFact]

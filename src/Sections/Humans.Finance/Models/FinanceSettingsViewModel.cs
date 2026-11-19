@@ -1,6 +1,6 @@
 namespace Humans.Finance.Models;
 
-/// <summary>One row per unarchived 441 ledger account; <see cref="StripeAccounts"/> are the ids the Stripe mirror
+/// <summary>One row per 441 ledger account /Finance shows or already linked; <see cref="StripeAccounts"/> are the ids the Stripe mirror
 /// holds a balance for.</summary>
 internal sealed record FinanceSettingsViewModel(
     IReadOnlyList<FinanceStripeLinkRow> Rows, IReadOnlyList<string> StripeAccounts);
