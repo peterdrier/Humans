@@ -147,18 +147,28 @@ internal sealed class FinanceOverviewService(
         return (ledger, stripeAccounts, links);
     }
 
-    /// <summary>Blank entries unlink. The stored links become exactly the non-blank ones.</summary>
-    public async Task SaveStripeLinksAsync(
+    /// <summary>Blank entries unlink. The stored links become exactly the non-blank ones. Null on success, else why
+    /// nothing was saved: a ledger account the form doesn't list, or a Stripe account the mirror doesn't hold (one
+    /// already linked stays saveable).</summary>
+    public async Task<string?> SaveStripeLinksAsync(
         IReadOnlyDictionary<int, string?> links, Guid actorUserId, CancellationToken ct = default)
     {
+        var (ledger, stripeAccounts, current) = await GetStripeLinkSettingsAsync(ct);
         var kept = links.Where(l => !string.IsNullOrWhiteSpace(l.Value))
             .ToDictionary(l => l.Key, l => l.Value!.Trim());
+        if (links.Keys.FirstOrDefault(n => ledger.All(a => a.Number != n)) is var badNum and not 0)
+            return $"Ledger account {badNum} is not a Stripe ledger account on /Finance.";
+        if (kept.FirstOrDefault(l => !stripeAccounts.Contains(l.Value, StringComparer.Ordinal)
+                && !string.Equals(current.GetValueOrDefault(l.Key), l.Value, StringComparison.Ordinal)) is { Key: not 0 } badLink)
+            return $"The Stripe mirror holds no account {badLink.Value}.";
+
         await repo.ReplaceStripeLedgerLinksAsync(kept, ct);
         await audit.LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, "FinanceStripeLedgerLinks", Guid.Empty,
             kept.Count == 0 ? "Stripe ledger links cleared"
                 : "Stripe ledger links: " + string.Join(", ", kept.OrderBy(l => l.Key)
                     .Select(l => string.Create(CultureInfo.InvariantCulture, $"{l.Key} → {l.Value}"))),
             actorUserId);
+        return null;
     }
 
     /// <summary>Banks are 570/572, Stripe 441 until it moves. An archived account shows only while it holds money.

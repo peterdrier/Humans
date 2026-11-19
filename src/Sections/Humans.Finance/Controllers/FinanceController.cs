@@ -70,9 +70,12 @@ internal sealed class FinanceController(
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         if (rows.GroupBy(r => r.LedgerAccountNum).Any(g => g.Count() > 1)) return BadRequest();
-        await overview.SaveStripeLinksAsync(
-            rows.ToDictionary(r => r.LedgerAccountNum, r => r.StripeAccountId), actorUserId, HttpContext.RequestAborted);
-        SetSuccess("Stripe links saved.");
+        if (await overview.SaveStripeLinksAsync(
+                rows.ToDictionary(r => r.LedgerAccountNum, r => r.StripeAccountId), actorUserId,
+                HttpContext.RequestAborted) is { } refusal)
+            SetError(refusal);
+        else
+            SetSuccess("Stripe links saved.");
         return Redirect("/Settings#finance");
     }
 

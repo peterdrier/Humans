@@ -65,30 +65,64 @@ public class FinanceOverviewServiceTests
         sources[44100005].ReconcileUrl.Should().Be("/Settings#finance");
     }
 
-    [HumansFact]
-    public async Task StripeLinkSettings_ListEvery441AccountFinanceShows_AndEveryLinkedOne()
+    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly Humans.Finance.Data.IHoldedRepository _repo = Substitute.For<Humans.Finance.Data.IHoldedRepository>();
+    private readonly IStripeMirrorService _stripe = Substitute.For<IStripeMirrorService>();
+    private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
+
+    private FinanceOverviewService LinkService()
     {
-        var holded = Substitute.For<IHoldedService>();
-        var repo = Substitute.For<Humans.Finance.Data.IHoldedRepository>();
-        holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
             new HoldedChartAccountInfo(44100001, "Open", null, null, false, 0m),
             new HoldedChartAccountInfo(44100002, "Archived, holds money", null, null, true, 0m),
             new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
             new HoldedChartAccountInfo(44100004, "Archived, empty", null, null, true, 0m),
         ]);
-        holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [44100002] = 12m });
-        repo.GetStripeLedgerLinksAsync(Arg.Any<CancellationToken>())
+        _repo.GetStripeLedgerLinksAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, string> { [44100003] = "acct_old" });
-        var service = new FinanceOverviewService(holded, Substitute.For<IFinanceService>(),
+        _stripe.GetEurBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns([new StripeAccountBalance("acct_store", 1m, 0m, Instant.FromUtc(2026, 11, 1, 0, 0))]);
+        return new FinanceOverviewService(_holded, Substitute.For<IFinanceService>(),
             Substitute.For<IFinanceAdminService>(), Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             Substitute.For<IBudgetService>(), null!, Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
-            Substitute.For<IStripeMirrorService>(), Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-            repo, Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(), NodaTime.SystemClock.Instance);
+            _stripe, Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
+            _repo, _audit, NodaTime.SystemClock.Instance);
+    }
 
-        var (ledger, _, _) = await service.GetStripeLinkSettingsAsync(TestContext.Current.CancellationToken);
+    [HumansFact]
+    public async Task StripeLinkSettings_ListEvery441AccountFinanceShows_AndEveryLinkedOne()
+    {
+        var (ledger, _, _) = await LinkService().GetStripeLinkSettingsAsync(TestContext.Current.CancellationToken);
 
         ledger.Select(a => a.Number).Should().Equal(44100001, 44100002, 44100003);
+    }
+
+    [HumansFact]
+    public async Task SaveStripeLinks_StoresTheChoices_UnlinksBlanks_Audits_AndRefusesUnknownValues()
+    {
+        var service = LinkService();
+        var actor = Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+
+        (await service.SaveStripeLinksAsync(new Dictionary<int, string?> { [44100004] = "acct_store" }, actor, ct))
+            .Should().NotBeNull();
+        (await service.SaveStripeLinksAsync(new Dictionary<int, string?> { [44100001] = "acct_typo" }, actor, ct))
+            .Should().NotBeNull();
+        await _repo.DidNotReceive().ReplaceStripeLedgerLinksAsync(
+            Arg.Any<IReadOnlyDictionary<int, string>>(), Arg.Any<CancellationToken>());
+
+        (await service.SaveStripeLinksAsync(new Dictionary<int, string?>
+            { [44100001] = "acct_store", [44100002] = "", [44100003] = "acct_old" }, actor, ct)).Should().BeNull();
+
+        await _repo.Received(1).ReplaceStripeLedgerLinksAsync(
+            Arg.Is<IReadOnlyDictionary<int, string>>(d =>
+                d.Count == 2 && d[44100001] == "acct_store" && d[44100003] == "acct_old"),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Is<string>(d => d.Contains("44100001 → acct_store")), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
