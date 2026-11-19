@@ -5,6 +5,7 @@ using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Store.Services;
 
@@ -57,11 +58,13 @@ internal sealed class StoreOrderAdministration(
         decimal amountEur,
         string? externalRef,
         string? notes,
+        LocalDate? valueDate,
         Guid actorUserId,
         StoreOrderReader orderReader, CancellationToken ct = default)
     {
-        if (method is not (PaymentMethod.DepositReturn or PaymentMethod.Refund))
-            return RefuseAdminMutation(orderId, actorUserId, $"Only deposit returns and refunds can be recorded by hand, not {method}.");
+        if (method is not (PaymentMethod.BankTransfer or PaymentMethod.DepositReturn or PaymentMethod.Refund))
+            return RefuseAdminMutation(orderId, actorUserId,
+                $"Only bank transfers, deposit returns and refunds can be recorded by hand, not {method}.");
         if (amountEur <= 0)
             return RefuseAdminMutation(orderId, actorUserId, "Amount must be greater than zero.");
         if (amountEur > 9_999_999_999.99m || decimal.Round(amountEur, 2) != amountEur)
@@ -69,6 +72,10 @@ internal sealed class StoreOrderAdministration(
                 "Amount must be at most 9,999,999,999.99 with no more than two decimal places.");
         if (method == PaymentMethod.Refund && string.IsNullOrWhiteSpace(externalRef))
             return RefuseAdminMutation(orderId, actorUserId, "A refund needs a reference (e.g. the Stripe refund id).");
+        if (method == PaymentMethod.BankTransfer && string.IsNullOrWhiteSpace(externalRef))
+            return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs a reference (the Holded bank movement id).");
+        if (method == PaymentMethod.BankTransfer && valueDate is null)
+            return RefuseAdminMutation(orderId, actorUserId, "A bank transfer needs its value date.");
 
         var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
         if (order is null) return RefuseAdminMutation(orderId, actorUserId, "Order not found.");
@@ -106,14 +113,17 @@ internal sealed class StoreOrderAdministration(
             Status = PaymentStatus.Paid,
             ExternalRef = externalRef,
             Notes = notes,
-            ReceivedAt = clock.GetCurrentInstant(),
+            // Midnight UTC falls on the same calendar day in UTC and in the org zone (Europe/Madrid), so the value
+            // date reads back unchanged wherever ReceivedAt is shown.
+            ReceivedAt = valueDate?.AtMidnight().InUtc().ToInstant() ?? clock.GetCurrentInstant(),
             RecordedByUserId = actorUserId,
         };
         await repo.AddPaymentAsync(payment, ct);
         await audit.LogAsync(
             StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
             $"Recorded {method} of EUR {signed:0.00} on order {orderId}"
-                + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})"),
+                + (payment.ExternalRef is null ? string.Empty : $" (ref {payment.ExternalRef})")
+                + (valueDate is { } d ? $", value date {LocalDatePattern.Iso.Format(d)}" : string.Empty),
             actorUserId, orderId, AuditEntityTypes.Order);
         return AdminMutationResult.Success;
     }

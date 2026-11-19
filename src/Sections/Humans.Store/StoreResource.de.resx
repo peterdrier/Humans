@@ -80,14 +80,16 @@
   <data name="Store_CounterpartyUpdated" xml:space="preserve"><value>Gegenpartei aktualisiert.</value></data>
   <data name="Store_PaymentRecorded" xml:space="preserve"><value>Erfasst.</value></data>
   <data name="Store_Overpaid" xml:space="preserve"><value>{0} zu viel bezahlt — wird dem Camp zurückerstattet.</value></data>
-  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Kautionsrückgabe oder Erstattung erfassen</value></data>
+  <data name="Store_RecordPaymentHeading" xml:space="preserve"><value>Zahlung, Kautionsrückgabe oder Erstattung erfassen</value></data>
   <data name="Store_RecordPaymentType" xml:space="preserve"><value>Art</value></data>
   <data name="Store_Method_DepositReturn" xml:space="preserve"><value>Kautionsrückgabe (Gutschrift auf die Bestellung)</value></data>
   <data name="Store_Method_Refund" xml:space="preserve"><value>Erstattung (Geld über Stripe zurückgezahlt)</value></data>
+  <data name="Store_Method_BankTransfer" xml:space="preserve"><value>Banküberweisung (auf dem Bankkonto eingegangen)</value></data>
+  <data name="Store_RecordPaymentValueDate" xml:space="preserve"><value>Valutadatum</value></data>
   <data name="Enum_PaymentMethod_DepositReturn" xml:space="preserve"><value>Kautionsrückgabe</value></data>
   <data name="Enum_PaymentMethod_Refund" xml:space="preserve"><value>Erstattung</value></data>
   <data name="Store_RecordPaymentAmount" xml:space="preserve"><value>Betrag (EUR)</value></data>
-  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referenz (z. B. Stripe-Erstattungs-ID)</value></data>
+  <data name="Store_RecordPaymentRef" xml:space="preserve"><value>Referenz (Holded-Bankbewegungs-ID oder Stripe-Erstattungs-ID)</value></data>
   <data name="Store_RecordPaymentNotes" xml:space="preserve"><value>Notizen</value></data>
   <data name="Store_RecordPaymentSubmit" xml:space="preserve"><value>Erfassen</value></data>
   <data name="Enum_OrderState_Open" xml:space="preserve"><value>Offen</value></data><data name="Enum_OrderState_InvoiceIssued" xml:space="preserve"><value>Rechnung ausgestellt</value></data><data name="Enum_PaymentMethod_Stripe" xml:space="preserve"><value>Stripe</value></data><data name="Enum_PaymentMethod_BankTransfer" xml:space="preserve"><value>Banküberweisung</value></data><data name="Enum_PaymentMethod_Manual" xml:space="preserve"><value>Manuell</value></data><data name="Enum_PaymentStatus_Paid" xml:space="preserve"><value>Bezahlt</value></data><data name="Enum_PaymentStatus_Pending" xml:space="preserve"><value>Abrechnung ausstehend</value></data><data name="Enum_PaymentStatus_Failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>

@@ -18,8 +18,8 @@ internal sealed class OrderOperationRequirement : IAuthorizationRequirement
     public static readonly OrderOperationRequirement Delete = new(nameof(Delete));
     public static readonly OrderOperationRequirement IssueInvoice = new(nameof(IssueInvoice));
     public static readonly OrderOperationRequirement RecordPayment = new(nameof(RecordPayment));
-    /// <summary>Narrower than <see cref="RecordPayment"/>: Finance admin and Admin only.</summary>
-    public static readonly OrderOperationRequirement Refund = new(nameof(Refund));
+    /// <summary>Narrower than <see cref="RecordPayment"/>: bank transfers and refunds, Finance admin and Admin only.</summary>
+    public static readonly OrderOperationRequirement RecordFinancePayment = new(nameof(RecordFinancePayment));
     public static readonly OrderOperationRequirement DeletePayment = new(nameof(DeletePayment));
 
     public string OperationName { get; }
