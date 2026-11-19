@@ -29,7 +29,9 @@ internal sealed record ProductSaveRequest(
     decimal? DepositAmountEur,
     string? OrderableUntil,
     bool IsActive,
-    int? HoldedRevenueAccountNum);
+    int? HoldedRevenueAccountNum,
+    int? HoldedExpenseAccountNum = null,
+    int? HoldedTransferAccountNum = null);
 
 internal sealed record CatalogSaveResult(
     bool Succeeded,
