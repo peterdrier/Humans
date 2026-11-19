@@ -83,16 +83,17 @@
         {
             @* FinanceAdmin-only controls: plain strings. *@
             var bookingState = invoice.BookingState ?? InvoiceBookingState.NotBooked;
-            <span class="badge @(bookingState == InvoiceBookingState.Booked ? "bg-success" : bookingState == InvoiceBookingState.Stopped ? "bg-danger" : "bg-warning text-dark")">
+            <span class="badge @(bookingState == InvoiceBookingState.Booked ? "bg-success" : bookingState is InvoiceBookingState.Stopped or InvoiceBookingState.NeedsReview ? "bg-danger" : "bg-warning text-dark")">
                 @(bookingState switch
                 {
                     InvoiceBookingState.Booked => "Booked in Holded",
                     InvoiceBookingState.WaitingForFeed => "Waiting for Stripe feed",
                     InvoiceBookingState.Stopped => "Booking stopped",
+                    InvoiceBookingState.NeedsReview => "Finish in Holded by hand",
                     _ => "Not booked",
                 })
             </span>
-            @if (bookingState != InvoiceBookingState.Booked)
+            @if (bookingState is not (InvoiceBookingState.Booked or InvoiceBookingState.NeedsReview))
             {
                 <form asp-action="BookInvoice" asp-route-id="@order.Id" method="post" class="mb-0" data-submit-once>
                     @Html.AntiForgeryToken()

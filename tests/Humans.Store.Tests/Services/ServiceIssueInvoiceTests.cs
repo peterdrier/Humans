@@ -351,6 +351,35 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
+    public async Task A_receipt_is_refused_when_a_refund_would_need_its_missing_contact()
+    {
+        var order = CampOrder(identified: false);
+        Arrange(order, IceProduct());
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 10m,
+            Method = PaymentMethod.BankTransfer,
+            Status = PaymentStatus.Paid,
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -10m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+        });
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Match("*refund*contact*");
+        await _holded.DidNotReceiveWithAnyArgs().IssueSalesDocumentAsync(default, default!);
+    }
+
+    [HumansFact]
     public async Task A_pending_refund_holds_the_invoice_back()
     {
         var order = CampOrder();

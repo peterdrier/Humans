@@ -150,15 +150,16 @@ internal sealed class HoldedTreasuryClient(HoldedTransport transport, ILogger<Ho
         return UnconfirmedPaymentRefPrefix + "payment";
     }
 
-    /// <summary>A bank line has no <c>date</c> key, only <c>booking_date</c> and <c>value_date</c> (ISO 8601 with an
-    /// offset). Booking is what Holded stamps on the reconciled payment and entry, so it is the date; value is the
-    /// fallback. The date part is taken as given, never shifted to Madrid: a midnight-UTC Sabadell line would move
-    /// a day. Throws <c>HoldedPermanentException</c> when neither parses.</summary>
     private static Instant? ParseBookedAt(JsonNode line)
     {
         var parsed = OffsetDateTimePattern.ExtendedIso.Parse(Prop(line, "booking_date")?.GetValue<string>() ?? "");
         return parsed.Success ? parsed.Value.ToInstant() : null;
     }
+
+    /// <summary>A bank line has no <c>date</c> key, only <c>booking_date</c> and <c>value_date</c> (ISO 8601 with an
+    /// offset). Booking is what Holded stamps on the reconciled payment and entry, so it is the date; value is the
+    /// fallback. The date part is taken as given, never shifted to Madrid: a midnight-UTC Sabadell line would move
+    /// a day. Throws <c>HoldedPermanentException</c> when neither parses.</summary>
 
     private static LocalDate ParseBankMovementDate(JsonNode line)
     {

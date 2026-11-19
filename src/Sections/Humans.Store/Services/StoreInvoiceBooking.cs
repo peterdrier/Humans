@@ -59,6 +59,10 @@ internal sealed class StoreInvoiceBooking(
             : (await repo.GetInvoicesForOrdersAsync([orderId], ct)).SingleOrDefault();
         if (order is null || invoice is null) return InvoiceBookingState.NotBooked;
         if (!holded.IsConfigured) return invoice.BookingState ?? InvoiceBookingState.NotBooked;
+        // Collections and refund payments have no key to find them by, so a rerun after a stop that posted could
+        // post them twice: that order is put right in Holded by hand.
+        if (invoice.BookingState is InvoiceBookingState.Booked or InvoiceBookingState.NeedsReview)
+            return invoice.BookingState.Value;
 
         var posted = new List<string>();
         try
@@ -66,11 +70,12 @@ internal sealed class StoreInvoiceBooking(
             var (state, note) = await RunAsync(order, invoice, posted, ct);
             return await FinishAsync(order, invoice, state, note, posted, actorUserId);
         }
-        catch (HoldedApiException ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || posted.Count > 0)
         {
-            logger.LogWarning("Store invoice booking for order {OrderId} stopped on Holded: {Message}", orderId, ex.Message);
+            // Whatever failed, what was already posted is recorded and audited.
+            logger.LogWarning(ex, "Store invoice booking for order {OrderId} stopped", orderId);
             return await FinishAsync(order, invoice, InvoiceBookingState.Stopped,
-                $"Holded refused a booking step: {ex.Message}", posted, actorUserId);
+                $"A booking step failed: {ex.Message}", posted, actorUserId);
         }
     }
 
@@ -109,7 +114,7 @@ internal sealed class StoreInvoiceBooking(
                 "Waiting for the feed: " + string.Join("; ", resolved.Waiting) + ".");
         if (resolved.Stop is not null) return (InvoiceBookingState.Stopped, resolved.Stop);
 
-        var document = await holdedWrite.GetSalesDocumentAsync(kind, invoice.HoldedDocId, ct);
+        var document = await holded.GetSalesDocumentAsync(kind, invoice.HoldedDocId, ct);
         var unclaimed = document.Payments.ToList();
         var remaining = document.Total;
         var description = $"Store order {order.Id}";
@@ -179,7 +184,7 @@ internal sealed class StoreInvoiceBooking(
         HoldedSalesDocumentKind kind, Invoice invoice, IReadOnlyList<Leg> legs, CancellationToken ct)
     {
         var problems = new List<string>();
-        var document = await holdedWrite.GetSalesDocumentAsync(kind, invoice.HoldedDocId, ct);
+        var document = await holded.GetSalesDocumentAsync(kind, invoice.HoldedDocId, ct);
         if (document.PaymentsPending is not 0m)
             problems.Add(document.PaymentsPending is { } pending
                 ? $"the invoice still shows EUR {pending:0.00} pending"
@@ -236,11 +241,11 @@ internal sealed class StoreInvoiceBooking(
             }
             else
             {
-                var (amount, created) = await StripeAmountAndCreatedAsync(p, ct);
+                var (amount, created) = await StripeAmountAndCreatedAsync(p, legs.Select(l => l.Payment).ToList(), ct);
                 if (created is null)
-                    return (lines, waiting, $"Stripe would not say when payment {p.StripePaymentIntentId} was charged.");
+                    return (lines, waiting, $"Stripe would not say when {Describe(p)} was made.");
                 if (amount != p.AmountEur)
-                    return (lines, waiting, $"Stripe charged EUR {amount:0.00} for {p.StripePaymentIntentId}, "
+                    return (lines, waiting, $"Stripe shows EUR {amount:0.00} for {Describe(p)}, "
                         + $"but the order records EUR {p.AmountEur:0.00}.");
                 matches = feed.Where(m => m.Amount == amount && m.BookedAt == created).ToList();
             }
@@ -257,12 +262,23 @@ internal sealed class StoreInvoiceBooking(
         return (lines, waiting, null);
     }
 
-    /// <summary>A charge's line is the charge's gross at its creation second; a refund's is the refund's.</summary>
-    private async Task<(decimal Amount, Instant? Created)> StripeAmountAndCreatedAsync(Payment p, CancellationToken ct)
+    /// <summary>A charge's line is the charge's gross at its creation second; a refund's is the refund's, read from
+    /// Stripe by its id, since a refund recorded by hand carries the entry time, not Stripe's.</summary>
+    private async Task<(decimal Amount, Instant? Created)> StripeAmountAndCreatedAsync(
+        Payment p, IReadOnlyList<Payment> orderPayments, CancellationToken ct)
     {
-        if (p.AmountEur < 0m) return (p.AmountEur, p.ReceivedAt);
-        if (p.StripePaymentIntentId is not { } pi) return (p.AmountEur, null);
-        var charge = await stripe.GetStoreChargeAsync(pi, ct);
+        if (p.AmountEur < 0m)
+        {
+            foreach (var pi in orderPayments.Select(o => o.StripePaymentIntentId).OfType<string>().Distinct(StringComparer.Ordinal))
+            {
+                var refund = (await stripe.ListStoreRefundsAsync(pi, ct))?
+                    .FirstOrDefault(r => string.Equals(r.RefundId, p.ExternalRef, StringComparison.Ordinal));
+                if (refund is not null) return (-refund.AmountEur, refund.CreatedAt);
+            }
+            return (p.AmountEur, null);
+        }
+        if (p.StripePaymentIntentId is not { } chargeIntent) return (p.AmountEur, null);
+        var charge = await stripe.GetStoreChargeAsync(chargeIntent, ct);
         return charge is null ? (p.AmountEur, null) : (charge.AmountEur, charge.CreatedAt);
     }
 
@@ -290,6 +306,11 @@ internal sealed class StoreInvoiceBooking(
         Order order, Invoice invoice, InvoiceBookingState state, string? note, IReadOnlyList<string> posted,
         Guid actorUserId)
     {
+        if (state == InvoiceBookingState.Stopped && posted.Count > 0)
+        {
+            state = InvoiceBookingState.NeedsReview;
+            note += " Already posted: " + string.Join("; ", posted) + ". Finish this order in Holded by hand.";
+        }
         var changed = invoice.BookingState != state || !string.Equals(invoice.BookingNote, note, StringComparison.Ordinal) || posted.Count > 0;
         invoice.BookingState = state;
         invoice.BookingNote = note;

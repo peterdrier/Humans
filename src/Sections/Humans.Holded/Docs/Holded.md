@@ -177,8 +177,9 @@ logged, the write stands), `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachm
 `FindSalesDocumentsByTagAsync` (both kinds, read live: the issuance guard), `IssueSalesDocumentAsync`
 (create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown
 number refused; `DiscountPercent` sets a whole-document discount) and `ApproveSalesDocumentAsync`.
-For the Store's one-shot booking: `GetSalesDocumentAsync` (live: totals, `payments_pending`, `payments_detail`,
-contact and the contact's 430 account), `GetSalesDocumentPdfAsync`, `SendSalesDocumentAsync` (Holded emails it;
+For the Store's one-shot booking: on `IHoldedService`, `GetSalesDocumentAsync` (live, no mirror holds sales documents:
+totals, `payments_pending`, `payments_detail`, contact and the contact's 430 account) and `GetSalesDocumentPdfAsync`; on
+`IHoldedWrite`, `SendSalesDocumentAsync` (Holded emails it;
 no addresses means the contact's), `PaySalesDocumentAsync` (same before/after `payments_detail` diff as
 `PayPurchaseDocumentAsync`, shared in `HoldedDocumentPayment`) and `CreateTreasuryPaymentAsync`
 (`POST /payments`, `collection` or `payment`, on a contact and `bank_account_id`).

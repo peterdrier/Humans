@@ -365,7 +365,6 @@ internal sealed class Service(
     public Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default) =>
         stripePayments.HandleStripeCheckoutWebhookEventAsync(evt, ct);
 
-    /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     /// <summary>Issues and approves the invoice, then books the order's money onto it in Holded at once. A refused
     /// issuance books nothing; a booking that waits or stops leaves the invoice issued, with the reason on the order.</summary>
     [ExternalWrite]
@@ -412,7 +411,7 @@ internal sealed class Service(
     {
         var invoice = await GetInvoiceAsync(orderId, ct);
         if (invoice is null) return null;
-        var pdf = await holdedWrite.GetSalesDocumentPdfAsync(
+        var pdf = await holded.GetSalesDocumentPdfAsync(
             StoreInvoiceBooking.DocumentKind(invoice), invoice.HoldedDocId, ct);
         return (pdf, invoice.HoldedDocNumber);
     }

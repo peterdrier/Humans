@@ -163,19 +163,6 @@ internal sealed class HoldedWrite(
         return await client.GetSalesDocumentAsync(kind, id, ct);
     }
 
-    public async Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
-    {
-        var document = await client.GetSalesDocumentAsync(kind, documentId, ct);
-        if (document.ContactId is null) return document;
-        var contact = await client.GetContactAsync(document.ContactId, ct);
-        return document with { ContactAccountNum = contact.ClientAccountNum };
-    }
-
-    public Task<byte[]> GetSalesDocumentPdfAsync(
-        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
-        client.GetSalesDocumentPdfAsync(kind, documentId, ct);
-
     public Task SendSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default) =>
         client.SendSalesDocumentAsync(kind, documentId, emails, ct);

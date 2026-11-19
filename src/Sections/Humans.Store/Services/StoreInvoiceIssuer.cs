@@ -121,6 +121,11 @@ internal sealed class StoreInvoiceIssuer(
             return Refuse(order.Id, actorUserId,
                 $"An order of EUR {totalDue:0.00} needs a full factura: fill in the counterparty's "
                 + "name, address and tax id (or passport number) first.");
+        // Money beyond the total books as a collection and a refund as a payment, both on the contact a receipt lacks.
+        if (counterparty is null && order.Payments.Any(p => p.Method == PaymentMethod.Refund && p.Status != PaymentStatus.Failed))
+            return Refuse(order.Id, actorUserId,
+                "This order had a refund, which can only be booked against a contact: fill in the counterparty's "
+                + "name, address and tax id (or passport number) so it gets a full factura.");
 
         var displayName = await orderReader.ResolveCounterpartyDisplayNameAsync(order, ct);
         string? contactId = null;

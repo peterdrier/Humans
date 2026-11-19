@@ -90,15 +90,6 @@ public interface IHoldedWrite : IApplicationService
     Task<HoldedSalesDocumentDto> ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
-    /// <summary>The sales document as Holded holds it now, read live, with its payments and
-    /// <see cref="HoldedSalesDocumentDto.ContactAccountNum"/>.</summary>
-    Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
-
-    /// <summary>The sales document's PDF, rendered by Holded, read live.</summary>
-    Task<byte[]> GetSalesDocumentPdfAsync(
-        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
-
     /// <summary>Holded emails the sales document's PDF to <paramref name="emails"/>, or to its contact's addresses when
     /// null. Not idempotent: each call sends
     /// again.</summary>

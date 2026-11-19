@@ -62,7 +62,7 @@ public sealed record HoldedSalesDocumentDto
     public bool? IsDraft { get; init; }
     /// <summary>The contact the document is issued to; null on a receipt without one.</summary>
     public string? ContactId { get; init; }
-    /// <summary>The contact's 430xxxxx account. Filled only by <see cref="IHoldedWrite.GetSalesDocumentAsync"/>, which
+    /// <summary>The contact's 430xxxxx account. Filled only by <see cref="IHoldedService.GetSalesDocumentAsync"/>, which
     /// reads the contact live; null without a contact.</summary>
     public int? ContactAccountNum { get; init; }
     /// <summary><c>payments_pending</c>: what is still unpaid. Null when Holded doesn't report the field.</summary>

@@ -5,6 +5,7 @@ using Humans.Holded.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
+using Humans.Store;
 using Humans.Store.Services;
 using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -59,7 +60,7 @@ public class InvoiceBookingTests
         _holded.SyncAccountLedgerAsync(CampAccount, Arg.Any<CancellationToken>()).Returns(true);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [CampAccount] = 0m });
-        _write.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, DocId, Arg.Any<CancellationToken>())
+        _holded.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, DocId, Arg.Any<CancellationToken>())
             .Returns(_ => new HoldedSalesDocumentDto
             {
                 Id = DocId,
@@ -186,6 +187,10 @@ public class InvoiceBookingTests
             ExternalRef = "re_1",
             ReceivedAt = refundedAt,
         });
+        // Recorded by hand at entry time: the feed line is found by Stripe's own creation second.
+        _order.Payments.Last().ReceivedAt = Instant.FromUtc(2026, 6, 12, 0, 0);
+        _stripe.ListStoreRefundsAsync("pi_1", Arg.Any<CancellationToken>())
+            .Returns([new StoreRefundData("re_1", "pi_1", 10m, "succeeded", refundedAt)]);
         _feed.Add(new HoldedBankMovementDto { Id = "line-re_1", Date = new LocalDate(2026, 6, 10), BookedAt = refundedAt, Amount = -10m, Status = "pending" });
 
         var state = await BookAsync();
@@ -197,7 +202,7 @@ public class InvoiceBookingTests
     }
 
     [HumansFact]
-    public async Task A_camp_account_off_zero_stops_the_booking_and_does_not_send()
+    public async Task A_camp_account_off_zero_after_posting_hands_the_order_over_and_does_not_send()
     {
         Charge("pi_1", 100m, FirstCharge);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
@@ -205,8 +210,27 @@ public class InvoiceBookingTests
 
         var state = await BookAsync();
 
-        state.Should().Be(InvoiceBookingState.Stopped);
+        state.Should().Be(InvoiceBookingState.NeedsReview);
         _invoice.BookingNote.Should().Contain("12.50");
         await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default, default);
+    }
+
+    [HumansFact]
+    public async Task A_step_failing_after_a_post_hands_the_order_over_and_a_rerun_posts_nothing()
+    {
+        Charge("pi_1", 110m, FirstCharge);
+        _write.WhenForAnyArgs(w => w.ReconcileBankMovementAsync(default!, default!, default!, default))
+            .Do(_ => throw new InvalidOperationException("boom"));
+
+        var state = await BookAsync();
+
+        state.Should().Be(InvoiceBookingState.NeedsReview);
+        _invoice.BookingNote.Should().Contain("collection EUR 10.00");
+        await _audit.Received(1).LogAsync(StoreAuditActions.StoreInvoiceBooked, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("Already posted")), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        _write.ClearReceivedCalls();
+
+        (await BookAsync()).Should().Be(InvoiceBookingState.NeedsReview);
+        _write.ReceivedCalls().Should().BeEmpty();
     }
 }

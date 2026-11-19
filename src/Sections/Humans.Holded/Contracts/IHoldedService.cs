@@ -11,6 +11,15 @@ public interface IHoldedService : IApplicationService
     /// callers skip the work instead of writing off their queues. The mirror's reads still answer.</summary>
     bool IsConfigured { get; }
 
+    /// <summary>The sales document as Holded holds it now, read live (no mirror holds sales documents), with its
+    /// payments and <see cref="HoldedSalesDocumentDto.ContactAccountNum"/>.</summary>
+    Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
+    /// <summary>The sales document's PDF, rendered by Holded, read live on each download.</summary>
+    Task<byte[]> GetSalesDocumentPdfAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
     Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(int accountNum, CancellationToken ct = default);
 
     /// <summary>When the ledger mirror last finished a sweep, trailing or full; null when none has ever succeeded.
