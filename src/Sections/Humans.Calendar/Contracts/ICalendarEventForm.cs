@@ -162,8 +162,18 @@ public static class CalendarEventForm
             modelState.AddModelError(nameof(ICalendarEventForm.EndTime), localizer["Calendar_EndRequired"]);
             return null;
         }
-        var start = startDate.At(startTime).InZoneLeniently(zone).ToInstant();
-        var end = (form.EndDate ?? startDate).At(endTime).InZoneLeniently(zone).ToInstant();
+        Instant start;
+        Instant end;
+        try
+        {
+            start = startDate.At(startTime).InZoneLeniently(zone).ToInstant();
+            end = (form.EndDate ?? startDate).At(endTime).InZoneLeniently(zone).ToInstant();
+        }
+        catch (OverflowException)
+        {
+            modelState.AddModelError(string.Empty, localizer["Calendar_InvalidTimedEvent"]);
+            return null;
+        }
         if (end < start)
         {
             modelState.AddModelError(nameof(ICalendarEventForm.EndTime), localizer["Calendar_EndBeforeStart"]);

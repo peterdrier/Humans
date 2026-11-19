@@ -67,6 +67,7 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
         IReadOnlyCollection<Guid>? userIds,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -77,7 +78,9 @@ internal sealed class AuditLogRepository(IDbContextFactory<AuditLogDbContext> fa
             query = query.Where(e => e.EntityType == entityType);
 
         if (entityId.HasValue)
-            query = query.Where(e => e.EntityId == entityId.Value);
+            query = includeRelated
+                ? query.Where(e => e.EntityId == entityId.Value || e.RelatedEntityId == entityId.Value)
+                : query.Where(e => e.EntityId == entityId.Value);
 
         if (userIds is { Count: > 0 })
             query = query.Where(e =>

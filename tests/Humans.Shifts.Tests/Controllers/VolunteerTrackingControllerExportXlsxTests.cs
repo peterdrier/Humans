@@ -14,6 +14,7 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using NodaTime.Text;
 using NSubstitute;
 using Humans.Users.Contracts;
 using Humans.Users.Domain;
@@ -44,8 +45,8 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
 
         var result = await sut.ExportXlsx(
             departmentId: null,
-            startDate: null,
-            endDate: null,
+            startDate: "ignored-invalid-date",
+            endDate: "ignored-invalid-date",
             period: ShiftPeriod.Event,
             subPeriod: null,
             ct: Xunit.TestContext.Current.CancellationToken);
@@ -54,6 +55,51 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
         file.ContentType.Should().Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         file.FileDownloadName.Should().Be(model.SuggestedFileName);
         file.FileContents.Should().NotBeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("invalid", "2026-07-09", false)]
+    [Xunit.InlineData("2026-07-09", "invalid", false)]
+    [Xunit.InlineData("2026-07-09", null, false)]
+    [Xunit.InlineData(null, "2026-07-09", false)]
+    [Xunit.InlineData("9999-12-31", "9999-12-31", false)]
+    [Xunit.InlineData(null, null, true)]
+    public async Task ExportXlsx_RejectsInvalidQueriesBeforeBuildingTheWorkbook(string? start, string? end, bool bindingError)
+    {
+        var exportService = Substitute.For<IVolunteerTrackingExportService>();
+        exportService.BuildAsync(Arg.Any<VolunteerExportRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VolunteerExportModel("M", "F", Instant.FromUtc(2026, 5, 23, 0, 0), "Actor",
+                [new LocalDate(2026, 7, 9)], [], [0], "export.xlsx"));
+        var sut = BuildController(exportService);
+        if (bindingError) sut.ModelState.AddModelError("departmentId", "Invalid department id");
+
+        var result = await sut.ExportXlsx(null, start, end, null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeAssignableTo<BadRequestObjectResult>();
+        await exportService.DidNotReceive().BuildAsync(Arg.Any<VolunteerExportRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("2026-07-10", "2026-07-09", "2026-07-09", "2026-07-10")]
+    [Xunit.InlineData("9999-12-30", "9999-12-30", "9999-12-30", "9999-12-30")]
+    [Xunit.InlineData("-9998-01-01", "-9998-01-02", "-9998-01-01", "-9998-01-02")]
+    public async Task ExportXlsx_PreservesRepresentableCustomRanges(string start, string end, string expectedStart, string expectedEnd)
+    {
+        var from = LocalDatePattern.Iso.Parse(expectedStart).Value;
+        var through = LocalDatePattern.Iso.Parse(expectedEnd).Value;
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        _ = from.AtStartOfDayInZone(zone).ToInstant();
+        _ = through.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
+        var exportService = Substitute.For<IVolunteerTrackingExportService>();
+        exportService.BuildAsync(Arg.Any<VolunteerExportRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VolunteerExportModel("M", "F", Instant.FromUtc(2026, 5, 23, 0, 0), "Actor",
+                [new LocalDate(2026, 7, 9)], [], [0], "export.xlsx"));
+
+        var result = await BuildController(exportService).ExportXlsx(null, start, end, null, ct: Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<FileContentResult>();
+        await exportService.Received(1).BuildAsync(Arg.Is<VolunteerExportRequest>(r => r.StartDate == from && r.EndDate == through),
+            Xunit.TestContext.Current.CancellationToken);
     }
 
     [HumansFact]

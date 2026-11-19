@@ -10,6 +10,12 @@ internal sealed class ContactField
 
     public Guid ProfileId { get; init; }
 
+    /// <summary>
+    /// The owning user: the key this table is moving to. Null only on rows written before the column existed, until
+    /// the <c>users.profile-children-user-id</c> data migration fills them.
+    /// </summary>
+    public Guid? UserId { get; set; }
+
     public Profile Profile { get; set; } = null!;
 
     public ContactFieldType FieldType { get; set; }

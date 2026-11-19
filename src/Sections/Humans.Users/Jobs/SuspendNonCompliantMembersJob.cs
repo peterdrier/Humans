@@ -27,6 +27,11 @@ public class SuspendNonCompliantMembersJob(
             await suspension.SuspendNonCompliantAsync(cancellationToken);
             metrics.RecordJobRun("suspend_noncompliant_members", "success");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Non-compliant member suspension check interrupted by shutdown");
+            throw;
+        }
         catch (Exception ex)
         {
             metrics.RecordJobRun("suspend_noncompliant_members", "failure");

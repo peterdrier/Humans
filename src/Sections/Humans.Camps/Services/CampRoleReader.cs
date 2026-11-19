@@ -1,11 +1,11 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 
 namespace Humans.Camps.Services;
 
 internal sealed class CampRoleReader(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
-    IGoogleIntegrationService googleIdentities,
+    IGoogleService googleIdentities,
     GoogleWorkspaceOptions googleOptions) : IApplicationService
 {
     public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
@@ -50,11 +50,11 @@ internal sealed class CampRoleReader(
         {
             var defAssignments = assignments
                 .Where(a => a.CampRoleDefinitionId == def.Id)
-                .OrderBy(a => a.AssignedAt)
                 .ToList();
 
             var filled = defAssignments.Select(a =>
-                new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId)).ToList();
+                new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId)
+                { AssignedAt = a.AssignedAt }).ToList();
 
             var current = filled.Count;
             var empty = Math.Max(0, def.SlotCount - current);
@@ -176,7 +176,7 @@ internal sealed class CampRoleReader(
                     ? list.Select(a =>
                     {
                         var userId = a.CampMember.UserId;
-                        // The member's Google Workspace identity (GoogleIntegration); null without a verified address.
+                        // The member's Google Workspace identity (Google); null without a verified address.
                         var googleEmail = identitiesByUserId.TryGetValue(userId, out var identity) ? identity.Email : null;
 
                         return new CampRoleDrillDownAssignee(userId, googleEmail, a.AssignedAt);

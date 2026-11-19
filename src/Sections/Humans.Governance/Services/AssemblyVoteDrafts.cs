@@ -3,7 +3,7 @@ using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Services;

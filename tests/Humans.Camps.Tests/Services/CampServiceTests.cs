@@ -15,7 +15,7 @@ using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -901,7 +901,7 @@ public sealed class CampServiceTests : CampsTestHarness
         detail.Images.Should().ContainSingle(image => image.Url == "/uploads/camps/fallback.jpg");
         detail.HideHistoricalNames.Should().BeFalse();
 
-        var seasonInfo = detail.GetSeasonForYear(2027, fallbackToLatestSeason: true);
+        var seasonInfo = detail.GetSeasonForEvent(Event2027.Id, fallbackToLatestSeason: true);
         seasonInfo.Should().NotBeNull();
         seasonInfo.Year.Should().Be(2026);
         seasonInfo.IsNameLocked(new LocalDate(2026, 3, 2)).Should().BeTrue();
@@ -926,7 +926,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task CampInfo_GetSeasonForYearWithoutFallback_ReturnsNullWhenSeasonMissing()
+    public async Task CampInfo_GetSeasonForEventWithoutFallback_ReturnsNullWhenSeasonMissing()
     {
         await SeedSettingsAsync();
         var leadUserId = Guid.NewGuid();
@@ -950,7 +950,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var detail = await _service.GetCampBySlugAsync(camp.Slug, TestContext.Current.CancellationToken);
 
         detail.Should().NotBeNull();
-        detail.GetSeasonForYear(2027).Should().BeNull();
+        detail.GetSeasonForEvent(Event2027.Id).Should().BeNull();
     }
 
     [HumansFact]
@@ -2116,7 +2116,7 @@ public sealed class CampServiceTests : CampsTestHarness
             var lookup = await repo.GetMemberLookupAsync(call.Arg<Guid>(), call.Arg<CancellationToken>());
             return lookup is { } row ? new CampMemberLookup(row.CampSeasonId, row.UserId, row.Status) : null;
         });
-        var roles = new CampRoleService(repo, access, Substitute.For<IGoogleIntegrationService>(), _userService,
+        var roles = new CampRoleService(repo, access, Substitute.For<IGoogleService>(), _userService,
             AuditLog, Notifier, Options.Create(new GoogleWorkspaceOptions()), Clock, NullLogger<CampRoleService>.Instance);
         return new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
             new Lazy<ICampRoleService>(() => roles), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
@@ -2135,7 +2135,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var camp = new Camp { Id = Guid.NewGuid(), Slug = "refused-role" };
         var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, EventSettingsId = EventId(2026), Status = CampSeasonStatus.Active };
         var userId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId }.ToUserInfo());
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoFixtures.FromUser(new User { Id = userId }));
         var definition = new CampRoleDefinition
         {
             Id = Guid.NewGuid(),
@@ -2198,7 +2198,7 @@ public sealed class CampServiceTests : CampsTestHarness
             await seed.SaveChangesAsync(ct);
         }
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = userId }));
         var service = CreateRoleAssigningService(factory);
 
         var assign = () => service.AddMemberAndAssignRoleInActiveSeasonAsync(camp.Id, definition.Id, userId, TestActorId, ct);

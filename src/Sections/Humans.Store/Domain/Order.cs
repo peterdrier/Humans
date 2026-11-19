@@ -37,6 +37,9 @@ internal sealed class Order
     public string? CheckoutSessionId { get; set; }
     public decimal? CheckoutAmountEur { get; set; }
 
+    public bool HasCheckoutAttempt =>
+        CheckoutAttemptId is not null || CheckoutSessionId is not null || CheckoutAmountEur is not null;
+
     public Instant CreatedAt { get; set; }
     public Instant UpdatedAt { get; set; }
 

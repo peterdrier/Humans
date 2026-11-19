@@ -160,8 +160,4 @@ themes:
       recycled. Shape, id format and `status:` values:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-11-05
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
-inbox:
-  - added: 2026-11-06
-    id: CENTRAL-109
-    what: "memory/architecture/person-search.md shows a PersonSearchFields.ManageAll member that no longer exists (git grep -n ManageAll finds only that atom and an old run file). Found by the Users section-doctor run."
-    review: light
+inbox: []

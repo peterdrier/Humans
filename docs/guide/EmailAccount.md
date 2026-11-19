@@ -1,10 +1,10 @@
 <!-- freshness:triggers
-  src/Sections/Humans.GoogleIntegration/Services/EmailProvisioningService.cs
-  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceUserService.cs
-  src/Sections/Humans.GoogleIntegration/Services/GoogleGroupSyncService.cs
-  src/Sections/Humans.GoogleIntegration/Services/TeamResourceService.cs
+  src/Sections/Humans.Google/Services/EmailProvisioningService.cs
+  src/Sections/Humans.Google/Services/GoogleWorkspaceUserService.cs
+  src/Sections/Humans.Google/Services/GoogleGroupSyncService.cs
+  src/Sections/Humans.Google/Services/TeamResourceService.cs
   src/Sections/Humans.Teams/Controllers/TeamAdminController.cs
-  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Google/Controllers/GoogleController.cs
   src/Humans.Base/Users/UserEmail.cs
 -->
 <!-- freshness:flag-on-change

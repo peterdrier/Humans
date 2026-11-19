@@ -97,6 +97,8 @@ internal static class CalendarRecurrenceRules
                 }
                 // DATE form — treat UNTIL as end-of-day in the rule's timezone.
                 var date = DateFormattingExtensions.IcalBasicDatePattern.Parse(val).Value;
+                // This is a conservative prefilter bound; the next midnight may not be representable.
+                if (date == LocalDate.MaxIsoValue) return Instant.MaxValue;
                 return date.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
             }
             else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
@@ -141,7 +143,7 @@ internal static class CalendarRecurrenceRules
         var pattern = ParseRecurrenceRule(rule);
         var days = NodaTime.Period.Between(start.Value, end.Value, PeriodUnits.Days).Days;
         if (pattern.Until is not null)
-            return LocalDate.FromDateTime(pattern.Until.Value).PlusDays(days);
+            return EndDateBound(LocalDate.FromDateTime(pattern.Until.Value), days);
         if (pattern.Count is not > 0) return null;
         var ical = new IcalEvent
         {
@@ -149,8 +151,12 @@ internal static class CalendarRecurrenceRules
             RecurrenceRule = pattern,
         };
         var last = ical.GetOccurrences(ical.DtStart, new EvaluationOptions()).Take(pattern.Count.Value).LastOrDefault();
-        return last is null ? null : LocalDate.FromDateTime(last.Period.StartTime.Value).PlusDays(days);
+        return last is null ? null : EndDateBound(LocalDate.FromDateTime(last.Period.StartTime.Value), days);
     }
+
+    // A prefilter bound may saturate: expansion still checks each occurrence's exact window overlap.
+    private static LocalDate EndDateBound(LocalDate lastStart, int days) =>
+        lastStart > LocalDate.MaxIsoValue.PlusDays(-days) ? LocalDate.MaxIsoValue : lastStart.PlusDays(days);
 
     internal static bool IsDateOnlyRecurrence(string? rule)
     {

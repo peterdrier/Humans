@@ -170,7 +170,6 @@ internal sealed class PreapprovalRepository(IDbContextFactory<PreapprovalsDbCont
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var dropped = new List<Guid>();
 
-        // Two Applied rows for one program collapse to the older one.
         var sourceGrants = await ctx.Grants.Where(g => g.BeneficiaryUserId == sourceUserId).ToListAsync(ct);
         var targetApplications = await ctx.Grants
             .Where(g => g.BeneficiaryUserId == targetUserId && g.Status == GrantStatus.Applied)

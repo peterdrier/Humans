@@ -14,7 +14,8 @@
     var expenseData = Model.ExpenseSlices.Select(s => s.Amount).ToList();
 }
 
-<page-header title="@year.Name" badge="@year.Status.ToString()" badge-class="@(EnumBadgeMap.For(year.Status) + " fs-6")">
+<page-header title="@year.Name">
+    <page-header-badge><status-badge value="@year.Status" class="fs-6" /></page-header-badge>
     @if (allYears.Count > 1)
     {
         <div class="dropdown">

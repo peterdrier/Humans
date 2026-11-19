@@ -9,8 +9,10 @@ namespace Humans.Surveys.Tests.Models;
 /// <summary>The builder's structured show-if rows must round-trip to/from <see cref="BranchCondition"/>.</summary>
 public sealed class SurveyBuilderViewModelTests
 {
-    [HumansFact]
-    public void Invitation_email_copy_round_trips_through_the_builder()
+    [HumansTheory]
+    [Xunit.InlineData("en")]
+    [Xunit.InlineData("EN")]
+    public void Invitation_email_copy_round_trips_through_the_builder(string cultureKey)
     {
         var detail = new SurveyDetail(
             Guid.NewGuid(),
@@ -19,8 +21,8 @@ public sealed class SurveyBuilderViewModelTests
                 L("Survey"),
                 LocalizedText.Empty,
                 LocalizedText.Empty,
-                L("Choose a date"),
-                L("Tell us what works."),
+                new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { [cultureKey] = "Choose a date" }),
+                new LocalizedText(new Dictionary<string, string>(StringComparer.Ordinal) { [cultureKey] = "Tell us what works." }),
                 "en",
                 false,
                 null,
@@ -34,6 +36,8 @@ public sealed class SurveyBuilderViewModelTests
 
         var vm = SurveyBuilderViewModel.FromDetail(
             detail, [], NodaTime.DateTimeZone.Utc);
+        vm.InvitationEmailSubject["en"].Should().Be("Choose a date");
+        vm.InvitationEmailMessage["en"].Should().Be("Tell us what works.");
         var roundTripped = vm.ToEditInput(NodaTime.DateTimeZone.Utc);
 
         roundTripped.InvitationEmailSubject.Resolve("en", "en")

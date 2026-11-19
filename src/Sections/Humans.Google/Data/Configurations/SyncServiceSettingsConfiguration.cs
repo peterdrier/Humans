@@ -1,0 +1,58 @@
+using Humans.Google.Contracts;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NodaTime;
+
+namespace Humans.Google.Data.Configurations;
+
+internal sealed class SyncServiceSettingsConfiguration : IEntityTypeConfiguration<SyncServiceSettings>
+{
+    private static readonly Instant SeedTimestamp = Instant.FromUtc(2026, 3, 9, 0, 0, 0);
+
+    public void Configure(EntityTypeBuilder<SyncServiceSettings> builder)
+    {
+        builder.ToTable("google_sync_service_settings");
+
+        builder.HasKey(s => s.Id);
+
+        builder.Property(s => s.ServiceType)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.Property(s => s.SyncMode)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.Property(s => s.UpdatedAt)
+            .IsRequired();
+
+        builder.HasIndex(s => s.ServiceType)
+            .IsUnique();
+
+        // Reserved GUID block: 0002. See docs/guid-reservations.md.
+        builder.HasData(
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0002-000000000001"),
+                ServiceType = SyncServiceType.GoogleDrive,
+                SyncMode = SyncMode.None,
+                UpdatedAt = SeedTimestamp,
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0002-000000000002"),
+                ServiceType = SyncServiceType.GoogleGroups,
+                SyncMode = SyncMode.None,
+                UpdatedAt = SeedTimestamp,
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0002-000000000003"),
+                ServiceType = SyncServiceType.Discord,
+                SyncMode = SyncMode.None,
+                UpdatedAt = SeedTimestamp,
+            });
+    }
+}

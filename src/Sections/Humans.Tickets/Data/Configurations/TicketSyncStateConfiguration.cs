@@ -8,7 +8,7 @@ internal sealed class TicketSyncStateConfiguration : IEntityTypeConfiguration<Ti
 {
     public void Configure(EntityTypeBuilder<TicketSyncState> builder)
     {
-        builder.ToTable("ticket_sync_state");
+        builder.ToTable("ticket_sync_states");
 
         builder.HasKey(s => s.Id);
 

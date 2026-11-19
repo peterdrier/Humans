@@ -272,6 +272,8 @@ ProcessAccountDeletionsJob (daily)
         └── AccountDeleted confirmation email to the original address
 ```
 
+After anonymization commits, its no-persistence confirmation completes independently of job shutdown. Cancellation is checked before starting another account and propagates without being aggregated as a per-account failure.
+
 #### Google Workspace Deprovisioning
 
 Google permissions (Shared Drive access, Group memberships) are **not** revoked by the deletion job directly. Instead, deprovisioning happens through the normal membership lifecycle:

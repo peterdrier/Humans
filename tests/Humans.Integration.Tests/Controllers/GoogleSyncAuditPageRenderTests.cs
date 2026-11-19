@@ -1,14 +1,14 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.GoogleIntegration.Contracts;
-using Humans.GoogleIntegration.Services;
+using Humans.Google.Contracts;
+using Humans.Google.Services;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
-/// <summary>Renders GoogleIntegration's sync-audit pages through the real app.</summary>
+/// <summary>Renders Google's sync-audit pages through the real app.</summary>
 /// <remarks>
 /// A missing <c>ProjectReference</c> in <c>Humans.Web.csproj</c> 404s every route here while the build passes. The
 /// <c>-view-component</c> check stays because the static tag scanner keys on <c>&lt;vc:</c> and can't see a ReSharper

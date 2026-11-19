@@ -47,9 +47,23 @@ public class GuideControllerTests
         model.Sidebar.Entries[0].Group.Should().Be("Start here");
         model.Sidebar.Entries.Single(e => string.Equals(e.Stem, "Teams", StringComparison.Ordinal)).DisplayName.Should().Be("Teams");
         model.Sidebar.ActiveStem.Should().Be("Teams");
-        model.FileStem.Should().Be("Teams");
         model.Html.ToString().Should().Be(html);
         await _content.Received(1).GetPageAsync("Teams", GuideRoleContext.Anonymous, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Refresh_SomeFetchesFail_SaysSoInsteadOfReportingSuccess()
+    {
+        IReadOnlyList<string> failed = ["Teams"];
+        _content.RefreshAllAsync(Arg.Any<CancellationToken>()).Returns(failed);
+        var controller = CreateController();
+        controller.TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
+            controller.HttpContext, Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>());
+
+        await controller.Refresh(Xunit.TestContext.Current.CancellationToken);
+
+        controller.TempData["GuideRefreshStatus"].Should().BeOfType<string>().Which.Should().Contain("Teams")
+            .And.NotContain("refreshed from GitHub");
     }
 
     [HumansFact]

@@ -238,14 +238,12 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Bestand te groot. De maximale grootte is {0} MB.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Bestandsnaam mag maximaal {0} tekens bevatten.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Niet-ondersteund bestandstype. Upload een PDF, JPEG, PNG of HEIC.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Alleen de indiener kan de declaratie indienen.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>De declaratie moet minstens één regel bevatten.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Bon- en factuurregels moeten een bijlage hebben voordat je kunt indienen.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>De indiener moet een IBAN in het profiel hebben ingesteld.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>De indiener moet een voor- en achternaam in het profiel hebben ingesteld.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Kan de declaratie niet indienen. Mogelijk is het geen concept meer.</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Alleen de indiener kan intrekken.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Alleen de indiener kan deze declaratie bewerken.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Deze declaratie kan niet worden bewerkt met de status {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Declaratie</value></data>
   <data name="Expenses_Withdraw" xml:space="preserve"><value>Intrekken</value></data>

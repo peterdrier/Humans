@@ -5,6 +5,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.ViewComponents;
 
@@ -12,8 +13,8 @@ namespace Humans.Shifts.ViewComponents;
 /// Off season, an admin switch on the active event, swaps the callout and the tri-card row for a "season wrapped"
 /// note.
 /// </summary>
-public sealed class DashboardShiftsViewComponent(
-    IShiftService shiftMgmt,
+internal sealed class DashboardShiftsViewComponent(
+    IShiftManagement shiftMgmt,
     IShiftView shiftView,
     IBurnSettingsService burnSettings,
     ISettingsService settingsService,

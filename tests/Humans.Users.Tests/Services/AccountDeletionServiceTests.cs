@@ -60,6 +60,22 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
+    public async Task Shutdown_DetachedRefreshCancellationAfterErasureRemainsAFault()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, shutdown.Token).Returns(MakeUser(userId));
+        var failure = new OperationCanceledException("Cache refresh stopped");
+        _userInfoRefresher.RefreshAsync(userId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>())
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+
+        var error = await Xunit.Record.ExceptionAsync(() => _service.AnonymizeExpiredAccountAsync(userId, shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+        await _gdprService.Received(1).EraseForUserAsync(userId, shutdown.Token);
+    }
+
+    [HumansFact]
     public async Task RequestDeletionAsync_UnknownUser_ReturnsNotFound()
     {
         var userId = Guid.NewGuid();

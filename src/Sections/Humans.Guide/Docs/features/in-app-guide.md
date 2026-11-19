@@ -16,9 +16,9 @@ The Humans app has a comprehensive end-user guide under `docs/guide/` — one
 file per stem in `GuideFiles.All`, covering the sections of the app plus
 plain-language common-question pages. Before this feature, humans read it on
 GitHub — one click away from the app itself. Embedding the guide at `/Guide`
-makes it available from the signed-in user menu and from the member top nav,
-where a signed-out visitor can reach it too, and lets links inside the guide
-navigate in-app to the pages they describe.
+makes it available from the signed-in user menu (a signed-out visitor can
+open it by URL), and lets links inside the guide navigate in-app to the pages
+they describe.
 
 GitHub remains the authoring source: guide changes go through pull-request
 review (no in-app CMS). The app pulls the current content from
@@ -27,10 +27,10 @@ memory as role-scoped segments, and filters then renders it for each request.
 
 ## User stories
 
-- As a volunteer, I can open the Guide from the user menu or the top nav and
+- As a volunteer, I can open the Guide from the user menu and
   read a human-friendly explanation of the parts of the app I use, with in-app
   links that take me directly to the right page.
-- As a signed-out visitor, I can open the Guide from the top nav and read the
+- As a signed-out visitor, I can open a Guide link and read the
   Volunteer-facing pages without an account.
 - As a team coordinator, I see coordinator-specific sections in the guide
   that explain the management features I have access to.
@@ -53,17 +53,19 @@ cached in-memory from GitHub. No migrations, no new tables.
    `ITeamService` (team coordinator) and `ICampLeadDirectory` (camp lead).
 3. `GuideContentService` gets the page's cached `GuideDocument` — its ordered
    role-scoped segments — fetching and segmenting every stem in
-   `GuideFiles.All` on cache miss.
+   `GuideFiles.All` on cache miss. Segment boundaries use the renderer's shared Markdig pipeline, so heading examples inside code or HTML cannot change a block's audience.
 4. `GuideFilter` drops the segments the user can't see and joins what remains.
 5. `GuideRenderer` renders that markdown through Markdig and rewrites its
    links; the HTML goes inside `_GuideLayout.cshtml` with the sidebar. Concrete app paths in inline code become links only when outside an existing link or code block; explicit link destinations are preserved.
+   Browser network URLs with slash/backslash authority prefixes retain external-link/image behavior; backslashes in code examples do not become app links.
 
 ### Refreshing from GitHub (Admin)
 
 1. Admin submits `POST /Guide/Refresh` (CSRF-protected).
 2. `GuideContentService.RefreshAllAsync` re-fetches every stem in
    `GuideFiles.All` and re-segments; existing cache entries are overwritten.
-3. Admin is redirected back to `/Guide` with a status flash.
+3. Admin is redirected back to `/Guide` with a status flash naming any page
+   whose fetch failed.
 
 ## Authorization
 
@@ -89,5 +91,5 @@ parenthetical parsing).
 - Scheduled background refresh (TTL + manual refresh cover the cases).
 - In-app markdown editing.
 
-Localization was on this list and is no longer deferred: the guide is
-English-only by decision, not pending — see `Docs/health.md` §6.
+The handbook text is English-only by decision; the page furniture around it
+(titles, sidebar, error pages) is localized.

@@ -10,7 +10,7 @@
 Project: `src/Sections/Humans.Monitor` — a consumer section no other section references. Owns no DB
 tables and has no `Data/` folder of its own. Owns
 `DriveActivityMonitorService` (+ `IDriveActivityMonitorService` in
-`Contracts/`, + `DriveActivityMonitorJob` in `Jobs/`); Google Integration
+`Contracts/`, + `DriveActivityMonitorJob` in `Jobs/`); Google
 owns the Drive/Directory API clients Monitor calls into
 (`Services/Workspace/`).
 
@@ -21,7 +21,7 @@ No repository.
 | Table | R/W |
 |-------|-----|
 | system_settings | R/W (key `DriveActivityMonitor:LastRunAt`, **via `ISettingsService`** — owned by the Settings section) |
-| GoogleResources | R (via `ITeamResourceService` — the GoogleIntegration section) |
+| GoogleResources | R (via `ITeamResourceService` — the Google section) |
 | Users / IdentityUserLogins | R (via `IUserService.GetAllUserInfosAsync` / `UserInfo.ExternalLogins`) |
 
 Monitors the Drive Activity API for non-service-account permission changes
@@ -33,12 +33,12 @@ last-run marker (`SettingKeys.DriveActivityMonitorLastRunAt`) is read
 and written through `ISettingsService` — the Settings section's
 repository, not its own. Audit-log writes go through `IAuditLogService`.
 
-Cross-section calls via `IGoogleDriveActivityClient` (GoogleIntegration —
+Cross-section calls via `IGoogleDriveActivityClient` (Google —
 `Services/Workspace/`),
 `ITeamResourceService`, `ISettingsService`, `IUserService`,
 `IAuditLogService`. No cache.
 
-**Cross-section table read/write (design-rule note):** `system_settings`
+**Cross-section table read/write (design-rule note):** `settings_system_values`
 is read/written through the owning Settings section's
 `ISettingsService` — this is the contract-compliant cross-section call
 (service interface, not a foreign repository), so it is **not** a violation.

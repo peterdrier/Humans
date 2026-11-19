@@ -9,7 +9,7 @@
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
   src/Humans.Base/Users/IUserService.cs
   src/Humans.Base/Users/UserInfo.cs
-  src/Sections/Humans.Users.Contracts/IUserMerge.cs
+  src/Humans.Base/Users/IUserMerge.cs
   src/Humans.Base/Gdpr/IUserDataContributor.cs
 -->
 <!-- freshness:flag-on-change

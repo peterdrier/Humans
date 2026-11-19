@@ -61,6 +61,105 @@ public sealed class StripeMirrorSyncTests
         _client.FetchAsync(account, Arg.Any<CancellationToken>()).Returns(new StripeAccountFetch(rows, [],
             [new StripeBalance { AccountId = account.Id, Currency = "EUR", Available = rows.Sum(r => r.Net) }]));
 
+    public enum SyncBoundary { InitialSave, Read, BeforeReplace, AfterReplace, DetachedSave, InitialSaveFailure, UnrelatedCancellation }
+
+    [HumansTheory]
+    [Xunit.InlineData(SyncBoundary.InitialSave)]
+    [Xunit.InlineData(SyncBoundary.Read)]
+    [Xunit.InlineData(SyncBoundary.BeforeReplace)]
+    [Xunit.InlineData(SyncBoundary.AfterReplace)]
+    [Xunit.InlineData(SyncBoundary.DetachedSave)]
+    [Xunit.InlineData(SyncBoundary.InitialSaveFailure)]
+    [Xunit.InlineData(SyncBoundary.UnrelatedCancellation)]
+    public async Task Account_shutdown_respects_the_mirror_commit_boundary(SyncBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var now = Instant.FromUtc(2026, 11, 5, 12, 0);
+        var previous = now - Duration.FromDays(1);
+        var state = new StripeSyncState { AccountId = Tickets.Id, LastSyncAt = previous, LastCount = 12, LastError = "Earlier diagnostic" };
+        var repository = Substitute.For<IStripeMirrorRepository>();
+        repository.GetSyncStatesAsync(shutdown.Token).Returns([state]);
+        var canceled = new OperationCanceledException("Dependency canceled");
+        CancellationToken? completionToken = null;
+        repository.SaveSyncStateAsync(state, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (state.SyncStatus == StripeSyncStatus.Running)
+            {
+                if (boundary == SyncBoundary.InitialSaveFailure) throw new IOException("Cannot start account");
+                if (boundary != SyncBoundary.InitialSave) return;
+                await shutdown.CancelAsync();
+                throw canceled;
+            }
+            if (state.SyncStatus == StripeSyncStatus.Idle && state.LastSyncAt == now)
+            {
+                completionToken = call.Arg<CancellationToken>();
+                if (boundary == SyncBoundary.DetachedSave) throw canceled;
+            }
+        });
+        _client.FetchAsync(Tickets, shutdown.Token).Returns(async _ =>
+        {
+            if (boundary == SyncBoundary.UnrelatedCancellation) throw canceled;
+            if (boundary is SyncBoundary.Read or SyncBoundary.BeforeReplace)
+            {
+                await shutdown.CancelAsync();
+                if (boundary == SyncBoundary.Read) throw canceled;
+            }
+            return new StripeAccountFetch([], [], []);
+        });
+        repository.ReplaceAccountAsync(Arg.Any<StripeAccountSnapshot>(), now, shutdown.Token).Returns(async _ =>
+        {
+            if (boundary is SyncBoundary.AfterReplace or SyncBoundary.DetachedSave) await shutdown.CancelAsync();
+        });
+        var service = new StripeMirrorService(repository, _client, Options.Create(new StripeMirrorOptions { Accounts = [Tickets] }),
+            new FakeClock(now), _users, NullLogger<StripeMirrorService>.Instance);
+        var action = () => service.SyncAsync(shutdown.Token);
+
+        if (boundary == SyncBoundary.AfterReplace)
+        {
+            (await action()).Should().Be(StripeSyncOutcome.Synced);
+            state.SyncStatus.Should().Be(StripeSyncStatus.Idle);
+            state.LastSyncAt.Should().Be(now);
+            completionToken.Should().Be(CancellationToken.None);
+        }
+        else if (boundary is SyncBoundary.DetachedSave or SyncBoundary.InitialSaveFailure or SyncBoundary.UnrelatedCancellation)
+        {
+            (await action()).Should().Be(StripeSyncOutcome.SomeFailed);
+            state.SyncStatus.Should().Be(StripeSyncStatus.Error);
+            if (boundary == SyncBoundary.DetachedSave) completionToken.Should().Be(CancellationToken.None);
+        }
+        else
+        {
+            var error = await action.Should().ThrowAsync<OperationCanceledException>();
+            if (boundary == SyncBoundary.BeforeReplace) error.Which.CancellationToken.Should().Be(shutdown.Token);
+            else error.Which.Should().BeSameAs(canceled);
+            state.SyncStatus.Should().Be(StripeSyncStatus.Idle);
+            state.LastError.Should().Be("Earlier diagnostic");
+            state.LastSyncAt.Should().Be(previous);
+            state.LastCount.Should().Be(12);
+            await repository.DidNotReceiveWithAnyArgs().ReplaceAccountAsync(default!, default);
+            await repository.Received(1).SaveSyncStateAsync(state, CancellationToken.None);
+        }
+    }
+
+    [HumansFact]
+    public async Task Shutdown_does_not_hide_an_earlier_account_failure()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var failure = new IOException("Tickets unavailable");
+        _client.FetchAsync(Tickets, shutdown.Token).ThrowsAsync(failure);
+        _client.FetchAsync(Store, shutdown.Token).Returns(async Task<StripeAccountFetch> (_) =>
+        {
+            await shutdown.CancelAsync();
+            throw new OperationCanceledException(shutdown.Token);
+        });
+
+        var action = () => _service.SyncAsync(shutdown.Token);
+        await action.Should().ThrowAsync<InvalidOperationException>().WithMessage("*1*account*fail*");
+        var states = await _repo.GetSyncStatesAsync(Ct);
+        states.Single(s => string.Equals(s.AccountId, Tickets.Id, StringComparison.Ordinal)).LastError.Should().Be(failure.Message);
+        states.Single(s => string.Equals(s.AccountId, Store.Id, StringComparison.Ordinal)).SyncStatus.Should().Be(StripeSyncStatus.Idle);
+    }
+
     [HumansFact]
     public async Task A_sweep_replaces_its_account_and_leaves_the_others()
     {
@@ -120,12 +219,15 @@ public sealed class StripeMirrorSyncTests
             .Returns(call => _repo.GetSyncStatesAsync(call.Arg<CancellationToken>()));
         repository.ReplaceAccountAsync(Arg.Any<StripeAccountSnapshot>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns(call => _repo.ReplaceAccountAsync(call.Arg<StripeAccountSnapshot>(), call.Arg<Instant>(), call.Arg<CancellationToken>()));
+        var failDiagnostic = true;
         repository.SaveSyncStateAsync(Arg.Any<StripeSyncState>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             var state = call.Arg<StripeSyncState>();
-            if (state.SyncStatus == StripeSyncStatus.Error)
+            if (failDiagnostic && state.SyncStatus != StripeSyncStatus.Running
+                && string.Equals(state.AccountId, Tickets.Id, StringComparison.Ordinal))
             {
                 call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                failDiagnostic = false;
                 throw diagnosticFailure;
             }
             return _repo.SaveSyncStateAsync(state, call.Arg<CancellationToken>());
@@ -188,6 +290,39 @@ public sealed class StripeMirrorSyncTests
     }
 
     [HumansFact]
+    public void Sibling_buyer_fields_fill_independently_without_overwriting_populated_values()
+    {
+        var rows = StripeMirrorService.FillFromSiblings(
+        [
+            Txn("name", "acct_t", 100, name: "Ana Buyer", pi: "pi_1"),
+            Txn("email", "acct_t", 100, name: " ", email: "ana@example.org", pi: "pi_1"),
+            Txn("blank", "acct_t", -100, "refund", name: "", email: " ", pi: "pi_1"),
+            Txn("partial", "acct_t", -100, "refund", name: "Recorded name", pi: "pi_1"),
+        ]);
+
+        rows.Should().OnlyContain(t => string.Equals(t.CustomerEmail, "ana@example.org", StringComparison.Ordinal));
+        rows.Where(t => !string.Equals(t.Id, "partial", StringComparison.Ordinal))
+            .Should().OnlyContain(t => string.Equals(t.CustomerName, "Ana Buyer", StringComparison.Ordinal));
+        rows.Single(t => string.Equals(t.Id, "partial", StringComparison.Ordinal)).CustomerName.Should().Be("Recorded name");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData("  ")]
+    public void Blank_intent_ids_cannot_attribute_a_refund_to_an_unrelated_buyer(string intent)
+    {
+        var rows = StripeMirrorService.FillFromSiblings(
+        [
+            Txn("charge", "acct_t", 100, name: "Ana Buyer", email: "ana@example.org", pi: intent),
+            Txn("refund", "acct_t", -100, "refund", pi: intent),
+        ]);
+
+        var refund = rows.Single(t => string.Equals(t.Id, "refund", StringComparison.Ordinal));
+        refund.CustomerName.Should().BeNull();
+        refund.CustomerEmail.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Search_finds_an_order_by_buyer_email_or_metadata_order_id()
     {
         Returns(Tickets,
@@ -243,7 +378,7 @@ public sealed class StripeMirrorSyncTests
         var act = () => _service.SyncAsync(cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        (await _repo.GetSyncStatesAsync(Ct)).Single().SyncStatus.Should().Be(StripeSyncStatus.Error);
+        (await _repo.GetSyncStatesAsync(Ct)).Single().SyncStatus.Should().Be(StripeSyncStatus.Idle);
     }
 
     private static UserEmailInfo Email(string address, bool verified) => new(Guid.NewGuid(), address, verified, false,

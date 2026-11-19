@@ -528,6 +528,15 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("orders", "whitespace-identity")]
     [Xunit.InlineData("tickets", "whitespace-identity")]
     [Xunit.InlineData("check-ins", "whitespace-identity")]
+    [Xunit.InlineData("orders", "missing-links")]
+    [Xunit.InlineData("tickets", "missing-links")]
+    [Xunit.InlineData("check-ins", "missing-links")]
+    [Xunit.InlineData("orders", "null-links")]
+    [Xunit.InlineData("tickets", "null-links")]
+    [Xunit.InlineData("check-ins", "null-links")]
+    [Xunit.InlineData("orders", "missing-next")]
+    [Xunit.InlineData("tickets", "missing-next")]
+    [Xunit.InlineData("check-ins", "missing-next")]
     public async Task Paging_RejectsInvalidContinuationWithoutReturningPartialData(string endpoint, string shape)
     {
         var handler = new RecordingHttpHandler();
@@ -547,6 +556,14 @@ public class TicketTailorServiceTests
                 data = new[] { invalidItem, new { id = "valid", created_at = 1716811200L } },
                 links = new { next = (string?)null },
             });
+        }
+        else if (shape is "missing-links" or "null-links" or "missing-next")
+        {
+            var page = JsonNode.Parse("""{"data":[{"id":"valid","created_at":1716811200,"total":100,"currency":{"code":"eur"},"status":"valid"}],"links":{"next":null}}""")!;
+            if (string.Equals(shape, "missing-links", StringComparison.Ordinal)) page.AsObject().Remove("links");
+            else if (string.Equals(shape, "null-links", StringComparison.Ordinal)) page["links"] = null;
+            else page["links"]!.AsObject().Remove("next");
+            handler.EnqueueResponse(HttpStatusCode.OK, page);
         }
         else if (string.Equals(shape, "missing-data", StringComparison.Ordinal))
             handler.EnqueueResponse(HttpStatusCode.OK, new { links = new { next = "more" } });

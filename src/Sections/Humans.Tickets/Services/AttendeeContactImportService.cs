@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Base.Helpers;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -35,7 +36,7 @@ internal sealed class AttendeeContactImportService(
         // Group by normalized email so one buyer = one decision.
         var grouped = unmatched
             .Where(a => !string.IsNullOrWhiteSpace(a.AttendeeEmail))
-            .GroupBy(a => a.AttendeeEmail!.Trim(), StringComparer.OrdinalIgnoreCase);
+            .GroupBy(a => a.AttendeeEmail!.Trim(), NormalizingEmailComparer.Instance);
 
         foreach (var group in grouped)
         {
@@ -172,10 +173,9 @@ internal sealed class AttendeeContactImportService(
                 continue;
             }
 
-            if (!string.Equals(
+            if (!NormalizingEmailComparer.Instance.Equals(
                     attendee.AttendeeEmail?.Trim(),
-                    decision.Email?.Trim(),
-                    StringComparison.OrdinalIgnoreCase))
+                    decision.Email?.Trim()))
             {
                 logger.LogWarning(
                     "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); skipping",

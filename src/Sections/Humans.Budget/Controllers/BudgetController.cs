@@ -32,12 +32,12 @@ internal sealed class BudgetController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
-            var data = await budgetService.GetCoordinatorBudgetViewDataAsync(user.Id, isFinanceAdmin, ct);
-
-            if (data.ShouldRedirectToSummary)
+            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
+            if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
                 return RedirectToAction(nameof(Summary));
 
-            if (data.Year is null)
+            var activeYear = await budgetService.GetActiveYearAsync(ct);
+            if (activeYear is null)
             {
                 SetInfo(localizer["Budget_Flash_NoActiveYear"].Value);
                 return View("NoActiveBudget");
@@ -45,9 +45,9 @@ internal sealed class BudgetController(
 
             var model = new CoordinatorBudgetViewModel
             {
-                Year = data.Year,
-                EditableTeamIds = data.EditableTeamIds,
-                IsFinanceAdmin = data.IsFinanceAdmin
+                Year = activeYear,
+                EditableTeamIds = coordinatorTeamIds,
+                IsFinanceAdmin = isFinanceAdmin
             };
             return View(model);
         }
@@ -75,7 +75,7 @@ internal sealed class BudgetController(
                 return View("NoActiveBudget");
             }
 
-            var visibleGroups = activeYear.Groups.ToList();
+            var visibleGroups = activeYear.Groups.OrderBy(group => group.SortOrder).ToList();
             var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
 
             var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
@@ -86,8 +86,10 @@ internal sealed class BudgetController(
                 TotalIncome = summary.TotalIncome,
                 TotalExpenses = summary.TotalExpenses,
                 NetBalance = summary.NetBalance,
-                IncomeSlices = summary.IncomeSlices,
-                ExpenseSlices = summary.ExpenseSlices,
+                IncomeSlices = summary.IncomeSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                    .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
+                ExpenseSlices = summary.ExpenseSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                    .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
             };
             return View(model);
@@ -110,19 +112,19 @@ internal sealed class BudgetController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
-            var detail = await budgetService.GetCoordinatorCategoryDetailViewDataAsync(id, user.Id, isFinanceAdmin, ct);
-            if (detail.Category is null) return NotFound();
-            if (detail.ShouldForbid)
+            var category = await budgetService.GetCategoryByIdAsync(id, ct);
+            if (category is null) return NotFound();
+            if (!(await authService.AuthorizeAsync(User, category, BudgetOperationRequirement.View)).Succeeded)
                 return Forbid();
 
-            var canEdit = (await authService.AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)).Succeeded;
+            var canEdit = (await authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)).Succeeded;
 
             var model = new CoordinatorCategoryDetailViewModel
             {
-                Category = detail.Category,
+                Category = category,
                 CanEdit = canEdit,
                 IsFinanceAdmin = isFinanceAdmin,
-                Teams = detail.Teams
+                Teams = (await budgetService.GetActiveTeamsAsync(ct))
                     .OrderBy(t => t.Name, StringComparer.Ordinal)
                     .ToList()
             };

@@ -1,7 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Helpers;
@@ -18,8 +18,8 @@ internal sealed class UserEmailReconciliation(
     IServiceProvider serviceProvider,
     ILogger logger) : IApplicationService
 {
-    // Lazy: GoogleIntegration's identity service reads IUserService.
-    private IGoogleIntegrationWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleIntegrationWrite>();
+    // Lazy: Google's identity service reads IUserService.
+    private IGoogleWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleWrite>();
 
     public async Task<OAuthReconcileResult> ReconcileAsync(
         Guid userId,

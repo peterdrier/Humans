@@ -1,3 +1,7 @@
+using Humans.Budget.Jobs;
+using Humans.Testing;
+using Microsoft.Extensions.Logging;
+using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
@@ -27,12 +31,132 @@ public class TicketingBudgetServiceTests
 
     public TicketingBudgetServiceTests()
     {
-        _budgetService.GetActiveYearAsync().Returns(
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, []));
     }
 
     private TicketingBudgetService CreateSut() =>
         new(_ticketService, _budgetService, _clock, NullLogger<TicketingBudgetService>.Instance);
+
+    [HumansTheory]
+    [InlineData(SyncBoundary.Year)]
+    [InlineData(SyncBoundary.Sync)]
+    public async Task TicketingSyncJob_PropagatesShutdownAtEveryBoundary(SyncBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var logger = new CapturingLogger<TicketingBudgetSyncJob>();
+        var bridge = Substitute.For<ITicketingBudgetService>();
+        var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, []);
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            shutdown.Cancel();
+            if (boundary == SyncBoundary.Year)
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return year;
+        });
+        bridge.SyncActualsAsync(_yearId, null, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return 1;
+        });
+        var job = new TicketingBudgetSyncJob(bridge, _budgetService, logger);
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeOfType<OperationCanceledException>().Which.CancellationToken.Should().Be(shutdown.Token);
+        _ = _budgetService.Received(1).GetActiveYearAsync(shutdown.Token);
+        logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error
+            || entry.Message.Contains("completed", StringComparison.OrdinalIgnoreCase));
+        if (boundary == SyncBoundary.Year)
+            await bridge.DidNotReceiveWithAnyArgs().SyncActualsAsync(default, default);
+        else
+        {
+            await bridge.Received(1).SyncActualsAsync(_yearId, null, shutdown.Token);
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TicketingSyncJob_ReportsGenuineFaults(bool unrelatedCancellation)
+    {
+        var failure = unrelatedCancellation
+            ? (Exception)new OperationCanceledException(new CancellationToken(true))
+            : new IOException("Read unavailable");
+        var bridge = Substitute.For<ITicketingBudgetService>();
+        bridge.SyncActualsAsync(_yearId, null, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        var logger = new CapturingLogger<TicketingBudgetSyncJob>();
+        var job = new TicketingBudgetSyncJob(bridge, _budgetService, logger);
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync());
+
+        error.Should().BeSameAs(failure);
+        logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+        logger.Entries.Should().NotContain(entry => entry.Message.Contains("completed", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [HumansTheory]
+    [InlineData(SyncBoundary.Year)]
+    [InlineData(SyncBoundary.Orders)]
+    [InlineData(SyncBoundary.Save)]
+    public async Task SyncActuals_CancellationStopsAtTheReadOrAtomicSave(SyncBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, []);
+        void Read(SyncBoundary name, CancellationToken token)
+        {
+            if (name != boundary) return;
+            shutdown.Cancel();
+            token.ThrowIfCancellationRequested();
+        }
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(SyncBoundary.Year, call.Arg<CancellationToken>());
+            return year;
+        });
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(SyncBoundary.Orders, call.Arg<CancellationToken>());
+            return (IReadOnlyList<TicketOrderInfo>)[BuildOrder(Instant.FromUtc(2026, 3, 2, 8, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid)];
+        });
+        _budgetService.SyncTicketingActualsAsync(_yearId, Arg.Any<IReadOnlyList<TicketingWeeklyActuals>>(), null,
+            Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(SyncBoundary.Save, call.Arg<CancellationToken>());
+            return 1;
+        });
+        var logger = new CapturingLogger<TicketingBudgetService>();
+        var service = new TicketingBudgetService(_ticketService, _budgetService, _clock, logger);
+
+        var error = await Record.ExceptionAsync(() => service.SyncActualsAsync(_yearId, null, shutdown.Token));
+
+        error.Should().BeOfType<OperationCanceledException>().Which.CancellationToken.Should().Be(shutdown.Token);
+        _ = _budgetService.Received(1).GetActiveYearAsync(shutdown.Token);
+        logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+        if (boundary != SyncBoundary.Save)
+            await _budgetService.DidNotReceiveWithAnyArgs().SyncTicketingActualsAsync(default, default!, default);
+        if (boundary != SyncBoundary.Year)
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Warning && entry.Exception == null);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SyncActuals_RealFaultsRemainErrors(bool unrelatedCancellation)
+    {
+        var failure = unrelatedCancellation
+            ? (Exception)new OperationCanceledException(new CancellationToken(true))
+            : new IOException("Read unavailable");
+        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        var logger = new CapturingLogger<TicketingBudgetService>();
+        var service = new TicketingBudgetService(_ticketService, _budgetService, _clock, logger);
+
+        var error = await Record.ExceptionAsync(() => service.SyncActualsAsync(_yearId, null));
+
+        error.Should().BeSameAs(failure);
+        logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+    }
 
     [HumansFact]
     public async Task SyncActualsAsync_BucketsByIsoWeek_AndExcludesCurrentWeek()
@@ -323,7 +447,7 @@ public class TicketingBudgetServiceTests
     [HumansFact]
     public async Task SyncActualsAsync_ConfiguredVendorEvent_CountsOnlyThatEventsOrders()
     {
-        _budgetService.GetActiveYearAsync().Returns(
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], VendorEventId: "event-2026"));
         var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0);
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
@@ -433,3 +557,5 @@ public class TicketingBudgetServiceTests
             ApplicationFee: applicationFee);
     }
 }
+
+public enum SyncBoundary { Year, Sync, Orders, Save }

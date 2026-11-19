@@ -68,6 +68,8 @@ but the decision to admit-and-record from inside Humans is yours to bless.
   (+ `TicketTailorService` `POST /v1/check_ins` and `StubTicketVendorService` impls);
   `GateVendorCheckInJob` enqueued fire-and-forget on admit. `gate_scan_events` stays
   the dedupe authority; the vendor POST is only a dashboard/offline-app mirror.
+  Enabled jobs check shutdown before starting and finish a started POST independently of cancellation;
+  vendor failures remain best-effort without retries because check-ins are not idempotent.
 - **Terminal UI + auth** — `GateController` (`/Gate`, `ScannerAccess`; settings
   `TicketsPolicies.Manage`), tap-to-claim (session-derived `scannedByUserId`), merged
   ID-confirm (green only on Yes), supervisor-PIN-gated child waiver, leaderboard, and

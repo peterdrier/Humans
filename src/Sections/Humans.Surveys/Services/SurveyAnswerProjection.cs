@@ -12,17 +12,19 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
     private static RespondentAnswerContext BuildRespondentAnswerContext(Survey? survey, string culture)
     {
         var questions = survey?.Questions ?? [];
+        var defaultCulture = survey?.DefaultCulture ?? culture;
         return new(
             questions.ToDictionary(
                 question => question.Id,
                 question => question.Options.ToDictionary(
                     option => option.Value,
-                    option => option.Label.Resolve(culture, culture),
+                    option => option.Label.Resolve(culture, defaultCulture),
                     StringComparer.Ordinal)),
             questions.ToDictionary(
                 question => question.Id,
-                question => question.Prompt.Resolve(culture, culture)),
-            questions.ToDictionary(question => question.Id));
+                question => question.Prompt.Resolve(culture, defaultCulture)),
+            questions.ToDictionary(question => question.Id),
+            defaultCulture);
     }
 
     internal IReadOnlyList<RespondentAnswer> BuildRespondentAnswers(SurveyResponse response) =>
@@ -53,11 +55,11 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
 
         var rows = (question.GridRows ?? []).ToDictionary(
             row => row.Value,
-            row => row.Label.Resolve(culture, culture),
+            row => row.Label.Resolve(culture, context.DefaultCulture),
             StringComparer.Ordinal);
         var columns = question.Options.ToDictionary(
             option => option.Value,
-            option => option.Label.Resolve(culture, culture),
+            option => option.Label.Resolve(culture, context.DefaultCulture),
             StringComparer.Ordinal);
         return answer.GridSelections
             .Where(selection => selection.Value.Count > 0)
@@ -101,5 +103,6 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
     private sealed record RespondentAnswerContext(
         IReadOnlyDictionary<Guid, Dictionary<string, string>> OptionLabels,
         IReadOnlyDictionary<Guid, string> Prompts,
-        IReadOnlyDictionary<Guid, SurveyQuestion> QuestionsById);
+        IReadOnlyDictionary<Guid, SurveyQuestion> QuestionsById,
+        string DefaultCulture);
 }

@@ -8,20 +8,18 @@
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="mb-0"><i class="fa-solid fa-car me-2"></i>@Localizer["Rideshare_Title"]</h1>
-    <div class="d-flex gap-2">
-        <a asp-action="Offer" asp-route-direction="@Model.Direction" class="btn btn-primary">
-            <i class="fa-solid fa-plus me-1"></i>@Localizer["Rideshare_OfferARide"]
-        </a>
-        <a asp-action="RideRequest" asp-route-direction="@Model.Direction" class="btn btn-outline-primary">
-            <i class="fa-solid fa-hand me-1"></i>@Localizer["Rideshare_RequestARide"]
-        </a>
-        <a asp-action="Mine" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-list me-1"></i>@Localizer["Rideshare_Mine"]
-        </a>
-    </div>
-</div>
+<page-header>
+    <page-header-title><i class="fa-solid fa-car me-2"></i>@Localizer["Rideshare_Title"]</page-header-title>
+    <a asp-action="Offer" asp-route-direction="@Model.Direction" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-1"></i>@Localizer["Rideshare_OfferARide"]
+    </a>
+    <a asp-action="RideRequest" asp-route-direction="@Model.Direction" class="btn btn-outline-primary">
+        <i class="fa-solid fa-hand me-1"></i>@Localizer["Rideshare_RequestARide"]
+    </a>
+    <a asp-action="Mine" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-list me-1"></i>@Localizer["Rideshare_Mine"]
+    </a>
+</page-header>
 
 <p class="text-muted">@Localizer["Rideshare_BoardIntro"]</p>
 

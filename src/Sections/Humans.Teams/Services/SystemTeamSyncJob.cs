@@ -1,6 +1,6 @@
 using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,7 +1,7 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Base.Enums;
@@ -291,7 +291,12 @@ internal sealed class TeamSnapshotReader(
         var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
         return memberships
             .Select(m => new UserTeamMembershipInfo(
-                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt))
+                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt)
+            {
+                IsActive = m.Team.IsActive,
+                IsHidden = m.Team.IsHidden,
+                SystemTeamType = m.Team.SystemTeamType
+            })
             .ToList();
     }
 

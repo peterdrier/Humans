@@ -14,7 +14,7 @@ owned by the same section's [Consent](#consent) repository below). The inner `IL
 warmed on startup, with a version-id → document-id index). It caches the
 global active-document set behind the every-page consent-banner read and
 the per-version lookup, invalidated wholesale after any persisted
-`legal_documents` / `document_versions` write.
+`consent_legal_documents` / `consent_document_versions` write.
 
 `LegalDocumentSyncService` is the sole writer for `LegalDocuments` /
 `DocumentVersions` — it implements both `ILegalDocumentSyncManagement` (the

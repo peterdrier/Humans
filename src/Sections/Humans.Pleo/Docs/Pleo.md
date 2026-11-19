@@ -36,7 +36,7 @@ books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
 | `pleo_entries` | one row per entry, keyed by Pleo id; typed fields, signed `AmountEur`, and `Raw` (jsonb, the entry as returned) |
 | `pleo_employees` | cardholders: Pleo id, first/last name, code, deleted flag. No email or phone |
 | `pleo_accounts` | the chart: Pleo id, code, name, external (Holded) id, archived |
-| `pleo_balance` | one row: wallet current, available and pending debits in minors |
+| `pleo_balances` | one row: wallet current, available and pending debits in minors |
 | `pleo_sync_states` | one row: status, last run, entries mirrored, empty rows skipped, last error |
 | `pleo_categories` | category name → Holded code, linked Pleo category id (unique when set), who set it (null: a sweep) and when |
 
@@ -82,16 +82,30 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   follows Pleo's name and account. A Pleo category with no account, or an account missing from the chart, is skipped.
   A sweep never deletes or unlinks a category row.
 - A sweep fetches entries, chart, categories, cardholders and balance before writing anything, then
-  replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed call leaves the
+  replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed required vendor read leaves the
   mirror as it was and records the error on the sync row. The category fetch is the exception: if it fails, the sweep
   goes on without it, leaves `pleo_categories` as it is, and keeps the category error on the sync row (shown on the
   sync card) while the status stays `Idle`. If that diagnostic save also fails, the secondary failure
   is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
-- The pager fails closed: a body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
-  cap throws, so a short fetch can never delete rows.
-- Entries without an id or family are skipped and counted on the sync row.
+- Cancellation during startup or preparation restores `Idle` with the previous mirror summary and diagnostic;
+  the initial `Running` save is covered by the same cleanup. Reads and atomic mirror replacement retain caller
+  cancellation, with a checkpoint before replacement. After replacement commits, category audit and the final
+  success-state save finish independently of shutdown. Cancellation from that completion phase is a genuine
+  failure, preserving the original exception as its cause. The nightly job propagates shutdown with a Warning
+  and no completion message; unrelated failures retain their existing retry policy.
+- JSON API responses must have an object root. A null, array or scalar response fails as a typed
+  `PleoPermanentException`, so live receipt reads use their existing failure feedback instead of leaking a
+  JSON object-access exception. This check also covers all sweep reads before mirror replacement.
+- The shared entries/accounts/employees/receipts pager requires an explicit boolean `pagination.hasNextPage`
+  on every page; only `false` completes the dataset. Missing, null or mistyped metadata fails instead of
+  returning a prefix. A body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
+  cap also throws, so a short fetch can never delete rows.
+- Entries without an id or family are skipped and counted on the sync row. A provided `transactionValue` or `totalBillValue` must contain both a nonblank currency and a minor-unit value; incomplete money objects fail the sweep before mirror replacement and record a sync error. Optional money objects may be absent, and explicit zero amounts remain valid. List/detail views omit the original-currency figure when no currency was supplied.
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and
   told so. No key (`PLEO_API_KEY`, `PLEO_COMPANY_ID`): the job logs and skips, Sync now is disabled.
+- Employee sweeps request `includeDeleted=true` on every page, retaining former cardholders and their deleted
+  flag so historical entries and spend summaries keep their names after someone leaves Pleo. Contact fields
+  remain outside the mirror.
 - The connector is read-only: GETs and the `:search` POSTs. The key holds write scopes; nothing here uses them.
 <!-- wheat: docs/superpowers/specs/2026-08-10-pleo-connector-design.md §Pleo API facts -->
 - The mirror polls: Pleo's webhooks cover only export jobs and vendors, nothing per entry. Cardholders come from
@@ -133,7 +147,7 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 
 ## Architecture
 
-The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its seven existing read entry points and retains category mutations and forwards sync to `PleoMirrorSync`. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
+The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its existing read entry points and retains category mutations and forwards sync to `PleoMirrorSync`. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
 
 ### Public contract
 

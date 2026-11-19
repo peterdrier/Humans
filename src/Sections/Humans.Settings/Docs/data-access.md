@@ -6,17 +6,19 @@ Folder: `src/Sections/Humans.Settings/Services/`. **DbContext:**
 `SettingsDbContext`. `Repository`
 (`src/Sections/Humans.Settings/Data/Repository.cs`, implements
 `ISettingsRepository`) injects `IDbContextFactory<SettingsDbContext>`
-directly. Owns the `system_settings` key/value table and `settings_event`, so
+directly. Owns the `settings_system_values` key/value table and `settings_events`, so
 consuming sections route through `ISettingsService` instead of touching the
 tables from their own repository.
 
-Every table this section owns is named `settings_*` — except `system_settings`,
+Every table this section owns is named `settings_*` — except `settings_system_values`,
 which predates the convention and keeps its name.
 
-### Service (Scoped)
+### Service (Scoped), behind CachingSettingsService (Singleton)
 
 Repository: `ISettingsRepository` (Singleton over
-`IDbContextFactory<SettingsDbContext>`). One instance, three ways in: as
+`IDbContextFactory<SettingsDbContext>`). `CachingSettingsService` serves the event
+and timezone reads from one in-memory snapshot and passes everything else to
+`Service`. One instance, three ways in: as
 `ISettingsService` for everyone outside the section, as the section-internal
 `ISettingsWriteService` for the section's own controller and view component, and
 as `IEventSettingsSeeding` for `Humans.Development`'s dashboard seeder.
@@ -29,8 +31,8 @@ outside Settings writes them. Each writes one `IAuditLogService` entry
 
 | Table | R/W |
 |-------|-----|
-| `system_settings` | R/W (`GetValueAsync` / `SetValueAsync`, by key; `GetTimeZoneIdAsync` on the cross-section interface and `SaveTimeZoneAsync` on `ISettingsWriteService` for `Event:TimeZoneId`) |
-| `settings_event` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` on the cross-section interface; `SaveEventSettingsAsync`, `ActivateEventSettingsAsync` on `ISettingsWriteService`; `CreateActiveEventAsync` / `DeleteEventAsync` on `IEventSettingsSeeding`) |
+| `settings_system_values` | R/W (`GetValueAsync` / `SetValueAsync`, by key; `GetTimeZoneIdAsync` on the cross-section interface and `SaveTimeZoneAsync` on `ISettingsWriteService` for `Event:TimeZoneId`) |
+| `settings_events` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` on the cross-section interface; `SaveEventSettingsAsync`, `ActivateEventSettingsAsync` on `ISettingsWriteService`; `CreateActiveEventAsync` / `DeleteEventAsync` on `IEventSettingsSeeding`) |
 
 The table's row rules (one active row, ordered windows, early-entry range,
 representable dates, no overlaps) are service-enforced, never DB constraints

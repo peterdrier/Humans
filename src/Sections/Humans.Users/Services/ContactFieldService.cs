@@ -65,12 +65,18 @@ internal sealed class ContactFieldService(
         )).ToList();
     }
 
-    public async Task SaveContactFieldsAsync(
+    public async Task<ProfileEditResult> SaveContactFieldsAsync(
         Guid profileId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null)
     {
+        if (ValidateContactFields(fields) is { } refusal)
+        {
+            logger.LogWarning("Contact field save refused for profile {ProfileId}: {ErrorKey}", profileId, refusal.ErrorKey);
+            return refusal;
+        }
+
         var now = clock.GetCurrentInstant();
 
         // Detached: mutations go back explicitly through BatchSaveAsync.
@@ -87,6 +93,9 @@ internal sealed class ContactFieldService(
         var toAdd = new List<ContactField>();
         var toUpdate = new List<ContactField>();
 
+        // Also the cache key: resolved before committing, so a failed lookup can't skip the refresh.
+        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
+
         foreach (var dto in fields)
         {
             ContactField field;
@@ -102,6 +111,7 @@ internal sealed class ContactFieldService(
                 {
                     Id = Guid.NewGuid(),
                     ProfileId = profileId,
+                    UserId = ownerUserId,
                     CreatedAt = now
                 };
                 toAdd.Add(field);
@@ -115,8 +125,6 @@ internal sealed class ContactFieldService(
             field.UpdatedAt = now;
         }
 
-        // Resolve the cache key before committing; a failed lookup must not skip refresh.
-        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
         try
         {
             await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
@@ -139,6 +147,23 @@ internal sealed class ContactFieldService(
                 }
             }
         }
+        return new(true, profileId);
+    }
+
+    internal static bool IsValidPhone(string? phone) =>
+        string.IsNullOrWhiteSpace(phone) || phone.TrimStart().StartsWith("+", StringComparison.Ordinal);
+
+    internal static ProfileEditResult? ValidateContactFields(IReadOnlyList<ContactFieldEditDto>? fields)
+    {
+        if (fields is null) return null;
+        for (var i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            if (field.FieldType is ContactFieldType.Phone or ContactFieldType.WhatsApp && !IsValidPhone(field.Value))
+                return new(false, ErrorKey: "Validation_PhoneE164", ErrorField: $"ContactFields[{i}].Value",
+                    ErrorArgumentKey: "Users_Profile_" + field.FieldType);
+        }
+        return null;
     }
 
     public async Task<ContactFieldVisibility> GetViewerAccessLevelAsync(

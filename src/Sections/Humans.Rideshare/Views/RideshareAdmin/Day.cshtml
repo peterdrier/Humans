@@ -3,7 +3,9 @@
     ViewData["Title"] = $"Rideshare day roster {Model.Date.ToInvariantDate()}";
 }
 
-<h1>Day roster <small class="text-muted">@Model.Date.ToWeekdayDayMonth()</small></h1>
+<page-header>
+    <page-header-title>Day roster <small class="text-muted">@Model.Date.ToWeekdayDayMonth()</small></page-header-title>
+</page-header>
 <p class="text-muted">Every ride happening on this day — including full and cancelled ones — with its accepted riders.</p>
 
 <form method="get" asp-action="Day" class="row g-2 align-items-end mb-3">

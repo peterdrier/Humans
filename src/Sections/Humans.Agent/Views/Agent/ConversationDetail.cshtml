@@ -1,18 +1,15 @@
 @model AgentConversationDetailViewModel
 @{ ViewData["Title"] = Localizer["Agent_ConversationTitle"].Value; var conv = Model.Conversation; }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">@ViewData["Title"]</h2>
-    <div class="d-flex gap-2">
-        @if (Model.IsAdminView)
-        {
-            <a asp-controller="AdminAgent" asp-action="ConversationPrompt" asp-route-id="@conv.Id" class="btn btn-outline-info btn-sm">
-                Show what would be sent to Anthropic
-            </a>
-        }
-        <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">@Localizer["Agent_ConversationBackToHistory"]</a>
-    </div>
-</div>
+<page-header title="@(ViewData["Title"] as string)">
+    @if (Model.IsAdminView)
+    {
+        <a asp-controller="AdminAgent" asp-action="ConversationPrompt" asp-route-id="@conv.Id" class="btn btn-outline-info btn-sm">
+            Show what would be sent to Anthropic
+        </a>
+    }
+    <a asp-action="Conversations" class="btn btn-outline-secondary btn-sm">@Localizer["Agent_ConversationBackToHistory"]</a>
+</page-header>
 
 <dl class="row mb-4">
     <dt class="col-sm-3">@Localizer["Agent_DetailId"]</dt>

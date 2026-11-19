@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Finance.Contracts;
 using Humans.Store.Contracts;
 using Humans.Base.Authorization;
@@ -15,7 +16,7 @@ using NodaTime;
 namespace Humans.Store.Authorization;
 
 /// <summary>
-/// Store admins pass first, except billing on team orders, Refund (Admin/FinanceAdmin) and DeletePayment (Admin).
+/// Store admins pass first, except billing on team orders, RecordFinancePayment (Admin/FinanceAdmin) and DeletePayment (Admin).
 /// The TeamsAdmin path is additive: one who is also a camp lead still gets camp rights through the lead path.
 /// Non-admin line edits are denied past the product's OrderableUntil (an <see cref="OrderLineContext"/> resource).
 /// </summary>
@@ -44,7 +45,7 @@ internal sealed class OrderAuthorizationHandler(
                 // Even admins can't Pay or EditCounterparty a team order: it has no billing.
                 if (resource.IsTeamOrder && IsTeamBillingBlocked(req))
                     continue;
-                if (req == OrderOperationRequirement.Refund && !FinanceRoles.IsFinanceAdmin(context.User))
+                if (req == OrderOperationRequirement.RecordFinancePayment && !FinanceRoles.IsFinanceAdmin(context.User))
                     continue;
                 if (req == OrderOperationRequirement.DeletePayment && !RoleChecks.IsAdmin(context.User))
                     continue;
@@ -56,7 +57,7 @@ internal sealed class OrderAuthorizationHandler(
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var pastDeadline = resource.ProductOrderableUntil is { } until
             && pending.Any(IsLineEdit)
-            && await settingsService.TodayInEventZoneAsync(clock, ct) > until;
+            && clock.TodayIn((await settingsService.GetActiveEventSettingsAsync(ct))?.TimeZone) > until;
 
         // Additive: fall through so a TeamsAdmin who is also a camp lead picks up camp rights below.
         if (TeamsRoles.IsTeamsAdmin(context.User))
@@ -86,15 +87,7 @@ internal sealed class OrderAuthorizationHandler(
         if (resource.CampSeasonId is { } sid)
         {
             var season = await campService.GetCampSeasonByIdAsync(sid, ct);
-            if (season is not null)
-            {
-                var camp = (await campService.GetCampsForYearAsync(season.Year, ct))
-                    .FirstOrDefault(c => c.Id == season.CampId);
-                if (camp?.IsLead(userId) == true)
-                {
-                    authorized = true;
-                }
-            }
+            authorized = season?.IsLead(userId) == true;
         }
         else if (resource.TeamId is { } tid)
         {
@@ -151,7 +144,7 @@ internal sealed class OrderAuthorizationHandler(
             || requirement == OrderOperationRequirement.Pay
             || requirement == OrderOperationRequirement.IssueInvoice
             || requirement == OrderOperationRequirement.RecordPayment
-            || requirement == OrderOperationRequirement.Refund
+            || requirement == OrderOperationRequirement.RecordFinancePayment
             || requirement == OrderOperationRequirement.DeletePayment;
 
     /// <summary>Only the lead/coordinator block applies this, so a TeamsAdmin still reaches Delete on a team
@@ -160,7 +153,7 @@ internal sealed class OrderAuthorizationHandler(
         => requirement == OrderOperationRequirement.Delete
             || requirement == OrderOperationRequirement.IssueInvoice
             || requirement == OrderOperationRequirement.RecordPayment
-            || requirement == OrderOperationRequirement.Refund
+            || requirement == OrderOperationRequirement.RecordFinancePayment
             || requirement == OrderOperationRequirement.DeletePayment;
 
     private static bool IsLineEdit(OrderOperationRequirement requirement)

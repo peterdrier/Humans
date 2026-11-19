@@ -10,7 +10,7 @@ internal sealed class EventSettingsConfiguration : IEntityTypeConfiguration<Even
 {
     public void Configure(EntityTypeBuilder<EventSettings> builder)
     {
-        builder.ToTable("event_settings");
+        builder.ToTable("shift_event_settings");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.EventName).HasMaxLength(256).IsRequired();

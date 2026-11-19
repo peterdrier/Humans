@@ -93,7 +93,7 @@ internal sealed class IssueNotices(
                     issue.Id, issue.ReporterUserId);
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
             logger.LogError(ex, "Issue comment {CommentId} saved but its reporter email failed for issue {IssueId}",
                 comment.Id, issue.Id);
@@ -258,7 +258,7 @@ internal sealed class IssueNotices(
                     sourceKey: sourceKey,
                     cancellationToken: ct);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to dispatch {Source} issue notices for language {Language}", source, group.Key);
             }

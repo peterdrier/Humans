@@ -7,7 +7,7 @@
       mirror of Humans.Auth's InternalsVisibleTo("Humans.Teams.Tests").
     -->
     <ProjectReference Include="..\..\src\Sections\Humans.Auth\Humans.Auth.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams\Humans.Teams.csproj" />
     <!--
       TeamsTestHarness declares a lazy ShiftsDbContext pair and TeamServiceTests seeds

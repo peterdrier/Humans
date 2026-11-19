@@ -50,6 +50,15 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
+    public async Task UnrelatedMember_CannotSubmit_AnotherMembersDraft()
+    {
+        var allowed = await EvaluateAsync(CreateUser(RandomUserId),
+            MakeReport(SubmitterId, ExpenseReportStatus.Draft), ExpenseReportOperation.Submit);
+
+        allowed.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task MergedPreapprovalManager_RetainsHistoricalProgramAccess()
     {
         var cookieId = Guid.NewGuid();

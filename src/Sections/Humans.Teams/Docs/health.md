@@ -25,12 +25,12 @@ coordinators’ system-team membership. Google resources stay active until recon
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "Which teams exist / what is team X?" (whole graph, by id, by slug, with parents, name fan-out, search) | almost every section, Shell tiles, global search, the auth handler | `ITeamService.GetTeamsAsync` / `GetTeamAsync` / `GetTeamBySlugAsync` / `GetTeamsWithParentsAsync` / `SearchAsync`; `IEntityNameContributor` |
-| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, GoogleIntegration, `TeamAuthorizationHandler` | `ITeamService.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
-| "Which teams is this human in?" | Users, GoogleIntegration, the profile card | `ITeamService.GetUserTeamMembershipsAsync` |
+| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, Google, `TeamAuthorizationHandler` | `ITeamService.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
+| "Which teams is this human in?" | Users, Google, the profile card | `ITeamService.GetUserTeamMembershipsAsync` |
 | "Show me the directory / the tree / a team page / my teams / the roster / the summary" | the section's own controllers | `ITeamPageService.GetTeamDirectoryAsync` / `GetTeamPageDetailAsync` / `GetMyTeamMembershipsAsync` / `GetRosterAsync`; `ITeamManagementService.GetAdminTeamListAsync` |
 | "Send this member a message as my team" | coordinators, from another member's profile | `ITeamMessageOptionsProvider`; `TeamMessageController`; Email's facilitated-message factory |
 | "Let me in / let me out" (join, request, withdraw, leave; approve, reject) | members and coordinators via the controllers | `JoinTeamAsync` / `LeaveTeamAsync` / `WithdrawJoinRequestAsync` / `ApproveJoinRequestAsync` / `RejectJoinRequestAsync` + the two pending-request reads |
-| "Shape the team" (create, edit, deactivate, page content, Google group prefix) | TeamsAdmin/Admin via the controllers (Board reads); GoogleIntegration for the prefix | `CreateTeamWithGoogleGroupAsync` / `UpdateTeamWithGoogleGroupAsync` / `DeleteTeamAsync` / `UpdateTeamPageContentAsync`; `ITeamWrite.SetGoogleGroupPrefixAsync` |
+| "Shape the team" (create, edit, deactivate, page content, Google group prefix) | TeamsAdmin/Admin via the controllers (Board reads); Google for the prefix | `CreateTeamWithGoogleGroupAsync` / `UpdateTeamWithGoogleGroupAsync` / `DeleteTeamAsync` / `UpdateTeamPageContentAsync`; `ITeamWrite.SetGoogleGroupPrefixAsync` |
 | "Staff the team" (members, role definitions, role assignments) | coordinators via the controllers | `AddMemberToTeamAsync` / `RemoveMemberAsync`; the role-definition members; `AssignToRoleAsync` / `UnassignFromRoleAsync` |
 | "Who gets in early, for what?" | the per-team EE page; the EE roster | the EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
 | "Recompute the system teams" | Hangfire, the Google sync admin page, other sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamWrite.ApplySystemTeamMembershipDeltaAsync` and the management interface's role-reconciliation members |
@@ -102,7 +102,7 @@ The shapes imply:
   reflect this properly") — coordinator scoping for shifts is Shifts' call, shaped by
   `GetUserCoordinatedTeamIdsAsync`.
 - **`google_resources`** is a Team Resources sub-aggregate owned and written by
-  GoogleIntegration; its admin page is GoogleIntegration's (`/Google/Teams/{slug}/Resources`), which Teams only links to.
+  Google; its admin page is Google's (`/Google/Teams/{slug}/Resources`), which Teams only links to.
 
 ## 6. Deliberately not done
 
@@ -143,7 +143,7 @@ The shapes imply:
 - **`ApplySystemTeamMembershipDeltaAsync` is also driven by `DevPersonaSeeder`** to put
   personas on the Board system team — the one non-job caller of the bulk-apply protocol.
 - **Two admin surfaces for sync live under `/Google/*`**, not here: the job is Teams' own,
-  the buttons are GoogleIntegration's.
+  the buttons are Google's.
 
 ## History
 

@@ -92,8 +92,8 @@ internal interface IHoldedClient
 
     Task<HoldedUsageDto> GetUsageAsync(CancellationToken ct = default);
 
-    /// <summary>A page that can't be completed throws rather than returning the prefix. One contact with an
-    /// unreadable value is skipped and logged; an unreadable page envelope is not.</summary>
+    /// <summary>A page that can't be completed throws rather than returning the prefix, and so does one unreadable
+    /// contact: a shortened list would delete mirror rows and let a find-or-create mint a twin.</summary>
     Task<IReadOnlyList<HoldedContactDto>> ListContactsAsync(CancellationToken ct = default);
 
     /// <summary>Order not guaranteed. The window is also applied client-side, whether or not Holded honours the

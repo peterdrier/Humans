@@ -21,8 +21,8 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
   cache; the webhook registrar exists only for PR previews.
 - **Out of scope:** issuing payouts and chargebacks (dashboard-manual; the mirror only reads
   them), invoicing (Store/Holded), payment bookkeeping (Store) and booking the mirror into
-  Holded (a later step, after Peter has reviewed the mirror). Refunds are in scope, through one guarded path only
-  (nobodies-collective/Humans#1254, not built yet).
+  Holded (a later step, after Peter has reviewed the mirror). Refunds are issued on the dashboard too; this
+  section only links to a Store payment's dashboard page and reads its refunds back for Store to book.
 
 ## Concepts
 
@@ -60,7 +60,7 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
 | `stripe_balances` | per account and currency: available and pending |
 | `stripe_sync_states` | per account: status, last run, rows mirrored, last error |
 
-All four are a cache, rebuilt per account by every sweep. Sentinel table:
+These tables are a cache, rebuilt per account by every sweep. Sentinel table:
 `stripe_balance_transactions`. Everything else Stripe-derived is persisted by its owner:
 fee/payment-method fields on Tickets' `ticket_orders`, payment rows on Store's `store_payments`.
 
@@ -75,7 +75,7 @@ fee/payment-method fields on Tickets' `ticket_orders`, payment rows on Store's `
 | `Stripe:WebhookCleanupOwner` / `…Repository` | — | — | PR previews only (GitHub repo for the open-PR list) |
 | `STRIPE_ORG_READ_KEY` | every mirrored account without its own key, via `Stripe-Context: <acct>` | read-only Organization key (`sk_org_*`): balance, balance transaction sources, charges, refunds, disputes, payouts, PaymentIntents and more | QA, production |
 | `STRIPE_ICE_READ_KEY` | ICE (run by an outside platform that refuses the org key) | balance, balance transactions + sources, payouts read | QA, production |
-| `Stripe:MirrorAccounts` | — | — | appsettings: `Name`, `Id`, optional `KeyVariable` (the env var holding that account's own key) |
+| `Stripe:MirrorAccounts` | — | — | appsettings: `Name`, `Id`, optional `KeyVariable` (the env var holding that account's own key). The `Store` entry also gives `ListStoreRefundsAsync` its key and `StorePaymentDashboardUrl` its account id. |
 
 The mirror sends the SDK's pinned `Stripe-Version` (`ApiVersion.Current` of the Stripe.net
 package) on every call, which an org key requires.
@@ -138,9 +138,26 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   that account's rows in one save: rows the sweep did not return are deleted, other accounts
   are untouched. A failed fetch keeps that account's mirror and attempts to record the error on its sync row;
   the others still sweep. A failed diagnostic save logs its exception and account ID without stopping healthy
-  accounts or replacing caller cancellation; the sync gate is still released. The pager fails closed
-  (`has_more` on an empty page, or a 500-page cap, throws). One sweep at a time: an in-process gate shared by
+  accounts or replacing caller cancellation; the sync gate is still released. The shared transaction, payout
+  and automatic-payout breakdown pager requires an explicit boolean `has_more` in the raw response; the SDK's
+  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list.
+  The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
   the job and Sync now.
+- Account startup saves are covered by account failure handling, so one failed `Running` save does not stop
+  healthy accounts. Preparation shutdown restores `Idle` with the previous summary and diagnostic. Reads and
+  atomic replacement retain cancellation, with checkpoints before each account and before replacement.
+  After replacement commits, the outcome save uses `CancellationToken.None`; a failure there records an account
+  error even if shutdown has also begun. An interrupted sweep preserves earlier account failures as a failed
+  run rather than reporting only cancellation. Diagnostic-save failures preserve the original outcome and
+  release the gate.
+- Wallet balance reads require both `available` and `pending` arrays, and every amount must explicitly carry
+  an integer minor-unit value and a nonblank currency. Missing buckets or incomplete amounts fail the fetch before
+  account replacement instead of erasing a bucket or manufacturing zero. Explicit empty buckets, zero and signed
+  amounts remain valid; values aggregate by normalized currency. Optional reserve/instant-payout buckets are not mirrored.
+- Buyer attribution skips blank source fields: charge names prefer billing then metadata; emails prefer billing,
+  receipt, metadata `email_address`, then metadata `email`. Missing name/email fields independently inherit the
+  first nonblank value on the same nonblank PaymentIntent, preserving each row's populated values. Blank intent
+  IDs never associate unrelated rows. These attributed fields support buyer search and verified-email data exports.
 - Bounded mirror text (transaction descriptions, buyer names/emails, payout failures and saved sync errors) preserves complete UTF-16 surrogate pairs, so truncation cannot turn valid vendor text into invalid Unicode.
 - The mirror is read-only: list and retrieve calls only, whatever the key's scopes.
 - Payout link: Stripe links transactions only to automatic payouts, so `PayoutId` is null on a
@@ -159,8 +176,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   recording, transitioning and reconciling a payment is Store's.
 - The webhook registrar **cannot** run outside a `*.n.burn.camp` host, and **cannot** run
   at all without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` (never set in QA or production).
-- Payouts and chargebacks **cannot** be issued from the app. Refunds cannot either until the
-  guarded refund path (nobodies-collective/Humans#1254) ships, and then only through it
+- Refunds, payouts and chargebacks **cannot** be issued from the app; `ListStoreRefundsAsync` only reads
   ([`memory/architecture/stripe-money-out.md`](../../../../memory/architecture/stripe-money-out.md)).
 
 ## Triggers
@@ -186,8 +202,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Outbound, contracts leaves only: Finance.Contracts (`FinancePolicies`) and Users.Contracts
   (`IUserService`, through `HumansControllerBase`). Neither reaches back to Stripe, so
   `Humans.Store → Humans.Stripe` and `Humans.Tickets → Humans.Stripe` stay acyclic.
-- Inbound: **Store** injects `IStripeService` for checkout creation, webhook parsing and
-  reconciliation (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
+- Inbound: **Store** injects `IStripeService` for checkout creation, webhook parsing,
+  reconciliation and refund read-back with dashboard links (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
   fee enrichment on `TicketOrder` (`TicketSyncService`).
 
 ## Architecture
@@ -200,7 +216,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 | Public interface | Methods | Notes |
 |---|---:|---|
-| `IStripeService` | 4 + 3 flags | The whole outward surface. |
+| `IStripeService` | 6 + 3 flags | The whole outward surface. |
 | `I<Section>Write` | — | The connector's one write is a call to Stripe, not to a table. |
 
 - Services never import `Microsoft.EntityFrameworkCore`; `Data/Repository.cs` (`IStripeMirrorRepository`) is the only reader and writer of the mirror tables, and only `StripeMirrorService` calls it.

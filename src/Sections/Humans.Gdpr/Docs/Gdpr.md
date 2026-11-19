@@ -159,8 +159,10 @@ calls `EraseForUserAsync` per merge-chain id from the deletion paths.
   work writes a warning without its exception.
 - `EraseForUserAsync` writes through the contributors (each erases its own
   section) and raises no notification itself — the audit entry and confirmation
-  email belong to the Users deletion lifecycle. It logs one error line per
-  contributor failure before re-throwing.
+  email belong to the Users deletion lifecycle. It checks cancellation before each
+  contributor, including the final identity contributor, so an interrupted cascade leaves
+  deletion retryable. Requested cancellation logs a warning without its exception and
+  propagates; independent contributor failures log their exception and propagate.
 - Adding a user-scoped section: declare its section-name constants on its own
   contributor class, implement `IUserDataContributor` on its owning service,
   and register the forwarding factory beside that service — the DI
@@ -192,7 +194,7 @@ from Base and does not reference `Humans.Gdpr`. Only Users references it, for
 sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
 `ExportForUserAsync` and `EraseForUserAsync`.
 **Owned tables:** none.
-- `src/Sections/Humans.Gdpr` — one internal service, the internal controllers
+- `src/Sections/Humans.Gdpr` — the internal service and controllers
   (`GuestDataController`, `MemberDataController`, `UserController`), the views
   (`Views/User/Status`, `Views/User/Deletion`) rendering over Base's shared view
   layer, `Section.cs`, this doc. No `Data/`, no migrations, no

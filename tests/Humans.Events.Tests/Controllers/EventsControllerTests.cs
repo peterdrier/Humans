@@ -118,6 +118,70 @@ public class EventsControllerTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(AdminFormAction.SettingsInvalid, AdminFormRead.Options)]
+    [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Edition)]
+    [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Options)]
+    [Xunit.InlineData(AdminFormAction.SettingsRefused, AdminFormRead.Options)]
+    [Xunit.InlineData(AdminFormAction.CreateCategory, AdminFormRead.Slug)]
+    [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Category)]
+    [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Slug)]
+    [Xunit.InlineData(AdminFormAction.EditVenue, AdminFormRead.Venue)]
+    public async Task Admin_form_reads_observe_request_cancellation_before_writes(AdminFormAction action, AdminFormRead boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var controller = new EventsAdminController(_guide,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
+        {
+            ControllerContext = BuildController(Guid.NewGuid()).ControllerContext
+        };
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        if (action == AdminFormAction.SettingsInvalid) controller.ModelState.AddModelError("MaxPrintSlots", "Required");
+        async Task<T> ReadAsync<T>(T value, AdminFormRead current, CancellationToken ct)
+        {
+            if (current == boundary)
+            {
+                await request.CancelAsync();
+                ct.Should().Be(request.Token);
+            }
+            ct.ThrowIfCancellationRequested();
+            return value;
+        }
+        var id = Guid.NewGuid();
+        var burn = MakeBurnSettings();
+        _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<EventSettingsInfo?>(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
+        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<IReadOnlyList<EventSettingsInfo>>([burn], AdminFormRead.Options, call.Arg<CancellationToken>()));
+        _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), AdminFormRead.Category, call.Arg<CancellationToken>()));
+        _guide.CategorySlugExistsAsync("category", Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync(false, AdminFormRead.Slug, call.Arg<CancellationToken>()));
+        _guide.GetVenueAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync<EventVenueView?>(new(id, "Venue", null, null, 0, true), AdminFormRead.Venue, call.Arg<CancellationToken>()));
+        Func<Task<IActionResult>> invoke = () => action switch
+        {
+            AdminFormAction.CreateCategory => controller.CreateCategory(new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
+            AdminFormAction.EditCategory => controller.EditCategory(id, new EventCategoryFormViewModel { Name = "Category", Slug = "category" }),
+            AdminFormAction.EditVenue => controller.EditVenue(id, new GuideVenueFormViewModel { Name = "Venue" }),
+            _ => controller.SaveSettings(new GuideSettingsViewModel { EventSettingsId = burn.Id })
+        };
+
+        (await invoke.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
+        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+            nameof(IEventManagement.SaveGuideSettingsAsync) or nameof(IEventManagement.CreateCategoryAsync)
+            or nameof(IEventManagement.UpdateCategoryAsync) or nameof(IEventManagement.UpdateVenueAsync)).ToList();
+        if (action == AdminFormAction.SettingsRefused)
+        {
+            writes.Should().ContainSingle().Which.GetArguments()[^1].Should().Be(CancellationToken.None);
+        }
+        else
+        {
+            writes.Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("CreateCategory", "IsSensitive", false)]
     [Xunit.InlineData("CreateCategory", "IsActive", false)]
     [Xunit.InlineData("CreateCategory", "DisplayOrder", false)]
@@ -535,7 +599,6 @@ public class EventsControllerTests
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Guide")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Burn")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Submissions")]
-    [Xunit.InlineData(nameof(EventsController.MySubmissions), "CampSettings")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "Camps")]
     [Xunit.InlineData(nameof(EventsController.MySubmissions), "CampSummary")]
     [Xunit.InlineData(nameof(EventsController.Submit), "Guide")]
@@ -661,10 +724,6 @@ public class EventsControllerTests
             ReadAsync<EventInfo?>(guideEvent, "Event", call.Arg<CancellationToken>()));
         _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<EventInfo>>([], "Submissions", call.Arg<CancellationToken>()));
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync(new CampSettingsInfo(2026, [2026]), "CampSettings", call.Arg<CancellationToken>()));
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
         _camps.GetCampsForEventAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
         _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>()).Returns(call =>
@@ -886,8 +945,8 @@ public class EventsControllerTests
         var future = season with { Id = Guid.NewGuid(), Year = 2027, Name = "Future Camp", EventSettingsId = Guid.NewGuid() };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0,
             hasSeason ? [future, season] : [future]);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
+        _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(hasSeason ? [camp with { Seasons = [season] }] : []);
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -918,22 +977,81 @@ public class EventsControllerTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    public async Task MySubmissions_UsesOnlyTheGuidesEventForCampManagement(bool workshopLead, bool missingGuide)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        StubEditableGuideSettings();
+        var settings = (await _guide.GetGuideSettingsAsync())! with
+        {
+            SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0)
+        };
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(missingGuide ? null : settings);
+        _guide.GetEventSettingsByIdAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(MakeBurnSettings() with { Id = settings.EventSettingsId });
+        var campId = Guid.NewGuid();
+        var selected = new CampSeasonInfo(
+            Guid.NewGuid(), campId, "selected", 2026, null, "Selected camp", "", "en", [],
+            default, default, default, default, 1, null, null, null, 0, null, null)
+        {
+            EventSettingsId = settings.EventSettingsId,
+            LeadUserIds = workshopLead ? [] : [userId],
+            WorkshopLeadUserIds = workshopLead ? [userId] : []
+        };
+        var selectedCamp = new CampInfo(campId, "selected", "camp@example.org", "", false, 0, [selected]);
+        var otherCampId = Guid.NewGuid();
+        var unowned = selected with { Id = Guid.NewGuid(), CampId = otherCampId, LeadUserIds = [], WorkshopLeadUserIds = [] };
+        var otherEvent = unowned with { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), LeadUserIds = [userId] };
+        var otherCamp = selectedCamp with { Id = otherCampId, Slug = "other", Seasons = [otherEvent, unowned] };
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
+        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([selectedCamp, otherCamp]);
+        _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns([selectedCamp, otherCamp with { Seasons = [unowned] }]);
+        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetCampSubmissionsSummaryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new CampSubmissionsSummary(0, 0, 0, []));
+        var controller = BuildController(userId);
+        controller.HttpContext.RequestAborted = request.Token;
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+
+        var result = await controller.MySubmissions();
+
+        var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<MySubmissionsViewModel>().Subject;
+        if (missingGuide)
+        {
+            model.Barrios.Should().BeEmpty();
+            _camps.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            model.Barrios.Should().ContainSingle().Which.CampId.Should().Be(campId);
+            model.Barrios[0].CampName.Should().Be("Selected camp");
+            await _camps.Received(1).GetCampsForEventAsync(settings.EventSettingsId, request.Token);
+            await _guide.DidNotReceive().GetCampSubmissionsSummaryAsync(otherCampId, Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task MySubmissions_OrdersCampEventsMostRecentlySubmittedFirst()
     {
         var userId = Guid.NewGuid();
         var campId = Guid.NewGuid();
+        StubEditableGuideSettings();
+        var settings = (await _guide.GetGuideSettingsAsync())!;
         var season = new CampSeasonInfo(
             Guid.NewGuid(), campId, "camp", 2026, null, "Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         {
-            LeadUserIds = [userId]
+            LeadUserIds = [userId],
+            EventSettingsId = settings.EventSettingsId
         };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
-        _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
-        StubEditableGuideSettings();
-        var settings = await _guide.GetGuideSettingsAsync();
+        _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns([camp]);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings! with
         {
             SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
@@ -1093,8 +1211,14 @@ public class EventsControllerTests
     [Xunit.InlineData(true, true)]
     [Xunit.InlineData(false, false, "Events_VenueUnavailable")]
     [Xunit.InlineData(true, false, "Events_VenueUnavailable")]
+    [Xunit.InlineData(false, false, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(true, false, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(false, true, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(true, true, "Events_CategoryUnavailable", OptionsRead.Categories)]
+    [Xunit.InlineData(false, false, "Events_VenueUnavailable", OptionsRead.Venues)]
+    [Xunit.InlineData(true, false, "Events_VenueUnavailable", OptionsRead.Venues)]
     public async Task SelectionRefusal_RedisplaysMemberForm_AndPreservesEnteredContent(
-        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable")
+        bool edit, bool barrio, string refusalKey = "Events_CategoryUnavailable", OptionsRead? cancelAt = null)
     {
         var field = string.Equals(refusalKey, "Events_VenueUnavailable", StringComparison.Ordinal) ? "VenueId" : "CategoryId";
         var userId = Guid.NewGuid();
@@ -1112,8 +1236,20 @@ public class EventsControllerTests
         var controller = BuildController(userId);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
         controller.Url = Substitute.For<IUrlHelper>();
+        using var request = new CancellationTokenSource();
+        controller.HttpContext.RequestAborted = request.Token;
+        async Task<IReadOnlyList<T>> ReadOptionsAsync<T>(CancellationToken ct, OptionsRead boundary)
+        {
+            if (cancelAt == boundary) await request.CancelAsync();
+            ct.ThrowIfCancellationRequested();
+            return [];
+        }
+        _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            ReadOptionsAsync<EventCategoryView>(call.Arg<CancellationToken>(), OptionsRead.Categories));
+        _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns(call =>
+            ReadOptionsAsync<EventVenueView>(call.Arg<CancellationToken>(), OptionsRead.Venues));
         object model;
-        IActionResult result;
+        Func<Task<IActionResult>> invoke;
         if (barrio)
         {
             var input = new CampEventFormViewModel
@@ -1125,10 +1261,7 @@ public class EventsControllerTests
                 DurationMinutes = 60
             };
             model = input;
-            result = edit ? await controller.BarrioUpdate(camp.Slug, existing.Id, input) : await controller.BarrioCreate(camp.Slug, input);
-            input.Title.Should().Be("Entered title");
-            input.Description.Should().Be("Entered description");
-            input.CampId.Should().Be(camp.Id);
+            invoke = () => edit ? controller.BarrioUpdate(camp.Slug, existing.Id, input) : controller.BarrioCreate(camp.Slug, input);
         }
         else
         {
@@ -1142,15 +1275,100 @@ public class EventsControllerTests
                 DurationMinutes = 60
             };
             model = input;
-            result = edit ? await controller.Update(existing.Id, input) : await controller.Create(input);
-            input.Title.Should().Be("Entered title");
-            input.Description.Should().Be("Entered description");
+            invoke = () => edit ? controller.Update(existing.Id, input) : controller.Create(input);
         }
+        if (cancelAt is not null)
+        {
+            await invoke.Should().ThrowAsync<OperationCanceledException>()
+                .Where(error => error.CancellationToken == request.Token);
+            var mutation = _guide.ReceivedCalls().Single(call =>
+                string.Equals(call.GetMethodInfo().Name, nameof(IEventManagement.SubmitEventAsync), StringComparison.Ordinal)
+                || string.Equals(call.GetMethodInfo().Name, nameof(IEventManagement.UpdateAndResubmitAsync), StringComparison.Ordinal));
+            mutation.GetArguments()[^1].Should().Be(CancellationToken.None);
+            return;
+        }
+        var result = await invoke();
+        var inputModel = (EventProposalFormViewModel)model;
+        inputModel.Title.Should().Be("Entered title");
+        inputModel.Description.Should().Be("Entered description");
+        if (model is CampEventFormViewModel campModel) campModel.CampId.Should().Be(camp.Id);
         var view = result.Should().BeOfType<ViewResult>().Which;
         view.Model.Should().BeSameAs(model);
         view.ViewName.Should().Be(barrio ? "BarrioEventForm" : "IndividualEventForm");
         controller.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(refusalKey);
         controller.TempData.Should().NotContainKey("SuccessMessage");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ExistingEventEdits_UseTheRecordsCalendarAndTimezone(bool campEvent, bool post)
+    {
+        var userId = Guid.NewGuid();
+        StubEditableGuideSettings();
+        var original = MakeBurnSettings() with
+        {
+            Year = 2025,
+            GateOpeningDate = new LocalDate(2025, 8, 1),
+            EventEndOffset = 6,
+            TimeZoneId = "America/New_York"
+        };
+        var localStart = original.GateOpeningDate.At(new LocalTime(10, 30));
+        var start = localStart.InZoneLeniently(DateTimeZoneProviders.Tzdb[original.TimeZoneId]).ToInstant();
+        var campId = campEvent ? Guid.NewGuid() : (Guid?)null;
+        var entry = MakeEvent(campId, userId, EventStatus.ResubmitRequested) with
+        {
+            EventSettingsId = original.Id,
+            StartAt = start,
+            IsRecurring = true,
+            RecurrenceDays = "0,6"
+        };
+        _guide.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+        _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
+        if (campId is { } id)
+        {
+            var camp = new CampInfo(id, "camp", "camp@example.org", "", false, 0, []);
+            _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+            _guide.GetCampEventAsync(entry.Id, id, Arg.Any<CancellationToken>()).Returns(entry);
+            _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), camp, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+                .Returns(AuthorizationResult.Success());
+        }
+        _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = BuildController(userId);
+        controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
+        if (!post)
+        {
+            var result = campEvent
+                ? await controller.BarrioEdit("camp", entry.Id)
+                : await controller.Edit(entry.Id);
+            var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeAssignableTo<EventProposalFormViewModel>().Subject;
+            model.StartDate.Should().Be(new DateOnly(2025, 8, 1));
+            model.StartTime.Should().Be(new TimeOnly(10, 30));
+            model.TimeZoneId.Should().Be(original.TimeZoneId);
+            model.EventDays.Should().HaveCount(7);
+        }
+        else
+        {
+            EventProposalFormViewModel model = campEvent
+                ? new CampEventFormViewModel { DurationMinutes = 60 }
+                : new IndividualEventFormViewModel { DurationMinutes = 60 };
+            model.Title = "Edited";
+            model.Description = "Description";
+            model.StartDate = new DateOnly(2025, 8, 1);
+            model.StartTime = new TimeOnly(10, 30);
+            model.IsRecurring = true;
+            model.RecurrenceDays = "0,6";
+            model.CategoryId = entry.CategoryId;
+            if (model is IndividualEventFormViewModel individual) individual.VenueId = entry.GuideSharedVenueId!.Value;
+            var result = campEvent
+                ? await controller.BarrioUpdate("camp", entry.Id, (CampEventFormViewModel)model)
+                : await controller.Update(entry.Id, (IndividualEventFormViewModel)model);
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _guide.Received(1).UpdateAndResubmitAsync(entry.Id,
+                Arg.Is<EventEdit>(edit => edit.StartAt == start && string.Equals(edit.RecurrenceDays, "0,6", StringComparison.Ordinal)), Arg.Any<CancellationToken>());
+        }
     }
 
     private void StubEditableGuideSettings()
@@ -1232,3 +1450,9 @@ public class EventsControllerTests
             profile: profile);
     }
 }
+
+public enum AdminFormAction { SettingsInvalid, SettingsMissing, SettingsRefused, CreateCategory, EditCategory, EditVenue }
+
+public enum AdminFormRead { Edition, Options, Category, Slug, Venue }
+
+public enum OptionsRead { Categories, Venues }

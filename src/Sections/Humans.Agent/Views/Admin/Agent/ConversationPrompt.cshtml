@@ -1,17 +1,16 @@
 @model AgentPromptPreview
 @{ ViewData["Title"] = "Prompt preview"; }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h2 class="mb-0">What would be sent to Anthropic</h2>
-        <small class="text-muted">
+<page-header title="What would be sent to Anthropic">
+    <page-header-subtitle>
+        <small>
             Regenerated on demand. Reflects current preload corpus, current human
             snapshot, current settings — not what was sent at the time of any
             historical turn. Nothing is recorded.
         </small>
-    </div>
+    </page-header-subtitle>
     <a asp-controller="Agent" asp-action="Conversations" class="btn btn-outline-secondary btn-sm">Back to list</a>
-</div>
+</page-header>
 
 <div class="mb-3">
     <strong>Model:</strong> <code>@Model.Model</code>

@@ -8,7 +8,7 @@ internal sealed class SepaPayoutFileConfiguration : IEntityTypeConfiguration<Sep
 {
     public void Configure(EntityTypeBuilder<SepaPayoutFile> b)
     {
-        b.ToTable("sepa_payout_files");
+        b.ToTable("finance_sepa_payout_files");
         b.HasKey(x => x.Id);
         b.HasIndex(x => x.GeneratedAt);
         b.Property(x => x.FileName).HasMaxLength(128);

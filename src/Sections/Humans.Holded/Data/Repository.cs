@@ -57,13 +57,10 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     }
 
     public async Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, Instant? from = null, Instant? toExclusive = null, string? type = null,
-        CancellationToken ct = default)
+        int accountNum, string? type = null, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var q = ctx.HoldedLedgerLines.AsNoTracking().Where(l => l.AccountNum == accountNum);
-        if (from is { } f) q = q.Where(l => l.Date >= f);
-        if (toExclusive is { } t) q = q.Where(l => l.Date < t);
         if (type is not null) q = q.Where(l => l.Type == type);
         return await q.ToListAsync(ct);
     }

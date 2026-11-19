@@ -8,7 +8,7 @@ internal sealed class GuideRenderer(
     IOptions<GuideSettings> settings,
     GuideHtmlPostprocessor postprocessor) : IGuideRenderer
 {
-    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+    internal static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 

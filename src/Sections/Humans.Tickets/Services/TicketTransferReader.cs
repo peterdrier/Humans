@@ -82,8 +82,7 @@ internal sealed class TicketTransferReader(
         var row = BuildRowDto(request, attendee);
         var order = attendee.TicketOrder;
         var siblingIds = order is not null
-            ? (await ticketRepo.GetVendorTicketIdsForOrderAsync(order.Id, ct))
-                .OrderBy(s => s, StringComparer.Ordinal).ToList()
+            ? await ticketRepo.GetVendorTicketIdsForOrderAsync(order.Id, ct)
             : (IReadOnlyList<string>)[];
 
         return new TicketTransferDetailDto(

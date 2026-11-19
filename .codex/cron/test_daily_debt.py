@@ -67,11 +67,34 @@ class QuotaPolicyTests(unittest.TestCase):
 
     def test_missing_malformed_and_other_exhausted_window(self):
         self.assertIn("unavailable", run_goal.quota_stop_reason({}, 1000000))
-        for used in (None, "17", True, -1, 101, float("nan")):
+        for used in (None, "17", True, -1, 101, float("nan"), 10**400):
             self.assertIn("invalid", run_goal.quota_stop_reason(self.snapshot(used), 1000000))
         snapshot = self.snapshot(0, secondary=True)
         snapshot["rateLimitsByLimitId"]["codex"]["primary"]["usedPercent"] = 100
         self.assertIn("exhausted", run_goal.quota_stop_reason(snapshot, 1000000))
+
+    def test_malformed_other_window_stops_instead_of_aborting_the_runner(self):
+        for window in ("unavailable", [1], 7, True, {},
+                       *({"usedPercent": used} for used in
+                         (None, "17", True, -1, 101, float("nan"), float("inf"), 10**400))):
+            with self.subTest(window=window):
+                snapshot = self.snapshot(0)
+                snapshot["rateLimitsByLimitId"]["codex"]["secondary"] = window
+                self.assertIn("invalid", run_goal.quota_stop_reason(snapshot, 1000000))
+
+    def test_malformed_weekly_reset_stops_without_numeric_conversion_errors(self):
+        for reset in (None, "tomorrow", True, float("nan"), float("inf"), 10**400):
+            with self.subTest(reset=reset):
+                snapshot = self.snapshot(0)
+                snapshot["rateLimitsByLimitId"]["codex"]["primary"]["resetsAt"] = reset
+                self.assertIn("invalid", run_goal.quota_stop_reason(snapshot, 1000000))
+
+    def test_malformed_quota_containers_stop_instead_of_aborting_the_runner(self):
+        for snapshot in (None, [], {"rateLimitsByLimitId": "unavailable"}, {"rateLimitsByLimitId": []},
+                         {"rateLimitsByLimitId": {"codex": [1]}}, {"rateLimitsByLimitId": {"codex": []}},
+                         {"rateLimits": "unavailable"}, {"rateLimits": []}):
+            with self.subTest(snapshot=snapshot):
+                self.assertIn("invalid", run_goal.quota_stop_reason(snapshot, 1000000))
 
 
 class GoalFailureTests(unittest.TestCase):
@@ -86,7 +109,7 @@ class GoalFailureTests(unittest.TestCase):
                 self.event("turn/completed", turn={"status": "failed", "error": {
                     "message": message, "codexErrorInfo": code}})]
 
-    def run_events(self, events, deadline=1001000, repair=True, quota=False):
+    def run_events(self, events, deadline=1001000, repair=True, quota=False, tree_status=""):
         initial = [{"id": 1, "result": {}},
                    {"id": 2, "result": {"thread": {"id": "same-thread"}}},
                    {"id": 3, "result": {"goal": {"status": "active"}}}]
@@ -101,12 +124,32 @@ class GoalFailureTests(unittest.TestCase):
             with patch.object(run_goal.subprocess, "Popen", return_value=proc), \
                  patch.object(run_goal.time, "sleep") as sleep, \
                  patch.object(run_goal.time, "time", return_value=1000000), \
-                 patch.object(run_goal.subprocess, "check_output", return_value=""), \
+                 patch.object(run_goal.subprocess, "check_output", return_value=tree_status), \
                  patch.dict(os.environ, WORK_DIR=directory, IGNORE_QUOTA_CUTOFF="0" if quota else "1"), \
                  patch("builtins.print"):
                 result = run_goal.run(prompt, report, deadline, repair)
             requests = [json.loads(call.args[0]) for call in proc.stdin.write.call_args_list]
             return result, report.read_text() if report.exists() else "", requests, sleep.call_args_list
+
+    def test_completed_round_requires_a_clean_tree_in_every_mode(self):
+        for repair, quota in ((False, False), (True, False), (False, True)):
+            with self.subTest(repair=repair, quota=quota):
+                events = [self.event("thread/goal/updated", goal={"status": "complete"}),
+                          self.event("item/completed", item={"type": "agentMessage", "phase": "final_answer",
+                                                             "text": "Cumulative report"}),
+                          self.event("turn/completed", turn={"status": "completed"})]
+
+                with self.assertRaisesRegex(RuntimeError, "Completed round left uncommitted changes"):
+                    self.run_events(events, repair=repair, quota=quota, tree_status=" M production.cs\n")
+
+    def test_completed_round_requires_a_report_even_with_quota_disabled(self):
+        for repair in (False, True):
+            with self.subTest(repair=repair):
+                events = [self.event("thread/goal/updated", goal={"status": "complete"}),
+                          self.event("turn/completed", turn={"status": "completed"})]
+
+                with self.assertRaisesRegex(RuntimeError, "Completed round lacks cumulative report"):
+                    self.run_events(events, repair=repair)
 
     def test_capacity_failure_retries_same_goal_and_recovers(self):
         events = self.failure() + [
@@ -340,7 +383,8 @@ class DailyDebtTests(unittest.TestCase):
         (seed / "docs/architecture").mkdir(parents=True)
         (seed / "docs/architecture/debt-ledger.yml").write_text(
             "inbox:\n  - id: CENTRAL-1\n  - id: CENTRAL-2\nthemes:\n  - id: some-theme\n")
-        shutil.copytree(SOURCE / "cron", seed / ".codex/cron")
+        shutil.copytree(SOURCE / "cron", seed / ".codex/cron",
+                        ignore=shutil.ignore_patterns("debt-runner.env", "__pycache__"))
         shutil.copytree(SOURCE / "prompts", seed / ".codex/prompts")
         self.git(seed, "init", "-b", "main")
         self.git(seed, "config", "user.name", "Runner test")
@@ -491,6 +535,7 @@ for line in sys.stdin:
             emit("turn/started", {"turn": {"id": "resumed"}})
             if scenario == "early-repeated" and started == 2:
                 emit("thread/goal/updated", {"goal": {"status": "complete"}})
+                emit("item/completed", {"item": {"type": "agentMessage", "phase": "final_answer", "text": "Cumulative fixes: 2"}})
                 emit("turn/completed", {"turn": {"status": "completed"}})
                 continue
             deadline = int((root / "clock").read_text()) + 3
@@ -645,7 +690,8 @@ for line in sys.stdin:
 
     def test_pinned_release_keeps_matching_client_and_prompt_after_refresh(self):
         release = self.root / "release/.codex"
-        shutil.copytree(SOURCE / "cron", release / "cron")
+        shutil.copytree(SOURCE / "cron", release / "cron",
+                        ignore=shutil.ignore_patterns("debt-runner.env", "__pycache__"))
         shutil.copytree(SOURCE / "prompts", release / "prompts")
         (self.clone / ".codex/cron/run-goal.py").write_text("raise RuntimeError('stale client')\n")
         (self.clone / ".codex/prompts/daily-debt.md").write_text("stale prompt\n")

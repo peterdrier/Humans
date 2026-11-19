@@ -11,18 +11,18 @@
 
 # Settings — Section Invariants
 
-App-wide settings: the `system_settings` key/value store every section may read
-and write through `ISettingsService`, and `settings_event`, the register of event
+App-wide settings: the `settings_system_values` key/value store every section may read
+and write through `ISettingsService`, and `settings_events`, the register of event
 cycles and of which one is active.
 
 ## Concepts
 
-- A **Setting** is one key/value row in `system_settings`. Well-known keys live
+- A **Setting** is one key/value row in `settings_system_values`. Well-known keys live
   in `SettingKeys`; values are strings, parsed by the caller.
 - **EventSettings** is one event cycle's app-wide values: name, public year,
   gate-opening date, build/event/strike offsets, early-entry window and capacity,
   off-season flag. Crosses the boundary as `EventSettingsInfo`.
-- **The event timezone is global.** One `system_settings` key, `Event:TimeZoneId`
+- **The event timezone is global.** One `settings_system_values` key, `Event:TimeZoneId`
   (absent means Europe/Madrid), applies to every event. `EventSettingsInfo.TimeZoneId`
   is filled from it on every read.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
@@ -30,7 +30,7 @@ cycles and of which one is active.
   `Deleted` today. The only row removal is `IEventSettingsSeeding.DeleteEventAsync`,
   for fixture teardown.
 - **Settings mints event ids.** A new cycle is created at `/Settings#event` by
-  saving the form with no id. Shifts' own `event_settings` row carries only its
+  saving the form with no id. Shifts' own `shift_event_settings` row carries only its
   section-local knobs and is created on demand the first time a rota or knob edit
   needs one.
 - **`/Settings`** is the member-facing settings page: it renders whatever tabs
@@ -57,7 +57,7 @@ cycles and of which one is active.
 
 ### Setting
 
-**Table:** `system_settings` (predates the `settings_*` naming convention)
+**Table:** `settings_system_values`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -66,7 +66,7 @@ cycles and of which one is active.
 
 ### EventSettings
 
-**Table:** `settings_event`
+**Table:** `settings_events`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -95,7 +95,7 @@ named by `SectionMigrationsHistory.TableFor`.
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any section (code) | Read/write `system_settings` keys and read the timezone via `ISettingsService`; read `settings_event` via `GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
+| Any section (code) | Read/write `settings_system_values` keys and read the timezone via `ISettingsService`; read `settings_events` via `GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | Any authenticated member | Views the active event's values, read-only, on the `/Settings#event` tab |
 | Admin | Edits event rows, starts a new cycle, makes an event active and sets the timezone, from the `/Settings#event` tab (posts to `SettingsAdminController`) |
 
@@ -105,7 +105,7 @@ named by `SectionMigrationsHistory.TableFor`.
 
 ## Invariants
 
-- **At most one `Active` row in `settings_event`; zero is legal** (a cycle ends
+- **At most one `Active` row in `settings_events`; zero is legal** (a cycle ends
   by deactivation). An admin save is refused while another row is active
   (`AnyOtherActiveEventSettingsAsync(excludingId)`); this is the only home of the
   rule — Shifts' knobs row carries no active flag of its own.
@@ -139,7 +139,7 @@ named by `SectionMigrationsHistory.TableFor`.
   so a missing key cannot mint a cycle or reset values through defaults. An
   explicitly blank id still starts a new cycle; blank optional early-entry values
   clear them.
-- **Writes to `settings_event` stay inside the section.** The event writes live
+- **Writes to `settings_events` stay inside the section.** The event writes live
   on the internal `ISettingsWriteService`, not on the `ISettingsService` contract.
 - EF entities never leave the section; the cross-section surface is the
   `Contracts/` folder (namespace `Humans.Settings.Contracts`).
@@ -150,7 +150,7 @@ named by `SectionMigrationsHistory.TableFor`.
 - A non-admin **cannot** edit the Event tab: they get the read-only rendering
   (no `<form>`, no list, no inputs to POST), `?event=` is ignored for them, and a
   POST to `SettingsAdminController` still requires `PolicyNames.AdminOnly`.
-- Code outside the section **cannot** write `settings_event` —
+- Code outside the section **cannot** write `settings_events` —
   `ISettingsService` carries no event-settings write.
 
 ## Triggers
@@ -181,7 +181,7 @@ too wide to keep in step by hand. Derive it from the call sites.
 |---|---|---|
 | in | every section that renders a date, a phase or an early-entry window | `ISettingsService.GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync`. Not enumerated — see above |
 | in | Development | `IEventSettingsSeeding`, from the dashboard seeder |
-| in | Workgroups | `ISettingsService.GetValueAsync` — legacy root-folder fallback until its admin saves section-owned `workgroups_settings`; no new writes. `ISettingsService.GetTimeZoneIdAsync` — the default zone of the meeting form |
+| in | Workgroups | `ISettingsService.GetValueAsync` — legacy root-folder fallback until its admin saves section-owned `workgroup_settings`; no new writes. `ISettingsService.GetTimeZoneIdAsync` — the default zone of the meeting form |
 | in | Email | `ISettingsService` (`IsEmailSendingPaused`) |
 | in | Monitor | `ISettingsService` (`DriveActivityMonitor:LastRunAt`) |
 | in (seam) | Camps, Events, Rideshare, Shifts | implement `IEventSettingsChangeListener`: Shifts' `CachingShiftViewService` (flushes every `ShiftUserView` and forwards the id to its dashboard aggregates), Events' `CachingEventService` (its guide settings carry the timezone), Camps' `CachingCampService` (open seasons derive from events), Rideshare's `CachingRideshareService` (clears its cache). Settings names no consumer and references no consuming section |
@@ -191,12 +191,14 @@ too wide to keep in step by hand. Derive it from the call sites.
 
 ## Architecture
 
-**Owning services:** `Service` (registered as `ISettingsService`,
-`ISettingsWriteService` and `IEventSettingsSeeding` against one instance)
-**Owned tables:** `system_settings`, `settings_event`
-**Status:** (A) — own project, own context, repository-only data access; no
-caching decorator (small rows; consumers cache what they derive and flush through
-`IEventSettingsChangeListener`).
+**Owning services:** `Service`, behind `CachingSettingsService` (the Singleton
+registered as `ISettingsService`, `ISettingsWriteService` and `IEventSettingsSeeding`)
+**Owned tables:** `settings_system_values`, `settings_events`
+**Status:** (A) — own project, own context, repository-only data access.
+`CachingSettingsService` holds every event row and the timezone in memory, so the
+event reads never reach the database; `Service` clears it on every event or timezone
+write, before it tells the `IEventSettingsChangeListener`s. Plain key reads
+(`GetValueAsync`) are not cached.
 **Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
 tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` — the
 `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav`

@@ -106,7 +106,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
 
         var personReads = queryStats.GetSnapshot()
             .Where(e => string.Equals(e.Operation, "SELECT", StringComparison.Ordinal)
-                     && e.Table is "users" or "profiles" or "user_emails" or "contact_fields")
+                     && e.Table is "users" or "user_profiles" or "user_emails" or "user_contact_fields")
             .Sum(e => e.Count);
 
         personReads.Should().Be(0,

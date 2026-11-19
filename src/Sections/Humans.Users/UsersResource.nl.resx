@@ -191,11 +191,8 @@
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Zichtbaar voor jou, de Shifts NoInfo-beheerders en het bestuur; elke keer dat een van hen dit opent, wordt dat vastgelegd en hieronder weergegeven. Alles wat coördinatoren moeten weten — diabetes, epilepsie, ernstig letsel, enz.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medische aandoeningen</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optioneel. Zichtbaar voor jou, de Shifts NoInfo-beheerders en het bestuur, en elke inzage wordt vastgelegd.</value></data>
-  <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Gemarkeerd op</value></data>
-  <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Gemarkeerd door</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Mijn e-mails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>Geen berichten binnen het platform geregistreerd.</value></data>
-  <data name="Users_Profile_NoShowHistory" xml:space="preserve"><value>No-show-geschiedenis ({0})</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Verzonden berichten</value></data>
   <data name="Users_Profile_ShiftInfo" xml:space="preserve"><value>Dienstinformatie</value></data>
 
@@ -827,4 +824,10 @@
   <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Kan de medische gegevens niet laden.</value></data>
   <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Medische gegevens tonen (elke inzage wordt vastgelegd in het auditlog)</value></data>
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Selecteer een geldige locatie.</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferences" xml:space="preserve">
+    <value>Voorkeuren bewerken</value>
+  </data>
+  <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
+    <value>Selecteer tags die passen bij het soort werk dat je leuk vindt. Bijpassende diensten worden gemarkeerd met een ster.</value>
+  </data>
 </root>

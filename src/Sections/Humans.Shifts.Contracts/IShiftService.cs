@@ -6,8 +6,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Shifts.Contracts;
 
 /// <summary>
-/// The members of the internal <c>IShiftManagement</c> that other sections call. Volunteer shift profiles are on
-/// <see cref="IShiftVolunteerProfiles"/> (they carry writes); dev-fixture verbs on <see cref="IShiftSeeding"/>.
+/// The members of the internal <c>IShiftManagement</c> that other sections call. Dev-fixture verbs are on
+/// <see cref="IShiftSeeding"/>.
 /// </summary>
 public interface IShiftService : IApplicationService
 {
@@ -30,16 +30,6 @@ public interface IShiftService : IApplicationService
     /// </summary>
     Task<RotaInfo?> GetRotaAsync(Guid rotaId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Excludes admin-only shifts and hidden rotas unless asked; the role-protected dashboard opts in.
-    /// </summary>
-    Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
-        Guid eventSettingsId, int? limit = null,
-        Guid? departmentId = null,
-        LocalDate? startDate = null, LocalDate? endDate = null,
-        ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null,
-        bool includeRestricted = false, CancellationToken ct = default);
 
     /// <summary>Includes full shifts.</summary>
     Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query, CancellationToken ct = default);
@@ -92,31 +82,6 @@ public sealed record ShiftBrowseQuery(
     LocalDate? ToDate = null,
     ShiftBrowseQueryFlags Flags = ShiftBrowseQueryFlags.None,
     Guid? ViewerUserId = null);
-
-public record DailyStaffingData(
-    int DayOffset,
-    string DateLabel,
-    int ConfirmedCount,
-    int TotalSlots,
-    int MinSlots,
-    string Period);
-
-/// <summary>
-/// Hours are each shift's overlap with the day times its MaxVolunteers; an all-day shift counts its 10h window.
-/// </summary>
-public record DailyStaffingHours(
-    int DayOffset,
-    string DateLabel,
-    double EssentialHours,
-    double ImportantHours,
-    double NormalHours);
-
-public sealed record ShiftStaffingSnapshot(
-    IReadOnlyList<DailyStaffingData> StaffingData,
-    IReadOnlyList<DailyStaffingHours> StaffingHours)
-{
-    public static ShiftStaffingSnapshot Empty { get; } = new([], []);
-}
 
 public record ShiftsSummaryData(
     int TotalSlots,

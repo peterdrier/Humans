@@ -599,13 +599,18 @@
                     </div>
                     <div class="wg-card-note">
                         The page title band: exactly one <code>&lt;h1&gt;</code>, an optional badge beside it (outside the heading), an optional muted subtitle, and a right-aligned actions area. Every page title goes through it.
-                        Plain subtitle: the <code>subtitle</code> attribute. A subtitle with markup (links, sanitized markdown): a nested <code>&lt;page-header-subtitle&gt;</code>. Every other child is an action.
+                        Plain subtitle: the <code>subtitle</code> attribute. A subtitle with markup (links, sanitized markdown): a nested <code>&lt;page-header-subtitle&gt;</code>.
+                        A title with an icon, link or <code>&lt;small&gt;</code> suffix: a nested <code>&lt;page-header-title&gt;</code>. An enum status: a <code>&lt;status-badge&gt;</code> inside <code>&lt;page-header-badge&gt;</code>.
+                        <code>variant="compact"</code> renders the admin-shell <code>page-head</code> band. Every other child is an action.
                     </div>
                     @ParamsBlock(
-                        ("title", "<code>string</code> — required; the page's single <code>&lt;h1&gt;</code>"),
+                        ("title", "<code>string</code>: the page's single <code>&lt;h1&gt;</code>; ignored when a <code>&lt;page-header-title&gt;</code> child is present"),
                         ("subtitle", "<code>string?</code> — plain-text muted line; ignored when a <code>&lt;page-header-subtitle&gt;</code> child is present"),
                         ("badge / badge-class", "<code>string?</code> — badge text and Bootstrap classes (default <code>bg-secondary</code>)"),
+                        ("variant", "<code>string?</code>: <code>compact</code> for the admin-shell <code>page-head</code> band (actions bottom-aligned)"),
+                        ("<page-header-title>", "child element: markup title (icon, link, <code>&lt;small&gt;</code> suffix)"),
                         ("<page-header-subtitle>", "child element — markup subtitle"),
+                        ("<page-header-badge>", "child element: badge markup, typically <code>&lt;status-badge&gt;</code>; wins over <code>badge</code>"),
                         ("child content", "actions, right-aligned")
                     )
                     <div class="wg-variants">
@@ -627,6 +632,22 @@
                             <page-header title="Opening shift">
                                 <page-header-subtitle><a href="#">Cantina team</a></page-header-subtitle>
                                 <a href="#" class="btn btn-primary btn-sm">Sign up</a>
+                            </page-header>
+                        </div>
+
+                        <div class="wg-variant-label">&lt;page-header-title&gt; + &lt;page-header-badge&gt;<span class="wg-variant-sub">icon, small suffix, status-badge</span></div>
+                        <div class="wg-variant-render">
+                            <page-header>
+                                <page-header-title><i class="fa-solid fa-car me-2"></i>Rideshare <small class="text-muted">2026</small></page-header-title>
+                                <page-header-badge><status-badge value="@EmailOutboxStatus.Sent" class="fs-6" /></page-header-badge>
+                                <a href="#" class="btn btn-primary btn-sm">Offer a ride</a>
+                            </page-header>
+                        </div>
+
+                        <div class="wg-variant-label">variant="compact"<span class="wg-variant-sub">admin-shell page-head</span></div>
+                        <div class="wg-variant-render">
+                            <page-header title="Database" subtitle="humans, PostgreSQL 17" variant="compact">
+                                <a href="#" class="btn btn-outline-secondary btn-sm">Admin</a>
                             </page-header>
                         </div>
                     </div>

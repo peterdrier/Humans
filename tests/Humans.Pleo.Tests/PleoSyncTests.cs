@@ -77,6 +77,95 @@ public sealed class PleoSyncTests
 
     private Task<PleoSyncOutcome> SyncAsync() => _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
 
+    public enum SyncBoundary { InitialSave, Read, BeforeReplace, AfterReplace, DetachedSave, InitialSaveFailure, UnrelatedCancellation }
+
+    [HumansTheory]
+    [Xunit.InlineData(SyncBoundary.InitialSave)]
+    [Xunit.InlineData(SyncBoundary.Read)]
+    [Xunit.InlineData(SyncBoundary.BeforeReplace)]
+    [Xunit.InlineData(SyncBoundary.AfterReplace)]
+    [Xunit.InlineData(SyncBoundary.DetachedSave)]
+    [Xunit.InlineData(SyncBoundary.InitialSaveFailure)]
+    [Xunit.InlineData(SyncBoundary.UnrelatedCancellation)]
+    public async Task Sweep_cancellation_respects_the_mirror_commit_boundary(SyncBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var previousSync = Instant.FromUtc(2026, 10, 1, 12, 0);
+        var now = Instant.FromUtc(2026, 11, 3, 12, 0);
+        var state = new Domain.PleoSyncState { LastSyncAt = previousSync, LastCount = 12, SkippedCount = 3, LastError = "Previous category warning" };
+        var repository = Substitute.For<IPleoRepository>();
+        repository.GetSyncStateAsync(shutdown.Token).Returns(state);
+        var canceled = new OperationCanceledException("Dependency canceled");
+        var saveFailure = new IOException("Cannot start sync");
+        repository.SaveSyncStateAsync(state, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (state.SyncStatus == Domain.PleoSyncStatus.Running)
+            {
+                if (boundary == SyncBoundary.InitialSaveFailure) throw saveFailure;
+                if (boundary != SyncBoundary.InitialSave) return;
+                await shutdown.CancelAsync();
+                throw canceled;
+            }
+            if (state.SyncStatus == Domain.PleoSyncStatus.Idle && state.LastSyncAt == now)
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                if (boundary == SyncBoundary.DetachedSave) throw canceled;
+            }
+        });
+        _client.SearchEntriesAsync(shutdown.Token).Returns(async Task<IReadOnlyList<JsonElement>> (_) =>
+        {
+            if (boundary == SyncBoundary.UnrelatedCancellation) throw canceled;
+            if (boundary == SyncBoundary.Read)
+            {
+                await shutdown.CancelAsync();
+                throw canceled;
+            }
+            return [];
+        });
+        repository.GetCategoriesAsync(shutdown.Token).Returns(async Task<IReadOnlyList<Domain.PleoCategory>> (_) =>
+        {
+            if (boundary == SyncBoundary.BeforeReplace) await shutdown.CancelAsync();
+            return [];
+        });
+        repository.ReplaceMirrorAsync(Arg.Any<PleoMirrorSnapshot>(), now, shutdown.Token).Returns(async _ =>
+        {
+            if (boundary is SyncBoundary.AfterReplace or SyncBoundary.DetachedSave) await shutdown.CancelAsync();
+        });
+        var sync = new PleoMirrorSync(repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
+        var error = await Xunit.Record.ExceptionAsync(() => sync.SyncAsync(shutdown.Token));
+
+        if (boundary == SyncBoundary.AfterReplace)
+        {
+            error.Should().BeNull();
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
+            state.LastSyncAt.Should().Be(now);
+        }
+        else if (boundary == SyncBoundary.DetachedSave)
+        {
+            error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(canceled);
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        }
+        else if (boundary is SyncBoundary.InitialSaveFailure or SyncBoundary.UnrelatedCancellation)
+        {
+            error.Should().BeSameAs(boundary == SyncBoundary.InitialSaveFailure ? saveFailure : canceled);
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        }
+        else
+        {
+            if (boundary == SyncBoundary.BeforeReplace)
+                error.Should().BeOfType<OperationCanceledException>().Which.CancellationToken.Should().Be(shutdown.Token);
+            else
+                error.Should().BeSameAs(canceled);
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
+            state.LastError.Should().Be("Previous category warning");
+            state.LastSyncAt.Should().Be(previousSync);
+            state.LastCount.Should().Be(12);
+            state.SkippedCount.Should().Be(3);
+            await repository.DidNotReceiveWithAnyArgs().ReplaceMirrorAsync(default!, default);
+            await repository.Received(1).SaveSyncStateAsync(state, CancellationToken.None);
+        }
+    }
+
     [HumansFact]
     public async Task Sweep_deletes_rows_Pleo_no_longer_returns()
     {
@@ -90,6 +179,47 @@ public sealed class PleoSyncTests
         var mirrored = await _repo.GetEntriesAsync(ct);
         mirrored.Select(e => e.Id).Should().BeEquivalentTo(["a", "c"]);
         mirrored.Single(e => string.Equals(e.Id, "a", StringComparison.Ordinal)).AmountEur.Should().Be(-25.00m);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("transactionValue", "minors")]
+    [Xunit.InlineData("transactionValue", "currency")]
+    [Xunit.InlineData("totalBillValue", "minors")]
+    [Xunit.InlineData("totalBillValue", "currency")]
+    public async Task Incomplete_money_fails_the_sweep_without_replacing_the_mirror(string moneyField, string missingField)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("existing")];
+        await SyncAsync();
+        var wire = System.Text.Json.Nodes.JsonNode.Parse(Entry("incomplete", bill: 1250).GetRawText())!;
+        wire[moneyField]!.AsObject().Remove(missingField);
+        _entries = [Entry("new"), Parse(wire.ToJsonString())];
+
+        var action = () => SyncAsync();
+        await action.Should().ThrowAsync<PleoPermanentException>().WithMessage($"*{moneyField}*");
+
+        var retained = (await _repo.GetEntriesAsync(ct)).Should().ContainSingle().Which;
+        retained.Id.Should().Be("existing");
+        retained.AmountEur.Should().Be(-10m);
+        var state = (await _repo.GetSyncStateAsync(ct))!;
+        state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        state.LastError.Should().Contain(moneyField);
+    }
+
+    [HumansFact]
+    public async Task Complete_zero_and_bill_only_amounts_keep_their_existing_meaning()
+    {
+        _entries =
+        [
+            Entry("zero", minors: 0),
+            Parse("""{"id":"bill-only","family":"CARD_PURCHASE","subFamily":"ONLINE","totalBillValue":{"currency":"EUR","minors":1250}}"""),
+        ];
+
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.Synced);
+
+        var entries = await _repo.GetEntriesAsync(Xunit.TestContext.Current.CancellationToken);
+        entries.Single(e => string.Equals(e.Id, "zero", StringComparison.Ordinal)).AmountEur.Should().Be(0m);
+        entries.Single(e => string.Equals(e.Id, "bill-only", StringComparison.Ordinal)).AmountEur.Should().Be(12.5m);
     }
 
     [HumansTheory]
@@ -139,7 +269,7 @@ public sealed class PleoSyncTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Error_state_save_failure_preserves_the_sync_failure_and_releases_the_gate(bool requestAborted)
+    public async Task Outcome_save_failure_preserves_the_sync_failure_and_releases_the_gate(bool requestAborted)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
         Exception failure = requestAborted
@@ -148,11 +278,13 @@ public sealed class PleoSyncTests
         var saveFailure = new IOException("Cannot save sync diagnostic");
         var repository = Substitute.For<IPleoRepository>();
         repository.GetSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new Domain.PleoSyncState());
+        var failCleanup = true;
         repository.SaveSyncStateAsync(Arg.Any<Domain.PleoSyncState>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (call.Arg<Domain.PleoSyncState>().SyncStatus == Domain.PleoSyncStatus.Error)
+            if (failCleanup && call.Arg<Domain.PleoSyncState>().SyncStatus != Domain.PleoSyncStatus.Running)
             {
                 call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                failCleanup = false;
                 throw saveFailure;
             }
             return Task.CompletedTask;

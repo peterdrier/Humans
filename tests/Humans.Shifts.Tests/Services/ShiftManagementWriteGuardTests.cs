@@ -309,7 +309,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
             if (eventData.Context!.ChangeTracker.Entries().Any(e =>
-                string.Equals(e.Metadata.GetTableName(), "rota_shift_tags", StringComparison.Ordinal)
+                string.Equals(e.Metadata.GetTableName(), "shift_rota_tags", StringComparison.Ordinal)
                 && e.State is EntityState.Added or EntityState.Deleted))
                 throw new IOException("Rota tag persistence failed.");
             return base.SavingChangesAsync(eventData, result, cancellationToken);
@@ -513,11 +513,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         SeedSignup(shift, bob.Id, SignupStatus.Bailed);
         var pending = ShiftsDb.ShiftSignups.Local.Single(s => s.UserId == alice.Id);
         await SaveAllAsync(Ct);
-        var viewer = Guid.NewGuid();
         await _views.PrimeRotaAsync(rota.Id, shift);
-        await _views.PrimeUserAsync(viewer, shift);
-        await _views.PrimeUserAsync(alice.Id);
-        await _views.PrimeUserAsync(bob.Id);
 
         var actorUserId = Guid.NewGuid();
         await _service.DeleteShiftAsync(shift.Id, actorUserId);
@@ -526,9 +522,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         (await ShiftsDb.Shifts.AsNoTracking().AnyAsync(s => s.Id == shift.Id, Ct)).Should().BeFalse();
         (await ShiftsDb.ShiftSignups.AsNoTracking().AnyAsync(s => s.ShiftId == shift.Id, Ct)).Should().BeFalse();
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(alice.Id)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(bob.Id)).Should().BeFalse();
         await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), pending.Id,
             Arg.Is<string>(text => text.Contains(rota.Name, StringComparison.Ordinal)
                 && text.Contains("deleted", StringComparison.Ordinal)),
@@ -1120,14 +1113,11 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         var shift = SeedShift(rota, dayOffset: -4);
         await SaveAllAsync(Ct);
-        var viewer = Guid.NewGuid();
         await _views.PrimeRotaAsync(rota.Id, shift);
-        await _views.PrimeUserAsync(viewer, shift);
 
         await _service.UpdateShiftAsync(NewUpdateInput(shift, rota.TeamId, dayOffset: -3));
 
         (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
-        (await _views.IsUserCachedAsync(viewer)).Should().BeFalse();
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

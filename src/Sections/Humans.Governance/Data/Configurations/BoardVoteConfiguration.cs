@@ -8,7 +8,7 @@ internal sealed class BoardVoteConfiguration : IEntityTypeConfiguration<BoardVot
 {
     public void Configure(EntityTypeBuilder<BoardVote> builder)
     {
-        builder.ToTable("board_votes");
+        builder.ToTable("governance_board_votes");
 
         builder.HasKey(bv => bv.Id);
 

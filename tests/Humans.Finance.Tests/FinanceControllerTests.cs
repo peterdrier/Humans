@@ -62,20 +62,22 @@ public class FinanceControllerTests
     {
         _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = Ana }, [], [], profile: null));
-        _expenses.GetReviewQueueAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>())
             .Returns(Array.Empty<ExpenseReportDto>());
         _finance.GetExpenseReconAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(ExpenseRecon.Unavailable(null, "never synced"));
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>())
             .Returns((Array.Empty<SepaPayoutTransferRow>(), (string?)null));
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns((Array.Empty<SepaPayoutTransferRow>(), null, [], null, null));
     }
 
     private FinanceController MakeController() =>
         new(_users, _finance, _connector, _holdedLedger, _expenses,
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
-            new CreditorMatchService(_holdedLedger, _expenses),
-            new FinanceOverviewService(_holdedLedger, _finance, _expenses, _budget,
-                new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
+            new FinanceOverviewService(_holdedLedger, _finance, _connector, _expenses, _budget,
+                new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
+                Microsoft.Extensions.Options.Options.Create(new SepaOptions()), SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(), SepaRunner,
             NullLogger<FinanceController>.Instance)
         {
@@ -926,7 +928,7 @@ public class FinanceControllerTests
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
-        _expenses.GetReviewQueueAsync(Ana, true, Arg.Any<CancellationToken>()).Returns(
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns(
         [
             Report(40000002, Instant.FromUtc(2026, 3, 1, 0, 0)),
             Report(40000009, Instant.FromUtc(2026, 3, 5, 0, 0)),

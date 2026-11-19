@@ -8,7 +8,7 @@ internal sealed class HoldedExpenseDocConfiguration : IEntityTypeConfiguration<H
 {
     public void Configure(EntityTypeBuilder<HoldedExpenseDoc> b)
     {
-        b.ToTable("holded_expense_docs");
+        b.ToTable("finance_holded_expense_docs");
         b.HasKey(x => x.Id);
         b.HasIndex(x => x.HoldedDocId).IsUnique();
         b.HasIndex(x => x.BudgetCategoryId);

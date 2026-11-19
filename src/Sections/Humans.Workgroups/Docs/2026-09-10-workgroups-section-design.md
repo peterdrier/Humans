@@ -247,9 +247,9 @@ One interface, two methods (Peter's call).
 
 ## 9. Drive access through a fan-out
 
-GoogleIntegration gains a Drive access source, mirroring `IGoogleGroupMembershipSource`:
+Google gains a Drive access source, mirroring `IGoogleGroupMembershipSource`:
 
-- `IGoogleDriveAccessSource` (in `Humans.GoogleIntegration.Contracts`): a section claims Drive file ids and returns expected access per user, `folderId → (userId → DrivePermissionLevel)`. GoogleIntegration owns email hydration, diffing, mutation, the sync log and reconciliation, exactly as it does for groups. `RequestSyncAsync(folderId)` for on-demand runs; the daily reconciliation covers drift.
+- `IGoogleDriveAccessSource` (in `Humans.Google.Contracts`): a section claims Drive file ids and returns expected access per user, `folderId → (userId → DrivePermissionLevel)`. Google owns email hydration, diffing, mutation, the sync log and reconciliation, exactly as it does for groups. `RequestSyncAsync(folderId)` for on-demand runs; the daily reconciliation covers drift.
 - `IGoogleSyncService.CreateSubfolderAsync(parentFolderId, name)` returns the new folder id. New client capability: the Drive client has permissions only today.
 - Workgroups implements the source. It claims every Active or Dormant group's `DriveFolderId` and the configured root:
   - group folder, Active: current members → Contributor;
@@ -257,7 +257,7 @@ GoogleIntegration gains a Drive access source, mirroring `IGoogleGroupMembership
   - root: Board members, approved Asociados, approved Colaboradors → Reader (from `IUserServiceRead` tiers plus `SystemTeamIds.Board` membership through `ITeamServiceRead`).
 - Registration calls `CreateSubfolderAsync(root, workgroup.Name)`, stores the id, then requests a sync. Join, leave and status changes request a sync for the affected folder.
 
-**Teams' own Drive path** (`google_resources` keyed by `TeamId`, reconciled by team membership) is not touched in this work. Migrating it onto the same source fan-out, so GoogleIntegration stops knowing about teams directly, is recorded in `docs/architecture/debt-ledger.yml` as follow-up debt.
+**Teams' own Drive path** (`google_resources` keyed by `TeamId`, reconciled by team membership) is not touched in this work. Migrating it onto the same source fan-out, so Google stops knowing about teams directly, is recorded in `docs/architecture/debt-ledger.yml` as follow-up debt.
 
 ## 10. Roster with association status
 
@@ -378,7 +378,7 @@ The `governance-scope` memory atom is updated in this PR: Governance is the laye
 | Users | `IUserServiceRead` | names, `MembershipTier`, approved-profile check |
 | Teams | `ITeamServiceRead` | Board membership (`SystemTeamIds.Board`) for badges and root Drive readers |
 | Calendar | `ICalendarFeedContributor` (extended, §8) — inbound | Workgroups implements it; Calendar names nothing |
-| GoogleIntegration | `IGoogleDriveAccessSource` (new, §9) — inbound; `IGoogleSyncService.CreateSubfolderAsync`, `RequestSyncAsync` — outbound | folder creation and sync |
+| Google | `IGoogleDriveAccessSource` (new, §9) — inbound; `IGoogleSyncService.CreateSubfolderAsync`, `RequestSyncAsync` — outbound | folder creation and sync |
 | Settings | `ISettingsService` | root Drive folder id |
 | Surveys | none (link by id); Surveys' own changes in §11 | |
 | Notifications, Email, AuditLog | crosscuts | §13, §14, audit on every admin and job action |
@@ -428,7 +428,7 @@ Surveys' and Calendar's own changes are tested in their own projects.
 | End state | Dormant with reason; Drive read-only; reactivation allowed |
 | Comments | In-app, categorised, per-comment disposition and response, body kept forever, attribution erasable |
 | Calendar | Calendar fan-out extended for public items; Workgroups owns meetings |
-| Drive | Drive access source fan-out in GoogleIntegration plus subfolder creation; Teams path migrates later (ledgered) |
+| Drive | Drive access source fan-out in Google plus subfolder creation; Teams path migrates later (ledgered) |
 | Surveys | Generic self-service authoring with PendingApproval and one-click approve-and-send; Identified allowed; author sees results |
 | Navigation | No main nav; Governance dashboard tile via new `ISectionDashboardTiles`; "My workgroups" via `ISectionMemberDashboard` |
 | Anonymous | Never |

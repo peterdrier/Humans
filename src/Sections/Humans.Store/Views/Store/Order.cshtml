@@ -3,6 +3,7 @@
     ViewData["Title"] = Localizer["Store_OrderTitle", Model.Order.CounterpartyDisplayName].Value;
     var order = Model.Order;
     var isTeamOrder = order.CounterpartyType == OrderCounterpartyType.Team;
+    var checkoutMaximum = Math.Min(order.BalanceEur, StoreStripePayments.MaximumCheckoutAmountEur);
     var pendingTotal = order.Payments
         .Where(p => p.Status == PaymentStatus.Pending)
         .Sum(p => p.AmountEur);
@@ -153,13 +154,16 @@ else
     <empty-state>@Localizer["Store_NoLines"]</empty-state>
 }
 
-<vc:audit-log entity-type="@AuditEntityTypes.Product"
-              entity-ids="@order.Lines.Select(l => l.ProductId).Distinct().ToList()"
-              actions="StoreProductPriceChanged" since="@order.CreatedAt" limit="50"
-              layout="table" columns="when,action,description"
-              column-labels="@($"when:{Localizer["Store_ColDate"].Value},action:{Localizer["Store_ColAction"].Value},description:{Localizer["Store_ColDescription"].Value}")"
-              title="@Localizer["Store_PriceChangesTitle"].Value"
-              empty-text="@Localizer["Store_NoPriceChanges"].Value" />
+@* The audit log is the order's history: entries about the order, its lines, payments and invoice, plus price changes
+   to its products while it has existed. *@
+<vc:audit-log entity-ids="@order.Lines.Select(l => l.ProductId).Prepend(order.Id).Distinct().ToList()"
+              include-related="true"
+              actions="@string.Join(',', (Model.CanRecordPayment ? StoreAuditActions.OrderHistoryForAdmins : StoreAuditActions.OrderHistory).Select(a => a.Name))"
+              since="@order.CreatedAt" limit="500"
+              layout="table" columns="when,actor,action,description"
+              column-labels="@($"when:{Localizer["Store_ColDate"].Value},actor:{Localizer["Store_ColWho"].Value},action:{Localizer["Store_ColAction"].Value},description:{Localizer["Store_ColDescription"].Value}")"
+              title="@Localizer["Store_HistoryTitle"].Value"
+              empty-text="@Localizer["Store_NoHistory"].Value" />
 
 @if (Model.CanEdit)
 {
@@ -289,9 +293,9 @@ else
                 <div class="col-md-4">
                     <label class="form-label">@Localizer["Store_AmountToPay"]</label>
                     <input type="number" name="amountEur" class="form-control"
-                           min="0.01" max="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                           min="0.01" max="@checkoutMaximum.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                            step="0.01"
-                           value="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
+                           value="@checkoutMaximum.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required />
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary">@Localizer["Store_PayWithStripe"]</button>
@@ -321,6 +325,32 @@ else
         <p class="text-muted">@Localizer["Store_PaymentsRecordedFinance"]</p>
     }
 
+    @if (Model.StripeRefundLinks.Count > 0)
+    {
+        @* FinanceAdmin-only control: plain strings. Humans never issues refunds; the person does it on stripe.com. *@
+        <h2 class="h5 mb-3 mt-4">Refund through Stripe</h2>
+        @if (Model.IsRefundDue)
+        {
+            <p>The camp is owed <strong>@Model.BalanceBoxAmountEur.ToEuro()</strong>. Refund it on Stripe, no more than a payment's unrefunded amount, then check for refunds to record it here.</p>
+        }
+        <ul class="list-unstyled mb-2">
+            @foreach (var link in Model.StripeRefundLinks)
+            {
+                <li>
+                    <a href="@link.DashboardUrl" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-brands fa-stripe-s me-1"></i>Refund in Stripe</a>
+                    <code class="ms-2">@link.PaymentIntentId</code>
+                    <span class="text-muted ms-2">paid @link.AmountEur.ToEuro()</span>
+                </li>
+            }
+        </ul>
+        <form asp-action="CheckStripeRefunds" asp-route-id="@order.Id" method="post" class="mb-3" data-submit-once>
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-primary">Check for refunds</button>
+            <small class="form-text text-muted d-block">Records refunds made on Stripe for these payments that aren't on this order yet.</small>
+        </form>
+    }
+
     @if (Model.CanRecordPayment)
     {
         <h2 class="h5 mb-3 mt-4">@Localizer["Store_RecordPaymentHeading"]</h2>
@@ -329,8 +359,12 @@ else
             <div class="col-md-3">
                 <label class="form-label">@Localizer["Store_RecordPaymentType"]</label>
                 <select name="method" class="form-select" required>
+                    @if (Model.CanRecordFinancePayment)
+                    {
+                        <option value="@PaymentMethod.BankTransfer">@Localizer["Store_Method_BankTransfer"]</option>
+                    }
                     <option value="@PaymentMethod.DepositReturn">@Localizer["Store_Method_DepositReturn"]</option>
-                    @if (Model.CanRefund)
+                    @if (Model.CanRecordFinancePayment)
                     {
                         <option value="@PaymentMethod.Refund">@Localizer["Store_Method_Refund"]</option>
                     }
@@ -340,11 +374,15 @@ else
                 <label class="form-label">@Localizer["Store_RecordPaymentAmount"]</label>
                 <input type="number" name="amountEur" class="form-control" min="0.01" step="0.01" required />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">@Localizer["Store_RecordPaymentValueDate"]</label>
+                <input type="date" name="valueDate" class="form-control" />
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">@Localizer["Store_RecordPaymentRef"]</label>
                 <input type="text" name="externalRef" class="form-control" maxlength="200" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">@Localizer["Store_RecordPaymentNotes"]</label>
                 <input type="text" name="notes" class="form-control" maxlength="1000" />
             </div>

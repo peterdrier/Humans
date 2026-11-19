@@ -1,6 +1,7 @@
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.ViewComponents;
 
@@ -8,7 +9,7 @@ namespace Humans.Shifts.ViewComponents;
 /// The caller has already filtered <c>shifts</c> to the selected priority pill. Takes the event by id because the
 /// rota partials need this section's own <see cref="BurnSettingsInfo"/>.
 /// </summary>
-public sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnSettings) : ViewComponent
+internal sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnSettings) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
         Guid eventSettingsId,
@@ -21,6 +22,7 @@ public sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnS
             return Content(string.Empty);
 
         var rotaGroups = shifts
+            .OrderByDescending(u => u.UrgencyScore)
             .GroupBy(u => u.Shift.RotaId)
             .Select(rg => ShiftBrowseMapper.BuildRotaGroup(
                 rg,

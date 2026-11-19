@@ -135,6 +135,8 @@ public sealed class BudgetSummaryResult
 
 public sealed class BudgetSliceResult
 {
+    /// <summary>Null for synthesized VAT, reserves, taxes and group buffers.</summary>
+    public Guid? BudgetCategoryId { get; init; }
     public required string Name { get; init; }
     public decimal Amount { get; init; }
     public decimal Percentage { get; init; }

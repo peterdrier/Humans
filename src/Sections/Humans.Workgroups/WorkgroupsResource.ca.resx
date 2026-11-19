@@ -339,7 +339,6 @@
   <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Només els membres i la Junta veuen la llista de membres, els documents i l'historial. El nom i el propòsit es mantenen al registre.</value></data>
   <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>La teva sol·licitud ja està esperant una persona coordinadora.</value></data>
   <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>No hi ha cap sol·licitud pendent d'aquesta persona.</value></data>
-  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Només una persona coordinadora pot decidir qui hi entra.</value></data>
   <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Aquest grup és sensible; només els seus membres poden fer-ho.</value></data>
   <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Algú ha sol·licitat unir-s'hi</value></data>
   <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>La teva sol·licitud d'ingrés s'ha aprovat</value></data>

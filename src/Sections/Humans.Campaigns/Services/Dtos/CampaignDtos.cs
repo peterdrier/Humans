@@ -83,4 +83,5 @@ internal sealed record CampaignSendWaveResult(
     string? ErrorKey = null,
     int SentCount = 0,
     int CodesNeeded = 0,
-    int CodesAvailable = 0);
+    int CodesAvailable = 0,
+    int EnqueueFailedCount = 0);

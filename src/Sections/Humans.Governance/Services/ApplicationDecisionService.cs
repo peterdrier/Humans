@@ -49,7 +49,7 @@ internal sealed class ApplicationDecisionService(
         Guid applicationId,
         Guid reviewerUserId,
         string? notes,
-        LocalDate? boardMeetingDate,
+        LocalDate boardMeetingDate,
         CancellationToken cancellationToken = default)
     {
         var (candidate, error) = await LoadDecisionApplicationAsync(applicationId, cancellationToken);
@@ -64,8 +64,7 @@ internal sealed class ApplicationDecisionService(
 
         var today = clock.GetCurrentInstant().InUtc().Date;
         application.Approve(reviewerUserId, notes, clock);
-        // A finalized decision always carries its Board meeting date; a missing one means today.
-        application.BoardMeetingDate = boardMeetingDate ?? today;
+        application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = notes;
 
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
@@ -88,7 +87,7 @@ internal sealed class ApplicationDecisionService(
         Guid applicationId,
         Guid reviewerUserId,
         string reason,
-        LocalDate? boardMeetingDate,
+        LocalDate boardMeetingDate,
         CancellationToken cancellationToken = default)
     {
         var (candidate, error) = await LoadDecisionApplicationAsync(applicationId, cancellationToken);
@@ -105,7 +104,7 @@ internal sealed class ApplicationDecisionService(
         }
 
         application.Reject(reviewerUserId, reason, clock);
-        application.BoardMeetingDate = boardMeetingDate ?? clock.GetCurrentInstant().InUtc().Date;
+        application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = reason;
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);

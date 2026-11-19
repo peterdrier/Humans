@@ -57,6 +57,10 @@ internal sealed class MailerLiteGdprContributor(
         }
 
         foreach (var address in addresses)
-            await mailerLiteService.DeleteSubscriberAsync(address, ct);
+        {
+            ct.ThrowIfCancellationRequested();
+            // Finish an in-flight vendor delete; the erasure cascade can stop before the next address.
+            await mailerLiteService.DeleteSubscriberAsync(address, CancellationToken.None);
+        }
     }
 }

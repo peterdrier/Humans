@@ -120,7 +120,6 @@ internal sealed class CampReadProjection(
             PerformanceTypes = season.PerformanceTypes,
             Members = season.Members
                 .Where(m => m.Status != CampMemberStatus.Removed)
-                .OrderBy(m => m.RequestedAt)
                 .Select(m => new CampSeasonMemberInfo(
                     m.Id,
                     m.UserId,

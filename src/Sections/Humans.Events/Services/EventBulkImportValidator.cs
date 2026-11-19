@@ -16,6 +16,8 @@ internal static class EventBulkImportValidator
         IReadOnlyList<BulkCsvRow> rows,
         IReadOnlyList<EventCategory> categories,
         IReadOnlyList<Event> existingEvents,
+        LocalDate gateOpeningDate,
+        int eventEndOffset,
         DateTimeZone timeZone,
         IStringLocalizer<EventsResource> localizer)
     {
@@ -63,9 +65,22 @@ internal static class EventBulkImportValidator
             if (row.PriorityRank is { } rank && (rank < 1 || rank > 100))
                 rowErrors.Add(localizer["Events_Upload_PriorityRange"].Value);
 
-            if (row.IsRecurring && !string.IsNullOrWhiteSpace(row.RecurrenceDays)
-                && !EventRecurrenceDays.HasOnlyDisplayDays(row.RecurrenceDays))
-                rowErrors.Add(localizer["Events_Upload_RecurrenceDays"].Value);
+            if (row.IsRecurring && !string.IsNullOrWhiteSpace(row.RecurrenceDays))
+            {
+                if (!EventRecurrenceDays.HasOnlyDisplayDays(row.RecurrenceDays))
+                    rowErrors.Add(localizer["Events_Upload_RecurrenceDays"].Value);
+                else if (EventRecurrenceDays.DisplayDaysToOffsets(row.RecurrenceDays, gateOpeningDate, eventEndOffset) is null)
+                {
+                    var existing = row.Id is { } id ? existingEvents.FirstOrDefault(e => e.Id == id) : null;
+                    // Unchanged weekdays retain authored offsets instead of converting them again.
+                    var unchanged = existing is { IsRecurring: true }
+                        && EventRecurrenceDays.SameDays(
+                            EventRecurrenceDays.OffsetsToDisplayDays(existing.RecurrenceDays ?? string.Empty, gateOpeningDate),
+                            row.RecurrenceDays);
+                    if (!unchanged)
+                        rowErrors.Add(localizer["Events_RecurrenceDaysInvalid"].Value);
+                }
+            }
 
             ValidateExistingEvent(row, existingEvents, duplicateIds, rowErrors, localizer);
 

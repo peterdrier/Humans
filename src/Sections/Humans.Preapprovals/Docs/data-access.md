@@ -5,8 +5,8 @@
 Folder: `src/Sections/Humans.Preapprovals/Services/` (namespace
 `Humans.Preapprovals.Services`). **DbContext:** `PreapprovalsDbContext`.
 `PreapprovalRepository` (`Data/PreapprovalRepository.cs`, **Singleton**) injects
-`IDbContextFactory<PreapprovalsDbContext>` directly. Owns `pre_programs`,
-`pre_program_managers`, `pre_grants`, `pre_reminders_sent`.
+`IDbContextFactory<PreapprovalsDbContext>` directly. Owns `preapproval_programs`,
+`preapproval_program_managers`, `preapproval_grants`, `preapproval_sent_reminders`.
 
 ### PreapprovalManagement (Scoped — class `PreapprovalService`)
 
@@ -30,7 +30,7 @@ No `IMemoryCache`.
 
 `PreapprovalRemindersJob` (`Jobs/`) calls this component directly. It reads grants
 and their programs through `IPreapprovalRepository`, writes only the reminder
-dedupe ledger `pre_reminders_sent`, and calls `IAuditLogService` after the marker
+dedupe ledger `preapproval_sent_reminders`, and calls `IAuditLogService` after the marker
 transaction commits. `PreapprovalNotices` handles required delivery before the stamp.
 Selection, transactions, cancellation and retry behavior retain the same rules.
 

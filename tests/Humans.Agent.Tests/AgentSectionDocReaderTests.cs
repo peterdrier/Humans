@@ -85,7 +85,7 @@ public class AgentSectionDocReaderTests
     [InlineData("UsersAdmin", "Users")]
     [InlineData("RoleAssignments", "Auth")]
     [InlineData("LegalDocuments", "Consent")]
-    [InlineData("GoogleSync", "GoogleIntegration")]
+    [InlineData("GoogleSync", "Google")]
     [InlineData("LegalAndConsent", "Consent")]
     public async Task ReadAsync_resolves_the_aliases_the_agent_reads_out_of_its_own_prompt(string key, string expectedStem)
     {

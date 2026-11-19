@@ -61,3 +61,9 @@ internal sealed record StripeReconciliationReport(
 }
 
 internal sealed record StripeReconciliationResult(int RecordedCount, decimal TotalEur);
+
+/// <summary>
+/// <paramref name="Refusal"/> is set when nothing could be checked. <paramref name="UnsettledCount"/> counts refunds
+/// Stripe has not yet completed; they are booked by a later check once they succeed.
+/// </summary>
+internal sealed record StripeRefundCheckResult(int RecordedCount, decimal TotalEur, int UnsettledCount, string? Refusal = null);

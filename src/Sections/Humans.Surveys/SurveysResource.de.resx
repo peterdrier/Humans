@@ -400,5 +400,6 @@
   <data name="Surveys_Validation_ChoiceOptionEmpty" xml:space="preserve"><value>Jede Auswahlfrage muss mindestens eine Option haben.</value></data>
   <data name="Surveys_Validation_ChoiceOptionBlank" xml:space="preserve"><value>Die Optionswerte einer Auswahlfrage dürfen nicht leer sein.</value></data>
   <data name="Surveys_Validation_ChoiceOptionUnique" xml:space="preserve"><value>Die Optionswerte innerhalb einer Auswahlfrage müssen eindeutig sein.</value></data>
+  <data name="Surveys_Validation_DuplicateItem" xml:space="preserve"><value>Jede Frage, Antwortoption und jedes Bild darf in einer Umfrage nur einmal vorkommen.</value></data>
   <data name="Surveys_Validation_RatingBounds" xml:space="preserve"><value>Der Mindestwert der Bewertung darf den Höchstwert nicht überschreiten.</value></data>
 </root>

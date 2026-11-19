@@ -12,12 +12,13 @@ using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
 public sealed class DashboardShiftsViewComponentTests
 {
-    private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();
+    private readonly IShiftManagement _shiftMgmt = Substitute.For<IShiftManagement>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();

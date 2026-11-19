@@ -32,6 +32,9 @@ internal partial interface IShiftManagementRepository : IRepository
 
     Task<Rota?> GetRotaAsync(Guid rotaId, RotaReadShape shape, CancellationToken ct = default);
 
+    /// <summary>Rotas with tags, shifts and every signup, across all events. Null <paramref name="rotaIds"/> loads them all.</summary>
+    Task<IReadOnlyList<Rota>> GetRotaRowsAsync(IReadOnlyCollection<Guid>? rotaIds, CancellationToken ct = default);
+
     /// <summary>One save, with every shift and signup. The service checks for confirmed signups first.</summary>
     Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default);
 
@@ -54,7 +57,7 @@ internal partial interface IShiftManagementRepository : IRepository
     /// <summary>Distinct.</summary>
     Task<IReadOnlyList<int>> GetShiftDayOffsetsForRotaAsync(Guid rotaId, CancellationToken ct = default);
 
-    /// <summary>With the rota; the flags control visibility filtering and eager loads.</summary>
+    /// <summary>With the rota; the flags control visibility filtering.</summary>
     Task<IReadOnlyList<Shift>> GetEventShiftsAsync(
         ShiftEventQuery query,
         CancellationToken ct = default);
@@ -183,9 +186,7 @@ internal enum ShiftEventQueryFlags
 {
     None = 0,
     ExcludeAdminOnly = 1,
-    ExcludeHiddenRotas = 2,
-    IncludeSignups = 4,
-    IncludeRotaTags = 8
+    ExcludeHiddenRotas = 2
 }
 
 internal sealed record ShiftEventQuery(

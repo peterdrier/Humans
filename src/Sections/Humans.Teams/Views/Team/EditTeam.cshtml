@@ -54,6 +54,18 @@
                     <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = false, ["HideRequiresApproval"] = Model.IsSystemTeam, ["ShowRequiresApprovalHelp"] = false }' />
                     <partial name="~/Views/Shared/_TeamGoogleAndParentFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = false, ["ShowParentTeam"] = !Model.IsSystemTeam, ["GoogleGroupEmail"] = Model.GoogleGroupEmail }' />
 
+                    @if (Model.InactiveGroupResourceId.HasValue)
+                    {
+                        <div class="mb-3 alert alert-warning" authorize-policy="@Humans.Teams.Contracts.TeamsPolicies.Manage">
+                            <input type="hidden" asp-for="InactiveGroupResourceId" />
+                            <p>Team settings were saved. This group was previously unlinked. Confirm its reactivation and save again to restore the link.</p>
+                            <div class="form-check">
+                                <input asp-for="ConfirmGroupReactivation" class="form-check-input" />
+                                <label asp-for="ConfirmGroupReactivation" class="form-check-label">Reactivate the previously linked group for this prefix.</label>
+                            </div>
+                        </div>
+                    }
+
                     @if (!Model.IsSystemTeam)
                     {
                         <div class="mb-3 form-check">

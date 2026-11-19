@@ -1,4 +1,7 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Base.Interfaces;
+using Humans.Monitor.Jobs;
+using Microsoft.Extensions.Logging;
+using Humans.Google.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Settings.Contracts;
@@ -8,6 +11,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Humans.Monitor.Services;
 using Humans.Users.Contracts;
+using Xunit;
 
 namespace Humans.Monitor.Tests;
 
@@ -47,6 +51,55 @@ public class DriveActivityMonitorServiceTests
         _service = new DriveActivityMonitorService(
             _client, _teamResources, _settingsStore, _userService, _auditLog, _clock,
             NullLogger<DriveActivityMonitorService>.Instance);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_AfterCheckpointStartsFinishesTheAnomalyAudit()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var resource = BuildResource("Drive");
+        SeedResources(resource);
+        SeedActivity(resource.GoogleId, BuildPermissionChangeEvent("intruder@example.com", "reader", "intruder@example.com"));
+        var markerStored = false;
+        _settingsStore.SetValueAsync(SettingKeys.DriveActivityMonitorLastRunAt, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                markerStored = true;
+                await shutdown.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            });
+
+        var count = await _service.CheckForAnomalousActivityAsync(shutdown.Token);
+
+        count.Should().Be(1);
+        markerStored.Should().BeTrue();
+        await _settingsStore.Received(1).SetValueAsync(SettingKeys.DriveActivityMonitorLastRunAt,
+            MarkerValue(_clock.GetCurrentInstant()), CancellationToken.None);
+        await _auditLog.Received(1).LogAsync(GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType, resource.Id, Arg.Any<string>(), JobName);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_CheckpointDependencyCancellationRemainsAJobFailure()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var resource = BuildResource("Drive");
+        SeedResources(resource);
+        SeedActivity(resource.GoogleId, BuildPermissionChangeEvent("intruder@example.com", "reader", "intruder@example.com"));
+        var failure = new OperationCanceledException("Checkpoint storage stopped");
+        _settingsStore.SetValueAsync(SettingKeys.DriveActivityMonitorLastRunAt, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<DriveActivityMonitorJob>();
+        var job = new DriveActivityMonitorJob(_service, metrics, logger, _clock);
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
+        metrics.Received(1).RecordJobRun("drive_activity_monitor", "failure");
+        metrics.DidNotReceive().RecordJobRun("drive_activity_monitor", "success");
+        logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && entry.Exception == error);
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, null!, default, null!, default(string)!);
     }
 
     [HumansFact]
@@ -113,8 +166,8 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d =>
                 d.Contains("Sensitive-Drive", StringComparison.Ordinal) &&
@@ -154,8 +207,8 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("resolved@example.com", StringComparison.Ordinal)),
             JobName);
@@ -215,8 +268,8 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d =>
                 d.Contains("people/99", StringComparison.Ordinal) &&
@@ -249,8 +302,8 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("userinfo@example.com", StringComparison.Ordinal)),
             JobName);
@@ -282,8 +335,8 @@ public class DriveActivityMonitorServiceTests
             MarkerValue(_clock.GetCurrentInstant()),
             Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("people/42", StringComparison.Ordinal)),
             JobName);
@@ -317,14 +370,79 @@ public class DriveActivityMonitorServiceTests
 
         count.Should().Be(1);
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d =>
                 d.Contains("people/42", StringComparison.Ordinal) &&
                 !d.Contains("first@example.com", StringComparison.Ordinal) &&
                 !d.Contains("second@example.com", StringComparison.Ordinal)),
             JobName);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CheckForAnomalousActivityAsync_PropagatesCallerCancellationButContinuesAfterDependencyCancellation(bool cancelCaller)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var completed = BuildResource("Completed");
+        var interrupted = BuildResource("Interrupted");
+        var remaining = BuildResource("Remaining");
+        SeedResources(completed, interrupted, remaining);
+        SeedActivity(completed.GoogleId);
+        SeedActivity(remaining.GoogleId);
+        _client.QueryActivityAsync(interrupted.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => InterruptedAsync());
+
+        var scan = () => _service.CheckForAnomalousActivityAsync(cancellation.Token);
+
+        if (cancelCaller)
+        {
+            var failure = await scan.Should().ThrowAsync<OperationCanceledException>();
+            failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        }
+        else
+        {
+            (await scan()).Should().Be(0);
+        }
+        _client.Received(cancelCaller ? 0 : 1).QueryActivityAsync(
+            remaining.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
+
+        async IAsyncEnumerable<DriveActivityEvent> InterruptedAsync()
+        {
+            if (cancelCaller) await cancellation.CancelAsync();
+            await Task.FromException(new OperationCanceledException(cancellation.Token));
+            yield break;
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CheckForAnomalousActivityAsync_StopsAfterCancellationEvenWhenReadCompletes(bool moreResources)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var completed = BuildResource("Completed");
+        var remaining = BuildResource("Remaining");
+        SeedResources(moreResources ? [completed, remaining] : [completed]);
+        SeedActivity(remaining.GoogleId);
+        _client.QueryActivityAsync(completed.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => CompleteAndCancelAsync());
+
+        var scan = () => _service.CheckForAnomalousActivityAsync(cancellation.Token);
+
+        await scan.Should().ThrowAsync<OperationCanceledException>();
+        _client.DidNotReceive().QueryActivityAsync(
+            remaining.GoogleId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
+
+        async IAsyncEnumerable<DriveActivityEvent> CompleteAndCancelAsync()
+        {
+            await cancellation.CancelAsync();
+            yield break;
+        }
     }
 
     [HumansFact]
@@ -350,8 +468,8 @@ public class DriveActivityMonitorServiceTests
         // Partial failure → marker not advanced, but the anomaly is still audited.
         await _settingsStore.DidNotReceiveWithAnyArgs().SetValueAsync(null!, null!, Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             ok.Id,
             Arg.Any<string>(),
             JobName);
@@ -397,8 +515,8 @@ public class DriveActivityMonitorServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _auditLog.Received(1).LogAsync(
-            GoogleIntegrationAuditActions.AnomalousPermissionDetected,
-            nameof(GoogleResource),
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
             resource.Id,
             Arg.Is<string>(d => d.Contains("added writer", StringComparison.Ordinal)),
             JobName);

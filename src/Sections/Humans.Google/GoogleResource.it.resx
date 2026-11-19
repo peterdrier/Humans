@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Google_Accounts_Actions" xml:space="preserve">
+    <value>Azioni</value>
+  </data>
+  <data name="Google_Accounts_ResetPassword" xml:space="preserve">
+    <value>Reimposta password</value>
+  </data>
+  <data name="Google_Email_WorkspaceCredentials_Subject" xml:space="preserve">
+    <value>Il tuo account @nobodies.team è pronto</value>
+  </data>
+  <data name="Google_Email_WorkspaceCredentials_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Il tuo account @nobodies.team è pronto&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Il tuo account Google Workspace è stato creato:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Nome utente:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Password temporanea:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Accedi su &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; — ti verrà chiesto di cambiare la password al primo accesso.&lt;/p&gt;
+&lt;p&gt;La nostra organizzazione ha l'autenticazione a due fattori (2FA) attivata. Dovrai anche configurare un secondo fattore (come un telefono o un'app di autenticazione) durante l'accesso.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment>
+  </data>
+  <data name="Google_Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Sei stato rimosso dal gruppo {0}</value>
+    <comment>{0} = group email</comment>
+  </data>
+  <data name="Google_Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accesso al gruppo rimosso&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Il tuo accesso al Gruppo Google &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;) è stato rimosso.&lt;/p&gt;
+&lt;p&gt;Questa è stata un'azione automatica basata sui tuoi attuali team e ruoli in Nobodies. Non riceverai più i messaggi inviati a questo gruppo.&lt;/p&gt;
+&lt;p&gt;Se pensi che si tratti di un errore, contatta la persona coordinatrice del tuo team.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = group display name, {2} = group email</comment>
+  </data>
+  <data name="Google_Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve">
+    <value>Il tuo accesso a {0} è stato rimosso</value>
+    <comment>{0} = folder name</comment>
+  </data>
+  <data name="Google_Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Accesso a Drive rimosso&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Il tuo accesso alla cartella condivisa &lt;strong&gt;{1}&lt;/strong&gt; è stato rimosso.&lt;/p&gt;
+&lt;p&gt;Questa è stata un'azione automatica basata sui tuoi attuali team e ruoli in Nobodies.&lt;/p&gt;
+&lt;p&gt;Se pensi che si tratti di un errore, contatta la persona coordinatrice del tuo team.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = folder name</comment>
+  </data>
+  <data name="Google_Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve">
+    <value>{0} non ha più accesso ai gruppi di Nobodies</value>
+    <comment>{0} = removed email</comment>
+  </data>
+  <data name="Google_Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve">
+    <value>&lt;h2&gt;Email secondaria ripulita&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;L'indirizzo &lt;strong&gt;{1}&lt;/strong&gt; è stato rimosso dai gruppi e dalle cartelle condivise di Nobodies.&lt;/p&gt;
+&lt;p&gt;Il tuo indirizzo principale di Nobodies ora è &lt;strong&gt;{2}&lt;/strong&gt;, e il tuo accesso ai gruppi e alle cartelle condivise tramite quell'indirizzo è invariato. Questo messaggio serve solo a darti traccia dell'indirizzo che è stato ripulito.&lt;/p&gt;
+&lt;p&gt;Se pensi che {1} dovesse ancora avere accesso, contatta la persona coordinatrice del tuo team.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
+  </data>
+  <data name="Google_Notification_WorkspaceReadyBody" xml:space="preserve"><value>La tua email Workspace {0} è stata creata. Controlla la tua email personale per le credenziali di accesso.</value></data>
+  <data name="Google_Notification_ViewProfile" xml:space="preserve"><value>Visualizza profilo</value></data>
+  <data name="Google_Notification_WorkspaceReadyWithoutCredentialsBody" xml:space="preserve"><value>La tua email Workspace {0} è stata creata. Contatta un amministratore per le credenziali di accesso.</value></data>
+  <data name="Google_NobodiesEmailBadge_HasAccount" xml:space="preserve"><value>Ha un account email @nobodies.team</value></data>
+  <data name="Google_Identity_SyncRejectedTitle" xml:space="preserve">
+    <value>Sincronizzazione Google sospesa per questo indirizzo.</value>
+  </data>
+  <data name="Google_Identity_SyncRejectedBody" xml:space="preserve">
+    <value>Google ha rifiutato l’indirizzo Google selezionato durante il tentativo di concedere l’accesso a Drive o di aggiungerti a un Gruppo — di solito perché l’indirizzo non è collegato a un account Google. I nuovi tentativi di sincronizzazione sono sospesi finché un amministratore non risolve il problema. Seleziona un altro indirizzo supportato da Google e chiedi a un amministratore di cancellare lo stato rifiutato.</value>
+  </data>
+  <data name="Google_Identity_Problem" xml:space="preserve">
+    <value>Problema di sincronizzazione Google</value>
+  </data>
+  <data name="Google_Identity_Ok" xml:space="preserve">
+    <value>Google OK</value>
+  </data>
+  <data name="Google_Identity_Retry" xml:space="preserve">
+    <value>Riprova</value>
+  </data>
+  <data name="Google_Identity_Set" xml:space="preserve">
+    <value>Imposta per Google</value>
+  </data>
+  <data name="Google_Identity_Updated" xml:space="preserve">
+    <value>Email di servizio Google aggiornata. La sincronizzazione verrà riprovata con la nuova email.</value>
+  </data>
+  <data name="Google_Identity_SetRejected" xml:space="preserve">
+    <value>Impossibile impostare l'email di servizio Google — riga sconosciuta o non verificata.</value>
+  </data>
+  <data name="Google_Identity_Google" xml:space="preserve">
+    <value>Google</value>
+  </data>
+  <data name="Google_Identity_VerifyFirst" xml:space="preserve">
+    <value>Verifica prima</value>
+  </data>
+  <data name="Google_Identity_Locked" xml:space="preserve"><value>Bloccata dalla riga email Workspace</value></data>
+  <data name="Google_TeamResources_Heading" xml:space="preserve"><value>Gestisci risorse</value></data>
+  <data name="Google_TeamResources_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Google_TeamResources_Name" xml:space="preserve"><value>Nome</value></data>
+  <data name="Google_TeamResources_Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Google_TeamResources_Actions" xml:space="preserve"><value>Azioni</value></data>
+  <data name="Google_TeamResources_BackToTeam" xml:space="preserve"><value>Torna al Team</value></data>
+  <data name="Google_TeamResources_ManageMembers" xml:space="preserve"><value>Gestisci membri</value></data>
+  <data name="Google_TeamResources_Title" xml:space="preserve"><value>Gestisci risorse - {0}</value><comment>{0} = team name</comment></data>
+  <data name="Google_TeamResources_Breadcrumb" xml:space="preserve"><value>Risorse</value></data>
+  <data name="Google_TeamResources_ServiceAccountTitle" xml:space="preserve"><value>Account di servizio</value></data>
+  <data name="Google_TeamResources_ShareWithServiceAccount" xml:space="preserve"><value>Per collegare una risorsa Google, è necessario prima condividerla con l'account di servizio:</value></data>
+  <data name="Google_TeamResources_Copy" xml:space="preserve"><value>Copia</value></data>
+  <data name="Google_TeamResources_DriveFolders" xml:space="preserve"><value>Cartelle Drive</value></data>
+  <data name="Google_TeamResources_DriveFoldersHelp" xml:space="preserve"><value>Condivida la cartella con questa email come Editor</value></data>
+  <data name="Google_TeamResources_GoogleGroups" xml:space="preserve"><value>Google Groups</value></data>
+  <data name="Google_TeamResources_GoogleGroupsHelp" xml:space="preserve"><value>Aggiunga questa email come Manager del gruppo</value></data>
+  <data name="Google_TeamResources_LinkedResources" xml:space="preserve"><value>Risorse collegate</value></data>
+  <data name="Google_TeamResources_LastSynced" xml:space="preserve"><value>Ultima sincronizzazione</value></data>
+  <data name="Google_TeamResources_NoResources" xml:space="preserve"><value>Nessuna risorsa collegata a questo team. Utilizzi i moduli sottostanti per collegare una cartella Google Drive o un Google Group.</value></data>
+  <data name="Google_TeamResources_Restricted" xml:space="preserve"><value>Limitata</value></data>
+  <data name="Google_TeamResources_Inherited" xml:space="preserve"><value>Ereditata</value></data>
+  <data name="Google_TeamResources_InvalidDriveUrl" xml:space="preserve"><value>Inserisca un URL valido di una cartella Google Drive.</value></data>
+  <data name="Google_TeamResources_InvalidGroupEmail" xml:space="preserve"><value>Inserisca un indirizzo email valido di Google Group.</value></data>
+  <data name="Google_TeamResources_GroupLinked" xml:space="preserve"><value>Google Group "{0}" collegato con successo.</value><comment>{0} = group name</comment></data>
+  <data name="Google_TeamResources_GroupLinkFailed" xml:space="preserve"><value>Collegamento del Google Group non riuscito.</value></data>
+  <data name="Google_TeamResources_ResourceUnlinked" xml:space="preserve"><value>Risorsa scollegata dal team.</value></data>
+  <data name="Google_TeamResources_ResourceSynced" xml:space="preserve"><value>Permessi delle risorse sincronizzati con successo.</value></data>
+  <data name="Google_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Sincronizzazione dei permessi delle risorse non riuscita: {0}</value><comment>{0} = error message</comment></data>
+  <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Account di servizio: {0}</value><comment>{0} = service account email</comment></data>
+</root>

@@ -791,6 +791,25 @@ public class GateServiceTests
         roster.Should().Equal(alice, bob, carol);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(7, 0, true)]
+    [Xunit.InlineData(12, 13, false)]
+    public async Task GetShiftRoster_UsesResolvedAllDayStart(int utcHour, int storedHour, bool included)
+    {
+        Clock.Reset(Instant.FromUtc(2026, 3, 1, utcHour, 0));
+        var memberId = Guid.NewGuid();
+        var burn = BurnFixtures.Burn(gateOpeningDate: new LocalDate(2026, 3, 1));
+        _burn.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(burn);
+        _shifts.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
+            .Returns([UrgentShiftFixtures.Urgent(
+                shift: UrgentShiftFixtures.Shift(startTime: new LocalTime(storedHour, 0), isAllDay: true),
+                signups: [new ShiftSignupInfo(memberId, "Volunteer", SignupStatus.Confirmed)])]);
+
+        var roster = await _svc.GetShiftRosterAsync(Guid.NewGuid());
+
+        roster.Contains(memberId).Should().Be(included);
+    }
+
     [HumansFact]
     public async Task GetShiftRoster_CancelsTheShiftsReadWhenTheRequestIsAborted()
     {
@@ -964,7 +983,65 @@ public class GateServiceTests
         await job.ExecuteAsync("vt-A", originalAdmit.ToUnixTimeSeconds(), ct);
 
         await vendor.Received(1).CreateCheckInAsync("vt-A",
-            originalAdmit, ct);
+            originalAdmit, CancellationToken.None);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task VendorMirror_ShutdownBeforeStart_DoesNotAttemptCheckIn(bool enabled)
+    {
+        using var shutdown = new CancellationTokenSource();
+        await shutdown.CancelAsync();
+        var vendor = Substitute.For<ITicketVendorMirror>();
+        _config["Gate:VendorMirrorEnabled"] = enabled.ToString();
+        var job = new GateVendorCheckInJob(vendor, _config, NullLogger<GateVendorCheckInJob>.Instance);
+
+        var act = () => job.ExecuteAsync("vt-A", Clock.GetCurrentInstant().ToUnixTimeSeconds(), shutdown.Token);
+
+        if (enabled)
+            await act.Should().ThrowAsync<OperationCanceledException>();
+        else
+            await act.Should().NotThrowAsync();
+        await vendor.DidNotReceiveWithAnyArgs().CreateCheckInAsync(default!, default, default);
+    }
+
+    [HumansFact]
+    public async Task VendorMirror_ShutdownDuringAttempt_FinishesOneCheckIn()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var vendor = Substitute.For<ITicketVendorMirror>();
+        _config["Gate:VendorMirrorEnabled"] = "true";
+        var occurredAt = Clock.GetCurrentInstant();
+        var completed = false;
+        vendor.CreateCheckInAsync("vt-A", occurredAt, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            completed = true;
+        });
+        var job = new GateVendorCheckInJob(vendor, _config, NullLogger<GateVendorCheckInJob>.Instance);
+
+        await job.ExecuteAsync("vt-A", occurredAt.ToUnixTimeSeconds(), shutdown.Token);
+
+        completed.Should().BeTrue();
+        await vendor.Received(1).CreateCheckInAsync("vt-A", occurredAt, CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task VendorMirror_IndependentVendorCancellation_RemainsBestEffortWithoutRetry()
+    {
+        var vendor = Substitute.For<ITicketVendorMirror>();
+        _config["Gate:VendorMirrorEnabled"] = "true";
+        var occurredAt = Clock.GetCurrentInstant();
+        vendor.CreateCheckInAsync("vt-A", occurredAt, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new OperationCanceledException("Vendor timed out")));
+        var job = new GateVendorCheckInJob(vendor, _config, NullLogger<GateVendorCheckInJob>.Instance);
+
+        var act = () => job.ExecuteAsync("vt-A", occurredAt.ToUnixTimeSeconds(), Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+        await vendor.Received(1).CreateCheckInAsync("vt-A", occurredAt, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

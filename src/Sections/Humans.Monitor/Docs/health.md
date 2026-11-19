@@ -88,12 +88,12 @@ None.
 - **The stub-mode marker guard.** Not advancing the marker when the connector is
   unconfigured looks like a missing else-branch; it keeps historical changes visible once
   real credentials land in the same database.
-- **`Humans.Monitor.csproj` references `Humans.GoogleIntegration` whole.** GoogleIntegration's
+- **`Humans.Monitor.csproj` references `Humans.Google` whole.** Google's
   contracts live in a `Contracts/` folder of that project, not a leaf, so the compiler cannot
   stop `IGoogleDriveActivityClient` moving out of it;
-  `DriveActivityMonitorArchitectureTests.IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf`
+  `DriveActivityMonitorArchitectureTests.IGoogleDriveActivityClient_LivesOnGoogleLeaf`
   is what holds it there.
-- **Monitor references GoogleIntegration and AuditLog, and no section references Monitor.**
+- **Monitor references Google and AuditLog, and no section references Monitor.**
   The scan is its own section because it is a distinct read model with its own job, not part
   of the audit log it writes to.
 - **`DriveActivityMonitorJob` is `public`.** HUM0034 allows a section's public types under

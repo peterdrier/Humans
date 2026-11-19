@@ -143,7 +143,7 @@ Append-only per design-rules.md, *Append-only entities*. `IBudgetRepository` exp
 
 Projection parameters for a ticketing budget group. One-to-one with `BudgetGroup` where `IsTicketingGroup = true`.
 
-**Table:** `ticketing_projections`
+**Table:** `budget_ticketing_projections`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -202,6 +202,8 @@ Stored as string via `HasConversion<string>()`.
 - Authorization’s effective-coordinator reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - The admin year list and the overview, no-active-year and audit-log year choices order year identifiers descending using ordinal comparison. Repository and service year lists impose no display order.
+- Year graph reads impose no group display order. Tree views sort groups themselves; member and admin summary controllers sort them by `SortOrder` before calculation so equal-valued category slices and appended group buffers retain that order.
+- Summary slices retain their source `BudgetCategoryId`; synthesized VAT, reserves, taxes and buffers have none. Calculations impose no amount order. Member and admin summary controllers order authored categories by descending amount, followed by synthesized slices in their original composition order, without identifying a slice by its localized name.
 
 - Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. After selecting the active ID, the repository reuses its year-by-id hydration path for groups, categories, line items and ticketing projections. Year-by-id retains archived years for historical report labels.
 
@@ -244,7 +246,8 @@ Stored as string via `HasConversion<string>()`.
 - Regular and buffered budget summaries share the chart-slice projection: each slice keeps its input order and amount, and its percentage uses that side’s total (zero when the total is not positive).
 - Budget summary chart/table labels for VAT credits and liabilities, cash reserves, Spanish taxes and group buffers use the current UI culture in all supported languages. Authored group/category names and calculated amounts are unchanged.
 - Cash flow (`/Finance/CashFlow`) is Finance's page, computed by Finance from `IBudgetService.GetActiveYearAsync` — see [`Finance.md`](../../Humans.Finance/Docs/Finance.md). Budget's summary and category VAT projections use Finance's shared `VatCalculation` through the existing contracts-leaf reference, as does Finance cash flow.
-- Resource-based authorization per design-rules.md, *Authorization*: `BudgetAuthorizationHandler` + `BudgetOperationRequirement` gate all coordinator writes against a `BudgetCategory` resource, denying restricted groups, ticketing groups, and archived years for non-finance users.
+- Ticketing sync carries shutdown cancellation through active-year and order reads and the atomic Budget save. Cancellation that interrupts the sync propagates without a completion or Error log; cancellation caught by the bridge or job logs Warning without an exception. Unrelated cancellation and genuine faults retain Error logging and propagate.
+- Resource-based authorization uses `BudgetAuthorizationHandler` with separate View and Edit requirements. Finance may view every category; other viewers must coordinate at least one effective team and cannot open restricted or ticketing categories. Viewing does not require coordinating that category and remains available for archived years; editing retains the category-team and archived-year restrictions. Category detail authorizes before loading active team options. The index composes existing year/scope reads and redirects non-coordinators without Finance access to Summary. Readers receive no privilege flags and return no authorization decisions.
 - Group create/update forms require an explicit restriction choice. Omission returns 400 before persistence or audit and cannot expose restricted category details to coordinators. Explicit false still removes the restriction intentionally.
 - The coordinator-facing category detail at `/Budget/Category/{id}` uses `BudgetResource` for every label, action, guidance message, tooltip, confirmation, and accessibility label in all supported cultures.
 - Category and line-item create/update forms require explicit amounts, expenditure types and VAT rates wherever those controls appear; omission cannot save a zero allocation, line amount or VAT rate, or reset CapEx to OpEx. These forms and group forms reject binding errors with HTTP 400 (and log a warning) before writing anything; current-user resolution (not found when missing) and, for `/Budget` line items, coordinator category authorization run first; explicit zero amounts, false flags and empty optional fields are valid input.
@@ -278,7 +281,7 @@ Stored as string via `HasConversion<string>()`.
 The internal `BudgetReader` owns year/category/line-item views, coordinator scope, audit rows, ticketing projection entries and their shared DTO mapping. `BudgetService` forwards the existing reads and reuses those mappings after mutations. Coordinator restrictions, missing-team fallbacks, field/order preservation, projection dates/formatting and cancellation are unchanged. Mutation validation, audit writes, ticketing synchronization, calculations and GDPR retain their existing owners; no public contract or DI registration is added.
 
 **Owning services:** `BudgetService`, `TicketingBudgetService`
-**Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
+**Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `budget_ticketing_projections`
 **Status:** (A) Migrated.
 
 - Everything but `Section`, `BudgetResource`, `TicketingBudgetSyncJob` (public with an internal constructor — the Shell names the type for Hangfire registration) and the migrations is `internal` — HUM0034 enforces it. The cross-section surface is the `Contracts/` folder (namespace `Humans.Budget.Contracts`): `IBudgetService` (incl. `GetYearByIdAsync`, read by `BudgetAdminController` and Backdoor's finance views), `IBudgetDemoSeeder`, the DTOs those name, and the `BudgetYearStatus` / `ExpenditureType` enums. `ITicketingBudgetService` is internal.

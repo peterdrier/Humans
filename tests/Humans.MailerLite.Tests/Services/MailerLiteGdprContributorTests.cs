@@ -1,6 +1,7 @@
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
 using Humans.MailerLite.Tests.Infrastructure;
+using AwesomeAssertions;
 using NSubstitute;
 using Xunit;
 
@@ -44,7 +45,7 @@ public class MailerLiteGdprContributorTests
                 IsVerified = true,
                 IsPrimary = true
             });
-        var info = new User { Id = _userId }.ToUserInfo(rows) with { IdentityEmailColumn = primary };
+        var info = UserInfoFixtures.FromUser(new User { Id = _userId }, rows) with { IdentityEmailColumn = primary };
         _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
     }
 
@@ -57,12 +58,12 @@ public class MailerLiteGdprContributorTests
         var survivorId = Guid.NewGuid();
         const string address = "survivor@example.com";
         Emails(address, address);
-        var survivor = new User { Id = survivorId }.ToUserInfo([
+        var survivor = UserInfoFixtures.FromUser(new User { Id = survivorId }, [
             new UserEmail { Id = Guid.NewGuid(), UserId = survivorId, Email = address, IsVerified = true }
         ]);
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(survivor);
         _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
-            new User { Id = _userId }.ToUserInfo() with
+            UserInfoFixtures.FromUser(new User { Id = _userId }) with
             {
                 State = UserState.Merged,
                 MergedToUserId = survivorId,
@@ -80,7 +81,7 @@ public class MailerLiteGdprContributorTests
         const string owned = "archived@example.com";
         const string survivor = "survivor@example.com";
         _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
-            new User { Id = _userId }.ToUserInfo([
+            UserInfoFixtures.FromUser(new User { Id = _userId }, [
                 new UserEmail { Id = Guid.NewGuid(), UserId = _userId, Email = owned, IsVerified = true }
             ]) with
             {
@@ -160,6 +161,48 @@ public class MailerLiteGdprContributorTests
 
         await EraseAsync();
 
+        await _mailerLite.DidNotReceive()
+            .DeleteSubscriberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_CancellationDuringDelete_FinishesCurrentDeleteAndStopsBeforeNext()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var attemptedAddresses = new List<string>();
+        var deleteTokens = new List<CancellationToken>();
+        Emails("first@example.org", "first@example.org", "second@example.org");
+        _mailerLite.DeleteSubscriberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                attemptedAddresses.Add(call.Arg<string>());
+                deleteTokens.Add(call.Arg<CancellationToken>());
+                await cancellation.CancelAsync();
+            });
+
+        var contributor = new MailerLiteGdprContributor(_mailerLite, _users);
+
+        var action = () => contributor.EraseForUserAsync(_userId, cancellation.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+
+        attemptedAddresses.Should().ContainSingle().Which.Should()
+            .BeOneOf("first@example.org", "second@example.org");
+        deleteTokens.Should().ContainSingle().Which.Should().Be(CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task EraseForUserAsync_CancellationDuringRawLookup_PropagatesWithoutDeleting()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var contributor = new MailerLiteGdprContributor(_mailerLite, _users);
+        _users.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(Task.FromCanceled<UserInfo?>(cancellation.Token)));
+
+        var action = () => contributor.EraseForUserAsync(_userId, cancellation.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+
+        await _users.Received(1).GetRawUserInfoAsync(_userId, cancellation.Token);
         await _mailerLite.DidNotReceive()
             .DeleteSubscriberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }

@@ -17,6 +17,22 @@ namespace Humans.Agent.Tests;
 
 public class AgentUserSnapshotProviderTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Active)]
+    [Xunit.InlineData(UserState.Suspended)]
+    [Xunit.InlineData(UserState.AdminSuspended)]
+    public async Task LoadAsync_context_reports_account_state_independently_of_consent_review(UserState state)
+    {
+        var userId = Guid.NewGuid();
+        var provider = MakeProvider(userId, null, [], state: state);
+
+        var snapshot = await provider.LoadAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var context = new AgentPromptAssembler().BuildUserContextTail(snapshot);
+
+        context.Should().Contain($"AccountState: {state}");
+        context.Should().NotContain("ApprovedFlag:");
+    }
+
     [HumansFact]
     public async Task LoadAsync_collapses_block_signups_into_one_entry_with_date_range_and_day_count()
     {
@@ -130,7 +146,7 @@ public class AgentUserSnapshotProviderTests
         var memberships = new[]
         {
             new TeamMembership("Build", TeamMemberRole.Coordinator),
-            new TeamMembership("Cantina", TeamMemberRole.Member)
+            new TeamMembership("Cantina", TeamMemberRole.Member) { IsHidden = true }
         };
         var provider = MakeProvider(userId, ev, [], teamMemberships: memberships);
 
@@ -144,41 +160,37 @@ public class AgentUserSnapshotProviderTests
         EventSettingsInfo? activeEvent,
         IReadOnlyList<ShiftSignupSummary> signups,
         IReadOnlyList<Guid>? openTicketIds = null,
-        IReadOnlyList<TeamMembership>? teamMemberships = null)
+        IReadOnlyList<TeamMembership>? teamMemberships = null,
+        UserState state = UserState.Bare)
     {
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(
                 UserInfo.Create(
-                    new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" },
-                    [], [], profile: null)));
+                    new User
+                    {
+                        Id = userId,
+                        DisplayName = "T",
+                        PreferredLanguage = "es",
+                        State = state,
+                        BurnerName = "T",
+                        FirstName = "Test",
+                        LastName = "Member"
+                    },
+                    [], [], profile: state == UserState.Bare ? null : UserFixtures.Profile())));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         var teams = Substitute.For<ITeamService>();
-        // Build a TeamInfo dict that mirrors the desired memberships so the
-        // reshape idiom (GetTeamsAsync → filter by member) returns the same data.
-        var membershipsToReturn = teamMemberships ?? [];
-        var teamInfos = membershipsToReturn
-            .Select((m, i) => new TeamInfo(
-                Id: Guid.NewGuid(),
-                Name: m.TeamName,
-                Description: null,
-                Slug: $"team-{i}",
-                IsActive: true,
-                IsSystemTeam: false,
-                SystemTeamType: SystemTeamType.None,
-                RequiresApproval: false,
-                IsPublicPage: false,
-                IsHidden: m.IsHidden,
-                IsPromotedToDirectory: false,
-                CreatedAt: Instant.MinValue,
-                Members: [new TeamMemberInfo(Guid.NewGuid(), userId, "T", null, null, m.Role, Instant.MinValue)]))
-            .ToList();
-        var teamDict = teamInfos.ToDictionary(t => t.Id);
-        teams.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(teamDict));
+        teams.GetUserTeamMembershipsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((teamMemberships ?? []).Select((m, i) => new UserTeamMembershipInfo(
+                Guid.NewGuid(), Guid.NewGuid(), m.TeamName, $"team-{i}", false, m.Role, Instant.MinValue)
+            {
+                IsActive = true,
+                IsHidden = m.IsHidden,
+                SystemTeamType = SystemTeamType.None
+            }).ToList());
 
         var consents = Substitute.For<IConsentService>();
         consents.GetPendingDocumentNamesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

@@ -7,8 +7,8 @@
 
 <div class="row align-items-start">
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1>
+        <page-header>
+            <page-header-title>
                 @if (Model.IsOwnProfile)
                 {
                     @Localizer["Users_Profile_Title"]
@@ -17,14 +17,12 @@
                 {
                     <vc:human user-id="@Model.UserId" link="None" />
                 }
-            </h1>
-            <div class="d-flex gap-2">
-                <vc:access-matrix section="Profile" />
-                <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
-                    <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
-                </a>
-            </div>
-        </div>
+            </page-header-title>
+            <vc:access-matrix section="Profile" />
+            <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
+                <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
+        </page-header>
 
         <partial name="_ProfileAlerts" model="Model" />
 
@@ -43,39 +41,6 @@
         }
 
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
-
-        @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
-        {
-            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" />
-            <vc:volunteer-build-strip user-id="@Model.UserId" />
-        }
-
-        @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)
-        {
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> @Localizer["Users_Profile_NoShowHistory", Model.NoShowHistory!.Count]</h5>
-                </div>
-                <div class="card-body p-0">
-                    @{
-                        Func<NoShowHistoryItem, IHtmlContent> reviewerCell = @<text>
-                            @if (item.MarkedByUserId is { } reviewerId)
-                            {
-                                <vc:human user-id="@reviewerId" link="None" />
-                            }
-                        </text>;
-                        var noShowTable = TableModel.For(Model.NoShowHistory!)
-                            .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
-                            .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
-                            .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel, c => c.Css("text-nowrap"))
-                            .Template(Localizer["Users_Profile_MarkedBy"].Value, reviewerCell)
-                            .Column(Localizer["Users_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
-                            .Build();
-                    }
-                    <partial name="_Table" model="noShowTable" />
-                </div>
-            </div>
-        }
 
         @if (!Model.IsOwnProfile && (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.MedicalDataViewer)).Succeeded)
         {

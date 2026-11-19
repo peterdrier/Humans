@@ -8,7 +8,7 @@ internal sealed class VolunteerTagPreferenceConfiguration : IEntityTypeConfigura
 {
     public void Configure(EntityTypeBuilder<VolunteerTagPreference> builder)
     {
-        builder.ToTable("volunteer_tag_preferences");
+        builder.ToTable("shift_volunteer_tag_preferences");
         builder.HasKey(v => v.Id);
 
         builder.HasIndex(v => new { v.UserId, v.ShiftTagId })

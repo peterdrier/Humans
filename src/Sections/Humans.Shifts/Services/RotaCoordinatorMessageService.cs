@@ -97,7 +97,7 @@ internal sealed class RotaCoordinatorMessageService(
         if (string.IsNullOrWhiteSpace(messageText))
             return TeamRotasMessageDispatchResult.Failure("Message body is required.");
 
-        var team = await teamService.GetTeamAsync(teamId);
+        var team = await teamService.GetTeamAsync(teamId, ct);
         if (team is null)
             return TeamRotasMessageDispatchResult.Failure("Team not found.");
 
@@ -326,7 +326,7 @@ internal sealed class RotaCoordinatorMessageService(
                 // Email may suppress an opted-out recipient without throwing.
                 requested++;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 failed++;
                 logger.LogError(ex,
@@ -341,7 +341,7 @@ internal sealed class RotaCoordinatorMessageService(
     // Chronological, in the rota's timezone.
     private static IReadOnlyList<string> BuildShiftLines(
         IReadOnlyList<ShiftSignup> userSignups,
-        Humans.Shifts.Contracts.BurnSettingsInfo eventSettings)
+        BurnSettingsInfo eventSettings)
     {
         var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
         return userSignups
@@ -376,7 +376,7 @@ internal sealed class RotaCoordinatorMessageService(
     private sealed record RotaSignupGroup(
         Guid RotaId,
         string RotaName,
-        Humans.Shifts.Contracts.BurnSettingsInfo EventSettings,
+        BurnSettingsInfo EventSettings,
         IReadOnlyList<ShiftSignup> Signups);
 
     private sealed record DispatchSummary(

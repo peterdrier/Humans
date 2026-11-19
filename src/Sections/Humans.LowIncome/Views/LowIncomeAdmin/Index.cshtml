@@ -2,7 +2,9 @@
     ViewData["Title"] = "Low income grants";
 }
 
-<h1><i class="fa-solid fa-hand-holding-heart me-2"></i>Low income grants</h1>
+<page-header>
+    <page-header-title><i class="fa-solid fa-hand-holding-heart me-2"></i>Low income grants</page-header-title>
+</page-header>
 <p class="text-muted mw-760">
     Gives or removes a person's Low Income grant. The grant lives in the open
     <a asp-controller="GrantsAdmin" asp-action="Index">Grants program</a> with source key <code>@Section.SourceKey</code>;

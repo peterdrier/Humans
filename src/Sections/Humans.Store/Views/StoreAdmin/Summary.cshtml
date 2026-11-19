@@ -6,8 +6,7 @@
     var productColumns = s.CrossTab.Products.OrderBy(p => p.ProductName, StringComparer.Ordinal).ToList();
 }
 
-<div class="page-head">
-    <h1 class="title">Store summary</h1>
+<page-header title="Store summary" variant="compact">
     <form method="get" class="d-flex gap-2 align-items-center mb-0">
         <label for="year" class="form-label mb-0">Year</label>
         <input type="number" name="year" id="year" value="@s.Year"
@@ -15,7 +14,7 @@
         <button type="submit" class="btn btn-sm btn-secondary">Go</button>
         <a asp-controller="Store" asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to Store</a>
     </form>
-</div>
+</page-header>
 
 <section class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">

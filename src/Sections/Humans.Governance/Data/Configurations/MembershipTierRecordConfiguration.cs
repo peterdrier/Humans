@@ -13,7 +13,7 @@ internal sealed class MembershipTierRecordConfiguration : IEntityTypeConfigurati
         builder.HasKey(t => t.UserId);
         builder.Property(t => t.UserId).ValueGeneratedNever();
 
-        // Stored by name, like applications.MembershipTier.
+        // Stored by name, like governance_applications.MembershipTier.
         builder.Property(t => t.Tier)
             .IsRequired()
             .HasConversion<string>();

@@ -63,8 +63,9 @@ internal sealed class PleoClient : IPleoClient
 
     public async Task<IReadOnlyList<PleoEmployeeWire>> ListEmployeesAsync(CancellationToken ct = default)
     {
+        // Historical entries still reference deleted cardholders; an active-only sweep would erase their names.
         var items = await GetAllPagesAsync("employees", after =>
-            new HttpRequestMessage(HttpMethod.Get, $"/v2/employees?companyId={Company}&limit={PageLimit}{After(after)}"), ct);
+            new HttpRequestMessage(HttpMethod.Get, $"/v2/employees?companyId={Company}&includeDeleted=true&limit={PageLimit}{After(after)}"), ct);
         return items.Select(Read<PleoEmployeeWire>).ToList();
     }
 
@@ -155,9 +156,12 @@ internal sealed class PleoClient : IPleoClient
                 throw new PleoTransientException($"Pleo {endpoint}: a 200 without a data array.");
             items.AddRange(data.EnumerateArray());
 
-            var hasNext = root.TryGetProperty("pagination", out var pagination)
-                && pagination.TryGetProperty("hasNextPage", out var next) && next.ValueKind == JsonValueKind.True;
-            if (!hasNext) return items;
+            if (!root.TryGetProperty("pagination", out var pagination)
+                || pagination.ValueKind != JsonValueKind.Object
+                || !pagination.TryGetProperty("hasNextPage", out var next)
+                || next.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new PleoTransientException($"Pleo {endpoint}: a page without a boolean hasNextPage.");
+            if (next.ValueKind == JsonValueKind.False) return items;
 
             after = pagination.TryGetProperty("endCursor", out var end) && end.ValueKind == JsonValueKind.String
                 ? end.GetString()
@@ -180,6 +184,8 @@ internal sealed class PleoClient : IPleoClient
         try
         {
             using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                throw new PleoPermanentException($"Pleo {endpoint}: expected a JSON object.");
             return doc.RootElement.Clone();
         }
         catch (JsonException ex)

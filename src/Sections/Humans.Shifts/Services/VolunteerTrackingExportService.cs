@@ -106,7 +106,7 @@ internal sealed class VolunteerTrackingExportService(
             .ThenBy(dg => dg.TeamName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var totals = ComputeTotals(days, rows, firstShiftDay);
+        var totals = ComputeTotals(days, rows);
 
         return await BuildModelAsync(request, days, groups, totals, filteredTeamName);
     }
@@ -168,20 +168,12 @@ internal sealed class VolunteerTrackingExportService(
 
     private static int[] ComputeTotals(
         IReadOnlyList<LocalDate> days,
-        Dictionary<Guid, HumanRow> rows,
-        Dictionary<Guid, LocalDate> firstShiftDay)
+        Dictionary<Guid, HumanRow> rows)
     {
         var totals = new int[days.Count];
         for (var i = 0; i < days.Count; i++)
         {
-            var d = days[i];
-            var count = 0;
-            foreach (var (userId, row) in rows)
-            {
-                if (firstShiftDay[userId] > d) continue;
-                if (row.Cells[i].Kind == CellKind.Worked) count++;
-            }
-            totals[i] = count;
+            totals[i] = rows.Values.Count(row => row.Cells[i].Kind is CellKind.Arrival or CellKind.Worked);
         }
         return totals;
     }

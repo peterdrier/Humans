@@ -52,7 +52,7 @@ internal sealed class AgentPromptAssembler : IAgentPromptAssembler
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"DisplayName: {snapshot.DisplayName}"));
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Locale: {snapshot.PreferredLocale}"));
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Tier: {snapshot.Tier}"));
-        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"ApprovedFlag: {snapshot.IsApproved}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"AccountState: {snapshot.AccountState?.ToString() ?? "Unknown"}"));
 
         if (snapshot.RoleAssignments.Count > 0)
         {

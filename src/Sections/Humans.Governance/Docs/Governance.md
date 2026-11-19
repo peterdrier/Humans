@@ -49,7 +49,7 @@ The Governance page is the association's home for every signed-in member: tier t
 
 Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). Always created via the Governance Applications route; initial profile setup only links to it.
 
-**Table:** `applications`
+**Table:** `governance_applications`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -69,7 +69,7 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | ReviewedByUserId | Guid? | Reviewer ID — **FK only**, no nav |
 | ReviewNotes | string? (4000) | Reviewer notes / rejection reason |
 | TermExpiresAt | LocalDate? | Term expiry (Dec 31 of the current cycle's odd year), set on approval |
-| BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made. Always set on finalize: `ApproveAsync`/`RejectAsync` default a missing date to today (UTC); the finalize form still asks for it. |
+| BoardMeetingDate | LocalDate? | Date of Board meeting where decision was made. Always set on finalize: `ApproveAsync`/`RejectAsync` require an explicit `LocalDate`; the finalize form refuses missing or invalid dates. |
 | DecisionNote | string? (4000) | Board's collective decision note (only record after vote deletion) |
 | RenewalReminderSentAt | Instant? | When renewal reminder was last sent |
 
@@ -93,13 +93,13 @@ One row per member; a member with no row is a Volunteer.
 
 Append-only per design-rules.md, *Append-only entities* — `IApplicationRepository` exposes no update or delete surface for this table. (Append-only is enforced at the repository layer, not via DB triggers — only `consent_records` has DB-level immutability triggers.)
 
-**Table:** `application_state_history`
+**Table:** `governance_application_state_history`
 
 ### BoardVote
 
 Individual Board member's vote on a tier application. **Transient working data** — records are deleted when the application is approved, rejected or withdrawn (GDPR data minimization). Only the collective decision (`Application.DecisionNote`, `BoardMeetingDate`) is retained.
 
-**Table:** `board_votes`
+**Table:** `governance_board_votes`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -137,7 +137,7 @@ Stored as string via `HasConversion<string>()`.
 
 A binding vote of the association. Full design in [`features/assembly-votes.md`](features/assembly-votes.md).
 
-**Table:** `assembly_votes`
+**Table:** `governance_assembly_votes`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -165,13 +165,13 @@ A binding vote of the association. Full design in [`features/assembly-votes.md`]
 
 One authored RankedChoice option: a stable `Key`, the authored `Order` (the documented last tie-break), and a per-culture `Label`. YesNo votes author no options — Yes / No / Abstain are fixed.
 
-**Table:** `assembly_vote_options` — no unique index on `Key`; duplicate keys within a vote are rejected by `IsDraftValid`, per [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md).
+**Table:** `governance_assembly_vote_options` — no unique index on `Key`; duplicate keys within a vote are rejected by `IsDraftValid`, per [`unique-constraints-ids-only`](../../../../memory/architecture/unique-constraints-ids-only.md).
 
 ### AssemblyVoteRoster
 
 The frozen electorate, written exactly once at open.
 
-**Table:** `assembly_vote_roster`
+**Table:** `governance_assembly_vote_roster_entries`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -189,7 +189,7 @@ The frozen electorate, written exactly once at open.
 
 One person's standing ballot. Hangs off `RosterId`, **not** `UserId`, so erasure can unlink the voter and leave the ballot as the association's legal record with the counts intact.
 
-**Table:** `assembly_ballots`
+**Table:** `governance_assembly_ballots`
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -208,13 +208,13 @@ One person's standing ballot. Hangs off `RosterId`, **not** `UserId`, so erasure
 
 Append-only: one row per revision, written in the same unit of work as the ballot it records. Nothing is ever updated or deleted.
 
-**Table:** `assembly_ballot_history` — unique `(BallotId, Revision)`.
+**Table:** `governance_assembly_ballot_history` — unique `(BallotId, Revision)`.
 
 ### AssemblyVotePeek
 
 One row per Admin peek at the embargoed tally: `VoteId`, `AdminUserId` (**FK only**), `PeekedAt`. Written in the same unit of work as the read it records, and listed on the results page after close.
 
-**Table:** `assembly_vote_peeks`
+**Table:** `governance_assembly_vote_peeks`
 
 ### Assembly vote enums
 
@@ -299,7 +299,7 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 - Membership snapshots and required-team reads resolve merged IDs to the survivor before querying
   memberships or consent requirements. Snapshot memoization uses that same resolved identity. A snapshot reuses its initial `UserInfo` for status and its canonical ID for required-team reads, rather than resolving the account again in nested public methods; direct status and required-team callers still resolve their own identity. The snapshot's status and `IsVolunteerMember` flag share one Volunteers membership read. Status and missing-consent counts also share the Volunteers requirements and signed-version set; only overdue Volunteers requirements can make the status Inactive. Standalone status calculation still skips membership and consent reads when the account state already determines its status.
 
-Approval and rejection share the same ordered eligibility check (application exists, is Submitted, and has at least one Board vote) before either decision mutates it. They also share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Approval alone changes the membership tier and syncs the system team.
+Approval and rejection share the same ordered eligibility check (application exists, is Submitted, and has at least one Board vote) before either decision mutates it. They also share one committed-decision path: capture Board ids, finalize the application and delete votes, invalidate the badges, then audit the reviewer and record processing metrics. Both service decision methods require an explicit Board meeting date rather than inferring one from the processing date. Approval alone changes the membership tier and syncs the system team.
 
 - Opt-outable email builders capture the recipient/template culture on `EmailMessage` before restoring their rendering scope; Email renders the shared unsubscribe footer in that culture.
 
@@ -325,7 +325,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - Role assignments track temporal membership with valid-from and optional valid-to dates. See `Auth.md` for the role-assignment entity.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - Member vote lists, details, ballots and results resolve the signed-in account through Users before calling the vote service. Missing accounts receive Challenge; cancelled identity reads stop before service calls. Merged sessions use the surviving ID for ballot audit and notification resolution while frozen-roster eligibility still follows all account IDs, preferring an existing ballot over an unused row.
-- **Assembly votes — the roster** is written exactly once, at open, from Governance's own `applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official — Board members are de facto Asociados whatever their profile tier says), and the Volunteers team for `AllMembers`. It is **never recomputed**. A person appearing in more than one source gets one row, official if any source is official.
+- **Assembly votes — the roster** is written exactly once, at open, from Governance's own `governance_applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official — Board members are de facto Asociados whatever their profile tier says), and the Volunteers team for `AllMembers`. It is **never recomputed**. A person appearing in more than one source gets one row, official if any source is official.
 - **Vote list display ordering** belongs to the controllers: members see Open first then latest closing; admins see latest closing first. Member task entries use latest closing first. The service supplies permitted rows without display ordering.
 - Member vote reads carry authored option positions without sorting. Ranked ballot forms, result columns and peek columns order by those positions; ballot label lookups are keyed. Counting independently applies authored order for its tie-breaks.
 - Draft reads also carry option positions without sorting; the draft form's `FromDraft` mapping orders rows before they can be edited or posted back.
@@ -338,7 +338,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - **The embargo:** no read path returns per-option counts, rankings, or any ballot content for an Open vote except `Peek`, which writes its audit entry and peek row in the same unit of work as the read. Structurally, only `GetResultsAsync`, `PeekAsync` and `GetBallotsForBoardAsync` on `IAssemblyVoteService` can return ballot-derived content; a fourth such path is a change to the association's voting guarantees, not a refactor.
 - Bounded assembly notice/email titles retain their UTF-16 limits without splitting a Unicode surrogate pair.
 - Ranked ballot forms reject binding errors before projecting ranks or casting: the existing localized invalid-ballot message redisplays the submitted choice and leaves the stored ballot, revision and ballot history unchanged, without writing a ballot audit. Redisplay skips missing option keys and refuses non-roster POSTs. Intentional blank ranks remain valid, and Abstain ignores inactive rank fields, including their binding errors.
-- **A ballot audit entry** names the actor and the vote, never the choice. The choice lives only in `assembly_ballots` / `assembly_ballot_history`.
+- **A ballot audit entry** names the actor and the vote, never the choice. The choice lives only in `governance_assembly_ballots` / `governance_assembly_ballot_history`.
 - **The result** is computed once, at close, and stored in `ResultJson`; the results page renders the stored result rather than recounting. Closure persists the closed status before it reads the ballots, and `UpsertBallotAsync` re-reads the vote under its row lock, so no ballot is ever told "recorded" and then left out of the tally. Every write to a vote row — close, extend, cancel, draft edit, open, delete — names the state it read and applies under the same lock only while the row is still in it, so a transition that committed first is never undone or repeated by a request that started before it.
 - **A vote whose `ClosesAt` has passed is Closed for every purpose**, whether or not the hourly lapse job has run: every service read and write settles the state first, so the job is a backstop rather than the thing that makes closing correct. Such a vote's `ClosedAt` is its announced `ClosesAt`, not the instant the lapse was noticed — the acta prints `ClosedAt`, so a late sweep must not make the record claim the vote ran long. An Admin `Stop` stamps the moment it was stopped.
 - **Individual ballots are disclosed for a Closed vote only.** A Cancelled vote's ballots are retained as an abandoned record with no result; `GetBallotsForBoardAsync` answers null for it. The results and Board ballot views order disclosed rows official-first, then by display name using the current culture; the service returns the permitted rows without display ordering.
@@ -347,7 +347,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - **IRV:** the majority base in each round is the ballots that still rank a continuing option; ballots that rank none (or Abstain) are exhausted. Elimination takes the fewest votes, breaking ties by fewest votes in the previous round and then by authored option order.
 - The IRV counter derives its continuing options and authored-order tie-break lookup from one ordered key sequence; callers need not order options before counting.
 - **Ties are reported, never resolved.** Statutes Art. 10.2 gives the President of the Board the casting vote and the Secretary records it in the acta; the system prints that rule and stops.
-- `application_state_history` is append-only per design-rules.md, *Append-only entities* — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
+- `governance_application_state_history` is append-only per design-rules.md, *Append-only entities* — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync` / `DeleteAsync`.
 
 The Board-voting dashboard controller orders member columns by display name with ordinal case-insensitive comparison. The decision service returns the member data without presentation ordering.
 
@@ -377,9 +377,10 @@ The Board-voting dashboard controller orders member columns by display name with
 - Renewal emails and in-app notices use the applicant’s supported preferred language, with English fallback for blank, malformed or unsupported preferences. Both format the expiry date through the shared display formatter inside the recipient’s culture scope, which is restored afterward.
 - Only the latest approved application (by submission time) per human and tier can receive a renewal reminder. Selection precedes the expiry-window and sent-stamp filters: an older term never reappears after renewal or after the latest reminder was sent. Other tiers and humans remain independent.
 - Governance mail skips null, empty and whitespace-only notification addresses. Renewal reminders log the skip at Warning and remain unstamped for retry; assembly opening/reminder stamps likewise remain unset until an address is available.
-- A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `GovernanceNotificationSources.TermRenewalReminder`). The job is `Humans.Governance/Jobs/TermRenewalReminderJob.cs`; it reads and stamps Applications only through `IGovernanceManagement`. Email preparation, enqueue and sent-stamp failures are collected while the remaining eligible recipients are attempted, then fail the run so Hangfire can retry. Successfully stamped reminders stay excluded on retry. Each application’s ID is the reminder’s stable Email delivery ID, so a retry after a failed stamp reuses the persisted outbox row. The in-app notice remains best-effort after the email and stamp succeed, and targets the same resolved live applicant ID as the email.
-- On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by the date-filtered active approvals, so it never waits on the tier write). `MembershipTierExpiryJob` (`Humans.Governance/Jobs/`, `ISectionJobs` cron `5 0 * * *`, UTC) runs Asociado then Colaborador through the internal `IGovernanceManagement.ExpireMembershipTiersAsync`, which **rewrites the member's tier row** — to another still-active tier the human holds, otherwise to `Volunteer` — and returns the downgrades. `MembershipTierService` loads the audit display name before changing each tier, then commits the tier before attempting its independently persisted, best-effort `GovernanceAuditActions.TierDowngraded` audit (entity `Profile`, actor `MembershipTierExpiryJob`, unchanged wording). A later lookup failure leaves that member eligible for retry without losing audits for earlier committed downgrades.
+- A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `GovernanceNotificationSources.TermRenewalReminder`). The job is `Humans.Governance/Jobs/TermRenewalReminderJob.cs`; it reads and stamps Applications only through `IGovernanceManagement`. Reads retain shutdown cancellation, and the job checks it before starting each recipient. Once enqueue begins, that recipient's email, sent stamp and best-effort notice finish without the shutdown token. Email preparation, enqueue and sent-stamp failures are collected while the remaining eligible recipients are attempted unless shutdown stops the loop; those genuine failures still fail the run so Hangfire can retry. Successfully stamped reminders stay excluded on retry. Each application’s ID is the reminder’s stable Email delivery ID, so a retry after a failed stamp reuses the persisted outbox row. The in-app notice remains best-effort after the email and stamp succeed, and targets the same resolved live applicant ID as the email. Cancellation that interrupts a read or stops the next recipient propagates with a Warning without an exception and records neither success nor failure.
+- On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by the date-filtered active approvals, so it never waits on the tier write). `MembershipTierExpiryJob` (`Humans.Governance/Jobs/`, `ISectionJobs` cron `5 0 * * *`, UTC) runs Asociado then Colaborador through the internal `IGovernanceManagement.ExpireMembershipTiersAsync`, which **rewrites the member's tier row** — to another still-active tier the human holds, otherwise to `Volunteer` — and returns the downgrades. `MembershipTierService` loads the audit display name before changing each tier, then commits the tier before attempting its independently persisted, best-effort `GovernanceAuditActions.TierDowngraded` audit (entity `Profile`, actor `MembershipTierExpiryJob`, unchanged wording). A later lookup failure leaves that member eligible for retry without losing audits for earlier committed downgrades. The job checks shutdown before each tier; requested cancellation propagates with a Warning without an exception and no success/failure metric, while committed tier writes and their audit entries remain intact.
 - **Membership tier GDPR:** `MembershipTierService` exports the `MembershipTier` slice (tier, granted, term end, granting application; null when no row exists). Art. 17 retains it — the register of members (LO 1/2002 Art. 14; GDPR Art. 17(3)(b)) — and it holds no free text. Account merge: the survivor's tier wins, otherwise the source's recorded tier moves with its granting application and term dates. An explicit Volunteer row remains authoritative. Tier merging runs before application reassignment; the source row is removed and retries preserve the result.
+- `TermExpiryCalculator` owns term-card state and the inclusive 90-day renewal threshold shared with `TermRenewalReminderJob`. The card uses the latest non-null approved expiry for the current tier; expiry today is still active, and an expiry 90 days away is already in the reminder window. The latest application's Submitted status supplies the pending flag independently of expiry.
 - The member-dashboard term card passes `HttpContext.RequestAborted` through its profile, membership, and application reads, so a disconnected browser cancels all of its advisory rendering work.
 - The Board voting grid links row content to the application detail. Applicant profile links retain their own destination, including modified clicks that open another tab without navigating the grid.
 - After an application is submitted, withdrawn, approved, or rejected, `ApplicationDecisionService` evicts every current Board member's voting-badge count because each unvoted count changes. A Board-vote upsert invalidates only that voter's voting badge.
@@ -391,7 +392,7 @@ The Board-voting dashboard controller orders member columns by display name with
 - **Ballot cast or changed:** a history row is appended and audit `AssemblyBallotCast` / `AssemblyBallotChanged` is written naming the voter and the vote but **not** the choice. The audit entity is the **vote**, never the ballot row: an audit entry keeps its actor for good, so naming the ballot id would leave a permanent join from an erased person to their recorded choice. After recording, only the voter’s `AssemblyVoteOpened` notification for this vote is resolved; other voters and open votes are untouched, and a resolve failure is logged without failing the saved ballot.
 - **Stop / Extend / Cancel:** audited with before/after values or the required reason. Cancellation audit entries preserve the complete accepted reason, including a 4000-character reason plus the vote-id prefix. Cancel emails the roster (`GovernanceEmails.AssemblyVoteCancelled`) and computes no result.
 - **Close (any path):** stamps `ClosedAt`, computes and stores the result once, resolves the open-vote notification via `INotificationAutoResolve.ResolveBySourceKeyAsync`, and audits `AssemblyVoteClosed` / `AssemblyVoteStopped` — under the job actor (the `jobName` overload of `IAuditLogService.LogAsync`) when the hourly `governance-assembly-vote-lapse` job did it. Any earlier request that observes the deadline passed closes inline before serving.
-- **Peek:** an `assembly_vote_peeks` row plus audit `AssemblyVotePeeked`, in the same unit of work as the read.
+- **Peek:** an `governance_assembly_vote_peeks` row plus audit `AssemblyVotePeeked`, in the same unit of work as the read.
 - **Ballots list after close:** audit `AssemblyBallotsViewed` on every call.
 - **T-24h reminder:** one email to roster members with no ballot (`GovernanceEmails.AssemblyVoteReminder`), stamped on the roster row (`ReminderSentAt`) so it never repeats for one deadline, and only while the vote still closes at the time the email named. An accepted extension clears the stamps written up to that moment and the roster is reminded again when the new deadline comes into range; a stamp written after it belongs to the new deadline and is kept. Sent by the same hourly job as the lapse sweep (`ISectionJobs`, cron `0 * * * *`).
 - **GDPR export:** `IUserDataContributor` contributes the member's roster rows, standing ballots and history under the export key it declares as `AssemblyVoteDataExport.AssemblyVotes`. A second slice, `AssemblyVoteDataExport.AssemblyVoteActions`, carries the other side of the feature: the votes the person drafted, opened or closed, and the live tallies they peeked at — an officer who runs a vote without being on its roster has no rows in the first slice at all.
@@ -412,30 +413,30 @@ The Board-voting dashboard controller orders member columns by display name with
 - **Consent:** `ILegalDocumentService` — `GovernanceIndexService` renders the statutes on `/Governance`; the pending-consents alert, the consents to-do entry and the consent gauges read `IConsentService`. Consent checks are reviewed alongside (but independently of) tier applications.
 - **Users/Identity:** `IUserService.GetUserInfosAsync` — applicant email and Board-member names, stitched into DTOs; applicant, reviewer and history-author names ride as user ids and render through `Human`.
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — used by `ApplicationReader.GetBoardVotingDashboardAsync` (behind `ApplicationDecisionService`) to enumerate Board member IDs for vote grid headers, by `GovernanceIndexService` for the Governance page's Board list and count, and by `AssemblyVoteRosterBuilder` (behind `AssemblyVoteService`) to put the active Board role holders on the official roster.
-- **Email:** Governance owns its six templates — `GovernanceEmails` (internal) builds each `EmailMessage` from Governance's own `Governance_Email_*` keys in `GovernanceResource`, rendered in the recipient's culture via `CultureScope`; `GovernanceEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists all six at `/Email/EmailPreview`. Email supplies transport only — `IEmailService.SendAsync` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
+- **Email:** Governance owns its templates — `GovernanceEmails` (internal) builds each `EmailMessage` from Governance's own `Governance_Email_*` keys in `GovernanceResource`, rendered in the recipient's culture via `CultureScope`; `GovernanceEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists them at `/Email/EmailPreview`. Email supplies transport only — `IEmailService.SendAsync` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **Assembly votes** additionally use: `IUserService` (names, preferred language, active state and canonical notification address from the same snapshot); `ITeamService` for Volunteers-team membership when `IndicativeAudience = AllMembers`; `IEmailService.SendAsync` with the `GovernanceEmails` messages (`AssemblyVoteOpened`, `AssemblyVoteReminder`, `AssemblyVoteCancelled`); `INotificationEmitter` + `INotificationAutoResolve` with `GovernanceNotificationSources.AssemblyVoteOpened`; `IAuditLogService`; `IGoogleTranslationService` for the draft-only translate-blanks assist; and `IUserDataContributor` / `ErasureDeclaration` for GDPR. **Nothing new on `Humans.Governance.Contracts`** — no other section reads votes, and the roster is derived from Governance's own data.
 
 ## Architecture
 
 The internal `AssemblyVoteDrafts` owns draft read/create/update/delete, blank-only translation filling, validation and option construction. `AssemblyVoteService` forwards the existing authoring methods and reuses the same text bounds and safe-URL policy. Draft-state/revision guards, official-culture rules, ranked-option validation and cancellation remain unchanged. Opening, voting, publication decisions, peeks, closing effects and GDPR retain their existing owners; no public contract or DI registration is added.
 
-The internal `ApplicationReader` owns member application history/detail, filtered admin lists/detail, pending snapshots, Board dashboard/detail and summary counts, including shared history/vote projections. `ApplicationDecisionService` forwards the existing reads and retains voting-badge caching, decisions, tier changes, reminder workflows, GDPR and expiry repair. Ownership checks, filter/paging behavior, applicant fallbacks, vote/history ordering and cancellation are unchanged. No public contract or DI registration is added.
+The internal `ApplicationReader` owns member application history/detail, filtered admin lists/detail, pending snapshots, Board dashboard/detail and summary counts, including shared history/vote projections. Admin application statistics are calculated there from the repository's materialized non-withdrawn applications: total, approval/rejection counts and tier application counts count applications rather than distinct people. The repository returns entities rather than the statistics DTO. `ApplicationDecisionService` forwards the existing reads and retains voting-badge caching, decisions, tier changes, reminder workflows, GDPR and expiry repair. Ownership checks, filter/paging behavior, applicant fallbacks, vote/history ordering and cancellation are unchanged. No public contract or DI registration is added.
 
 **Owning services:** `ApplicationDecisionService`, `MembershipTierService`, `AssemblyVoteService`
-**Owned tables:** `applications`, `application_state_history`, `board_votes`, `assembly_votes`, `assembly_vote_options`, `assembly_vote_roster`, `assembly_ballots`, `assembly_ballot_history`, `assembly_vote_peeks`, `governance_membership_tiers`
+**Owned tables:** `governance_applications`, `governance_application_state_history`, `governance_board_votes`, `governance_assembly_votes`, `governance_assembly_vote_options`, `governance_assembly_vote_roster_entries`, `governance_assembly_ballots`, `governance_assembly_ballot_history`, `governance_assembly_vote_peeks`, `governance_membership_tiers`
 **Public surface:** the cross-section surface — `IGovernanceService`, `ApplicationStatus` and `MembershipTier` — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
 
 ### Public contract
 
-| Public interface | Methods | Notes |
-|---|---:|---|
-| `IGovernanceService` | 8 | Read contract: `GetUserApplicationsAsync`, `GetUserIdsWithPendingApplicationAsync`, `GetSubmittedApplicationForUserAsync`, `GetUnvotedApplicationCountAsync` (admin nav badge, Notifications meter), the two active-tier lookups `SystemTeamSyncJob` uses, and the tier reads `GetMembershipTierAsync` / `GetMembershipTiersAsync`. DTOs only. |
+| Public interface | Notes |
+|---|---|
+| `IGovernanceService` | Read contract: `GetUserApplicationsAsync`, `GetUserIdsWithPendingApplicationAsync`, `GetSubmittedApplicationForUserAsync`, `GetUnvotedApplicationCountAsync` (admin nav badge, Notifications meter), the active-tier lookups `SystemTeamSyncJob` uses, and the tier reads `GetMembershipTierAsync` / `GetMembershipTiersAsync`. DTOs only. |
 
 The internal `AssemblyVoteRosterBuilder` owns the opening-time electorate snapshot: active approved terms from Governance, Board roles from Auth, the indicative Volunteers audience from Teams, and active-account filtering through Users. Official precedence, deduplication, tier attribution, clock reads and cancellation are unchanged. The builder performs no writes; `AssemblyVoteAdministration.OpenAsync` retains both deadline checks, the atomic draft-to-open roster save, and post-save audit and notices. No public contract or DI registration is added.
 
 The internal `AssemblyVoteResultReader` owns roster/ballot snapshot assembly, official and indicative tally projections, disclosed-ballot rows, published peek rows and closer-name lookup. It reuses the repository, Users contract and clock without a DI registration. The facade retains embargo/disclosure decisions, peek audits, close/repair ordering, result serialization and storage; counting algorithms remain in `AssemblyVoteCounting`. Read order, attribution, timestamps and cancellation are unchanged, and no ballot-derived contract entry point is added.
 
-The internal `AssemblyVoteEffects` owns roster delivery, merged-recipient grouping, stable delivery IDs, deadline-conditional stamps, retry/reminder delivery audits and the shared post-transition error boundary. Opening inbox alerts resolve stored roster IDs to live recipients and deduplicate aliases without changing the frozen electorate or requiring an email address; failed identity lookups retain stored IDs. `AssemblyVoteService` retains result publication and sweep ordering; internal owners handle participation, administration and settlement. Each delivery keeps its repository re-reads and existing failure/cancellation policy.
+The internal `AssemblyVoteEffects` owns roster delivery, merged-recipient grouping, stable delivery IDs, deadline-conditional stamps, retry/reminder delivery audits and the shared post-transition error boundary. Opening inbox alerts resolve stored roster IDs to live recipients and deduplicate aliases without changing the frozen electorate or requiring an email address; failed identity lookups retain stored IDs. `AssemblyVoteService` retains result publication and sweep ordering; internal owners handle participation, administration and settlement. Recipient preparation retains cancellation and eligibility re-reads. Started emails and their deadline-conditional markers finish independently of shutdown. Interrupted batches audit completed deliveries, and the sweep preserves earlier delivery failures across later faults or shutdown.
 
 The internal `ApplicationDecisionNotices` owns approval/rejection recipient lookup, culture selection, email and in-app delivery. Decision eligibility, persistence, tier changes, team synchronization and audits remain in `ApplicationDecisionService`, in their existing order. Notice delivery carries the live recipient ID from the same lookup as the saved language; merged aliases cannot strand new inbox rows on archived accounts. A resolved identity and culture remain available to the inbox attempt if email preparation or delivery fails.
 
@@ -454,7 +455,7 @@ The internal `ApplicationDecisionNotices` owns approval/rejection recipient look
 ### Touch-and-clean guidance
 
 - Nothing outside this section reads the governance-owned tables. `OnboardingService`, `SystemTeamSyncJob` and `NotificationMeterProvider` all go through `IGovernanceService`.
-- The four board-voting methods have no delegating wrapper; callers reach them directly. Three of them — `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync`, `CastBoardVoteAsync` — are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the one cross-section member, and it sits on `IGovernanceService` (this section's own `ISectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` and `NoteTooLong` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
+- The board-voting methods have no delegating wrapper; callers reach them directly. `GetBoardVotingDashboardAsync`, `GetBoardVotingDetailAsync` and `CastBoardVoteAsync` are internal, consumed only by the section's own `GovernanceBoardVotingController` at `/Governance/BoardVoting`. `GetUnvotedApplicationCountAsync` is the cross-section member, and it sits on `IGovernanceService` (this section's own `ISectionAdminNav`, plus Notifications' `NotificationMeterProvider`). `CastBoardVoteAsync` returns `ApplicationDecisionResult` (not `OnboardingResult`); error keys `NotFound` and `NotSubmitted` are still returned by the service. The controller switch handles `NotFound` and `NoteTooLong` explicitly and maps all other error keys (including `NotSubmitted`) to the same "not votable" message via the default arm.
 
 ## Issue queue
 
@@ -477,3 +478,7 @@ Internal `AssemblyVoteSettlement` owns deadline closure, interrupted-close recov
 Internal `AssemblyVoteAdministration` owns open, stop, extend and cancel transitions. It reuses the existing roster builder, settlement path and transition effects. Both opening deadline checks, frozen roster persistence, settle-before-admin-action ordering, conditional state/revision writes, cancellation reason bounds and post-transition audit/notification/reminder effects are unchanged. The façade keeps its existing entry points; ballot eligibility, embargo/disclosure and lapse/reminder sweep remain separate. No public contract or DI registration is added.
 
 Internal `AssemblyVoteMemberWorkflow` owns member vote lists/details and ballot submission, including ballot normalization, revision audit and notification resolution. The results page reuses its effective-roster selection and own-ballot detail projection. Frozen-roster entitlement, merged-account ballot precedence, draft hiding, settlement before reads/writes, conditional ballot persistence and choice-free audit descriptions are unchanged. Tally computation and embargo/disclosure decisions remain with their existing owners; no contract or DI registration is added.
+
+Tier-application form labels and feedback live in `GovernanceResource` as `Governance_Application_*` in en, es, de, it, fr, ca and nl. `ApplicationStatus_*` and common profile labels remain in `SharedResource` for their cross-section consumers.
+
+Governance contributes only its own Governance guide and glossary through `ISectionHelp`. The Shell owns the Admin and Board frame help, embedded in `Humans.Web` and contributed by its existing `ShellChrome` provider.

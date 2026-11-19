@@ -50,7 +50,7 @@ internal sealed class CampContactService(
         }
         catch (Exception ex)
         {
-            cache.InvalidateCampContactRateLimit(senderUserId, campId);
+            cache.Remove(rateLimitKey);
             logger.LogError(ex, "Failed to send facilitated message to camp {CampId}", campId);
             throw;
         }

@@ -18,7 +18,7 @@
   src/Sections/Humans.Users/Services/DuplicateAccountService.cs
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Sections/Humans.Users/Services/AccountProvisioningService.cs
-  src/Sections/Humans.GoogleIntegration/Services/SyncSettingsService.cs
+  src/Sections/Humans.Google/Services/SyncSettingsService.cs
 -->
 <!-- freshness:flag-on-change
   Global control panel — humans list, audit log, notifications, sync settings, duplicate/merge resolution, and admin diagnostics. Review when admin views, role-management surface, or sync-mode plumbing changes.
@@ -87,7 +87,7 @@ The **Google sync** tab of `/Settings#google-sync` (Admin only) sets each Google
 
 The sync outbox (`/Google/SyncOutbox`) shows pending and failed events. From there you can **Requeue** a single failed event or **Requeue All Failed** to retry all permanently-failed events in bulk; both actions are audited. On a human's admin detail page (`/Users/Admin/{id}`), **Re-run Google Sync** enqueues sync events for all of that human's teams (Admin only, also audited).
 
-See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
+See [Google](Google.md) for the full Google surface.
 
 ### Run technical operations
 
@@ -114,5 +114,5 @@ Board can open these pages and read them; every action on them is **Admin only**
 
 - [Profiles](Profiles.md) — the humans list and per-human detail page are the Profiles admin surface.
 - [Teams](Teams.md) — Teams Admin and Coordinator duties live here; system team sync is triggered from the Google overview page (`/Google`).
-- [Google Integration](GoogleIntegration.md) — sync settings, workspace accounts, and sync audit views.
+- [Google](Google.md) — sync settings, workspace accounts, and sync audit views.
 - [Governance](Governance.md) — role assignments (Admin, Board, UsersAdmin, Coordinator roles) and tier application vote finalization.

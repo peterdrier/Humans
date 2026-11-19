@@ -166,7 +166,7 @@ internal sealed class ShiftsController(
         var outcome = await signupService.ToggleDayAsync(user.Id, shiftId, es.Id, privileged, ct);
 
         var result = outcome.Result;
-        var row = await browsePageBuilder.BuildRowAsync(shiftId, outcome.SignupsAfter, outcome.CanViewRestricted, ct);
+        var row = await browsePageBuilder.BuildRowAsync(shiftId, outcome.SignupsAfter.Select(s => (s.ShiftId, s.Status)), outcome.CanViewRestricted, ct);
         // The shift closed or vanished between write and re-read: resync the page rather than swap a missing row.
         if (row is null)
             return RedirectHeader(Url.Action(nameof(Index)));
@@ -311,15 +311,11 @@ internal sealed class ShiftsController(
                 .Where(teamsById.ContainsKey)
                 .ToDictionary(id => id, id => teamsById[id].Name);
         }
-        var buckets = ShiftSignupBucketer.Build(signups, es, mineTeamNames, now, onMissingSignupData: signup =>
-            logger.LogWarning(
-                "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
-                signup.Id,
-                user.Id));
+        var buckets = ShiftSignupBucketer.Build(signups, es, mineTeamNames, now);
 
         foreach (var item in buckets.Upcoming.Concat(buckets.Pending))
             item.BailLocked = item.Signup.Shift.IsEarlyEntry &&
-                              bailLockedTeamIds.Contains(item.Signup.Shift.Rota.TeamId);
+                              bailLockedTeamIds.Contains(item.Signup.Rota.TeamId);
 
         model.Upcoming = buckets.Upcoming;
         model.Pending = buckets.Pending;

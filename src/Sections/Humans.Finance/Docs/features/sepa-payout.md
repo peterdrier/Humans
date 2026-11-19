@@ -267,6 +267,12 @@ The section-internal `SepaBankBooking` owns the shared manual booking and sweep 
 `Service` keeps the existing entry points and delegates to it. The sweep’s
 consecutive failure counts share a singleton `TrackedCache` across scopes.
 
+Selection reads retain the job token, with shutdown checkpoints before reconciliation groups and
+booking candidates. A started reconciliation finishes its chunks, verification, transfer stamps
+and audits with `CancellationToken.None`. Booking commands retain their existing detached write
+boundary. Dependency cancellation inside either started unit is reported as a fault; shutdown
+stops the next unit.
+
 `SepaBankBookingJob` (Hangfire id `sepa-bank-booking`, `17 */2 * * *` — every 2 hours) lists
 unbooked transfers, reads the bank feed once over a window covering every candidate file, matches
 lines **whose text names a creditor account** to transfers with the same rules as the button, and
@@ -431,7 +437,7 @@ Server-side, all-or-nothing:
 
 ## IBAN handling
 
-The unmasked IBAN is stored only as sent: the generated XML and `sepa_payout_transfers.Iban`.
+The unmasked IBAN is stored only as sent: the generated XML and `finance_sepa_payout_transfers.Iban`.
 Logs, audit descriptions, the SEPA page and the cross-section `CreditorAccountRow` carry
 `IbanFormatter.Mask(...)` output only; builder error messages mask the IBAN they name. An admin
 screen (`/Finance/Creditors/{accountNum}`) and the member's own view may show it in full.

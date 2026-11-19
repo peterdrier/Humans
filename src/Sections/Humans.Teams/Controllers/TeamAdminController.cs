@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Teams.Services;
@@ -11,6 +11,7 @@ using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using NodaTime.Text;
+using Humans.Settings.Contracts;
 
 namespace Humans.Teams.Controllers;
 
@@ -24,7 +25,8 @@ internal sealed class TeamAdminController(
     IAuthorizationService authorizationService,
     ILogger<TeamAdminController> logger,
     IStringLocalizer<TeamsResource> localizer,
-    ITicketService tickets)
+    ITicketService tickets,
+    ISettingsService settings)
     : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
     private readonly TeamMembersPageBuilder membersPageBuilder = new(teamService, teamResourceService, userService);
@@ -81,13 +83,7 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        if (string.IsNullOrWhiteSpace(model.Notes))
-        {
-            SetError(localizer["Teams_TeamAdmin_ProvideRejectionReason"].Value);
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
-        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes!);
+        var result = await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
         if (result.Succeeded)
         {
             SetSuccess(localizer["Teams_TeamAdmin_RequestRejected"].Value);
@@ -95,8 +91,8 @@ internal sealed class TeamAdminController(
         else
         {
             logger.LogWarning("Failed to reject join request {RequestId} for team {TeamId} by user {UserId}: {Reason}",
-                requestId, team.Id, user.Id, result.Refusal);
-            SetError(result.Refusal!);
+                requestId, team.Id, user.Id, result.ErrorKey ?? result.Refusal);
+            SetError(result.ErrorKey is { } errorKey ? localizer[errorKey].Value : result.Refusal!);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -215,14 +211,8 @@ internal sealed class TeamAdminController(
             return RedirectToAction(nameof(Members), new { slug });
         }
 
-        if (team.Members.All(m => m.UserId != userId))
-        {
-            SetError("That human is not a member of this team.");
-            return RedirectToAction(nameof(Members), new { slug });
-        }
-
         var result = await emailProvisioningService.ProvisionNobodiesEmailAsync(
-            userId, emailPrefix, user.Id);
+            userId, emailPrefix, user.Id, team.Id);
 
         if (!result.Success)
         {
@@ -396,14 +386,15 @@ internal sealed class TeamAdminController(
             return BadRequest(ModelState);
         }
 
-        var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
+        bool? managementChange = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded
+            ? model.IsManagement : null;
         var priorities = ParseRolePriorities(model.Priorities);
         var result = priorities is null
             ? new TeamRoleDefinitionMutationResult(Refusal: "Each slot priority must be a defined priority value")
             : await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
-                model.IsPublic, canToggleManagement, model.EstimatedHours);
+                priorities, model.SortOrder, managementChange, model.Period, user.Id,
+                model.IsPublic, model.EstimatedHours);
 
         if (result.Refusal is { } refusal)
         {
@@ -633,7 +624,7 @@ internal sealed class TeamAdminController(
         }
 
         var result = await _teamService.AddEarlyEntryGrantAsync(
-            team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, ct);
+            team.Id, input.UserId, parsed.Value, input.ProjectName, user.Id, input.EventSettingsId.GetValueOrDefault(), ct);
         if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Early entry grant refused for team {TeamId} by user {UserId}: {Reason}", team.Id, user.Id, refusal);
@@ -671,7 +662,7 @@ internal sealed class TeamAdminController(
         }
 
         var result = await _teamService.EditEarlyEntryGrantAsync(
-            team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, ct);
+            team.Id, input.GrantId, parsed.Value, input.ProjectName, user.Id, input.EventSettingsId.GetValueOrDefault(), ct);
         if (result.Refusal is { } refusal)
         {
             logger.LogWarning("Early entry update refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", input.GrantId, team.Id, user.Id, refusal);
@@ -698,8 +689,14 @@ internal sealed class TeamAdminController(
             return NotFound();
         }
 
-        await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
-        SetSuccess("Early entry revoked.");
+        var result = await _teamService.RemoveEarlyEntryGrantAsync(team.Id, grantId, user.Id, ct);
+        if (result.Refusal is { } refusal)
+        {
+            logger.LogWarning("Early entry removal refused for grant {GrantId} in team {TeamId} by user {UserId}: {Reason}", grantId, team.Id, user.Id, refusal);
+            SetError(refusal);
+        }
+        else
+            SetSuccess("Early entry revoked.");
 
         return RedirectToAction(nameof(EarlyEntry), new { slug });
     }
@@ -730,12 +727,15 @@ internal sealed class TeamAdminController(
 
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
     {
+        var events = await settings.GetAllEventSettingsAsync(ct);
+        var activeEvent = await settings.GetActiveEventSettingsAsync(ct);
         var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
         var rows = grants
             .Select(g => new TeamEarlyEntryRowViewModel
             {
                 GrantId = g.Id,
                 UserId = g.UserId,
+                EventSettingsId = g.EventSettingsId,
                 EntryDate = g.EntryDate,
                 ProjectName = g.ProjectName,
             })
@@ -748,6 +748,9 @@ internal sealed class TeamAdminController(
             Slug = team.Slug,
             TeamName = team.Name,
             Grants = rows,
+            Events = events.Where(e => e.Status != EventSettingsStatus.Deleted)
+                .OrderByDescending(e => e.GateOpeningDate).ThenBy(e => e.EventName, StringComparer.OrdinalIgnoreCase).ToList(),
+            ActiveEventSettingsId = activeEvent?.Id,
         };
     }
 

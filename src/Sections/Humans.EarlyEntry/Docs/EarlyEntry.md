@@ -102,7 +102,7 @@ Inbound, all through `Contracts/`:
 
 - **Camps** — `CachingCampService` implements `IEarlyEntryProvider`.
 - **Shifts** — `VolunteerTrackingExportService` implements `IEarlyEntryProvider`.
-- **Teams** — `TeamService` implements `IEarlyEntryProvider`.
+- **Teams** — `TeamService` implements `IEarlyEntryProvider`; only grants explicitly bound to the active Settings event contribute. Unassigned legacy grants require operator review in Teams before contributing.
 - **Gate** — `GateService` calls `IEarlyEntryService.GetForUserAsync` for the scanned attendee.
 - **Scanner** — `ScannerController` calls `GetForUserAsync` for the scanned attendee.
 - **Tickets** — `TicketTransferController`, `MyTicketStubsViewComponent` and
@@ -132,4 +132,4 @@ contracts live in `Contracts/`, the house shape (design-rules.md, *Layers and pr
 - **Cross-section calls** — `IUserService`.
 - **Architecture test** — `tests/Humans.EarlyEntry.Tests/EarlyEntryArchitectureTests.cs`; the
   rendered page is pinned by `tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs`
-  (local-only, never runs in CI).
+  (a PR check).

@@ -3,7 +3,7 @@
   src/Sections/Humans.Users/Controllers/UsersAdminAccountMergesController.cs
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
-  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Google/Controllers/GoogleController.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Humans.Web/Authorization/AuthorizationPolicyExtensions.cs
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
@@ -414,7 +414,7 @@ Not on the `/Admin` dashboard itself (that renders only the tile strip and secti
 
 | Action | Link | Notes |
 |--------|------|-------|
-| Event settings | `/Settings#event` | The app-wide event values in `settings_event`, POSTed to `/Settings/Admin` (no GET) — every section reads the calendar from here now; a blank id mints a new cycle (nobodies-collective/Humans#1631). `/Shifts/Settings` is knobs-only (`IsShiftBrowsingOpen`, caps, reminder lead time) |
+| Event settings | `/Settings#event` | The app-wide event values in `settings_events`, POSTed to `/Settings/Admin` (no GET) — every section reads the calendar from here now; a blank id mints a new cycle (nobodies-collective/Humans#1631). `/Shifts/Settings` is knobs-only (`IsShiftBrowsingOpen`, caps, reminder lead time) |
 
 Both live at `/Settings/Admin/*`, not `/Admin/Settings` — top-level `/Admin/*` is frozen and new admin pages belong to their section (`memory/architecture/no-admin-url-section.md`).
 
@@ -430,7 +430,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 | `barrios` | Camps | `CampsPolicies.Manage` | Settings portion of `/Camps/Admin` (page stays for the rest of camp/season admin) |
 | `shifts` | Shifts | `AdminOnly` | `/Shifts/Settings` (no nav item existed; inline links now point at the tab) |
 | `agent` | Agent | `AdminOnly` | `/Agent/Admin/Settings` (nav item removed) |
-| `google-sync` | GoogleIntegration | `AdminOnly` | `/Google/SyncSettings` (nav item removed) |
+| `google-sync` | Google | `AdminOnly` | `/Google/SyncSettings` (nav item removed) |
 | `email` | Email | `AdminOnly` | Pause/resume moved from `EmailOutbox`'s own controls |
 | `event` | Settings | `AdminOnly` | `/Settings/Admin` GET (nav item retained, repointed at `/Settings#event`) |
 

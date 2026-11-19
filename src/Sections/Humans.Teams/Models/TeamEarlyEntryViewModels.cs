@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
+using Humans.Settings.Contracts;
 
 namespace Humans.Teams.Models;
 
@@ -10,12 +11,15 @@ internal sealed class TeamEarlyEntryPageViewModel
     public string TeamName { get; init; } = string.Empty;
 
     public IReadOnlyList<TeamEarlyEntryRowViewModel> Grants { get; init; } = [];
+    public IReadOnlyList<EventSettingsInfo> Events { get; init; } = [];
+    public Guid? ActiveEventSettingsId { get; init; }
 }
 
 internal sealed class TeamEarlyEntryRowViewModel
 {
     public Guid GrantId { get; init; }
     public Guid UserId { get; init; }
+    public Guid? EventSettingsId { get; init; }
     public LocalDate EntryDate { get; init; }               // display only, not form-bound
     public string ProjectName { get; init; } = string.Empty;
 }
@@ -23,6 +27,7 @@ internal sealed class TeamEarlyEntryRowViewModel
 /// <summary>EntryDate is a yyyy-MM-dd string parsed in the controller, for its explicit validation.</summary>
 internal sealed class AddTeamEarlyEntryInput
 {
+    [Required] public Guid? EventSettingsId { get; set; }
     public Guid UserId { get; set; }
 
     [Required, RegularExpression(@"^\d{4}-\d{2}-\d{2}$")]
@@ -34,6 +39,7 @@ internal sealed class AddTeamEarlyEntryInput
 
 internal sealed class EditTeamEarlyEntryInput
 {
+    [Required] public Guid? EventSettingsId { get; set; }
     [Required] public Guid GrantId { get; set; }
 
     [Required, RegularExpression(@"^\d{4}-\d{2}-\d{2}$")]

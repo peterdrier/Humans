@@ -84,10 +84,42 @@ public class OrderAuthorizationHandlerTests
     }
 
     [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CampAccess_RequiresLeadershipOfTheOrdersOwnSeason(bool leadsTargetSeason)
+    {
+        var userId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
+        var order = MakeOrder(team: false);
+        var target = MakeCampInfo(campId, order.CampSeasonId!.Value, leadsTargetSeason ? userId : Guid.NewGuid())
+            .Seasons[0] with
+        { EventSettingsId = Guid.NewGuid() };
+        var other = MakeCampInfo(campId, Guid.NewGuid(), userId).Seasons[0] with { EventSettingsId = Guid.NewGuid() };
+        var camp = MakeCampInfo(campId, target.Id, userId) with { Seasons = [target, other] };
+        _campService.GetCampSeasonByIdAsync(target.Id, Arg.Any<CancellationToken>()).Returns(target);
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([camp]);
+        var resources = new (object Resource, OrderOperationRequirement[] Operations)[]
+        {
+            (order, [OrderOperationRequirement.View, OrderOperationRequirement.Pay, OrderOperationRequirement.EditCounterparty]),
+            (new OrderCreateContext(target.Id), [OrderOperationRequirement.Create]),
+            (new OrderLineContext(order, FutureDeadline), [OrderOperationRequirement.AddLine, OrderOperationRequirement.RemoveLine])
+        };
+
+        foreach (var (resource, operations) in resources)
+        {
+            var context = new AuthorizationHandlerContext(operations, Principal(role: null, userId), resource);
+
+            await _handler.HandleAsync(context);
+
+            Assert.Equal(leadsTargetSeason, context.HasSucceeded);
+            if (!leadsTargetSeason) Assert.Equal(operations.Length, context.PendingRequirements.Count());
+        }
+    }
+
+    [HumansTheory]
     [InlineData("Date")]
     [InlineData("User")]
     [InlineData("Season")]
-    [InlineData("Camp")]
     [InlineData("Team")]
     public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
     {
@@ -120,11 +152,6 @@ public class OrderAuthorizationHandlerTests
         {
             Read("Season", call.Arg<CancellationToken>());
             return camp.Seasons[0];
-        });
-        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            Read("Camp", call.Arg<CancellationToken>());
-            return new List<CampInfo> { camp };
         });
         _teamService.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -235,25 +262,25 @@ public class OrderAuthorizationHandlerTests
     [InlineData(RoleNames.Admin)]
     [InlineData(FinanceRoles.FinanceAdmin)]
     public Task Finance_admin_and_admin_can_refund_on_camp_order(string role) =>
-        AssertOutcomeAsync(role, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: true);
+        AssertOutcomeAsync(role, MakeOrder(team: false), OrderOperationRequirement.RecordFinancePayment, expectAllowed: true);
 
     [HumansFact]
     public Task StoreAdmin_cannot_refund_on_camp_order() =>
-        AssertOutcomeAsync(StoreRoles.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertOutcomeAsync(StoreRoles.StoreAdmin, MakeOrder(team: false), OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansFact]
     public Task TeamsAdmin_cannot_refund_on_camp_order() =>
-        AssertOutcomeAsync(TeamsRoles.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertOutcomeAsync(TeamsRoles.TeamsAdmin, MakeOrder(team: false), OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansFact]
     public Task CampLead_cannot_refund_own_camp_order() =>
-        AssertLeadOperationAsync(OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertLeadOperationAsync(OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansTheory]
     [InlineData(RoleNames.Admin)]
     [InlineData(FinanceRoles.FinanceAdmin)]
     public Task Refund_is_denied_on_team_order_even_for_finance_admin_and_admin(string role) =>
-        AssertOutcomeAsync(role, MakeOrder(team: true), OrderOperationRequirement.Refund, expectAllowed: false);
+        AssertOutcomeAsync(role, MakeOrder(team: true), OrderOperationRequirement.RecordFinancePayment, expectAllowed: false);
 
     [HumansFact]
     public Task Admin_can_delete_a_payment_on_camp_order() =>

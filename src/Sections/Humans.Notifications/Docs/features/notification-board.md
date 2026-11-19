@@ -177,7 +177,7 @@ Every source today, and what it becomes. Audience is who the entry is published 
 | ReConsentRequired, LegalDocumentPublished, consents things-to-do | Governance | one per required consent outstanding | `User` | consent signed |
 | Consent-review meter, onboarding-pending meter | Users | one per profile awaiting review | `Role:ConsentCoordinator`, `Role:Board`, `Role:ShiftsAdmin` | reviewed |
 | Pending-deletions meter | Users | one per pending deletion | `Role:Admin` | deletion executed or cancelled |
-| SyncError, failed-sync meter | GoogleIntegration | one per failed sync event | `Role:Admin` | retried or discarded |
+| SyncError, failed-sync meter | Google | one per failed sync event | `Role:Admin` | retried or discarded |
 | Ticket-sync meter | Tickets | one while in error state | `Role:Admin` | sync recovers |
 | Camp-lead meter | Camps | one per pending requester on a season you lead | `CampLeads:<seasonId>` | request decided or season closed |
 | Shift-info things-to-do | Shifts | one while a signed-up volunteer's shift profile is empty | `User` | profile filled |
@@ -217,7 +217,7 @@ Every `NotificationSourceDefinition` declared at the time of writing appears in 
 - `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider`, `NotificationRepository`, `CleanupNotificationsJob`, the `IUserMerge` and `IUserDataContributor` participation (the board holds nothing to export; a merged or deleted user's entries go with the owning section's state and the next reconcile).
 - Controller routes Resolve, Dismiss, MarkRead, MarkAllRead, BulkResolve, BulkDismiss, ClickThrough, and the inbox views behind them.
 - `NotificationMeterProvider.CountsCacheKey`.
-- The 35 emitting call sites across Teams, Shifts, Issues, Camps, Auth, Governance, Feedback, Onboarding, Users, Campaigns, GoogleIntegration, Consent, Rideshare; the three auto-resolve call sites.
+- The 35 emitting call sites across Teams, Shifts, Issues, Camps, Auth, Governance, Feedback, Onboarding, Users, Campaigns, Google, Consent, Rideshare; the three auto-resolve call sites.
 - `ISectionThingsToDo` and its three implementations, `ThingsToDoViewComponent` in Base.
 - Users' `CommunicationPreference.InboxEnabled`: property override first, column drop in the same drop PR as the tables, per [`no-column-drops-for-decoupling`](../../../../../memory/architecture/no-column-drops-for-decoupling.md).
 

@@ -6,6 +6,7 @@ using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Options;
+using NodaTime;
 
 namespace Humans.Calendar.Services;
 
@@ -95,7 +96,12 @@ internal sealed class ICalFeedService(
             {
                 ev.DtStart = new CalDateTime(item.Start.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
                 ev.DtEnd = new CalDateTime(item.End.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
-                ev.RecurrenceRule = new RecurrencePattern(rule);
+                var pattern = CalendarRecurrenceRules.ParseRecurrenceRule(rule);
+                // TZID DTSTART requires UTC UNTIL; retain the rule's local cutoff, including legacy DATE midnight.
+                if (pattern.Until is { IsUtc: false } until)
+                    pattern.Until = new CalDateTime(LocalDateTime.FromDateTime(until.Value)
+                        .InZoneLeniently(zone).ToInstant().ToDateTimeUtc());
+                ev.RecurrenceRule = pattern;
                 if (zonesAdded.Add(zone.Id)) calendar.AddTimeZone(zone.Id);
             }
             // Google Calendar draws its Join button from this property; other clients ignore it.

@@ -24,6 +24,9 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("blank-group-id")]
     [Xunit.InlineData("missing-group-name")]
     [Xunit.InlineData("blank-group-name")]
+    [Xunit.InlineData("missing-subscriber-cursor")]
+    [Xunit.InlineData("mistyped-subscriber-cursor")]
+    [Xunit.InlineData("mistyped-group-page")]
     public async Task RefreshAsync_RejectsInvalidPaginationAndPreservesSnapshot(string shape)
     {
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
@@ -36,6 +39,10 @@ public class MailerLiteClientRetryTests
 
         if (string.Equals(shape, "null-subscribers", StringComparison.Ordinal))
             handler.EnqueueJson(HttpStatusCode.OK, "null");
+        else if (string.Equals(shape, "missing-subscriber-cursor", StringComparison.Ordinal))
+            handler.EnqueueJson(HttpStatusCode.OK, subscriberPage.Replace("\"next_cursor\":null", "", StringComparison.Ordinal));
+        else if (string.Equals(shape, "mistyped-subscriber-cursor", StringComparison.Ordinal))
+            handler.EnqueueJson(HttpStatusCode.OK, subscriberPage.Replace("\"next_cursor\":null", "\"next_cursor\":false", StringComparison.Ordinal));
         else if (string.Equals(shape, "null-subscriber-item", StringComparison.Ordinal))
             handler.EnqueueJson(HttpStatusCode.OK, """{"data":[null],"meta":{"next_cursor":null}}""");
         else if (string.Equals(shape, "repeated-cursor", StringComparison.Ordinal))
@@ -57,6 +64,7 @@ public class MailerLiteClientRetryTests
             "missing-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\",", "", StringComparison.Ordinal),
             "blank-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\"", "\"name\":\"  \"", StringComparison.Ordinal),
             "wrong-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":2", StringComparison.Ordinal),
+            "mistyped-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":\"bad\"", StringComparison.Ordinal),
             "invalid-last-page" => HumansGroupPage.Replace("\"last_page\":1", "\"last_page\":0", StringComparison.Ordinal),
             _ => HumansGroupPage,
         };
@@ -94,8 +102,9 @@ public class MailerLiteClientRetryTests
 
         var act = async () => await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.Text.Json.JsonException>()
-            .WithMessage("subscriber.status missing");
+        var failure = (await act.Should().ThrowAsync<HttpRequestException>()).Which;
+        failure.InnerException.Should().BeOfType<System.Text.Json.JsonException>().Which.Message
+            .Should().Be("subscriber.status missing");
         (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
         client.LastFetchedAt.Should().Be(fetchedAt);
         var emails = new List<string>();

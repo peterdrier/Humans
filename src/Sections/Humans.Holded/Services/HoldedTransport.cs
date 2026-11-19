@@ -49,6 +49,7 @@ internal sealed class HoldedTransport
         string pathAndQuery, int pageSafetyCap, CancellationToken ct,
         [CallerMemberName] string caller = "")
     {
+        var endpoint = pathAndQuery.Split('?', 2)[0];
         var items = new List<JsonNode>();
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
         string? cursor = null;
@@ -69,16 +70,16 @@ internal sealed class HoldedTransport
                 // would read as an empty page, and a false empty deletes every cached row in the window.
                 if (Prop(root, "items") is not JsonArray itemsArr)
                 {
-                    var preview = root?.ToJsonString() ?? "null";
+                    var preview = MaskDiagnosticBody(root?.ToJsonString() ?? "null");
                     throw new HoldedTransientException(
-                        $"Holded returned a 200 without a valid items array for {pathAndQuery.Split('?', 2)[0]} " +
+                        $"Holded returned a 200 without a valid items array for {endpoint} " +
                         $"(body starts: {preview[..Math.Min(preview.Length, 120)]}).");
                 }
                 foreach (var n in itemsArr)
                 {
                     if (n is null)
                         throw new HoldedPermanentException(
-                            $"Holded page for {pathAndQuery.Split('?', 2)[0]} contains a null item.");
+                            $"Holded page for {endpoint} contains a null item.");
                     items.Add(n);
                 }
 
@@ -89,10 +90,10 @@ internal sealed class HoldedTransport
                 if (!hasMore) return items;
                 if (string.IsNullOrEmpty(cursor))
                     throw new HoldedTransientException(
-                        $"Holded page for {pathAndQuery.Split('?', 2)[0]} claims has_more but carries no cursor.");
+                        $"Holded page for {endpoint} claims has_more but carries no cursor.");
                 if (!seenCursors.Add(cursor))
                     throw new HoldedTransientException(
-                        $"Holded page for {pathAndQuery.Split('?', 2)[0]} carries a repeated cursor.");
+                        $"Holded page for {endpoint} carries a repeated cursor.");
             }
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -102,10 +103,9 @@ internal sealed class HoldedTransport
             // would fail instead of warning and the SEPA sweep would abort. Normalized here, where every paged
             // endpoint shares it.
             throw new HoldedPermanentException(
-                $"Holded page for {pathAndQuery.Split('?', 2)[0]} could not be read.", ex);
+                $"Holded page for {endpoint} could not be read.", ex);
         }
 
-        var endpoint = pathAndQuery.Split('?', 2)[0];
         throw new HoldedTransientException(
             $"Holded cursor pagination for {endpoint} hit the {pageSafetyCap}-page safety cap.");
     }
@@ -154,7 +154,52 @@ internal sealed class HoldedTransport
             // This message reaches logs, LastError, the audit trail and the finance UI, and a 4xx on a contact
             // create can echo the IBAN back: mask it here. ResponseBody keeps the raw body.
             throw new HoldedPermanentException((int)resp.StatusCode, body,
-                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {IbanFormatter.MaskAllIn(body)}");
+                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {MaskDiagnosticBody(body)}");
+        }
+    }
+
+    private static string MaskDiagnosticBody(string body)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            using var output = new MemoryStream();
+            // Relaxed escaping keeps Spanish vendor text readable; the message is HTML-encoded wherever it renders.
+            using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions
+            { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+                WriteMasked(document.RootElement, writer);
+            return System.Text.Encoding.UTF8.GetString(output.ToArray());
+        }
+        catch (JsonException)
+        {
+            return IbanFormatter.MaskAllIn(body);
+        }
+
+        static void WriteMasked(JsonElement element, Utf8JsonWriter writer)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    writer.WriteStartObject();
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        writer.WritePropertyName(IbanFormatter.MaskAllIn(property.Name));
+                        WriteMasked(property.Value, writer);
+                    }
+                    writer.WriteEndObject();
+                    break;
+                case JsonValueKind.Array:
+                    writer.WriteStartArray();
+                    foreach (var item in element.EnumerateArray()) WriteMasked(item, writer);
+                    writer.WriteEndArray();
+                    break;
+                case JsonValueKind.String:
+                    writer.WriteStringValue(IbanFormatter.MaskAllIn(element.GetString()));
+                    break;
+                default:
+                    element.WriteTo(writer);
+                    break;
+            }
         }
     }
 

@@ -23,7 +23,7 @@ references `Humans.Tickets` directly to name the port).
 `TicketRepository`, `TicketTransferRepository` and `EventParticipationRepository` inject
 `IDbContextFactory<TicketsDbContext>` directly. Owns `TicketOrders`,
 `TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`,
-`EventParticipations` (`tickets_event_participations`, Users decomposition commit 13).
+`EventParticipations` (`ticket_event_participations`, Users decomposition commit 13).
 
 The section's public surface is small: `ITicketService` (no `SurfaceBudget` pinned; adds
 `GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketSync` (2), `ITicketDiscountCodes` (1),
@@ -225,7 +225,7 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 | Table | R/W |
 |-------|-----|
-| EventParticipations (`tickets_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a historical cleared row) |
+| EventParticipations (`ticket_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a historical cleared row) |
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and

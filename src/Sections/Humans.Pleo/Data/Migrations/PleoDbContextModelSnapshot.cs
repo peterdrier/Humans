@@ -78,7 +78,7 @@ namespace Humans.Pleo.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("pleo_balance", (string)null);
+                    b.ToTable("pleo_balances", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Pleo.Domain.PleoCategory", b =>

@@ -8,15 +8,15 @@
         : "";
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="mb-0"><i class="fa-solid fa-stamp me-2"></i>@Localizer["Preapprovals_Title"]</h1>
+<page-header>
+    <page-header-title><i class="fa-solid fa-stamp me-2"></i>@Localizer["Preapprovals_Title"]</page-header-title>
     @if (Model.CanManage)
     {
         <a asp-controller="PreapprovalsAdmin" asp-action="Index" class="btn btn-outline-secondary">
             <i class="fa-solid fa-gear me-1"></i>@Localizer["Preapprovals_Manage"]
         </a>
     }
-</div>
+</page-header>
 
 <p class="text-muted">@Localizer["Preapprovals_Intro"]</p>
 

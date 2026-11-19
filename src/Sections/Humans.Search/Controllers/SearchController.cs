@@ -47,8 +47,8 @@ internal sealed class SearchController(
         catch (Exception ex)
         {
             logger.LogError(ex, "Global search failed for query {Query}", trimmed);
-            // Page shell instead of 500; preserve query so user can refine.
-            return new GlobalSearchViewModel { Query = trimmed, Filter = filter };
+            // Keep the form usable, but do not report an incomplete search as no matches.
+            return new GlobalSearchViewModel { Query = trimmed, Filter = filter, SearchFailed = true };
         }
     }
 

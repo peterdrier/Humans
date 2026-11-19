@@ -4,13 +4,12 @@
     ViewData["Title"] = Model.IsAdminView ? "Agent Conversations" : Localizer["Agent_HistoryTitle"].Value;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">@ViewData["Title"]</h2>
+<page-header title="@(ViewData["Title"] as string)">
     @if (Model.IsAdminView)
     {
         <a href="/Settings#agent" class="btn btn-outline-secondary btn-sm">Settings</a>
     }
-</div>
+</page-header>
 
 @if (Model.IsAdminView)
 {

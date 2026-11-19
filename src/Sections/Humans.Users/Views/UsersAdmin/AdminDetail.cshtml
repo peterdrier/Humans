@@ -104,8 +104,6 @@
             </div>
         }
 
-        <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" />
-
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.AdminDetail" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Admin" />
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["Users_AdminHuman_AuditHistory"].Value" />

@@ -4,7 +4,7 @@
   src/Humans.Base/Users/IUserService.cs
   src/Sections/Humans.Auth/Contracts/IRoleAssignmentService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
-  src/Sections/Humans.GoogleIntegration/Contracts/IGoogleSyncService.cs
+  src/Sections/Humans.Google/Contracts/IGoogleSyncService.cs
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Finance.Contracts/IFinanceWrite.cs
   src/Sections/Humans.Holded/Contracts/IHoldedService.cs
@@ -20,7 +20,7 @@ migrations under `Data/Migrations/`. `WorkgroupRepository`
 (`src/Sections/Humans.Workgroups/Data/WorkgroupRepository.cs`, `internal`) injects
 `IDbContextFactory<WorkgroupsDbContext>` directly, one context per call, `AsNoTracking`
 on reads. Owns its seven tables: `workgroups`, `workgroup_members`, `workgroup_meetings`,
-`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroups_settings`.
+`workgroup_log_entries`, `workgroup_documents`, `workgroup_document_comments`, `workgroup_settings`.
 
 Every cross-section reference (`AppliedByUserId`, `UserId`, `CreatedByUserId`,
 `UpdatedByUserId`, `AuthorUserId`, `RespondedByUserId`, `HiddenByUserId`,

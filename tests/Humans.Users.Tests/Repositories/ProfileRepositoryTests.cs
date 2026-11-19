@@ -6,6 +6,7 @@ using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+using Humans.Users.Domain;
 
 namespace Humans.Users.Tests.Repositories;
 
@@ -340,6 +341,76 @@ public sealed class UserRepositoryProfileTests : IDisposable
 
         var erased = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, Xunit.TestContext.Current.CancellationToken);
         erased.MedicalConditions.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task CopyProfileNamesToUsersAsync_FixesExactlyTheMismatchedRows()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var stale = await SeedUserAsync(UserState.Active);
+        var current = await SeedUserAsync(UserState.Active);
+        current.BurnerName = "Same";
+        current.FirstName = "First";
+        current.LastName = "Last";
+        await SeedUserAsync(); // no profile: nothing to copy
+        var seeded = await SeedUserAsync(); // blank stub profile must not erase the seeded name
+        seeded.BurnerName = "Seeded";
+        _dbContext.Profiles.Add(NewProfile(seeded.Id, "", "", ""));
+        _dbContext.Profiles.Add(NewProfile(stale.Id, "Burner", "First", "Last"));
+        _dbContext.Profiles.Add(NewProfile(current.Id, "Same", "First", "Last"));
+        await _dbContext.SaveChangesAsync(ct);
+        _dbContext.ChangeTracker.Clear();
+
+        (await _repo.GetProfileNameMismatchesAsync(ct)).Should().ContainSingle()
+            .Which.Should().Be(new ProfileNameMismatch(stale.Id, "", "", "", "Burner", "First", "Last"));
+
+        (await _repo.CopyProfileNamesToUsersAsync(ct)).Should().Be(1);
+
+        var fixedRow = await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == stale.Id, ct);
+        (fixedRow.BurnerName, fixedRow.FirstName, fixedRow.LastName).Should().Be(("Burner", "First", "Last"));
+        (await _repo.GetProfileNameMismatchesAsync(ct)).Should().BeEmpty();
+        (await _dbContext.Users.AsNoTracking().SingleAsync(u => u.Id == seeded.Id, ct)).BurnerName.Should().Be("Seeded");
+    }
+
+    [HumansFact]
+    public async Task NewChildRows_CarryTheOwningUserId()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync(ct);
+        _dbContext.ChangeTracker.Clear();
+
+        await _repo.ReplaceLanguagesAsync(profile.Id,
+            [new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, LanguageCode = "es" }], ct);
+        var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, ct);
+        await _repo.UpdateAsync(detached, ct, [new CVEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)]);
+
+        (await _dbContext.ProfileLanguages.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);
+        (await _dbContext.VolunteerHistoryEntries.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);
+    }
+
+    [HumansFact]
+    public async Task FillProfileChildUserIdsAsync_StampsOnlyRowsWithoutAUser()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var user = await SeedUserAsync(UserState.Active);
+        var profile = NewProfile(user.Id, "Burner", "First", "Last");
+        _dbContext.Profiles.Add(profile);
+        _dbContext.ProfileLanguages.Add(new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, LanguageCode = "es" });
+        _dbContext.ProfileLanguages.Add(new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, UserId = user.Id, LanguageCode = "en" });
+        _dbContext.ContactFields.Add(new ContactField { Id = Guid.NewGuid(), ProfileId = profile.Id, Value = "x" });
+        await _dbContext.SaveChangesAsync(ct);
+        _dbContext.ChangeTracker.Clear();
+
+        (await _repo.GetProfileChildRowsWithoutUserAsync(ct)).Should().ContainSingle()
+            .Which.Should().Be(new ProfileChildRowsWithoutUser(user.Id, ContactFields: 1, Languages: 1, VolunteerHistory: 0));
+
+        (await _repo.FillProfileChildUserIdsAsync(ct)).Should().Be(2);
+
+        (await _repo.GetProfileChildRowsWithoutUserAsync(ct)).Should().BeEmpty();
+        (await _dbContext.ContactFields.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);
     }
 
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
