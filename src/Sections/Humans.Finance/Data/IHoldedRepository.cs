@@ -62,4 +62,10 @@ internal interface IHoldedRepository : IRepository
     /// <summary>A reconcile that succeeded on a later pass; the booking is untouched.</summary>
     Task MarkSepaTransferReconciledAsync(
         Guid transferId, Instant reconciledAt, CancellationToken ct = default);
+
+    /// <summary>Ledger account number → Stripe <c>acct_…</c> id.</summary>
+    Task<IReadOnlyDictionary<int, string>> GetStripeLedgerLinksAsync(CancellationToken ct = default);
+
+    /// <summary>One save: the stored links become exactly <paramref name="links"/>.</summary>
+    Task ReplaceStripeLedgerLinksAsync(IReadOnlyDictionary<int, string> links, CancellationToken ct = default);
 }

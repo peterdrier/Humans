@@ -62,6 +62,23 @@ internal sealed class FinanceController(
         return RedirectToAction(nameof(Pleo));
     }
 
+    /// <summary>Posted from the Finance tab on /Settings.</summary>
+    [HttpPost("StripeLinks")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveStripeLinks(List<FinanceStripeLinkInput> rows)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        if (rows.GroupBy(r => r.LedgerAccountNum).Any(g => g.Count() > 1)) return BadRequest();
+        if (await overview.SaveStripeLinksAsync(
+                rows.ToDictionary(r => r.LedgerAccountNum, r => r.StripeAccountId), actorUserId,
+                HttpContext.RequestAborted) is { } refusal)
+            SetError(refusal);
+        else
+            SetSuccess("Stripe links saved.");
+        return Redirect("/Settings#finance");
+    }
+
     [HttpGet("CashFlow")]
     public async Task<IActionResult> CashFlow(string period = "monthly")
     {

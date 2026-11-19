@@ -12,6 +12,7 @@ internal sealed class StoreDbContext(DbContextOptions<StoreDbContext> options)
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<StoreSettings> Settings => Set<StoreSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -22,5 +23,6 @@ internal sealed class StoreDbContext(DbContextOptions<StoreDbContext> options)
         builder.ApplyConfiguration(new OrderLineConfiguration());
         builder.ApplyConfiguration(new PaymentConfiguration());
         builder.ApplyConfiguration(new InvoiceConfiguration());
+        builder.ApplyConfiguration(new StoreSettingsConfiguration());
     }
 }
