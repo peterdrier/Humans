@@ -39,6 +39,7 @@ internal sealed class GovernanceIndexService(
         var yourAccess = (await bodyLinks.GetAllAsync(ct))
             .Where(l => rosters[l.Body].Contains(userId) && HasAnyLink(l))
             .OrderBy(l => l.Body)
+            .Select(ToAccess)
             .ToList();
 
         return new GovernanceIndexData(
@@ -66,7 +67,7 @@ internal sealed class GovernanceIndexService(
         var links = seesAllLinks || roster.Contains(viewerId)
             ? (await bodyLinks.GetAllAsync(ct)).SingleOrDefault(l => l.Body == body)
             : null;
-        return new GovernanceBodyPageData(body, roster, links is not null && HasAnyLink(links) ? links : null);
+        return new GovernanceBodyPageData(body, roster, links is not null && HasAnyLink(links) ? ToAccess(links) : null);
     }
 
     /// <summary>Approved tier in term, or the Board role, for accounts that are still active members.</summary>
@@ -84,6 +85,13 @@ internal sealed class GovernanceIndexService(
             e => e.Key,
             e => (IReadOnlyList<Guid>)[.. e.Value.Where(id => infos.TryGetValue(id, out var info) && info.IsActive)]);
     }
+
+    private static GovernanceBodyAccess ToAccess(GovernanceBodyLinks links) => new(
+        links.Body,
+        links.GoogleGroupPrefix is { } prefix ? $"{prefix}@{DomainConstants.GoogleGroupDomain}" : null,
+        [.. links.Files
+            .OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(f => new GovernanceBodyAccessFile(f.Name, f.Url))]);
 
     private static bool HasAnyLink(GovernanceBodyLinks links) =>
         links.GoogleGroupPrefix is not null || links.Files.Count > 0;

@@ -30,9 +30,17 @@ internal sealed record GovernanceIndexData(
     IReadOnlyList<Guid> BoardMemberIds,
     IReadOnlyList<AssemblyVoteListItem> OpenVotes,
     int UnvotedApplicationCount,
-    IReadOnlyList<GovernanceBodyLinks> YourAccess);
+    IReadOnlyList<GovernanceBodyAccess> YourAccess);
 
 internal sealed record GovernanceBodyPageData(
     GovernanceBody Body,
     IReadOnlyList<Guid> MemberIds,
-    GovernanceBodyLinks? Links);
+    GovernanceBodyAccess? Links);
+
+/// <summary>A body's Google group address and files, as shown to members.</summary>
+internal sealed record GovernanceBodyAccess(
+    GovernanceBody Body,
+    string? GroupAddress,
+    IReadOnlyList<GovernanceBodyAccessFile> Files);
+
+internal sealed record GovernanceBodyAccessFile(string Name, string? Url);

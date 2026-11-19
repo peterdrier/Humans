@@ -1,6 +1,7 @@
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
+using Humans.Governance.Services;
 using NodaTime;
 
 namespace Humans.Governance.Models;
@@ -32,7 +33,7 @@ internal sealed class GovernanceIndexViewModel
     public int UnvotedApplicationCount { get; set; }
 
     /// <summary>The group and files of each body the viewer is in.</summary>
-    public IReadOnlyList<GovernanceBodyLinks> YourAccess { get; set; } = [];
+    public IReadOnlyList<GovernanceBodyAccess> YourAccess { get; set; } = [];
 }
 
 internal sealed class GovernanceBodyViewModel
@@ -43,5 +44,5 @@ internal sealed class GovernanceBodyViewModel
     public required IReadOnlyList<Guid> MemberIds { get; init; }
 
     /// <summary>Null when the viewer may not see them, or the body has none.</summary>
-    public GovernanceBodyLinks? Links { get; init; }
+    public GovernanceBodyAccess? Links { get; init; }
 }
