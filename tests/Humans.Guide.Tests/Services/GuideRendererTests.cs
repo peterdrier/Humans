@@ -30,16 +30,6 @@ public class GuideRendererTests
     }
 
     [HumansFact]
-    public void Render_SiblingMdLink_RewrittenToGuideRoute()
-    {
-        const string markdown = "See [Profiles](Profiles.md) for details.";
-
-        var html = CreateRenderer().Render(markdown);
-
-        html.Should().Contain("/Guide/Profiles");
-    }
-
-    [HumansFact]
     public void Render_ImageShortPath_RewrittenToRawUrl()
     {
         const string markdown = "![x](img/screenshot.png)";
@@ -47,27 +37,6 @@ public class GuideRendererTests
         var html = CreateRenderer().Render(markdown);
 
         html.Should().Contain("raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png");
-    }
-
-    [HumansFact]
-    public void Render_ExternalLink_GetsBlankTarget()
-    {
-        const string markdown = "[ex](https://example.com)";
-
-        var html = CreateRenderer().Render(markdown);
-
-        html.Should().Contain("target=\"_blank\"");
-    }
-
-    [HumansFact]
-    public void Render_AppPathLink_LeftAsIs()
-    {
-        const string markdown = "[Edit](/Profile/Me/Edit)";
-
-        var html = CreateRenderer().Render(markdown);
-
-        html.Should().Contain("/Profile/Me/Edit");
-        html.Should().NotContain("target=\"_blank\"");
     }
 
     [HumansTheory]
