@@ -56,7 +56,7 @@ public sealed class StoreControllerRecordPaymentTests
     private StoreController BuildController(string role, IUserService? identityUsers = null)
     {
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        settings.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         var camps = Substitute.For<ICampService>();
         camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
         var teams = Substitute.For<ITeamService>();
@@ -67,9 +67,9 @@ public sealed class StoreControllerRecordPaymentTests
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         var service = _service = new Service(
-            _repo, _audit, camps, teams, clock, settings,
+            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings,
             Substitute.For<IStripeService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
-            Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
+            NullLogger<Service>.Instance);
 
         var users = identityUsers ?? Substitute.For<IUserService>();
         if (identityUsers is null)

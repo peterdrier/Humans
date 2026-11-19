@@ -68,53 +68,8 @@ internal partial interface IShiftManagementRepository : IRepository
         RotaReadShape shape,
         CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetTeamIdsWithRotasInEventAsync(
-        Guid eventSettingsId,
-        CancellationToken ct = default);
-
     Task<IReadOnlyDictionary<Guid, int>> GetConfirmedSignupCountsByShiftAsync(
         IReadOnlyCollection<Guid> shiftIds,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Confirmed signups only, for the active event. No <paramref name="teamIds"/> or <paramref name="rotaId"/> spans
-    /// every team; <paramref name="teamIds"/> narrows to a team-set and <paramref name="rotaId"/> to one rota, taking
-    /// precedence.
-    /// </summary>
-    Task<IReadOnlyList<ConfirmedUserShiftTotal>> GetConfirmedUserShiftTotalsAsync(
-        Guid eventSettingsId,
-        IReadOnlyCollection<Guid>? teamIds = null,
-        Guid? rotaId = null,
-        CancellationToken ct = default);
-
-    /// <summary>Distinct users with a non-cancelled signup on any of the shifts.</summary>
-    Task<IReadOnlyList<Guid>> GetEngagedUserIdsForShiftsAsync(
-        IReadOnlyCollection<Guid> shiftIds,
-        CancellationToken ct = default);
-
-    Task<int> GetStalePendingSignupCountAsync(
-        IReadOnlyCollection<Guid> shiftIds,
-        Instant staleThreshold,
-        CancellationToken ct = default);
-
-    /// <summary>Deduped by <c>SignupBlockId ?? Id</c>, so a range counts once.</summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetPendingSignupCountsByTeamAsync(
-        Guid eventSettingsId,
-        int? minDayOffset,
-        int? maxDayOffset,
-        CancellationToken ct = default);
-
-    Task<IReadOnlyList<Instant>> GetSignupCreatedAtsInWindowAsync(
-        Guid eventSettingsId,
-        Instant fromInclusive,
-        Instant toExclusive,
-        int? minDayOffset,
-        int? maxDayOffset,
-        CancellationToken ct = default);
-
-    /// <summary>Shifts with no Confirmed or NoShow signups are omitted.</summary>
-    Task<IReadOnlyList<ShiftSignupStatusCount>> GetSignupStatusCountsForEventAsync(
-        Guid eventSettingsId,
         CancellationToken ct = default);
 
     Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default);
@@ -195,10 +150,3 @@ internal sealed record ShiftEventQuery(
     int? MinDayOffset = null,
     int? MaxDayOffset = null,
     ShiftEventQueryFlags Flags = ShiftEventQueryFlags.None);
-
-internal sealed record ShiftSignupStatusCount(
-    Guid ShiftId,
-    Guid RotaTeamId,
-    int DayOffset,
-    int ConfirmedCount,
-    int NoShowCount);

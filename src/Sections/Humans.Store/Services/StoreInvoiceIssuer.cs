@@ -7,7 +7,6 @@ using Humans.Holded.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Store.Services;
@@ -18,7 +17,6 @@ internal sealed class StoreInvoiceIssuer(
     IClock clock,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
-    IOptions<StoreSectionOptions> options,
     StoreOrderReader orderReader,
     ILogger logger) : IApplicationService
 {
@@ -29,7 +27,7 @@ internal sealed class StoreInvoiceIssuer(
     /// <remarks>
     /// <para>
     /// A full factura when counterparty details are on file, else a factura simplificada. Above
-    /// <see cref="StoreSectionOptions.SimplifiedInvoiceThresholdEur"/> a receipt isn't legal, so a counterparty-less
+    /// <see cref="StoreSettings.SimplifiedInvoiceThresholdEur"/> a receipt isn't legal, so a counterparty-less
     /// order that large is refused rather than downgraded.
     /// </para>
     /// <para>
@@ -111,7 +109,9 @@ internal sealed class StoreInvoiceIssuer(
                 order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct))
             .ToDictionary(p => p.Id);
 
-        var (documentLines, lineRefusal) = await BuildInvoiceLinesAsync(order, totalsByLine, products, ct);
+        var settings = await repo.GetSettingsAsync(ct);
+        var (documentLines, lineRefusal) = await BuildInvoiceLinesAsync(
+            order, totalsByLine, products, settings.DepositLiabilityAccountNum, ct);
         if (lineRefusal is not null) return Refuse(order.Id, actorUserId, lineRefusal);
 
         // A receipt carries no counterparty, so it's only lawful below the simplified-invoice threshold.
@@ -119,7 +119,7 @@ internal sealed class StoreInvoiceIssuer(
         var kind = counterparty is null
             ? HoldedSalesDocumentKind.SalesReceipt
             : HoldedSalesDocumentKind.Invoice;
-        if (counterparty is null && totalDue > options.Value.SimplifiedInvoiceThresholdEur)
+        if (counterparty is null && totalDue > settings.SimplifiedInvoiceThresholdEur)
             return Refuse(order.Id, actorUserId,
                 $"An order of EUR {totalDue:0.00} needs a full factura: fill in the counterparty's "
                 + "name, address and tax id (or passport number) first.");
@@ -318,6 +318,7 @@ internal sealed class StoreInvoiceIssuer(
         Order order,
         IReadOnlyDictionary<Guid, BalanceCalculator.LineTotals> totalsByLine,
         IReadOnlyDictionary<Guid, Product> products,
+        int? depositAccountNum,
         CancellationToken ct)
     {
         var missingAccount = order.Lines
@@ -333,12 +334,11 @@ internal sealed class StoreInvoiceIssuer(
                 + ". Set it on /Store/Admin/Catalog before issuing.");
 
         var needsDepositAccount = order.Lines.Any(l => totalsByLine[l.Id].DepositEur > 0m);
-        var depositAccountNum = options.Value.DepositLiabilityAccountNum;
         if (needsDepositAccount && depositAccountNum is null)
             return ([],
-                "This order carries refundable deposits but no deposit liability account is "
-                + "configured (Store:DepositLiabilityAccountNum). Deposits are not income and "
-                + "must not be booked to a revenue account.");
+                "This order carries refundable deposits but no deposit liability account is set. "
+                + "Pick it on the Settings page, Store tab, before issuing: deposits are not income "
+                + "and must not be booked to a revenue account.");
 
         // Holded resolves each number to its chart id when issuing; syncing the chart first picks up an account Acountax
         // created minutes ago.

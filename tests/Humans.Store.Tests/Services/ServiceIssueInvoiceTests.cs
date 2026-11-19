@@ -49,7 +49,7 @@ public class ServiceIssueInvoiceTests
     private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _holded = Substitute.For<IHoldedWrite>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 9, 1, 10, 0));
-    private readonly StoreSectionOptions _options = new()
+    private readonly StoreSettings _settings = new()
     {
         DepositLiabilityAccountNum = DepositAccountNum,
         SimplifiedInvoiceThresholdEur = 400m,
@@ -61,10 +61,11 @@ public class ServiceIssueInvoiceTests
 
     public ServiceIssueInvoiceTests()
     {
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
         _holdedService.IsConfigured.Returns(true);
+        _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(_settings);
         _holdedService.GetChartAsync(Arg.Any<CancellationToken>()).Returns(
         [
             Account(IceAccountNum),
@@ -88,8 +89,8 @@ public class ServiceIssueInvoiceTests
             .Returns(Found());
 
         _service = new Service(
-            _repo, _audit, _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
-            Options.Create(_options), NullLogger<Service>.Instance);
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
+            NullLogger<Service>.Instance);
     }
 
     private static HoldedChartAccountInfo Account(int number) =>
@@ -277,7 +278,7 @@ public class ServiceIssueInvoiceTests
     [HumansFact]
     public async Task Deposit_without_a_configured_liability_account_is_refused_before_calling_holded()
     {
-        _options.DepositLiabilityAccountNum = null;
+        _settings.DepositLiabilityAccountNum = null;
         var order = CampOrder(qty: 1, depositSnapshot: 30m);
         Arrange(order, IceProduct(deposit: 30m));
 

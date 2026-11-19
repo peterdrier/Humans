@@ -89,7 +89,6 @@ builder.Services.AddSingleton<GateLoginThrottle>();
 builder.Services.AddSingleton<LoginMethodCounter>();
 var shellChrome = new Humans.Web.ShellChrome();
 builder.Services.AddSingleton<ISectionChrome>(shellChrome);
-builder.Services.AddSingleton<ISectionHelp>(shellChrome);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

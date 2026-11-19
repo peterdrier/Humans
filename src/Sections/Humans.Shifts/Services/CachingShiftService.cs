@@ -61,12 +61,21 @@ internal sealed class CachingShiftService(
             if (ids is { Count: 0 }) return;
 
             var rows = await RowsAsync(source => source.GetRotaRowsAsync(ids, CancellationToken.None));
+            var events = rows.Select(r => r.Rota.EventSettingsId).ToHashSet();
             foreach (var row in rows)
                 Replace(row.Rota.Id, row);
 
-            var gone = (ids ?? [.. AsReadOnlyDictionary.Keys]).Except(rows.Select(r => r.Rota.Id));
+            var gone = (ids ?? [.. AsReadOnlyDictionary.Keys]).Except(rows.Select(r => r.Rota.Id)).ToList();
             foreach (var id in gone)
+            {
+                if (TryGet(id, out var old)) events.Add(old.Rota.EventSettingsId);
                 DeleteKey(id);
+            }
+
+            // The inner write already cleared the dashboard memo, but a dashboard read before this refresh could
+            // have refilled it from the old rows.
+            foreach (var eventSettingsId in events)
+                InvalidateDashboardCaches(eventSettingsId);
         }
         catch (Exception ex)
         {

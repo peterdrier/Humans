@@ -78,7 +78,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
   - **Unanswered cohort:** prominent count of unique humans with no `DietaryPreference`.
 - Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans on-site that day, including arrival-day humans), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`). Each of the three cells links into that day's drill-down (US-36.5).
 - The weekly page shows **no per-person rows** — names live on the drill-down and in the CSV. The page carries no `MedicalConditions` under any role, in any view.
-- If there is no active event (no `EventSettingsInfo` resolvable via `ISettingsService.GetActiveEventSettingsAsync`), the page renders an empty-state message ("no active event") instead of throwing.
+- If there is no active event (no `EventSettingsInfo` resolvable via `ISettingsService.GetActiveEventSettings`), the page renders an empty-state message ("no active event") instead of throwing.
 
 ### US-36.2: Coordinator navigates to another week
 **As a** cantina coordinator planning ahead (or looking back)
@@ -238,7 +238,7 @@ This feature lives in the `Cantina/` section and reads **only through section se
 - **Shifts (read, on-site cohort):** `IShiftService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
 - **Cantina (read, dietary):** `ICantinaService.GetDietaryProfilesAsync` — batched; the DTO has no medical field, so `CantinaRosterService` never sees `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
-- **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
+- **Event settings:** `ISettingsService.GetActiveEventSettings` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
 - **Authorization:** the `CantinaPolicies.Read` policy (Admin, Board or the grantable `CantinaAdmin` role; CSV downloads: `CantinaPolicies.Manage`, Admin or `CantinaAdmin`). No team-name heuristic, no bespoke access service.
 - **No roster-specific entity or migration** (the dietary table belongs to the [Dietary Nudge](dietary-nudge.md)).
 

@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 
@@ -8,16 +7,12 @@ internal static class ProfileEditViewModelBuilder
 {
     public static ProfileViewModel Build(
         UserInfo info,
-        IReadOnlyList<UserApplicationSnapshot> applications,
         bool preview)
     {
         ArgumentNullException.ThrowIfNull(info);
-        ArgumentNullException.ThrowIfNull(applications);
 
         var profile = info.Profile;
 
-        var isTierLocked = profile is not null && applications.Any(a =>
-            a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
         var hasCustomPicture = profile?.HasCustomPicture == true;
         var isInitialSetup = info.NeedsProfileSetup || preview;
 
@@ -45,7 +40,6 @@ internal static class ProfileEditViewModelBuilder
             EmergencyContactRelationship = profile?.EmergencyContactRelationship,
             CanViewLegalName = true,
             IsInitialSetup = isInitialSetup,
-            IsTierLocked = isTierLocked,
             NoPriorBurnExperience = profile?.NoPriorBurnExperience ?? false,
             ShowPrivateFirst = string.IsNullOrEmpty(info.FirstName)
                 && string.IsNullOrEmpty(info.LastName)

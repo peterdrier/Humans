@@ -27,7 +27,7 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
         var ct = HttpContext.RequestAborted;
         if (!ModelState.IsValid)
         {
-            model.AvailableEventSettings = await BuildEventSettingsOptionsAsync(ct);
+            model.AvailableEventSettings = EventSettingsOptionViewModel.From(guide.GetEventSettingsOptions());
             return View("Settings", model);
         }
 
@@ -35,7 +35,7 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
         if (eventSettings == null)
         {
             ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
-            model.AvailableEventSettings = await BuildEventSettingsOptionsAsync(ct);
+            model.AvailableEventSettings = EventSettingsOptionViewModel.From(guide.GetEventSettingsOptions());
             return View("Settings", model);
         }
 
@@ -49,7 +49,7 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
         if (!saved)
         {
             ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
-            model.AvailableEventSettings = await BuildEventSettingsOptionsAsync(ct);
+            model.AvailableEventSettings = EventSettingsOptionViewModel.From(guide.GetEventSettingsOptions());
             return View("Settings", model);
         }
 
@@ -349,12 +349,6 @@ internal sealed class EventsAdminController(IEventManagement guide, ILogger<Even
     {
         await guide.MoveVenueAsync(id, +1);
         return RedirectToAction(nameof(Venues));
-    }
-
-    private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync(CancellationToken ct)
-    {
-        var options = await guide.GetEventSettingsOptionsAsync(ct);
-        return EventSettingsOptionViewModel.From(options);
     }
 
 }

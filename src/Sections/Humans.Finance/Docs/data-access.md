@@ -10,7 +10,7 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 — a distinct context from `ExpensesDbContext` and from
 `HoldedDbContext`. Owns
 `HoldedCategoryMap`, `HoldedCreditorContacts`,
-`HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`. `HoldedExpenseDocs` and
+`HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `StripeLedgerLinks` (`finance_stripe_ledger_links`). `HoldedExpenseDocs` and
 `HoldedDocSyncStates` are still mapped but unread and unwritten since the purchase-document mirror
 moved to Holded; dropping them is its own PR (`destructive-drops-need-approval`).
 `PaymentDetailsRepository` (`Data/PaymentDetailsRepository.cs`, implements
@@ -60,7 +60,8 @@ orders' gross revenue for the runway). Injected by `FinanceController` only.
 
 ### FinanceOverviewService (Scoped, section-internal)
 
-No repository, no tables, no cache. Composes `/Finance` from the Holded ledger
+Reads and replaces `finance_stripe_ledger_links` through `IFinanceRepository` (`GetStripeLedgerLinksAsync`,
+`ReplaceStripeLedgerLinksAsync`) for the Finance settings tab; no cache. Composes `/Finance` from the Holded ledger
 mirror through `IHoldedService` (`GetLedgerSyncedAtAsync`, `GetAccountBalancesAsync`, `GetChartAsync`,
 `GetLedgerLinesAsync` for the 472/477/4751 tax accounts), this section's own `IFinanceService`
 (`ListCreditorAccountsAsync`, `GetExpenseReconAsync` and `GetActualsForYearAsync`),

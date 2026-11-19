@@ -50,61 +50,16 @@ public class ServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
-    private readonly StoreSectionOptions _storeOptions = new();
     private readonly Service _service;
 
     public ServiceTests()
     {
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
-    }
-
-    [HumansFact]
-    public async Task GetIndexDataAsync_cancels_settings_read_before_loading_catalog()
-    {
-        using var cancellation = new CancellationTokenSource();
-        await cancellation.CancelAsync();
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromCanceled<EventSettingsInfo?>(call.Arg<CancellationToken>()));
-
-        var act = () => _service.GetIndexDataAsync(Guid.NewGuid(), cancellation.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceive().GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Line_edit_cancellation_during_event_zone_lookup_stops_before_mutation(bool remove)
-    {
-        using var cancellation = new CancellationTokenSource();
-        var order = new Order { Id = Guid.NewGuid(), Year = 2026, State = OrderState.Open };
-        var product = MakeProduct();
-        var lineId = Guid.NewGuid();
-        _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
-        _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
-        _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
-            .Returns(new LineContext(lineId, order.Id, Guid.NewGuid(), OrderState.Open, product.OrderableUntil, "Ice", 1, 10m));
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
-        {
-            await cancellation.CancelAsync();
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return (EventSettingsInfo?)BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
-        });
-
-        var act = () => remove
-            ? _service.RemoveLineAsync(order.Id, lineId, Guid.NewGuid(), cancellation.Token)
-            : _service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), cancellation.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceive().AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>());
-        await _repo.DidNotReceive().RemoveLineAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        _audit.ReceivedCalls().Should().BeEmpty();
+        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService, _holded, _holdedWrite, NullLogger<Service>.Instance);
     }
 
     [HumansFact]
@@ -649,8 +604,8 @@ public class ServiceTests
         _repo.GetOrderByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(string.Equals(missing, "order", StringComparison.Ordinal) ? null : order);
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(string.Equals(missing, "product", StringComparison.Ordinal) ? null : product);
         var logger = Substitute.For<ILogger<Service>>();
-        var service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService,
-            _holded, _holdedWrite, Options.Create(_storeOptions), logger);
+        var service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService,
+            _holded, _holdedWrite, logger);
 
         var result = await service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -756,8 +711,8 @@ public class ServiceTests
         _repo.RemoveLineAsync(lineId, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         _repo.UpdateOrderAsync(order, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var logger = Substitute.For<ILogger<Service>>();
-        var service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripeService,
-            _holded, _holdedWrite, Options.Create(_storeOptions), logger);
+        var service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService,
+            _holded, _holdedWrite, logger);
         var ct = TestContext.Current.CancellationToken;
         bool succeeded;
         string? error;
@@ -1121,6 +1076,8 @@ public class ServiceTests
         Product? captured = null;
         await _repo.AddProductAsync(Arg.Do<Product>(p => captured = p), Arg.Any<CancellationToken>());
 
+        _holded.GetChartAsync(Arg.Any<CancellationToken>())
+            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, null, Archived: false, 0m)]);
         var draft = new ProductDto(
             Guid.Empty, 2026, "  Tent  ", "Big tent", 50m, 21m, 100m,
             new LocalDate(2026, 8, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
@@ -1254,6 +1211,8 @@ public class ServiceTests
         await _repo.UpdateProductAsync(Arg.Do<Product>(p => captured = p), Arg.Any<CancellationToken>());
 
         var actor = Guid.NewGuid();
+        _holded.GetChartAsync(Arg.Any<CancellationToken>())
+            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, null, Archived: false, 0m)]);
         var draft = new ProductDto(
             existing.Id, 2026, "  New  ", "New desc", 99m, 10m, 25m,
             new LocalDate(2026, 9, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
@@ -2668,8 +2627,8 @@ public class ServiceTests
             .Returns(call => real.AddPaymentAsync(call.ArgAt<Payment>(0), ct));
         intercepted.UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>())
             .Returns(call => real.UpdatePaymentStatusAsync(call.ArgAt<Guid>(0), call.ArgAt<PaymentStatus>(1), ct));
-        Service NewService() => new(intercepted, _audit, _campService, _teams, _clock, _shifts,
-            _stripeService, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+        Service NewService() => new(intercepted, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts,
+            _stripeService, _holded, _holdedWrite, NullLogger<Service>.Instance);
         var orderId = Guid.NewGuid();
         db.Orders.Add(new Order
         {

@@ -132,7 +132,12 @@ internal sealed class ApplicationDecisionService(
         // Resolve the Board before the write so nothing awaitable sits between commit and audit.
         var boardMemberIds = await GetBoardMemberIdsAsync(cancellationToken);
         var approved = application.Status == ApplicationStatus.Approved;
-        var tierGrant = approved ? new MembershipTierRecord
+        // Downgrades happen only at term expiry: an in-term higher tier stays, and the expiry job
+        // falls back to this approval when it ends.
+        var keepsHigherTier = approved && application.MembershipTier == MembershipTier.Colaborador
+            && await repository.HasActiveApprovedTierAsync(
+                application.UserId, MembershipTier.Asociado, clock.GetCurrentInstant().InUtc().Date, cancellationToken);
+        var tierGrant = approved && !keepsHigherTier ? new MembershipTierRecord
         {
             UserId = application.UserId,
             Tier = application.MembershipTier,
@@ -149,7 +154,9 @@ internal sealed class ApplicationDecisionService(
             approved ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,
             AuditEntityTypes.Application,
             application.Id,
-            $"{application.MembershipTier} application {decision}",
+            keepsHigherTier
+                ? $"{application.MembershipTier} application {decision}; Asociado tier kept until its term ends"
+                : $"{application.MembershipTier} application {decision}",
             reviewerUserId);
 
         metrics.RecordApplicationProcessed(decision);
@@ -266,8 +273,8 @@ internal sealed class ApplicationDecisionService(
     }
 
     public Task<(IReadOnlyList<ApplicationAdminRowDto> Items, int TotalCount)> GetFilteredApplicationsAsync(
-        string? statusFilter, string? tierFilter, int page, int pageSize, CancellationToken ct = default) =>
-        reader.GetFilteredApplicationsAsync(statusFilter, tierFilter, page, pageSize, ct);
+        string? statusFilter, string? tierFilter, Guid? userId, int page, int pageSize, CancellationToken ct = default) =>
+        reader.GetFilteredApplicationsAsync(statusFilter, tierFilter, userId, page, pageSize, ct);
 
     /// <summary>
     /// Approved applications whose stored expiry disagrees with the calculator for their
@@ -275,7 +282,7 @@ internal sealed class ApplicationDecisionService(
     /// </summary>
     public async Task<IReadOnlyList<TermExpiryDriftRow>> GetTermExpiryDriftAsync(CancellationToken ct = default)
     {
-        var (approved, _) = await repository.GetFilteredAsync(ApplicationStatus.Approved, null, 1, int.MaxValue, ct);
+        var (approved, _) = await repository.GetFilteredAsync(ApplicationStatus.Approved, null, null, 1, int.MaxValue, ct);
         return approved
             .Where(a => a.ResolvedAt is not null)
             .Select(a =>
@@ -317,10 +324,6 @@ internal sealed class ApplicationDecisionService(
 
     public Task<ApplicationAdminDetailDto?> GetApplicationDetailAsync(
         Guid applicationId, CancellationToken ct = default) => reader.GetApplicationDetailAsync(applicationId, ct);
-
-    public Task<IReadOnlySet<Guid>> GetUserIdsWithPendingApplicationAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        reader.GetUserIdsWithPendingApplicationAsync(userIds, ct);
 
     public Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
         Guid userId, CancellationToken ct = default) => reader.GetSubmittedApplicationForUserAsync(userId, ct);

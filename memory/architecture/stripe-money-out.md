@@ -9,7 +9,7 @@ Money that leaves a Stripe account cannot be taken back. Refunds, payouts and ch
 
 **How to apply:**
 - No key Humans holds gets `refund:write`, payout or transfer scopes. `IStripeService` gains no money-out method; push back on any refund, payout, transfer or charge-modify call.
-- For a camp order owed money, the order page links each paid Stripe payment to its dashboard page (`IStripeService.StorePaymentDashboardUrl`). A FinanceAdmin/Admin refunds there, then presses "Check for refunds": Humans reads the payment's refunds (`ListStoreRefundsAsync`, the org read key) and books each succeeded one not yet booked as a negative `PaymentMethod.Refund` row citing the Stripe refund id, with an audit entry. Running it again books nothing new.
+- For a camp order owed money, the order page links each paid Stripe payment to its dashboard page (`IStripeService.StorePaymentDashboardUrl`). A FinanceAdmin/Admin refunds there, then presses "Check for refunds": Humans reads the payment's refunds (`ListStoreRefundsAsync`, the org read key) and books each one not yet booked as a negative `PaymentMethod.Refund` row citing the Stripe refund id, with an audit entry. A refund Stripe is still sending is booked `Pending` and already lowers the amount owed, so it can't be sent twice; later checks move it to `Paid`, or to `Failed` if Stripe reports it failed. Running it again books nothing new.
 - A refund made outside Stripe can still be booked by hand on `/Store/Order/{id}/RecordPayment`, citing its reference. Book a Stripe refund by hand only with its `re_` id, or the check will book it a second time.
 - The Stripe webhook never inserts refund rows; it categorizes the four `checkout.session.*` events only.
 

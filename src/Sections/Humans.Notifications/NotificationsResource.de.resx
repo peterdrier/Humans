@@ -77,7 +77,6 @@
     <value>Arbeitswarteschlangen</value>
   </data>
   <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Ausstehende Einwilligungsprüfungen</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Anträge warten auf deine Stimme</value></data>
   <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Ausstehende Kontolöschungen</value></data>
   <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Fehlgeschlagene Google-Synchronisierungen</value></data>
   <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Ausstehende Anmeldeprofile</value></data>

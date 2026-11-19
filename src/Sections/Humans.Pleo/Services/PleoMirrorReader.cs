@@ -154,9 +154,8 @@ internal sealed class PleoMirrorReader(
         if (!string.IsNullOrEmpty(filter.Account)) rows = rows.Where(e => string.Equals(m.HoldedCodeOf(e), filter.Account, StringComparison.Ordinal));
         if (!string.IsNullOrEmpty(filter.Cardholder)) rows = rows.Where(e => string.Equals(e.EmployeeId, filter.Cardholder, StringComparison.Ordinal));
         if (!string.IsNullOrEmpty(filter.Family)) rows = rows.Where(e => string.Equals(e.Family, filter.Family, StringComparison.Ordinal));
-        // Both blocking filters leave loads out: a load is neither categorised nor receipted, and is booked another way.
-        if (filter.NoReceipt || filter.Unmapped)
-            rows = rows.Where(e => PleoEntryRules.KindOf(e.Family, e.SubFamily) != PleoEntryKind.Load);
+        // The blocking filters list exactly what /Pleo's blocking counts count.
+        if (filter.NoReceipt || filter.Unmapped) rows = rows.Where(IsSpend);
         if (filter.NoReceipt) rows = rows.Where(e => e.ReceiptCount == 0);
         if (filter.Unmapped) rows = rows.Where(e => m.HoldedCodeOf(e) is null);
 

@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Camps.Contracts;
@@ -16,7 +17,9 @@ internal sealed class StoreOrderReader(
     ICampService campService,
     ITeamService teamService,
     IClock clock,
-    ISettingsService settingsService) : IStoreAccountingRead
+    ISettingsService settingsService,
+    IAuditViewerService auditViewer,
+    IAuditLogService audit) : IStoreAccountingRead
 {
     private static readonly ResourceManager Resources = new(typeof(StoreResource));
 
@@ -41,7 +44,7 @@ internal sealed class StoreOrderReader(
         bool allCounterparties,
         CancellationToken ct)
     {
-        var year = await GetCurrentEventYearAsync(ct);
+        var year = GetCurrentEventYear();
         var products = await repo.GetAllProductsForYearAsync(year, ct);
         var catalog = products.Where(product => product.IsActive).Select(StoreCatalog.MapProduct).ToList();
         var currentPrices = ToPrices(products);
@@ -109,9 +112,9 @@ internal sealed class StoreOrderReader(
     }
 
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
-    public async Task<int> GetCurrentEventYearAsync(CancellationToken ct = default)
+    public int GetCurrentEventYear()
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         return activeEvent?.Year > 0 ? activeEvent.Year : clock.GetCurrentInstant().InUtc().Year;
     }
 
@@ -122,7 +125,7 @@ internal sealed class StoreOrderReader(
     public async Task<IReadOnlyDictionary<Guid, BalanceCalculator.ProductPrice>> LoadCurrentPricesAsync(
         int orderYear, CancellationToken ct)
     {
-        var catalogYear = orderYear > 0 ? orderYear : await GetCurrentEventYearAsync(ct);
+        var catalogYear = orderYear > 0 ? orderYear : GetCurrentEventYear();
         return ToPrices(await repo.GetAllProductsForYearAsync(catalogYear, ct));
     }
 
@@ -363,6 +366,7 @@ internal sealed class StoreOrderReader(
                     product?.HoldedTransferAccountNum,
                     l.Qty,
                     t.EffectiveUnitPrice,
+                    l.UnitPriceSnapshot,
                     t.EffectiveVatRate,
                     t.TotalEur,
                     t.SubtotalEur,
@@ -398,6 +402,48 @@ internal sealed class StoreOrderReader(
                     p.ReceivedAt));
             }
         }
+        return rows;
+    }
+
+    /// <summary>Far above any real order's trail; a cap only so a runaway writer can't make the export unbounded.</summary>
+    private const int HistoryLimit = 5000;
+
+    /// <summary>
+    /// The order page's admin history for every order of the year, one audit read per order and per product: the
+    /// audit log is the history and Store keeps no copy.
+    /// </summary>
+    public async Task<IReadOnlyList<AccountingOrderHistoryDto>> GetOrderHistoryAsync(
+        int year, Guid actorUserId, CancellationToken ct = default)
+    {
+        var (orders, context) = await LoadYearOrdersForAccountingAsync(year, ct);
+        var orderActions = StoreAuditActions.OrderHistoryForAdmins.Select(a => a.Name).ToList();
+
+        var priceChanges = new Dictionary<Guid, IReadOnlyList<AuditEvent>>();
+        foreach (var productId in orders.SelectMany(o => o.Lines).Select(l => l.ProductId).Distinct())
+            priceChanges[productId] = await auditViewer.GetFilteredAsync(
+                AuditEntityTypes.Product, productId, userId: null,
+                [StoreAuditActions.StoreProductPriceChanged.Name], HistoryLimit, ct: ct);
+
+        var rows = new List<AccountingOrderHistoryDto>();
+        foreach (var o in orders)
+        {
+            var (counterpartyType, label) = CounterpartyOf(o, context);
+            var events = (await auditViewer.GetFilteredAsync(
+                    entityType: null, o.Id, userId: null, orderActions, HistoryLimit, includeRelated: true, ct))
+                .Concat(o.Lines.Select(l => l.ProductId).Distinct()
+                    .SelectMany(id => priceChanges[id])
+                    .Where(e => e.OccurredAt >= o.CreatedAt));
+            rows.AddRange(events
+                .OrderBy(e => e.OccurredAt)
+                .Select(e => new AccountingOrderHistoryDto(
+                    year, o.Id, counterpartyType, label, e.OccurredAt, e.Action.Name,
+                    e.ActorUserId, e.ActorDisplayName, e.Description)));
+        }
+
+        await audit.LogAsync(
+            StoreAuditActions.StoreOrderHistoryExported, AuditEntityTypes.Order, Guid.Empty,
+            $"Store order history exported for {year}: {rows.Count} entries across {orders.Count} orders",
+            actorUserId);
         return rows;
     }
 

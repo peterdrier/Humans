@@ -1,5 +1,7 @@
+using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
+using Humans.Holded.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
@@ -11,6 +13,7 @@ namespace Humans.Store.Services;
 internal sealed class StoreCatalog(
     IStoreRepository repo,
     IAuditLogService audit,
+    IHoldedService holded,
     IClock clock,
     ILogger<Service> logger) : IApplicationService
 {
@@ -38,7 +41,7 @@ internal sealed class StoreCatalog(
 
     public async Task<CatalogSaveResult> CreateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        var refusal = GetProductDraftRefusal(draft);
+        var refusal = GetProductDraftRefusal(draft) ?? await GetAccountRefusalAsync(draft, current: null, ct);
         if (refusal is not null)
         {
             logger.LogWarning("Store catalog create rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
@@ -63,13 +66,16 @@ internal sealed class StoreCatalog(
 
     public async Task<AdminMutationResult> UpdateProductAsync(ProductDto draft, Guid actorUserId, CancellationToken ct = default)
     {
-        var refusal = GetProductDraftRefusal(draft);
-        if (refusal is not null)
-            return RefuseCatalogMutation(draft.Id, actorUserId, refusal);
+        var draftRefusal = GetProductDraftRefusal(draft);
+        if (draftRefusal is not null)
+            return RefuseCatalogMutation(draft.Id, actorUserId, draftRefusal);
 
         var product = await repo.GetProductByIdAsync(draft.Id, ct);
         if (product is null)
             return RefuseCatalogMutation(draft.Id, actorUserId, $"Product {draft.Id} not found");
+
+        if (await GetAccountRefusalAsync(draft, product, ct) is { } accountRefusal)
+            return RefuseCatalogMutation(draft.Id, actorUserId, accountRefusal);
 
         var oldPrice = product.UnitPriceEur;
 
@@ -186,14 +192,136 @@ internal sealed class StoreCatalog(
             return "VAT rate must be at most 999.99 with no more than two decimal places";
         if (draft.DepositAmountEur is { } deposit && (deposit > 9_999_999_999.99m || decimal.Round(deposit, 2) != deposit))
             return "Deposit must be at most 9,999,999,999.99 with no more than two decimal places";
-        if (draft.HoldedRevenueAccountNum is < 10_000_000 or > 99_999_999)
-            return "Holded revenue account must be an 8-digit chart number";
-        if (draft.HoldedExpenseAccountNum is < 10_000_000 or > 99_999_999)
-            return "Holded expense account must be an 8-digit chart number";
-        if (draft.HoldedTransferAccountNum is < 10_000_000 or > 99_999_999)
-            return "Holded transfer account must be an 8-digit chart number";
         return null;
     }
+
+    /// <summary>The accounts each product field may hold: the mirror's unarchived chart, one block per field. Reads
+    /// the mirror only, never Holded.</summary>
+    public async Task<ProductAccountChoices> GetAccountChoicesAsync(CancellationToken ct = default)
+    {
+        var chart = (await holded.GetChartAsync(ct)).Where(a => !a.Archived).OrderBy(a => a.Number).ToList();
+        IReadOnlyList<AccountChoice> Block(int from, int to) =>
+            chart.Where(a => a.Number >= from && a.Number <= to).Select(a => new AccountChoice(a.Number, a.Name)).ToList();
+        return new ProductAccountChoices(
+            Block(IncomeBlockStart, IncomeBlockEnd),
+            Block(CostBlockStart, CostBlockEnd),
+            Block(TeamUsageBlockStart, TeamUsageBlockEnd));
+    }
+
+    /// <summary>Fianzas and depósitos recibidos, long and short term (18x, 56x): the accounts a refundable deposit may
+    /// be booked to. Reads the mirror only, never Holded.</summary>
+    public async Task<IReadOnlyList<AccountChoice>> GetDepositAccountChoicesAsync(CancellationToken ct = default) =>
+        (await holded.GetChartAsync(ct))
+            .Where(a => !a.Archived && a.Number is >= 18_000_000 and <= 18_999_999 or >= 56_000_000 and <= 56_999_999)
+            .OrderBy(a => a.Number)
+            .Select(a => new AccountChoice(a.Number, a.Name))
+            .ToList();
+
+    public async Task<StoreSettingsDto> GetSettingsAsync(CancellationToken ct = default)
+    {
+        var s = await repo.GetSettingsAsync(ct);
+        return new StoreSettingsDto(s.DepositLiabilityAccountNum, s.SimplifiedInvoiceThresholdEur);
+    }
+
+    public async Task<AdminMutationResult> SaveSettingsAsync(
+        StoreSettingsDto settings, Guid actorUserId, CancellationToken ct = default)
+    {
+        var threshold = settings.SimplifiedInvoiceThresholdEur;
+        var current = await repo.GetSettingsAsync(ct);
+        var refusal = threshold < 0m || threshold > 9_999_999_999.99m || decimal.Round(threshold, 2) != threshold
+            ? "The simplified invoice threshold must be zero or more, with no more than two decimal places."
+            : settings.DepositLiabilityAccountNum is { } n && n != current.DepositLiabilityAccountNum
+              && (await GetDepositAccountChoicesAsync(ct)).All(c => c.Number != n)
+                ? $"Deposit liability account {n} is not in the Holded chart (removed or archived). Pick another."
+                : null;
+        if (refusal is not null)
+        {
+            logger.LogWarning("Store settings save rejected for actor {ActorId}: {Reason}", actorUserId, refusal);
+            return AdminMutationResult.Refused(refusal);
+        }
+
+        await repo.SaveSettingsAsync(new StoreSettings
+        {
+            DepositLiabilityAccountNum = settings.DepositLiabilityAccountNum,
+            SimplifiedInvoiceThresholdEur = threshold,
+        }, ct);
+        await audit.LogAsync(
+            StoreAuditActions.StoreSettingsUpdated, AuditEntityTypes.Settings, Guid.Empty,
+            string.Create(CultureInfo.InvariantCulture,
+                $"Store settings: deposit liability account {settings.DepositLiabilityAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "none"}, simplified invoice threshold EUR {threshold:0.00}"),
+            actorUserId);
+        return AdminMutationResult.Success;
+    }
+
+    /// <summary>Sets the three accounts on many products of one year in one save. Any row naming an account the
+    /// choices don't hold refuses the whole save; unchanged rows are not written.</summary>
+    public async Task<AdminMutationResult> SaveAccountsAsync(
+        int year, IReadOnlyList<ProductAccounts> rows, Guid actorUserId, CancellationToken ct = default)
+    {
+        var products = (await repo.GetAllProductsForYearAsync(year, ct)).ToDictionary(p => p.Id);
+        var choices = await GetAccountChoicesAsync(ct);
+        var refusals = new List<string>();
+        foreach (var row in rows)
+        {
+            if (!products.TryGetValue(row.ProductId, out var product))
+                refusals.Add($"Product {row.ProductId} is not in the {year} catalog.");
+            else if (choices.Refusal(
+                         Changed(row.Income, product.HoldedRevenueAccountNum),
+                         Changed(row.Cost, product.HoldedExpenseAccountNum),
+                         Changed(row.TeamUsage, product.HoldedTransferAccountNum)) is { } refusal)
+                refusals.Add($"{product.Name}: {refusal}");
+        }
+        if (refusals.Count > 0)
+        {
+            logger.LogWarning("Store catalog account save rejected for actor {ActorId}: {Reasons}",
+                actorUserId, string.Join(" ", refusals));
+            return AdminMutationResult.Refused(string.Join(" ", refusals));
+        }
+
+        var now = clock.GetCurrentInstant();
+        foreach (var row in rows)
+        {
+            var product = products[row.ProductId];
+            if (product.HoldedRevenueAccountNum == row.Income && product.HoldedExpenseAccountNum == row.Cost
+                && product.HoldedTransferAccountNum == row.TeamUsage)
+                continue;
+            product.HoldedRevenueAccountNum = row.Income;
+            product.HoldedExpenseAccountNum = row.Cost;
+            product.HoldedTransferAccountNum = row.TeamUsage;
+            product.UpdatedAt = now;
+            await repo.UpdateProductAsync(product, ct);
+            await audit.LogAsync(
+                StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, product.Id,
+                $"Set accounts on store product '{product.Name}': income {Show(row.Income)}, cost {Show(row.Cost)}, "
+                    + $"team usage {Show(row.TeamUsage)}",
+                actorUserId);
+        }
+        return AdminMutationResult.Success;
+
+        static string Show(int? account) => account?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none";
+    }
+
+    /// <summary>Only accounts the save changes are checked: one the product already holds stays saveable after it
+    /// drops out of the chart, so it never blocks an unrelated edit.</summary>
+    private async Task<string?> GetAccountRefusalAsync(ProductDto draft, Product? current, CancellationToken ct)
+    {
+        var income = Changed(draft.HoldedRevenueAccountNum, current?.HoldedRevenueAccountNum);
+        var cost = Changed(draft.HoldedExpenseAccountNum, current?.HoldedExpenseAccountNum);
+        var teamUsage = Changed(draft.HoldedTransferAccountNum, current?.HoldedTransferAccountNum);
+        return income is null && cost is null && teamUsage is null
+            ? null
+            : (await GetAccountChoicesAsync(ct)).Refusal(income, cost, teamUsage);
+    }
+
+    private static int? Changed(int? posted, int? stored) => posted == stored ? null : posted;
+
+    // Income is the whole sales-and-income group (7xxxxxxx); store items normally sit in 759xxxxx.
+    private const int IncomeBlockStart = 70_000_000;
+    private const int IncomeBlockEnd = 79_999_999;
+    private const int CostBlockStart = 62_900_000;
+    private const int CostBlockEnd = 62_909_999;
+    private const int TeamUsageBlockStart = 62_990_000;
+    private const int TeamUsageBlockEnd = 62_999_999;
 
     internal static ProductDto MapProduct(Product p) =>
         new(p.Id, p.Year, p.Name, p.Description, p.UnitPriceEur, p.VatRatePercent,

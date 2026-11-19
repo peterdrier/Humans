@@ -24,7 +24,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// <summary>
     /// The live active event's id (null before one exists) and year, the year falling back to the clock's.
     /// </summary>
-    Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default);
+    (int Year, Guid? EventSettingsId) GetActiveEvent();
 
     /// <summary>Season, user and status of one membership row; null when the row does not exist.</summary>
     Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default);

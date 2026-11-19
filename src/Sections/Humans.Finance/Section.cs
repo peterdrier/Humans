@@ -12,6 +12,7 @@ using Humans.Finance.Jobs;
 using Humans.Finance.Services;
 using Humans.Finance.ViewComponents;
 using Humans.Gdpr.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,7 @@ public sealed class Section :
     ISectionConfiguration,
     ISectionJobs,
     ISectionPolicies,
+    ISectionSettings,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -52,8 +54,6 @@ public sealed class Section :
                 if (!string.IsNullOrWhiteSpace(flat))
                     opts.CreditorIban = flat;
             });
-
-        services.Configure<FinanceStripeOptions>(configuration.GetSection("Finance"));
 
         services.AddScoped<IFinanceRepository, Repository>();
         // Sweep failure counts must outlive scoped requests and jobs.
@@ -121,9 +121,6 @@ public sealed class Section :
         configuration.GetOptionalSetting(registry, "Sepa:TreasuryLedgerAccount", "SEPA",
             importance: ConfigurationImportance.Recommended);
 
-        foreach (var link in configuration.GetSection("Finance:StripeLedgerAccounts").GetChildren())
-            configuration.GetOptionalSetting(registry, link.Path, "Finance (Stripe gateways)");
-
         // Wins over the Sepa:CreditorIban appsetting.
         registry.RegisterEnvironmentVariable("SEPA_CREDITOR_IBAN", "SEPA", isSensitive: true);
     }
@@ -151,4 +148,9 @@ public sealed class Section :
 
     IEnumerable<UserPart> IUserPart.Parts() =>
         [new(UserPartSlots.AdminDetailSidebar, typeof(PaymentDetailsViewComponent), Weight: 100)];
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("finance", "Settings_TabFinance", typeof(FinanceSettingsTabViewComponent), FinancePolicies.Manage)
+    ];
 }

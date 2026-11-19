@@ -3,7 +3,7 @@ using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
-using Humans.Shifts.Domain;
+using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;
 using Humans.Teams.Contracts;
@@ -23,6 +23,7 @@ internal sealed class ShiftDashboardMetrics(
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private ITicketService TicketQueryService => serviceProvider.GetRequiredService<ITicketService>();
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
+    private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
 
     internal async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod, CancellationToken ct)
     {
@@ -30,25 +31,21 @@ internal sealed class ShiftDashboardMetrics(
         if (es is null)
             return new DashboardOverview(0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, []);
 
-        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+        var allShifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
 
         var shifts = period is null
             ? allShifts
-            : allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();
+            : allShifts.Where(s => s.Shift.GetShiftPeriod(es) == period.Value).ToList();
 
         if (period == ShiftPeriod.Build && subPeriod is not null)
         {
             var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            shifts = shifts.Where(s => s.DayOffset >= start && s.DayOffset < end).ToList();
+            shifts = shifts.Where(s => s.Shift.DayOffset >= start && s.Shift.DayOffset < end).ToList();
         }
 
-        var shiftIds = shifts.Select(s => s.Id).ToList();
-        var confirmedCountsRo = await repo.GetConfirmedSignupCountsByShiftAsync(shiftIds, ct);
-        var confirmedCounts = confirmedCountsRo.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-        var aggregate = ShiftStaffingAggregation.AggregateShifts(shifts, confirmedCounts, es);
+        var aggregate = ShiftStaffingAggregation.AggregateShifts(shifts, es);
         var periodFillRates = new PeriodBreakdown(
             Pct(aggregate.Build), Pct(aggregate.Event), Pct(aggregate.Strike));
 
@@ -58,14 +55,19 @@ internal sealed class ShiftDashboardMetrics(
             .Select(o => o.MatchedUserId!.Value)
             .ToHashSet();
 
-        var engagedUserIds = await repo.GetEngagedUserIdsForShiftsAsync(shiftIds, ct);
-        var engaged = engagedUserIds.ToHashSet();
+        var engaged = shifts
+            .SelectMany(s => s.Signups)
+            .Where(su => su.Status != SignupStatus.Cancelled)
+            .Select(su => su.UserId)
+            .ToHashSet();
 
         var ticketHoldersEngaged = engaged.Count(ticketHolders.Contains);
         var nonTicketSignups = engaged.Count(u => !ticketHolders.Contains(u));
 
         var staleThreshold = clock.GetCurrentInstant().Minus(Duration.FromDays(3));
-        var stalePendingCount = await repo.GetStalePendingSignupCountAsync(shiftIds, staleThreshold, ct);
+        var stalePendingCount = shifts
+            .SelectMany(s => s.Signups)
+            .Count(su => su.Status == SignupStatus.Pending && su.CreatedAt < staleThreshold);
 
         var teamIdsOnRotas = shifts
             .Select(s => s.Rota.TeamId)
@@ -74,7 +76,7 @@ internal sealed class ShiftDashboardMetrics(
         var teamsById = await TeamService.GetTeamsAsync(ct);
         var teamLookup = ShiftStaffingAggregation.IncludeParents(teamsById, teamIdsOnRotas);
 
-        var departments = ShiftStaffingAggregation.BuildDepartmentRows(shifts, confirmedCounts, es, teamLookup);
+        var departments = ShiftStaffingAggregation.BuildDepartmentRows(shifts, es, teamLookup);
 
         return new DashboardOverview(
             aggregate.Total, aggregate.Filled, aggregate.TotalSlots, aggregate.FilledSlots, periodFillRates,
@@ -114,8 +116,12 @@ internal sealed class ShiftDashboardMetrics(
 
         var (minDayOffset, maxDayOffset) = BuildSubPeriodClassifier.GetDayOffsetBounds(period, subPeriod, es);
 
-        var signupsInWindow = await repo.GetSignupCreatedAtsInWindowAsync(
-            eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset, ct);
+        var signupsInWindow = (await RotaRows.GetEventShiftsAsync(
+                new ShiftEventQuery(eventSettingsId, MinDayOffset: minDayOffset, MaxDayOffset: maxDayOffset), ct))
+            .SelectMany(s => s.Signups)
+            .Select(su => su.CreatedAt)
+            .Where(at => at >= startInstant && at < endInstant)
+            .ToList();
 
         var ticketsInWindow = (await TicketQueryService.GetTicketOrdersAsync(ct))
             .Where(o => o.IsCurrentEvent && o.PaymentStatus == TicketPaymentStatus.Paid
@@ -157,12 +163,9 @@ internal sealed class ShiftDashboardMetrics(
             return null;
 
         // All shifts, so totals include those with zero signups.
-        var allShifts = await repo.GetEventShiftsAsync(new ShiftEventQuery(
+        var allShifts = await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(
             eventSettingsId,
             Flags: ShiftEventQueryFlags.ExcludeAdminOnly | ShiftEventQueryFlags.ExcludeHiddenRotas), ct);
-
-        var signupCounts = await repo.GetSignupStatusCountsForEventAsync(eventSettingsId, ct);
-        var countsByShiftId = signupCounts.ToDictionary(r => r.ShiftId);
 
         var teamIdsOnRotas = allShifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = ShiftStaffingAggregation.IncludeParents(await TeamService.GetTeamsAsync(ct), teamIdsOnRotas);
@@ -182,7 +185,7 @@ internal sealed class ShiftDashboardMetrics(
         foreach (var shift in allShifts)
         {
             var deptId = ShiftStaffingAggregation.DepartmentIdOf(shift.Rota.TeamId, teamLookup);
-            var period = shift.GetShiftPeriod(es);
+            var period = shift.Shift.GetShiftPeriod(es);
 
             if (!deptBuckets.TryGetValue(deptId, out var periodBucket))
             {
@@ -195,16 +198,15 @@ internal sealed class ShiftDashboardMetrics(
                 deptBuckets[deptId] = periodBucket;
             }
 
-            if (!countsByShiftId.TryGetValue(shift.Id, out var counts))
-                continue;
-
-            totalConfirmed += counts.ConfirmedCount;
-            totalNoShow += counts.NoShowCount;
-            if (counts.ConfirmedCount + counts.NoShowCount > 0)
+            var confirmed = shift.ConfirmedCount;
+            var noShow = shift.Signups.Count(su => su.Status == SignupStatus.NoShow);
+            totalConfirmed += confirmed;
+            totalNoShow += noShow;
+            if (confirmed + noShow > 0)
                 shiftsWithData++;
 
             var cur = periodBucket[period];
-            periodBucket[period] = (cur.Confirmed + counts.ConfirmedCount, cur.NoShow + counts.NoShowCount);
+            periodBucket[period] = (cur.Confirmed + confirmed, cur.NoShow + noShow);
         }
 
         PostEventPeriodRow ToPeriodRow(Dictionary<ShiftPeriod, (int Confirmed, int NoShow)> bucket, ShiftPeriod p)

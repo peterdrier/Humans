@@ -121,7 +121,7 @@ Application
 ├── Language: string? (10) [ISO 639-1 code]
 ├── SubmittedAt: Instant
 ├── UpdatedAt: Instant
-├── ReviewStartedAt: Instant?
+├── ReviewStartedAt: Instant? [Obsolete, unread]
 ├── ResolvedAt: Instant?
 ├── RenewalReminderSentAt: Instant?
 ├── ReviewedByUserId: Guid?

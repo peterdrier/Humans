@@ -222,7 +222,7 @@ public sealed class Section :
 
     private static async ValueTask<AdminTileValue?> TicketHoldersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
+        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
         var count = 0;
         if (activeEvent is { Year: > 0 })
         {
@@ -319,6 +319,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> Entries =
     [
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Profile", 20),
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "UsersAdmin", 81),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)

@@ -29,18 +29,17 @@ public class ServiceStripeReconciliationTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 4, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
-    private readonly StoreSectionOptions _storeOptions = new();
     private readonly Service _service;
 
     public ServiceStripeReconciliationTests()
     {
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         // Mapping-chain stubs so GetOrderAsync resolves without throwing.
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
-        _service = new Service(_repo, _audit, _campService, _teams, _clock, _shifts, _stripe, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe, _holded, _holdedWrite, NullLogger<Service>.Instance);
     }
 
     private static Order CampOrder(Guid id) => new()

@@ -18,7 +18,7 @@ namespace Humans.Finance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -375,6 +375,21 @@ namespace Humans.Finance.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("finance_sepa_payout_transfers", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Finance.Domain.StripeLedgerLink", b =>
+                {
+                    b.Property<int>("LedgerAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StripeAccountId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("LedgerAccountNum");
+
+                    b.ToTable("finance_stripe_ledger_links", (string)null);
                 });
 #pragma warning restore 612, 618
         }

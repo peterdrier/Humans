@@ -68,7 +68,7 @@ Singleton settings; registration uses `CampEventSettings`. Per-season name-lock 
 live on `CampSeason`. `PublicYear` and `EeStartDate` columns are **dead**
 (nobodies-collective#1632, #1633): no longer read or written, kept mapped only so the EF model
 matches the database until a Peter-approved follow-up drops them. The public year resolves
-from `ISettingsService.GetActiveEventSettingsAsync().Year`, falling back to the clock's current
+from `ISettingsService.GetActiveEventSettings().Year`, falling back to the clock's current
 year when no event is active; the EE start date resolves from
 `EventSettings.EarlyEntryStartOffset` (`GateOpeningDate.PlusDays(offset)`), both surfaced via
 `CampSettingsInfo` (a DTO, not the entity).

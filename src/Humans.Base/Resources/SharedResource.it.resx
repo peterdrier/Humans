@@ -1502,6 +1502,12 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Cancello</value>
   </data>
+  <data name="Settings_TabStore" xml:space="preserve">
+    <value>Negozio</value>
+  </data>
+  <data name="Settings_TabFinance" xml:space="preserve">
+    <value>Finanze</value>
+  </data>
   <data name="Settings_TabBarrios" xml:space="preserve">
     <value>Barrios</value>
   </data>

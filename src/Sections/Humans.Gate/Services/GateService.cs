@@ -69,7 +69,7 @@ internal sealed class GateService(
 
         var settings = await repository.GetSettingsAsync(ct);
         var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
-        var burn = await settingsService.GetActiveEventSettingsAsync(ct);
+        var burn = settingsService.GetActiveEventSettings();
         var now = clock.GetCurrentInstant();
         var zone = EventZone(burn?.TimeZoneId);
         var today = now.InZone(zone).Date;
@@ -214,7 +214,7 @@ internal sealed class GateService(
         // collision with the ticket sync writing the same fact is benign; the next sync converges the row.
         try
         {
-            var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+            var activeEvent = settingsService.GetActiveEventSettings();
             if (activeEvent is null || activeEvent.Year == 0)
                 return;
 
@@ -330,7 +330,7 @@ internal sealed class GateService(
     public async Task<IReadOnlyList<Guid>> GetShiftRosterAsync(
         Guid rosterTeamId, CancellationToken ct = default)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
             return [];
 

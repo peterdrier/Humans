@@ -86,7 +86,7 @@ public sealed class CampServiceTests : CampsTestHarness
         _cityPlanningService = Substitute.For<ICityPlanningWrite>();
 
         _settingsService = Substitute.For<ISettingsService>();
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(Event2026);
         _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns([Event2025, Event2026, Event2027]);
@@ -957,7 +957,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetSettingsAsync_PublicYear_ResolvesFromActiveEventSettings()
     {
         await SeedSettingsAsync();
-        _settingsService.GetActiveEventSettingsAsync(TestContext.Current.CancellationToken)
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2031));
 
         var settings = await _service.GetSettingsAsync(TestContext.Current.CancellationToken);
@@ -969,7 +969,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public async Task GetSettingsAsync_PublicYear_FallsBackToClockYear_WhenNoActiveEvent()
     {
         await SeedSettingsAsync();
-        _settingsService.GetActiveEventSettingsAsync(TestContext.Current.CancellationToken)
+        _settingsService.GetActiveEventSettings()
             .Returns((EventSettingsInfo?)null);
 
         var settings = await _service.GetSettingsAsync(TestContext.Current.CancellationToken);

@@ -12,12 +12,12 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Shifts.Services;
 
 internal sealed class ShiftCampSummary(
-    IShiftManagementRepository repo,
     IServiceProvider serviceProvider) : IApplicationService
 {
     private ITeamService TeamService => serviceProvider.GetRequiredService<ITeamService>();
     private IUserService UserService => serviceProvider.GetRequiredService<IUserService>();
     private ICampService CampService => serviceProvider.GetRequiredService<ICampService>();
+    private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
 
     public async Task<ShiftSummary?> BuildSummaryAsync(
         BurnSettingsInfo activeEvent,
@@ -30,7 +30,10 @@ internal sealed class ShiftCampSummary(
         IReadOnlyCollection<Guid>? filterTeamIds = null;
         Guid? filterRotaId = null;
         TeamInfo? team = null;
-        Rota? rota = null;
+        RotaInfo? rota = null;
+        var eventRotas = (await RotaRows.GetRotaRowsAsync(ct: ct))
+            .Where(r => r.Rota.EventSettingsId == activeEvent.Id)
+            .ToList();
 
         if (teamSlug is null)
         {
@@ -50,10 +53,8 @@ internal sealed class ShiftCampSummary(
             }
             else
             {
-                rota = await repo.GetRotaAsync(rotaId.Value, RotaReadShape.Shifts, ct);
-                if (rota is null
-                    || rota.EventSettingsId != activeEvent.Id
-                    || !teamSet.Contains(rota.TeamId))
+                rota = eventRotas.FirstOrDefault(r => r.Rota.Id == rotaId.Value)?.Rota;
+                if (rota is null || !teamSet.Contains(rota.TeamId))
                 {
                     return null;
                 }
@@ -63,8 +64,17 @@ internal sealed class ShiftCampSummary(
             }
         }
 
-        var totals = await repo.GetConfirmedUserShiftTotalsAsync(
-            activeEvent.Id, filterTeamIds, filterRotaId, ct);
+        // All-day rows store a 24h sentinel, so they count Shift.AllDayWindowHours instead.
+        var totals = eventRotas
+            .Where(r => filterRotaId is { } rid
+                ? r.Rota.Id == rid
+                : filterTeamIds is not { Count: > 0 } || filterTeamIds.Contains(r.Rota.TeamId))
+            .SelectMany(r => r.Shifts.SelectMany(s => s.Signups
+                .Where(su => su.Status == SignupStatus.Confirmed)
+                .Select(su => (su.UserId, Hours: s.Shift.IsAllDay ? Shift.AllDayWindowHours : s.Shift.DurationHours))))
+            .GroupBy(x => x.UserId)
+            .Select(g => (UserId: g.Key, Hours: g.Sum(x => x.Hours), Count: g.Count()))
+            .ToList();
 
         var userIds = totals.Select(t => t.UserId).ToList();
         var userInfos = await UserService.GetUserInfosAsync(userIds, ct);
@@ -84,11 +94,12 @@ internal sealed class ShiftCampSummary(
         var camps = BuildCampPivot(humans, campRoster, activeEvent.Id);
 
         IReadOnlyList<ShiftSummaryTeamLink> teamLinks = scope == ShiftSummaryScope.Global
-            ? await BuildDepartmentLinksAsync(activeEvent.Id, ct)
+            ? await BuildDepartmentLinksAsync([.. eventRotas.Select(r => r.Rota.TeamId).Distinct()], ct)
             : [];
         IReadOnlyList<ShiftSummaryRotaLink> rotaLinks = scope == ShiftSummaryScope.Team
-            ? (await repo.GetRotasAsync(activeEvent.Id, filterTeamIds!, RotaReadShape.None, ct))
-                .Select(r => new ShiftSummaryRotaLink(r.Id, r.Name)).ToList()
+            ? [.. eventRotas
+                .Where(r => filterTeamIds!.Contains(r.Rota.TeamId))
+                .Select(r => new ShiftSummaryRotaLink(r.Rota.Id, r.Rota.Name))]
             : [];
 
         return new ShiftSummary(
@@ -142,9 +153,8 @@ internal sealed class ShiftCampSummary(
 
     // A non-promoted sub-team folds into its parent; the inverse of the shared department expansion.
     private async Task<IReadOnlyList<ShiftSummaryTeamLink>> BuildDepartmentLinksAsync(
-        Guid eventSettingsId, CancellationToken ct)
+        IReadOnlyList<Guid> teamIdsWithRotas, CancellationToken ct)
     {
-        var teamIdsWithRotas = await repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
         if (teamIdsWithRotas.Count == 0) return [];
 
         var teams = await TeamService.GetTeamsAsync(ct);

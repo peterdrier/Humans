@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Humans.Pleo\Humans.Pleo.csproj" />
     <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
+    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Expenses\Humans.Expenses.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
   </ItemGroup>

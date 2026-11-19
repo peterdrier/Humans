@@ -8,7 +8,7 @@ using NodaTime;
 namespace Humans.Governance.Services;
 
 internal sealed class GovernanceIndexService(
-    IGovernanceService applicationDecisionService,
+    IGovernanceManagement applicationDecisionService,
     ILegalDocumentService legalDocService,
     IAssemblyVoteService assemblyVotes,
     IRoleAssignmentService roleAssignments,

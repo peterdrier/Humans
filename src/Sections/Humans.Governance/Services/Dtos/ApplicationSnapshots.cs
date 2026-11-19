@@ -1,8 +1,10 @@
 using NodaTime;
 
-namespace Humans.Governance.Contracts;
+using Humans.Governance.Contracts;
 
-public sealed record UserApplicationSnapshot(
+namespace Humans.Governance.Services.Dtos;
+
+internal sealed record UserApplicationSnapshot(
     Guid Id,
     Guid UserId,
     ApplicationStatus Status,
@@ -15,7 +17,7 @@ public sealed record UserApplicationSnapshot(
     string? SignificantContribution,
     string? RoleUnderstanding);
 
-public sealed record SubmittedApplicationSnapshot(
+internal sealed record SubmittedApplicationSnapshot(
     Guid Id,
     MembershipTier MembershipTier,
     string Motivation);

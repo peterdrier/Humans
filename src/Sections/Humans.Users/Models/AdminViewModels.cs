@@ -33,9 +33,7 @@ internal sealed class AdminHumanDetailViewModel
     public string? PreferredLanguage { get; set; }
     public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
 
-    public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
-    public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 }
 
@@ -45,13 +43,6 @@ internal sealed class AdminUserEmailViewModel
     public bool IsVerified { get; set; }
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
-}
-
-internal sealed class AdminHumanApplicationViewModel
-{
-    public Guid Id { get; set; }
-    public ApplicationStatus Status { get; set; }
-    public DateTime SubmittedAt { get; set; }
 }
 
 internal sealed class AccountMergeQueueViewModel

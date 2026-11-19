@@ -783,6 +783,45 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task ApproveAsync_LowerTierKeepsTheInTermHigherTier()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var asociadoExpiry = new LocalDate(2027, 12, 31);
+        var asociado = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
+        asociado.Approve(Guid.NewGuid(), null, Clock);
+        asociado.TermExpiresAt = asociadoExpiry;
+        var asociadoApp = asociado.Id;
+        GovernanceDb.MembershipTiers.Add(new MembershipTierRecord
+        {
+            UserId = userId,
+            Tier = MembershipTier.Asociado,
+            GrantedAt = Clock.GetCurrentInstant() - Duration.FromDays(30),
+            ExpiresAt = asociadoExpiry,
+            GrantedByApplicationId = asociadoApp,
+        });
+        await SaveAllAsync(ct);
+        ClearAllTrackers();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        await SeedBoardVoteAsync(app.Id);
+
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, new LocalDate(2026, 3, 1), ct);
+
+        ClearAllTrackers();
+        (await GovernanceDb.Applications.SingleAsync(a => a.Id == app.Id, ct)).Status.Should().Be(ApplicationStatus.Approved);
+        var row = await GovernanceDb.MembershipTiers.SingleAsync(ct);
+        row.Tier.Should().Be(MembershipTier.Asociado);
+        row.ExpiresAt.Should().Be(asociadoExpiry);
+        row.GrantedByApplicationId.Should().Be(asociadoApp);
+        await AuditLog.Received(1).LogAsync(
+            GovernanceAuditActions.TierApplicationApproved,
+            AuditEntityTypes.Application,
+            app.Id,
+            "Colaborador application approved; Asociado tier kept until its term ends",
+            Arg.Any<Guid>());
+    }
+
+    [HumansFact]
     public async Task ApproveAsync_DeletesBoardVotes()
     {
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
@@ -1670,7 +1709,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             "Index" => controller.Index(),
             "Create" => controller.Create(),
             "Details" => controller.Details(app.Id),
-            "Admin" => controller.Admin(null, null),
+            "Admin" => controller.Admin(null, null, null),
             "AdminDetail" => controller.AdminDetail(app.Id),
             "AdminTermExpiry" => controller.AdminTermExpiry(),
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
@@ -1797,7 +1836,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
 
-        var result = (await controller.Admin(null, null)).Should().BeOfType<ViewResult>().Subject;
+        var result = (await controller.Admin(null, null, null)).Should().BeOfType<ViewResult>().Subject;
         var model = result.Model.Should().BeOfType<AdminApplicationListViewModel>().Subject;
         model.Applications.Should().ContainSingle().Which.MotivationPreview.Should()
             .Be(new string('x', expectedPrefixLength) + expectedSuffix);
@@ -1816,7 +1855,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         approvedApp.Approve(Guid.NewGuid(), "ok", Clock);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
-        var (items, totalCount) = await _service.GetFilteredApplicationsAsync("Approved", null, 1, 10, TestContext.Current.CancellationToken);
+        var (items, totalCount) = await _service.GetFilteredApplicationsAsync("Approved", null, null, 1, 10, TestContext.Current.CancellationToken);
 
         totalCount.Should().Be(1);
         items.Should().HaveCount(1);
@@ -1830,7 +1869,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await SeedSubmittedApplicationAsync(Guid.NewGuid());
         await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
 
-        var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, "Asociado", 1, 10, TestContext.Current.CancellationToken);
+        var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, "Asociado", null, 1, 10, TestContext.Current.CancellationToken);
 
         totalCount.Should().Be(1);
         items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
@@ -1856,7 +1895,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(user) }));
 
-        var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10, TestContext.Current.CancellationToken);
+        var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, null, 1, 10, TestContext.Current.CancellationToken);
 
         items.Should().HaveCount(1);
         items[0].UserId.Should().Be(userId);

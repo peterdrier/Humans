@@ -11,7 +11,6 @@ using Humans.Store.Domain;
 using Humans.Teams.Contracts;
 using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Store.Services;
@@ -19,6 +18,7 @@ namespace Humans.Store.Services;
 internal sealed class Service(
     IStoreRepository repo,
     IAuditLogService audit,
+    IAuditViewerService auditViewer,
     ICampService campService,
     ITeamService teamService,
     IClock clock,
@@ -26,14 +26,13 @@ internal sealed class Service(
     IStripeService stripeService,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
-    IOptions<StoreSectionOptions> options,
     ILogger<Service> logger) : IApplicationService
 {
     private readonly StoreOrderAdministration orderAdministration = new(repo, audit, clock, logger);
-    private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService);
+    private readonly StoreOrderReader orderReader = new(repo, campService, teamService, clock, settingsService, auditViewer, audit);
     private readonly StoreStripePayments stripePayments = new(repo, audit, stripeService, clock, logger);
     private readonly StoreMetadataRepair metadataRepair = new(repo, audit, campService, clock, logger);
-    private readonly StoreCatalog productCatalog = new(repo, audit, clock, logger);
+    private readonly StoreCatalog productCatalog = new(repo, audit, holded, clock, logger);
 
     public Task<IndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default) =>
         orderReader.GetIndexDataAsync(userId, ct);
@@ -58,7 +57,7 @@ internal sealed class Service(
 
         // A pending async payment is excluded from BalanceEur, so without this the full balance stays payable a second
         // time while the mandate settles: a double charge.
-        var hasPendingPayment = order.Payments.Any(p => p.Status == PaymentStatus.Pending);
+        var hasPendingPayment = order.Payments.Any(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0);
 
         return new OrderPageData(
             order,
@@ -88,6 +87,23 @@ internal sealed class Service(
 
     public Task<AdminMutationResult> DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default) =>
         productCatalog.DeactivateProductAsync(productId, actorUserId, ct);
+
+    public Task<ProductAccountChoices> GetAccountChoicesAsync(CancellationToken ct = default) =>
+        productCatalog.GetAccountChoicesAsync(ct);
+
+    public Task<IReadOnlyList<AccountChoice>> GetDepositAccountChoicesAsync(CancellationToken ct = default) =>
+        productCatalog.GetDepositAccountChoicesAsync(ct);
+
+    public Task<StoreSettingsDto> GetSettingsAsync(CancellationToken ct = default) =>
+        productCatalog.GetSettingsAsync(ct);
+
+    public Task<AdminMutationResult> SaveSettingsAsync(
+        StoreSettingsDto settings, Guid actorUserId, CancellationToken ct = default) =>
+        productCatalog.SaveSettingsAsync(settings, actorUserId, ct);
+
+    public Task<AdminMutationResult> SaveProductAccountsAsync(
+        int year, IReadOnlyList<ProductAccounts> rows, Guid actorUserId, CancellationToken ct = default) =>
+        productCatalog.SaveAccountsAsync(year, rows, actorUserId, ct);
 
     public Task<OrderDto?> GetOrderAsync(Guid orderId, CancellationToken ct = default) =>
         orderReader.GetOrderAsync(orderId, ct);
@@ -137,7 +153,7 @@ internal sealed class Service(
         if (team.ParentTeamId is not null)
             return RefuseCreation("Store_DepartmentOnly", "team", teamId, actorUserId);
 
-        var year = await GetCurrentEventYearAsync(ct);
+        var year = GetCurrentEventYear();
 
         var existing = await repo.GetOrderForTeamAsync(teamId, year, ct);
         if (existing is not null)
@@ -200,7 +216,7 @@ internal sealed class Service(
             return RefuseMutation("Store_ProductYearMismatch", orderId, actorUserId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = clock.TodayIn((await settingsService.GetActiveEventSettingsAsync(ct))?.TimeZone);
+        var today = clock.TodayIn(settingsService.GetActiveEventSettings()?.TimeZone);
         var deadlinePassed = today > product.OrderableUntil;
 
         var line = new OrderLine
@@ -239,7 +255,7 @@ internal sealed class Service(
             return RefuseMutation("Store_OrderLinesFrozen", orderId, actorUserId, lineId);
 
         // OrderableUntil is enforced by OrderAuthorizationHandler; the auth-free service only annotates the audit entry.
-        var today = clock.TodayIn((await settingsService.GetActiveEventSettingsAsync(ct))?.TimeZone);
+        var today = clock.TodayIn(settingsService.GetActiveEventSettings()?.TimeZone);
         var deadlinePassed = today > ctx.ProductOrderableUntil;
 
         await repo.RemoveLineAsync(lineId, ct);
@@ -287,7 +303,7 @@ internal sealed class Service(
     }
 
     /// <summary>Falls back to the current UTC year before an active event exists.</summary>
-    public Task<int> GetCurrentEventYearAsync(CancellationToken ct = default) => orderReader.GetCurrentEventYearAsync(ct);
+    public int GetCurrentEventYear() => orderReader.GetCurrentEventYear();
 
     [ExternalWrite]
     public Task<CheckoutSessionResult> CreateStripeCheckoutSessionAsync(
@@ -351,7 +367,7 @@ internal sealed class Service(
     /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
     [ExternalWrite]
     public Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
-        new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, options, orderReader, logger)
+        new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, orderReader, logger)
             .IssueAsync(orderId, actorUserId, ct);
 
     public Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default) =>

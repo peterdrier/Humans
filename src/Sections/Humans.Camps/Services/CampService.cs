@@ -122,7 +122,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var openYears = registration.Where(r => r.RegistrationOpen).Select(r => r.Year)
             .Distinct()
             .ToList();
-        var (activeYear, activeEventId) = await GetActiveEventAsync(cancellationToken);
+        var (activeYear, activeEventId) = GetActiveEvent();
         var info = new CampSettingsInfo(activeYear, openYears)
         {
             ActiveEventSettingsId = activeEventId,
@@ -151,7 +151,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = _settingsService.GetActiveEventSettings();
         if (activeEvent?.EarlyEntryStartOffset is not { } offset)
         {
             return [];
@@ -170,9 +170,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             .ToList();
     }
 
-    public async Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default)
+    public (int Year, Guid? EventSettingsId) GetActiveEvent()
     {
-        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        var activeEvent = _settingsService.GetActiveEventSettings();
         return (activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year, activeEvent?.Id);
     }
 

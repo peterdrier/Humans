@@ -82,7 +82,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
     [Xunit.InlineData(SyncReadBoundary.Tickets)]
     [Xunit.InlineData(SyncReadBoundary.CheckIns)]
     [Xunit.InlineData(SyncReadBoundary.Stripe)]
-    [Xunit.InlineData(SyncReadBoundary.Settings)]
     public async Task ShutdownDuringSyncRead_RestoresIdleAndPreservesRetryCursor(SyncReadBoundary boundary)
     {
         using var shutdown = new CancellationTokenSource();
@@ -109,9 +108,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncReadBoundary.Orders, call.Arg<CancellationToken>());
-            return boundary == SyncReadBoundary.Settings
-                ? (IReadOnlyList<VendorOrderDto>)[MakeOrderDto("ord_before_shutdown", "Buyer", "buyer@example.com")]
-                : [];
+            return (IReadOnlyList<VendorOrderDto>)[];
         });
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -128,11 +125,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             Read(SyncReadBoundary.Stripe, call.Arg<CancellationToken>());
             return (StripePaymentDetails?)null;
         });
-        _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            Read(SyncReadBoundary.Settings, call.Arg<CancellationToken>());
-            return (EventSettingsInfo?)null;
-        });
+        _shiftManagementService.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
         var logger = new CapturingLogger<TicketSyncService>();
         var service = new TicketSyncService(_ticketRepository, new TicketTransferRepository(TicketsDbFactory),
             _vendorService, _stripeService, Clock, Options.Create(new TicketVendorSettings
@@ -151,14 +144,6 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error
             || entry.Message.Contains("completed", StringComparison.OrdinalIgnoreCase)
             || entry.Message.Contains("Failed to fetch Stripe", StringComparison.Ordinal));
-        if (boundary == SyncReadBoundary.Settings)
-        {
-            var ct = Xunit.TestContext.Current.CancellationToken;
-            (await TicketsDb.TicketOrders.AsNoTracking().SingleAsync(ct)).VendorOrderId.Should().Be("ord_before_shutdown");
-            await service.SyncOrdersAndAttendeesAsync(CancellationToken.None);
-            (await TicketsDb.TicketOrders.AsNoTracking().CountAsync(ct)).Should().Be(1);
-            (await _ticketRepository.GetSyncStateAsync(ct))!.LastSyncAt.Should().Be(Clock.GetCurrentInstant());
-        }
     }
 
     [HumansTheory]
@@ -879,7 +864,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         var checkInInstant = Instant.FromUtc(2026, 7, 8, 14, 30);
@@ -914,7 +899,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         var earlier = Instant.FromUtc(2026, 7, 8, 10, 0);
@@ -950,7 +935,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -979,7 +964,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
@@ -1014,7 +999,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
@@ -1050,7 +1035,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         SeedUserEmail(userId, "alice@example.com", isOAuth: true);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
         _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
@@ -1162,7 +1147,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         new(vendorTicketId, checkedInAt);
 }
 
-public enum SyncReadBoundary { Orders, Tickets, CheckIns, Stripe, Settings }
+public enum SyncReadBoundary { Orders, Tickets, CheckIns, Stripe }
 
 public enum SyncStateSaveStage { Starting, StartingAck, Completion, CompletionAck }
 

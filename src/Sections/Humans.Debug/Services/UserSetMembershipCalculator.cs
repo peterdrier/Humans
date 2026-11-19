@@ -27,7 +27,7 @@ internal static class UserSetMembershipCalculator
         ICommunicationPreferenceService preferences,
         CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         var activeYear = activeEvent?.Year ?? 0;
         var ticketHolders = activeYear > 0
             ? (await tickets.GetAllParticipationsAsync(ct))

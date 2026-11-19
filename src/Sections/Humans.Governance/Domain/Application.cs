@@ -31,6 +31,7 @@ internal sealed class Application
 
     public Instant UpdatedAt { get; set; }
 
+    [Obsolete("Last written 2026-02-20, when the UnderReview state was removed; nothing reads it. Column drop waits on Peter's approval.")]
     public Instant? ReviewStartedAt { get; private set; }
 
     public Instant? ResolvedAt { get; private set; }

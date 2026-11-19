@@ -54,7 +54,7 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   Holded booking, with totals: unmapped and missing receipt, each linking to its filtered list. Spend by Holded account with
   an Unmapped bucket, spend by cardholder, and "N new categories to map" when an id is waiting.
 - `/Pleo/Entries` — every entry, newest first by performed date, filterable by Holded account, cardholder, family,
-  no receipt, unmapped (no Holded code); both blocking filters leave loads out.
+  no receipt, unmapped (no Holded code); both blocking filters show only completed spend, the entries the blocking counts on `/Pleo` count.
 - `/Pleo/Entries/{id}` — every mirrored field (typed, plus the raw JSON) and its receipts, listed live from Pleo and
   shown inline through `/Pleo/Entries/{id}/Receipts/{receiptId}`. A failed lookup is said on the page. No link into
   Pleo's app: no stable URL pattern is verified.
@@ -73,10 +73,9 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 ## Invariants
 
-- A category-link POST with a missing or blank Pleo id returns the existing invalid-id refusal before any mapping save or audit, then redirects to Categories with error feedback.
-
-- The internal `PleoTextBounds` bounds imported entry notes and saved sync errors to 2,000 UTF-16 units and permanent HTTP-error body previews to 300, without splitting surrogate pairs. The preview must remain valid UTF-8 before it becomes part of a stored sync error. The raw vendor entry remains intact, and recording an error preserves the original exception and existing mirror.
-
+- A category link with a missing or blank Pleo id is refused before anything is saved or audited.
+- Entry notes and stored sync errors are cut to their column length, and HTTP-error previews to 300 characters,
+  never mid-character (`PleoTextBounds`). `Raw` keeps the entry as Pleo returned it.
 - Whoever linked a category id owns its row. A sweep leaves a row a person linked as it is. An id nobody linked is
   linked to the unlinked row of the same name (taking Pleo's account), or added as a new row. A row a sweep linked
   follows Pleo's name and account. A Pleo category with no account, or an account missing from the chart, is skipped.
@@ -93,9 +92,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   success-state save finish independently of shutdown. Cancellation from that completion phase is a genuine
   failure, preserving the original exception as its cause. The nightly job propagates shutdown with a Warning
   and no completion message; unrelated failures retain their existing retry policy.
-- JSON API responses must have an object root. A null, array or scalar response fails as a typed
-  `PleoPermanentException`, so live receipt reads use their existing failure feedback instead of leaking a
-  JSON object-access exception. This check also covers all sweep reads before mirror replacement.
+- A JSON response whose root is not an object fails as `PleoPermanentException`: a receipt read reports it on the
+  entry page, a sweep fails before replacing anything.
 - The shared entries/accounts/employees/receipts pager requires an explicit boolean `pagination.hasNextPage`
   on every page; only `false` completes the dataset. Missing, null or mistyped metadata fails instead of
   returning a prefix. A body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
@@ -107,7 +105,6 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   flag so historical entries and spend summaries keep their names after someone leaves Pleo. Contact fields
   remain outside the mirror.
 - The connector is read-only: GETs and the `:search` POSTs. The key holds write scopes; nothing here uses them.
-<!-- wheat: docs/superpowers/specs/2026-08-10-pleo-connector-design.md §Pleo API facts -->
 - The mirror polls: Pleo's webhooks cover only export jobs and vendors, nothing per entry. Cardholders come from
   `/v2/employees`; the `/v1/employees` and `/v1/users` paths are denied to a standalone key.
 - Receipts are fetched live and never stored. The file comes from Pleo's signed CDN URL (an `https` `*.pleo.io` host
@@ -130,13 +127,13 @@ actor; otherwise its result is the sync row.
 
 ## Triggers
 
-- `pleo-sync`, nightly at 03:15 (Hangfire, `PleoSyncJob`): the full sweep. A 4xx from Pleo ends the run with one warning and no retry;
+- `pleo-sync`, nightly at 03:15 UTC (Hangfire, `PleoSyncJob`): the full sweep. A 4xx from Pleo ends the run with one warning and no retry;
   transient failures (5xx, 429, network) keep Hangfire's retries.
 
 ## Cross-Section Dependencies
 
 - Finance.Contracts: `FinancePolicies` only.
-- Users.Contracts: `IUserService`, through `HumansControllerBase`.
+- Base: `IUserService` through `HumansControllerBase`, `IAuditLogService`.
 - No Holded call and no Holded reference: the Holded codes shown come from Pleo's own chart.
 
 ## GDPR
@@ -147,7 +144,10 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 
 ## Architecture
 
-The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation and entry/category projections, Madrid-window settled reads, wallet balance, and live receipt reads. `Service` delegates its existing read entry points and retains category mutations and forwards sync to `PleoMirrorSync`. Repository read order, live-account preference, spend/refund classification, receipt scope and error handling, logger category and cancellation are unchanged. The reader performs no writes; no public contract or DI registration is added.
+`Service` implements both interfaces and owns the category writes. It forwards the sweep to the internal
+`PleoMirrorSync` (fetch, category plan, atomic replace, audit, the sync gate and sync row) and every read to the
+internal `PleoMirrorReader` (one load of the mirror, projected per page; live receipt reads). Neither is registered in
+DI.
 
 ### Public contract
 
@@ -155,5 +155,3 @@ The internal `PleoMirrorReader` owns mirror snapshots, summary/reconciliation an
 its Holded code or null and whether it has a receipt. Finance books only entries with both. `GetWalletBalanceAsync` —
 the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
 `/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.
-
-Internal `PleoMirrorSync` owns the full sweep and its vendor-to-mirror conversions, including the shared non-blocking gate and sync-state reporting. Fetch order, skipped/duplicate-row handling, atomic replacement, timestamps, cancellation, original-error preservation and logger category are unchanged. Category mappings a person linked remain outside the sweep. No public contract, job signature or DI registration is added.

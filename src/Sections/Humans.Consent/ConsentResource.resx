@@ -130,9 +130,7 @@
   <data name="Consent_Queue_FlaggedBadge" xml:space="preserve"><value>Flagged</value></data>
   <data name="Consent_Queue_NewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
   <data name="Consent_Queue_LegalName" xml:space="preserve"><value>Legal Name</value></data>
-  <data name="Consent_Queue_HasApplication" xml:space="preserve"><value>Has Application</value></data>
   <data name="Consent_Queue_Signed" xml:space="preserve"><value>signed</value></data>
-  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>
   <data name="Consent_Queue_PreviousNotes" xml:space="preserve"><value>Previous Review Notes</value></data>
   <data name="Consent_Queue_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="Consent_Queue_NotesPlaceholder" xml:space="preserve"><value>Optional notes...</value></data>

@@ -30,7 +30,7 @@
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <!--
       Both go through the other section's leaf, never its project, so the graph stays
-      acyclic: the review queue reads tiers and applications through IGovernanceService, and
+      acyclic: the review queue reads tiers through IGovernanceService, and
       the section declares its notification sources and emits through
       Humans.Notifications.Contracts. Humans.Governance references Humans.Consent back, which
       is fine: Humans.Governance.Contracts names no Consent type.

@@ -1,10 +1,5 @@
 namespace Humans.Shifts.Services.Dtos;
 
-/// <summary>
-/// <see cref="Hours"/> counts an all-day shift as the all-day window, not its 24h sentinel duration.
-/// </summary>
-internal sealed record ConfirmedUserShiftTotal(Guid UserId, double Hours, int Count);
-
 internal enum ShiftSummaryScope { Global, Team, Rota }
 
 /// <summary>Null camp: no active camp membership this public year, the "no camp" bucket.</summary>

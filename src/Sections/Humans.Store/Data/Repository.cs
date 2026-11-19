@@ -295,4 +295,22 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
 
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<StoreSettings> GetSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == StoreSettings.SingletonId, ct)
+            ?? new StoreSettings();
+    }
+
+    public async Task SaveSettingsAsync(StoreSettings settings, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.Settings.FirstOrDefaultAsync(s => s.Id == StoreSettings.SingletonId, ct);
+        if (row is null)
+            ctx.Settings.Add(row = new StoreSettings());
+        row.DepositLiabilityAccountNum = settings.DepositLiabilityAccountNum;
+        row.SimplifiedInvoiceThresholdEur = settings.SimplifiedInvoiceThresholdEur;
+        await ctx.SaveChangesAsync(ct);
+    }
 }

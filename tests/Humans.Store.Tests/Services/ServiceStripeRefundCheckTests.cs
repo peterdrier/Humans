@@ -30,10 +30,10 @@ public class ServiceStripeRefundCheckTests
     public ServiceStripeRefundCheckTests()
     {
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
-        _service = new Service(_repo, _audit, Substitute.For<ICampService>(), Substitute.For<ITeamService>(),
+        settings.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<ICampService>(), Substitute.For<ITeamService>(),
             new FakeClock(Instant.FromUtc(2026, 9, 2, 12, 0)), settings, _stripe, Substitute.For<IHoldedService>(),
-            Substitute.For<IHoldedWrite>(), Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
+            Substitute.For<IHoldedWrite>(), NullLogger<Service>.Instance);
     }
 
     private Order OrderWith(params Payment[] payments)
@@ -64,7 +64,7 @@ public class ServiceStripeRefundCheckTests
         new(id, pi, amount, status, RefundedAt);
 
     [HumansFact]
-    public async Task Books_each_succeeded_refund_once_and_leaves_pending_ones_for_later()
+    public async Task Books_each_refund_once_with_pending_ones_counted_at_once()
     {
         var actor = Guid.NewGuid();
         var alreadyBooked = new Payment
@@ -86,15 +86,53 @@ public class ServiceStripeRefundCheckTests
 
         var result = await _service.RecordStripeRefundsAsync(order.Id, actor, TestContext.Current.CancellationToken);
 
-        result.Should().Be(new StripeRefundCheckResult(1, 120.50m, 1));
-        await _repo.Received(1).AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        result.Should().Be(new StripeRefundCheckResult(2, 130.50m, 1, 0, 0));
+        await _repo.Received(2).AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p =>
             p.OrderId == order.Id && p.AmountEur == -120.50m && p.Method == PaymentMethod.Refund
             && p.MethodName == PaymentMethod.Refund && p.Status == PaymentStatus.Paid && p.ExternalRef == "re_new"
             && p.StripePaymentIntentId == null && p.ReceivedAt == RefundedAt && p.RecordedByUserId == actor),
             Arg.Any<CancellationToken>());
+        await _repo.Received(1).AddPaymentAsync(Arg.Is<Payment>(p =>
+            p.AmountEur == -10m && p.Status == PaymentStatus.Pending && p.ExternalRef == "re_wait"),
+            Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment,
             Arg.Any<Guid>(), Arg.Is<string>(s => s.Contains("re_new")), actor, order.Id, AuditEntityTypes.Order);
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Booked_refunds_follow_stripe_forward_only()
+    {
+        Payment Booked(string re, PaymentStatus status) => new()
+        {
+            Id = Guid.NewGuid(),
+            AmountEur = -50m,
+            Method = PaymentMethod.Refund,
+            Status = status,
+            ExternalRef = re,
+        };
+        var settles = Booked("re_settles", PaymentStatus.Pending);
+        var fails = Booked("re_fails", PaymentStatus.Pending);
+        var reversed = Booked("re_reversed", PaymentStatus.Paid);
+        var stale = Booked("re_stale", PaymentStatus.Paid);
+        var order = OrderWith(StripePaid("pi_a", 500m), settles, fails, reversed, stale);
+        _stripe.ListStoreRefundsAsync("pi_a", Arg.Any<CancellationToken>()).Returns(new List<StoreRefundData>
+        {
+            Refund("re_settles", "pi_a", 50m),
+            Refund("re_fails", "pi_a", 50m, "canceled"),
+            Refund("re_reversed", "pi_a", 50m, "failed"),
+            Refund("re_stale", "pi_a", 50m, "pending"),
+        });
+
+        var result = await _service.RecordStripeRefundsAsync(order.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Should().Be(new StripeRefundCheckResult(0, 0m, 0, 1, 2));
+        await _repo.Received(1).UpdatePaymentStatusAsync(settles.Id, PaymentStatus.Paid, Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpdatePaymentStatusAsync(fails.Id, PaymentStatus.Failed, Arg.Any<CancellationToken>());
+        await _repo.Received(1).UpdatePaymentStatusAsync(reversed.Id, PaymentStatus.Failed, Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().UpdatePaymentStatusAsync(stale.Id, Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

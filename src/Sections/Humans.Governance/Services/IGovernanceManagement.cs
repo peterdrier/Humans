@@ -7,6 +7,16 @@ namespace Humans.Governance.Services;
 
 internal interface IGovernanceManagement : IGovernanceService, IApplicationService
 {
+    /// <summary>Newest first.</summary>
+    Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
+        Guid userId, CancellationToken ct = default);
+
+    Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    Task<int> GetUnvotedApplicationCountAsync(
+        Guid boardMemberUserId, CancellationToken ct = default);
+
     /// <summary>
     /// Term expiry for <paramref name="tier"/>: every member holding it without an Approved
     /// application for it still in term on <paramref name="today"/> drops to their other in-term

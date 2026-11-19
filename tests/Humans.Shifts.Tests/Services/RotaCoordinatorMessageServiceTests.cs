@@ -507,7 +507,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenNoActiveEvent()
     {
         var teamId = StubTeam();
-        // No StubEvent() call — _settingsService.GetActiveEventSettingsAsync defaults to null.
+        // No StubEvent() call — _settingsService.GetActiveEventSettings defaults to null.
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello", includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
 
@@ -924,7 +924,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
         _calendars[es.Id] = es;
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(ToEventSettingsInfo(es));
         return es;
     }

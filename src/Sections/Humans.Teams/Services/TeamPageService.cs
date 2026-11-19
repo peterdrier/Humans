@@ -406,7 +406,7 @@ internal sealed class TeamPageService(
         var canManageShifts = canManageShiftsByRole ||
             await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id, cancellationToken);
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);

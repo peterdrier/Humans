@@ -1,0 +1,42 @@
+@model FinanceSettingsViewModel
+
+<h5>Stripe gateways</h5>
+<p class="text-muted">Each Stripe ledger account (441) on /Finance is compared with the balance of the Stripe account linked here.</p>
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="text-muted">The Holded chart mirror has no 441 accounts. Sync the chart first.</p>
+}
+else
+{
+    Func<FinanceStripeLinkRow, IHtmlContent> stripeCell = @<text>
+        <input type="hidden" name="rows[@item.Index].LedgerAccountNum" value="@item.LedgerAccountNum" />
+        <select name="rows[@item.Index].StripeAccountId" class="form-select" aria-label="Stripe account for @item.LedgerAccountNum">
+            <option value="">— none —</option>
+            @if (item.StripeAccountId is { } stale && !Model.StripeAccounts.Contains(stale))
+            {
+                <option value="@stale" selected>@stale · no balance in the Stripe mirror</option>
+            }
+            @foreach (var id in Model.StripeAccounts)
+            {
+                <option value="@id" selected="@(id == item.StripeAccountId ? "selected" : null)">@id</option>
+            }
+        </select>
+    </text>;
+
+    @* Explicit asp-controller/asp-action: inside /Settings, ambient route data would resolve against the wrong controller. *@
+    <form method="post" asp-controller="Finance" asp-action="SaveStripeLinks">
+        <div class="card">
+            @{
+                var table = TableModel.For(Model.Rows)
+                    .Id("finance-stripe-links")
+                    .Column("Ledger account", r => r.LedgerAccountNum, c => c.Code().NoSort())
+                    .Column("Name", r => r.LedgerAccountName, c => c.NoSort())
+                    .Template("Stripe account", stripeCell, c => c.NoSort().Css("w-50"))
+                    .Build();
+            }
+            <partial name="_Table" model="table" />
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Save links</button>
+    </form>
+}

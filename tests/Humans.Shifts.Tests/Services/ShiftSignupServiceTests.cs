@@ -108,6 +108,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             NewCalendarResolver(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_shiftMgmt);
 
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));

@@ -65,9 +65,11 @@ internal static class BalanceCalculator
             lineTotals.Add(new LineTotals(line.Id, unitPrice, vatRate, depositPerUnit, lineSubtotal, lineVat, lineDeposit, lineTotal));
         }
 
-        // Only settled money counts: Pending and Failed are what the payer intended, not what Stripe confirmed.
+        // Money in counts once settled: a pending payment is what the payer intended, not what Stripe confirmed. Money
+        // out counts as soon as it is sent: a pending refund already left our hands, and leaving it out would invite a
+        // second refund of the same amount.
         var payments = order.Payments
-            .Where(p => p.Status == PaymentStatus.Paid)
+            .Where(p => p.Status == PaymentStatus.Paid || (p.Status == PaymentStatus.Pending && p.AmountEur < 0))
             .Sum(p => p.AmountEur);
         var balance = subtotal + vat + deposits - payments;
 

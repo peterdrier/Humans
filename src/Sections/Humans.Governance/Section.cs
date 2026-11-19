@@ -50,6 +50,7 @@ public sealed class Section :
     {
         services.AddSingleton<IAuditActionContributor, GovernanceAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GovernanceNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, GovernanceNotificationMeters>();
         services.AddSectionDbContext<GovernanceDbContext>(sentinelTable: "applications");
 
         services.AddSingleton<IApplicationRepository, ApplicationRepository>();
@@ -267,7 +268,7 @@ internal static class PillCounts
         var idClaim = http.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier);
         if (idClaim is null || !Guid.TryParse(idClaim.Value, out var userId))
             return null;
-        var applications = sp.GetRequiredService<IGovernanceService>();
+        var applications = sp.GetRequiredService<IGovernanceManagement>();
         var count = await applications.GetUnvotedApplicationCountAsync(userId);
         return count > 0 ? count : null;
     }
