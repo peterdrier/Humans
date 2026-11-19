@@ -24,7 +24,7 @@ SELECT "Id", "RoleName", "ValidFrom", "ValidTo" FROM auth_role_assignments WHERE
 ### 3. Insert the Admin role assignment
 
 ```sql
-INSERT INTO role_assignments ("Id", "UserId", "RoleName", "ValidFrom", "ValidTo", "Notes", "CreatedAt", "CreatedByUserId")
+INSERT INTO auth_role_assignments ("Id", "UserId", "RoleName", "ValidFrom", "ValidTo", "Notes", "CreatedAt", "CreatedByUserId")
 VALUES (gen_random_uuid(), '<user-id>', 'Admin', now(), NULL, 'Initial admin setup', now(), '<user-id>');
 ```
 
@@ -47,7 +47,7 @@ The `RoleAssignmentClaimsTransformation` runs on authentication, so the new role
 To end a role assignment (set expiration to now):
 
 ```sql
-UPDATE role_assignments SET "ValidTo" = now() WHERE "UserId" = '<user-id>' AND "RoleName" = 'Admin' AND "ValidTo" IS NULL;
+UPDATE auth_role_assignments SET "ValidTo" = now() WHERE "UserId" = '<user-id>' AND "RoleName" = 'Admin' AND "ValidTo" IS NULL;
 ```
 
 ## Notes
