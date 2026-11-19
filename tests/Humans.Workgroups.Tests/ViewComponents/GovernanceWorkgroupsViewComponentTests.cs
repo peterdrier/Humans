@@ -128,7 +128,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
 
         PlainText(html).Trim().Should().Be($"{first}, {second}, {unknown}");
         html.Should().Contain(HtmlEncoder.Default.Encode(first)).And.Contain(HtmlEncoder.Default.Encode(second));
-        html.Should().NotContain("<script>").And.NotContain("<b>").And.NotContain("<a ");
+        html.Should().NotContain("<script>").And.NotContain("<b>").And.Contain("data-human-popover");
     }
 
     [HumansFact]

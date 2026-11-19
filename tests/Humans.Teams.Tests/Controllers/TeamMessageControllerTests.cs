@@ -159,7 +159,7 @@ public sealed class TeamMessageControllerTests
             .GetString("Teams_SendMessage_FromTeam", CultureInfo.CurrentUICulture);
         Assert.NotNull(template);
         var expected = string.Format(CultureInfo.CurrentCulture, template,
-            $"<span>{HtmlEncoder.Default.Encode(currentName)}</span>", HtmlEncoder.Default.Encode(teamName));
+            $"<a href=\"/\" class=\"text-decoration-none\" data-human-popover=\"true\" data-user-id=\"{_targetId}\">{HtmlEncoder.Default.Encode(currentName)}</a>", HtmlEncoder.Default.Encode(teamName));
         foreach (var (path, model) in new (string, object?)[]
         {
             ("/Views/TeamMessage/SendMessage.cshtml", result.Model),

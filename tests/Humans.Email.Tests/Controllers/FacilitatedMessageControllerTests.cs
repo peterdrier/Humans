@@ -168,7 +168,7 @@ public sealed class FacilitatedMessageControllerTests
             .GetString("Email_SendMessage_Heading", CultureInfo.GetCultureInfo(language));
         Assert.NotNull(template);
         Assert.Equal(string.Format(CultureInfo.CurrentCulture, template,
-            $"<span>{HtmlEncoder.Default.Encode(currentName)}</span>"), heading);
+            $"<a href=\"/\" class=\"text-decoration-none\" data-human-popover=\"true\" data-user-id=\"{_targetId}\">{HtmlEncoder.Default.Encode(currentName)}</a>"), heading);
         Assert.DoesNotContain("name=\"RecipientDisplayName\"", html, StringComparison.Ordinal);
     }
 

@@ -14,6 +14,7 @@ using NodaTime.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -70,7 +71,7 @@ public class NotificationBellViewTests
             resources.GetString("Notifications_TimeAgo_JustNow", CultureInfo.CurrentUICulture)!);
         WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking)).Should().Contain(expected);
         html.Should().Contain(HtmlEncoder.Default.Encode(name));
-        html.Should().NotContain("<script>").And.NotContain("<a ");
+        html.Should().NotContain("<script>").And.Contain("data-human-popover");
     }
 
     private static async Task<string> RenderAsync(
@@ -87,6 +88,11 @@ public class NotificationBellViewTests
             .AddApplicationPart(typeof(NotificationsResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly)
             .AddViewLocalization();
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
         configure?.Invoke(builder.Services);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
