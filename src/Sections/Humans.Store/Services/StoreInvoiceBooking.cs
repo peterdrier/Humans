@@ -249,7 +249,8 @@ internal sealed class StoreInvoiceBooking(
             {
                 case 1: lines.Add(new ResolvedLeg(leg, matches[0])); break;
                 case 0: waiting.Add(Describe(p)); break;
-                default: return (lines, waiting, $"Several feed lines match {Describe(p)}: "
+                default:
+                    return (lines, waiting, $"Several feed lines match {Describe(p)}: "
                     + string.Join(", ", matches.Select(m => m.Id)) + ".");
             }
         }

@@ -43,7 +43,10 @@ public class InvoiceBookingTests
         _order.IssuedInvoiceId = Guid.NewGuid();
         _invoice = new Invoice
         {
-            Id = _order.IssuedInvoiceId.Value, OrderId = _order.Id, HoldedDocId = DocId, HoldedDocNumber = "F260009",
+            Id = _order.IssuedInvoiceId.Value,
+            OrderId = _order.Id,
+            HoldedDocId = DocId,
+            HoldedDocNumber = "F260009",
             RequestPayload = """{"kind":"Invoice"}""",
         };
         _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
@@ -59,10 +62,17 @@ public class InvoiceBookingTests
         _write.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, DocId, Arg.Any<CancellationToken>())
             .Returns(_ => new HoldedSalesDocumentDto
             {
-                Id = DocId, DocNumber = "F260009", Subtotal = 82.64m, Tax = 17.36m, Total = 100m,
-                ContactId = "contact-1", ContactAccountNum = CampAccount,
+                Id = DocId,
+                DocNumber = "F260009",
+                Subtotal = 82.64m,
+                Tax = 17.36m,
+                Total = 100m,
+                ContactId = "contact-1",
+                ContactAccountNum = CampAccount,
                 PaymentsPending = 100m - _invoicePayments.Sum(p => p.Amount),
-                Payments = _invoicePayments.ToList(), Lines = [], RawJson = "{}",
+                Payments = _invoicePayments.ToList(),
+                Lines = [],
+                RawJson = "{}",
             });
         _write.PaySalesDocumentAsync(default, default!, default, default!, default, default).ReturnsForAnyArgs(call =>
         {
@@ -86,14 +96,23 @@ public class InvoiceBookingTests
     {
         _order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = _order.Id, AmountEur = amount, Method = PaymentMethod.Stripe,
-            Status = PaymentStatus.Paid, StripePaymentIntentId = pi, ReceivedAt = created,
+            Id = Guid.NewGuid(),
+            OrderId = _order.Id,
+            AmountEur = amount,
+            Method = PaymentMethod.Stripe,
+            Status = PaymentStatus.Paid,
+            StripePaymentIntentId = pi,
+            ReceivedAt = created,
         });
         _stripe.GetStoreChargeAsync(pi, Arg.Any<CancellationToken>()).Returns(new StoreChargeData("ch_" + pi, pi, amount, created));
         if (fedToHolded)
             _feed.Add(new HoldedBankMovementDto
             {
-                Id = "line-" + pi, Date = created.InUtc().Date, BookedAt = created, Amount = amount, Status = "pending",
+                Id = "line-" + pi,
+                Date = created.InUtc().Date,
+                BookedAt = created,
+                Amount = amount,
+                Status = "pending",
             });
     }
 
@@ -159,8 +178,13 @@ public class InvoiceBookingTests
         var refundedAt = Instant.FromUtc(2026, 6, 10, 9, 0, 0);
         _order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = _order.Id, AmountEur = -10m, Method = PaymentMethod.Refund,
-            Status = PaymentStatus.Paid, ExternalRef = "re_1", ReceivedAt = refundedAt,
+            Id = Guid.NewGuid(),
+            OrderId = _order.Id,
+            AmountEur = -10m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+            ReceivedAt = refundedAt,
         });
         _feed.Add(new HoldedBankMovementDto { Id = "line-re_1", Date = new LocalDate(2026, 6, 10), BookedAt = refundedAt, Amount = -10m, Status = "pending" });
 

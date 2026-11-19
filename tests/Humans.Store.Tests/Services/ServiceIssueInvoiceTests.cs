@@ -261,13 +261,22 @@ public class ServiceIssueInvoiceTests
         Arrange(order, IceProduct(unitPrice: 5m, deposit: 30m));
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = 20m, Method = PaymentMethod.DepositReturn,
-            Status = PaymentStatus.Paid, ProductId = _productId, ReceivedAt = Instant.FromUtc(2026, 8, 20, 0, 0),
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 20m,
+            Method = PaymentMethod.DepositReturn,
+            Status = PaymentStatus.Paid,
+            ProductId = _productId,
+            ReceivedAt = Instant.FromUtc(2026, 8, 20, 0, 0),
         });
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = -20m, Method = PaymentMethod.Refund,
-            Status = PaymentStatus.Paid, ExternalRef = "re_1",
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -20m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
         });
 
         var input = await CapturedInputAsync(order);
@@ -289,13 +298,20 @@ public class ServiceIssueInvoiceTests
         Arrange(order, IceProduct(unitPrice: 5m, deposit: 30m));
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = 60m, Method = PaymentMethod.DepositReturn,
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 60m,
+            Method = PaymentMethod.DepositReturn,
             Status = PaymentStatus.Paid,
         });
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = -60m, Method = PaymentMethod.Refund,
-            Status = PaymentStatus.Paid, ExternalRef = "re_1",
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -60m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
         });
 
         var input = await CapturedInputAsync(order);
@@ -311,13 +327,20 @@ public class ServiceIssueInvoiceTests
         Arrange(order, IceProduct(), settled: false);
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = 101m, Method = PaymentMethod.BankTransfer,
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 101m,
+            Method = PaymentMethod.BankTransfer,
             Status = PaymentStatus.Paid,
         });
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = 20m, Method = PaymentMethod.WriteOff,
-            Status = PaymentStatus.Paid, Notes = "Agreed with the camp",
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 20m,
+            Method = PaymentMethod.WriteOff,
+            Status = PaymentStatus.Paid,
+            Notes = "Agreed with the camp",
         });
 
         var input = await CapturedInputAsync(order);
@@ -334,8 +357,12 @@ public class ServiceIssueInvoiceTests
         Arrange(order, IceProduct());
         order.Payments.Add(new Payment
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, AmountEur = -1m, Method = PaymentMethod.Refund,
-            Status = PaymentStatus.Pending, ExternalRef = "re_1",
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -1m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Pending,
+            ExternalRef = "re_1",
         });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
