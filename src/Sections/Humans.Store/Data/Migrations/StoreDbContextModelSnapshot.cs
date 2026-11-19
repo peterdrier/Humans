@@ -287,6 +287,22 @@ namespace Humans.Store.Data.Migrations
                     b.ToTable("store_products", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Store.Domain.StoreSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("DepositLiabilityAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SimplifiedInvoiceThresholdEur")
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("store_settings", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Store.Domain.Invoice", b =>
                 {
                     b.HasOne("Humans.Store.Domain.Order", null)

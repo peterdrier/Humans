@@ -2,7 +2,9 @@ using System.Globalization;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Finance.Data;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using Humans.Pleo.Contracts;
@@ -14,7 +16,7 @@ namespace Humans.Finance.Services;
 
 /// <summary>/Finance's figures, composed from the pages that own each one: balances from the Holded ledger mirror,
 /// creditors, SEPA transfers and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
-/// the Pleo wallet from Pleo. Owns no tables.</summary>
+/// the Pleo wallet from Pleo. Its one table is the Stripe ledger links the Finance tab on /Settings edits.</summary>
 internal sealed class FinanceOverviewService(
     IHoldedService holded,
     IFinanceService finance,
@@ -25,7 +27,8 @@ internal sealed class FinanceOverviewService(
     IPleoService pleo,
     IStripeMirrorService stripe,
     IOptions<SepaOptions> sepa,
-    IOptions<FinanceStripeOptions> stripeLinks,
+    IHoldedRepository repo,
+    IAuditLogService audit,
     IClock clock) : IApplicationService
 {
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
@@ -42,7 +45,7 @@ internal sealed class FinanceOverviewService(
             var chart = await holded.GetChartAsync(ct);
             var filings = await TaxFilingsAsync(chart, today, ct);
             var sources = StripeSources(chart.Where(a => Under(a.Number, "441")).Select(a => a.Number),
-                stripeLinks.Value.ByLedgerAccount(), await stripe.GetEurBalancesAsync(ct));
+                await repo.GetStripeLedgerLinksAsync(ct), await stripe.GetEurBalancesAsync(ct));
             sources[PleoBooking.PleoTreasury] = PleoSource(await pleo.GetWalletBalanceAsync(ct));
             ledger = BuildLedgerCards(chart, balances, filings, sources,
                 sepa.Value.TreasuryLedgerAccount, await BankFeedAsync(today, ct));
@@ -107,27 +110,50 @@ internal sealed class FinanceOverviewService(
 
     /// <summary>Every Stripe ledger account gets a source, unknown when no Stripe account is linked to it or the
     /// mirror holds no EUR balance for the linked one. <paramref name="links"/> maps a ledger account to its Stripe
-    /// account id; null when the setting is malformed, which leaves every account unknown.</summary>
+    /// account id.</summary>
     internal static Dictionary<int, FinanceAccountSourceVm> StripeSources(
         IEnumerable<int> stripeLedgerAccounts,
-        IReadOnlyDictionary<int, string>? links,
+        IReadOnlyDictionary<int, string> links,
         IReadOnlyList<StripeAccountBalance> balances)
     {
         var byAccount = balances.ToDictionary(b => b.AccountId, StringComparer.Ordinal);
         return stripeLedgerAccounts.Distinct().ToDictionary(num => num, num =>
         {
-            if (links is null)
-                return new FinanceAccountSourceVm(null, "/Stripe",
-                    "Finance:StripeLedgerAccounts has a key that is not a ledger account number, or a repeated one.");
             if (!links.TryGetValue(num, out var accountId))
-                return new FinanceAccountSourceVm(null, "/Stripe",
-                    "No Stripe account is set for this ledger account in Finance:StripeLedgerAccounts.");
+                return new FinanceAccountSourceVm(null, "/Settings#finance",
+                    "No Stripe account is linked to this ledger account. Link it on the Settings page, Finance tab.");
             if (!byAccount.TryGetValue(accountId, out var balance))
                 return new FinanceAccountSourceVm(null, "/Stripe",
                     $"The Stripe mirror holds no EUR balance for {accountId}.");
             return new FinanceAccountSourceVm(balance.TotalEur, "/Stripe", ReadAt: balance.SyncedAt,
                 Pending: balance.PendingEur);
         });
+    }
+
+    /// <summary>The 441 ledger accounts (unarchived, from the chart mirror), the Stripe accounts the mirror holds a
+    /// balance for, and the stored links. Reads mirrors only.</summary>
+    public async Task<(IReadOnlyList<HoldedChartAccountInfo> LedgerAccounts, IReadOnlyList<string> StripeAccounts,
+        IReadOnlyDictionary<int, string> Links)> GetStripeLinkSettingsAsync(CancellationToken ct = default)
+    {
+        var ledger = (await holded.GetChartAsync(ct))
+            .Where(a => !a.Archived && Under(a.Number, "441")).OrderBy(a => a.Number).ToList();
+        var stripeAccounts = (await stripe.GetEurBalancesAsync(ct))
+            .Select(b => b.AccountId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+        return (ledger, stripeAccounts, await repo.GetStripeLedgerLinksAsync(ct));
+    }
+
+    /// <summary>Blank entries unlink. The stored links become exactly the non-blank ones.</summary>
+    public async Task SaveStripeLinksAsync(
+        IReadOnlyDictionary<int, string?> links, Guid actorUserId, CancellationToken ct = default)
+    {
+        var kept = links.Where(l => !string.IsNullOrWhiteSpace(l.Value))
+            .ToDictionary(l => l.Key, l => l.Value!.Trim());
+        await repo.ReplaceStripeLedgerLinksAsync(kept, ct);
+        await audit.LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, "FinanceStripeLedgerLinks", Guid.Empty,
+            kept.Count == 0 ? "Stripe ledger links cleared"
+                : "Stripe ledger links: " + string.Join(", ", kept.OrderBy(l => l.Key)
+                    .Select(l => string.Create(CultureInfo.InvariantCulture, $"{l.Key} → {l.Value}"))),
+            actorUserId);
     }
 
     /// <summary>Banks are 570/572, Stripe 441 until it moves. An archived account shows only while it holds money.

@@ -9,6 +9,7 @@ using Humans.Store.Authorization;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Services;
+using Humans.Store.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,8 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionAdminTiles,
-    ISectionPolicies
+    ISectionPolicies,
+    ISectionSettings
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -33,7 +35,6 @@ public sealed class Section :
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, StoreAuditActions>();
-        services.Configure<StoreSectionOptions>(configuration.GetSection(StoreSectionOptions.Section));
 
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
 
@@ -83,4 +84,9 @@ public sealed class Section :
         options.AddPolicy(StorePolicies.Manage, policy =>
             policy.RequireRole(StoreRoles.StoreAdmin, FinanceRoles.FinanceAdmin, RoleNames.Admin));
     }
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("store", "Settings_TabStore", typeof(StoreSettingsTabViewComponent), StorePolicies.Manage)
+    ];
 }

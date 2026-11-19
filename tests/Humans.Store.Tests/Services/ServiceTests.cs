@@ -50,7 +50,6 @@ public class ServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
-    private readonly StoreSectionOptions _storeOptions = new();
     private readonly Service _service;
 
     public ServiceTests()
@@ -60,7 +59,7 @@ public class ServiceTests
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService, _holded, _holdedWrite, NullLogger<Service>.Instance);
     }
 
     [HumansFact]
@@ -606,7 +605,7 @@ public class ServiceTests
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(string.Equals(missing, "product", StringComparison.Ordinal) ? null : product);
         var logger = Substitute.For<ILogger<Service>>();
         var service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService,
-            _holded, _holdedWrite, Options.Create(_storeOptions), logger);
+            _holded, _holdedWrite, logger);
 
         var result = await service.AddLineAsync(order.Id, product.Id, 1, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -713,7 +712,7 @@ public class ServiceTests
         _repo.UpdateOrderAsync(order, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var logger = Substitute.For<ILogger<Service>>();
         var service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripeService,
-            _holded, _holdedWrite, Options.Create(_storeOptions), logger);
+            _holded, _holdedWrite, logger);
         var ct = TestContext.Current.CancellationToken;
         bool succeeded;
         string? error;
@@ -2629,7 +2628,7 @@ public class ServiceTests
         intercepted.UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>())
             .Returns(call => real.UpdatePaymentStatusAsync(call.ArgAt<Guid>(0), call.ArgAt<PaymentStatus>(1), ct));
         Service NewService() => new(intercepted, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts,
-            _stripeService, _holded, _holdedWrite, Options.Create(_storeOptions), NullLogger<Service>.Instance);
+            _stripeService, _holded, _holdedWrite, NullLogger<Service>.Instance);
         var orderId = Guid.NewGuid();
         db.Orders.Add(new Order
         {

@@ -82,4 +82,9 @@ internal interface IStoreRepository : IRepository
     /// still <c>Open</c>.
     /// </summary>
     Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default);
+
+    /// <summary>The defaults when the row was never saved.</summary>
+    Task<StoreSettings> GetSettingsAsync(CancellationToken ct = default);
+
+    Task SaveSettingsAsync(StoreSettings settings, CancellationToken ct = default);
 }
