@@ -43,7 +43,7 @@
             }
         </text>;
         var renameTable = TableModel.For(Model.Renames)
-            .Human("Human", r => r.UserId, HumanLink.None)
+            .Human("Human", r => r.UserId)
             .Template("Old Email", oldEmailCell)
             .Template("", arrowCell, c => c.NoSort())
             .Template("New Email", newEmailCell)

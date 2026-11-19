@@ -40,7 +40,7 @@
         }
     </text>;
     var keysTable = TableModel.For(Model.Keys)
-        .Human("Owner", k => k.UserId, HumanLink.None)
+        .Human("Owner", k => k.UserId)
         .Column("Label", k => k.Label)
         .Template("Key", keyCell)
         .Template("Created", createdCell, c => c.Css("text-nowrap"), sortBy: k => k.CreatedAt)

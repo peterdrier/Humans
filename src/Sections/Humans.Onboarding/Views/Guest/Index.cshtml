@@ -1,6 +1,9 @@
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<OnboardingResource> HtmlLocalizer
 @model GuestDashboardViewModel
 @{
+#pragma warning disable HUM0041 // The viewer's own name in their welcome line.
+}
+@{
     ViewData["Title"] = SharedLocalizer["Dashboard_Title"].Value;
     var viewer = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {

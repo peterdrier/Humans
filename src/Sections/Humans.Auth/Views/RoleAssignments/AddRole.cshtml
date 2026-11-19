@@ -5,7 +5,7 @@
 
 @section Crumbs {
     <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId">
-        <vc:human user-id="@Model.UserId" link="None" popover="false" />
+        <vc:human user-id="@Model.UserId" />
     </a>
     <span>@Localizer["Auth_AddRole_Title"]</span>
 }
@@ -16,7 +16,7 @@
             <div class="card-header">
                 <h4 class="mb-0">
                     @Localizer["Auth_Roles_AddRole"]:
-                    <vc:human user-id="@Model.UserId" link="None" popover="false" />
+                    <vc:human user-id="@Model.UserId" />
                 </h4>
             </div>
             <div class="card-body">

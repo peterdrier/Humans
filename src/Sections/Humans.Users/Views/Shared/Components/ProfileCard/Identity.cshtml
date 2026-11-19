@@ -1,6 +1,9 @@
 @model Humans.Users.Models.ProfileCardViewModel
 @inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<UsersResource> HtmlLocalizer
 @{
+#pragma warning disable HUM0041 // The profile card sits on the person's own profile page.
+}
+@{
     var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
     {
         userId = Model.UserId,

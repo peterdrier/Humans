@@ -30,3 +30,4 @@ HUM0036 | Humans.Architecture   | Error    | View component invoked by its strin
 HUM0037 | Humans.Architecture   | Error    | EF infrastructure or IQueryable used in a Contracts folder or .Contracts leaf; Identity user models remain allowed
 HUM0038 | Humans.Architecture   | Error    | Read path writes: a controller action answering GET ([HttpGet]/[HttpHead], or no verb attribute) or a view component Invoke/InvokeAsync calls a member of an I*Write interface or a method marked [ExternalWrite]
 HUM0039 | Humans.Architecture   | Error    | The User or UserEmail EF entity is named outside Humans.Base and the Users section
+HUM0041 | Humans.Architecture   | Error    | A person's name rendered without the profile popup: HumanLink.None passed to the Human component or a table's Human column, or a view writing UserInfo.BurnerName as text; analyzes Razor-generated code mapped to a .cshtml line

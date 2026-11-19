@@ -43,7 +43,7 @@ Fixes [nobodies-collective/Humans#771](https://github.com/nobodies-collective/Hu
 
 **Acceptance Criteria:**
 - Authenticated `GET /Profile/{id}/Popover` continues to return the existing full partial.
-- The 8 existing `link="None"` `<vc:human>` call sites still suppress the popover by default.
+- The few `link="None"` `<vc:human>` call sites (each a HUM0041 exception) still suppress the popover by default.
 - `<vc:human popover-public="true">` opts in to the reduced popover even when `link="None"`.
 
 ## Endpoints

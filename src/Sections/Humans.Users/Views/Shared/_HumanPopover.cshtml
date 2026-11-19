@@ -1,6 +1,9 @@
 @model Humans.Users.Models.ProfileSummaryViewModel
 @inject IAuthorizationService AuthService
 @{
+#pragma warning disable HUM0041 // The popup's own body.
+}
+@{
     var canSeeHiddenTeams =
         (await AuthService.AuthorizeAsync(User, Humans.Teams.Contracts.TeamsPolicies.Read)).Succeeded;
     IReadOnlyList<string> visibleHiddenTeams =

@@ -32,7 +32,7 @@ else
         }
     </div>
 
-        Func<HoldedDuplicateMemberResult, IHtmlContent> memberCell = @<text><vc:human user-id="@item.UserId" link="None" /> <div class="text-muted small">@item.ContactName</div></text>;
+        Func<HoldedDuplicateMemberResult, IHtmlContent> memberCell = @<text><vc:human user-id="@item.UserId" /> <div class="text-muted small">@item.ContactName</div></text>;
         Func<HoldedDuplicateMemberResult, IHtmlContent> accountCell = @<text>
             @if (item.SupplierAccountNum is { } account)
             {

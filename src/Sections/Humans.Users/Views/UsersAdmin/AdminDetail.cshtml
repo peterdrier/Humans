@@ -1,6 +1,9 @@
 @model Humans.Users.Models.AdminHumanDetailViewModel
 @inject IAuthorizationService AuthService
 @{
+#pragma warning disable HUM0041 // The page is this person's admin record already.
+}
+@{
     ViewData["Title"] = string.Format(Localizer["Users_AdminHumanDetail_Title"].Value, Model.DisplayName);
     var stateLabel = Model.State == UserState.DeletePending ? "Delete Pending" : Model.State.ToString();
     var stateBadgeClass = StatusBadgeExtensions.GetMembershipStatusBadgeClass(stateLabel);

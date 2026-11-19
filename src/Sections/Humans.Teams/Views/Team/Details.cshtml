@@ -86,7 +86,9 @@
                             @Localizer["Teams_TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToDate()
                             @if (Model.PageContentUpdatedByUserId is { } editorId)
                             {
-                                <text> &mdash; </text><vc:human user-id="@editorId" link="None" />
+#pragma warning disable HUM0041 // Public team pages reach anonymous viewers; the profile behind a link needs a sign-in.
+                                <text> &mdash; </text><vc:human user-id="@editorId" link="@(Model.IsAuthenticated ? HumanLink.Public : HumanLink.None)" />
+#pragma warning restore HUM0041
                             }
                         </small>
                     }
@@ -171,12 +173,14 @@
                                     }
                                     else
                                     {
+#pragma warning disable HUM0041 // Anonymous viewers get the public popup; the profile behind a link needs a sign-in.
                                         <vc:human user-id="@member.UserId"
                                                   layout="Card" size="128"
                                                   link="None"
                                                   popover-public="true"
                                                   css-class="border border-primary border-3"
                                                   bg-color="bg-primary" />
+#pragma warning restore HUM0041
                                     }
                                 </div>
                             }

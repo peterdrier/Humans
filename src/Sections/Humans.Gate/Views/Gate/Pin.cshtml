@@ -1,5 +1,8 @@
 @model GatePinViewModel
 @{
+#pragma warning disable HUM0041 // The gate kiosk shows the staffer their own name.
+}
+@{
     ViewData["Title"] = Model.Mode == GatePinMode.Set ? "Set your PIN" : "Enter your PIN";
 }
 

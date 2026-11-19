@@ -3,7 +3,6 @@ using Humans.Google.Contracts;
 using Humans.Google.Models;
 using Humans.Google.Services;
 using Humans.Google.ViewComponents;
-using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -23,7 +22,7 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
         settings.GetAllAsync(aborted.Token)
             .Returns(Task.FromException<IReadOnlyList<SyncServiceSettingsInfo>>(
                 new OperationCanceledException(aborted.Token)));
-        var sut = new GoogleSyncSettingsTabViewComponent(settings, Substitute.For<IUserService>())
+        var sut = new GoogleSyncSettingsTabViewComponent(settings)
         {
             ViewComponentContext = new ViewComponentContext
             {
@@ -50,11 +49,7 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
                 Instant.FromUtc(2026, 1, 1, 0, 0), updaterId),
         });
 
-        var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>())
-            .Returns(new Dictionary<Guid, UserInfo> { [updaterId] = MakeUser(updaterId, "Roo") });
-
-        var sut = new GoogleSyncSettingsTabViewComponent(settings, users);
+        var sut = new GoogleSyncSettingsTabViewComponent(settings);
 
         var result = await sut.InvokeAsync();
         var model = (SyncSettingsViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
@@ -63,11 +58,6 @@ public sealed class GoogleSyncSettingsTabViewComponentTests
         row.ServiceType.Should().Be(SyncServiceType.GoogleDrive);
         row.ServiceName.Should().Be("Google Drive");
         row.CurrentMode.Should().Be(SyncMode.AddOnly);
-        row.UpdatedByName.Should().Be("Roo");
+        row.UpdatedByUserId.Should().Be(updaterId);
     }
-
-    private static UserInfo MakeUser(Guid userId, string burnerName) =>
-        UserInfo.Create(
-            new User { Id = userId, UserName = $"user-{userId:N}", BurnerName = burnerName },
-            [], [], null);
 }

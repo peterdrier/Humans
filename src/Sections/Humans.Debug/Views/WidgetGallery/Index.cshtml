@@ -283,7 +283,13 @@
                         <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" link="Admin" /></div>
 
                         <div class="wg-variant-label">link="None"<span class="wg-variant-sub">no link, no popover</span></div>
+                        @{
+#pragma warning disable HUM0041 // The gallery shows what the variant looks like.
+                        }
                         <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="Avatar" size="48" link="None" /></div>
+                        @{
+#pragma warning restore HUM0041
+                        }
                     </div>
                 </div>
 

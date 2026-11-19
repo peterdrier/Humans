@@ -5,7 +5,7 @@
     Func<AssemblyBallotDisclosureRow, IHtmlContent> memberCell = @<text>
         @if (item.UserId is { } userId)
         {
-            <vc:human user-id="@userId" link="None" />
+            <vc:human user-id="@userId" />
         }
         else
         {
