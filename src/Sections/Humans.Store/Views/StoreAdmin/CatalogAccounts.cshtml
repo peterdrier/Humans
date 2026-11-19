@@ -35,7 +35,7 @@ else
     </text>;
     Func<CatalogAccountsRow, IHtmlContent> incomeCell = @<text><partial name="_AccountPicker" model="@(new AccountPickerModel($"rows[{item.Index}].Income", $"rows_{item.Index}__Income", $"Income account for {item.Product.Name}", item.Income, Model.Choices.Income))" /></text>;
     Func<CatalogAccountsRow, IHtmlContent> costCell = @<text><partial name="_AccountPicker" model="@(new AccountPickerModel($"rows[{item.Index}].Cost", $"rows_{item.Index}__Cost", $"Cost account for {item.Product.Name}", item.Cost, Model.Choices.Cost))" /></text>;
-    Func<CatalogAccountsRow, IHtmlContent> teamUsageCell = @<text><partial name="_AccountPicker" model="@(new AccountPickerModel($"rows[{item.Index}].TeamUsage", $"rows_{item.Index}__TeamUsage", $"Team usage account for {item.Product.Name}", item.TeamUsage, Model.Choices.TeamUsage))" /></text>;
+    Func<CatalogAccountsRow, IHtmlContent> teamUsageCell = @<text><partial name="_AccountPicker" model="@(new AccountPickerModel($"rows[{item.Index}].TeamUsage", $"rows_{item.Index}__TeamUsage", $"Dept transfers for {item.Product.Name}", item.TeamUsage, Model.Choices.TeamUsage))" /></text>;
     Func<CatalogAccountsRow, IHtmlContent> copyCell = @<text>
         @if (item.Index > 0)
         {
@@ -58,7 +58,7 @@ else
                     .Column("Unit price", r => r.Product.UnitPriceEur, c => c.Currency().End().NoSort())
                     .Template("Income account", incomeCell, c => c.NoSort().Css("w-25"))
                     .Template("Cost account", costCell, c => c.NoSort().Css("w-25"))
-                    .Template("Team usage account", teamUsageCell, c => c.NoSort().Css("w-25"))
+                    .Template("Dept transfers", teamUsageCell, c => c.NoSort().Css("w-25"))
                     .Template("", copyCell, c => c.NoSort().End())
                     .RowCss(r => r.Product.IsActive ? null : "text-muted")
                     .Build();

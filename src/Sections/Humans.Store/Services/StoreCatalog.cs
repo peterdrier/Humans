@@ -247,7 +247,7 @@ internal sealed class StoreCatalog(
             await audit.LogAsync(
                 StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, product.Id,
                 $"Set accounts on store product '{product.Name}': income {Show(row.Income)}, cost {Show(row.Cost)}, "
-                    + $"team usage {Show(row.TeamUsage)}",
+                    + $"dept transfers {Show(row.TeamUsage)}",
                 actorUserId);
         }
         return AdminMutationResult.Success;

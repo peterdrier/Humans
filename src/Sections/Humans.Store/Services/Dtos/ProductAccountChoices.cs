@@ -15,7 +15,7 @@ internal sealed record ProductAccountChoices(
     public string? Refusal(int? income, int? cost, int? teamUsage) =>
         Missing("Income account", income, Income)
         ?? Missing("Cost account", cost, Cost)
-        ?? Missing("Team usage account", teamUsage, TeamUsage);
+        ?? Missing("Dept transfers account", teamUsage, TeamUsage);
 
     private static string? Missing(string label, int? account, IReadOnlyList<AccountChoice> choices) =>
         account is { } n && choices.All(c => c.Number != n)
