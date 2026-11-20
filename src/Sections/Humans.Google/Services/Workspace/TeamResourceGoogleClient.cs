@@ -75,8 +75,17 @@ internal sealed class TeamResourceGoogleClient(
             lookupRequest.GroupKeyId = groupEmail;
             var lookupResponse = await lookupRequest.ExecuteAsync(ct);
 
-            var fullGroup = await cloudIdentity.Groups.Get(lookupResponse.Name).ExecuteAsync(ct);
-            var numericId = lookupResponse.Name["groups/".Length..];
+            var resourceName = lookupResponse.Name;
+            if (string.IsNullOrEmpty(resourceName) ||
+                !resourceName.StartsWith("groups/", StringComparison.Ordinal) ||
+                resourceName.Length <= "groups/".Length ||
+                resourceName["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c)))
+            {
+                logger.LogWarning("Cloud Identity group lookup returned a malformed resource name for {Email}", groupEmail);
+                return new GroupLookupResult(null, new GoogleClientError(502, "Group lookup returned a malformed resource name."));
+            }
+            var fullGroup = await cloudIdentity.Groups.Get(resourceName).ExecuteAsync(ct);
+            var numericId = resourceName["groups/".Length..];
             var resolvedEmail = fullGroup.GroupKey?.Id?.Trim();
             var separator = resolvedEmail?.LastIndexOf('@') ?? -1;
             if (resolvedEmail is null || separator <= 0 || separator == resolvedEmail.Length - 1)

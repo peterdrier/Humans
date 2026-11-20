@@ -73,7 +73,9 @@ internal sealed class GoogleGroupProvisioningClient(
             // "groups/{id}" — strip the prefix to get the numeric id.
             if (!operation.Response.TryGetValue("name", out var nameObj) ||
                 nameObj is not string resourceName ||
-                !resourceName.StartsWith("groups/", StringComparison.Ordinal))
+                !resourceName.StartsWith("groups/", StringComparison.Ordinal) ||
+                resourceName.Length <= "groups/".Length ||
+                resourceName["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c)))
             {
                 logger.LogWarning(
                     "Cloud Identity groups.create response for {Email} missing or malformed 'name' field",
@@ -113,7 +115,16 @@ internal sealed class GoogleGroupProvisioningClient(
             var lookup = cloudIdentity.Groups.Lookup();
             lookup.GroupKeyId = groupEmail;
             var response = await lookup.ExecuteAsync(ct);
-            var numericId = response.Name["groups/".Length..];
+            var resourceName = response.Name;
+            if (string.IsNullOrEmpty(resourceName) ||
+                !resourceName.StartsWith("groups/", StringComparison.Ordinal) ||
+                resourceName.Length <= "groups/".Length ||
+                resourceName["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c)))
+            {
+                logger.LogWarning("Cloud Identity group lookup returned a malformed resource name for {Email}", groupEmail);
+                return new GroupLookupIdResult(null, new GoogleClientError(502, "Group lookup returned a malformed resource name."));
+            }
+            var numericId = resourceName["groups/".Length..];
             return new GroupLookupIdResult(numericId, Error: null);
         }
         catch (global::Google.GoogleApiException ex)
