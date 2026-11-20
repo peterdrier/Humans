@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Anthropic.Core;
+using Anthropic.Exceptions;
 using Anthropic.Models.Messages;
 using Anthropic.Models.Models;
 using Humans.Base.Extensions;
@@ -95,7 +96,15 @@ internal sealed class AnthropicClient : IAnthropicClient
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Anthropic streaming call failed; emitting synthetic error finalizer.");
+                    if (ex is AnthropicServiceException or AnthropicIOException or HttpRequestException
+                        or IOException or TimeoutException or OperationCanceledException)
+                    {
+                        var reason = ex is AnthropicIOException && ex.InnerException is { } transportFailure
+                            ? transportFailure.Message : ex.Message;
+                        _logger.LogWarning("Anthropic streaming call failed; emitting synthetic error finalizer: {Reason}", reason);
+                    }
+                    else
+                        _logger.LogError(ex, "Anthropic streaming call failed; emitting synthetic error finalizer.");
                     streamErrored = true;
                     break;
                 }

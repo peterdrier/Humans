@@ -169,6 +169,81 @@ public sealed class AnthropicClientTests
         blocks[3].GetProperty("input").GetProperty("section").GetString().Should().Be("Teams");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("api")]
+    [Xunit.InlineData("sse")]
+    [Xunit.InlineData("transport")]
+    [Xunit.InlineData("unexpected")]
+    public async Task StreamAsync_ClassifiesFailuresAndKeepsTheErrorFinalizer(string failureKind)
+    {
+        Exception? failure = failureKind switch
+        {
+            "transport" => new HttpRequestException("Provider unavailable"),
+            "unexpected" => new InvalidOperationException("Unexpected handler failure"),
+            _ => null,
+        };
+        using var http = new HttpClient(new FailedResponseHandler(failureKind, failure));
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var logger = new Humans.Testing.CapturingLogger<ClientAdapter>();
+        var adapter = new ClientAdapter(provider, logger);
+        var tokens = new List<AgentTurnToken>();
+
+        await foreach (var token in adapter.StreamAsync(
+            new AnthropicRequest("test-model", "System", [new AnthropicMessage("user", "Question", null, null)], [], 100),
+            Xunit.TestContext.Current.CancellationToken))
+            tokens.Add(token);
+
+        tokens.Should().ContainSingle(token => token.Finalizer != null);
+        tokens.Single(token => token.Finalizer != null).Finalizer!.StopReason.Should().Be("error");
+        var entry = logger.Entries.Where(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning)
+            .Should().ContainSingle().Subject;
+        entry.Level.Should().Be(failureKind is "unexpected"
+            ? Microsoft.Extensions.Logging.LogLevel.Error : Microsoft.Extensions.Logging.LogLevel.Warning);
+        if (failureKind is "unexpected") entry.Exception.Should().BeSameAs(failure);
+        else entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain(failureKind is "unexpected" ? "failed" : "Provider unavailable");
+    }
+
+    [HumansFact]
+    public async Task StreamAsync_PropagatesCallerCancellationWithoutAnErrorFinalizer()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        using var http = new HttpClient(new StreamResponseHandler(""));
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var logger = new Humans.Testing.CapturingLogger<ClientAdapter>();
+        var adapter = new ClientAdapter(provider, logger);
+        var tokens = new List<AgentTurnToken>();
+
+        var read = async () =>
+        {
+            await foreach (var token in adapter.StreamAsync(
+                new AnthropicRequest("test-model", "System", [new AnthropicMessage("user", "Question", null, null)], [], 100),
+                cancellation.Token))
+                tokens.Add(token);
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        tokens.Should().NotContain(token => token.Finalizer != null);
+        logger.Entries.Should().NotContain(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning);
+    }
+
+    private sealed class FailedResponseHandler(string kind, Exception? failure) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (failure is not null) return Task.FromException<HttpResponseMessage>(failure);
+            return Task.FromResult(new HttpResponseMessage(kind is "api" ? HttpStatusCode.TooManyRequests : HttpStatusCode.OK)
+            {
+                RequestMessage = request,
+                Content = new StringContent(kind is "api"
+                    ? "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Provider unavailable\"}}"
+                    : "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Provider unavailable\"}}\n\n",
+                    Encoding.UTF8, kind is "api" ? "application/json" : "text/event-stream"),
+            });
+        }
+    }
+
     private sealed class StreamResponseHandler(string body) : HttpMessageHandler
     {
         public string? LastRequestBody { get; private set; }
