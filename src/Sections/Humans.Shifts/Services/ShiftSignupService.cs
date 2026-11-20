@@ -403,8 +403,8 @@ internal sealed class ShiftSignupService(
 
         if (approved.Count == 0)
             return SignupResult.Fail(group.Count == 1
-                ? "Cannot approve: shift is at capacity."
-                : "Cannot approve: all shifts in this range are at capacity.");
+                ? "Cannot approve: shift is at capacity, so the request was refused."
+                : "Cannot approve: all shifts in this range are at capacity, so the requests were refused.");
 
         await NotifyGroupChangeAsync(approved, "Shifts_Notification_ChangeApproved");
 

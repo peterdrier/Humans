@@ -2120,7 +2120,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().Be(!allAtCapacity);
         if (allAtCapacity)
-            result.Error.Should().Be("Cannot approve: all shifts in this range are at capacity.");
+            result.Error.Should().Be("Cannot approve: all shifts in this range are at capacity, so the requests were refused.");
         else
             result.Warning.Should().Contain("capacity");
         (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == freePending.Id, TestContext.Current.CancellationToken))
