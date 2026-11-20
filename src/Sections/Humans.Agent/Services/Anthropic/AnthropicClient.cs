@@ -246,18 +246,37 @@ internal sealed class AnthropicClient : IAnthropicClient
             },
         };
 
-        var result = await _sdk.Messages.CountTokens(request, cancellationToken: cancellationToken)
+        var result = await ReadAsync(() => _sdk.Messages.CountTokens(request, cancellationToken: cancellationToken))
             .ConfigureAwait(false);
         return ClampToInt(result.InputTokens);
     }
 
     public async Task<IReadOnlyList<AnthropicModelInfo>> ListModelsAsync(CancellationToken cancellationToken = default)
     {
-        var page = await _sdk.Models.List(new ModelListParams { Limit = 100 }, cancellationToken).ConfigureAwait(false);
-        var models = new List<AnthropicModelInfo>();
-        await foreach (var model in global::Anthropic.IPageExtensions.Paginate(page, cancellationToken).ConfigureAwait(false))
-            models.Add(new AnthropicModelInfo(model.ID, model.DisplayName));
-        return models;
+        return await ReadAsync(async () =>
+        {
+            var page = await _sdk.Models.List(new ModelListParams { Limit = 100 }, cancellationToken).ConfigureAwait(false);
+            var models = new List<AnthropicModelInfo>();
+            await foreach (var model in global::Anthropic.IPageExtensions.Paginate(page, cancellationToken).ConfigureAwait(false))
+                models.Add(new AnthropicModelInfo(model.ID, model.DisplayName));
+            return models;
+        }).ConfigureAwait(false);
+    }
+
+    private static async Task<T> ReadAsync<T>(Func<Task<T>> read)
+    {
+        try
+        {
+            return await read().ConfigureAwait(false);
+        }
+        catch (AnthropicServiceException ex)
+        {
+            throw new HttpRequestException(ex.Message, ex);
+        }
+        catch (AnthropicIOException ex)
+        {
+            throw new IOException(ex.InnerException?.Message ?? ex.Message, ex);
+        }
     }
 
     private static int ClampToInt(long value) => value > int.MaxValue ? int.MaxValue : (int)value;

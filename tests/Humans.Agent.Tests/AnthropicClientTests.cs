@@ -242,7 +242,7 @@ public sealed class AnthropicClientTests
         var read = () => adapter.ListModelsAsync(cancellation.Token);
 
         if (outcome is "failure")
-            await read.Should().ThrowAsync<global::Anthropic.Exceptions.AnthropicApiException>();
+            await read.Should().ThrowAsync<HttpRequestException>();
         else if (outcome is "cancelled")
             await read.Should().ThrowAsync<OperationCanceledException>();
         else
@@ -255,6 +255,33 @@ public sealed class AnthropicClientTests
         handler.Queries.Should().HaveCount(2);
         handler.Queries[0].Should().Contain("limit=100");
         handler.Queries[1].Should().Contain("after_id=model-new");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, "api")]
+    [Xunit.InlineData(true, "api")]
+    [Xunit.InlineData(false, "transport")]
+    [Xunit.InlineData(true, "transport")]
+    [Xunit.InlineData(false, "unexpected")]
+    [Xunit.InlineData(true, "unexpected")]
+    public async Task Optional_reads_normalize_provider_failures_without_hiding_unexpected_errors(bool models, string kind)
+    {
+        Exception? failure = kind switch
+        {
+            "transport" => new HttpRequestException("Provider unavailable"),
+            "unexpected" => new InvalidOperationException("Unexpected handler failure"),
+            _ => null,
+        };
+        using var http = new HttpClient(new FailedResponseHandler(kind, failure));
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var adapter = new ClientAdapter(provider, NullLogger<ClientAdapter>.Instance);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Task ReadAsync() => models ? adapter.ListModelsAsync(ct) : adapter.CountTokensAsync("test-model", "Text", ct);
+        var read = ReadAsync;
+
+        if (kind is "api") await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*Provider unavailable*");
+        else if (kind is "transport") await read.Should().ThrowAsync<IOException>().WithMessage("*Provider unavailable*");
+        else (await read.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     private sealed class ModelPagesHandler(string outcome, CancellationTokenSource cancellation) : HttpMessageHandler

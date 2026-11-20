@@ -140,10 +140,10 @@ internal sealed class AgentConversationReader(
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            // Expected/transient (rate limit, network) — log the reason at Warning, drop the
-            // stack trace per memory/code/always-log-problems.md.
-            logger.LogWarning(
-                "count_tokens failed for prompt preview; rendering without a token count: {Reason}", ex.Message);
+            if (ex is HttpRequestException or IOException or TimeoutException or OperationCanceledException)
+                logger.LogWarning("count_tokens failed for prompt preview; rendering without a token count: {Reason}", ex.Message);
+            else
+                logger.LogError(ex, "count_tokens failed for prompt preview; rendering without a token count: {Reason}", ex.Message);
         }
 
         return new AgentPromptPreview(
