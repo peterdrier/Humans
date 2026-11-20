@@ -34,8 +34,8 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
         Guid? actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>Virtual (not persisted) weeks, for the break-even forecasts.</summary>
-    Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
+    /// <summary>Remaining ticket count from the same weekly policy as materialized forecasts.</summary>
+    Task<int> GetProjectedRemainingTicketsAsync(
         Guid budgetGroupId, CancellationToken ct = default);
 
     /// <summary>Through completed weeks, from the revenue line items' notes.</summary>

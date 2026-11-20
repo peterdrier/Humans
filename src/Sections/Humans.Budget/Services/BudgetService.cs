@@ -319,8 +319,8 @@ internal sealed class BudgetService(
         return changed;
     }
 
-    public Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
-        Guid budgetGroupId, CancellationToken ct = default) => reader.GetTicketingProjectionEntriesAsync(budgetGroupId, ct);
+    public Task<int> GetProjectedRemainingTicketsAsync(
+        Guid budgetGroupId, CancellationToken ct = default) => reader.GetProjectedRemainingTicketsAsync(budgetGroupId, ct);
 
     public int GetActualTicketsSold(BudgetGroupDetail ticketingGroup)
     {

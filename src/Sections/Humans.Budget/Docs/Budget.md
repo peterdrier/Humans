@@ -205,6 +205,7 @@ Stored as string via `HasConversion<string>()`.
 - Year graph reads impose no group display order. Tree views sort groups themselves; member and admin summary controllers sort them by `SortOrder` before calculation so equal-valued category slices and appended group buffers retain that order.
 - Summary slices retain their source `BudgetCategoryId`; synthesized VAT, reserves, taxes and buffers have none. Calculations impose no amount order. Member and admin summary controllers order authored categories by descending amount, followed by synthesized slices in their original composition order, without identifying a slice by its localized name.
 
+- The finance overview reads a projected ticket count from the service, using the same weekly calculation as materialization; it does not construct unused weekly display or financial DTOs.
 - The finance overview’s ticket target is actual tickets sold plus the remaining projection. An empty forecast (including after the sales period ends) leaves the target at actual sales rather than zero. Both active-year and year-detail pages use this calculation.
 - Active-year and year-by-id reads accept caller cancellation and forward it to the repository query. After selecting the active ID, the repository reuses its year-by-id hydration path for groups, categories, line items and ticketing projections. Year-by-id retains archived years for historical report labels.
 

@@ -2133,13 +2133,17 @@ public sealed class BudgetServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        var preview = await _service.GetTicketingProjectionEntriesAsync(
-            groupId, TestContext.Current.CancellationToken);
+        await using var previewContext = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var projectionForPreview = await previewContext.TicketingProjections.SingleAsync(
+            p => p.BudgetGroupId == groupId, TestContext.Current.CancellationToken);
+        var preview = projectionForPreview.CalculateWeeks(Clock.GetCurrentInstant().InUtc().Date).ToList();
+        (await _service.GetProjectedRemainingTicketsAsync(groupId, TestContext.Current.CancellationToken))
+            .Should().Be(preview.Sum(week => week.Tickets));
         preview.Should().HaveCount(weeks);
-        preview[0].WeekStart.Should().Be(new LocalDate(2026, 3, 16));
-        preview[0].ProjectedTickets.Should().Be(firstWeekTickets);
-        preview[^1].WeekEnd.Should().Be(new LocalDate(2026, 4, eventDay));
-        preview[^1].ProjectedTickets.Should().Be(lastWeekTickets);
+        preview[0].Start.Should().Be(new LocalDate(2026, 3, 16));
+        preview[0].Tickets.Should().Be(firstWeekTickets);
+        preview[^1].End.Should().Be(new LocalDate(2026, 4, eventDay));
+        preview[^1].Tickets.Should().Be(lastWeekTickets);
 
         await _service.SyncTicketingActualsAsync(_yearId, [], null, TestContext.Current.CancellationToken);
 
@@ -2148,13 +2152,13 @@ public sealed class BudgetServiceTests
             .ToListAsync(TestContext.Current.CancellationToken);
         foreach (var week in preview)
         {
-            var revenue = lines.Single(li => li.BudgetCategoryId == revenueCatId && li.ExpectedDate == week.WeekStart);
-            revenue.Amount.Should().Be(week.ProjectedRevenue);
-            revenue.Notes.Should().Be($"~{week.ProjectedTickets} tickets");
-            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
-                && li.Description.Contains("Stripe fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedStripeFees);
-            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.WeekStart
-                && li.Description.Contains("TT fees:", StringComparison.Ordinal)).Amount.Should().Be(-week.ProjectedTtFees);
+            var revenue = lines.Single(li => li.BudgetCategoryId == revenueCatId && li.ExpectedDate == week.Start);
+            revenue.Amount.Should().Be(Math.Round(week.Revenue, 2));
+            revenue.Notes.Should().Be($"~{week.Tickets} tickets");
+            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.Start
+                && li.Description.Contains("Stripe fees:", StringComparison.Ordinal)).Amount.Should().Be(-Math.Round(week.StripeFees, 2));
+            lines.Single(li => li.BudgetCategoryId == feesCatId && li.ExpectedDate == week.Start
+                && li.Description.Contains("TT fees:", StringComparison.Ordinal)).Amount.Should().Be(-Math.Round(week.TicketTailorFees, 2));
         }
     }
 
@@ -2166,8 +2170,8 @@ public sealed class BudgetServiceTests
         await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, 22),
             new LocalDate(2026, 3, 20), 19.99m, 5m);
 
-        (await _service.GetTicketingProjectionEntriesAsync(groupId, TestContext.Current.CancellationToken))
-            .Should().BeEmpty();
+        (await _service.GetProjectedRemainingTicketsAsync(groupId, TestContext.Current.CancellationToken))
+            .Should().Be(0);
         await _service.SyncTicketingActualsAsync(_yearId, [], null, TestContext.Current.CancellationToken);
 
         await using var stored = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
@@ -2186,14 +2190,18 @@ public sealed class BudgetServiceTests
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId, start, end, 20m, 5m);
 
-        var preview = await _service.GetTicketingProjectionEntriesAsync(
-            groupId, TestContext.Current.CancellationToken);
+        await using var previewContext = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var projectionForPreview = await previewContext.TicketingProjections.SingleAsync(
+            p => p.BudgetGroupId == groupId, TestContext.Current.CancellationToken);
+        var preview = projectionForPreview.CalculateWeeks(Clock.GetCurrentInstant().InUtc().Date).ToList();
+        (await _service.GetProjectedRemainingTicketsAsync(groupId, TestContext.Current.CancellationToken))
+            .Should().Be(preview.Sum(week => week.Tickets));
 
         var week = preview.Should().ContainSingle().Which;
-        week.WeekStart.Should().Be(start);
-        week.WeekEnd.Should().Be(end);
-        week.ProjectedTickets.Should().Be(expectedTickets);
-        week.ProjectedRevenue.Should().Be(expectedTickets * 20m);
+        week.Start.Should().Be(start);
+        week.End.Should().Be(end);
+        week.Tickets.Should().Be(expectedTickets);
+        Math.Round(week.Revenue, 2).Should().Be(expectedTickets * 20m);
 
         await _service.SyncTicketingActualsAsync(_yearId, [], null, TestContext.Current.CancellationToken);
 
@@ -2202,7 +2210,7 @@ public sealed class BudgetServiceTests
             item => item.BudgetCategoryId == revenueCatId && item.IsAutoGenerated,
             TestContext.Current.CancellationToken);
         revenue.ExpectedDate.Should().Be(start);
-        revenue.Amount.Should().Be(week.ProjectedRevenue);
+        revenue.Amount.Should().Be(Math.Round(week.Revenue, 2));
         revenue.Notes.Should().Be($"~{expectedTickets} tickets");
     }
 
@@ -2214,10 +2222,10 @@ public sealed class BudgetServiceTests
         await ConfigureProjectionAsync(groupId, new LocalDate(2026, 3, 22),
             new LocalDate(2026, 4, 13), 19.99m, 5);
 
-        var preview = await _service.GetTicketingProjectionEntriesAsync(
+        var preview = await _service.GetProjectedRemainingTicketsAsync(
             groupId, TestContext.Current.CancellationToken);
 
-        preview.Should().BeEmpty();
+        preview.Should().Be(0);
     }
 
     // Guards the ordering invariant: materialization runs in the repo AFTER

@@ -224,24 +224,11 @@ internal sealed class BudgetReader(
     public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
         (await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, ct)).ToHashSet();
 
-    public async Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
+    public async Task<int> GetProjectedRemainingTicketsAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {
         var projection = await repository.GetTicketingProjectionAsync(budgetGroupId, ct);
-        if (projection is null)
-            return [];
-
-        return projection.CalculateWeeks(clock.GetCurrentInstant().InUtc().Date)
-            .Select(week => new TicketingWeekProjection
-            {
-                WeekLabel = $"{week.Start.ToWeekdayDayMonth()}–{week.End.ToWeekdayDayMonth()}",
-                WeekStart = week.Start,
-                WeekEnd = week.End,
-                ProjectedTickets = week.Tickets,
-                ProjectedRevenue = Math.Round(week.Revenue, 2),
-                ProjectedStripeFees = Math.Round(week.StripeFees, 2),
-                ProjectedTtFees = Math.Round(week.TicketTailorFees, 2)
-            })
-            .ToList();
+        return projection?.CalculateWeeks(clock.GetCurrentInstant().InUtc().Date)
+            .Sum(week => week.Tickets) ?? 0;
     }
 }

@@ -35,7 +35,7 @@ public class BudgetAdminControllerTests
         budgets.GetYearByIdAsync(year.Id, Arg.Any<CancellationToken>()).Returns(year);
         budgets.GetAllYearsAsync(ct: Arg.Any<CancellationToken>()).Returns([]);
         budgets.GetActualTicketsSold(group).Returns(50);
-        budgets.GetTicketingProjectionEntriesAsync(group.Id, Arg.Any<CancellationToken>()).Returns([]);
+        budgets.GetProjectedRemainingTicketsAsync(group.Id, Arg.Any<CancellationToken>()).Returns(0);
         budgets.ComputeBudgetSummaryWithBuffers(Arg.Any<IReadOnlyList<BudgetGroupDetail>>())
             .Returns(new BudgetSummaryResult { IncomeSlices = [], ExpenseSlices = [] });
         var finance = Substitute.For<IFinanceService>();

@@ -46,18 +46,6 @@ internal sealed record BudgetAuditLogSnapshot(
 
 internal sealed record EnsureTicketingGroupResult(bool Created, string Message);
 
-/// <summary>Virtual line items, not materialized.</summary>
-internal sealed class TicketingWeekProjection
-{
-    public required string WeekLabel { get; init; }
-    public LocalDate WeekStart { get; init; }
-    public LocalDate WeekEnd { get; init; }
-    public int ProjectedTickets { get; init; }
-    public decimal ProjectedRevenue { get; init; }
-    public decimal ProjectedStripeFees { get; init; }
-    public decimal ProjectedTtFees { get; init; }
-}
-
 /// <summary>One completed ISO week of ticket sales.</summary>
 internal sealed record TicketingWeeklyActuals(
     LocalDate Monday,
