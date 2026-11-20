@@ -103,7 +103,7 @@ internal sealed class ExpenseReportService(
 
             // Self-created drafts stay unaudited — the report itself is the record. A report filed for
             // somebody else is an action taken on their behalf, so it leaves a trail naming both.
-            if (actorUserId != submitterUserId)
+            if (!await IsSameUserAsync(submitterUserId, actorUserId, CancellationToken.None))
             {
                 await auditLogService.LogAsync(
                     ExpensesAuditActions.ExpenseCreatedOnBehalf,
@@ -693,7 +693,7 @@ internal sealed class ExpenseReportService(
 
         // On the report so it lands in the history the correcting admin is looking at. Unmasked when set for another
         // member, as above.
-        var description = actorUserId == report.SubmitterUserId
+        var description = await IsSubmitterAsync(report, actorUserId, ct)
             ? "Payee IBAN updated"
             : $"Payee IBAN updated for {await DescribeMemberAsync(report.SubmitterUserId, ct)} to {normalizedIban}";
 
@@ -714,7 +714,7 @@ internal sealed class ExpenseReportService(
     private async Task<string> DescribeIbanChangeAsync(
         Guid submitterUserId, Guid actorUserId, string? normalizedIban, CancellationToken ct)
     {
-        if (actorUserId == submitterUserId)
+        if (await IsSameUserAsync(submitterUserId, actorUserId, ct))
             return normalizedIban is null ? "IBAN removed" : "IBAN set";
 
         var member = await DescribeMemberAsync(submitterUserId, ct);
@@ -735,9 +735,12 @@ internal sealed class ExpenseReportService(
             : (null, ExpenseMutationResult.Failure("Expenses_Validation_ReportCannotBeEditedInStatus", report.Status));
     }
 
-    internal async Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
-        report.SubmitterUserId == actorUserId
-        || (await userService.GetUserInfoAsync(actorUserId, ct))?.AllUserIds.Contains(report.SubmitterUserId) == true;
+    internal Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
+        IsSameUserAsync(report.SubmitterUserId, actorUserId, ct);
+
+    private async Task<bool> IsSameUserAsync(Guid targetUserId, Guid actorUserId, CancellationToken ct) =>
+        targetUserId == actorUserId
+        || (await userService.GetUserInfoAsync(actorUserId, ct))?.AllUserIds.Contains(targetUserId) == true;
 
     private async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct) =>
         (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
@@ -830,7 +833,7 @@ internal sealed class ExpenseReportService(
     internal async Task AuditOnBehalfEditAsync(
         ExpenseReportDto report, Guid actorUserId, string whatChanged, CancellationToken ct)
     {
-        if (actorUserId == report.SubmitterUserId) return;
+        if (await IsSubmitterAsync(report, actorUserId, ct)) return;
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseEditedOnBehalf,
@@ -912,7 +915,11 @@ internal sealed class ExpenseReportService(
                 limit: 10_000,
                 ct: ct));
         }
+
+        var allIdSet = allIds.ToHashSet();
+        var reportIds = allReports.Select(r => r.Id).ToHashSet();
         auditEntries = auditEntries
+            .Where(e => IsSubjectAuditEntry(e, allIdSet, reportIds))
             .DistinctBy(e => e.Id)
             .OrderByDescending(e => e.OccurredAt)
             .ToList();
@@ -962,7 +969,7 @@ internal sealed class ExpenseReportService(
                 Action = e.Action.Name,
                 e.EntityType,
                 e.EntityId,
-                e.Description,
+                Description = IbanFormatter.MaskAllIn(e.Description),
                 OccurredAt = e.OccurredAt.ToIso8601()
             }).ToList();
 
@@ -976,6 +983,19 @@ internal sealed class ExpenseReportService(
                     : (object?)null),
         ];
     }
+
+    private static bool IsSubjectAuditEntry(
+        AuditEvent entry, HashSet<Guid> userIds, HashSet<Guid> reportIds) =>
+        (entry.RelatedEntityId is { } relatedId
+            && (entry.RelatedEntityType is null
+                || string.Equals(entry.RelatedEntityType, AuditSubjectTypes.User, StringComparison.Ordinal))
+            && userIds.Contains(relatedId))
+        || (string.Equals(entry.EntityType, AuditSubjectTypes.User, StringComparison.Ordinal)
+            && userIds.Contains(entry.EntityId))
+        || (string.Equals(entry.EntityType, AuditEntityTypes.Profile, StringComparison.Ordinal)
+            && userIds.Contains(entry.EntityId))
+        || (string.Equals(entry.EntityType, AuditEntityTypes.Report, StringComparison.Ordinal)
+            && reportIds.Contains(entry.EntityId));
 
     private async Task<(ExpenseAddLineResult Result, ExpenseReportDto? Report)> AddLineWithoutAuditAsync(
         Guid reportId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
@@ -1404,7 +1424,7 @@ internal sealed class ExpenseReportService(
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseSubmit,
             AuditEntityTypes.Report, reportId,
-            (report.SubmitterUserId == actorUserId
+            (await IsSubmitterAsync(report, actorUserId, ct)
                 ? "Submitted expense report."
                 : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.")
             + ExpenseReportService.DescribeGrant(report.PreapprovalGrantId),
