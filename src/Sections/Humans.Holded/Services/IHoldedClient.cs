@@ -79,8 +79,6 @@ internal interface IHoldedClient
     Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
-    Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
-
     /// <summary>A contact already gone (404) is success. Holded keeps a contact's documents, so deleting one that
     /// owns any is the caller's bug.</summary>
     Task DeleteContactAsync(string contactId, CancellationToken ct = default);

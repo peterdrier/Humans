@@ -44,7 +44,7 @@ lines with who the money moved to or from.
 | 6 | *Book a cost we owe.* | `IHoldedWrite` | `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachmentAsync`, `EnsurePurchaseDocumentApprovedAsync`, `DeletePurchaseDocumentByIdAsync`, `EnsureExpenseAccountAsync` |
 | 7 | *Record that money moved.* | `IHoldedWrite` | `PayPurchaseDocumentAsync`, `ReconcileBankMovementAsync`, `PostJournalEntryAsync` |
 | 8 | *Book money we are owed.* | `IHoldedWrite` | `FindSalesDocumentsByTagAsync`, `IssueSalesDocumentAsync`, `ApproveSalesDocumentAsync` |
-| 9 | *Who is the counterparty?* | `IHoldedWrite` | `EnsureCreditorContactAsync`, `CreateContactAsync`, `DeleteContactAsync` |
+| 9 | *Who is the counterparty?* | `IHoldedWrite` | `CreateContactAsync`, `DeleteContactAsync` |
 | 10 | *Show the copies and the meter.* | `IHoldedAdminService` + `/Holded/*` | `GetSummaryAsync`, `RefreshUsageAsync`, `SyncNowAsync`, `GetAccountsPageAsync`, `GetAccountStatementAsync`, `GetEntryViewAsync`, `GetCallsByMonthAsync` |
 | 11 | *Can we call Holded at all?* | `IHoldedService` | `IsConfigured` |
 
@@ -52,8 +52,7 @@ Shapes 1–5 are the mirror, 6–9 the write face, 10 the admin screen. Every sh
 internal connector, `IHoldedClient`, which no other section can reach.
 
 Built with no caller yet (the single-mirror phase 1 added them ahead of phase 2's adopters):
-`IHoldedWrite.EnsurePurchaseDocumentAsync`, `IHoldedWrite.DeletePurchaseDocumentAsync` (the
-match-and-refuse delete), `IHoldedService.GetPurchaseLinesAsync`,
+`IHoldedService.GetPurchaseLinesAsync`,
 `IHoldedService.GetOpenDocumentAmountsAsync`, `IHoldedService.GetSumsByAccountAsync` and
 `IHoldedService.GetChartSyncedAtAsync`. They are surface without a shape until a caller arrives.
 

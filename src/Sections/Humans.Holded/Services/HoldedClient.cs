@@ -89,9 +89,6 @@ internal sealed class HoldedClient : IHoldedClient
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
         _sales.GetSalesDocumentAsync(kind, documentId, ct);
 
-    public Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default) =>
-        _contacts.GetContactAsync(contactId, ct);
-
     public Task DeleteContactAsync(string contactId, CancellationToken ct = default) =>
         _contacts.DeleteContactAsync(contactId, ct);
 
