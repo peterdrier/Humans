@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
@@ -29,10 +30,11 @@ internal sealed class ExpensesController(
     IPreapprovalService preapprovals,
     IAuthorizationService authService,
     IClock clock,
+    IOrgTimeZone orgTimeZone,
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly ExpensePageBuilder pageBuilder = new(service, review, budgetService, finance, preapprovals, clock, localizer);
+    private readonly ExpensePageBuilder pageBuilder = new(orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
     private readonly IUserService _userService = userService;
 
     private LocalDate Today => pageBuilder.Today;

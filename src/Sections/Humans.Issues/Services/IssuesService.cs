@@ -831,7 +831,7 @@ internal sealed class IssuesService(
         if (recipients.Count == 0) return;
         var lookupIds = recipients.ToHashSet();
         if (excludeUserId is { } actorId) lookupIds.Add(actorId);
-        var people = await users.GetUserInfosAsync(lookupIds.ToList(), ct);
+        var people = await users.GetUserInfosAsync(lookupIds, ct);
         var excludedId = excludeUserId is { } excluded
             ? people.GetValueOrDefault(excluded)?.Id ?? excluded
             : (Guid?)null;
@@ -960,7 +960,7 @@ internal sealed class IssuesService(
                 userIds.Add(issue.AssigneeUserId.Value);
         }
 
-        var users1 = await users.GetUserInfosAsync(userIds.ToList(), ct);
+        var users1 = await users.GetUserInfosAsync(userIds, ct);
         return issues.Select(issue => new IssueListSnapshot(
             issue.Id,
             issue.Status,
@@ -1059,7 +1059,7 @@ internal sealed class IssuesService(
         var rows = await repo.GetReporterCountsAsync(ct);
         if (rows.Count == 0) return [];
 
-        var users1 = await users.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
+        var users1 = await users.GetUserInfosAsync(rows.Select(r => r.UserId), ct);
         return rows
             .Select(r => new DistinctReporterRow(
                 r.UserId,

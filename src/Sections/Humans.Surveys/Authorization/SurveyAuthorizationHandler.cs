@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Extensions;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +18,7 @@ internal sealed class SurveyAuthorizationHandler(IUserService users, IHttpContex
         SurveyOperationRequirement requirement,
         SurveyDetail resource)
     {
-        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (context.User.GetUserId() is not { } userId)
             return;
 
         var user = await users.GetUserInfoAsync(userId,

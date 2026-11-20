@@ -14,6 +14,7 @@ using Humans.Consent.ViewComponents;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
+using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
@@ -209,6 +210,11 @@ public sealed class Section :
     {
         options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
             policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
+
+        // ShiftsAdmin (the Volunteer Coordinator) reads the queue; only ConsentCoordinatorBoardOrAdmin decides.
+        options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
+            policy.RequireRole(ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin,
+                RoleNames.Board, RoleNames.Admin));
     }
 
     IEnumerable<UserPart> IUserPart.Parts() =>

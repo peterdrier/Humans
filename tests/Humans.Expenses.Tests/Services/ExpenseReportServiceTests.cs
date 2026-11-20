@@ -133,7 +133,7 @@ public sealed partial class ExpenseReportServiceTests
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         using var request = new CancellationTokenSource();
         var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
-            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -192,7 +192,7 @@ public sealed partial class ExpenseReportServiceTests
                 return Task.FromResult<byte[]?>([4, 5, 6]);
             });
         var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -227,7 +227,7 @@ public sealed partial class ExpenseReportServiceTests
             return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
-            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -271,7 +271,7 @@ public sealed partial class ExpenseReportServiceTests
         await SeedReportWithStatusAsync(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var actor = UserInfo.Create(new User { Id = actorId }, [], [], null);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
         using var request = new CancellationTokenSource();
         var abandon = false;
@@ -288,7 +288,7 @@ public sealed partial class ExpenseReportServiceTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
         var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -337,7 +337,7 @@ public sealed partial class ExpenseReportServiceTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
         var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -594,6 +594,7 @@ public sealed partial class ExpenseReportServiceTests
     [InlineData("submit")]
     [InlineData("withdraw")]
     [InlineData("iban")]
+    [InlineData("iban-snapshot")]
     public async Task Merged_submitter_can_manage_historical_reports_and_updates_the_surviving_profile(string operation)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -607,12 +608,13 @@ public sealed partial class ExpenseReportServiceTests
         using var receipt = new MemoryStream([1, 2, 3]);
         (await _sut.AttachFileToLineWithResultAsync(reportId, sourceId, lineId,
             "receipt.pdf", "application/pdf", receipt, ct)).Succeeded.Should().BeTrue();
-        if (string.Equals(operation, "withdraw", StringComparison.Ordinal))
+        if (operation is "withdraw" or "iban-snapshot")
             (await _sut.SubmitWithResultAsync(reportId, sourceId, ct)).Succeeded.Should().BeTrue();
         var survivor = (await _userService.GetUserInfoAsync(survivorId, ct))! with { MergedUserIds = [sourceId] };
         _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(survivor);
         _userService.GetUserInfoAsync(sourceId, Arg.Any<CancellationToken>()).Returns(survivor);
         _financeWrite.SetIbanAsync(survivorId, Arg.Any<string?>(), ct).Returns(true);
+        AuditLog.ClearReceivedCalls();
 
         switch (operation)
         {
@@ -630,9 +632,27 @@ public sealed partial class ExpenseReportServiceTests
                 await _financeWrite.Received(1).SetIbanAsync(survivorId, "ES9121000418450200051332", ct);
                 await _financeWrite.DidNotReceive().SetIbanAsync(sourceId, Arg.Any<string?>(), ct);
                 break;
+            case "iban-snapshot":
+                (await _sut.SaveSubmitterIbanWithResultAsync(reportId, survivorId, "DE89370400440532013000", ct)).Succeeded.Should().BeTrue();
+                (await _sut.GetAsync(reportId, ct))!.PayeeIban.Should().Be("DE89370400440532013000");
+                break;
         }
 
         (await _sut.GetAsync(reportId, ct))!.SubmitterUserId.Should().Be(sourceId);
+
+        // The survivor acting on their own pre-merge report is self, not on-behalf: no on-behalf entries, no raw IBAN.
+        var audits = AuditLog.ReceivedCalls()
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal))
+            .Select(c => c.GetArguments())
+            .ToList();
+        audits.Should().NotContain(a =>
+            Equals(a[0], ExpensesAuditActions.ExpenseEditedOnBehalf) || Equals(a[0], ExpensesAuditActions.ExpenseCreatedOnBehalf));
+        audits.Select(a => (string)a[3]!).Should().AllSatisfy(d =>
+        {
+            d.Should().NotContain("on behalf");
+            d.Should().NotContain("ES9121000418450200051332");
+            d.Should().NotContain("DE89370400440532013000");
+        });
     }
 
     [HumansFact]
@@ -922,7 +942,7 @@ public sealed partial class ExpenseReportServiceTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(_userService, reports, review, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
@@ -3262,7 +3282,7 @@ public sealed partial class ExpenseReportServiceTests
                 [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
         var controller = new ExpensesController(_userService, reports, review, _budgetService, _finance, _preapprovals,
-            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())

@@ -1,4 +1,5 @@
 @model Humans.Finance.Models.CreditorStatementVm
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = $"Creditor {Model.Ledger.SupplierAccountNum}";
     ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Creditors";
@@ -7,8 +8,8 @@
 
     var c = ledger.Contact;
 
-    // Ledger instants are Madrid midnight; the UTC calendar date is the previous day.
-    var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    // Ledger instants are org-zone midnight; the UTC calendar date is the previous day.
+    var orgZone = OrgTimeZone.Zone;
 
     var m = Model.Match;
     string Amt(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
@@ -19,12 +20,12 @@
         @if (item.WithdrawnAt is { } withdrawnAt)
         {
             <span class="badge text-bg-dark">Withdrawn</span>
-            <span class="text-muted small">@withdrawnAt.InZone(madrid).Date.ToInvariantDate()</span>
+            <span class="text-muted small">@withdrawnAt.InZone(orgZone).Date.ToInvariantDate()</span>
         }
         else if (item.BookedAt is { } bookedAt)
         {
             <span class="badge text-bg-success">Booked</span>
-            <span class="text-muted small">@bookedAt.InZone(madrid).Date.ToInvariantDate()</span>
+            <span class="text-muted small">@bookedAt.InZone(orgZone).Date.ToInvariantDate()</span>
         }
         else
         {
@@ -33,7 +34,7 @@
     </text>;
     Func<SepaPayoutTransferRow, IHtmlContent> sepaAmountCell = @<text>@item.Amount.ToEuro()</text>;
     var sepaTable = TableModel.For(Model.SepaTransfers)
-        .Column("Generated", t => t.GeneratedAt.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Generated", t => t.GeneratedAt.InZone(orgZone).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
         .Template("File", sepaFileCell, sortBy: t => t.FileName)
         .Column("IBAN", t => t.IbanMasked, o => o.Css("font-monospace small"))
         .Template("Status", sepaStatusCell, o => o.Css("text-nowrap"))
@@ -48,7 +49,7 @@
         .Template("Report", reportCell, o => o.Css("text-nowrap"))
         .Column("Status", r => r.Status, o => o.Css("text-nowrap"))
         .Column("Subject", r => r.Note)
-        .Column("Approved", r => r.ApprovedAt?.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Approved", r => r.ApprovedAt?.InZone(orgZone).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
         .Column("Holded documents", r => r.HoldedDocIds.Count, o => o.Number().End())
         .Template("Payable", payableCell, o => o.End(), sortBy: r => r.Payable)
         .Css("align-middle")
@@ -194,7 +195,7 @@
             {
                 var l = row.Line;
                 <tr>
-                    <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
+                    <td class="text-nowrap">@l.Date.InZone(orgZone).ToDateTimeUnspecified().ToInvariantDate()</td>
                     <td>@row.Description</td>
                     <td class="text-muted small">@l.Type</td>
                     <td class="text-end">@(row.Credit > 0 ? row.Credit.ToEuro() : "")</td>

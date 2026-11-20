@@ -50,8 +50,8 @@ write returns; the inner service never signals it.
 Cross-section calls via `IUserService`, `ITicketService` (has the member entered the event),
 `IAuditLogService`, `ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
 `ISettingsService` (active event settings), plus
-`Lazy<ICampRoleService>` and `Lazy<ICityPlanningWrite>` (camp deletion removes
-the camp's polygon/history rows) to break DI cycles. Implements `ICampLeadDirectory`, `IEarlyEntryProvider` (via `ICampManagement`),
+`Lazy<ICampRoleService>` and `Lazy<IEnumerable<ICampDeletionListener>>` (camp deletion
+lets other sections drop rows keyed on its seasons) to break DI cycles. Implements `ICampLeadDirectory`, `IEarlyEntryProvider` (via `ICampManagement`),
 `IUserMerge`, and the GDPR export/erasure bodies (all-year/all-status memberships and role assignments, with deletion for both slices) on `ICampManagement`; the registered `IUserDataContributor` is the decorator, which calls them. All caching lives in the decorator
 — the inner service never touches `IMemoryCache`.
 

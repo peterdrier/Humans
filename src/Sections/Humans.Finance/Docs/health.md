@@ -171,6 +171,9 @@ What the shapes say about the inside:
   bind and the seed refuse (`src/Sections/Humans.Finance/Services/Service.cs:750`,
   `src/Sections/Humans.Finance/Services/Service.cs:855`), the post-push number write records Holded's
   fact and logs the collision (`src/Sections/Humans.Finance/Services/Service.cs:991`).
+- "A member" is a human across merges: a binding on one of their own ids never conflicts, and a merge
+  moves the archived binding to an unbound survivor but never drops one when both are bound
+  (`ReassignAsync`, `FindConflictingBinding` in `src/Sections/Humans.Finance/Services/Service.cs`).
 - A member's binding is never downgraded from a hand-made link to an automatic one
   (`src/Sections/Humans.Finance/Services/Service.cs:929`).
 - A linked Holded contact is never updated from here — only a member with no contact gets one

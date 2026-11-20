@@ -58,7 +58,7 @@ internal sealed class ScannerController(
                 .Order(StringComparer.Ordinal).ToList();
 
             var burn = settingsService.GetActiveEventSettings();
-            burnTz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
+            burnTz = burn?.TimeZone;
             if (burn is not null)
             {
                 checkedInAt = (await tickets.GetParticipationsAsync(userId, ct))

@@ -23,7 +23,7 @@ internal sealed class CityPlanningService(
     ITeamService teamService,
     IUserService userService,
     IAuditLogService auditLog,
-    ISettingsService settingsService) : ICityPlanningService, ICityPlanningWrite
+    ISettingsService settingsService) : ICityPlanningService, ICampDeletionListener
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 
@@ -93,7 +93,7 @@ internal sealed class CityPlanningService(
             campSeasonId, entry.GeoJson, entry.AreaSqm, restoredByUserId, note, cancellationToken);
     }
 
-    public Task<int> DeleteCampPolygonsForSeasonsAsync(
+    public Task<int> CampSeasonsDeletingAsync(
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken cancellationToken = default) =>
         repo.DeletePolygonsForCampSeasonsAsync(campSeasonIds, cancellationToken);
 
@@ -393,8 +393,7 @@ internal sealed class CityPlanningService(
         if (scheduleAnchor is null || opensOn is not { } opens)
             return BarrioPlacementState.Closed;
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(scheduleAnchor.TimeZoneId) ?? DateTimeZone.Utc;
-        var today = clock.GetCurrentInstant().InZone(zone).Date;
+        var today = clock.TodayIn(scheduleAnchor.TimeZone);
 
         if (today < opens)
             return BarrioPlacementState.Closed;
@@ -414,7 +413,7 @@ internal sealed class CityPlanningService(
             return [];
         }
 
-        var userIds = rows.Select(r => r.ModifiedByUserId).Distinct().ToList();
+        var userIds = rows.Select(r => r.ModifiedByUserId);
         var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
 
         return rows.Select(h =>
@@ -482,6 +481,9 @@ internal sealed class CityPlanningService(
             ?? new CityPlanningSettings { Id = Guid.Empty, Year = settingsYear };
         return ToDto(settings, activeEvent?.Year == settingsYear ? activeEvent : null);
     }
+
+    public async Task<bool> IsContainerPlacementOpenAsync(int year, CancellationToken cancellationToken = default) =>
+        (await repo.GetSettingsAsync(year, cancellationToken))?.IsContainerPlacementOpen == true;
 
     public async Task<string?> GetLegacyRegistrationInfoAsync(int year, CancellationToken cancellationToken = default) =>
         (await repo.GetSettingsAsync(year, cancellationToken))?.RegistrationInfo;

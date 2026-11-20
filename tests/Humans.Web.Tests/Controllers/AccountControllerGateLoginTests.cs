@@ -68,6 +68,7 @@ public class AccountControllerGateLoginTests
             Substitute.For<IUserService>(),
             _userService,
             _clock,
+            FixedOrgTimeZone.Madrid,
             NullLogger<AccountController>.Instance,
             Substitute.For<IExternalLoginService>(),
             Substitute.For<IMagicLinkService>(),

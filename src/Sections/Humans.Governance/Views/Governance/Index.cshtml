@@ -1,8 +1,9 @@
 @using NodaTime
 @model Humans.Governance.Models.GovernanceIndexViewModel
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = Localizer["Governance_Title"].Value;
-    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 
     var orderedLanguages = Model.StatutesContent
         .OrderByDisplayLanguage(canonicalFirst: true)
@@ -63,7 +64,7 @@
                             <div class="flex-grow-1">
                                 <a asp-controller="GovernanceVotes" asp-action="Details" asp-route-voteId="@vote.Id" class="fw-semibold text-decoration-none">@vote.Title</a>
                                 <div class="small text-muted">
-                                    @Localizer["Governance_Votes_ClosesAt", vote.ClosesAt.ToDateTime(madridZone)]
+                                    @Localizer["Governance_Votes_ClosesAt", vote.ClosesAt.ToDateTime(orgZone)]
                                     · @Localizer["Governance_Votes_Turnout", voted, roster]
                                     @if (vote.IsOnRoster)
                                     {

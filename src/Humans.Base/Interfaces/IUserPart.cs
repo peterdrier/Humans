@@ -16,6 +16,9 @@ public static class UserPartSlots
     /// (Users <c>Profile/Index</c>).</summary>
     public const string ProfileSidebar = "user-profile-sidebar";
 
+    /// <summary>Beside the signed-in member's name in the member-dashboard heading (Shell <c>Home/Dashboard</c>).</summary>
+    public const string DashboardHeading = "dashboard-heading";
+
     /// <summary>The admin human-detail page (Users <c>UsersAdmin/AdminDetail</c>).</summary>
     public const string AdminDetail = "user-admin-detail";
 

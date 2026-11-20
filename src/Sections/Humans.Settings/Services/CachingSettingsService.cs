@@ -1,4 +1,6 @@
 using Humans.Base.Caching;
+using Humans.Base.Interfaces;
+using NodaTime;
 using Humans.Settings.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +18,7 @@ internal sealed class CachingSettingsService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingSettingsService> logger)
     : TrackedCache<int, SettingsSnapshot>("Settings.Events", warmOnStartup: true, logger),
-      ISettingsWriteService, IEventSettingsSeeding
+      ISettingsWriteService, IEventSettingsSeeding, IOrgTimeZone
 {
     public const string InnerServiceKey = "settings-inner";
 
@@ -36,10 +38,10 @@ internal sealed class CachingSettingsService(
         (await GetSnapshotAsync(cancellationToken)).TimeZoneId;
 
     public EventSettingsInfo? GetActiveEventSettings() =>
-        (TryGet(SnapshotKey, out var snapshot)
-            ? snapshot
-            : throw new InvalidOperationException("The settings snapshot loads at startup and after every save; it is missing."))
-        .Events.FirstOrDefault(e => e.Status == EventSettingsStatus.Active);
+        CurrentSnapshot().Events.FirstOrDefault(e => e.Status == EventSettingsStatus.Active);
+
+    /// <summary>The id is validated on save, so the UTC fallback only covers a hand-edited row.</summary>
+    public DateTimeZone Zone => DateTimeZoneProviders.Tzdb.GetZoneOrNull(CurrentSnapshot().TimeZoneId) ?? DateTimeZone.Utc;
 
     public async Task<EventSettingsInfo?> GetEventSettingsByIdAsync(
         Guid id, CancellationToken cancellationToken = default) =>
@@ -80,6 +82,11 @@ internal sealed class CachingSettingsService(
     protected override async ValueTask<SettingsSnapshot?> LoadRowAsync(int key, CancellationToken ct) =>
         await WithInnerAsync(async inner => new SettingsSnapshot(
             await inner.GetAllEventSettingsAsync(ct), await inner.GetTimeZoneIdAsync(ct)));
+
+    private SettingsSnapshot CurrentSnapshot() =>
+        TryGet(SnapshotKey, out var snapshot)
+            ? snapshot
+            : throw new InvalidOperationException("The settings snapshot loads at startup and after every save; it is missing.");
 
     private async Task<SettingsSnapshot> GetSnapshotAsync(CancellationToken ct) => (await GetAsync(SnapshotKey, ct))!;
 

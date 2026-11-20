@@ -28,7 +28,7 @@ internal sealed class HumanLifecycleService(
 
         await auditLogService.LogAsync(
             UsersAuditActions.MemberSuspended,
-            nameof(User),
+            AuditSubjectTypes.User,
             userId,
             $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
             adminId);
@@ -72,7 +72,7 @@ internal sealed class HumanLifecycleService(
 
         await auditLogService.LogAsync(
             UsersAuditActions.MemberUnsuspended,
-            nameof(User),
+            AuditSubjectTypes.User,
             userId,
             "Unsuspended",
             adminId);
@@ -104,7 +104,7 @@ internal sealed class HumanLifecycleService(
 
         await auditLogService.LogAsync(
             UsersAuditActions.MemberUnsuspended,
-            nameof(User),
+            AuditSubjectTypes.User,
             userId,
             "Unsuspended after completing required consents",
             nameof(RestoreConsentSuspensionAsync));

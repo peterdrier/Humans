@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Base.Interfaces;
 using Humans.Notifications.Contracts;
@@ -15,7 +16,7 @@ internal sealed class NotificationMeterProvider(
         ClaimsPrincipal user, CancellationToken cancellationToken = default, Guid? resolvedUserId = null)
     {
         var viewerId = resolvedUserId;
-        if (viewerId is null && Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var claimedUserId))
+        if (viewerId is null && user.GetUserId() is { } claimedUserId)
             viewerId = claimedUserId;
         if (viewerId is not { } id)
             return [];

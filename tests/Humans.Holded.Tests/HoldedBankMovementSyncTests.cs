@@ -28,7 +28,7 @@ public sealed class HoldedBankMovementSyncTests
         var callLog = Substitute.For<IHoldedCallLog>();
         callLog.DrainAll().Returns([]);
         _service = new Service(new Repository(new TestDbContextFactory<HoldedDbContext>(options)), _client, callLog,
-            new FakeClock(FixedNow), Options.Create(new HoldedSectionOptions()), _logger);
+            new FakeClock(FixedNow), Options.Create(new HoldedSectionOptions()), _logger, FixedOrgTimeZone.Madrid);
     }
 
     private static HoldedBankMovementDto Line(string id, int day, string status = "pending") =>

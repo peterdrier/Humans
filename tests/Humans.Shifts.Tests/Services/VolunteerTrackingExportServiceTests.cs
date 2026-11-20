@@ -61,7 +61,7 @@ public sealed class VolunteerTrackingExportServiceTests
         var users = Substitute.For<IUserService>();
         var infos = playaNames?.ToDictionary(pair => pair.Key, pair => MakeUserInfo(pair.Key, pair.Value))
             ?? new Dictionary<Guid, UserInfo>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(infos);
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(infos);
 
         return (repo, shiftMgmt, burnSettings, users);
     }
@@ -208,7 +208,7 @@ public sealed class VolunteerTrackingExportServiceTests
         shiftMgmt.GetDepartmentsWithRotasAsync(EventId, Arg.Any<CancellationToken>()).Returns([(TeamA, "TeamA")]);
         burnSettings.GetByIdAsync(EventId, Arg.Any<CancellationToken>()).Returns(TestBurnSettings());
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [Bob] = MakeUserInfo(Bob, "Bob") });
 
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users, _audit);

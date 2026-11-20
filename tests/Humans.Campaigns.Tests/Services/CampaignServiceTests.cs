@@ -84,9 +84,9 @@ public sealed class CampaignServiceTests
             .Returns(call => new ValueTask<UserInfo?>(_people.GetValueOrDefault(call.ArgAt<Guid>(0))));
 
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
+                .ArgAt<IEnumerable<Guid>>(0)
                 .Where(_people.ContainsKey)
                 .ToDictionary(id => id, id => _people[id]));
 

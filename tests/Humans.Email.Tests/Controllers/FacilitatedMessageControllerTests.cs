@@ -72,7 +72,7 @@ public sealed class FacilitatedMessageControllerTests
         var target = Info(_targetId, "Target", "target@example.com");
         _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(target);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [_targetId] = target });
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
         _emailMessages.FacilitatedMessage(
@@ -256,7 +256,7 @@ public sealed class FacilitatedMessageControllerTests
     public async Task Post_RendersInTheRecipientsSupportedLanguage(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [_viewerId] = Info(_viewerId, "Viewer", "viewer@example.com"),

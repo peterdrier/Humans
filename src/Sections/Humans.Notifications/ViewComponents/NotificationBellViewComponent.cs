@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Notifications.Services;
 using Humans.Users.Contracts;
 using Humans.Notifications.Models;
@@ -15,7 +16,7 @@ internal sealed class NotificationBellViewComponent(INotificationInboxService no
         if (UserClaimsPrincipal?.Identity?.IsAuthenticated != true)
             return Content(string.Empty);
 
-        var userId = GetUserId();
+        var userId = UserClaimsPrincipal.GetUserId();
         if (userId is null)
             return View(new NotificationBadgeViewModel());
 
@@ -31,11 +32,5 @@ internal sealed class NotificationBellViewComponent(INotificationInboxService no
             ActionableUnreadCount = actionableCount,
             InformationalUnreadCount = informationalCount,
         });
-    }
-
-    private Guid? GetUserId()
-    {
-        var claim = UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(claim, out var id) ? id : null;
     }
 }

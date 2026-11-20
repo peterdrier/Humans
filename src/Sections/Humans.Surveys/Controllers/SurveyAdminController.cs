@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using Humans.Base.Controllers;
 using Humans.Surveys.Authorization;
@@ -24,6 +25,7 @@ namespace Humans.Surveys.Controllers;
 [Authorize(Policy = PolicyNames.AppAccess)]
 [Route("Survey/Admin")]
 internal sealed class SurveyAdminController(
+    IOrgTimeZone orgTimeZone,
     ISurveyService surveyService,
     ISurveyResults surveyResults,
     ISurveyInvitations invitations,
@@ -33,7 +35,7 @@ internal sealed class SurveyAdminController(
     IStringLocalizer<SurveysResource> localizer,
     ILogger<SurveyAdminController> logger) : HumansControllerBase(userService)
 {
-    private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     private SurveyViewer CurrentViewer(Guid actorId) =>
         new(actorId, SurveysRoles.SeesEverySurvey(User), SurveysRoles.ManagesEverySurvey(User));
@@ -181,7 +183,7 @@ internal sealed class SurveyAdminController(
         var auth = await authorizationService.AuthorizeAsync(User, detail, new SurveyOperationRequirement(SurveyOperation.Edit));
         if (!auth.Succeeded) return Forbid();
 
-        var vm = SurveyBuilderViewModel.FromDetail(detail, await LoadTeamsAsync(ct), Zone);
+        var vm = SurveyBuilderViewModel.FromDetail(detail, await LoadTeamsAsync(ct), OrgZone);
         vm.HasSavedAnswers = await surveyService.HasSavedAnswersAsync(id, ct);
         vm.ManagesEverySurvey = SurveysRoles.ManagesEverySurvey(User);
         vm.CanSubmit = (await authorizationService.AuthorizeAsync(
@@ -356,7 +358,7 @@ internal sealed class SurveyAdminController(
             if (!auth.Succeeded) return Forbid();
         }
 
-        var input = model.ToEditInput(Zone);
+        var input = model.ToEditInput(OrgZone);
         var result = model.Id is null
             ? await surveyService.CreateAsync(input, actor.Id, ct)
             : await surveyService.UpdateAsync(model.Id.Value, input, CurrentViewer(actor.Id), ct);
@@ -480,7 +482,7 @@ internal sealed class SurveyAdminController(
             Status = detail.Status,
             AudienceType = detail.Editable.AudienceType,
             AudienceTeamName = audienceTeamName,
-            AudienceLoggedInSince = detail.Editable.AudienceLoggedInSince?.InZone(Zone).Date,
+            AudienceLoggedInSince = detail.Editable.AudienceLoggedInSince?.InZone(OrgZone).Date,
             NewRecipientCount = newRecipientCount,
             Invitations = statuses.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ToList(),
             IsAsociadoVote = detail.Editable.IsAsociadoVote,
@@ -525,7 +527,7 @@ internal sealed class SurveyAdminController(
         var results = await surveyResults.GetScopedResultsAsync(id, scope, ct);
         if (results is null) return NotFound();
 
-        var vm = SurveyResultsBuilder.Build(results);
+        var vm = SurveyResultsBuilder.Build(results, OrgZone);
         vm.CanExport = await AuthorizeResultsAsync(id, SurveyOperation.ExportResults, ct) is null;
         return View(vm);
     }

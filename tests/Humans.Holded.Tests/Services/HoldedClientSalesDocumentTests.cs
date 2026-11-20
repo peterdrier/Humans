@@ -25,7 +25,7 @@ public class HoldedClientSalesDocumentTests
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
-            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)));
+            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), FixedOrgTimeZone.Madrid);
 
     private static HoldedSalesDocumentInput Input() => new()
     {
@@ -192,7 +192,7 @@ public class HoldedClientSalesDocumentTests
                 """{"id":"doc-9","total":"6.05","lines":[{"name":"Ice","units":"1","price":"5.00","taxes":["s_iva_21"]}]}""")))
             { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
-            logger, new HoldedCallLog(), new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)));
+            logger, new HoldedCallLog(), new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), FixedOrgTimeZone.Madrid);
 
         var doc = await client.GetSalesDocumentAsync(
             HoldedSalesDocumentKind.Invoice, "doc-9", TestContext.Current.CancellationToken);

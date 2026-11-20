@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -41,7 +41,7 @@ internal sealed class WorkgroupAuthorizationHandler(IUserService users, IHttpCon
             return;
         }
 
-        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return;
+        if (context.User.GetUserId() is not { } userId) return;
         var user = await users.GetUserInfoAsync(userId,
             httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
         if (user is not null && (requirement == WorkgroupOperationRequirement.ManageMembership

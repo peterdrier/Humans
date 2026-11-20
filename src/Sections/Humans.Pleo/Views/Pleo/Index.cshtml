@@ -1,7 +1,8 @@
 @model PleoSummary
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Pleo";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
     var r = Model.Reconciliation;
     string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
     string StatusBadge(string status) => status switch
@@ -78,7 +79,7 @@
                 @if (Model.Sync is { } s)
                 {
                     <span class="badge @StatusBadge(s.Status)">@s.Status</span>
-                    <span class="ms-1">@(s.LastSyncAt is { } at ? at.ToDateTime(madrid) : "never")</span>
+                    <span class="ms-1">@(s.LastSyncAt is { } at ? at.ToDateTime(orgZone) : "never")</span>
                     <span class="text-muted small ms-1">@N(s.LastCount) entries mirrored, @N(s.SkippedCount) empty rows skipped</span>
                     @if (s.LastError is not null)
                     {

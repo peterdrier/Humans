@@ -100,12 +100,13 @@ public class HoldedFinanceServiceTests
     private static IUserService NoUsers()
     {
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         return users;
     }
 
     private Service MakeService(FinanceEmails? emailTemplates = null) => new(
+        FixedOrgTimeZone.Madrid,
         _repo,
         _budget,
         _holded,
@@ -121,7 +122,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _budget, _holded, _write, _expenses, _clock, _audit,
+        FixedOrgTimeZone.Madrid, _repo, _budget, _holded, _write, _expenses, _clock, _audit,
         _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
         Substitute.For<IPaymentDetailsManagement>(), logger);
 
@@ -161,10 +162,10 @@ public class HoldedFinanceServiceTests
             return Array.Empty<HoldedLedgerLineInfo>();
         });
         var service = MakeService();
-        var controller = new FinanceController(_users, service, service, _holded,
+        var controller = new FinanceController(FixedOrgTimeZone.Madrid, _users, service, service, _holded,
             Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
-            new FinanceOverviewService(_holded, service, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, service, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
                 Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
@@ -2409,7 +2410,7 @@ public class HoldedFinanceServiceTests
                 new User { Id = userId, BurnerName = "Ana", Email = "ana@example.com", PreferredLanguage = "es", CreatedAt = FixedNow },
                 [], [], null),
         };
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -2441,7 +2442,7 @@ public class HoldedFinanceServiceTests
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "ana@example.com"), CancellationToken.None);
         await _users.Received(1).GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), CancellationToken.None);
+            Arg.Any<IEnumerable<Guid>>(), CancellationToken.None);
     }
 
     [HumansTheory]
@@ -2455,7 +2456,7 @@ public class HoldedFinanceServiceTests
         StubMember(userId, "Ana", "ana@example.com", "es");
         var unavailable = new InvalidOperationException("Notification dependency unavailable");
         if (string.Equals(failure, "member", StringComparison.Ordinal))
-            _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(unavailable));
         else if (string.Equals(failure, "send", StringComparison.Ordinal))
             _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
@@ -2495,7 +2496,7 @@ public class HoldedFinanceServiceTests
             new() { Id = "c1", Name = "Ana Ruiz", SupplierAccountNum = 40000004, Iban = AnaIban },
             new() { Id = "c2", Name = "Dani", SupplierAccountNum = 40000005, Iban = "NL91ABNA0417164300" },
         }));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [firstUserId] = UserInfo.Create(
@@ -2534,7 +2535,7 @@ public class HoldedFinanceServiceTests
 
     private void StubMember(Guid userId, string burnerName, string email, string language)
     {
-        _users.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [userId] = UserInfo.Create(

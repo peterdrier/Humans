@@ -134,9 +134,9 @@ public sealed class IssuesServiceTests
         svc.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(Info(call.ArgAt<Guid>(0))));
 
-        svc.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        svc.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
+                .ArgAt<IEnumerable<Guid>>(0)
                 .Select(Info)
                 .OfType<UserInfo>()
                 .ToDictionary(i => i.Id));
@@ -1397,7 +1397,7 @@ public sealed class IssuesServiceTests
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return ValueTask.FromResult(Info(call.Arg<Guid>()));
         });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return call.Arg<IReadOnlyCollection<Guid>>().Select(Info).OfType<UserInfo>().ToDictionary(info => info.Id);
@@ -2953,9 +2953,9 @@ public sealed class IssuesServiceTests
     {
         _userService.GetUserInfoAsync(archived, Arg.Any<CancellationToken>())
             .Returns(_ => new ValueTask<UserInfo?>(Info(survivor)));
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
+                .ArgAt<IEnumerable<Guid>>(0)
                 .Select(id => (Key: id, Info: Info(id == archived ? survivor : id)))
                 .Where(x => x.Info is not null)
                 .ToDictionary(x => x.Key, x => x.Info!));

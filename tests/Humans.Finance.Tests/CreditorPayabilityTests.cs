@@ -47,7 +47,7 @@ public class CreditorPayabilityTests
     };
 
     private Service MakeService() => new(
-        _repo, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
+        FixedOrgTimeZone.Madrid, _repo, Substitute.For<IBudgetService>(), _holded, _write, _expenses, new FakeClock(FixedNow),
         Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(_sepa), new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
@@ -70,7 +70,7 @@ public class CreditorPayabilityTests
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocInfo>()));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
     }
 

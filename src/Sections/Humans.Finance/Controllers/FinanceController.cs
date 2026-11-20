@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using System.Text;
 using Humans.Expenses.Contracts;
@@ -18,6 +19,7 @@ namespace Humans.Finance.Controllers;
 [Authorize(Policy = FinancePolicies.Read)]
 [Route("Finance")]
 internal sealed class FinanceController(
+    IOrgTimeZone orgTimeZone,
     IUserService userService,
     IFinanceService finance,
     IFinanceAdminService holdedConnector,
@@ -30,7 +32,7 @@ internal sealed class FinanceController(
     SepaBookingRunner sepaRunner,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -516,14 +518,14 @@ internal sealed class FinanceController(
     // Holded books one transfer as a payment line per purchase it settles. We pay a member at most once a day, so
     // consecutive same-day, same-direction payment lines are one transfer and show as one row; requiring them to be
     // consecutive keeps each row's running balance true.
-    private static List<CreditorStatementLineVm> StatementRows(IEnumerable<CreditorLedgerLine> lines, string memberName)
+    private List<CreditorStatementLineVm> StatementRows(IEnumerable<CreditorLedgerLine> lines, string memberName)
     {
         var groups = new List<List<CreditorLedgerLine>>();
         foreach (var line in lines.OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ThenBy(l => l.Line))
         {
             var last = groups.Count > 0 ? groups[^1][^1] : null;
             if (last is not null && IsPayment(line) && IsPayment(last)
-                && line.Date.InZone(MadridZone).Date == last.Date.InZone(MadridZone).Date
+                && line.Date.InZone(OrgZone).Date == last.Date.InZone(OrgZone).Date
                 && line.Debit > 0 == last.Debit > 0)
                 groups[^1].Add(line);
             else

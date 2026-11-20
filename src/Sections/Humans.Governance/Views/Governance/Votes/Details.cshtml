@@ -1,8 +1,9 @@
 @using NodaTime
 @model Humans.Governance.Models.AssemblyVoteDetailViewModel
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = Model.Vote.Title;
-    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
     var vote = Model.Vote;
     var optionLabels = vote.Options.ToDictionary(o => o.Key, o => o.Label, StringComparer.Ordinal);
 
@@ -27,11 +28,11 @@
 <p class="text-muted">
     @if (vote.Status == AssemblyVoteStatus.Open)
     {
-        @Localizer["Governance_Votes_ClosesAt", vote.ClosesAt.ToDateTime(madridZone)]
+        @Localizer["Governance_Votes_ClosesAt", vote.ClosesAt.ToDateTime(orgZone)]
     }
     else if (vote.ClosedAt.HasValue)
     {
-        @Localizer["Governance_Votes_ClosedAt", vote.ClosedAt.Value.ToDateTime(madridZone)]
+        @Localizer["Governance_Votes_ClosedAt", vote.ClosedAt.Value.ToDateTime(orgZone)]
     }
 </p>
 
@@ -180,7 +181,7 @@ else
                 </dd>
 
                 <dt class="col-sm-4">@Localizer["Governance_Votes_RevisionLabel", ownBallot.Revision]</dt>
-                <dd class="col-sm-8">@Localizer["Governance_Votes_UpdatedAtLabel", ownBallot.UpdatedAt.ToDateTime(madridZone)]</dd>
+                <dd class="col-sm-8">@Localizer["Governance_Votes_UpdatedAtLabel", ownBallot.UpdatedAt.ToDateTime(orgZone)]</dd>
             </dl>
 
             @if (ownBallot.History.Count > 0)
@@ -208,7 +209,7 @@ else
                                             <div class="small text-muted">@RankingSummary(rev.Ranking)</div>
                                         }
                                     </td>
-                                    <td>@rev.RecordedAt.ToDateTime(madridZone)</td>
+                                    <td>@rev.RecordedAt.ToDateTime(orgZone)</td>
                                 </tr>
                             }
                         </tbody>
@@ -241,12 +242,12 @@ else
             <dt class="col-sm-6">@Localizer["Governance_Votes_LastBallotAtLabel"]</dt>
             <dd class="col-sm-6">
                 @(vote.Participation.LastBallotAt.HasValue
-                    ? vote.Participation.LastBallotAt.Value.ToDateTime(madridZone)
+                    ? vote.Participation.LastBallotAt.Value.ToDateTime(orgZone)
                     : Localizer["Governance_Votes_NoBallotsYetValue"].Value)
             </dd>
 
             <dt class="col-sm-6">@Localizer["Governance_Votes_ClosingTimeLabel"]</dt>
-            <dd class="col-sm-6">@vote.ClosesAt.ToDateTime(madridZone)</dd>
+            <dd class="col-sm-6">@vote.ClosesAt.ToDateTime(orgZone)</dd>
         </dl>
     </div>
 </div>

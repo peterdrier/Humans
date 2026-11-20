@@ -42,7 +42,7 @@ internal sealed class EventsExportController(
         var events = await guide.GetApprovedEventsAsync(null, null, null, null, [], ct);
         var settings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, settings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var maxSlots = settings?.MaxPrintSlots;
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
 

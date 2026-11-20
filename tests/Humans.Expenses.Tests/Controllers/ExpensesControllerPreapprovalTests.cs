@@ -234,7 +234,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 [new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test"))
         };
         return new ExpensesController(_users, _reports, _review, _budget, _finance, _preapprovals,
-            _authorization, TestClock, logger ?? NullLogger<ExpensesController>.Instance, _localizer)
+            _authorization, TestClock, FixedOrgTimeZone.Madrid, logger ?? NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -743,7 +743,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var onHeld = ReviewRow(held.Id) with { CreatedAt = now.Minus(Duration.FromDays(1)) };
         var plain = ReviewRow(null) with { SubmittedAt = now };
         _reports.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([onRevoked, onHeld, plain]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         _finance.ListExpenseAccountsAsync(activeOnly: false, Arg.Any<CancellationToken>()).Returns([]);
         PutGrant(revoked);

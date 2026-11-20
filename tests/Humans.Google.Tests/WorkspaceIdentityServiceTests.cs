@@ -36,8 +36,8 @@ public sealed class WorkspaceIdentityServiceTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => new ValueTask<UserInfo?>(_infos.GetValueOrDefault(ci.Arg<Guid>())));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ci.Arg<IReadOnlyCollection<Guid>>()
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ci.Arg<IEnumerable<Guid>>()
                 .Where(_infos.ContainsKey).ToDictionary(id => id, id => _infos[id])));
         _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyCollection<UserInfo>>(_infos.Values.Distinct().ToList()));

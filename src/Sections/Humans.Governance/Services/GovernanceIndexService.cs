@@ -86,7 +86,7 @@ internal sealed class GovernanceIndexService(
             [GovernanceBody.Colaboradores] = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Colaborador, today, ct),
             [GovernanceBody.Board] = await roleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct),
         };
-        var infos = await users.GetUserInfosAsync(raw.Values.SelectMany(ids => ids).Distinct().ToList(), ct);
+        var infos = await users.GetUserInfosAsync(raw.Values.SelectMany(ids => ids), ct);
         return raw.ToDictionary(
             e => e.Key,
             e => (IReadOnlyList<Guid>)[.. e.Value.Where(id => infos.TryGetValue(id, out var info) && info.IsActive)]);

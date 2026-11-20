@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
-using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Enums;
@@ -46,7 +45,7 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             _fileStorage,
             Notifier,
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningWrite>(() => Substitute.For<ICityPlanningWrite>()),
+            new Lazy<IEnumerable<ICampDeletionListener>>(() => []),
             _userService,
             _tickets,
             settingsService,

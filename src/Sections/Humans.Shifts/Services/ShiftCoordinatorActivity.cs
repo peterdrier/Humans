@@ -57,7 +57,7 @@ internal sealed class ShiftCoordinatorActivity(
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
                 .Select(m => (TeamId: id, m.UserId)))
             .ToList();
-        var coordinatorUserIds = coordsRaw.Select(c => c.UserId).Distinct().ToList();
+        var coordinatorUserIds = coordsRaw.Select(c => c.UserId);
 
         var userLookup = await UserService.GetUserInfosAsync(coordinatorUserIds, ct);
 

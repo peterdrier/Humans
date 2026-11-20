@@ -1,5 +1,6 @@
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -16,6 +17,7 @@ internal sealed class ContainerController(
     ICampService campService,
     IContainerService containerService,
     ICityPlanningService cityPlanningService,
+    ISettingsService settingsService,
     IAuthorizationService authorizationService,
     IUserService userService,
     IStringLocalizer<ContainersResource> localizer,
@@ -36,15 +38,16 @@ internal sealed class ContainerController(
         // Place returns false for leads when phase is closed — drives the "phase closed" view message.
         var canPlace = await AuthorizeAsync(target, ContainerOperationRequirement.Place);
 
-        var settings = await cityPlanningService.GetSettingsAsync(ct);
-        if (settings is null) return NotFound(); // no active event
+        if (settingsService.GetActiveEventSettings() is not { Year: > 0 } activeEvent) return NotFound();
+        var year = activeEvent.Year;
         var containers = await containerService.GetByCampAsync(camp.Id, ct);
         var sortedContainers = containers
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var placements = await containerService.GetPlacementsByYearAsync(settings.Year, ct);
+        var placements = await containerService.GetPlacementsByYearAsync(year, ct);
+        var isPlacementOpen = await cityPlanningService.IsContainerPlacementOpenAsync(year, ct);
 
-        var vm = BuildIndexViewModel(camp, settings.Year, settings.IsContainerPlacementOpen, canPlace, sortedContainers, placements);
+        var vm = BuildIndexViewModel(camp, year, isPlacementOpen, canPlace, sortedContainers, placements);
         return View(vm);
     }
 

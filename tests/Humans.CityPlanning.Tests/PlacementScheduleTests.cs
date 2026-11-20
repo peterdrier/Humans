@@ -74,19 +74,19 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
     // Each boundary sits on Madrid midnight (22:00 UTC the evening before), so a UTC reading
     // of "today" would land on the wrong side of every one of them.
     [HumansTheory]
-    [InlineData(2026, 5, 31, 21, 59, BarrioPlacementState.Closed)]     // 31 May 23:59 Madrid: before opening
-    [InlineData(2026, 5, 31, 22, 0, BarrioPlacementState.Open)]        // 1 Jun 00:00 Madrid: opening day
-    [InlineData(2026, 6, 21, 21, 59, BarrioPlacementState.Open)]       // 21 Jun 23:59 Madrid: last open day
-    [InlineData(2026, 6, 21, 22, 0, BarrioPlacementState.Changeable)]  // 22 Jun 00:00 Madrid: adjust only
-    [InlineData(2026, 6, 26, 21, 59, BarrioPlacementState.Changeable)] // 26 Jun 23:59 Madrid: last adjust day
-    [InlineData(2026, 6, 26, 22, 0, BarrioPlacementState.Closed)]      // 27 Jun 00:00 Madrid: locked
+    [InlineData(2026, 5, 31, 21, 59, nameof(BarrioPlacementState.Closed))]     // 31 May 23:59 Madrid: before opening
+    [InlineData(2026, 5, 31, 22, 0, nameof(BarrioPlacementState.Open))]        // 1 Jun 00:00 Madrid: opening day
+    [InlineData(2026, 6, 21, 21, 59, nameof(BarrioPlacementState.Open))]       // 21 Jun 23:59 Madrid: last open day
+    [InlineData(2026, 6, 21, 22, 0, nameof(BarrioPlacementState.Changeable))]  // 22 Jun 00:00 Madrid: adjust only
+    [InlineData(2026, 6, 26, 21, 59, nameof(BarrioPlacementState.Changeable))] // 26 Jun 23:59 Madrid: last adjust day
+    [InlineData(2026, 6, 26, 22, 0, nameof(BarrioPlacementState.Closed))]      // 27 Jun 00:00 Madrid: locked
     public async Task GetSettingsAsync_NoOverride_StateFollowsTheScheduleInTheEventTimeZone(
-        int year, int month, int day, int hour, int minute, BarrioPlacementState expected)
+        int year, int month, int day, int hour, int minute, string expected)
     {
         await SeedScheduleAsync();
         Clock.Reset(Instant.FromUtc(year, month, day, hour, minute));
 
-        (await StateAsync()).Should().Be(expected);
+        (await StateAsync()).ToString().Should().Be(expected);
     }
 
     [HumansFact]

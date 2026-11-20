@@ -47,6 +47,9 @@ internal sealed record BurnSettingsInfo(
 
     // C# surfaces the interface's sealed bodies only through an interface-typed receiver; these spare every call a
     // cast.
+    /// <inheritdoc cref="IEventSettingsInfo.TimeZone" />
+    public DateTimeZone TimeZone => ((IEventSettingsInfo)this).TimeZone;
+
     /// <inheritdoc cref="IBurnSettingsInfo.IsEarlyEntryClosed" />
     public bool IsEarlyEntryClosed(Instant now) =>
         ((IBurnSettingsInfo)this).IsEarlyEntryClosed(now);

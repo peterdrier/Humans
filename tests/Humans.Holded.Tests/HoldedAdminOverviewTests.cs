@@ -40,7 +40,7 @@ public sealed class HoldedAdminOverviewTests
             .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36 });
         _client.IsConfigured.Returns(true);
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
     }
 
     /// <summary>Every non-archived row of /Holded/Accounts, empty ones included, in page order.</summary>
@@ -492,7 +492,7 @@ public sealed class HoldedAdminOverviewTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
             Options.Create(new HoldedSectionOptions { MonthlyCallBudget = 5000 }),
-            NullLogger<Service>.Instance);
+            NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
 
         (await service.GetSummaryAsync(ct)).MonthlyCallBudget.Should().Be(5000);
     }

@@ -52,7 +52,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
         // safe defaults keep every scenario from needing to restub them.
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns([]);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
 
         // Default: full Drive reconciliation (add + remove) enabled.
@@ -384,7 +384,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
                     new Dictionary<Guid, DrivePermissionLevel> { [memberId] = DrivePermissionLevel.Contributor },
                     [new TeamLink("First", "first"), new TeamLink("Second", "second")])
             });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [memberId] = UserInfoFixtures.FromUser(new User { Id = memberId, DisplayName = "Second-team human", CreatedAt = Clock.GetCurrentInstant() }) with

@@ -111,7 +111,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             true, true, SystemTeamType.Volunteers, false, false, false, false, default, []);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new[] { user });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [user.Id] = user }));
         var calculator = Substitute.For<IConsentService>();
         calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -203,7 +203,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             .Returns(true);
 
         _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var job = CreateJob();
@@ -232,7 +232,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             [new TeamMember { Id = Guid.NewGuid(), UserId = removedId, JoinedAt = _clock.GetCurrentInstant() }]);
         _campRepository.GetActiveLeadUserIdsAsync(Arg.Any<CancellationToken>()).Returns(addedIds);
         _userService.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         _googleSyncService.AddUserToTeamResourcesAsync(
                 team.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>(), GoogleSyncSource.SystemTeamSync)
@@ -268,7 +268,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         var systemCoordinator = demote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid(), SystemTeamType = SystemTeamType.Board };
         _teamService.GetActiveMembershipsForRoleReconciliationAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { promote, demote, skipped, unchanged, systemCoordinator });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         var saved = false;
         _teamService.ApplyMemberRoleChangesAsync(

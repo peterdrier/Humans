@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
@@ -12,6 +13,7 @@ using NodaTime;
 namespace Humans.Expenses.Models;
 
 internal sealed class ExpensePageBuilder(
+    IOrgTimeZone orgTimeZone,
     IExpenseReportManagement service,
     IExpenseReview review,
     IBudgetService budgetService,
@@ -20,9 +22,8 @@ internal sealed class ExpensePageBuilder(
     IClock clock,
     IStringLocalizer<ExpensesResource> localizer)
 {
-    /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    internal LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
+    internal LocalDate Today => clock.GetCurrentInstant().InZone(OrgZone).Date;
 
     public async Task<ExpensesIndexViewModel> BuildIndexAsync(UserInfo viewer, CancellationToken ct = default)
     {

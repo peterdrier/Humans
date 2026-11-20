@@ -173,7 +173,13 @@ public class ExpenseReportServiceGdprTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((UserInfo?)null);
 
-        var entry = Event(ExpensesAuditActions.ExpenseSubmit, Guid.NewGuid(), "Submitted", actorUserId: null);
+        var entry = Event(
+            ExpensesAuditActions.ExpenseSubmit,
+            Guid.NewGuid(),
+            "Submitted",
+            actorUserId: UserId,
+            relatedEntityId: UserId,
+            relatedEntityType: AuditSubjectTypes.User);
 
         _auditViewer.GetFilteredAsync(
                 entityType: Arg.Any<string?>(),
@@ -244,6 +250,257 @@ public class ExpenseReportServiceGdprTests
         auditJson.Should().Contain("Finance approved expense report.");
     }
 
+    [HumansFact]
+    public async Task AdminActingOnOtherMembers_ReceivesNoCrossUserAuditEntriesOrRawIbans()
+    {
+        var adminId = UserId;
+        var otherMemberId = Guid.NewGuid();
+        var otherReportId = Guid.NewGuid();
+        var ownReport = MakeReport(adminId);
+        _repo.GetForSubmitterAsync(adminId, Arg.Any<CancellationToken>()).Returns([ownReport]);
+        _userService.GetUserInfoAsync(adminId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(adminId, UserFixtures.Profile()));
+
+        var ownSubmit = Event(
+            ExpensesAuditActions.ExpenseSubmit,
+            ownReport.Id,
+            "Submitted expense report.",
+            actorUserId: adminId,
+            relatedEntityId: adminId,
+            relatedEntityType: AuditSubjectTypes.User);
+
+        var crossUserIbanSet = Event(
+            ExpensesAuditActions.IbanSet,
+            otherMemberId,
+            "IBAN set for Dani Member to ES9121000418450200051332",
+            actorUserId: adminId,
+            entityType: AuditEntityTypes.Profile,
+            relatedEntityId: otherMemberId,
+            relatedEntityType: AuditSubjectTypes.User);
+        var crossUserPayeeUpdated = Event(
+            ExpensesAuditActions.ExpensePayeeIbanUpdated,
+            otherReportId,
+            "Payee IBAN updated for Dani Member to ES9121000418450200051332.",
+            actorUserId: adminId,
+            relatedEntityId: otherMemberId,
+            relatedEntityType: AuditSubjectTypes.User);
+        var crossUserCreated = Event(
+            ExpensesAuditActions.ExpenseCreatedOnBehalf,
+            otherReportId,
+            "Created expense report on behalf of Dani Member.",
+            actorUserId: adminId,
+            relatedEntityId: otherMemberId,
+            relatedEntityType: AuditSubjectTypes.User);
+        var crossUserEdited = Event(
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
+            otherReportId,
+            "Added line \"Secret Hotel\" €250 on behalf of Dani Member.",
+            actorUserId: adminId,
+            relatedEntityId: otherMemberId,
+            relatedEntityType: AuditSubjectTypes.User);
+        var crossUserLineDeclined = Event(
+            ExpensesAuditActions.ExpenseLineDeclined,
+            otherReportId,
+            "Coordinator declined line \"Other Receipt\" (50.00 EUR): private reason",
+            actorUserId: adminId);
+        var crossUserEndorse = Event(
+            ExpensesAuditActions.ExpenseEndorse,
+            otherReportId,
+            "Pre-approval manager endorsed expense report.",
+            actorUserId: adminId);
+        var crossUserApprove = Event(
+            ExpensesAuditActions.ExpenseApprove,
+            otherReportId,
+            "Finance approved expense report.",
+            actorUserId: adminId);
+        var crossUserIbanReveal = Event(
+            FinanceAuditActions.IbanReveal,
+            otherMemberId,
+            $"Admin revealed IBAN for user {otherMemberId}",
+            actorUserId: adminId,
+            entityType: AuditSubjectTypes.User);
+
+        _auditViewer.GetFilteredAsync(
+                entityType: null,
+                entityId: null,
+                userId: adminId,
+                actions: Arg.Any<IReadOnlyList<string>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns([
+                ownSubmit,
+                crossUserIbanSet,
+                crossUserPayeeUpdated,
+                crossUserCreated,
+                crossUserEdited,
+                crossUserLineDeclined,
+                crossUserEndorse,
+                crossUserApprove,
+                crossUserIbanReveal,
+            ]);
+        _auditViewer.GetFilteredAsync(
+                entityType: AuditEntityTypes.Report,
+                entityId: ownReport.Id,
+                userId: null,
+                actions: Arg.Any<IReadOnlyList<string>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns([ownSubmit]);
+
+        var slices = await _sut.ContributeForUserAsync(adminId, Xunit.TestContext.Current.CancellationToken);
+
+        var auditSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseAuditLog", StringComparison.Ordinal));
+        auditSlice.Data.Should().NotBeNull();
+        var auditJson = JsonSerializer.Serialize(auditSlice.Data);
+        auditJson.Should().Contain(ownReport.Id.ToString());
+        auditJson.Should().Contain("Submitted expense report.");
+        auditJson.Should().NotContain("ES9121000418450200051332");
+        auditJson.Should().NotContain("ES91****332");
+        auditJson.Should().NotContain("Dani Member");
+        auditJson.Should().NotContain("Secret Hotel");
+        auditJson.Should().NotContain("Other Receipt");
+        auditJson.Should().NotContain(otherMemberId.ToString());
+        auditJson.Should().NotContain(otherReportId.ToString());
+    }
+
+    [HumansFact]
+    public async Task AdminWithNoOwnExpenseActivity_ActingOnlyOnOthers_GetsNullAuditSlice()
+    {
+        var adminId = UserId;
+        var otherMemberId = Guid.NewGuid();
+        var otherReportId = Guid.NewGuid();
+        _repo.GetForSubmitterAsync(adminId, Arg.Any<CancellationToken>()).Returns([]);
+        _userService.GetUserInfoAsync(adminId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(adminId, UserFixtures.Profile()));
+
+        _auditViewer.GetFilteredAsync(
+                entityType: null,
+                entityId: null,
+                userId: adminId,
+                actions: Arg.Any<IReadOnlyList<string>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns([
+                Event(
+                    ExpensesAuditActions.IbanSet,
+                    otherMemberId,
+                    "IBAN set for Dani Member to ES9121000418450200051332",
+                    actorUserId: adminId,
+                    entityType: AuditEntityTypes.Profile,
+                    relatedEntityId: otherMemberId,
+                    relatedEntityType: AuditSubjectTypes.User),
+                Event(
+                    ExpensesAuditActions.ExpenseApprove,
+                    otherReportId,
+                    "Finance approved expense report.",
+                    actorUserId: adminId),
+            ]);
+
+        var slices = await _sut.ContributeForUserAsync(adminId, Xunit.TestContext.Current.CancellationToken);
+
+        var auditSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseAuditLog", StringComparison.Ordinal));
+        auditSlice.Data.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task SubjectExport_IncludesOwnAndMergedAuditTrail_WithRawIbansMasked()
+    {
+        var survivorId = UserId;
+        var sourceId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var otherMemberId = Guid.NewGuid();
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(WithMergedIds(survivorId, sourceId)));
+
+        var ownReport = MakeReport(survivorId);
+        var sourceReport = MakeReport(sourceId);
+        _repo.GetForSubmitterAsync(survivorId, Arg.Any<CancellationToken>()).Returns([ownReport]);
+        _repo.GetForSubmitterAsync(sourceId, Arg.Any<CancellationToken>()).Returns([sourceReport]);
+
+        var subjectIbanSet = Event(
+            ExpensesAuditActions.IbanSet,
+            survivorId,
+            "IBAN set for Dani Member to ES9121000418450200051332",
+            actorUserId: adminId,
+            entityType: AuditEntityTypes.Profile,
+            relatedEntityId: survivorId,
+            relatedEntityType: AuditSubjectTypes.User);
+        var subjectPayeeIbanUpdated = Event(
+            ExpensesAuditActions.ExpensePayeeIbanUpdated,
+            sourceReport.Id,
+            "Payee IBAN updated for Dani Member to DE89370400440532013000.",
+            actorUserId: adminId,
+            relatedEntityId: sourceId,
+            relatedEntityType: AuditSubjectTypes.User);
+        var legacySelfIbanSet = Event(
+            ExpensesAuditActions.IbanSet,
+            sourceId,
+            "IBAN set",
+            actorUserId: sourceId,
+            entityType: AuditEntityTypes.Profile);
+        var subjectIbanReveal = Event(
+            FinanceAuditActions.IbanReveal,
+            survivorId,
+            $"Admin revealed IBAN for user {survivorId}",
+            actorUserId: adminId,
+            entityType: AuditSubjectTypes.User);
+        var reportApproved = Event(
+            ExpensesAuditActions.ExpenseApprove,
+            sourceReport.Id,
+            "Finance approved expense report.",
+            actorUserId: adminId);
+        var crossUserIbanSet = Event(
+            ExpensesAuditActions.IbanSet,
+            otherMemberId,
+            "IBAN set for Other Member to FR7630006000011234567890189",
+            actorUserId: survivorId,
+            entityType: AuditEntityTypes.Profile,
+            relatedEntityId: otherMemberId,
+            relatedEntityType: AuditSubjectTypes.User);
+
+        _auditViewer.GetFilteredAsync(
+                entityType: null,
+                entityId: null,
+                userId: survivorId,
+                actions: Arg.Any<IReadOnlyList<string>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns([
+                subjectIbanSet,
+                subjectPayeeIbanUpdated,
+                legacySelfIbanSet,
+                subjectIbanReveal,
+                crossUserIbanSet,
+            ]);
+        _auditViewer.GetFilteredAsync(
+                entityType: AuditEntityTypes.Report,
+                entityId: sourceReport.Id,
+                userId: null,
+                actions: Arg.Any<IReadOnlyList<string>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns([subjectPayeeIbanUpdated, reportApproved]);
+
+        var slices = await _sut.ContributeForUserAsync(survivorId, Xunit.TestContext.Current.CancellationToken);
+
+        var auditSlice = slices.Single(s => string.Equals(s.SectionName, "ExpenseAuditLog", StringComparison.Ordinal));
+        auditSlice.Data.Should().NotBeNull();
+        var auditJson = JsonSerializer.Serialize(auditSlice.Data);
+        using var doc = JsonDocument.Parse(auditJson);
+        doc.RootElement.GetProperty("Entries").GetArrayLength().Should().Be(5);
+
+        auditJson.Should().Contain("IBAN set for Dani Member to ES91****332");
+        auditJson.Should().Contain("Payee IBAN updated for Dani Member to DE89****000.");
+        auditJson.Should().Contain("\"Action\":\"IbanSet\"");
+        auditJson.Should().Contain($"Admin revealed IBAN for user {survivorId}");
+        auditJson.Should().Contain("Finance approved expense report.");
+        auditJson.Should().NotContain("ES9121000418450200051332");
+        auditJson.Should().NotContain("DE89370400440532013000");
+        auditJson.Should().NotContain("FR7630006000011234567890189");
+        auditJson.Should().NotContain("FR76****189");
+        auditJson.Should().NotContain(otherMemberId.ToString());
+    }
+
     /// <summary>A record listing the given ids as accounts merged into <paramref name="userId"/>.</summary>
     private static UserInfo WithMergedIds(Guid userId, params Guid[] mergedUserIds)
     {
@@ -251,7 +508,14 @@ public class ExpenseReportServiceGdprTests
         return info with { MergedUserIds = mergedUserIds };
     }
 
-    private static AuditEvent Event(AuditActionDefinition action, Guid reportId, string description, Guid? actorUserId) =>
-        new(Guid.NewGuid(), FakeNow, action, actorUserId, null, "ExpenseReport", reportId,
-            null, null, null, null, null, null, null, description);
+    private static AuditEvent Event(
+        AuditActionDefinition action,
+        Guid entityId,
+        string description,
+        Guid? actorUserId,
+        string entityType = AuditEntityTypes.Report,
+        Guid? relatedEntityId = null,
+        string? relatedEntityType = null) =>
+        new(Guid.NewGuid(), FakeNow, action, actorUserId, null, entityType, entityId,
+            null, null, null, null, null, relatedEntityId, relatedEntityType, description);
 }

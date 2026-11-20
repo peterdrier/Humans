@@ -50,7 +50,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
             await shutdown.CancelAsync();
             throw canceled;
         });
-        var reminders = new PreapprovalDeadlineReminders(repository, NewNotices(), AuditLog, Clock, Logger);
+        var reminders = new PreapprovalDeadlineReminders(FixedOrgTimeZone.Madrid, repository, NewNotices(), AuditLog, Clock, Logger);
         var action = () => reminders.SendDeadlineRemindersAsync(shutdown.Token);
 
         if (boundary == ShutdownBoundary.NoEarlierFailure)
@@ -88,7 +88,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
                 await shutdown.CancelAsync();
                 return [];
             });
-        var reminders = new PreapprovalDeadlineReminders(repository, NewNotices(), AuditLog, Clock, Logger);
+        var reminders = new PreapprovalDeadlineReminders(FixedOrgTimeZone.Madrid, repository, NewNotices(), AuditLog, Clock, Logger);
 
         var action = () => reminders.SendDeadlineRemindersAsync(shutdown.Token);
         await action.Should().ThrowAsync<OperationCanceledException>();

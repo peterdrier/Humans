@@ -17,12 +17,15 @@ internal sealed class Service(
     IHoldedCallLog callLog,
     IClock clock,
     IOptions<HoldedSectionOptions> options,
-    ILogger<Service> logger) : IHoldedService, IHoldedAdminService
+    ILogger<Service> logger,
+    IOrgTimeZone orgTimeZone) : IHoldedService, IHoldedAdminService
 {
     /// <summary>The connector's ledger-entries page size, for the full-resync cost estimate.</summary>
     private const int LedgerPageSize = 200;
 
     public bool IsConfigured => client.IsConfigured;
+
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     public async Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
@@ -146,7 +149,7 @@ internal sealed class Service(
         return (await repo.GetApiCallsAsync(ct))
             .GroupBy(c =>
             {
-                var d = c.CalledAt.InZone(HoldedJson.MadridZone).Date;
+                var d = c.CalledAt.InZone(OrgZone).Date;
                 return (d.Year, d.Month);
             })
             .Select(m => new HoldedMonthlyCalls(
@@ -158,10 +161,10 @@ internal sealed class Service(
             .ToList();
     }
 
-    // The period is the Madrid month of the read: Holded reports the current month.
-    private static HoldedUsageReading ToReading(HoldedSyncState s)
+    // The period is the org-zone month of the read: Holded reports the current month.
+    private HoldedUsageReading ToReading(HoldedSyncState s)
     {
-        var month = s.LastSyncAt?.InZone(HoldedJson.MadridZone).Date;
+        var month = s.LastSyncAt?.InZone(OrgZone).Date;
         return new HoldedUsageReading(
             s.LastCount, month is { } d ? $"{d.Year:D4}-{d.Month:D2}" : null, s.LastSyncAt,
             s.SyncStatus == HoldedSyncStatus.Error ? s.LastError : null);
@@ -450,7 +453,7 @@ internal sealed class Service(
         try
         {
             var now = clock.GetCurrentInstant();
-            var today = now.InZone(MadridZone).Date;
+            var today = now.InZone(OrgZone).Date;
 
             var sweepAll = full || !await repo.HasAnyLedgerLinesAsync(ct);
             var state = await repo.GetOrCreateSyncStateAsync(
@@ -460,7 +463,7 @@ internal sealed class Service(
             try
             {
                 await repo.SaveSyncStateAsync(state, ct);
-                var from = sweepAll ? LedgerInception : now.Minus(TrailingWindow).InZone(MadridZone).Date;
+                var from = sweepAll ? LedgerInception : now.Minus(TrailingWindow).InZone(OrgZone).Date;
                 var fetched = await client.ListLedgerEntriesAsync(from, today, ct: ct);
                 ct.ThrowIfCancellationRequested();
                 await repo.ReplaceLedgerWindowAsync(
@@ -514,7 +517,7 @@ internal sealed class Service(
         {
             var now = clock.GetCurrentInstant();
             var fetched = await client.ListLedgerEntriesAsync(
-                LedgerInception, now.InZone(MadridZone).Date, accountNum, ct);
+                LedgerInception, now.InZone(OrgZone).Date, accountNum, ct);
             ct.ThrowIfCancellationRequested();
             await repo.ReplaceLedgerWindowAsync(
                 ToWindowStart(LedgerInception), now, accountNum, fetched.Select(l => ToEntity(l, now)).ToList(), now, ct);
@@ -755,14 +758,14 @@ internal sealed class Service(
                 failed);
     }
 
-    private static HoldedPurchaseDoc ToEntity(HoldedPurchaseDocListItemDto doc, Instant now) => new()
+    private HoldedPurchaseDoc ToEntity(HoldedPurchaseDocListItemDto doc, Instant now) => new()
     {
         Id = doc.Id,
         DocNumber = doc.DocNumber,
         ContactName = doc.ContactName,
         ContactId = string.IsNullOrEmpty(doc.ContactId) ? null : doc.ContactId,
         Description = string.IsNullOrWhiteSpace(doc.Description) ? null : doc.Description.Trim(),
-        Date = doc.Date.InZone(MadridZone).Date,
+        Date = doc.Date.InZone(OrgZone).Date,
         Subtotal = doc.Subtotal,
         Tax = doc.Tax,
         Total = doc.Total,
@@ -890,8 +893,8 @@ internal sealed class Service(
     }
 
     /// <summary>Local midnight of the start date. Rows dated before it are outside the sweep and must survive.</summary>
-    internal static Instant ToWindowStart(LocalDate from) =>
-        from.AtStartOfDayInZone(MadridZone).ToInstant();
+    internal Instant ToWindowStart(LocalDate from) =>
+        from.AtStartOfDayInZone(OrgZone).ToInstant();
 
     /// <summary>Reads the month's call count into the Usage state row. A Holded failure is recorded on the row and
     /// answers false; the last good reading and its stamp stay.</summary>

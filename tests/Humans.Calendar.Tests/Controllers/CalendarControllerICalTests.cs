@@ -962,6 +962,7 @@ public class CalendarControllerICalTests
             calendar ?? _calendar,
             _teams,
             new FakeClock(_now),
+            FixedOrgTimeZone.Madrid,
             localizer,
             NullLogger<CalendarController>.Instance)
         {

@@ -9,6 +9,7 @@
         s.Annotations.Any(a => string.Equals(a.Facet, facet, StringComparison.Ordinal));
 
     var active = Model.Sections.Count(s => s.IsActive);
+    var unmet = Model.Sections.Where(s => s.ConsumedWhileInactiveBy.Count > 0).ToList();
 }
 
 <page-header title="Sections" variant="compact">
@@ -19,6 +20,24 @@
         <i class="fa-solid fa-arrow-left me-1"></i>Admin
     </a>
 </page-header>
+
+@if (unmet.Count > 0)
+{
+    <div class="alert alert-danger">
+        <p class="mb-2">
+            <i class="fa-solid fa-circle-exclamation me-1"></i>
+            <strong>@unmet.Count inactive section(s) are still consumed by what runs.</strong>
+            The app booted anyway; each request that reaches the missing section fails. Reactivate it, or
+            deactivate its consumers.
+        </p>
+        <ul class="mb-0 small">
+            @foreach (var consumed in unmet)
+            {
+                <li><code>@consumed.Name</code> — consumed by @string.Join(", ", consumed.ConsumedWhileInactiveBy)</li>
+            }
+        </ul>
+    </div>
+}
 
 @if (Model.UnmatchedAnnotations.Count > 0)
 {
@@ -64,6 +83,10 @@
                     @if (!entry.IsActive)
                     {
                         <span class="badge bg-secondary ms-1">inactive</span>
+                    }
+                    @if (entry.ConsumedWhileInactiveBy.Count > 0)
+                    {
+                        <span class="badge bg-danger ms-1" title="Consumed by @string.Join(", ", entry.ConsumedWhileInactiveBy)">unmet</span>
                     }
                     <div class="small text-muted">
                         @if (entry.ServiceInterfaces.Count > 0)

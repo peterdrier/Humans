@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
@@ -20,9 +21,7 @@ internal sealed class ShiftsGalleryViewComponent(
 
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var currentUserId = Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
-            ? id
-            : Guid.Empty;
+        var currentUserId = UserClaimsPrincipal.GetUserId() ?? Guid.Empty;
 
         try
         {

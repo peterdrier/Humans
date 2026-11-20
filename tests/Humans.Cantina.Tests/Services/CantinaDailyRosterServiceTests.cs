@@ -39,7 +39,7 @@ public class CantinaDailyRosterServiceTests
         _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
         _userRead.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
         _dietary.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -231,7 +231,7 @@ public class CantinaDailyRosterServiceTests
         var userId = Guid.NewGuid();
         SetupDay(0, userId);
         _userRead.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
                 {
@@ -367,7 +367,7 @@ public class CantinaDailyRosterServiceTests
                 externalLogins: [],
                 profile: p.Profile));
         _userRead.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
         IReadOnlyDictionary<Guid, DietaryProfileInfo> diets = profiles
             .Where(p => p.Diet is not null)

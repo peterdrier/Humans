@@ -36,6 +36,7 @@ internal sealed class AssemblyVoteService(
     IAuditLogService audit,
     IGoogleTranslationService translation,
     IClock clock,
+    IOrgTimeZone orgTimeZone,
     ILogger<AssemblyVoteService> logger)
     : IAssemblyVoteService, IUserDataContributor, IUserMerge
 {
@@ -90,7 +91,7 @@ internal sealed class AssemblyVoteService(
             result,
             await PeekViewsAsync(voteId, ct),
             disclosed,
-            AssemblyVotePresentation.BuildActa(vote, result, await ClosedByNameAsync(vote, ct)));
+            AssemblyVotePresentation.BuildActa(vote, result, await ClosedByNameAsync(vote, ct), orgTimeZone.Zone));
     }
 
     public async Task<IReadOnlyList<AssemblyVoteListItem>> GetAllForAdminAsync(
@@ -935,7 +936,7 @@ internal sealed class AssemblyVoteService(
                     var sentAt = clock.GetCurrentInstant();
                     var current = await repository.GetByIdAsync(vote.Id, ct);
                     if (current is null || !current.AcceptsBallotsAt(sentAt)) break;
-                    var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
+                    var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt, orgTimeZone.Zone);
 
                     ct.ThrowIfCancellationRequested();
                     try
@@ -1169,7 +1170,7 @@ internal sealed class AssemblyVoteService(
                     // The deadline from that same read: an Extend mid-batch moves it, and the rest of
                     // the roster is reminded when the new deadline comes into range.
                     if (current.ClosesAt <= sentAt || current.ClosesAt > sentAt + ReminderLeadTime) break;
-                    var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt);
+                    var closesAt = AssemblyVotePresentation.ClosingLocal(current.ClosesAt, orgTimeZone.Zone);
 
                     // Over every row the human holds: a ballot cast mid-batch lands on whichever
                     // of their rows EffectiveRosterAsync resolved them to.
@@ -1528,7 +1529,7 @@ internal sealed class AssemblyVoteService(
         var ballots = await repository.GetBallotsAsync(voteId, ct);
         var byRoster = ballots.ToDictionary(b => b.RosterId);
 
-        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
+        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value);
         var infos = await users.GetUserInfosAsync(userIds, ct);
 
         return roster

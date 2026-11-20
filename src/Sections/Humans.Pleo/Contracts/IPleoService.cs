@@ -6,7 +6,7 @@ namespace Humans.Pleo.Contracts;
 /// <summary>Read-only view of the Pleo mirror, for booking it elsewhere. Served from the mirror; no Pleo calls.</summary>
 public interface IPleoService : IApplicationService
 {
-    /// <summary>Entries settled in [<paramref name="from"/>, <paramref name="to"/>] (Madrid dates, inclusive).
+    /// <summary>Entries settled in [<paramref name="from"/>, <paramref name="to"/>] (org-zone dates, inclusive).
     /// Entries Pleo has not settled are not returned.</summary>
     Task<IReadOnlyList<PleoEntryInfo>> GetSettledEntriesAsync(
         LocalDate from, LocalDate to, CancellationToken ct = default);

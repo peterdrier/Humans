@@ -100,9 +100,8 @@ public sealed class Section :
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampRoleService>());
         // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.
         services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
-        // Lazy<ICityPlanningWrite> resolves a circular dep: CampService -> ICityPlanningWrite
-        // -> ICampService. Used on the camp-delete path to clear the section's polygons.
-        services.AddTransient(sp => new Lazy<ICityPlanningWrite>(sp.GetRequiredService<ICityPlanningWrite>));
+        // Lazy: a deletion listener (City Planning) injects ICampService, so resolving them eagerly would be circular.
+        services.AddTransient(sp => new Lazy<IEnumerable<ICampDeletionListener>>(sp.GetServices<ICampDeletionListener>));
 
         services.AddScoped<ICampContactService, CampContactService>();
         services.AddScoped<CampAdminPageBuilder>();

@@ -1,8 +1,9 @@
 @model StripeTransactionView
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     var t = Model.Row;
     ViewData["Title"] = $"Stripe {t.Id}";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 <page-header title="Stripe transaction" />
@@ -12,7 +13,7 @@
     <dt class="col-sm-3">Id</dt><dd class="col-sm-9"><code>@t.Id</code></dd>
     <dt class="col-sm-3">Account</dt><dd class="col-sm-9">@t.AccountName <code class="small">@Model.AccountId</code></dd>
     <dt class="col-sm-3">Type</dt><dd class="col-sm-9">@t.Type <span class="text-muted">(@t.ReportingCategory, @t.Status)</span></dd>
-    <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@t.Created.ToDateTime(madrid)</dd>
+    <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@t.Created.ToDateTime(orgZone)</dd>
     <dt class="col-sm-3">Available on</dt><dd class="col-sm-9">@t.AvailableOn.ToDate()</dd>
     <dt class="col-sm-3">Amount / fee / net</dt>
     <dd class="col-sm-9">@StripeMoneyFormat.Show(t.Amount, t.Currency, signed: true) / @StripeMoneyFormat.Show(t.Fee, t.Currency) / @StripeMoneyFormat.Show(t.Net, t.Currency, signed: true)</dd>

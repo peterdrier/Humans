@@ -76,7 +76,7 @@ internal sealed class ShiftCampSummary(
             .Select(g => (UserId: g.Key, Hours: g.Sum(x => x.Hours), Count: g.Count()))
             .ToList();
 
-        var userIds = totals.Select(t => t.UserId).ToList();
+        var userIds = totals.Select(t => t.UserId);
         var userInfos = await UserService.GetUserInfosAsync(userIds, ct);
 
         var campRoster = await CampService.GetCampsForEventAsync(activeEvent.Id, ct);

@@ -1,12 +1,10 @@
 @using System.Security.Claims
-@using Microsoft.AspNetCore.Identity
-@inject SignInManager<User> SignInManager
 @inject IUserService UserService
 
-@if (SignInManager.IsSignedIn(User))
+@if (User.Identity?.IsAuthenticated == true)
 {
     UserInfo? currentUser = null;
-    if (Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+    if (User.GetUserId() is { } currentUserId)
     {
         currentUser = await UserService.GetUserInfoAsync(currentUserId);
     }

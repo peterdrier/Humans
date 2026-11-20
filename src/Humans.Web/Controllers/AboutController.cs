@@ -62,7 +62,7 @@ public class AboutController(
                 roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now, ct);
 
             var assigneeInfos = await _userService.GetUserInfosAsync(
-                assignments.Select(ra => ra.UserId).Distinct().ToList(), ct);
+                assignments.Select(ra => ra.UserId), ct);
 
             // Board first, Admin last, the section roles between them by title.
             var roleDefinitions = catalog.Roles

@@ -1,7 +1,7 @@
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Base.Authorization;
-using System.Security.Claims;
 using Humans.Budget.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -32,7 +32,7 @@ internal sealed class BudgetAuthorizationHandler(IBudgetService budgetService, I
         if (!viewing && (resource.BudgetGroup?.BudgetYear?.IsDeleted == true || !resource.TeamId.HasValue))
             return;
 
-        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (context.User.GetUserId() is not { } userId)
             return;
 
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;

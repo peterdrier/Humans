@@ -28,7 +28,7 @@ internal sealed class VolunteerTrackingExportService(
     {
         var eventSettings = await _burnSettingsService.GetByIdAsync(request.EventSettingsId, ct)
             ?? throw new InvalidOperationException($"EventSettings {request.EventSettingsId} not found.");
-        var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+        var zone = eventSettings.TimeZone;
 
         var days = EnumerateDays(request.StartDate, request.EndDate);
         var shifts = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(
@@ -237,7 +237,7 @@ internal sealed class VolunteerTrackingExportService(
             .GroupBy(d => d.TeamId)
             .ToDictionary(g => g.Key, g => g.First().TeamName);
 
-        var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+        var zone = es.TimeZone;
         return ShiftEarlyEntryProjection.Project(rows, zone, teamNames);
     }
 

@@ -68,7 +68,7 @@ internal sealed class Shift
     internal static Instant ResolveAbsoluteStart(
         int dayOffset, LocalTime startTime, bool isAllDay, IEventSettingsInfo eventSettings)
     {
-        var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+        var tz = eventSettings.TimeZone;
         var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
         var wallTime = isAllDay ? AllDayWindowStart : startTime;
         return date.At(wallTime).InZoneLeniently(tz).ToInstant();
@@ -83,7 +83,7 @@ internal sealed class Shift
     {
         if (isAllDay)
         {
-            var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+            var tz = eventSettings.TimeZone;
             var date = eventSettings.GateOpeningDate.PlusDays(dayOffset);
             return date.At(AllDayWindowEnd).InZoneLeniently(tz).ToInstant();
         }

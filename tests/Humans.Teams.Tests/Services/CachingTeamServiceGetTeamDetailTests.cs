@@ -48,7 +48,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var userService = Substitute.For<IUserService>();
 
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
 
         var services = new ServiceCollection();
