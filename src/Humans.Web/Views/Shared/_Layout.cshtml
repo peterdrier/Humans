@@ -112,11 +112,11 @@
                     <vc:section-nav />
                     @if (!isAuthenticated || !hasProfile)
                     {
-                        <li class="nav-item">
+                        <li class="nav-item" hide-with-links>
                             <a class="nav-link@(IsCurrentController("Legal") ? " active" : "")" asp-controller="Legal" asp-action="Index" aria-current="@(IsCurrentController("Legal") ? "page" : null)">Legal</a>
                         </li>
                     }
-                    <li class="nav-item" authorize-policy="AnyAdminRole">
+                    <li class="nav-item" authorize-policy="AnyAdminRole" hide-with-links>
                         <a class="nav-link nav-restricted@(IsCurrentController("Admin") ? " active" : "")" asp-area="" asp-controller="Admin" asp-action="Index" aria-current="@(IsCurrentController("Admin") ? "page" : null)">@Localizer["Nav_Admin"]</a>
                     </li>
                 </ul>

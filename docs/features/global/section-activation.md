@@ -6,6 +6,8 @@
   src/Humans.Web/Hosting/SectionViewComponentFeatureProvider.cs
   src/Humans.Base/Interfaces/ISectionSwitches.cs
   src/Humans.Web/Filters/SectionSwitchFilter.cs
+  src/Humans.Base/Hosting/SectionRoutes.cs
+  src/Humans.Base/TagHelpers/SectionLinkTagHelper.cs
 -->
 <!-- freshness:flag-on-change
   What startup validates and which sections Shell itself pins — review whenever activation, discovery, or a Shell-to-section reference changes. Describe the pinned set qualitatively; never write its count (memory/process/no-derived-aggregates-in-docs.md).
@@ -124,6 +126,24 @@ contributions of switched-off sections with `SwitchedOn(HttpContext)`. A section
 is identified by the assembly a type ships in, so no name is written down here
 either.
 
+**Links written in views.** A link is not a contribution, so `SectionLinkTagHelper`
+(Base) covers it: every `<a>` and `<form>` with `asp-controller`, `asp-action`,
+`href` or `action` is dropped while its target's section is switched off.
+`SectionRoutes` derives that section from the routed MVC actions — by controller
+name for `asp-controller`, by matching the local URL against the route templates
+for everything else (`href="/Teams/x"`, `href="@Url.Action(…)"`) — so a view never
+names the section it links into. Two attributes cover what the link leaves behind:
+
+- `hide-with-links` on an enclosing element (a menu `<li>`, a card, a labelled
+  row) drops it once every link inside it was dropped.
+- `keep-text` on the link keeps its text and drops only the anchor, for links whose
+  text is data or part of a sentence (a team's name in a table).
+
+```html
+<li hide-with-links><a asp-controller="Governance" asp-action="Index">…</a></li>
+<td><a asp-controller="Team" asp-action="Details" asp-route-slug="@slug" keep-text>@name</a></td>
+```
+
 **What cannot be switched off.** A section the app cannot be used without overrides
 `ISection.CanBeSwitchedOff` to false: sign-in (Auth), a member's own account
 (Users), Consent, Gdpr, Onboarding, and Settings itself, which holds the form that
@@ -135,8 +155,13 @@ section.
 - Recurring jobs and outbound integrations of a switched-off section keep running.
 - Minimal-API endpoints mapped through `ISectionEndpoints` are not MVC actions, so
   the filter does not see them.
-- A link another section's view builds by name (`asp-controller="X"`) still renders
-  and leads to the 404, the same blind spot the reference scan above has.
+- A URL that is not an `<a>` or `<form>` in a view still leads to the 404: one built
+  in script, in a `TableModel` `.Link(…)` column, on a `<button formaction>`, or in
+  an email.
+- `hide-with-links` counts only links in its own view; a partial or view component
+  rendered inside it brings its own wrapper (`_DashboardActionCard` does).
+- URL matching ignores route constraints and HTTP methods; where two sections'
+  templates overlap, the more specific template decides.
 - Help and access-matrix contributions are not filtered.
 
 ## Diagnosing

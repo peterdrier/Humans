@@ -52,7 +52,7 @@
     Func<MemberSyncStatus, IHtmlContent> teamsCell = @<text>
         @foreach (var team in item.TeamLinks)
         {
-            <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">@team.Name</a>
+            <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none" keep-text>@team.Name</a>
         }
     </text>;
     Func<Tuple<ResourceSyncDiff, MemberSyncStatus>, IHtmlContent> downgradeNameCell = @<text>
@@ -179,7 +179,7 @@ else
                         {
                             @foreach (var team in diff.LinkedTeams)
                             {
-                                <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">
+                                <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none" keep-text>
                                     @team.Name
                                     @if (team.PermissionLevel is not null)
                                     {

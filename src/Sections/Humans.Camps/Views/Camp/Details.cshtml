@@ -196,9 +196,11 @@
                                     }
                                     @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
                                     {
-                                        <dt>@Localizer["Camps_Details_Containers"]</dt>
-                                        <dd><a asp-controller="Container" asp-action="Index"
-                                               asp-route-slug="@Model.Slug" asp-route-year="@season.Year">@Localizer["Camps_Edit_ManageContainers"]</a></dd>
+                                        <div hide-with-links>
+                                            <dt>@Localizer["Camps_Details_Containers"]</dt>
+                                            <dd><a asp-controller="Container" asp-action="Index"
+                                                   asp-route-slug="@Model.Slug" asp-route-year="@season.Year">@Localizer["Camps_Edit_ManageContainers"]</a></dd>
+                                        </div>
                                     }
                                 </dl>
                             </div>

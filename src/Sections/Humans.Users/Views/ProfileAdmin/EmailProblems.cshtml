@@ -36,7 +36,7 @@ else
     Pre-decoupling users whose <code>User.Email</code> AspNetIdentity column was populated but
     no matching verified <code>UserEmail</code> row exists. The fix is the
     <code>users.legacy-identity-emails</code> data migration on
-    <a href="/Debug/DataMigrations">Debug › Data migrations</a> (idempotent — skips users whose row already exists).
+    <a href="/Debug/DataMigrations" keep-text>Debug › Data migrations</a> (idempotent — skips users whose row already exists).
 </p>
 @if (Model.LegacyEmailRows.Count == 0)
 {

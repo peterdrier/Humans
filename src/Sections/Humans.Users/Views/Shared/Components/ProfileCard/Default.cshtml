@@ -42,7 +42,7 @@
                 <vc:nobodies-email-badge user-id="@Model.UserId" mode="badge" />
                 @if (Model.Teams.Count > 0)
                 {
-                    <div class="d-flex flex-wrap gap-2 mt-2">
+                    <div class="d-flex flex-wrap gap-2 mt-2" hide-with-links>
                         @foreach (var team in Model.Teams)
                         {
                             <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.TeamSlug"

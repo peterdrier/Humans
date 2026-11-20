@@ -12,7 +12,7 @@
         : "text-muted d-block mt-1 dashboard-action-description";
 }
 
-<div class="@Model.ColumnClass">
+<div class="@Model.ColumnClass" hide-with-links>
     @if (Model.IsPost)
     {
         <form action="@Url.Action(Model.Action, Model.Controller)" method="post"
