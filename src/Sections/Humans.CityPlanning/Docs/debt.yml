@@ -9,7 +9,7 @@ inbox:
     review: panel
   - added: 2026-11-20
     id: CITY-10
-    what: "CityPlanningSettingsTabViewComponent works out whether the registration info has a year to write to (active event, else an open season) beside CityPlanningReader.GetRegistrationTargetYearAsync, which owns that rule; two definitions of one rule. Found by section-doctor 2026-11-20."
+    what: "CityPlanningSettingsTabViewComponent works out whether the registration info has a year to write to (active event, else an open season) beside CityPlanningService.GetRegistrationTargetYearAsync, which owns that rule; two definitions of one rule. Found by section-doctor 2026-11-20."
     review: light
   - added: 2026-11-20
     id: CITY-11

@@ -63,9 +63,8 @@ The layout those shapes imply, written fresh:
   else city-planning team member) is the rule, and both controllers ask it through
   `IAuthorizationService` rather than restating it.
 - **One service** (`CityPlanningService`) holding both business rules: *who may edit what,
-  when* and *what a save does to history*. It is the only repository caller. Today its reads
-  and the placement-state evaluation sit in `CityPlanningReader`, a helper the service
-  constructs itself and forwards to; whether that split earns its forwarding methods is open.
+  when* and *what a save does to history*. It is the only repository caller, and reads
+  live in it directly: no helper class it constructs and forwards to.
 - **One validator** (`CityPlanningGeoJsonValidation`) for the two GeoJSON shapes the section
   stores: a barrio outline and an uploaded overlay.
 - **One repository** over the section's tables, exposing polygon reads, an atomic
@@ -95,17 +94,17 @@ Stated so a violation is recognisable:
    (`Data/CityPlanningRepository.cs:103`). The repository exposes no update and no delete for
    a single history row; the season-scoped delete removes the polygon with its history.
 3. A restore writes the restored geometry as a *new* current polygon with the note
-   `Restored from {timestamp} UTC`, composed server-side (`Services/CityPlanningService.cs:102`);
+   `Restored from {timestamp} UTC`, composed server-side (`Services/CityPlanningService.cs:91`);
    it never rewinds history. A history id that is not the season's restores nothing and answers
    404 (`Controllers/CityPlanningApiController.cs:125`). The note on an ordinary save is whatever the caller sends,
-   falling back to `Saved` (`Services/CityPlanningService.cs:90`).
+   falling back to `Saved` (`Services/CityPlanningService.cs:79`).
 4. A camp lead may create or edit their own polygon only while placement is Open, may only
    adjust an existing one while Changeable, and only for a season of the settings year
-   (`Services/CityPlanningReader.cs:224`). City-planning team members
-   (`Services/CityPlanningReader.cs:212`) and `CampsAdmin`/`Admin`, through the map-admin policy
+   (`Services/CityPlanningService.cs:484`). City-planning team members
+   (`Services/CityPlanningService.cs:472`) and `CampsAdmin`/`Admin`, through the map-admin policy
    (`Controllers/CityPlanningApiController.cs:88`), are exempt from the phase and the ownership check.
 5. A polygon save or restore for a camp season that does not exist writes nothing and answers
-   400, for map admins too (`Services/CityPlanningService.cs:85`).
+   400, for map admins too (`Services/CityPlanningService.cs:74`).
 6. A camp lead may place, annotate or clear their own camp's containers only while
    `IsContainerPlacementOpen` — the `ContainerOperationRequirement.Place` check each placement
    endpoint makes against the route year (`Controllers/CityPlanningApiController.cs:262`),
@@ -114,27 +113,27 @@ Stated so a violation is recognisable:
    camp's polygon (`Controllers/CityPlanningApiController.cs:118`,
    `Controllers/CityPlanningApiController.cs:163`).
 8. The current year is the active event's (`ISettingsService`); with no active event the pages
-   404 and writes throw (`Services/CityPlanningService.cs:34`). Reads never create the settings
-   row — a missing row reads as closed defaults (`Services/CityPlanningReader.cs:239`) — and the
+   404 and writes throw (`Services/CityPlanningService.cs:32`). Reads never create the settings
+   row — a missing row reads as closed defaults (`Services/CityPlanningService.cs:499`) — and the
    first admin write creates it. `RegistrationInfo` is keyed to the highest open season year
-   instead, falling back to the active event's year (`Services/CityPlanningReader.cs:255`).
+   instead, falling back to the active event's year (`Services/CityPlanningService.cs:515`).
 9. Every polygon save and restore broadcasts `CampPolygonUpdated` to every connected client; a
    broadcast failure is logged and never fails the save
    (`Controllers/CityPlanningApiController.cs:153`).
 10. A barrio outline must be a `Polygon` or `MultiPolygon` (bare or in a `Feature`) with closed
     rings of at least four positions inside longitude/latitude range
-    (`Services/CityPlanningService.cs:80`). An uploaded overlay must be structurally valid
-    GeoJSON of any geometry type (`Services/CityPlanningService.cs:207`). Container placement
+    (`Services/CityPlanningService.cs:69`). An uploaded overlay must be structurally valid
+    GeoJSON of any geometry type (`Services/CityPlanningService.cs:187`). Container placement
     shapes are validated by Containers, not here.
-11. Uploaded zone files are rejected above 10 MB (`Services/CityPlanningService.cs:200`).
+11. Uploaded zone files are rejected above 10 MB (`Services/CityPlanningService.cs:180`).
 12. Every settings write that takes a `userId` — both placement phases, the schedule, the zone
     uploads and the zone deletes — appends an audit entry naming that actor, after the save, and a
     request aborted mid-write does not drop it: the row id is resolved before the save, and the save
-    itself runs on `CancellationToken.None` (`Services/CityPlanningService.cs:58`). The settings
+    itself runs on `CancellationToken.None` (`Services/CityPlanningService.cs:56`). The settings
     row records *when* a value changed; the audit log is the only record of *who*. A rejected
     upload never reaches the row and writes no entry.
 13. The city-planning team slug is normalized on both sides before comparing, and a blank
-    configured slug matches nothing (`Services/CityPlanningReader.cs:198`, `Services/CityPlanningReader.cs:203`).
+    configured slug matches nothing (`Services/CityPlanningService.cs:458`, `Services/CityPlanningService.cs:463`).
 14. The container map page refuses anyone who is neither a map admin nor a lead of a camp that
     passes the `Place` check for the route year (`Controllers/CityPlanningController.cs:308`).
 

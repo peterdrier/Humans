@@ -56,7 +56,7 @@ Target diff: the section moved (validation tightened, the year-correct seam buil
 
 ## Skipped
 
-- 13: put to Peter. Undoing a sweep's split two weeks after it merged is a choice two implementers would make differently.
+- 13: Peter ruled no pass-through classes: `CityPlanningReader` merged into `CityPlanningService`. The same pattern elsewhere goes to its own thread.
 - 17: judged sound; the shell nav is a way out, and adding a link means new localized copy on a member page.
 - 19: no test added; the index is declared in one line of configuration and Peter wants lean tests.
 - Prose & surface finding on the settings tab's English copy: not a finding, the tab is a map-admin surface (`memory/code/localization-admin-exempt.md`).
@@ -75,7 +75,7 @@ Target diff: the section moved (validation tightened, the year-correct seam buil
 
 ## Needs Peter
 
-- [ ] 13 — fold `CityPlanningReader` back into `CityPlanningService`, or keep the split?
+- [x] 13 — merge `CityPlanningReader` into `CityPlanningService` (Peter, 2026-11-20: one service, never a pass-through).
 
 ## File coverage
 

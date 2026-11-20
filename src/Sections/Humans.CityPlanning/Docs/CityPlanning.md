@@ -223,8 +223,6 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 ## Architecture
 
-The internal `CityPlanningReader` owns camp-map enrichment, history, settings and placement-state projections, edit-permission reads, registration-target resolution and GeoJSON export. `CityPlanningService` delegates those reads and retains geometry/settings mutations and audit sequencing. Both reuse the same event-year resolution; active-event anchoring, time-zone evaluation, team and lead checks, read order and cancellation are unchanged. No public contract or DI registration is added.
-
 **Owning services:** `CityPlanningService` (`Humans.CityPlanning.Services`)
 **Owned tables:** `city_settings`, `city_camp_polygons`, `city_camp_polygon_history`
 **Status:** (A) Migrated; own project (`Humans.CityPlanning`).
