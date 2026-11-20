@@ -14,7 +14,7 @@ aggregation, and full GDPR Article 15 export of identified responses and
 authored surveys.
 
 `SurveyRepository` is registered as a **Singleton** (uses `IDbContextFactory`
-pattern). `SurveyService` is **Scoped** with no caching decorator (per the spec:
+pattern). The section's services are **Scoped** with no caching decorator (per the spec:
 response data is write-heavy and append-only; no hot read path merits a
 `TrackedCache` at our small scale). There is no public `ISurveyService` contract (the internal one remains): it shipped
 empty and was deleted. The public contracts that leave `Contracts/` are the
@@ -25,11 +25,8 @@ has no caller outside Surveys.
 
 ### SurveyService (Scoped — `ISurveyService`, `IUserDataContributor`, `IUserMerge`)
 
-`ISurveyService` also carries `ISurveyAnalysisRead` — Backdoor's read-only
-machine-API surface (survey list, one survey's question graph, the raw
-per-response export, per-question aggregates; nobodies-collective/Humans#1128).
-
-Repository: `ISurveyRepository`.
+Authoring, translation pre-fill, approval, open/close, admin lists, official links, GDPR and
+merge. Repository: `ISurveyRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -40,11 +37,24 @@ Repository: `ISurveyRepository`.
 | survey_responses | R/W |
 | survey_answers | R/W |
 
-Direct cross-section calls use `IUserService` (member identity and response/export stitching),
-`IGoogleTranslationService`, `IAuditLogService` and `IFileStorage` (Information-block images under
-`uploads/surveys/`). The scoped `SurveyAudience` supplies audience and access predicates;
-`SurveyInvitationDelivery` owns initial/reminder transport and invitation delivery-status reads.
-`ISurveyInviteTokenProvider` remains section-local for answer-link resolution.
+Direct cross-section calls use `IUserService`, `IGoogleTranslationService`, `IAuditLogService` and
+`IFileStorage` (Information-block images under `uploads/surveys/`). The scoped `SurveyAudience`
+supplies audience and access predicates; approval sends through `ISurveyInvitations`.
+
+### SurveyResponseService (Scoped — `ISurveyResponses`)
+
+Answering: invitation and public starts, tracked drafts, the wizard, submission. The only writer of
+`survey_responses` and `survey_answers`; marks `survey_invitations` started and completed. Holds the
+static response-finalization lock. Reads definitions through `ISurveyService.GetForEditAsync` and
+eligibility through `SurveyAudience`; uses `ISurveyInviteTokenProvider`, `IUserService` and `IClock`.
+No audit dependency: individual responses are never audited.
+
+### SurveyResultsService (Scoped — `ISurveyResults`, `ISurveyAnalysisRead`)
+
+Read-only analysis: survey summaries, the flattened question graph, results, scoped results and
+the response export. Implements `ISurveyAnalysisRead` — Backdoor's and Workgroups' machine-readable
+surface (nobodies-collective/Humans#1128). Reads definitions through `ISurveyService.GetForEditAsync`;
+uses `IUserService` (respondent names for Identified rows) and `IAuditLogService` (export audit).
 
 Implements `IUserDataContributor` (three GDPR export slices:
 `SurveyService.SurveyResponses` — identified responses only; anonymous
@@ -65,14 +75,14 @@ No repository or table access. Owns the six audience predicates and Asociado eli
 `ITeamService`, `IUserService`, `IGovernanceService`, `ITicketService` and `IShiftView`.
 The same scoped instance serves survey access/approval checks and invitation delivery.
 
-### SurveyInvitationDelivery (Scoped — `ISurveyReminderSender`)
+### SurveyInvitationDelivery (Scoped — `ISurveyInvitations`, `ISurveyReminderSender`)
 
 Reuses the former reminder sender for audience preview, initial invitations, delivery-status reads
 and daily reminders. Reads `surveys` and `survey_invitations` through `ISurveyRepository` and
 creates invitation rows before delivery and stamps successful sends/reminders after Email outbox acceptance. Uses `SurveyAudience`, `IUserService`
 (canonical name, culture and email together), `SurveysEmails`, `ISurveyInviteTokenProvider`,
 `IEmailService`, `IAuditLogService` and `IClock`. The existing reminder contract resolves to the
-same scoped instance; `SurveyService` forwards its existing internal invitation entry points.
+same scoped instance; the admin controller calls `ISurveyInvitations` directly.
 Stable delivery IDs, audit actors, cancellation boundaries and retry behavior are preserved.
 
 ### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)

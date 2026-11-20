@@ -45,7 +45,9 @@ public class ServiceTeamOrdersTests
             .Returns(new Dictionary<Guid, TeamInfo>());
         _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe, _holded, _holdedWrite, Substitute.For<Humans.Finance.Contracts.IFinanceService>(), NullLogger<Service>.Instance);
+        _service = new Service(
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe,
+            new CatalogService(_repo, _audit, _clock, _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 
     [HumansFact]

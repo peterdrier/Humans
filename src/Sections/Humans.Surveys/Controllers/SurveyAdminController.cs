@@ -27,6 +27,8 @@ namespace Humans.Surveys.Controllers;
 internal sealed class SurveyAdminController(
     IOrgTimeZone orgTimeZone,
     ISurveyService surveyService,
+    ISurveyResults surveyResults,
+    ISurveyInvitations invitations,
     ITeamService teamService,
     IUserService userService,
     IAuthorizationService authorizationService,
@@ -466,8 +468,8 @@ internal sealed class SurveyAdminController(
         var detail = await surveyService.GetForEditAsync(id, ct);
         if (detail is null) return NotFound();
 
-        var newRecipientCount = await surveyService.PreviewAudienceCountAsync(id, ct);
-        var statuses = await surveyService.GetInviteStatusesAsync(id, ct);
+        var newRecipientCount = await invitations.PreviewAudienceCountAsync(id, ct);
+        var statuses = await invitations.GetInviteStatusesAsync(id, ct);
         var audienceTeamName = detail.Editable.AudienceType == SurveyAudienceType.Team
             && detail.Editable.AudienceTeamId is { } teamId
                 ? (await teamService.GetTeamAsync(teamId, ct))?.Name
@@ -498,7 +500,7 @@ internal sealed class SurveyAdminController(
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Forbid();
 
-        var result = await surveyService.SendInvitesAsync(id, actor.Id, ct);
+        var result = await invitations.SendInvitesAsync(id, actor.Id, ct);
         if (result.Succeeded)
         {
             var message = $"Processed {result.InvitationsProcessed} invitation(s); {result.EmailsQueued} email(s) queued, {result.Failed} failed.";
@@ -522,7 +524,7 @@ internal sealed class SurveyAdminController(
         var auth = await AuthorizeResultsAsync(id, SurveyOperation.ViewResults, ct);
         if (auth is not null) return auth;
 
-        var results = await surveyService.GetScopedResultsAsync(id, scope, ct);
+        var results = await surveyResults.GetScopedResultsAsync(id, scope, ct);
         if (results is null) return NotFound();
 
         var vm = SurveyResultsBuilder.Build(results, OrgZone);
@@ -569,7 +571,7 @@ internal sealed class SurveyAdminController(
 
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Unauthorized();
-        var export = await surveyService.GetResponseExportAsync(id, actor.Id, ct);
+        var export = await surveyResults.GetResponseExportAsync(id, actor.Id, ct);
         if (export is null) return NotFound();
 
         var bytes = SurveyCsvExportBuilder.Build(export);
@@ -584,7 +586,7 @@ internal sealed class SurveyAdminController(
 
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Unauthorized();
-        var export = await surveyService.GetResponseExportAsync(id, actor.Id, ct);
+        var export = await surveyResults.GetResponseExportAsync(id, actor.Id, ct);
         if (export is null) return NotFound();
 
         return File(SurveyJsonExportBuilder.Build(export), "application/json", $"survey-{id}.json");

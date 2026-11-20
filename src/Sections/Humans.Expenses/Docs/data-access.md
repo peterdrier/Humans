@@ -20,17 +20,34 @@ Repository: `IExpenseRepository`.
 | ExpenseAttachments | R/W |
 | HoldedExpenseOutboxEvents | R/W (outbox to Holded) |
 
-Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
+Cross-section calls via `IFileStorage`, `IBudgetService`,
 `IUserService`, `IFinanceService` / `IFinanceWrite` (Finance section — `GetIbanAsync` /
-`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IEmailService`, `IAuditLogService`,
+`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IAuditLogService`,
 `IHoldedService.IsConfigured`, `IFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
 account a report books to and the budget category it maps to), `IPreapprovalService`
 (Preapprovals section — `GetGrantsAsync`, every grant, for the one a report
 files against and who manages it) and `IPreapprovalWrite` (`ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` — the
-grant's lifecycle follows the report's), plus the section's own `ExpensesEmails` builder,
+grant's lifecycle follows the report's), plus
 `IClock` and `IOptions<TravelReimbursementConfig>`. Implements `IUserDataContributor`. No
 `IMemoryCache`.
+
+### ExpenseReviewService (Scoped — `IExpenseReview`)
+
+Coordinator and finance decisions, the coordinator queue and the Holded push re-queue.
+Repository: `IExpenseRepository`.
+
+| Table | R/W |
+|-------|-----|
+| ExpenseReports | R/W (endorse, reject, approve) |
+| ExpenseLines | R/W (decline, undo decline) |
+| HoldedExpenseOutboxEvents | R/W (approval queues the push; re-queue) |
+
+Resolves an approval's account override through `IExpenseReportManagement.ResolveBookingAsync`.
+Cross-section calls via `IBudgetService` and `ITeamService` (coordinator queue),
+`IUserService`, `IEmailService` with `ExpensesEmails` (approval email), `IAuditLogService`,
+`IPreapprovalService` / `IPreapprovalWrite` (`ConsumeAsync` at approval), plus `IClock`.
+No `IMemoryCache`.
 
 ### ExpenseReportBackgroundProcessor (Scoped — `IExpenseReportBackgroundProcessor`)
 

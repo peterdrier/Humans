@@ -36,7 +36,7 @@ public class InvoiceBookingTests
     private readonly List<HoldedPaymentDetailDto> _invoicePayments = [];
     private readonly Order _order;
     private readonly Invoice _invoice;
-    private readonly Service _booking;
+    private readonly InvoiceService _booking;
 
     public InvoiceBookingTests()
     {
@@ -89,9 +89,11 @@ public class InvoiceBookingTests
             return Task.CompletedTask;
         });
 
-        _booking = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<Humans.Camps.Contracts.ICampService>(),
-            Substitute.For<Humans.Teams.Contracts.ITeamService>(), new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)),
-            Substitute.For<Humans.Settings.Contracts.ISettingsService>(), _stripe, _holded, _write, _finance, NullLogger<Service>.Instance);
+        var clock = new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0));
+        var orders = new Service(
+            _repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<Humans.Camps.Contracts.ICampService>(), Substitute.For<Humans.Teams.Contracts.ITeamService>(), new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)), Substitute.For<Humans.Settings.Contracts.ISettingsService>(), _stripe,
+            new CatalogService(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)), _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
+        _booking = new InvoiceService(_repo, _audit, clock, _holded, _write, _stripe, _finance, orders, NullLogger<InvoiceService>.Instance);
     }
 
     private void Charge(string pi, decimal amount, Instant created, bool fedToHolded = true)

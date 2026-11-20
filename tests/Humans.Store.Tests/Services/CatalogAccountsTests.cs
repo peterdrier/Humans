@@ -18,7 +18,7 @@ public class CatalogAccountsTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly Service _catalog;
+    private readonly CatalogService _catalog;
 
     public CatalogAccountsTests()
     {
@@ -31,10 +31,8 @@ public class CatalogAccountsTests
             Account(57200000, "Bank"),
             Account(56000000, "Fianzas recibidas a corto plazo"),
         ]);
-        _catalog = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<Humans.Camps.Contracts.ICampService>(),
-            Substitute.For<Humans.Teams.Contracts.ITeamService>(), new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0)),
-            Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Stripe.Contracts.IStripeService>(),
-            _holded, Substitute.For<IHoldedWrite>(), Substitute.For<Humans.Finance.Contracts.IFinanceService>(), NullLogger<Service>.Instance);
+        _catalog = new CatalogService(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 3, 14, 12, 0)), _holded,
+            NullLogger<CatalogService>.Instance);
     }
 
     [HumansFact]
@@ -53,7 +51,7 @@ public class CatalogAccountsTests
     {
         var product = MakeProduct("Ice");
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
-        var draft = Service.MapProduct(product) with { HoldedRevenueAccountNum = 75900009 };
+        var draft = CatalogService.MapProduct(product) with { HoldedRevenueAccountNum = 75900009 };
 
         var result = await _catalog.UpdateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -67,7 +65,7 @@ public class CatalogAccountsTests
     {
         var product = MakeProduct("Ice", income: 75900009);
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
-        var draft = Service.MapProduct(product) with { UnitPriceEur = 12m };
+        var draft = CatalogService.MapProduct(product) with { UnitPriceEur = 12m };
 
         var result = await _catalog.UpdateProductAsync(draft, Guid.NewGuid(), TestContext.Current.CancellationToken);
 

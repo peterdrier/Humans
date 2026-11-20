@@ -23,6 +23,8 @@ namespace Humans.Store.Controllers;
 [Route("Store")]
 internal sealed class StoreController(
     Service storeService,
+    CatalogService catalogService,
+    InvoiceService invoiceService,
     ICampService campService,
     IAuthorizationService authService,
     IUserService userService,
@@ -93,14 +95,14 @@ internal sealed class StoreController(
             catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
             removableLineIds);
         if (model.CanIssueInvoice)
-            model.InvoicePlan = await storeService.GetInvoicePlanAsync(order.Id, ct);
+            model.InvoicePlan = await invoiceService.GetInvoicePlanAsync(order.Id, ct);
         if (order.IssuedInvoiceId is not null)
-            model.Invoice = await storeService.GetInvoiceAsync(order.Id, ct);
+            model.Invoice = await invoiceService.GetInvoiceAsync(order.Id, ct);
         if (canRecordFinancePayment)
         {
             model.StripeRefundUrls = order.Payments
                 .Where(p => p.Method == PaymentMethod.Stripe && p.Status == PaymentStatus.Paid && p.StripePaymentIntentId is not null)
-                .ToDictionary(p => p.Id, p => storeService.StripePaymentDashboardUrl(p.StripePaymentIntentId!));
+                .ToDictionary(p => p.Id, p => storeService.DashboardUrl(p.StripePaymentIntentId!));
         }
         return View(model);
     }
@@ -136,7 +138,7 @@ internal sealed class StoreController(
         {
             if (!deadlineByProduct.TryGetValue(line.ProductId, out var deadline))
             {
-                deadline = (await storeService.GetProductAsync(line.ProductId, ct))?.OrderableUntil;
+                deadline = (await catalogService.GetProductAsync(line.ProductId, ct))?.OrderableUntil;
                 deadlineByProduct[line.ProductId] = deadline;
             }
             // Missing product: leave the button visible; the service rejects authoritatively.
@@ -198,7 +200,7 @@ internal sealed class StoreController(
         {
             // No request token: issuance creates and approves a Holded document, and a torn write leaves one we have
             // no local record of.
-            var result = await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
+            var result = await invoiceService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
             if (result.Succeeded) SetSuccess(localizer["Store_InvoiceIssued"].Value);
             else SetError(result.Refusal ?? localizer["Store_InvoiceFailed"].Value);
         }
@@ -228,7 +230,7 @@ internal sealed class StoreController(
             return Forbid();
         if (order.IssuedInvoiceId is null) return NotFound();
 
-        var state = await storeService.BookInvoiceAsync(id, user.Id);
+        var state = await invoiceService.BookAsync(id, user.Id, CancellationToken.None);
         if (state == InvoiceBookingState.Booked) SetSuccess("The invoice is booked in Holded.");
         else SetError("The invoice is not booked yet; see the invoice box for why.");
         return RedirectToAction(nameof(Order), new { id });
@@ -244,7 +246,7 @@ internal sealed class StoreController(
         if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
             return Forbid();
 
-        var result = await storeService.ResendInvoiceAsync(id, user.Id);
+        var result = await invoiceService.ResendInvoiceAsync(id, user.Id);
         if (result.Succeeded) SetSuccess("The invoice was sent again.");
         else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });
@@ -259,7 +261,7 @@ internal sealed class StoreController(
         if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.View)).Succeeded)
             return Forbid();
 
-        var pdf = await storeService.GetInvoicePdfAsync(id, ct);
+        var pdf = await invoiceService.GetInvoicePdfAsync(id, ct);
         if (pdf is not { } file) return NotFound();
         return File(file.Pdf, "application/pdf", $"{file.DocNumber}.pdf");
     }
@@ -411,7 +413,7 @@ internal sealed class StoreController(
         if (errorResult is not null) return errorResult;
 
         // Unknown product: fall back to the plain order resource; the service rejects it as not found.
-        var product = await storeService.GetProductAsync(productId, ct);
+        var product = await catalogService.GetProductAsync(productId, ct);
         object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.AddLine);
         if (!auth.Succeeded) return Forbid();
@@ -436,7 +438,7 @@ internal sealed class StoreController(
 
         // Unknown line or product: fall back to the plain order resource; the service rejects it.
         var lineProductId = order.Lines.FirstOrDefault(l => l.Id == lineId)?.ProductId;
-        var product = lineProductId is { } pid ? await storeService.GetProductAsync(pid, ct) : null;
+        var product = lineProductId is { } pid ? await catalogService.GetProductAsync(pid, ct) : null;
         object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.RemoveLine);
         if (!auth.Succeeded) return Forbid();

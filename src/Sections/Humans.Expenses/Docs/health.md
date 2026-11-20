@@ -57,7 +57,12 @@ What the shapes imply, written fresh:
 - **One authorization handler** that owns the actor × operation × status matrix, and one
   operation per thing a person can do. What the handler grants, the service accepts; nothing
   hand-rolls an ownership check beside it.
-- **One service** holding the state machine, with one method per transition. A transition
+- **Two services, one state machine.** `ExpenseReportService` owns the member's side (drafts,
+  lines, files, IBAN, submit, withdraw, finance corrections) and the reads; `ExpenseReviewService`
+  owns the decisions (endorse, reject, line decline, approve, finance reject, push re-queue) and
+  the coordinator queue. They share one static transition lock, so a submit or withdraw never
+  interleaves with an approval, and review resolves bookings through `IExpenseReportManagement`.
+  One method per transition. A transition
   method validates, calls exactly one repository write, and writes an audit entry per auditable
   action it took — normally one, and two where approval also overrides the category.
 - **One repository** owning the section's tables, each write atomic, returning DTOs only.
@@ -108,7 +113,7 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **A header edit never moves a claim between budget years** once submitted
   (`Services/ExpenseReportService.cs:324`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1354`);
+  the masked form (`ExpenseReviewService.SendApprovedEmailAsync`, `Services/ExpenseReportService.cs:1354`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
   (`Services/ExpenseReportService.cs:968`).
 - **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a

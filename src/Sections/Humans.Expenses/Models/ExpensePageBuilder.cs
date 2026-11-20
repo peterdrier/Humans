@@ -15,6 +15,7 @@ namespace Humans.Expenses.Models;
 internal sealed class ExpensePageBuilder(
     IOrgTimeZone orgTimeZone,
     IExpenseReportManagement service,
+    IExpenseReview review,
     IBudgetService budgetService,
     IFinanceService finance,
     IPreapprovalService preapprovals,
@@ -34,7 +35,7 @@ internal sealed class ExpensePageBuilder(
 
         var bookingLabels = await ResolveBookingLabelsAsync(reports, ct);
 
-        var coordinatorQueue = await service.GetCoordinatorQueueAsync(userId, ct);
+        var coordinatorQueue = await review.GetCoordinatorQueueAsync(userId, ct);
         var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
         var openGrants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct))
             .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
@@ -87,7 +88,7 @@ internal sealed class ExpensePageBuilder(
             BookingLabels = await ResolveBookingLabelsAsync(reports, ct),
             Grants = await ResolveGrantsAsync(reports, ct),
             FailedHoldedPushReportIds = isFinanceAdmin
-                ? (await service.GetFailedHoldedPushReportIdsAsync(ct)).ToHashSet()
+                ? (await review.GetFailedHoldedPushReportIdsAsync(ct)).ToHashSet()
                 : [],
             IsFinanceAdmin = isFinanceAdmin,
         };
