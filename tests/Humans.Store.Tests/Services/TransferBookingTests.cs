@@ -48,6 +48,11 @@ public class TransferBookingTests
         rows[0].Sides.Should().Be((TransferAccount, DeptAccount));
         rows[1].Sides.Should().Be((DeptAccount, TransferAccount));
         rows.Should().AllSatisfy(r => r.State.Should().Be(TransferState.Ready));
+        var plan = new TransferPlan(2026, new YearMonth(2026, 8), rows, null);
+        plan.Ready.Should().Equal(rows);
+        plan.ReadyAmount.Should().Be(10m);
+        plan.BlockedCount.Should().Be(0);
+        plan.BlockedAmount.Should().Be(0m);
     }
 
     [HumansFact]
@@ -78,11 +83,18 @@ public class TransferBookingTests
         var rows = StoreTransferBooking.Plan(
             2026, [Line(40m, 5, transfer: null)], new Dictionary<Guid, int?>(), [], Departments,
             new YearMonth(2026, 5));
-        rows.Single().State.Should().Be(TransferState.NoTransferAccount);
+        var missingTransfer = rows.Single();
+        missingTransfer.State.Should().Be(TransferState.NoTransferAccount);
 
         rows = StoreTransferBooking.Plan(
             2026, [Line(40m, 5)], Catalog, [], new Dictionary<Guid, int>(), new YearMonth(2026, 5));
-        rows.Single().State.Should().Be(TransferState.NoDepartmentAccount);
+        var missingDepartment = rows.Single();
+        missingDepartment.State.Should().Be(TransferState.NoDepartmentAccount);
+        var plan = new TransferPlan(2026, new YearMonth(2026, 5), [missingTransfer, missingDepartment], null);
+        plan.Ready.Should().BeEmpty();
+        plan.ReadyAmount.Should().Be(0m);
+        plan.BlockedCount.Should().Be(2);
+        plan.BlockedAmount.Should().Be(80m);
     }
 
     [HumansFact]
