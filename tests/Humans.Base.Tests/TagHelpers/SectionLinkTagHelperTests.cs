@@ -100,7 +100,12 @@ public class SectionLinkTagHelperTests
 
     private static ViewContext View(params string[] switchedOff)
     {
-        var httpContext = new DefaultHttpContext();
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions
+                .BuildServiceProvider(Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions
+                    .AddSingleton(new Microsoft.Extensions.DependencyInjection.ServiceCollection(), Sample)),
+        };
         if (switchedOff.Length > 0)
             httpContext.SetSwitchedOffSections(new HashSet<string>(switchedOff, StringComparer.OrdinalIgnoreCase));
         return new ViewContext { HttpContext = httpContext };
@@ -120,7 +125,7 @@ public class SectionLinkTagHelperTests
         var context = new TagHelperContext(
             new TagHelperAttributeList(), items ?? new Dictionary<object, object>(), "link");
 
-        new SectionLinkTagHelper(Sample) { Controller = controller, ViewContext = view }.Process(context, output);
+        new SectionLinkTagHelper { Controller = controller, ViewContext = view }.Process(context, output);
         return output;
     }
 

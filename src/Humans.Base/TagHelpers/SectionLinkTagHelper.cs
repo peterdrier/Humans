@@ -21,7 +21,7 @@ namespace Humans.Base.TagHelpers;
 [HtmlTargetElement("form", Attributes = "asp-action")]
 [HtmlTargetElement("form", Attributes = "asp-controller")]
 [HtmlTargetElement("form", Attributes = "action")]
-public sealed class SectionLinkTagHelper(SectionRoutes routes) : TagHelper
+public sealed class SectionLinkTagHelper : TagHelper
 {
     private const string KeepText = "keep-text";
 
@@ -43,6 +43,11 @@ public sealed class SectionLinkTagHelper(SectionRoutes routes) : TagHelper
         var keepText = output.Attributes.RemoveAll(KeepText);
         var switchedOff = ViewContext.HttpContext.SwitchedOffSections();
         if (switchedOff.Count == 0 || output.TagName is null)
+            return;
+
+        // From the request, not the constructor: every link in every view is one of these, and a host that renders
+        // views without the route map (a section's view tests) has nothing switched off to ask it about.
+        if (ViewContext.HttpContext.RequestServices.GetService(typeof(SectionRoutes)) is not SectionRoutes routes)
             return;
 
         var section = string.IsNullOrEmpty(Controller)
