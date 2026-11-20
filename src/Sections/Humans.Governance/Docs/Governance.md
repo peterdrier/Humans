@@ -333,6 +333,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same localized status captions as application details.
 - Application submission and withdrawal, Board voting, and finalization use request cancellation for the account lookup before mutation. Cancellation propagates before any application or vote write; decision, team-sync and email work retains its non-cancellable mutation boundary.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
+- Board dashboard rows carry applicant identity, tier, submission time and votes; motivation is projected only for detail. Neither Board page projects an unused application status.
 - Board dashboard and detail share one vote projection carrying voter IDs, choices, notes and timestamps in source order. The pages render voter identities through the Human component.
 - On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
