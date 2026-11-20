@@ -277,7 +277,7 @@ internal sealed class HoldedClient : IHoldedClient
             or FormatException or OverflowException)
         {
             // The bad value belongs to the stored contact, so retrying can't help. Permanent, so callers that handle
-            // the typed exceptions degrade; a raw parse failure would abort ExpenseHoldedPublisher's whole outbox batch.
+            // the typed exceptions degrade; a raw parse failure would abort ExpenseReportBackgroundProcessor's whole outbox batch.
             throw new HoldedPermanentException(
                 $"Holded contact {contactId} could not be read.", ex);
         }

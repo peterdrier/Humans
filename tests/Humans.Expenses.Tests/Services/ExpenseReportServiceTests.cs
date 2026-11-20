@@ -199,7 +199,7 @@ public sealed partial class ExpenseReportServiceTests
             if (abandon && string.Equals(boundary, "File", StringComparison.Ordinal)) await request.CancelAsync();
             return AuthorizationResult.Success();
         });
-        _fileStorage.TryReadAsync(ExpenseAttachments.AttachmentKey(attachmentId, ".pdf"), Arg.Any<CancellationToken>())
+        _fileStorage.TryReadAsync(ExpenseReportService.AttachmentKey(attachmentId, ".pdf"), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -1011,7 +1011,7 @@ public sealed partial class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id, TestContext.Current.CancellationToken);
 
         _fileStorage.TryReadAsync(
-                ExpenseAttachments.AttachmentKey(attachId, ".pdf"),
+                ExpenseReportService.AttachmentKey(attachId, ".pdf"),
                 Arg.Any<CancellationToken>())
             .Returns([4, 5, 6]);
 
@@ -1068,7 +1068,7 @@ public sealed partial class ExpenseReportServiceTests
             attachments.Add(MakeAttachment(submitter));
             await _expenseRepo.ReplaceLineAttachmentAsync(reportId, proofId, attachments[1], ct);
         }
-        var remainingFiles = attachments.Select(a => ExpenseAttachments.AttachmentKey(a.Id, a.Extension))
+        var remainingFiles = attachments.Select(a => ExpenseReportService.AttachmentKey(a.Id, a.Extension))
             .ToHashSet(StringComparer.Ordinal);
         _fileStorage.DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -1188,7 +1188,7 @@ public sealed partial class ExpenseReportServiceTests
         await AuditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseAttachmentRemoved,
             "ExpenseReport", id, Arg.Any<string>(), actor, actor, AuditSubjectTypes.User);
         await _fileStorage.Received(1).DeleteAsync(
-            ExpenseAttachments.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
+            ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
     }
 
     [HumansFact]
@@ -1468,7 +1468,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Is<string>(description => description.Contains(member.ToString())),
             admin, member, AuditSubjectTypes.User);
         await _fileStorage.Received(1).DeleteAsync(
-            ExpenseAttachments.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
+            ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
     }
 
     [HumansFact]
@@ -1520,7 +1520,7 @@ public sealed partial class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(id, submitter, "Timber", 40m, ct: ct)).LineId!.Value;
         var previous = MakeAttachment(submitter);
         await _expenseRepo.ReplaceLineAttachmentAsync(id, lineId, previous, ct);
-        var previousKey = ExpenseAttachments.AttachmentKey(previous.Id, previous.Extension);
+        var previousKey = ExpenseReportService.AttachmentKey(previous.Id, previous.Extension);
         _fileStorage.DeleteAsync(previousKey, CancellationToken.None).Returns(async _ =>
         {
             await using var db = new ExpensesDbContext(_expensesOptions);
@@ -1577,7 +1577,7 @@ public sealed partial class ExpenseReportServiceTests
             .Which.Should().BeEquivalentTo(previous);
         await _fileStorage.Received(1).DeleteAsync(newKey!, CancellationToken.None);
         await _fileStorage.DidNotReceive().DeleteAsync(
-            ExpenseAttachments.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
+            ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -1643,7 +1643,7 @@ public sealed partial class ExpenseReportServiceTests
         await _fileStorage.Received(string.Equals(failureStage, "after", StringComparison.Ordinal) ? 1 : 0)
             .DeleteAsync(uploadedKey!, CancellationToken.None);
         if (previous is not null)
-            await _fileStorage.DidNotReceive().DeleteAsync(ExpenseAttachments.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
+            await _fileStorage.DidNotReceive().DeleteAsync(ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1682,7 +1682,7 @@ public sealed partial class ExpenseReportServiceTests
             .Should().ContainSingle(attachment => attachment.Id == previousAttachment.Id);
         await _fileStorage.Received(1).DeleteAsync(replacementKey!, CancellationToken.None);
         await _fileStorage.DidNotReceive().DeleteAsync(
-            ExpenseAttachments.AttachmentKey(previousAttachment.Id, previousAttachment.Extension),
+            ExpenseReportService.AttachmentKey(previousAttachment.Id, previousAttachment.Extension),
             Arg.Any<CancellationToken>());
     }
 
@@ -3958,7 +3958,7 @@ public sealed partial class ExpenseReportServiceTests
         await using var context = new ExpensesDbContext(_expensesOptions);
         (await context.ExpenseAttachments.ToListAsync(ct)).Should().ContainSingle(a => a.Id == previous.Id);
         await _fileStorage.DidNotReceive().DeleteAsync(
-            ExpenseAttachments.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
+            ExpenseReportService.AttachmentKey(previous.Id, previous.Extension), Arg.Any<CancellationToken>());
         await _fileStorage.Received(1).DeleteAsync(newKey!, CancellationToken.None);
         await AuditLog.DidNotReceive().LogAsync(ExpensesAuditActions.ExpenseAttachmentUploaded,
             Arg.Any<string>(), reportId, Arg.Any<string>(), submitter, submitter, AuditSubjectTypes.User);
@@ -4101,7 +4101,7 @@ public sealed partial class ExpenseReportServiceTests
         _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 }]));
         _fileStorage.TryReadAsync(
-                ExpenseAttachments.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
+                ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
                 Arg.Any<CancellationToken>())
             .Returns(new byte[] { 1, 2, 3 });
         _budgetService.GetCategoryByIdAsync(category.Id, Arg.Any<CancellationToken>()).Returns(
@@ -4152,7 +4152,7 @@ public sealed partial class ExpenseReportServiceTests
         _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-123", SupplierAccountNum = 40000007 }]));
         _fileStorage.TryReadAsync(
-                ExpenseAttachments.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
+                ExpenseReportService.AttachmentKey(line.Attachment!.Id, line.Attachment.Extension),
                 Arg.Any<CancellationToken>())
             .Returns(new byte[] { 1, 2, 3 });
 
