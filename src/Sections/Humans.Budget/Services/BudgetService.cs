@@ -143,11 +143,9 @@ internal sealed class BudgetService(
         return new();
     }
 
-    public Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default) => reader.GetLineItemByIdAsync(id, ct);
+    public Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default) => reader.GetLineItemCategoryIdAsync(id, ct);
 
-    private static BudgetLineItemSnapshot ToLineItemSnapshot(BudgetLineItem lineItem) => BudgetReader.ToLineItemSnapshot(lineItem);
-
-    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(
+    public async Task<BudgetSaveResult> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
@@ -169,16 +167,16 @@ internal sealed class BudgetService(
             ExpectedDate: expectedDate,
             VatRate: vatRate);
 
-        var lineItem = await repository.CreateLineItemAsync(draft, actorUserId, now);
+        await repository.CreateLineItemAsync(draft, actorUserId, now);
 
         logger.LogInformation(
             "Created line item '{Description}' in category {CategoryId}",
             description, budgetCategoryId);
 
-        return new(ToLineItemSnapshot(lineItem));
+        return new();
     }
 
-    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(
+    public async Task<BudgetSaveResult> UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
@@ -225,7 +223,7 @@ internal sealed class BudgetService(
     private static string? VatRateRefusal(int vatRate) =>
         vatRate is < 0 or > 21 ? "VAT rate must be between 0 and 21." : null;
 
-    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
+    public async Task<BudgetSaveResult> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 

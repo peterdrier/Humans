@@ -50,10 +50,10 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task<BudgetSaveResult<BudgetCategoryDetail>> UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
     Task<BudgetSaveResult<BudgetCategoryDetail>> DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
 
-    Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default);
-    Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task<BudgetSaveResult<BudgetLineItemSnapshot>> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
+    Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default);
+    Task<BudgetSaveResult> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
+    Task<BudgetSaveResult> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
+    Task<BudgetSaveResult> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
     Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default);
 
