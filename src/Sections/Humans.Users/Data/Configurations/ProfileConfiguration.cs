@@ -12,18 +12,6 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 
         builder.HasKey(p => p.Id);
 
-        builder.Property(p => p.BurnerName)
-            .HasMaxLength(256)
-            .IsRequired();
-
-        builder.Property(p => p.FirstName)
-            .HasMaxLength(256)
-            .IsRequired();
-
-        builder.Property(p => p.LastName)
-            .HasMaxLength(256)
-            .IsRequired();
-
         builder.Property(p => p.City)
             .HasMaxLength(256);
 
@@ -79,7 +67,6 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasForeignKey<Profile>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Ignore(p => p.FullName);
         builder.Ignore(p => p.HasCustomProfilePicture);
     }
 }

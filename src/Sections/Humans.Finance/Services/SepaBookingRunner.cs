@@ -6,7 +6,7 @@ namespace Humans.Finance.Services;
 
 /// <summary>Runs a <c>/Finance/Sepa</c> booking off the request, so a slow Holded never holds the browser and leaving
 /// the page never stops a half-posted booking. One at a time: a second start while one runs is refused here, and
-/// <see cref="SepaBankBooking"/>'s gate still serializes it against the sweep. Process-wide, like
+/// the booking gate in <see cref="Service"/> still serializes it against the sweep. Process-wide, like
 /// <see cref="PleoBookingRunner"/>: a restart loses the last outcome, never a posting, which the audit log keeps.</summary>
 internal sealed class SepaBookingRunner(IServiceScopeFactory scopes, IClock clock, ILogger<SepaBookingRunner> logger)
 {

@@ -39,7 +39,9 @@ public class ServiceStripeReconciliationTests
             .Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
-        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe, _holded, _holdedWrite, NullLogger<Service>.Instance);
+        _service = new Service(
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe,
+            new CatalogService(_repo, _audit, _clock, _holded, NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 
     private static Order CampOrder(Guid id) => new()
@@ -177,6 +179,7 @@ public class ServiceStripeReconciliationTests
 
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 
+        report.IsReconciled.Should().BeTrue();
         report.WebhookConfigured.Should().BeFalse();
         report.CheckoutConfigured.Should().BeTrue();
         report.StripeQueried.Should().BeTrue();
@@ -197,6 +200,7 @@ public class ServiceStripeReconciliationTests
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.StripeQueried.Should().BeFalse();
+        report.IsReconciled.Should().BeFalse();
         report.Orphans.Should().BeEmpty(); // recorded payment is NOT false-flagged as an orphan
         report.Rows.Should().BeEmpty();
     }

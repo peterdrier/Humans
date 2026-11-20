@@ -1153,10 +1153,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>I quartieri che fanno sentire Elsewhere come casa.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Ci dici le tue preferenze alimentari?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Sei iscritto a un turno lungo. Se ci dici le tue preferenze alimentari, la mensa può pianificare i tuoi pasti. È facoltativo.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Diccelo ora</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Preferisco non rispondere</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Vedi tutti i miei turni</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordinamento</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Ti sei ritirato dalla serie di turni.</value></data>
@@ -1210,8 +1206,6 @@
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Questo turno è al completo.</value></data>
   <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Piano dei turni non trovato.</value></data>
   <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Nessun turno trovato nell’intervallo di date specificato.</value></data>
-  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Sei già iscritto a tutti i turni di questo intervallo.</value></data>
-  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tutti i turni dell’intervallo si sovrappongono a iscrizioni esistenti.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tutti i turni di questo intervallo sono al completo.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Uno o più turni di questo intervallo sono riservati a coordinatori e amministratori.</value></data>
   <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Hai già dato la disponibilità per uno o più turni in questo intervallo.</value></data>
@@ -1294,4 +1288,29 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>Cronologia assenze ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Segnato da</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Segnato il</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Turni</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} posti occupati</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans iscritti</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} in sospeso</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Nessun turno configurato ancora.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Include turni da {0} sotto-team</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Gestisci turni</value>
+  </data>
 </root>

@@ -1,10 +1,11 @@
 @using NodaTime
 @model Humans.Governance.Models.AssemblyVoteResultsViewModel
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     var results = Model.Results;
     var vote = results.Vote;
     ViewData["Title"] = vote.Title;
-    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
     var optionLabels = vote.Options.ToDictionary(o => o.Key, o => o.Label, StringComparer.Ordinal);
 
     string OptionLabel(string? key) => key is null ? string.Empty : (optionLabels.TryGetValue(key, out var label) ? label : key);
@@ -188,7 +189,7 @@
                         {
                             <tr>
                                 <td><vc:human user-id="@peek.AdminUserId" /></td>
-                                <td>@peek.PeekedAt.ToDateTime(madridZone)</td>
+                                <td>@peek.PeekedAt.ToDateTime(orgZone)</td>
                             </tr>
                         }
                     </tbody>

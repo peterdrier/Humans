@@ -53,6 +53,55 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
+    [InlineData(true, false, "2", null, 0, 2, true, 2)]
+    [InlineData(false, true, null, "2", 2, 0, true, 2)]
+    [InlineData(true, true, "1", "2", 0, 0, true, null)]
+    [InlineData(true, true, "1,2", "1,2", 0, 0, true, 1)]
+    [InlineData(true, true, "1", "2", 0, 0, false, 0)]
+    [InlineData(false, false, null, null, 0, 0, true, 0)]
+    public async Task ModerationReads_CompareActualOccurrencesOncePerOtherEvent(
+        bool queuedRecurring, bool otherRecurring, string? queuedDays, string? otherDays,
+        int queuedStartDay, int otherStartDay, bool hasSettings, int? expectedDay)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var settings = BurnFixtures.Burn(year: 2026);
+        var gate = settings.GateOpeningDate;
+        var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
+        var pending = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = Guid.NewGuid(),
+            EventSettingsId = hasSettings ? settings.Id : null,
+            Status = EventStatus.Pending,
+            DurationMinutes = 60,
+            StartAt = gate.PlusDays(queuedStartDay).At(new LocalTime(10, 0)).InZoneLeniently(zone).ToInstant(),
+            IsRecurring = queuedRecurring,
+            RecurrenceDays = queuedDays
+        };
+        _repo.Events.Add(pending);
+        var other = new CampEventOverlap(Guid.NewGuid(), pending.CampId, "Other",
+            gate.PlusDays(otherStartDay).At(new LocalTime(10, 30)).InZoneLeniently(zone).ToInstant(),
+            60, EventStatus.Approved, otherRecurring, otherDays);
+        _repo.ActiveCampEvents = [other, other with { Id = pending.Id }, other with { Id = Guid.NewGuid(), CampId = Guid.NewGuid() }];
+        if (hasSettings)
+        {
+            _repo.Settings = new EventGuideSettings { EventSettingsId = settings.Id };
+            _burnSettings.GetEventSettingsByIdAsync(settings.Id, ct).Returns(settings);
+        }
+
+        var row = (await _service.GetEventsByStatusAsync(EventStatus.Pending, ct)).Should().ContainSingle().Subject;
+        if (expectedDay is { } day)
+        {
+            var candidate = row.DuplicateCandidates.Should().ContainSingle().Subject;
+            candidate.Id.Should().Be(other.Id);
+            candidate.StartAt.Should().Be(hasSettings
+                ? gate.PlusDays(day).At(new LocalTime(10, 30)).InZoneLeniently(zone).ToInstant()
+                : other.StartAt);
+        }
+        else row.DuplicateCandidates.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(false, "missing")]
     [InlineData(true, "missing")]
     [InlineData(false, "inactive")]
@@ -177,7 +226,7 @@ public sealed class EventServiceTests
         _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
         _camps.GetCampsForEventAsync(burn.Id, ct).Returns(Array.Empty<CampInfo>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], null)
@@ -1663,7 +1712,8 @@ public sealed class EventServiceTests
             seed.Events.AddRange(existing);
             await seed.SaveChangesAsync(ct);
         }
-        var importer = new EventBulkImporter(new EventRepository(factory), _clock, _localizer);
+        var importer = new EventService(new EventRepository(factory), _burnSettings, _userService, _camps, _audit, _emailService,
+            _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
         var import = () => importer.ImportAsync(campId, submitter, eventId,
             [Row(id: existing[0].Id, title: "First revised event"),
              Row(id: existing[1].Id, title: "Second revised event", rowNumber: 3),
@@ -1894,6 +1944,37 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserSubmissionsSummaryAsync_CountsOnlyTheUsersIndividualEventsInTheConfiguredEdition()
+    {
+        var userId = Guid.NewGuid();
+        var editionId = Guid.NewGuid();
+        _repo.Settings = new EventGuideSettings { EventSettingsId = editionId };
+        var statuses = Enum.GetValues<EventStatus>();
+        foreach (var status in statuses)
+            _repo.Events.Add(new Event
+            {
+                Id = Guid.NewGuid(),
+                SubmitterUserId = userId,
+                EventSettingsId = editionId,
+                Status = status
+            });
+        _repo.Events.AddRange([
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = Guid.NewGuid(), Status = EventStatus.Approved },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = editionId, CampId = Guid.NewGuid(), Status = EventStatus.Approved },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), EventSettingsId = editionId, Status = EventStatus.Pending },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, Status = EventStatus.Pending }
+        ]);
+
+        var summary = await _service.GetUserSubmissionsSummaryAsync(userId, TestContext.Current.CancellationToken);
+
+        summary.SubmittedCount.Should().Be(statuses.Length);
+        summary.ApprovedCount.Should().Be(1);
+        summary.PendingCount.Should().Be(1);
+        summary.Events.Select(e => e.Status).Should().BeEquivalentTo(statuses);
+        summary.Events.Should().OnlyContain(e => e.SubmitterUserId == userId && e.CampId == null && e.EventSettingsId == editionId);
+    }
+
+    [HumansFact]
     public async Task GetCampSubmissionsSummaryAsync_BucketsByStatusAndIncludesOnlyCampEvents()
     {
         var campId = Guid.NewGuid();
@@ -2057,6 +2138,7 @@ public sealed class EventServiceTests
         public List<EventVenue> Venues { get; } = [];
         public List<EventVenue> RemovedVenues { get; } = [];
         public List<Event> Events { get; } = [];
+        public IReadOnlyList<CampEventOverlap> ActiveCampEvents { get; set; } = [];
         public List<EventFavourite> Favourites { get; } = [];
         public List<EventModerationAction> EventModerationActions { get; } = [];
         public EventPreference? Preference { get; set; }
@@ -2231,7 +2313,7 @@ public sealed class EventServiceTests
             => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId));
 
         public Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(Guid? eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<CampEventOverlap>>([]);
+            => Task.FromResult(ActiveCampEvents);
 
         public Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
         {

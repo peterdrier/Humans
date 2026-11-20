@@ -235,11 +235,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 ## Architecture
 
-`PreapprovalService` is a façade over internal components, each owning one job:
-`PreapprovalReader` (reads, projection, merged ids, the Madrid date), `PreapprovalClaims` (the
-three Expenses transitions), `PreapprovalProgramAdministration` (program create and edit),
-`PreapprovalPersonalData` (export, erasure, merge), `PreapprovalJournal` (audit text) and
-`PreapprovalInput` (money and text rules). None is registered in DI or public.
+`PreapprovalService` is one class (partial files by area: grants, programs, GDPR) holding reads,
+the three Expenses transitions, program create and edit, export/erasure/merge and audit text.
+`PreapprovalInput` is a static class for the money and text rules.
 
 Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`.
 

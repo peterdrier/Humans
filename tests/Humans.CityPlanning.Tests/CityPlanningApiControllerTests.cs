@@ -215,6 +215,46 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         result.Should().BeOfType<FileContentResult>();
     }
 
+    [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task ContainerExport_IncludesAllAndOnlyTheCallersCamps(bool isAdmin, bool isLead)
+    {
+        var camps = Enumerable.Range(0, 4).Select(index =>
+        {
+            var campId = Guid.NewGuid();
+            var season = new CampSeasonInfo(Guid.NewGuid(), campId, $"camp-{index}", index == 3 ? 2025 : 2026,
+                null, "Camp", "", "", [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No,
+                AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null)
+            { LeadUserIds = isLead && index != 2 ? [_userId] : [] };
+            return new CampInfo(campId, $"camp-{index}", "", "", false, 0, [season]);
+        }).ToArray();
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(camps);
+        var containers = camps.Select(camp => new ContainerDto(Guid.NewGuid(), camp.Id, camp.Slug,
+            null, [], Instant.MinValue, Instant.MinValue)).ToArray();
+        _containers.GetAllAsync(Arg.Any<CancellationToken>()).Returns(containers);
+        _containers.GetPlacementsByYearAsync(2026, Arg.Any<CancellationToken>()).Returns(
+            containers.Select(container => new ContainerPlacementDto(container.Id, 2026,
+                "{\"type\":\"Feature\",\"geometry\":null,\"properties\":{}}", null, null, null,
+                Instant.MinValue, Instant.MinValue)).ToArray());
+
+        var result = await CreateController(isAdmin ? [CampsRoles.CampsAdmin] : [])
+            .ExportContainersGeoJson(2026, TestContext.Current.CancellationToken);
+
+        if (!isAdmin && !isLead)
+        {
+            result.Should().BeOfType<ForbidResult>();
+            return;
+        }
+
+        var file = result.Should().BeOfType<FileContentResult>().Which;
+        using var json = System.Text.Json.JsonDocument.Parse(file.FileContents);
+        var exportedIds = json.RootElement.GetProperty("features").EnumerateArray()
+            .Select(feature => feature.GetProperty("properties").GetProperty("containerId").GetGuid());
+        exportedIds.Should().BeEquivalentTo((isAdmin ? containers : containers.Take(2)).Select(container => container.Id));
+    }
+
     [HumansFact]
     public async Task InvalidContainerPlacement_ReturnsTheOwnersLocalizedError()
     {
@@ -431,6 +471,19 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var result = await CreateController().ExportGeoJson(null, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansFact]
+    public async Task SaveCampPolygon_UserWhoMayNotEdit_IsForbiddenAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = await CreateController().SaveCampPolygon(
+            _campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
+
+        result.Should().BeOfType<ForbidResult>();
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(0);
+        _allClients.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

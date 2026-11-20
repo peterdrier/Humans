@@ -138,6 +138,7 @@ public class MedicalConditionsServiceTests
             Substitute.For<IShiftService>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<ITeamService>(),
             Substitute.For<ICampService>(), Substitute.For<IGovernanceService>(),
+            Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>(),
             Substitute.For<IAuthorizationService>(), _sut);
         controller.ControllerContext = new ControllerContext
         {
@@ -156,7 +157,7 @@ public class MedicalConditionsServiceTests
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(UserInfoFixtures.FromUser(new User { Id = id, PreferredLanguage = "en" }));
         _repo.GetByUserIdReadOnlyAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new Profile { UserId = id, BurnerName = "B", MedicalConditions = medical });
+            .Returns(new Profile { UserId = id, MedicalConditions = medical });
         return id;
     }
 }

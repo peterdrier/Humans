@@ -59,7 +59,7 @@ public class UserStateClassifierTests
     {
         var user = NewUser(displayName: "Real Name");
         var profile = NewNamedProfile(user.Id);
-        profile.LastName = "";
+        user.LastName = "";
 
         UserStateEvaluator.Classify(user, profile).Should().Be(UserState.Bare);
     }
@@ -175,6 +175,9 @@ public class UserStateClassifierTests
     {
         Id = Guid.NewGuid(),
         DisplayName = displayName,
+        BurnerName = "Burner",
+        FirstName = "First",
+        LastName = "Last",
         PreferredLanguage = "en",
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
@@ -183,9 +186,6 @@ public class UserStateClassifierTests
     {
         Id = Guid.NewGuid(),
         UserId = userId,
-        BurnerName = "Burner",
-        FirstName = "First",
-        LastName = "Last",
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };

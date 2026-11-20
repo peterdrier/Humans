@@ -1,4 +1,3 @@
-using Humans.Shifts.Contracts;
 using Humans.Teams.Data;
 using Humans.Google.Contracts;
 using Humans.Base.Extensions;
@@ -92,7 +91,6 @@ internal sealed class TeamController(
         var teamPage = await teamPageService.GetTeamPageDetailAsync(
             slug,
             effectiveUserId,
-            ShiftsRoles.CanManageDepartment(User),
             ct);
         if (teamPage is null)
         {
@@ -148,7 +146,7 @@ internal sealed class TeamController(
             CanCurrentUserEditTeam = teamPage.CanCurrentUserEditTeam,
             CurrentUserPendingRequestId = teamPage.CurrentUserPendingRequestId,
             PendingRequestCount = teamPage.PendingRequestCount,
-            ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug),
+            ViewerUserId = effectiveUserId,
         };
 
         var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
@@ -188,30 +186,9 @@ internal sealed class TeamController(
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        Email = member.Email ?? string.Empty,
         Role = member.Role,
-        JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
     };
-
-    private ShiftsSummaryCardViewModel? MapShiftsSummary(TeamPageShiftsSummary? summary, string slug)
-    {
-        if (summary is null)
-        {
-            return null;
-        }
-
-        return new ShiftsSummaryCardViewModel
-        {
-            TotalSlots = summary.TotalSlots,
-            ConfirmedCount = summary.ConfirmedCount,
-            PendingCount = summary.PendingCount,
-            UniqueVolunteerCount = summary.UniqueVolunteerCount,
-            ShiftsUrl = Url.Action("Index", "ShiftAdmin", new { slug })!,
-            CanManageShifts = summary.CanManageShifts,
-            IncludesSubTeamCount = summary.IncludesSubTeamCount
-        };
-    }
 
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
@@ -500,7 +477,6 @@ internal sealed class TeamController(
             RoleSlotCount = summary.RoleSlotCount,
             CreatedAt = summary.CreatedAt.ToDateTimeUtc(),
             IsChildTeam = summary.ParentTeamId.HasValue,
-            PendingShiftSignupCount = summary.PendingShiftSignupCount,
             IsHidden = summary.IsHidden
         }))
         {
@@ -553,24 +529,26 @@ internal sealed class TeamController(
                     ModelState.AddModelError("GoogleGroupPrefix", reason);
                 else
                     SetError(reason);
-                await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-                return View(model);
             }
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
+            else
+            {
+                var currentUser = await GetCurrentUserInfoAsync();
+                logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
 
-            SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
-            if (result.GroupWarning is not null)
-                SetError(result.GroupWarning);
-            return RedirectToAction(nameof(Summary));
+                SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
+                if (result.GroupWarning is not null)
+                    SetError(result.GroupWarning);
+                return RedirectToAction(nameof(Summary));
+            }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating team");
             ModelState.AddModelError("", sharedLocalizer["Admin_TeamCreateError"].Value);
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-            return View(model);
         }
+
+        await PopulateEligibleParentsAsync(model, excludeTeamId: null, HttpContext.RequestAborted);
+        return View(model);
     }
 
     [HttpGet("{id:guid}/Edit")]
@@ -644,7 +622,7 @@ internal sealed class TeamController(
             };
             logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, reason);
             ModelState.AddModelError(field, reason);
-            await PopulateEligibleParentsAsync(model, id);
+            await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }
         if (result.InactiveGroupResourceId is { } inactiveGroupResourceId)
@@ -657,7 +635,7 @@ internal sealed class TeamController(
             ModelState.Remove(nameof(model.ConfirmGroupReactivation));
             ModelState.Remove(nameof(model.InactiveGroupResourceId));
             ModelState.AddModelError(nameof(model.GoogleGroupPrefix), result.GroupWarning!);
-            await PopulateEligibleParentsAsync(model, id);
+            await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }
         var currentUser = await GetCurrentUserInfoAsync();
@@ -728,7 +706,7 @@ internal sealed class TeamController(
             .ToList();
     }
 
-    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId, CancellationToken ct = default)
+    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId, CancellationToken ct)
     {
         model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, ct);
     }

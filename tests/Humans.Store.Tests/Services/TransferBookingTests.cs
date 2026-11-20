@@ -39,7 +39,7 @@ public class TransferBookingTests
     public void Each_month_books_the_change_since_the_last_entry_and_resumes_after_what_is_booked()
     {
         var lines = new[] { Line(40m, 5), Line(20m, 7) };
-        var rows = StoreTransferBooking.Plan(2026, lines, Catalog, [Booked(5, 50m)], Departments, new YearMonth(2026, 8));
+        var rows = StoreTransferBooking.Plan(2026, lines, Catalog, [Booked(5, 50m)], Departments, new YearMonth(2026, 8), FixedOrgTimeZone.Madrid.Zone);
 
         // May is booked at 50 (since repriced to 40): June corrects it, July adds the new line.
         rows.Select(r => (r.Month, r.Amount)).Should().Equal(
@@ -48,12 +48,17 @@ public class TransferBookingTests
         rows[0].Sides.Should().Be((TransferAccount, DeptAccount));
         rows[1].Sides.Should().Be((DeptAccount, TransferAccount));
         rows.Should().AllSatisfy(r => r.State.Should().Be(TransferState.Ready));
+        var plan = new TransferPlan(2026, new YearMonth(2026, 8), rows, null);
+        plan.Ready.Should().Equal(rows);
+        plan.ReadyAmount.Should().Be(10m);
+        plan.BlockedCount.Should().Be(0);
+        plan.BlockedAmount.Should().Be(0m);
     }
 
     [HumansFact]
     public void A_team_whose_last_line_is_removed_gets_the_booked_amount_reversed()
     {
-        var rows = StoreTransferBooking.Plan(2026, [], Catalog, [Booked(5, 40m)], Departments, new YearMonth(2026, 6));
+        var rows = StoreTransferBooking.Plan(2026, [], Catalog, [Booked(5, 40m)], Departments, new YearMonth(2026, 6), FixedOrgTimeZone.Madrid.Zone);
 
         var row = rows.Single();
         (row.Month, row.Amount, row.State, row.TeamName).Should().Be(
@@ -66,7 +71,7 @@ public class TransferBookingTests
     {
         const int oldAccount = 62990001;
         var rows = StoreTransferBooking.Plan(
-            2026, [Line(40m, 5)], Catalog, [Booked(5, 40m, oldAccount)], Departments, new YearMonth(2026, 6));
+            2026, [Line(40m, 5)], Catalog, [Booked(5, 40m, oldAccount)], Departments, new YearMonth(2026, 6), FixedOrgTimeZone.Madrid.Zone);
 
         rows.Select(r => (r.TransferAccount, r.Amount)).Should().BeEquivalentTo(
             [((int?)oldAccount, -40m), ((int?)TransferAccount, 40m)]);
@@ -77,12 +82,19 @@ public class TransferBookingTests
     {
         var rows = StoreTransferBooking.Plan(
             2026, [Line(40m, 5, transfer: null)], new Dictionary<Guid, int?>(), [], Departments,
-            new YearMonth(2026, 5));
-        rows.Single().State.Should().Be(TransferState.NoTransferAccount);
+            new YearMonth(2026, 5), FixedOrgTimeZone.Madrid.Zone);
+        var missingTransfer = rows.Single();
+        missingTransfer.State.Should().Be(TransferState.NoTransferAccount);
 
         rows = StoreTransferBooking.Plan(
-            2026, [Line(40m, 5)], Catalog, [], new Dictionary<Guid, int>(), new YearMonth(2026, 5));
-        rows.Single().State.Should().Be(TransferState.NoDepartmentAccount);
+            2026, [Line(40m, 5)], Catalog, [], new Dictionary<Guid, int>(), new YearMonth(2026, 5), FixedOrgTimeZone.Madrid.Zone);
+        var missingDepartment = rows.Single();
+        missingDepartment.State.Should().Be(TransferState.NoDepartmentAccount);
+        var plan = new TransferPlan(2026, new YearMonth(2026, 5), [missingTransfer, missingDepartment], null);
+        plan.Ready.Should().BeEmpty();
+        plan.ReadyAmount.Should().Be(0m);
+        plan.BlockedCount.Should().Be(2);
+        plan.BlockedAmount.Should().Be(80m);
     }
 
     [HumansFact]
@@ -118,7 +130,7 @@ public class TransferBookingTests
         var repo = Substitute.For<IStoreRepository>();
         repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
 
-        var sut = new StoreTransferBooking(orders, repo, budget, finance, holded, write,
+        var sut = new StoreTransferBooking(FixedOrgTimeZone.Madrid, orders, repo, budget, finance, holded, write,
             Substitute.For<IAuditLogService>(), new FakeClock(Instant.FromUtc(2026, 9, 2, 8, 0)),
             NullLogger<StoreTransferBooking>.Instance);
 

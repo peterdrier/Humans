@@ -7,7 +7,7 @@ internal interface IWorkspaceUserDirectoryClient
     Task<WorkspaceUserAccount?> GetAccountAsync(string primaryEmail, CancellationToken ct = default);
 
     /// <summary>Records <paramref name="recoveryEmail"/> only when it is not itself @nobodies.team.</summary>
-    Task<WorkspaceUserAccount> ProvisionAccountAsync(
+    Task ProvisionAccountAsync(
         string primaryEmail,
         string firstName,
         string lastName,

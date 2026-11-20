@@ -169,7 +169,7 @@ public sealed class LegalDocumentSyncRunnerTests
             Teams.GetTeamAsync(Document.TeamId, Arg.Any<CancellationToken>()).Returns(new TeamInfo(
                 Document.TeamId, "Own", null, "own", true, false, SystemTeamType.None, false, false, false, false, default,
                 recipients.Select(user => new TeamMemberInfo(Guid.NewGuid(), user.Id, "Member", user.Email, null, TeamMemberRole.Member, default)).ToList()));
-            users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(recipients.ToDictionary(user => user.Id));
             var consents = Substitute.For<IConsentService>();
             consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -214,7 +214,7 @@ public sealed class LegalDocumentSyncRunnerTests
             false, false, false, default,
             [new TeamMemberInfo(Guid.NewGuid(), user.Id, "Member", user.Email, null, TeamMemberRole.Member, default)]));
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = user });
         var repository = Substitute.For<ILegalDocumentRepository>();
         repository.GetDocumentsAsync(null, Arg.Any<CancellationToken>()).Returns(new[] { own, other, optional });

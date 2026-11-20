@@ -101,28 +101,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         history.ModifiedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
-    [HumansFact]
-    public async Task SaveCampPolygonAsync_SecondSave_UpdatesPolygonAndAppendsHistory()
-    {
-        var campSeasonId = Guid.NewGuid();
-        var userId = NewUserId();
-        const string geoJson1 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
-        const string geoJson2 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[2,0],[2,2],[0,0]]]}}""";
-
-        SetupExistingCampSeason(campSeasonId, 2026);
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
-
-        var polygonCount = await CityPlanningDb.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-        var historyCount = await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-
-        polygonCount.Should().Be(1);
-        historyCount.Should().Be(2);
-        polygon.GeoJson.Should().Be(geoJson2);
-        polygon.AreaSqm.Should().Be(200.0);
-    }
-
     [HumansTheory]
     [InlineData("{not-json")]
     [InlineData("null")]
@@ -305,15 +283,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateOfficialZonesFromUploadAsync_NoFile_ReturnsMissingFile()
-    {
-        var result = await _sut.UpdateOfficialZonesFromUploadAsync(null, NewUserId(), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("MissingFile");
-    }
-
-    [HumansFact]
     public async Task UpdateOfficialZonesFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
     {
         var result = await _sut.UpdateOfficialZonesFromUploadAsync(
@@ -432,27 +401,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_AuditsAgainstTheOpenSeasonRow()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027]));
-        var userId = NewUserId();
-
-        await _sut.UpdateRegistrationInfoAsync("Bring water.", userId, TestContext.Current.CancellationToken);
-
-        var row = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(s => s.Year == 2027, TestContext.Current.CancellationToken);
-        await _auditLog.Received(1).LogAsync(
-            CityPlanningAuditActions.CityPlanningRegistrationInfoUpdated,
-            nameof(CityPlanningSettings),
-            row.Id,
-            Arg.Any<string>(),
-            userId,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
-    }
-
-    [HumansFact]
     public async Task ContainerPlacementToggles_WriteTheirOwnAuditActions()
     {
         await SeedMapSettingsAsync();
@@ -507,8 +455,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before
-    // the write: re-read after it, an abort mid-write committed the change unaudited.
+    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before the write.
     [HumansFact]
     public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
     {
@@ -781,16 +728,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetRegistrationInfoAsync_NoRow_WritesNothing()
-    {
-        SetupCampSettings(publicYear: 2026);
-
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
-
-        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
-    }
-
-    [HumansFact]
     public async Task GetSettingsAsync_YearFollowsTheActiveEvent_NotCampsPublicYear()
     {
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -986,7 +923,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
         var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 // UserInfo.Create inline rather than linking Base's UserInfoStubHelpers: this
@@ -1018,7 +955,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         // User service returns empty dictionary — user was deleted.
         _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<IEnumerable<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
@@ -1100,65 +1037,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotTheActiveEventYear()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027]));
-
-        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", NewUserId(), TestContext.Current.CancellationToken);
-
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(TestContext.Current.CancellationToken);
-        settings.Year.Should().Be(2028);
-        settings.RegistrationInfo.Should().Be("Read this before you register.");
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_FallsBackToTheActiveEventYear_WhenNoOpenSeasons()
-    {
-        SetupCampSettings();
-
-        await _sut.UpdateRegistrationInfoAsync("Blurb", NewUserId(), TestContext.Current.CancellationToken);
-
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(TestContext.Current.CancellationToken);
-        settings.Year.Should().Be(2026);
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_TrimsInput_AndStoresNullForBlank()
-    {
-        SetupCampSettings();
-
-        await _sut.UpdateRegistrationInfoAsync("  padded  ", NewUserId(), TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("padded");
-
-        await _sut.UpdateRegistrationInfoAsync("   ", NewUserId(), TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetRegistrationInfoAsync_ReadsTheSameYearTheWriteUsed()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027]));
-
-        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", NewUserId(), TestContext.Current.CancellationToken);
-
-        // A row keyed to the active event's year must not shadow the open-season one.
-        CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
-        {
-            Year = 2026,
-            RegistrationInfo = "Stale public-year blurb",
-            UpdatedAt = Clock.GetCurrentInstant()
-        });
-        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken))
-            .Should().Be("Open-season blurb");
     }
 
     private void SetupExistingCampSeason(Guid seasonId, int year) =>

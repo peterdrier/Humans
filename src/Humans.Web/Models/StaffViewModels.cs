@@ -7,7 +7,6 @@ public class StaffViewModel
 
 public class StaffRoleSectionViewModel
 {
-    public string RoleName { get; init; } = string.Empty;
     public string DisplayTitle { get; init; } = string.Empty;
     public string Blurb { get; init; } = string.Empty;
     public string Icon { get; init; } = string.Empty;

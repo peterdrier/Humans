@@ -1,11 +1,12 @@
 @model HoldedAccountStatement
 @using System.Globalization
 @using NodaTime
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     var a = Model.Account;
     ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Accounts";
     ViewData["Title"] = $"{a.Number}{(string.IsNullOrWhiteSpace(a.Name) ? "" : $" · {a.Name}")}";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 <page-header>
@@ -75,7 +76,7 @@
     }
     else
     {
-            Func<HoldedStatementLine, IHtmlContent> dateCell = @<text>@item.Date.ToDate(madrid)</text>;
+            Func<HoldedStatementLine, IHtmlContent> dateCell = @<text>@item.Date.ToDate(orgZone)</text>;
             Func<HoldedStatementLine, IHtmlContent> entryCell = @<text>
                 <a asp-action="Entry" asp-route-number="@item.EntryNumber">@item.EntryNumber/@item.Line</a>
                 @if (!string.IsNullOrEmpty(item.EntryId))

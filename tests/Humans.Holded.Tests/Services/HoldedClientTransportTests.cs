@@ -18,7 +18,7 @@ public class HoldedClientTransportTests
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             NullLogger<HoldedClient>.Instance,
             log ?? new HoldedCallLog(),
-            clock ?? new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+            clock ?? new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), FixedOrgTimeZone.Madrid);
 
     [HumansFact]
     public async Task Sends_bearer_authorization_header()
@@ -37,6 +37,18 @@ public class HoldedClientTransportTests
         captured.Headers.Authorization!.Scheme.Should().Be("Bearer");
         captured.Headers.Authorization!.Parameter.Should().Be("test-key");
         captured.Headers.Contains("key").Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task A_403_for_a_missing_key_permission_names_the_permission()
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.Forbidden,
+            """{"error":"Insufficient permissions: accounting:payments.write required"}""")));
+
+        var act = () => client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HoldedPermanentException>()).Which.Message
+            .Should().Be("Humans' Holded key lacks accounting:payments.write; add it in Holded > Settings > API");
     }
 
     [HumansFact]

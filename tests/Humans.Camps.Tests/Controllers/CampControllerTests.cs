@@ -8,6 +8,7 @@ using Humans.Base.Enums;
 using Humans.Base.Constants;
 using Humans.Base;
 using Humans.Base.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -290,6 +291,65 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData(CampFormRedisplayPath.RefusedRegistration, CampFormRedisplayBoundary.Settings)]
+    [InlineData(CampFormRedisplayPath.RefusedRegistration, CampFormRedisplayBoundary.Info)]
+    [InlineData(CampFormRedisplayPath.FailedRegistration, CampFormRedisplayBoundary.Settings)]
+    [InlineData(CampFormRedisplayPath.FailedRegistration, CampFormRedisplayBoundary.Info)]
+    [InlineData(CampFormRedisplayPath.InvalidEdit, CampFormRedisplayBoundary.EditData)]
+    [InlineData(CampFormRedisplayPath.RefusedEdit, CampFormRedisplayBoundary.EditData)]
+    public async Task FormRedisplays_RetainRequestCancellation(CampFormRedisplayPath path, CampFormRedisplayBoundary boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var actor = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active, actor);
+        var season = camp.Seasons.Single();
+        _users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actor));
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _campsLocalizer[Arg.Any<string>(), Arg.Any<object[]>()]
+            .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (boundary is CampFormRedisplayBoundary.Settings) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Settings2026();
+        });
+        _cityPlanning.GetLegacyRegistrationInfoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (boundary is CampFormRedisplayBoundary.Info) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (string?)"Registration info";
+        });
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
+            .ReturnsForAnyArgs(async _ =>
+            {
+                await request.CancelAsync();
+                if (path is CampFormRedisplayPath.FailedRegistration) throw new DbUpdateException("Registration save failed");
+                return new CampWriteResult<Camp>(null, "Refused");
+            });
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actor).Returns(CampUpdateResult.Failure("Refused"));
+        _camps.GetCampEditDataAsync(camp.Id, season.EventSettingsId, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (CampEditData?)MakeEditData(camp, season);
+        });
+        var controller = BuildController(actor);
+        controller.HttpContext.RequestAborted = request.Token;
+        var edit = path is CampFormRedisplayPath.InvalidEdit or CampFormRedisplayPath.RefusedEdit;
+        CampRegisterViewModel model = edit ? new CampEditViewModel { SeasonId = season.Id } : new CampRegisterViewModel();
+        model.Name = "Alpha";
+        model.ContactEmail = "alpha@example.test";
+        model.ContactPhone = "+34600000000";
+        if (path is CampFormRedisplayPath.InvalidEdit) controller.ModelState.AddModelError("Name", "Invalid");
+        Func<Task<IActionResult>> render = edit
+            ? () => controller.Edit(camp.Slug, (CampEditViewModel)model)
+            : () => controller.Register(model);
+
+        await render.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
     [InlineData("Contact", false)]
     [InlineData("Contact", true)]
     [InlineData("Request", false)]
@@ -388,7 +448,7 @@ public class CampControllerTests
         _camps.WithdrawSeasonAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
         _camps.MarkSeasonFullAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
         _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorId)
-            .Returns(CampImageUploadResult.Failure(key));
+            .Returns(CampUpdateResult.Failure(key));
         _camps.DeleteImageAsync(camp.Id, imageId, actorId).Returns(CampUpdateResult.Failure(key));
         var controller = BuildController(actorId);
         using var image = new MemoryStream([1]);
@@ -435,7 +495,7 @@ public class CampControllerTests
             if (abandon && cancelAfterSettings) await request.CancelAsync();
             return Settings2026();
         });
-        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _cityPlanning.GetLegacyRegistrationInfoAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return "Registration instructions";
@@ -453,6 +513,22 @@ public class CampControllerTests
         abandon = true;
         if (!cancelAfterSettings) await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("From Camps")]
+    [InlineData("")]
+    public async Task Register_ShowsTheEventsOwnRegistrationInfo_OverCityPlanningsOldCopy(string campsInfo)
+    {
+        var settings = Settings2026();
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings with
+        {
+            Events = [.. settings.Events.Select(e => e.Year == 2026 ? e with { RegistrationInfo = campsInfo } : e)],
+        });
+        _cityPlanning.GetLegacyRegistrationInfoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns("From City Planning");
+
+        (await BuildController(Guid.NewGuid()).Register()).Should().BeOfType<ViewResult>()
+            .Which.ViewData["RegistrationInfo"].Should().Be(campsInfo);
     }
 
     [HumansTheory]
@@ -739,7 +815,7 @@ public class CampControllerTests
         })
         {
             _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorUserId: Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-                .Returns(CampImageUploadResult.Failure(key));
+                .Returns(CampUpdateResult.Failure(key));
 
             await controller.UploadImage(camp.Slug, file);
 
@@ -1386,9 +1462,9 @@ public class CampControllerTests
         camp = camp with { Seasons = [other, selected] };
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _camps.GetCampEditDataAsync(camp.Id, selected.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(MakeEditData(camp, selected));
+            .Returns(MakeEditData(camp, selected) with { HasEarlyEntryCapacity = selected.IsPublic });
         _users.GetUserInfoAsync(leadId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(leadId));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [memberId] = MakeUserInfo(memberId) });
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ShiftUserSummary> { [memberId] = MakeShiftUserSummary(memberId) });
@@ -1402,6 +1478,7 @@ public class CampControllerTests
 
         var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CampEditViewModel>().Subject;
         model.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
+        model.HasEarlyEntryCapacity.Should().Be(selected.IsPublic);
         if (selected.IsPublic)
         {
             model.RolesPanel.Should().NotBeNull();
@@ -1440,9 +1517,9 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampEditData?>(MakeEditData(camp, season)));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                call.ArgAt<IReadOnlyCollection<Guid>>(0).ToDictionary(id => id, MakeUserInfo)));
+                call.ArgAt<IEnumerable<Guid>>(0).ToDictionary(id => id, MakeUserInfo)));
         _authorization.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(),
                 Arg.Any<object?>(),
@@ -1540,11 +1617,6 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampInfo?>(pending));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
-                null, null, null, false, null, null,
-                Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
         _authorization.AuthorizeAsync(
@@ -1573,11 +1645,6 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampInfo?>(future));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
-                null, null, null, false, null, null,
-                Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
         // Succeed only for the loaded CampInfo resource — mirrors the real handler, which
@@ -1622,11 +1689,6 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampInfo?>(fullCamp));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
-                null, null, null, false, null, null,
-                Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
         // Succeed only for the slug-loaded camp — the year projection cannot answer the
@@ -1881,3 +1943,7 @@ public class CampControllerTests
             [],
             UserFixtures.Profile());
 }
+
+public enum CampFormRedisplayPath { RefusedRegistration, FailedRegistration, InvalidEdit, RefusedEdit }
+
+public enum CampFormRedisplayBoundary { Settings, Info, EditData }

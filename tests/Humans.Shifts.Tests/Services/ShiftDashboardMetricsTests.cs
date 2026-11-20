@@ -68,8 +68,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            Cache,
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -87,7 +85,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     [InlineData("daily", false)]
     [InlineData("heatmap", false)]
     [InlineData("duration", false)]
-    public async Task DashboardReads_AbortColdLoadsWithoutCachingPartialResults(string read, bool filterSubPeriod)
+    public async Task DashboardReads_HonorCancellation(string read, bool filterSubPeriod)
     {
         var es = await SeedEventAsync();
         using var cancellation = new CancellationTokenSource();
@@ -107,15 +105,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         };
 
         await load.Should().ThrowAsync<OperationCanceledException>();
-        var cacheKey = read switch
-        {
-            "overview" => ShiftManagementService.OverviewCacheKey(es.Id, ShiftPeriod.Build),
-            "coordinators" => ShiftManagementService.CoordinatorActivityCacheKey(es.Id, ShiftPeriod.Build),
-            "trends" => ShiftManagementService.TrendsCacheKey(es.Id, TrendWindow.All, ShiftPeriod.Build),
-            _ => null
-        };
-        if (cacheKey is not null)
-            Cache.TryGetValue(cacheKey, out _).Should().BeFalse();
     }
 
     [HumansFact]
@@ -605,23 +594,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         narrowed.TotalShifts.Should().Be(2);
         narrowed.TotalSlots.Should().Be(4);
-    }
-
-    [HumansFact]
-    public async Task GetDashboardOverview_SubPeriodQueriesBypassTheCachedBasePeriodResult()
-    {
-        var es = await SeedEventAsync();
-        var team = await SeedTeamAsync("Gate");
-        var rota = await SeedRotaAsync(team, es, RotaPeriod.Build);
-        await SeedShiftAsync(rota, -5, min: 1, max: 2);
-
-        (await _service.GetDashboardOverviewAsync(es.Id, ShiftPeriod.Build)).TotalShifts.Should().Be(1);
-        await SeedShiftAsync(rota, -6, min: 1, max: 2);
-
-        // Base-period result is served from the 5-minute cache; the sub-period call is not.
-        (await _service.GetDashboardOverviewAsync(es.Id, ShiftPeriod.Build)).TotalShifts.Should().Be(1);
-        (await _service.GetDashboardOverviewAsync(
-            es.Id, ShiftPeriod.Build, BuildSubPeriod.PreEventWeek)).TotalShifts.Should().Be(2);
     }
 
     [HumansFact]
@@ -1210,7 +1182,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
 
         public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+            IEnumerable<Guid> userIds, CancellationToken ct = default)
         {
             var snapshot = (await GetAllUserInfosAsync(ct)).ToDictionary(u => u.Id);
             var dict = new Dictionary<Guid, UserInfo>();

@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Esamina accordi</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Registrazione rifiutata</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>La Sua registrazione è stata esaminata e non è stata approvata. Per domande, contatti il team di amministrazione.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Motivo</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Ecco cosa succede.</value>
   </data>
@@ -1079,31 +1070,6 @@
   </data>
   <data name="Nav_Guide" xml:space="preserve">
     <value>Aiuto</value>
-  </data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
-    <value>Turni</value>
-  </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
-    <value>{0} / {1} posti occupati</value>
-    <comment>{0} = filled, {1} = total</comment>
-  </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
-    <value>{0} humans iscritti</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
-    <value>{0} in sospeso</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
-    <value>Nessun turno configurato ancora.</value>
-  </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
-    <value>Include turni da {0} sotto-team</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
-    <value>Gestisci turni</value>
   </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gestisce l'appartenenza a Nobodies Collective e tratta i dati personali in conformità con il GDPR e la legge spagnola sulla protezione dei dati (LOPDGDD).</value>

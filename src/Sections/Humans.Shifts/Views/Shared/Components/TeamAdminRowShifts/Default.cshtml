@@ -1,0 +1,19 @@
+@inject IAuthorizationService AuthService
+@model TeamAdminRowShiftsViewModel
+@if (Model.PendingCount > 0)
+{
+    @if ((await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded)
+    {
+        <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.Slug">
+            <span class="badge bg-warning">@Model.PendingCount</span>
+        </a>
+    }
+    else
+    {
+        <span class="badge bg-warning">@Model.PendingCount</span>
+    }
+}
+else
+{
+    <span class="text-muted">0</span>
+}

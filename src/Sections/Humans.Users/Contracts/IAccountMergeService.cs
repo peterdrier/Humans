@@ -21,7 +21,7 @@ internal interface IAccountMergeService : IApplicationService
     /// The one merge primitive: runs the <c>IUserMerge</c> fan-out, settles the optional pending email (non-fatal),
     /// then tombstones the archived account last, which is the commit point. No wrapping transaction, so it is
     /// safely retryable. Returns a refusal if the ids are equal, either user is missing,
-    /// or either is already tombstoned.
+    /// or either is already tombstoned (merged or deleted).
     /// </summary>
     Task<AccountMergeResult> MergeAsync(
         Guid survivorUserId, Guid archivedUserId, Guid adminUserId,

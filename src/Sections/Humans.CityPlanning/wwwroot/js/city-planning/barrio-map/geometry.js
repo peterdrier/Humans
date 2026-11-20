@@ -69,7 +69,6 @@ export function buildCampPolygonFeatures(campPolygons) {
         return f;
     });
 
-    // Pairwise overlap detection
     for (let i = 0; i < features.length; i++) {
         for (let j = i + 1; j < features.length; j++) {
             try {

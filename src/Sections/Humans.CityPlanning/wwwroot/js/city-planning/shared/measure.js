@@ -1,5 +1,3 @@
-// Measuring tool: two-point distance with rubber-band preview, multi-measurement support.
-
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 
 let _map          = null;
@@ -85,7 +83,6 @@ function attachMouseMove() {
             type: 'FeatureCollection',
             features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [_pending.a, cursor] }, properties: {} }],
         });
-        // Add live preview label alongside committed labels
         _map.getSource('measure-label').setData({
             type: 'FeatureCollection',
             features: [
@@ -115,7 +112,6 @@ function detachMouseMove() {
 function onMapClick(e) {
     const coord = [e.lngLat.lng, e.lngLat.lat];
 
-    // 1. First click: start pending measurement
     if (!_pending) {
         _pending = { a: coord };
         attachMouseMove();
@@ -123,14 +119,12 @@ function onMapClick(e) {
         return;
     }
 
-    // 2. Second click: complete measurement and exit measure mode
     _measurements.push({ id: newId(), a: _pending.a, b: coord });
     exitMeasureMode();
     updateClearBtn();
 }
 
 function onMapContextMenu(e) {
-    // Right-click on an existing measurement deletes it.
     const hits = _map.queryRenderedFeatures(e.point, { layers: ['measure-points', 'measure-label'] });
     const hitWithId = hits.find(f => f.properties.measurementId);
     if (!hitWithId) return;

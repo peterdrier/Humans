@@ -110,9 +110,6 @@ public class ProfileApiControllerTests
         {
             Id = profileId,
             UserId = userId,
-            BurnerName = burnerName,
-            FirstName = "Target",
-            LastName = "Display",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

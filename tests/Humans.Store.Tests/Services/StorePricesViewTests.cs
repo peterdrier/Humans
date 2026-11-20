@@ -4,6 +4,7 @@ using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
 using Humans.Store.Models;
 using Humans.Store.Contracts;
+using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.ViewComponents;
@@ -37,17 +38,30 @@ public class StorePricesViewTests
             new LocalDate(2026, 7, 1), true);
         var index = await RenderAsync("Index", new IndexViewModel { Year = 2026, Catalog = [product] });
 
-        var now = Instant.FromUtc(2026, 7, 1, 0, 0);
-        var orderId = Guid.NewGuid();
-        var line = new OrderLineDto(Guid.NewGuid(), orderId, product.Id, product.Name, 1,
-            100, 10.5m, null, now, 100, 10.5m, 0, 110.5m);
-        var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
-            OrderState.Open, null, null, null, null, null, null, [line], [], 100, 10.5m, 0, 0, 110.5m, now);
-        var detail = await RenderAsync("Order", new OrderViewModel { Order = order });
         using var assertions = new AwesomeAssertions.Execution.AssertionScope();
         index.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
-        detail.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
         CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
+
+    [HumansFact]
+    public async Task OrderPayments_ShowMoneyBackAsReturnedOrRefunded_AndAddUpToTheOrder()
+    {
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
+        var now = Instant.FromUtc(2026, 7, 1, 0, 0);
+        OrderPaymentDto PaymentDto(decimal amount, PaymentMethod method) =>
+            new(Guid.NewGuid(), amount, method, PaymentStatus.Paid, null, "ref", now, null);
+        var order = new OrderDto(Guid.NewGuid(), Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
+            OrderState.Open, null, null, null, null, null, null, [],
+            [PaymentDto(130m, PaymentMethod.BankTransfer), PaymentDto(20m, PaymentMethod.DepositReturn), PaymentDto(-30m, PaymentMethod.Refund)],
+            100m, 21m, 20m, 120m, 21m, now)
+        { TotalDueEur = 141m };
+
+        var html = await RenderAsync("Order", new OrderViewModel { Order = order });
+
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        html.Should().Contain(">Returned</span>").And.Contain(">Refunded</span>");
+        html.Should().Contain(HtmlEncoder.Default.Encode("Order total (lines, VAT and deposits)"));
+        html.Should().Contain(HtmlEncoder.Default.Encode(141m.ToEuro())).And.Contain(HtmlEncoder.Default.Encode(21m.ToEuro()));
     }
 
     [HumansTheory]
@@ -108,13 +122,20 @@ public class StorePricesViewTests
         {
             Summary = new SummaryDto(2026,
                 [new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Camp, Guid.NewGuid(), "Camp",
-                    OrderState.Open, 2469m, 1234.5m, 1234.5m)], [], new CrossTabDto([], [])),
+                    OrderState.Open, 2469m, 1234.5m, 1234.5m),
+                 new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Team, Guid.NewGuid(), "Team",
+                    OrderState.Open, 9000m, 0m, 0m)], [], new CrossTabDto([], [])),
         };
 
         var html = await RenderAsync("Summary", model, viewPath: "/Views/StoreAdmin/Summary.cshtml");
 
         var footer = html[html.IndexOf("<tfoot", StringComparison.Ordinal)..];
         footer = footer[..footer.IndexOf("</tfoot>", StringComparison.Ordinal)];
+        model.Summary.CampOrders.Should().ContainSingle();
+        model.Summary.CampTotalDueEur.Should().Be(2469m);
+        model.Summary.CampPaymentsTotalEur.Should().Be(1234.5m);
+        model.Summary.CampBalanceEur.Should().Be(1234.5m);
+        footer.Should().Contain("1 camps");
         footer.Should().Contain(HtmlEncoder.Default.Encode(due));
         footer.Split(HtmlEncoder.Default.Encode(paidAndBalance)).Should().HaveCount(3);
         CultureInfo.CurrentCulture.Name.Should().Be("en");
@@ -133,6 +154,8 @@ public class StorePricesViewTests
         var row = new StripeReconciliationRow("cs", "pi", 100m, "paid", now, Guid.NewGuid(), "Camp", (StripeReconciliationStatus)status);
         var report = new StripeReconciliationReport(true, true, true, [row],
             orphan ? [new StripeOrphanPayment("pi_orphan", Guid.NewGuid(), "Camp", 100m, now)] : []);
+        report.IsReconciled.Should().Be(expectedSuccess);
+        report.RecordedFailedCount.Should().Be(status == (int)StripeReconciliationStatus.RecordedFailed ? 1 : 0);
         var model = new PaymentsReconciliationViewModel { Report = report, Rows = [] };
 
         var html = await RenderAsync("Payments", model, viewPath: "/Views/StoreAdmin/Payments.cshtml");

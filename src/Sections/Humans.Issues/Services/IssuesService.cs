@@ -10,6 +10,9 @@ using Humans.Users.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Issues.Data;
 using Humans.Issues.Domain;
+using Humans.Base.Extensions;
+using System.Resources;
+using Humans.Base.Constants;
 
 namespace Humans.Issues.Services;
 
@@ -29,13 +32,6 @@ internal sealed class IssuesService(
     IssueSectionRouting routing,
     ILogger<IssuesService> logger) : IIssuesService, IUserDataContributor
 {
-    private readonly IssueReader reader = new(repo, users, auditViewer, fileStorage, routing);
-
-    private readonly IssueDataLifecycle lifecycle = new(repo, clock, fileStorage, logger);
-
-    private readonly IssueNotices notices = new(
-        users, roles, email, emailMessages, notifications, notificationInbox, routing, logger);
-
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg", "image/png", "image/webp"
@@ -172,7 +168,7 @@ internal sealed class IssuesService(
         }
         // The issue is committed; finish its notices after a browser disconnect.
         ct = CancellationToken.None;
-        await notices.DispatchSubmittedNotificationAsync(issue, ct);
+        await DispatchSubmittedNotificationAsync(issue, ct);
 
         logger.LogInformation(
             "Issue {IssueId} submitted by {UserId}: {Category}/{Section}",
@@ -197,20 +193,6 @@ internal sealed class IssuesService(
         return result[..length];
     }
 
-    public Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default) =>
-        reader.GetIssueByIdAsync(id, viewer, ct);
-
-    public Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default) =>
-        reader.GetScreenshotAsync(id, viewer, ct);
-
-    public Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
-        IssueListFilter filter, IssueViewer viewer, CancellationToken ct = default) =>
-        reader.GetIssueListAsync(filter, viewer, ct);
-
-    public Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
-        Guid issueId, IssueViewer viewer, CancellationToken ct = default) =>
-        reader.GetThreadAsync(issueId, viewer, ct);
-
     public async Task<IssueCommentResult> PostCommentAsync(
         Guid issueId,
         IssueViewer viewer,
@@ -220,7 +202,7 @@ internal sealed class IssuesService(
         CancellationToken ct = default)
     {
         var issue = await repo.GetByIdAsync(issueId, ct);
-        if (issue is null || !await reader.CanSeeAsync(issue, viewer, ct))
+        if (issue is null || !await CanSeeAsync(issue, viewer, ct))
         {
             logger.LogWarning("Issue {IssueId} not found during PostComment", issueId);
             return new IssueCommentResult(null, NotFound: true);
@@ -228,10 +210,10 @@ internal sealed class IssuesService(
 
         // A reporter may comment on their own issue but not resolve it; resolving is a
         // handler's move, so the flag is dropped rather than refused.
-        var viewerCanHandle = reader.CanHandle(issue, viewer);
+        var viewerCanHandle = CanHandle(issue, viewer);
 
         var senderIsReporter = senderUserId is { } senderId
-            && await reader.IsReporterAsync(issue.ReporterUserId, senderId, ct);
+            && await IsReporterAsync(issue.ReporterUserId, senderId, ct);
 
         var now = clock.GetCurrentInstant();
         var comment = new IssueComment
@@ -273,12 +255,12 @@ internal sealed class IssuesService(
                 $"status: {statusBeforeResolution} → {IssueStatus.Resolved}");
         }
 
-        await notices.DispatchCommentNotificationsAsync(issue, comment, senderIsReporter, ct);
+        await DispatchCommentNotificationsAsync(issue, comment, senderIsReporter, ct);
         if (resolveWithComment)
         {
-            await notices.DispatchStatusChangedNotificationAsync(
+            await DispatchStatusChangedNotificationAsync(
                 issue, statusBeforeResolution, IssueStatus.Resolved, senderUserId, ct);
-            await notices.ResolveSubmittedNotificationsAsync(issue, senderUserId, ct);
+            await ResolveSubmittedNotificationsAsync(issue, senderUserId, ct);
         }
 
         logger.LogInformation(
@@ -355,11 +337,11 @@ internal sealed class IssuesService(
             await LogAuditAsync(
                 IssuesAuditActions.IssueStatusChanged, issueId, actorUserId,
                 $"status: {oldStatus} → {newStatus}");
-            await notices.DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
+            await DispatchStatusChangedNotificationAsync(issue, oldStatus, newStatus, actorUserId, ct);
 
             // Nothing left to act on: clear the "New issue filed" alerts.
             if (newStatus.IsTerminal())
-                await notices.ResolveSubmittedNotificationsAsync(issue, actorUserId, ct);
+                await ResolveSubmittedNotificationsAsync(issue, actorUserId, ct);
 
             return IssueMutationResult.Success();
         }, ct);
@@ -414,7 +396,7 @@ internal sealed class IssuesService(
 
             if (newAssigneeUserId.HasValue)
             {
-                await notices.DispatchAssignedNotificationAsync(issue, newAssigneeUserId.Value, actorUserId, ct);
+                await DispatchAssignedNotificationAsync(issue, newAssigneeUserId.Value, actorUserId, ct);
             }
 
             return IssueMutationResult.Success();
@@ -494,7 +476,7 @@ internal sealed class IssuesService(
     {
         try
         {
-            var issue = await reader.FindHandleableAsync(issueId, viewer, ct);
+            var issue = await FindHandleableAsync(issueId, viewer, ct);
             if (issue is null)
             {
                 logger.LogWarning("Issue {IssueId} not found during {Operation:l}", issueId, operation);
@@ -510,23 +492,6 @@ internal sealed class IssuesService(
         }
     }
 
-    public Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default) =>
-        reader.GetActionableCountForViewerAsync(viewer, ct);
-
-    public Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(CancellationToken ct = default) =>
-        reader.GetDistinctReportersAsync(ct);
-
-    public Task<int> PurgeExpiredAsync(CancellationToken ct = default) =>
-        lifecycle.PurgeExpiredAsync(ct);
-
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        await lifecycle.ContributeForUserAsync(await reader.UserIdsAsync(userId, ct), ct);
-
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => IssueDataLifecycle.ErasureDeclaration;
-
-    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
-        lifecycle.EraseForUserAsync(userId, ct);
-
     private async Task LogAuditAsync(
         AuditActionDefinition action, Guid issueId, Guid? actorUserId, string description)
     {
@@ -540,5 +505,566 @@ internal sealed class IssuesService(
         }
     }
 
+    internal const string Issues = "Issues";
+    internal const string IssueComments = "IssueComments";
 
+    /// <summary>Six months after a terminal state, in days so the cutoff is a simple <see cref="Duration"/>.</summary>
+    private static readonly Duration RetentionPeriod = Duration.FromDays(180);
+
+    public async Task<int> PurgeExpiredAsync(CancellationToken ct = default)
+    {
+        var cutoff = clock.GetCurrentInstant() - RetentionPeriod;
+
+        var expired = await repo.GetExpiredTerminalAsync(cutoff, ct);
+        if (expired.Count == 0) return 0;
+
+        try
+        {
+            var deleted = await repo.DeleteByIdsAsync(expired.Select(issue => issue.Id).ToList(), ct);
+            logger.LogInformation(
+                "PurgeExpiredAsync: deleted {Count} issues older than {Cutoff} (retention {Days}d)",
+                deleted, cutoff, RetentionPeriod.Days);
+            return deleted;
+        }
+        finally
+        {
+            await DeleteScreenshotsAsync(expired);
+        }
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
+        await ContributeForUserIdsAsync(await UserIdsAsync(userId, ct), ct);
+
+    private async Task<IReadOnlyList<UserDataSlice>> ContributeForUserIdsAsync(IReadOnlyList<Guid> resolvedUserIds, CancellationToken ct)
+    {
+        var userIds = resolvedUserIds.ToHashSet();
+        var issues = new List<Issue>();
+        foreach (var id in userIds)
+            issues.AddRange(await repo.GetForUserExportAsync(id, ct));
+        var distinctIssues = issues.DistinctBy(i => i.Id).ToList();
+        var shaped = distinctIssues.Where(i => userIds.Contains(i.ReporterUserId)).Select(i => new
+        {
+            i.Title,
+            i.Description,
+            i.Category,
+            i.Section,
+            i.Status,
+            i.PageUrl,
+            i.UserAgent,
+            i.AdditionalContext,
+            CreatedAt = i.CreatedAt.ToIso8601(),
+            ResolvedAt = i.ResolvedAt.ToIso8601(),
+            Comments = i.Comments.OrderBy(c => c.CreatedAt).Select(c => new
+            {
+                c.Content,
+                IsFromUser = c.SenderUserId is { } senderId && userIds.Contains(senderId),
+                CreatedAt = c.CreatedAt.ToIso8601()
+            })
+        }).ToList();
+
+        var comments = distinctIssues
+            .Where(i => !userIds.Contains(i.ReporterUserId))
+            .SelectMany(i => i.Comments)
+            .Where(c => c.SenderUserId is { } senderId && userIds.Contains(senderId))
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new
+            {
+                c.IssueId,
+                c.Content,
+                CreatedAt = c.CreatedAt.ToIso8601()
+            }).ToList();
+
+        return [new UserDataSlice(Issues, shaped), new UserDataSlice(IssueComments, comments)];
+    }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [Issues] = null, // Own issues, comments and screenshots are deleted outright.
+            [IssueComments] =
+                "Partially retained: comments on other people's issues remain as that issue's content, " +
+                "with authorship detached (SenderUserId nulled), per GDPR Art. 17(3)(b)."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    /// <summary>Reported issues and their free text are hard-deleted; triage links elsewhere are detached.</summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var ownIssues = await repo.GetForUserExportAsync(userId, ct);
+        var screenshotKeys = ownIssues.Where(i => i.ReporterUserId == userId)
+            .Select(i => i.ScreenshotStoragePath).OfType<string>().Distinct(StringComparer.Ordinal);
+        ct = CancellationToken.None;
+        foreach (var key in screenshotKeys)
+            await fileStorage.DeleteAsync(key, ct);
+
+        await repo.EraseForUserAsync(userId, ct);
+    }
+
+    /// <summary>
+    /// Best-effort cleanup of pre-read screenshots whose issue rows are confirmed deleted.
+    /// </summary>
+    private async Task DeleteScreenshotsAsync(IReadOnlyList<Issue> issues)
+    {
+        foreach (var issue in issues)
+        {
+            if (issue.ScreenshotStoragePath is not { } key) continue;
+            try
+            {
+                if (await repo.GetByIdAsync(issue.Id, CancellationToken.None) is not null) continue;
+                await fileStorage.DeleteAsync(key, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to verify or delete issue screenshot {Key}", key);
+            }
+        }
+    }
+
+    private static readonly ResourceManager NoticeResources = new(typeof(IssuesResource));
+
+    internal async Task DispatchCommentNotificationsAsync(
+        Issue issue, IssueComment comment, bool senderIsReporter, CancellationToken ct)
+    {
+        var link = $"/Issues/{issue.Id}";
+        var recipients = new HashSet<Guid>();
+
+        if (senderIsReporter)
+        {
+            recipients.UnionWith(await QueueHandlerIdsAsync(issue.Section, ct));
+            if (comment.SenderUserId is { } senderId) recipients.Remove(senderId);
+            if (issue.AssigneeUserId is { } aid && aid != comment.SenderUserId)
+                recipients.Add(aid);
+        }
+        else
+        {
+            if (issue.ReporterUserId != comment.SenderUserId)
+                recipients.Add(issue.ReporterUserId);
+            if (issue.AssigneeUserId is { } aid && aid != comment.SenderUserId)
+                recipients.Add(aid);
+
+            await SendCommentEmailAsync(issue, comment, ct);
+        }
+
+        try
+        {
+            await SendLocalizedNotificationAsync(
+                IssuesNotificationSources.IssueComment,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                recipients.ToList(),
+                culture => (Notice(culture, "Issue_Notice_CommentTitle", issue.Title), comment.Content),
+                link, comment.SenderUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to dispatch IssueComment notifications for issue {IssueId}",
+                issue.Id);
+        }
+    }
+
+    private async Task SendCommentEmailAsync(Issue issue, IssueComment comment, CancellationToken ct)
+    {
+        try
+        {
+            var reporter = await users.GetUserInfoAsync(issue.ReporterUserId, ct);
+            var to = reporter?.Email;
+
+            if (reporter is not null &&
+                !string.IsNullOrWhiteSpace(to))
+            {
+                var language = reporter.PreferredLanguage;
+                await email.SendAsync(emailMessages.IssueComment(
+                    reporter.Id,
+                    to,
+                    reporter.BurnerName,
+                    issue.Title,
+                    comment.Content,
+                    $"/Issues/{issue.Id}",
+                    language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode),
+                    ct);
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Skipping issue comment email for issue {IssueId} — reporter {UserId} has no effective email",
+                    issue.Id, issue.ReporterUserId);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Issue comment {CommentId} saved but its reporter email failed for issue {IssueId}",
+                comment.Id, issue.Id);
+        }
+    }
+
+    internal async Task DispatchStatusChangedNotificationAsync(
+        Issue issue, IssueStatus oldStatus, IssueStatus newStatus,
+        Guid? actorUserId, CancellationToken ct)
+    {
+        // Both must differ from the actor.
+        var recipients = new HashSet<Guid>();
+        if (issue.ReporterUserId != actorUserId) recipients.Add(issue.ReporterUserId);
+        if (issue.AssigneeUserId is { } aid && aid != actorUserId) recipients.Add(aid);
+        try
+        {
+            await SendLocalizedNotificationAsync(
+                IssuesNotificationSources.IssueStatusChanged,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                recipients.ToList(),
+                culture => (
+                    Notice(culture, "Issue_Notice_StatusChangedTitle", issue.Title),
+                    Notice(culture, "Issue_Notice_StatusChangedBody",
+                        Notice(culture, $"Enum_IssueStatus_{oldStatus}"),
+                        Notice(culture, $"Enum_IssueStatus_{newStatus}"))),
+                $"/Issues/{issue.Id}", actorUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to dispatch IssueStatusChanged notification for issue {IssueId}",
+                issue.Id);
+        }
+    }
+
+    /// <summary>Admins when no role owns the queue.</summary>
+    private async Task<HashSet<Guid>> QueueHandlerIdsAsync(string? section, CancellationToken ct)
+    {
+        var queueRoles = routing.RolesFor(section);
+        IEnumerable<string> notified = queueRoles.Count > 0 ? queueRoles : [RoleNames.Admin];
+        var ids = new HashSet<Guid>();
+        foreach (var role in notified)
+        {
+            try
+            {
+                ids.UnionWith(await roles.GetActiveUserIdsInRoleAsync(role, ct));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to resolve issue notice recipients for queue {Section} role {Role}",
+                    section ?? "(Admin)", role);
+            }
+        }
+        return ids;
+    }
+
+    internal async Task DispatchSubmittedNotificationAsync(Issue issue, CancellationToken ct)
+    {
+        var recipients = await QueueHandlerIdsAsync(issue.Section, ct);
+        recipients.Remove(issue.ReporterUserId);
+
+        if (recipients.Count == 0) return;
+
+        try
+        {
+            await SendLocalizedNotificationAsync(
+                IssuesNotificationSources.IssueSubmitted,
+                NotificationClass.Actionable,
+                NotificationPriority.Normal,
+                recipients.ToList(),
+                culture => (Notice(culture, "Issue_Notice_SubmittedTitle", issue.Title), issue.Description),
+                $"/Issues/{issue.Id}", issue.ReporterUserId, ct, issue.Id.ToString());
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to dispatch IssueSubmitted notification for issue {IssueId}",
+                issue.Id);
+        }
+    }
+
+    internal async Task ResolveSubmittedNotificationsAsync(
+        Issue issue, Guid? actorUserId, CancellationToken ct)
+    {
+        try
+        {
+            await notificationInbox.ResolveBySourceKeyAsync(
+                IssuesNotificationSources.IssueSubmitted, issue.Id.ToString(), actorUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to resolve IssueSubmitted notifications for issue {IssueId}",
+                issue.Id);
+        }
+    }
+
+    internal async Task DispatchAssignedNotificationAsync(
+        Issue issue, Guid newAssigneeUserId, Guid? actorUserId, CancellationToken ct)
+    {
+        if (newAssigneeUserId == actorUserId) return;
+
+        try
+        {
+            await SendLocalizedNotificationAsync(
+                IssuesNotificationSources.IssueAssigned,
+                NotificationClass.Actionable,
+                NotificationPriority.Normal,
+                [newAssigneeUserId],
+                culture => (Notice(culture, "Issue_Notice_AssignedTitle", issue.Title), issue.Description),
+                $"/Issues/{issue.Id}", actorUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to dispatch IssueAssigned notification for issue {IssueId}",
+                issue.Id);
+        }
+    }
+
+    private static string Notice(CultureInfo culture, string key, params object[] arguments) =>
+        string.Format(culture, NoticeResources.GetString(key, culture)!, arguments);
+
+    private async Task SendLocalizedNotificationAsync(
+        NotificationSourceDefinition source,
+        NotificationClass notificationClass,
+        NotificationPriority priority,
+        IReadOnlyList<Guid> recipients,
+        Func<CultureInfo, (string Title, string? Body)> content,
+        string actionUrl,
+        Guid? excludeUserId,
+        CancellationToken ct,
+        string? sourceKey = null)
+    {
+        if (recipients.Count == 0) return;
+        var lookupIds = recipients.ToHashSet();
+        if (excludeUserId is { } actorId) lookupIds.Add(actorId);
+        var people = await users.GetUserInfosAsync(lookupIds, ct);
+        var excludedId = excludeUserId is { } excluded
+            ? people.GetValueOrDefault(excluded)?.Id ?? excluded
+            : (Guid?)null;
+        var targets = recipients.Select(id =>
+            {
+                var info = people.GetValueOrDefault(id);
+                return (Id: info?.Id ?? id, Language: info?.PreferredLanguage);
+            })
+            .Where(target => target.Id != excludedId)
+            .DistinctBy(target => target.Id);
+        foreach (var group in targets.GroupBy(
+                     target => target.Language.IsSupportedCultureCode() ? target.Language! : "en",
+                     StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var culture = CultureInfo.GetCultureInfo(group.Key);
+                var (title, body) = content(culture);
+                await notifications.SendAsync(
+                    source, notificationClass, priority, title, group.Select(target => target.Id).ToList(), body,
+                    actionUrl: actionUrl,
+                    actionLabel: Notice(culture, "Issue_Notice_Open"),
+                    sourceKey: sourceKey,
+                    cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispatch {Source} issue notices for language {Language}", source, group.Key);
+            }
+        }
+    }
+
+    public async Task<IssueDetail?> GetIssueByIdAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
+    {
+        var issue = await repo.GetByIdAsync(id, ct);
+        return issue is null || !await CanSeeAsync(issue, viewer, ct) ? null : MapDetail(issue);
+    }
+
+    public async Task<IssueScreenshot?> GetScreenshotAsync(Guid id, IssueViewer viewer, CancellationToken ct = default)
+    {
+        var issue = await repo.GetByIdAsync(id, ct);
+        if (issue is null || !await CanSeeAsync(issue, viewer, ct) || issue.ScreenshotStoragePath is not { } key)
+            return null;
+
+        var content = await fileStorage.TryReadAsync(key, ct);
+        return content is null ? null : new IssueScreenshot(content, issue.ScreenshotContentType ?? "application/octet-stream");
+    }
+
+    internal bool CanHandle(Issue issue, IssueViewer viewer) =>
+        routing.CanHandle(issue.Section, viewer.Roles);
+
+    /// <summary>The same test the queue applies row by row: a handler, or the reporter.</summary>
+    internal async Task<bool> CanSeeAsync(Issue issue, IssueViewer viewer, CancellationToken ct) =>
+        CanHandle(issue, viewer) || await IsReporterAsync(issue.ReporterUserId, viewer.UserId, ct);
+
+    internal async Task<IReadOnlyList<Guid>> UserIdsAsync(Guid userId, CancellationToken ct) =>
+        (await users.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
+
+    internal async Task<bool> IsReporterAsync(Guid reporterId, Guid userId, CancellationToken ct) =>
+        reporterId == userId || (await UserIdsAsync(userId, ct)).Contains(reporterId);
+
+    /// <summary>
+    /// Out of reach and gone are the same answer, so an id cannot probe for issues the caller's queue would never list.
+    /// </summary>
+    internal async Task<Issue?> FindHandleableAsync(Guid issueId, IssueViewer viewer, CancellationToken ct)
+    {
+        var issue = await repo.GetByIdAsync(issueId, ct);
+        return issue is not null && CanHandle(issue, viewer)
+            ? issue
+            : null;
+    }
+
+    private static IssueDetail MapDetail(Issue issue) => new(
+        issue.Id,
+        issue.Status,
+        issue.Category,
+        issue.Section,
+        issue.Title,
+        issue.Description,
+        issue.PageUrl,
+        issue.UserAgent,
+        issue.AdditionalContext,
+        issue.ScreenshotStoragePath,
+        issue.ReporterUserId,
+        issue.AssigneeUserId,
+        issue.ResolvedByUserId,
+        issue.GitHubIssueNumber,
+        issue.DueDate,
+        issue.CreatedAt,
+        issue.UpdatedAt,
+        issue.ResolvedAt,
+        issue.Comments.Count);
+
+    public async Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
+        IssueListFilter filter,
+        IssueViewer viewer,
+        CancellationToken ct = default)
+    {
+        IReadOnlySet<string>? sectionFilter = null;
+        IReadOnlyCollection<Guid>? reporterFallback = null;
+
+        if (!viewer.IsAdmin)
+        {
+            sectionFilter = routing.SectionsForRoles(viewer.Roles);
+            reporterFallback = await UserIdsAsync(viewer.UserId, ct);
+        }
+
+        var reporterFilter = filter.ReporterUserId is { } reporterId
+            ? await UserIdsAsync(reporterId, ct) : null;
+        var assigneeFilter = filter.AssigneeUserId is { } assigneeId
+            ? await UserIdsAsync(assigneeId, ct) : null;
+        var issues = await repo.GetListAsync(filter, sectionFilter, reporterFallback, reporterFilter, assigneeFilter, ct);
+        return await BuildListSnapshotsAsync(issues, ct);
+    }
+
+    private async Task<IReadOnlyList<IssueListSnapshot>> BuildListSnapshotsAsync(
+        IReadOnlyList<Issue> issues, CancellationToken ct)
+    {
+        if (issues.Count == 0) return [];
+
+        var userIds = new HashSet<Guid>();
+        foreach (var issue in issues)
+        {
+            userIds.Add(issue.ReporterUserId);
+            if (issue.AssigneeUserId.HasValue)
+                userIds.Add(issue.AssigneeUserId.Value);
+        }
+
+        var users1 = await users.GetUserInfosAsync(userIds, ct);
+        return issues.Select(issue => new IssueListSnapshot(
+            issue.Id,
+            issue.Status,
+            issue.Category,
+            issue.Section,
+            issue.Title,
+            issue.Description,
+            issue.PageUrl,
+            issue.UserAgent,
+            issue.AdditionalContext,
+            issue.ReporterUserId,
+            users1.TryGetValue(issue.ReporterUserId, out var reporter) ? reporter.BurnerName : null,
+            reporter?.Email,
+            reporter?.PreferredLanguage,
+            issue.CreatedAt,
+            issue.UpdatedAt,
+            issue.ResolvedAt,
+            issue.DueDate,
+            issue.ScreenshotStoragePath,
+            issue.Comments.Count,
+            issue.AssigneeUserId,
+            issue.AssigneeUserId.HasValue && users1.TryGetValue(issue.AssigneeUserId.Value, out var assignee)
+                ? assignee.BurnerName
+                : null,
+            issue.GitHubIssueNumber)).ToList();
+    }
+
+    public async Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
+        Guid issueId, IssueViewer viewer, CancellationToken ct = default)
+    {
+        var issue = await repo.GetByIdAsync(issueId, ct);
+        if (issue is null || !await CanSeeAsync(issue, viewer, ct))
+            throw new InvalidOperationException($"Issue {issueId} not found");
+
+        // IssueCreated is written only by the machine path, where filer and reporter can differ, so it is the one
+        // place the thread can say who actually filed it.
+        var auditEntries = await auditViewer.GetFilteredAsync(
+            entityType: AuditEntityTypes.Issue,
+            entityId: issueId,
+            userId: null,
+            actions:
+            [
+                IssuesAuditActions.IssueCreated.Name,
+                IssuesAuditActions.IssueStatusChanged.Name,
+                IssuesAuditActions.IssueAssigneeChanged.Name,
+                IssuesAuditActions.IssueSectionChanged.Name,
+                IssuesAuditActions.IssueGitHubLinked.Name
+            ],
+            limit: int.MaxValue,
+            ct: ct);
+
+        var actorIds = auditEntries
+            .Where(a => a.ActorUserId.HasValue)
+            .Select(a => a.ActorUserId!.Value)
+            .Concat(issue.Comments.Where(c => c.SenderUserId.HasValue).Select(c => c.SenderUserId!.Value))
+            .Distinct()
+            .ToList();
+        IReadOnlyDictionary<Guid, UserInfo> actorUsers = actorIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await users.GetUserInfosAsync(actorIds, ct);
+
+        var reporterIds = await UserIdsAsync(issue.ReporterUserId, ct);
+        var commentEvents = issue.Comments.Select(c => (IssueThreadEvent)new IssueCommentEvent(
+            c.Id,
+            c.CreatedAt,
+            c.SenderUserId,
+            c.SenderUserId.HasValue && actorUsers.TryGetValue(c.SenderUserId.Value, out var sender)
+                ? sender.BurnerName
+                : null,
+            ActorIsReporter: c.SenderUserId is { } senderId && reporterIds.Contains(senderId),
+            c.Content));
+
+        var auditEvents = auditEntries.Select(a => (IssueThreadEvent)new IssueAuditEvent(
+            a.OccurredAt,
+            a.ActorUserId,
+            a.ActorUserId.HasValue && actorUsers.TryGetValue(a.ActorUserId.Value, out var u)
+                ? u.BurnerName
+                : null,
+            a.Action.Name,
+            a.Description));
+
+        return commentEvents
+            .Concat(auditEvents)
+            .OrderBy(e => e.At)
+            .ToList();
+    }
+
+    public async Task<int> GetActionableCountForViewerAsync(IssueViewer viewer, CancellationToken ct = default) =>
+        viewer.IsAdmin
+            ? await repo.CountActionableAsync(null, null, ct)
+            : await repo.CountActionableAsync(routing.SectionsForRoles(viewer.Roles), await UserIdsAsync(viewer.UserId, ct), ct);
+
+    public async Task<IReadOnlyList<DistinctReporterRow>> GetDistinctReportersAsync(
+        CancellationToken ct = default)
+    {
+        var rows = await repo.GetReporterCountsAsync(ct);
+        if (rows.Count == 0) return [];
+
+        var users1 = await users.GetUserInfosAsync(rows.Select(r => r.UserId), ct);
+        return rows
+            .Select(r => new DistinctReporterRow(
+                r.UserId,
+                users1.TryGetValue(r.UserId, out var u) ? u.BurnerName : r.UserId.ToString(),
+                r.Count))
+            .ToList();
+    }
 }

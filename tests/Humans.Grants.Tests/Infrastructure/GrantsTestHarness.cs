@@ -68,7 +68,7 @@ public abstract class GrantsTestHarness : IDisposable
 
     /// <summary>The service over the real repository and the substitutes above.</summary>
     private protected GrantService NewService() => new(
-        new GrantRepository(DbFactory), Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
+        FixedOrgTimeZone.Madrid, new GrantRepository(DbFactory), Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected GrantsDbContext OpenContext() => DbFactory.CreateDbContext();

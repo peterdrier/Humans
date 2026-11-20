@@ -798,4 +798,7 @@
   <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
     <value>Selecciona etiquetes que coincideixin amb el treball que t'agrada. Els torns coincidents es ressaltaran amb una estrella.</value>
   </data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Junta</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminacions de comptes pendents</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>administradors</value></data>
 </root>

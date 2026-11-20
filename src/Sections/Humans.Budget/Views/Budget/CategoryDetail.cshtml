@@ -3,8 +3,8 @@
     ViewData["Title"] = Localizer["Budget_TitleYear", Model.Category.Name].Value;
     var category = Model.Category;
     var group = category.BudgetGroup;
-    var lineItemTotal = category.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
-    var unallocated = category.AllocatedAmount - lineItemTotal;
+    var lineItemTotal = category.LineItemTotal;
+    var unallocated = category.UnallocatedAmount;
 
     var vatProjections = VatProjection.ForLineItems(category.LineItems);
 }

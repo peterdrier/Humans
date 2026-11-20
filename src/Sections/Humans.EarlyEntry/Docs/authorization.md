@@ -2,4 +2,4 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `EarlyEntryRosterController` | Class | `Admin, Board, ShiftsNoInfo, ShiftsAdmin` | `ShiftsPolicies.Read` |
+| `EarlyEntryRosterController` | Class | `Admin, Board, EarlyEntryAdmin` | `EarlyEntryPolicies.Roster` |

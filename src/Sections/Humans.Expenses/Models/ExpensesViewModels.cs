@@ -18,7 +18,7 @@ internal sealed class ExpensesIndexViewModel
 
     /// <summary>Soonest deadline first.</summary>
     public IReadOnlyList<GrantOption> OpenGrants { get; init; } = [];
-    /// <summary>Europe/Madrid, the zone claim deadlines are read in.</summary>
+    /// <summary>The org time zone, the zone claim deadlines are read in.</summary>
     public LocalDate Today { get; init; }
 
     /// <summary>Null both when unbound and when bound with no cached activity; <see cref="BoundAccountNum"/> tells

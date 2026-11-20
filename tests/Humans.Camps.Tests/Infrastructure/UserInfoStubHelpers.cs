@@ -29,10 +29,10 @@ internal static class UserInfoStubHelpers
     public static IUserService StubGetUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
     {
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var ids = callInfo.Arg<IEnumerable<Guid>>().ToList();
                 if (ids.Count == 0)
                     return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                         new Dictionary<Guid, UserInfo>());
@@ -85,10 +85,10 @@ internal static class UserInfoStubHelpers
     public static IUserService StubGetUserInfosFromContext(this IUserService userService, UsersDbContext dbContext)
     {
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var ids = callInfo.Arg<IEnumerable<Guid>>().ToList();
                 if (ids.Count == 0)
                     return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                         new Dictionary<Guid, UserInfo>());

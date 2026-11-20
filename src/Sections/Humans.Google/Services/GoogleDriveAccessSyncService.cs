@@ -207,7 +207,7 @@ internal sealed class GoogleDriveAccessSyncService(
         // its recorded Drive address still attributes it.
         foreach (var (userId, drive) in await workspaceIdentities.GetDriveEmailsAsync(ct))
             owners.TryAdd(drive.DriveEmail, userId);
-        var users = await userService.GetUserInfosAsync(owners.Values.Distinct().ToList(), ct);
+        var users = await userService.GetUserInfosAsync(owners.Values, ct);
         for (var i = 0; i < members.Count; i++)
         {
             var member = members[i];
@@ -553,6 +553,4 @@ internal sealed class GoogleDriveAccessSyncService(
             logger.LogError(ex, "Failed to enqueue Drive removal notification for {Email} from {FolderId}", email, claim.FolderId);
         }
     }
-
-
 }

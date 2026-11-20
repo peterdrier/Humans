@@ -141,8 +141,10 @@ public class GoogleAdminServiceTests
         args[3].Should().BeSameAs(callerAborted ? null : failure);
     }
 
-    [HumansFact]
-    public async Task GetWorkspaceAccountListAsync_ReturnsAccountsWithMatchedUsers()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task GetWorkspaceAccountListAsync_ReturnsAccountsWithMatchedUsers(bool isPrimary)
     {
         var userId = Guid.NewGuid();
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
@@ -160,13 +162,13 @@ public class GoogleAdminServiceTests
                 new UserEmailMatch(
                     "alice@nobodies.team",
                     userId,
-                    IsPrimary: true,
+                    IsPrimary: isPrimary,
                     IsVerified: true,
                     UpdatedAt: SystemClock.Instance.GetCurrentInstant())
             ]);
 
         var testUser = new User { Id = userId, DisplayName = "Test User" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(testUser) }));
 
@@ -185,7 +187,8 @@ public class GoogleAdminServiceTests
         var alice = result.Accounts.Single(a =>
             string.Equals(a.PrimaryEmail, "alice@nobodies.team", StringComparison.OrdinalIgnoreCase));
         alice.MatchedUserId.Should().Be(userId);
-        alice.IsUsedAsPrimary.Should().BeTrue();
+        alice.IsUsedAsPrimary.Should().Be(isPrimary);
+        result.NotPrimaryCount.Should().Be(isPrimary ? 0 : 1);
         alice.RecoveryEmail.Should().Be("alice.personal@example.com");
 
         var bob = result.Accounts.Single(a =>
@@ -243,7 +246,7 @@ public class GoogleAdminServiceTests
             ]);
 
         var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [verifiedUserId] = UserInfoFixtures.FromUser(verifiedUser) }));
 
@@ -292,8 +295,7 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ProvisionAccountAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
-                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
+            .Returns(Task.CompletedTask);
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             prefix, "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
@@ -327,8 +329,7 @@ public class GoogleAdminServiceTests
             {
                 if (workspaceFails) throw new InvalidOperationException("Workspace unavailable");
                 issuedPassword = call.ArgAt<string>(3);
-                return new WorkspaceUserAccount("person@nobodies.team", "Person", "Test", false,
-                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
+                return Task.CompletedTask;
             });
         _auditLogService.LogAsync(GoogleAuditActions.WorkspaceAccountProvisioned,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),

@@ -55,8 +55,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             repo, AuditLog, Substitute.For<Humans.Teams.Contracts.ISystemTeamSync>(),
             new InMemoryFileStorage(), Notifier,
             new Lazy<ICampRoleService>(() => Substitute.For<ICampRoleService>()),
-            new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
-                Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
+            new Lazy<IEnumerable<ICampDeletionListener>>(() => []),
             Substitute.For<IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
@@ -854,7 +853,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         _innerSubstitute.UploadImageAsync(
                 Arg.Any<Guid>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<long>(), actorUserId: TestActorId, Arg.Any<CancellationToken>())
-            .Returns(new CampImageUploadResult(true, null, null));
+            .Returns(CampUpdateResult.Success());
         _innerSubstitute.LeaveCampAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(CampMembershipMutationResult.Success());
         _innerSubstitute.CreateCampAsync(

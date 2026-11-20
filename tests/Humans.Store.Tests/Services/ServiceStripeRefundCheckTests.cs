@@ -31,9 +31,9 @@ public class ServiceStripeRefundCheckTests
     {
         var settings = Substitute.For<ISettingsService>();
         settings.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
-        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<ICampService>(), Substitute.For<ITeamService>(),
-            new FakeClock(Instant.FromUtc(2026, 9, 2, 12, 0)), settings, _stripe, Substitute.For<IHoldedService>(),
-            Substitute.For<IHoldedWrite>(), NullLogger<Service>.Instance);
+        _service = new Service(
+            _repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<ICampService>(), Substitute.For<ITeamService>(), new FakeClock(Instant.FromUtc(2026, 9, 2, 12, 0)), settings, _stripe,
+            new CatalogService(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 9, 2, 12, 0)), Substitute.For<IHoldedService>(), NullLogger<CatalogService>.Instance), NullLogger<Service>.Instance);
     }
 
     private Order OrderWith(params Payment[] payments)
@@ -97,7 +97,7 @@ public class ServiceStripeRefundCheckTests
             p.AmountEur == -10m && p.Status == PaymentStatus.Pending && p.ExternalRef == "re_wait"),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment,
-            Arg.Any<Guid>(), Arg.Is<string>(s => s.Contains("re_new")), actor, order.Id, AuditEntityTypes.Order);
+            Arg.Any<Guid>(), Arg.Is<string>(s => s.Contains("re_new") && !s.Contains(order.Id.ToString())), actor, order.Id, AuditEntityTypes.Order);
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
     }
 

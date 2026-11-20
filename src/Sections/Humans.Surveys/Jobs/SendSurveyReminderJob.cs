@@ -6,7 +6,7 @@ namespace Humans.Surveys.Jobs;
 
 /// <summary>Daily: the one-time 7-day reminder to invitees who haven't completed.</summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SendSurveyReminderJob(
+internal sealed class SendSurveyReminderJob(
     ISurveyReminderSender surveyReminders,
     ILogger<SendSurveyReminderJob> logger) : IRecurringJob
 {

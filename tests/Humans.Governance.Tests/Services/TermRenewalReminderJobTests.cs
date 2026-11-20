@@ -38,7 +38,7 @@ public sealed class TermRenewalReminderJobTests
                 .Returns(async Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> (_) =>
                 { await shutdown.CancelAsync(); throw failure; });
         else
-            run.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
+            run.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), shutdown.Token)
                 .Returns(async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> (_) =>
                 { await shutdown.CancelAsync(); throw failure; });
 
@@ -136,7 +136,7 @@ public sealed class TermRenewalReminderJobTests
                 .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([First, Next]));
             Applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
-            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<Guid, UserInfo>
                 {
                     [First.UserId] = UserInfoFixtures.FromUser(new User { Id = First.UserId, BurnerName = "First", Email = "first@example.com" }),
@@ -161,7 +161,7 @@ public sealed class TermRenewalReminderJobTests
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [candidate.UserId] = UserInfoFixtures.FromUser(new User { Id = liveId, BurnerName = "Member", Email = "member@example.org" })
@@ -199,7 +199,7 @@ public sealed class TermRenewalReminderJobTests
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
         var member = UserInfoFixtures.FromUser(new User { Id = candidate.UserId, BurnerName = "Member", Email = address });
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [candidate.UserId] = member });
         var job = new TermRenewalReminderJob(applications, users, email, TestGovernanceEmails.Create(),
             notifications, Substitute.For<IHumansMetrics>(), NullLogger<TermRenewalReminderJob>.Instance, clock);
@@ -210,7 +210,7 @@ public sealed class TermRenewalReminderJobTests
         await applications.DidNotReceive().MarkRenewalReminderSentAsync(
             candidate.Id, Arg.Any<Instant>(), Arg.Any<CancellationToken>());
 
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [candidate.UserId] = member with { IdentityEmailColumn = "member@example.org" } });
         await job.ExecuteAsync(CancellationToken.None);
 
@@ -238,7 +238,7 @@ public sealed class TermRenewalReminderJobTests
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([first, next]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
                 [first.UserId] = UserInfoFixtures.FromUser(new User { Id = first.UserId, BurnerName = "First", Email = "first@example.com" }),
@@ -320,7 +320,7 @@ public sealed class TermRenewalReminderJobTests
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlySet<(Guid UserId, MembershipTier Tier)>>(new HashSet<(Guid, MembershipTier)>()));
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
                 [userId] = UserInfoFixtures.FromUser(new User { Id = userId, BurnerName = "Applicant", Email = "applicant@example.com", PreferredLanguage = language })

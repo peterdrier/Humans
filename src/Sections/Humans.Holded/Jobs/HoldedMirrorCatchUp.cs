@@ -1,5 +1,6 @@
 using Hangfire;
 using Humans.Holded.Contracts;
+using Humans.Holded.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -38,7 +39,7 @@ internal sealed class HoldedMirrorCatchUp(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Holded startup catch-up skipped; scheduled and manual sync remain available");
+            logger.LogError(ex, "Holded startup catch-up skipped; scheduled and manual sync remain available");
         }
     }
 

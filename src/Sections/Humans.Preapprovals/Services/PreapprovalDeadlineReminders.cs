@@ -2,7 +2,6 @@ using System.Transactions;
 using Humans.Base.Interfaces;
 using Humans.Preapprovals.Data;
 using static Humans.Preapprovals.Services.PreapprovalService;
-using static Humans.Preapprovals.Services.PreapprovalReader;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Notifications.Contracts;
@@ -14,6 +13,7 @@ namespace Humans.Preapprovals.Services;
 
 /// <summary>Never changes a grant or a program: a passed deadline is left exactly as the people involved left it.</summary>
 internal sealed class PreapprovalDeadlineReminders(
+    IOrgTimeZone orgTimeZone,
     IPreapprovalRepository repository,
     PreapprovalNotices notices,
     IAuditLogService auditLog,
@@ -26,7 +26,7 @@ internal sealed class PreapprovalDeadlineReminders(
 
     public async Task SendDeadlineRemindersAsync(CancellationToken ct = default)
     {
-        var today = clock.GetCurrentInstant().InZone(MadridZone).Date;
+        var today = clock.TodayIn(orgTimeZone.Zone);
         var open = await repository.GetGrantsByStatusAsync(GrantStatus.Open, ct);
         var due = open
             .Select(g => (Grant: g, Kind: ReminderKindFor(today, g.Program.ClaimBy)))

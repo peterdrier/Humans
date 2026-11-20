@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Users.Contracts;
 using Humans.Users.Models;
@@ -13,7 +14,7 @@ internal sealed class UsersGalleryViewComponent(IUserService userService) : View
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+        if (UserClaimsPrincipal.GetUserId() is not { } currentUserId)
             return Content(string.Empty);
 
         var info = await userService.GetUserInfoAsync(currentUserId, HttpContext.RequestAborted);

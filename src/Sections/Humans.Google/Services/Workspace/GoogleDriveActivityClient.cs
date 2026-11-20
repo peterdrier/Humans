@@ -80,6 +80,7 @@ internal sealed class GoogleDriveActivityClient(
         ct.ThrowIfCancellationRequested();
         var activityService = await GetActivityServiceAsync(ct);
         string? pageToken = null;
+        var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -93,6 +94,10 @@ internal sealed class GoogleDriveActivityClient(
 
             var response = await QueryPageAsync(activityService, request, googleItemId, ct);
 
+            pageToken = response.NextPageToken;
+            if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                throw new InvalidOperationException("Google Drive Activity returned a repeated page token.");
+
             if (response.Activities is not null)
             {
                 foreach (var activity in response.Activities)
@@ -100,8 +105,6 @@ internal sealed class GoogleDriveActivityClient(
                     yield return Map(activity);
                 }
             }
-
-            pageToken = response.NextPageToken;
         } while (!string.IsNullOrEmpty(pageToken));
     }
 
@@ -154,17 +157,31 @@ internal sealed class GoogleDriveActivityClient(
             var directoryService = await GetDirectoryServiceAsync(ct);
             var userId = peopleId["people/".Length..];
             var user = await directoryService.Users.Get(userId).ExecuteAsync(ct);
-            return user?.PrimaryEmail;
+            if (string.IsNullOrWhiteSpace(user?.PrimaryEmail))
+            {
+                logger.LogWarning("Directory API returned no usable email address for {PeopleId}", peopleId);
+                return null;
+            }
+            return user.PrimaryEmail;
         }
-        catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
+        catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403 && !ct.IsCancellationRequested)
         {
-            logger.LogDebug("Directory API could not resolve {PeopleId} (HTTP {Code})",
-                peopleId, ex.Error.Code);
+            // External or deleted actors are routine here, not a problem worth a warning.
+            logger.LogDebug("Directory API could not resolve {PeopleId} (HTTP {Code})", peopleId, ex.Error.Code);
+            return null;
+        }
+        catch (global::Google.GoogleApiException ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Directory API could not resolve {PeopleId} (HTTP {Code}): {Reason}",
+                peopleId, ex.Error?.Code ?? (int)ex.HttpStatusCode, ex.Error?.Message ?? ex.Message);
             return null;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Error resolving {PeopleId} via Directory API", peopleId);
+            if (GoogleClientError.IsTransportError(ex) || ex is TimeoutException or OperationCanceledException)
+                logger.LogWarning("Error resolving {PeopleId} via Directory API: {Reason}", peopleId, ex.Message);
+            else
+                logger.LogError(ex, "Error resolving {PeopleId} via Directory API", peopleId);
             return null;
         }
     }

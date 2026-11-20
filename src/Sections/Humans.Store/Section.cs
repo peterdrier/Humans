@@ -40,7 +40,9 @@ public sealed class Section :
 
         services.AddSingleton<IStoreRepository, Repository>();
         services.AddScoped<Service>();
-        services.AddScoped<IStoreAccountingRead, StoreOrderReader>();
+        services.AddScoped<CatalogService>();
+        services.AddScoped<InvoiceService>();
+        services.AddScoped<IStoreAccountingRead>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<StoreTransferBooking>();
 
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();

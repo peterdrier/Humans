@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base;
@@ -23,6 +24,7 @@ using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.Shifts.ViewComponents;
+using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -50,6 +52,7 @@ public sealed class Section :
     ISectionPolicies,
     ISectionSettings,
     ISectionThingsToDo,
+    ITeamShiftsParts,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -82,6 +85,7 @@ public sealed class Section :
         services.AddKeyedScoped<ShiftSignupService>(inner);
         services.AddKeyedScoped<IShiftSignupService>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftSignupService>(k));
         services.AddKeyedScoped<IUserMerge>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftSignupService>(k));
+        services.AddKeyedScoped<IShiftRowView, ShiftViewService>(inner);
         // Read-only, so it needs no cache refresh.
         services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredKeyedService<ShiftSignupService>(inner));
 
@@ -94,6 +98,8 @@ public sealed class Section :
         services.AddSingleton<IShiftSignupService>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignups>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignupSeeding>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftService>());
@@ -115,24 +121,11 @@ public sealed class Section :
             sp.GetRequiredService<VolunteerTrackingExportService>());
         services.AddScoped<VolunteerTrackingXlsxBuilder>();
 
-        // Singleton decorator over a keyed-Scoped inner.
-        services.AddKeyedScoped<IShiftRowView, ShiftViewService>(CachingShiftViewService.InnerServiceKey);
-        services.AddSingleton<CachingShiftViewService>();
-        services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftViewService>());
-        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
-        // Settings fans out over this after an event-settings save; the same instance answers.
-        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingShiftViewService>());
-
-        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
-
-        // StartAsync is a no-op; hosted for symmetry with the sibling caches.
-        services.AddHostedService(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
         services.AddScoped<ShiftVolunteerSearchBuilder>();
 
-        // No cache of its own; invalidation rides on CachingShiftViewService.
         services.AddScoped<IWorkloadService, WorkloadService>();
 
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
@@ -258,6 +251,10 @@ public sealed class Section :
 
     Type IOnboardingShiftsStep.ShiftsList => typeof(OnboardingShiftsListViewComponent);
 
+    Type ITeamShiftsParts.Box => typeof(TeamShiftsBoxViewComponent);
+
+    Type ITeamShiftsParts.AdminRowCell => typeof(TeamAdminRowShiftsViewComponent);
+
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
         // DepartmentRead below additionally admits any team coordinator.
@@ -286,7 +283,7 @@ public sealed class Section :
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
     {
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+        if (user.GetUserId() is not { } userId
             || !await HasSignupsAsync(services, userId, ct))
         {
             return [];

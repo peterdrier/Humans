@@ -9,6 +9,12 @@ public interface IRoleAssignmentWrite : IApplicationService
         string? notes,
         CancellationToken ct = default);
 
+    /// <summary>Ends one active assignment, whatever its role: the caller checks the role first.</summary>
+    Task<RoleAssignmentResult> EndRoleAsync(
+        Guid assignmentId, Guid enderId,
+        string? notes,
+        CancellationToken ct = default);
+
     /// <summary>Stamps <c>ValidTo</c> = now on every active assignment. Returns how many it ended.</summary>
     Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default);
 }

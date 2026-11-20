@@ -73,12 +73,12 @@ public class FinanceControllerTests
     }
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, _holdedLedger, _expenses,
+        new(FixedOrgTimeZone.Madrid, _users, _finance, _connector, _holdedLedger, _expenses,
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
-            new FinanceOverviewService(_holdedLedger, _finance, _connector, _expenses, _budget,
+            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holdedLedger, _finance, _connector, _expenses, _budget,
                 new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
                 Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-                Substitute.For<Humans.Finance.Data.IHoldedRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+                Substitute.For<Humans.Finance.Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
                 SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(), SepaRunner,
             NullLogger<FinanceController>.Instance)
@@ -502,7 +502,7 @@ public class FinanceControllerTests
         new(num, name, balance, balance is { } b ? Math.Max(0m, -b) : 0m, [], OpenDocumentCount: openDocs);
 
     private void NameThem(params (Guid Id, string Burner)[] people) =>
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(people.ToDictionary(p => p.Id, p => MakeUserInfo(p.Id, p.Burner))
                 as IReadOnlyDictionary<Guid, UserInfo>);
 
@@ -520,7 +520,7 @@ public class FinanceControllerTests
     public async Task Creditors_PropagatesBrowserCancellationDuringMemberNameLookup()
     {
         Accounts([Row(40000001, "Ana", 0m, Bound(Ana, 40000001))]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -676,7 +676,7 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Creditors_UnnamedMember_FallsBackToTheirId()
     {
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>() as IReadOnlyDictionary<Guid, UserInfo>);
         Accounts([Row(40000002, "x", -1m, Bound(Ana, 40000002))]);
 
@@ -994,7 +994,7 @@ public class FinanceControllerTests
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
             null, [], null, null));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -1358,6 +1358,7 @@ public class FinanceControllerTests
         var urls = Substitute.For<IUrlHelperFactory>();
         urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
         builder.Services.AddSingleton(urls);
+        builder.Services.AddSingleton<Humans.Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;

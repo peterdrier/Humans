@@ -28,7 +28,7 @@
 else
 {
         Func<DayRosterRow, IHtmlContent> departsCell = @<text>@item.Trip.DepartureDate.ToInvariantDate() (@item.Trip.ExpectedDurationDays d)</text>;
-        Func<DayRosterRow, IHtmlContent> seatsCell = @<text>@(item.Trip.SeatsOffered - item.Trip.SeatsRemaining) / @item.Trip.SeatsOffered</text>;
+        Func<DayRosterRow, IHtmlContent> seatsCell = @<text>@item.Trip.SeatsAccepted / @item.Trip.SeatsOffered</text>;
         Func<DayRosterRow, IHtmlContent> acceptedRidersCell = @<text>
             @if (item.Riders.Count == 0)
             {
@@ -51,7 +51,7 @@ else
             .Template("Departs", departsCell, sortBy: r => r.Trip.DepartureDate)
             .Column("Status", r => r.Trip.Status, o => o.EnumBadge())
             .Human("Driver", r => r.Trip.UserId, HumanLink.Admin, HumanLayout.AvatarName)
-            .Template("Seats", seatsCell, sortBy: r => r.Trip.SeatsOffered - r.Trip.SeatsRemaining)
+            .Template("Seats", seatsCell, sortBy: r => r.Trip.SeatsAccepted)
             .Template("Accepted riders", acceptedRidersCell, sortBy: r => r.Riders.Count)
             .Css("align-middle")
             .Build();

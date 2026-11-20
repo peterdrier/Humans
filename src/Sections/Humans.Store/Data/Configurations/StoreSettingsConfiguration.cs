@@ -12,6 +12,7 @@ internal sealed class StoreSettingsConfiguration : IEntityTypeConfiguration<Stor
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedNever();
         b.Property(x => x.SimplifiedInvoiceThresholdEur).HasColumnType("numeric(12,2)");
+        b.Property(x => x.StripeGatewayTreasuryId).HasMaxLength(64);
         // No seed: the row is created on first save; until then the defaults apply.
     }
 }

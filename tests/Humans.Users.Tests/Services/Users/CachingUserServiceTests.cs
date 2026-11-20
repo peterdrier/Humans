@@ -233,16 +233,15 @@ public class CachingUserServiceTests
             new User { Id = userId, BurnerName = displayName, PreferredLanguage = "en" },
             userEmails: [],
             externalLogins: [],
-            profile: SampleProfile(userId, displayName),
+            profile: SampleProfile(userId),
             contactFields: [],
             profileLanguages: [],
             volunteerHistory: []);
 
-    private static Profile SampleProfile(Guid userId, string burnerName) => new()
+    private static Profile SampleProfile(Guid userId) => new()
     {
         Id = Guid.NewGuid(),
         UserId = userId,
-        BurnerName = burnerName,
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
@@ -258,7 +257,7 @@ public class CachingUserServiceTests
         user.FirstName = "Legal";
         user.LastName = "Name";
         user.State = suspend ? UserState.Active : UserState.Suspended;
-        var profile = SampleProfile(user.Id, "Before");
+        var profile = SampleProfile(user.Id);
         var original = UserInfoFactory.Create(user, [], [], profile, [], [], []);
         var options = new DbContextOptionsBuilder<UsersDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot()).Options;
@@ -655,9 +654,6 @@ public class CachingUserServiceTests
         {
             Id = profileId,
             UserId = userId,
-            BurnerName = "Octa",
-            FirstName = "Eight",
-            LastName = "Tables",
             DateOfBirth = new LocalDate(1990, 7, 4),
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
@@ -886,9 +882,6 @@ public class CachingUserServiceTests
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = burnerName ?? string.Empty,
-            FirstName = "First",
-            LastName = "Last",
             City = city,
             Bio = bio,
             Pronouns = pronouns,
@@ -1186,14 +1179,13 @@ public class CachingUserServiceTests
 
     // RefreshEntryAsync reloads via _inner.GetUserInfoAsync, so StubRefreshEntry overrides that return.
 
-    private static UserInfo UserInfoFor(Guid userId, Profile? profile) =>
+    private static UserInfo UserInfoFor(Guid userId, Profile? profile, string? burnerName, string? firstName) =>
         UserInfoFactory.Create(
             new User
             {
                 Id = userId,
-                BurnerName = profile?.BurnerName,
-                FirstName = profile?.FirstName,
-                LastName = profile?.LastName,
+                BurnerName = burnerName,
+                FirstName = firstName,
                 PreferredLanguage = "en",
             },
             userEmails: [],
@@ -1220,14 +1212,14 @@ public class CachingUserServiceTests
                 }
             ],
             externalLogins: [],
-            profile: SampleProfile(userId, "Alice"),
+            profile: SampleProfile(userId),
             contactFields: [],
             profileLanguages: [],
             volunteerHistory: []);
 
-    private void StubRefreshEntry(Guid userId, Profile? profile) =>
+    private void StubRefreshEntry(Guid userId, Profile? profile, string? burnerName = null, string? firstName = null) =>
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfoFor(userId, profile)));
+            .Returns(new ValueTask<UserInfo?>(UserInfoFor(userId, profile, burnerName, firstName)));
 
     [HumansFact]
     public async Task SaveProfileAsync_RefreshesProfileAndDisplayNameSlice()
@@ -1249,13 +1241,10 @@ public class CachingUserServiceTests
         {
             Id = profileId,
             UserId = userId,
-            BurnerName = "New Burner",
-            FirstName = "New",
-            LastName = "Human",
             ProfilePictureContentType = "image/png",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
-        });
+        }, burnerName: "New Burner");
 
         var result = await sut.SaveProfileAsync(
             userId,
@@ -1332,7 +1321,6 @@ public class CachingUserServiceTests
         {
             Id = profileId,
             UserId = userId,
-            BurnerName = "Alice",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         };
@@ -1371,7 +1359,6 @@ public class CachingUserServiceTests
         {
             Id = profileId,
             UserId = userId,
-            BurnerName = "Alice",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         };
@@ -1456,22 +1443,16 @@ public class CachingUserServiceTests
         {
             Id = Guid.NewGuid(),
             UserId = sourceUserId,
-            BurnerName = "",
-            FirstName = "Merged",
-            LastName = "User",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = updatedAt,
-        });
+        }, firstName: "Merged");
         StubRefreshEntry(targetUserId, new Profile
         {
             Id = Guid.NewGuid(),
             UserId = targetUserId,
-            BurnerName = "Target Burner",
-            FirstName = "Target",
-            LastName = "Human",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = updatedAt,
-        });
+        }, burnerName: "Target Burner");
 
         await sut.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), updatedAt, Xunit.TestContext.Current.CancellationToken);
 
@@ -1619,7 +1600,7 @@ public class CachingUserServiceTests
         };
         var info = UserInfoFactory.Create(
             user, userEmails: [], externalLogins: [],
-            profile: SampleProfile(userId, "Deleted User"), contactFields: [],
+            profile: SampleProfile(userId), contactFields: [],
             profileLanguages: [], volunteerHistory: []);
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));

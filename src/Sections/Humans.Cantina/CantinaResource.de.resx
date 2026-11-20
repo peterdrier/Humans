@@ -98,4 +98,8 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Allergien und Unverträglichkeiten anzeigen</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Die Angaben zu Allergien und Unverträglichkeiten sind ausgeblendet. Das Anzeigen wird im Audit-Log festgehalten.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Das Anzeigen wird im Audit-Log festgehalten.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Title" xml:space="preserve"><value>Magst du uns deine Essensvorlieben mitteilen?</value></data>
+  <data name="Cantina_DietaryMissingBanner_Body" xml:space="preserve"><value>Du bist für eine lange Schicht eingetragen. Wenn du uns deine Essensvorlieben mitteilst, kann die Kantine deine Mahlzeiten planen. Das ist freiwillig.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Cta" xml:space="preserve"><value>Sag es uns jetzt</value></data>
+  <data name="Cantina_DietaryMissingBanner_Decline" xml:space="preserve"><value>Ich möchte nicht antworten</value></data>
 </root>

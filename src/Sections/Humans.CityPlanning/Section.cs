@@ -23,11 +23,11 @@ using Humans.AuditLog.Contracts;
 namespace Humans.CityPlanning;
 
 /// <summary>
-/// <c>Lazy&lt;ICityPlanningWrite&gt;</c> is registered by Camps' <c>Section</c>, not here: it breaks the
-/// CampService ↔ CityPlanningService construction cycle, so it belongs with the consumer.
+/// Camps resolves <c>ICampDeletionListener</c> lazily, since <c>CityPlanningService</c> injects <c>ICampService</c>.
 /// </summary>
 public sealed class Section :
     ISection,
+    ICampPart,
     IIssueQueueOwner,
     ISectionAccessMatrix,
     ISectionAdminNav,
@@ -38,6 +38,8 @@ public sealed class Section :
     ISectionPolicies,
     ISectionSettings
 {
+    IEnumerable<CampPart> ICampPart.Parts() => [new(typeof(CampPlacementPhaseViewComponent))];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, CityPlanningAuditActions>();
@@ -47,7 +49,7 @@ public sealed class Section :
 
         services.AddSingleton<ICityPlanningRepository, CityPlanningRepository>();
         services.AddScoped<CityPlanningService>();
-        services.AddScoped<ICityPlanningWrite>(sp => sp.GetRequiredService<CityPlanningService>());
+        services.AddScoped<ICampDeletionListener>(sp => sp.GetRequiredService<CityPlanningService>());
         services.AddScoped<ICityPlanningService>(sp => sp.GetRequiredService<CityPlanningService>());
 
         services.AddScoped<IAuthorizationHandler, CityPlanningMapAdminHandler>();

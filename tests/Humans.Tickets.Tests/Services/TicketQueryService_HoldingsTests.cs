@@ -33,7 +33,7 @@ public sealed class TicketQueryService_HoldingsTests
             .Returns([]);
 
         Service = new TicketQueryService(
-            _ticketRepo,
+            FixedOrgTimeZone.Madrid, _ticketRepo,
             _transferRepo,
             Substitute.For<IBudgetService>(),
             Substitute.For<ICampaignService>(),

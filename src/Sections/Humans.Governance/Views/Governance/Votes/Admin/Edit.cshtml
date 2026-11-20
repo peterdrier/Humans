@@ -1,4 +1,5 @@
 @model AssemblyVoteDraftFormViewModel
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Edit assembly vote";
 }
@@ -118,7 +119,7 @@
                     <input asp-for="AssemblyDate" type="date" class="form-control form-control-sm" />
                 </div>
                 <div class="col-md-4">
-                    <label asp-for="ClosesAt" class="form-label small">Closes at (Europe/Madrid local time)</label>
+                    <label asp-for="ClosesAt" class="form-label small">Closes at (@OrgTimeZone.Zone.Id local time)</label>
                     <input asp-for="ClosesAt" type="datetime-local" class="form-control form-control-sm" required />
                     <span asp-validation-for="ClosesAt" class="text-danger small"></span>
                 </div>

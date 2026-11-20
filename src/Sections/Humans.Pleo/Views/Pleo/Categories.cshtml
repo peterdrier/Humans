@@ -1,10 +1,11 @@
 @model PleoCategoriesPage
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Pleo categories";
     // A refused Add comes back with what was typed, so nothing has to be re-entered.
     var addName = ViewData["AddName"] as string;
     var addCode = ViewData["AddCode"] as string;
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
     string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
 }
 
@@ -75,7 +76,7 @@ else
             <code class="small">@item.PleoCategoryId</code>
             @if (item.SetAt is { } at)
             {
-                <div class="small text-muted">@at.ToDate(madrid)</div>
+                <div class="small text-muted">@at.ToDate(orgZone)</div>
             }
         }
 

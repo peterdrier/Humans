@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,7 @@ public sealed class PendingConsentsAlertViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (UserClaimsPrincipal.GetUserId() is not { } userId)
         {
             return Content(string.Empty);
         }

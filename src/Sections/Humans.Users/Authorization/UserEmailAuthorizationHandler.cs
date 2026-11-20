@@ -1,6 +1,6 @@
+using Humans.Base.Extensions;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 
@@ -23,8 +23,7 @@ internal sealed class UserEmailAuthorizationHandler(IUserService users, IHttpCon
             return;
         }
 
-        var actorIdRaw = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(actorIdRaw, out var actorId)) return;
+        if (context.User.GetUserId() is not { } actorId) return;
 
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var actor = await users.GetUserInfoAsync(actorId, ct);

@@ -7,7 +7,6 @@ using System.Text.Json;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
-using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
@@ -49,7 +48,10 @@ public sealed class CampServiceTests : CampsTestHarness
         foreach (var id in new[] { source, live, other })
             _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = id == source ? live : id, PreferredLanguage = "es" }, [], [], null));
-        var notices = new CampMembershipNotices(repo, _userService, Notifier, NullLogger<CampService>.Instance);
+        var notices = new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService, Clock,
+            NullLogger<CampService>.Instance);
 
         if (notice == CanonicalNotice.SeasonClosure)
             await notices.NotifyPendingRequestersOfSeasonClosureAsync(Guid.NewGuid(), camp.Id, 2026);
@@ -67,7 +69,7 @@ public sealed class CampServiceTests : CampsTestHarness
     private readonly CampService _service;
     private readonly InMemoryFileStorage _fileStorage;
     private readonly ICampRoleService _campRoleService;
-    private readonly ICityPlanningWrite _cityPlanningService;
+    private readonly ICampDeletionListener _deletionListener;
     private readonly ISettingsService _settingsService;
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
@@ -83,7 +85,7 @@ public sealed class CampServiceTests : CampsTestHarness
         // City Planning is its own assembly: its tests own "the rows actually go"; what
         // Camps must prove is that DeleteCampAsync asks for the deletion, with the right
         // season ids.
-        _cityPlanningService = Substitute.For<ICityPlanningWrite>();
+        _deletionListener = Substitute.For<ICampDeletionListener>();
 
         _settingsService = Substitute.For<ISettingsService>();
         _settingsService.GetActiveEventSettings()
@@ -98,7 +100,7 @@ public sealed class CampServiceTests : CampsTestHarness
             _fileStorage,
             Notifier,
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
             _userService,
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(),
             _settingsService,
@@ -412,7 +414,7 @@ public sealed class CampServiceTests : CampsTestHarness
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Be("Camp not found.");
         AuditLog.ReceivedCalls().Should().BeEmpty();
-        await _cityPlanningService.DidNotReceive().DeleteCampPolygonsForSeasonsAsync(
+        await _deletionListener.DidNotReceive().CampSeasonsDeletingAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
@@ -880,6 +882,16 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         season.NameLockDate = new LocalDate(2026, 3, 1);
+        foreach (var status in new[] { CampMemberStatus.Active, CampMemberStatus.Pending, CampMemberStatus.Removed })
+            CampsDb.CampMembers.Add(new CampMember
+            {
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                UserId = Guid.NewGuid(),
+                Status = status,
+                HasEarlyEntry = true,
+                RequestedAt = Clock.GetCurrentInstant(),
+            });
 
         CampsDb.CampImages.Add(new CampImage
         {
@@ -907,6 +919,17 @@ public sealed class CampServiceTests : CampsTestHarness
         seasonInfo.IsNameLocked(new LocalDate(2026, 3, 2)).Should().BeTrue();
         seasonInfo.KidsVisiting.Should().Be(KidsVisitingPolicy.DaytimeOnly);
         seasonInfo.HasPerformanceSpace.Should().Be(PerformanceSpaceStatus.Yes);
+        seasonInfo.JoinedMemberCount.Should().Be(2);
+        seasonInfo.EeGrantedCount.Should().Be(1);
+        seasonInfo.Members.Should().HaveCount(3);
+        var byId = (await _service.GetCampByIdAsync(camp.Id, TestContext.Current.CancellationToken))!.Seasons.Single();
+        var byYear = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken))
+            .Single(row => row.Id == camp.Id).Seasons.Single();
+        byId.JoinedMemberCount.Should().Be(seasonInfo.JoinedMemberCount);
+        byYear.EeGrantedCount.Should().Be(seasonInfo.EeGrantedCount);
+        var directSeason = await _service.GetCampSeasonByIdAsync(season.Id, TestContext.Current.CancellationToken);
+        directSeason!.JoinedMemberCount.Should().BeNull("the direct season repository read does not load members");
+        directSeason.EeGrantedCount.Should().BeNull();
     }
 
     [HumansTheory]
@@ -1087,6 +1110,29 @@ public sealed class CampServiceTests : CampsTestHarness
         (await _service.GetRegistrationByEventAsync(ct)).Should().Equal(
             new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true),
             new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false));
+    }
+
+    [HumansFact]
+    public async Task SetRegistrationInfoAsync_TrimsStoresAndAudits_BlankStoresEmptyNotNull()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var (_, e2027) = StubTwoEvents();
+        var actorId = Guid.NewGuid();
+
+        await _service.SetRegistrationInfoAsync(e2027.Id, "  Bring water.  ", actorId, ct);
+        await _service.SetRegistrationInfoAsync(e2027.Id, "Bring water.", actorId, ct);
+
+        (await _service.GetRegistrationByEventAsync(ct)).Single(r => r.EventSettingsId == e2027.Id)
+            .RegistrationInfo.Should().Be("Bring water.");
+        await AuditLog.Received(1).LogAsync(
+            CampsAuditActions.CampRegistrationInfoUpdated, nameof(CampEventSettings), e2027.Id,
+            Arg.Is<string>(d => d.Contains(e2027.EventName)), actorId, Arg.Any<Guid?>(), Arg.Any<string?>());
+
+        await _service.SetRegistrationInfoAsync(e2027.Id, "   ", actorId, ct);
+
+        (await _service.GetRegistrationByEventAsync(ct)).Single(r => r.EventSettingsId == e2027.Id)
+            .RegistrationInfo.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -2119,7 +2165,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var roles = new CampRoleService(repo, access, Substitute.For<IGoogleService>(), _userService,
             AuditLog, Notifier, Options.Create(new GoogleWorkspaceOptions()), Clock, NullLogger<CampRoleService>.Instance);
         return new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
-            new Lazy<ICampRoleService>(() => roles), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            new Lazy<ICampRoleService>(() => roles), new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
             _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService, Clock,
             NullLogger<CampService>.Instance);
     }
@@ -2282,7 +2328,7 @@ public sealed class CampServiceTests : CampsTestHarness
         }
         var repo = new CampRepository(factory);
         var service = new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
-            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
             _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService, Clock,
             NullLogger<CampService>.Instance);
 
@@ -2659,8 +2705,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
-        var first = (await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, TestActorId, ct)).Image!;
-        var second = (await _service.UploadImageAsync(camp.Id, Stream.Null, "second.jpg", "image/jpeg", 1, TestActorId, ct)).Image!;
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "second.jpg", "image/jpeg", 1, TestActorId, ct);
+        var uploaded = await CampsDb.CampImages.AsNoTracking().Where(image => image.CampId == camp.Id)
+            .ToDictionaryAsync(image => image.FileName, StringComparer.Ordinal, ct);
+        var first = uploaded["first.jpg"];
+        var second = uploaded["second.jpg"];
         AuditLog.ClearReceivedCalls();
 
         await _service.ReorderImagesAsync(camp.Id, [second.Id, first.Id], TestActorId, ct);
@@ -2677,7 +2727,10 @@ public sealed class CampServiceTests : CampsTestHarness
         var repo = Substitute.For<ICampRepository>();
         repo.ReorderImagesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Save failed")));
-        var gallery = new CampImageGallery(repo, _fileStorage, Clock, AuditLog, NullLogger.Instance);
+        var gallery = new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService, Clock,
+            NullLogger<CampService>.Instance);
 
         var act = () => gallery.ReorderImagesAsync(Guid.NewGuid(), [], TestActorId, TestContext.Current.CancellationToken);
 
@@ -2741,7 +2794,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(Task.FromException(failure));
         interceptor.Armed = failureStage is "before" or "after" or "verification";
         var service = new CampService(repository, AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
-            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
             _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
@@ -2820,7 +2873,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var service = new CampService(
             new CampRepository(CampsDbFactory), AuditLog, Substitute.For<ISystemTeamSync>(), storage, Notifier,
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
             _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
 
@@ -2861,11 +2914,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var upload = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, actorUserId: TestActorId, TestContext.Current.CancellationToken);
         upload.Succeeded.Should().BeTrue();
 
-        var action = () => _service.DeleteImageAsync(Guid.NewGuid(), upload.Image!.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken);
+        var image = await CampsDb.CampImages.AsNoTracking().SingleAsync(i => i.CampId == camp.Id, TestContext.Current.CancellationToken);
+        var action = () => _service.DeleteImageAsync(Guid.NewGuid(), image.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_ImageWrongCamp");
 
-        var stillThere = await CampsDb.CampImages.AsNoTracking().FirstOrDefaultAsync(i => i.Id == upload.Image!.Id, TestContext.Current.CancellationToken);
+        var stillThere = await CampsDb.CampImages.AsNoTracking().FirstOrDefaultAsync(i => i.Id == image.Id, TestContext.Current.CancellationToken);
         stillThere.Should().NotBeNull();
     }
 
@@ -2892,7 +2946,7 @@ public sealed class CampServiceTests : CampsTestHarness
         var service = new CampService(
             repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
             new Lazy<ICampRoleService>(() => _campRoleService),
-            new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            new Lazy<IEnumerable<ICampDeletionListener>>(() => [_deletionListener]),
             _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
         await using var image = new MemoryStream([1, 2, 3]);
@@ -2919,7 +2973,7 @@ public sealed class CampServiceTests : CampsTestHarness
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Camps_Validation_ImageFilenameLength");
+        result.ErrorKey.Should().Be("Camps_Validation_ImageFilenameLength");
         (await CampsDb.CampImages.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
@@ -2937,7 +2991,7 @@ public sealed class CampServiceTests : CampsTestHarness
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be(key);
+        result.ErrorKey.Should().Be(key);
         _fileStorage.Files.Should().BeEmpty();
         (await CampsDb.CampImages.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
@@ -2948,20 +3002,21 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
-        var first = await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
-        var middle = await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
-        var last = await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
-        await _service.DeleteImageAsync(camp.Id, middle.Image!.Id, actorUserId: TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        var uploaded = await CampsDb.CampImages.AsNoTracking().Where(image => image.CampId == camp.Id)
+            .ToDictionaryAsync(image => image.FileName, StringComparer.Ordinal, ct);
+        await _service.DeleteImageAsync(camp.Id, uploaded["middle.jpg"].Id, actorUserId: TestActorId, ct);
 
         var appended = await _service.UploadImageAsync(camp.Id, Stream.Null, "appended.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
 
         appended.Succeeded.Should().BeTrue();
-        appended.Image!.SortOrder.Should().Be(3);
         var images = await CampsDb.CampImages.AsNoTracking()
             .Where(i => i.CampId == camp.Id).ToListAsync(ct);
-        images.Single(i => i.Id == first.Image!.Id).SortOrder.Should().Be(0);
-        images.Single(i => i.Id == last.Image!.Id).SortOrder.Should().Be(2);
-        images.Single(i => i.Id == appended.Image.Id).SortOrder.Should().Be(3);
+        images.Single(i => i.Id == uploaded["first.jpg"].Id).SortOrder.Should().Be(0);
+        images.Single(i => i.Id == uploaded["last.jpg"].Id).SortOrder.Should().Be(2);
+        images.Single(i => string.Equals(i.FileName, "appended.jpg", StringComparison.Ordinal)).SortOrder.Should().Be(3);
         _fileStorage.Files.Should().HaveCount(3);
     }
 
@@ -2981,7 +3036,7 @@ public sealed class CampServiceTests : CampsTestHarness
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Camps_Validation_ImageCount");
+        result.ErrorKey.Should().Be("Camps_Validation_ImageCount");
         _fileStorage.Files.Should().HaveCount(5);
         (await CampsDb.CampImages.CountAsync(TestContext.Current.CancellationToken)).Should().Be(5);
     }
@@ -3414,7 +3469,7 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteCampAsync_ClearsCityPlanningPolygonsForItsSeasons()
+    public async Task DeleteCampAsync_TellsDeletionListenersItsSeasons()
     {
         var ct = TestContext.Current.CancellationToken;
         var camp = await CreateTestCampAsync();
@@ -3422,8 +3477,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         await _service.DeleteCampAsync(camp.Id, actorUserId: TestActorId, ct);
 
-        // The Camps section clears polygon rows through ICityPlanningWrite instead of orphaning them.
-        await _cityPlanningService.Received(1).DeleteCampPolygonsForSeasonsAsync(
+        await _deletionListener.Received(1).CampSeasonsDeletingAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(season.Id)),
             Arg.Any<CancellationToken>());
         (await CampsDb.Camps.AnyAsync(c => c.Id == camp.Id, ct)).Should().BeFalse();

@@ -16,10 +16,12 @@ public sealed class StubWorkspaceUserDirectoryClientTests
             NullLogger<StubWorkspaceUserDirectoryClient>.Instance,
             new FakeClock(now));
 
-        var account = await sut.ProvisionAccountAsync(
+        await sut.ProvisionAccountAsync(
             "new@nobodies.team", "New", "Person", "unused", null,
             Xunit.TestContext.Current.CancellationToken);
 
-        account.CreationTime.Should().Be(now.ToDateTimeUtc());
+        var account = await sut.GetAccountAsync("new@nobodies.team", Xunit.TestContext.Current.CancellationToken);
+        account.Should().NotBeNull();
+        account!.CreationTime.Should().Be(now.ToDateTimeUtc());
     }
 }

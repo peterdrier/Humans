@@ -1,5 +1,3 @@
-// Custom drag-to-move and drag-handle-to-rotate interaction for container placement.
-
 import { buildContainerPolygon, getRotationHandleCoordsForContainer, rotationFromBearing } from './geometry.js';
 import { updateActiveSource } from './layers.js';
 
@@ -7,18 +5,15 @@ let _map         = null;
 let _onSave      = null; // async callback(container, feature) — called on mouseup
 let _onSelect    = null; // callback(featureId) — called when user clicks a placed editable container
 
-// Active container state
 let _activeContainer = null; // { id, campId, canEdit }
 let _currentCenter   = null; // { lng, lat }
 let _currentRotation = 0;    // CCW degrees (turf convention)
 let _activeFeature   = null;
 
-// Drag-to-move state
 let _isDragging      = false;
 let _dragStartLngLat = null;
 let _dragStartCenter = null;
 
-// Drag-to-rotate state
 let _isRotating = false;
 
 const rotationHandle = document.getElementById('rotation-handle');
@@ -29,18 +24,14 @@ export function initInteraction(map, onSave, onSelect) {
     _onSave   = onSave;
     _onSelect = onSelect;
 
-    // Drag-to-move: mousedown on the active or editable fill layer
     map.on('mousedown', 'containers-active-fill',   onContainerMouseDown);
     map.on('mousedown', 'containers-editable-fill', onContainerMouseDown);
 
-    // Click on placed editable container to select it
     map.on('click', 'containers-editable-fill', onContainerClick);
 
-    // Map-wide mousemove and mouseup for drag
     map.on('mousemove', onMapMouseMove);
     map.on('mouseup', onMapMouseUp);
 
-    // Reposition handle on map move/zoom
     map.on('move', repositionHandle);
     map.on('zoom', repositionHandle);
 
@@ -69,9 +60,6 @@ export function activateContainer(container, centerLng, centerLat) {
     _map.easeTo({ center: [centerLng, centerLat], zoom: 19, duration: 300 });
 }
 
-/**
- * Select an already-placed container for repositioning.
- */
 export function selectPlacedContainer(container) {
     resetGesture();
     const f = JSON.parse(container.locationGeoJson);
@@ -88,9 +76,6 @@ export function selectPlacedContainer(container) {
     _map.easeTo({ center: [_currentCenter.lng, _currentCenter.lat], zoom: Math.max				(_map.getZoom(), 19), duration: 300 });
 }
 
-/**
- * Deactivate the current container (e.g. another card was clicked).
- */
 export function deactivate() {
     resetGesture();
     _activeContainer = null;
@@ -100,7 +85,6 @@ export function deactivate() {
 }
 
 function onContainerMouseDown(e) {
-    // Only move the active container
     if (!_activeContainer) return;
     const featureId = e.features?.[0]?.properties?.id;
     if (featureId && featureId !== _activeContainer.id) return;

@@ -50,8 +50,9 @@ internal sealed class AgentSectionDocReader(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex,
-                "Failed to fetch agent section guide {Section} from GitHub; returning null", canonicalKey);
+            var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+            logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                "Failed to fetch agent section guide {Section} from GitHub; returning null: {Reason}", canonicalKey, ex.Message);
             return null;
         }
     }

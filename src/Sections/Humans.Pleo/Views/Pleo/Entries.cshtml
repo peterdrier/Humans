@@ -1,7 +1,8 @@
 @model PleoEntriesPage
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Pleo entries";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
     var f = Model.Filter;
 }
 
@@ -93,13 +94,13 @@
 <p class="text-muted small">@Model.Rows.Count.ToString("N0", CultureInfo.InvariantCulture) entries, newest first.</p>
 
 @{
-    Func<PleoEntryRow, IHtmlContent> settledCell = @<text><a asp-action="Entry" asp-route-id="@item.Id">@(item.SettledAt is { } at ? at.ToDate(madrid) : "—")</a></text>;
+    Func<PleoEntryRow, IHtmlContent> settledCell = @<text><a asp-action="Entry" asp-route-id="@item.Id">@(item.SettledAt is { } at ? at.ToDate(orgZone) : "—")</a></text>;
     Func<PleoEntryRow, IHtmlContent> familyCell = @<text>@item.Family<span class="text-muted">@(item.SubFamily is null ? "" : $" / {item.SubFamily}")</span></text>;
     Func<PleoEntryRow, IHtmlContent> amountCell = @<text>
         @(item.AmountEur is { } eur ? eur.ToSignedEuro() : "—")
         @if (!string.IsNullOrWhiteSpace(item.Currency) && item.Currency != "EUR")
         {
-            <div class="small text-muted">@((item.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @item.Currency</div>
+            <div class="small text-muted">@(item.OriginalAmount.ToString($"N{item.CurrencyDecimals}", CultureInfo.InvariantCulture)) @item.Currency</div>
         }
 
     </text>;

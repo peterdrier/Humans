@@ -5,14 +5,15 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
-using Humans.Shifts.Data;
+using Humans.Shifts.Helpers;
+using Humans.Shifts.Services.Dtos;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
 
 /// <summary>One audit row per dispatch; the recipient rows are auditable through the outbox.</summary>
 internal sealed class RotaCoordinatorMessageService(
-    IShiftManagementRepository repo,
+    IShiftRotaRows rotaRows,
     ITeamService teamService,
     IUserService userService,
     IEmailService emailService,
@@ -32,15 +33,16 @@ internal sealed class RotaCoordinatorMessageService(
         if (string.IsNullOrWhiteSpace(messageText))
             return RotaMessageDispatchResult.Failure("Message body is required.");
 
-        var rota = await repo.GetRotaAsync(rotaId, RotaReadShape.View, ct);
-        if (rota is null)
+        var row = (await rotaRows.GetRotaRowsAsync([rotaId], ct)).FirstOrDefault();
+        if (row is null)
             return RotaMessageDispatchResult.Failure("Rota not found.");
+        var rota = row.Rota;
 
         var eventSettings = await calendarResolver.GetAsync(rota.EventSettingsId, ct)
             ?? throw new InvalidOperationException(
                 $"Rota {rotaId}'s event calendar is not configured in Settings.");
 
-        var signups = GetActiveSignups(rota);
+        var signups = GetActiveSignups(row);
         if (signups.Count == 0)
             return RotaMessageDispatchResult.Failure("This rota has no active signups to email.");
 
@@ -200,45 +202,37 @@ internal sealed class RotaCoordinatorMessageService(
         var calendar = await calendarResolver.GetActiveAsync(ct);
         if (calendar is null) return [];
 
-        var rotas = (await repo.GetRotasAsync(
-                calendar.Id,
-                [teamId],
-                RotaReadShape.View,
-                ct))
-            .OrderBy(r => r.Name, StringComparer.Ordinal)
+        var rotas = (await rotaRows.GetRotaRowsAsync(ct: ct))
+            .Where(r => r.Rota.EventSettingsId == calendar.Id && r.Rota.TeamId == teamId)
+            .OrderBy(r => r.Rota.Name, StringComparer.Ordinal)
             .ToList();
         if (rotas.Count == 0) return [];
 
         var now = clock.GetCurrentInstant();
 
         var groups = new List<RotaSignupGroup>(rotas.Count);
-        foreach (var rota in rotas)
+        foreach (var row in rotas)
         {
-            if (!filter.Includes(rota.Period)) continue;
+            if (!filter.Includes(row.Rota.Period)) continue;
 
-            if (filter.UpcomingOnly && !rota.Shifts.Any(s => s.GetAbsoluteEnd(calendar) > now))
+            if (filter.UpcomingOnly && !row.Shifts.Any(s => s.Shift.GetAbsoluteEnd(calendar) > now))
                 continue;
 
-            var activeSignups = GetActiveSignups(rota);
+            var activeSignups = GetActiveSignups(row);
 
             if (activeSignups.Count == 0) continue;
 
-            groups.Add(new RotaSignupGroup(rota.Id, rota.Name, calendar, activeSignups));
+            groups.Add(new RotaSignupGroup(row.Rota.Id, row.Rota.Name, calendar, activeSignups));
         }
 
         return groups;
     }
 
-    private static IReadOnlyList<ShiftSignup> GetActiveSignups(Rota rota) =>
-        rota.Shifts
-            .SelectMany(shift => shift.ShiftSignups
+    private static IReadOnlyList<ActiveSignup> GetActiveSignups(ShiftAdminRota row) =>
+        row.Shifts
+            .SelectMany(shift => shift.Signups
                 .Where(signup => signup.Status is SignupStatus.Pending or SignupStatus.Confirmed)
-                .Select(signup =>
-                {
-                    // AsNoTracking eager loads do not reliably fix up reverse navs.
-                    signup.Shift = shift;
-                    return signup;
-                }))
+                .Select(signup => new ActiveSignup(signup.UserId, shift.Shift)))
             .ToList();
 
     /// <summary>
@@ -253,14 +247,14 @@ internal sealed class RotaCoordinatorMessageService(
         bool includeShifts,
         CancellationToken ct)
     {
-        var byUser = new Dictionary<Guid, List<(RotaSignupGroup Group, ShiftSignup Signup)>>();
+        var byUser = new Dictionary<Guid, List<(RotaSignupGroup Group, ActiveSignup Signup)>>();
         foreach (var group in rotaGroups)
         {
             foreach (var signup in group.Signups)
             {
                 if (!byUser.TryGetValue(signup.UserId, out var list))
                 {
-                    list = new List<(RotaSignupGroup, ShiftSignup)>();
+                    list = new List<(RotaSignupGroup, ActiveSignup)>();
                     byUser[signup.UserId] = list;
                 }
                 list.Add((group, signup));
@@ -270,7 +264,7 @@ internal sealed class RotaCoordinatorMessageService(
         if (byUser.Count == 0)
             return new DispatchSummary(0, 0, 0);
 
-        var recipientIds = byUser.Keys.ToList();
+        var recipientIds = byUser.Keys;
         var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
 
         var requested = 0;
@@ -340,10 +334,10 @@ internal sealed class RotaCoordinatorMessageService(
 
     // Chronological, in the rota's timezone.
     private static IReadOnlyList<string> BuildShiftLines(
-        IReadOnlyList<ShiftSignup> userSignups,
+        IReadOnlyList<ActiveSignup> userSignups,
         BurnSettingsInfo eventSettings)
     {
-        var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+        var tz = eventSettings.TimeZone;
         return userSignups
             .Select(s => new
             {
@@ -377,7 +371,9 @@ internal sealed class RotaCoordinatorMessageService(
         Guid RotaId,
         string RotaName,
         BurnSettingsInfo EventSettings,
-        IReadOnlyList<ShiftSignup> Signups);
+        IReadOnlyList<ActiveSignup> Signups);
+
+    private sealed record ActiveSignup(Guid UserId, ShiftInfo Shift);
 
     private sealed record DispatchSummary(
         int Requested,

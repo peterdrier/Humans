@@ -10,6 +10,7 @@ using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
+using Humans.Notifications.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Health;
@@ -20,6 +21,7 @@ using Humans.Tickets.Services.Stores;
 using Humans.Tickets.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using static Humans.Base.Models.AccessLevel;
@@ -55,7 +57,16 @@ public sealed class Section :
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        // The port owns its settings, so replacing the vendor adapter does not take them along.
+        var ticketVendorApiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY") ?? string.Empty;
+        services.Configure<TicketVendorSettings>(opts =>
+        {
+            configuration.GetSection(TicketVendorSettings.SectionName).Bind(opts);
+            opts.ApiKey = ticketVendorApiKey;
+        });
+
         services.AddSingleton<IAuditActionContributor, TicketsAuditActions>();
+        services.AddScoped<INotificationMeterContributor, TicketsNotificationMeters>();
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
 
         services.AddSingleton<ITicketRepository, TicketRepository>();
@@ -207,6 +218,31 @@ public sealed class Section :
 
         options.AddPolicy(TicketsPolicies.Manage, policy =>
             policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin));
+
+        // Tickets owns these because every consumer (Gate, Scanner, the onsite roster) already depends on Tickets.
+        options.AddPolicy(PolicyNames.ScannerAccess, policy =>
+            policy.AddRequirements(new TicketsAdminOrGateTerminalRequirement(admitsBoard: true)));
+
+        // Gate write actions (/Gate/Decision, /Gate/Claim POST): the ScannerAccess principals minus Board, which
+        // reads the gate and admits no one.
+        options.AddPolicy(PolicyNames.GateAdmit, policy =>
+            policy.AddRequirements(new TicketsAdminOrGateTerminalRequirement(admitsBoard: false)));
+    }
+
+    /// <summary>
+    /// Ticket-admin roles OR the shared gate-terminal account (by well-known id — it holds no roles), in one
+    /// assertion because a policy's requirements AND together.
+    /// </summary>
+    private sealed class TicketsAdminOrGateTerminalRequirement(bool admitsBoard) : AssertionRequirement(ctx =>
+        ctx.User.IsInRole(TicketsRoles.TicketsAdmin)
+        || (admitsBoard && ctx.User.IsInRole(RoleNames.Board))
+        || ctx.User.IsInRole(RoleNames.Admin)
+        || ctx.User.HasClaim(System.Security.Claims.ClaimTypes.NameIdentifier, SystemUserIds.GateTerminal.ToString())),
+        IDescribedRequirement
+    {
+        public IReadOnlyList<string> Admits => admitsBoard
+            ? [TicketsRoles.TicketsAdmin, RoleNames.Board, RoleNames.Admin]
+            : [TicketsRoles.TicketsAdmin, RoleNames.Admin];
     }
 
     IEnumerable<UserPart> IUserPart.Parts() =>

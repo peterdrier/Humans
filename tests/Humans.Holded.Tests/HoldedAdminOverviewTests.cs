@@ -40,7 +40,7 @@ public sealed class HoldedAdminOverviewTests
             .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36 });
         _client.IsConfigured.Returns(true);
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
     }
 
     /// <summary>Every non-archived row of /Holded/Accounts, empty ones included, in page order.</summary>
@@ -492,7 +492,7 @@ public sealed class HoldedAdminOverviewTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
             Options.Create(new HoldedSectionOptions { MonthlyCallBudget = 5000 }),
-            NullLogger<Service>.Instance);
+            NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
 
         (await service.GetSummaryAsync(ct)).MonthlyCallBudget.Should().Be(5000);
     }
@@ -507,11 +507,7 @@ public sealed class HoldedAdminOverviewTests
         await _service.GetLedgerLinesAsync(40000004, ct);
         await _service.GetAccountBalancesAsync(ct);
         await _service.GetAccountStatementAsync(40000004, ct);
-        await _service.GetEntryAsync(1, ct);
         await _service.GetEntryViewAsync(1, ct);
-        await _service.GetPurchaseLinesAsync(40000004, ct: ct);
-        await _service.GetOpenDocumentAmountsAsync(40000000, 41999999, ct);
-        await _service.GetSumsByAccountAsync(new HashSet<int> { 62900000 }, new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31), ct);
         await _service.GetChartAsync(ct);
         await _service.GetAccountsPageAsync(new HoldedAccountsFilter(), ct);
 

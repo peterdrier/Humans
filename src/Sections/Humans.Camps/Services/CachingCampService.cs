@@ -320,7 +320,7 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task<CampImageUploadResult> UploadImageAsync(
+    public Task<CampUpdateResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
@@ -358,6 +358,14 @@ internal sealed class CachingCampService(
             await WithInnerAsync(inner => inner.OpenSeasonAsync(eventSettingsId, actorUserId, cancellationToken));
             // Registration changes alter which years the decorator warms.
             RefreshAll();
+            await InvalidateSettingsAsync(cancellationToken);
+        });
+
+    public Task SetRegistrationInfoAsync(
+        Guid eventSettingsId, string? registrationInfo, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerAsync(inner => inner.SetRegistrationInfoAsync(eventSettingsId, registrationInfo, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
 

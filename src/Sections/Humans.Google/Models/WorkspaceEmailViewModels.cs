@@ -1,20 +1,4 @@
-using Humans.Google.Services;
-
 namespace Humans.Google.Models;
-
-internal sealed class WorkspaceEmailListViewModel
-{
-    public IReadOnlyList<WorkspaceAccountInfo> Accounts { get; set; } = [];
-    public int TotalAccounts { get; set; }
-    public int ActiveAccounts { get; set; }
-    public int SuspendedAccounts { get; set; }
-    public int LinkedAccounts { get; set; }
-    public int UnlinkedAccounts { get; set; }
-    public int NotPrimaryCount { get; set; }
-
-    /// <summary>Active accounts without 2-Step Verification, which cannot sign in.</summary>
-    public int MissingTwoFactorCount { get; set; }
-}
 
 /// <summary>Carried in TempData across the PRG redirect, so a refresh after dismissal cannot re-expose it.</summary>
 internal sealed class WorkspaceRecoveryCredentialsViewModel

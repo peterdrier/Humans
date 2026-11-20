@@ -63,7 +63,10 @@ internal sealed class AgentSettingsService(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Could not list Anthropic models; the settings dropdown shows only the saved model.");
+            if (ex is HttpRequestException or IOException or TimeoutException or OperationCanceledException)
+                logger.LogWarning("Could not list Anthropic models; the settings dropdown shows only the saved model: {Reason}", ex.Message);
+            else
+                logger.LogError(ex, "Could not list Anthropic models; the settings dropdown shows only the saved model: {Reason}", ex.Message);
             return null;
         }
     }

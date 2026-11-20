@@ -29,7 +29,7 @@ public interface ITableModel
     bool SortDesc { get; }
 
     PagerViewModel? Pager { get; }
-    IReadOnlyList<TableFooterCell> FooterCells { get; }
+    IReadOnlyList<IReadOnlyList<TableFooterCell>> FooterRows { get; }
 
     /// <summary>Server mode: extra hidden form fields (e.g. pageSize) the filter form must preserve.</summary>
     IReadOnlyDictionary<string, string?> HiddenFields { get; }

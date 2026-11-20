@@ -22,13 +22,3 @@ Repository: `IContainerRepository`.
 Cross-section calls via `ICampService`, `IAuditLogService`,
 `IFileStorage`. No cache.
 
----
-
-
-
-### ContainerReader (internal, owned by Service)
-
-Repository: `IContainerRepository`. Reads containers, galleries and yearly
-placements; joins the admin overview to the existing Camps read contract.
-Owns shared DTO projection, also reused for mutation results. No writes, file
-storage, cache or separate DI registration.

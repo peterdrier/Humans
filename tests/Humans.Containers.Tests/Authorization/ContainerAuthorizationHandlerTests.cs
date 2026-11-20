@@ -6,6 +6,7 @@ using Humans.Containers.Authorization;
 using Humans.Containers.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
+using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using NodaTime;
@@ -22,6 +23,7 @@ public sealed class ContainerAuthorizationHandlerTests
 
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ICityPlanningService _cityPlanningService = Substitute.For<ICityPlanningService>();
+    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ContainerAuthorizationHandler _handler;
 
@@ -29,7 +31,8 @@ public sealed class ContainerAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], profile: null));
-        _handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _settings.GetActiveEventSettings().Returns(ActiveEvent(2027));
+        _handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, _settings, _users, new HttpContextAccessor());
         _cityPlanningService.IsCityPlanningTeamMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(false);
     }
@@ -37,9 +40,8 @@ public sealed class ContainerAuthorizationHandlerTests
     [HumansTheory]
     [InlineData("User")]
     [InlineData("Team")]
-    [InlineData("ActiveSettings")]
     [InlineData("Camp")]
-    [InlineData("YearSettings")]
+    [InlineData("Placement")]
     public async Task AuthorizationReads_PropagateAbandonedRequests(string boundary)
     {
         using var request = new CancellationTokenSource();
@@ -64,21 +66,18 @@ public sealed class ContainerAuthorizationHandlerTests
             Read("Team", call.Arg<CancellationToken>());
             return false;
         });
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), Arg.Any<int?>()).Returns(call =>
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            Read(call.Arg<int?>() is null ? "ActiveSettings" : "YearSettings", call.Arg<CancellationToken>());
-            return MakeSettings(2027, true);
+            Read("Placement", call.Arg<CancellationToken>());
+            return true;
         });
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Camp", call.Arg<CancellationToken>());
             return new List<CampInfo> { CreateCampInfo(2027, true) };
         });
-        var handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, _users, http);
-        var resource = new ContainerAuthorizationTarget(CampId)
-        {
-            Year = string.Equals(boundary, "YearSettings", StringComparison.Ordinal) ? 2027 : null,
-        };
+        var handler = new ContainerAuthorizationHandler(_campService, _cityPlanningService, _settings, _users, http);
+        var resource = new ContainerAuthorizationTarget(CampId);
         var context = new AuthorizationHandlerContext([ContainerOperationRequirement.Place], CreateUserWithId(LeadUserId), resource);
         Func<Task> authorize = () => handler.HandleAsync(context);
         await authorize.Should().ThrowAsync<OperationCanceledException>();
@@ -87,10 +86,9 @@ public sealed class ContainerAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Place_CampLead_UsesCityPlanningYearInsteadOfCampPublicYear()
+    public async Task Place_CampLead_UsesTheActiveEventYear()
     {
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: true));
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(true);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([CreateCampInfo(year: 2027, isLead: true)]);
 
@@ -105,8 +103,7 @@ public sealed class ContainerAuthorizationHandlerTests
     [HumansFact]
     public async Task Place_CampLead_DeniesWhenContainerPlacementIsClosed()
     {
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: false));
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(false);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([CreateCampInfo(year: 2027, isLead: true)]);
 
@@ -121,8 +118,7 @@ public sealed class ContainerAuthorizationHandlerTests
     public async Task Manage_CampLead_AllowedEvenWhenPlacementIsClosed()
     {
         // Container CRUD (Manage) is not phase-gated; only Place is.
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: false));
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(false);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([CreateCampInfo(year: 2027, isLead: true)]);
 
@@ -136,8 +132,7 @@ public sealed class ContainerAuthorizationHandlerTests
     [HumansFact]
     public async Task Manage_LeadOfAnotherCamp_Denied()
     {
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: true));
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(true);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([CreateCampInfo(year: 2027, isLead: false)]);
 
@@ -182,8 +177,7 @@ public sealed class ContainerAuthorizationHandlerTests
     [InlineData(false)]
     public async Task Place_MapAdmin_AllowedWhilePlacementIsClosed(bool campAdmin)
     {
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), Arg.Any<int?>())
-            .Returns(MakeSettings(year: 2027, isContainerPlacementOpen: false));
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(false);
         var user = campAdmin
             ? new ClaimsPrincipal(new ClaimsIdentity(
             [
@@ -206,10 +200,8 @@ public sealed class ContainerAuthorizationHandlerTests
     [InlineData(true, false, false)]
     public async Task Place_ExplicitYear_UsesThatYearsPhaseAndLead(bool open, bool lead, bool allowed)
     {
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(MakeSettings(2027, true));
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), 2026)
-            .Returns(MakeSettings(2026, open));
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(true);
+        _cityPlanningService.IsContainerPlacementOpenAsync(2026, Arg.Any<CancellationToken>()).Returns(open);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([CreateCampInfo(2027, true)]);
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -219,7 +211,7 @@ public sealed class ContainerAuthorizationHandlerTests
 
         result.Should().Be(allowed);
         // Settings for a request-supplied year are read (and so created) only for its camp lead.
-        await _cityPlanningService.Received(lead ? 1 : 0).GetSettingsAsync(Arg.Any<CancellationToken>(), 2026);
+        await _cityPlanningService.Received(lead ? 1 : 0).IsContainerPlacementOpenAsync(2026, Arg.Any<CancellationToken>());
         await _campService.DidNotReceive().GetCampsForYearAsync(2027, Arg.Any<CancellationToken>());
     }
 
@@ -233,8 +225,7 @@ public sealed class ContainerAuthorizationHandlerTests
             .Returns(UserInfo.Create(new User { Id = LeadUserId }, [], [], profile: null));
         _cityPlanningService.IsCityPlanningTeamMemberAsync(LeadUserId, Arg.Any<CancellationToken>())
             .Returns(teamMember);
-        _cityPlanningService.GetSettingsAsync(Arg.Any<CancellationToken>(), 2027)
-            .Returns(MakeSettings(2027, true));
+        _cityPlanningService.IsContainerPlacementOpenAsync(2027, Arg.Any<CancellationToken>()).Returns(true);
         _campService.GetCampsForYearAsync(2027, Arg.Any<CancellationToken>())
             .Returns([CreateCampInfo(2027, true)]);
 
@@ -267,27 +258,10 @@ public sealed class ContainerAuthorizationHandlerTests
         return context.HasSucceeded;
     }
 
-    private static CityPlanningSettingsDto MakeSettings(int year, bool isContainerPlacementOpen) =>
-        new(
-            Id: Guid.NewGuid(),
-            Year: year,
-            PlacementState: BarrioPlacementState.Closed,
-            PlacementOverride: null,
-            OpenedAt: null,
-            ClosedAt: null,
-            PlacementOpensOffset: null,
-            PlacementClosesOffset: null,
-            PlacementChangeableUntilOffset: null,
-            PlacementOpensOn: null,
-            PlacementClosesOn: null,
-            PlacementChangeableUntilOn: null,
-            RegistrationInfo: null,
-            LimitZoneGeoJson: null,
-            OfficialZonesGeoJson: null,
-            IsContainerPlacementOpen: isContainerPlacementOpen,
-            ContainerPlacementOpenedAt: null,
-            ContainerPlacementClosedAt: null,
-            UpdatedAt: Instant.FromUtc(2026, 5, 28, 0, 0));
+    private static EventSettingsInfo ActiveEvent(int year) => new(
+        Id: Guid.NewGuid(), EventName: "Test", Year: year, TimeZoneId: "Europe/Madrid",
+        GateOpeningDate: new LocalDate(year, 7, 1), BuildStartOffset: -14, EventEndOffset: 6, StrikeEndOffset: 9,
+        EarlyEntryCapacity: new Dictionary<int, int>(), BarriosEarlyEntryAllocation: null, EarlyEntryClose: null);
 
     private static CampInfo CreateCampInfo(int year, bool isLead) =>
         new(

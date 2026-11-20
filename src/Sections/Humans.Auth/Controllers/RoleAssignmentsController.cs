@@ -97,6 +97,12 @@ internal sealed class RoleAssignmentsController(
             return View(model);
         }
 
+        if (RoleAssignmentRules.IsAddedInGovernance(model.RoleName))
+        {
+            SetError("Board members are added on the Board page in Governance (/Governance/Board).");
+            return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
+        }
+
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
         {

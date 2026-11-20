@@ -4,6 +4,7 @@ using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Humans.Auth.Contracts;
 
 namespace Humans.Users.ViewComponents;
 
@@ -12,7 +13,8 @@ namespace Humans.Users.ViewComponents;
 /// identity context without hovering.
 /// </summary>
 public sealed class HumanSummaryViewComponent(
-    IUserService userService, ITeamService teamService, IGovernanceService governanceService) : ViewComponent
+    IUserService userService, ITeamService teamService, IGovernanceService governanceService,
+    IRoleAssignmentService roleAssignments) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
@@ -47,7 +49,8 @@ public sealed class HumanSummaryViewComponent(
 
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
 
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier);
+        var isBoard = await roleAssignments.IsUserBoardMemberAsync(userId, ct);
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, isBoard);
 
         return View("Default", vm);
     }

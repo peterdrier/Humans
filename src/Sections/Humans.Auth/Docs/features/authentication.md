@@ -154,7 +154,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **RideshareAdmin** | Rideshare settings, season statistics, and the day roster; confers nothing outside Rideshare |
 | **GrantsAdmin** | Grant programs: create, edit, name managers, issue, revoke and resend; confers nothing outside Grants |
 | **SurveysAdmin** | Surveys: approve or reject, edit any survey, open, close, send invitations, download results; confers nothing outside Surveys |
-| **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
+| **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`, and reads the Early entry roster; confers nothing else |
 | **ShiftsNoInfo** | Approve/voluntell shift signups; access volunteer medical data |
 
 ### UserState Access Claim

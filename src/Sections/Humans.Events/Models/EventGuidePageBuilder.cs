@@ -13,7 +13,7 @@ internal sealed class EventGuidePageBuilder(IEventManagement guide, ICampService
     {
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var favourites = await guide.GetFavouritesWithEventsAsync(userId, ct);
@@ -82,7 +82,7 @@ internal sealed class EventGuidePageBuilder(IEventManagement guide, ICampService
     {
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var filterDays = days != null && days.Length > 0 ? days.ToHashSet() : null;

@@ -1,7 +1,8 @@
 @model StripePayoutsPage
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Stripe payouts";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 <page-header title="Stripe payouts" />
@@ -42,7 +43,7 @@
             @foreach (var p in Model.Rows)
             {
                 <tr>
-                    <td class="text-nowrap">@p.Created.ToDateTime(madrid)</td>
+                    <td class="text-nowrap">@p.Created.ToDateTime(orgZone)</td>
                     <td class="text-nowrap">@p.ArrivalDate.ToDate()</td>
                     <td class="small">@p.AccountName</td>
                     <td><a asp-action="Transactions" asp-route-q="@p.Id"><code class="small">@p.Id</code></a></td>

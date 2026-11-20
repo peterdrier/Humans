@@ -18,6 +18,7 @@ namespace Humans.Finance.Services;
 /// creditors, SEPA transfers and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
 /// the Pleo wallet from Pleo. Its one table is the Stripe ledger links the Finance tab on /Settings edits.</summary>
 internal sealed class FinanceOverviewService(
+    IOrgTimeZone orgTimeZone,
     IHoldedService holded,
     IFinanceService finance,
     IFinanceAdminService financeAdmin,
@@ -27,15 +28,15 @@ internal sealed class FinanceOverviewService(
     IPleoService pleo,
     IStripeMirrorService stripe,
     IOptions<SepaOptions> sepa,
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IAuditLogService audit,
     IClock clock) : IApplicationService
 {
-    private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     public async Task<FinanceOverviewVm> GetAsync(CancellationToken ct = default)
     {
-        var today = clock.GetCurrentInstant().InZone(Madrid).Date;
+        var today = clock.GetCurrentInstant().InZone(OrgZone).Date;
 
         var syncedAt = await holded.GetLedgerSyncedAtAsync(ct);
         FinanceLedgerCardsVm? ledger = null;
@@ -88,10 +89,10 @@ internal sealed class FinanceOverviewService(
     {
         if (string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId)) return null;
         var mirror = await holded.GetBankMovementsAsync(
-            sepa.Value.TreasuryAccountId, today.PlusDays(-SepaBankBooking.FeedWindowDays), today, ct);
+            sepa.Value.TreasuryAccountId, today.PlusDays(-Service.FeedWindowDays), today, ct);
         return mirror.LastSyncAt is null
             ? new FinanceBankFeedVm(null, null)
-            : new FinanceBankFeedVm(mirror.Movements.Count(m => !SepaBankMatching.IsReconciled(m)), mirror.LastSyncAt);
+            : new FinanceBankFeedVm(mirror.Movements.Count(m => !Service.IsReconciled(m)), mirror.LastSyncAt);
     }
 
     private static bool Under(int accountNum, string prefix) =>
@@ -234,30 +235,30 @@ internal sealed class FinanceOverviewService(
 
         return
         [
-            TaxFiling("303", "VAT return", today, (from, to) => VatDue(vatOut, vatIn, settlements, from, to)),
-            TaxFiling("111", "IRPF withholding", today, (from, to) => IrpfDue(irpf, bankEntries, from, to)),
+            TaxFiling("303", "VAT return", today, (from, to) => VatDue(vatOut, vatIn, settlements, from, to, OrgZone)),
+            TaxFiling("111", "IRPF withholding", today, (from, to) => IrpfDue(irpf, bankEntries, from, to, OrgZone)),
         ];
     }
 
     /// <summary>Output VAT less input VAT, credit notes netted in. The quarter-end settlement into 4750/4700 is left
     /// out by entry: it zeroes 477 and 472 and would cancel the quarter.</summary>
     internal static decimal VatDue(IEnumerable<HoldedLedgerLineInfo> vatOut, IEnumerable<HoldedLedgerLineInfo> vatIn,
-        IReadOnlySet<int> settlementEntries, LocalDate from, LocalDate to)
+        IReadOnlySet<int> settlementEntries, LocalDate from, LocalDate to, DateTimeZone zone)
     {
-        bool Counts(HoldedLedgerLineInfo l) => InRange(l, from, to) && !settlementEntries.Contains(l.EntryNumber);
+        bool Counts(HoldedLedgerLineInfo l) => InRange(l, from, to, zone) && !settlementEntries.Contains(l.EntryNumber);
         return vatOut.Where(Counts).Sum(l => l.Credit - l.Debit) - vatIn.Where(Counts).Sum(l => l.Debit - l.Credit);
     }
 
     /// <summary>Withholdings less corrections. A debit in an entry that moves a bank account is the payment of an
     /// earlier return, not a correction; a bank-paid payroll entry's withholding credit still counts.</summary>
     internal static decimal IrpfDue(IEnumerable<HoldedLedgerLineInfo> irpf, IReadOnlySet<int> bankEntries,
-        LocalDate from, LocalDate to) =>
-        irpf.Where(l => InRange(l, from, to))
+        LocalDate from, LocalDate to, DateTimeZone zone) =>
+        irpf.Where(l => InRange(l, from, to, zone))
             .Sum(l => l.Credit - (bankEntries.Contains(l.EntryNumber) ? 0m : l.Debit));
 
-    private static bool InRange(HoldedLedgerLineInfo line, LocalDate from, LocalDate to)
+    private static bool InRange(HoldedLedgerLineInfo line, LocalDate from, LocalDate to, DateTimeZone zone)
     {
-        var date = line.Date.InZone(Madrid).Date;
+        var date = line.Date.InZone(zone).Date;
         return date >= from && date <= to;
     }
 

@@ -101,7 +101,7 @@ public sealed class RideshareSnapshotTests
         int? seatsRemaining = null,
         TripStatus status = TripStatus.Active) =>
         new(Guid.NewGuid(), Guid.NewGuid(), direction, "Paris", 48.85, 2.35, [], null,
-            departure ?? July3, durationDays, null, VehicleType.Car, seatsOffered, seatsRemaining ?? seatsOffered,
+            departure ?? July3, durationDays, null, VehicleType.Car, seatsOffered, seatsOffered - (seatsRemaining ?? seatsOffered),
             LuggageSize.Moderate, null, null, false, CostSharing.ShareFuel, null, null, status, Now);
 
     private static RequestView Request(

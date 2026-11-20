@@ -4,7 +4,7 @@ namespace Humans.Cantina.Services.Dtos;
 
 /// <summary>
 /// Each unique on-site human on the day appears once in <see cref="People"/> (unspecified order; the controller sorts),
-/// and the view and CSV writer count the chip totals from it.
+/// and shared column counts serve the view and CSV writer.
 /// </summary>
 /// <remarks>
 /// <paramref name="CalendarDate"/>, <paramref name="EventTodayDate"/> and <paramref name="EventName"/> are null with no
@@ -18,4 +18,14 @@ internal sealed record DailyMatrixDto(
     int WeekStartOffset,
     int TotalOnSite,
     int UnansweredCount,
-    IReadOnlyList<DailyPersonRowDto> People);
+    IReadOnlyList<DailyPersonRowDto> People)
+{
+    internal int CountDietaryPreference(string preference) =>
+        People.Count(person => string.Equals(person.DietaryPreference, preference, StringComparison.Ordinal));
+
+    internal int CountAllergy(string allergy) =>
+        People.Count(person => person.Allergies.Contains(allergy));
+
+    internal int CountIntolerance(string intolerance) =>
+        People.Count(person => person.Intolerances.Contains(intolerance));
+}

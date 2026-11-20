@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Issues.Contracts;
 using Humans.Issues.Services;
@@ -10,8 +11,7 @@ internal sealed class IssuesUserMenuViewComponent(IIssuesService issuesService) 
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var claim = UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(claim, out var currentUserId))
+        if (UserClaimsPrincipal.GetUserId() is not { } currentUserId)
             return View(0);
 
         var roles = UserClaimsPrincipal.Claims

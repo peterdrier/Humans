@@ -46,7 +46,8 @@ public static class SectionDiscoveryExtensions
         // should show.
         services.AddSingleton(SectionCatalogBuilder.Build(
             AllSections.Value,
-            [.. contributions.OfType<ISectionAnnotations>()]));
+            [.. contributions.OfType<ISectionAnnotations>()],
+            Unmet.Value));
 
         return services;
     }
@@ -138,8 +139,15 @@ public static class SectionDiscoveryExtensions
                 // Assembly-enumeration order is not stable; sort so registration order is.
                 .OrderBy(s => s.Name, StringComparer.Ordinal)]);
 
+    private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyList<string>>> Unmet =
+        new(() => SectionActivation.UnmetDependencies(
+            [.. AllSections.Value.Select(s => s.Assembly)],
+            typeof(SectionDiscoveryExtensions).Assembly,
+            AllSections.Value.Where(s => s.Section.IsActive).Select(s => s.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)));
+
     /// <summary>
-    /// The sections this deployment runs, with the dependency guard already applied.
+    /// The sections this deployment runs. An unmet dependency is logged at Error, never thrown.
     /// </summary>
     /// <remarks>
     /// A process-wide cache is right here where a config allowlist would have made it wrong:
@@ -151,10 +159,14 @@ public static class SectionDiscoveryExtensions
         {
             var active = AllSections.Value.Where(s => s.Section.IsActive).ToList();
 
-            SectionActivation.ThrowOnUnmetDependencies(
-                [.. AllSections.Value.Select(s => s.Assembly)],
-                typeof(SectionDiscoveryExtensions).Assembly,
-                active.Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase));
+            foreach (var (dependency, dependents) in Unmet.Value.OrderBy(u => u.Key, StringComparer.Ordinal))
+            {
+                Serilog.Log.Error(
+                    "Section {Section} is inactive but consumed by {Dependents}; their requests that reach it will "
+                    + "fail. Reactivate it, or deactivate them. See /Debug/Sections.",
+                    dependency,
+                    string.Join(", ", dependents));
+            }
 
             return active;
         });

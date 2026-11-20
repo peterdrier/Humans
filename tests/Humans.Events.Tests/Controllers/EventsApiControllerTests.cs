@@ -130,7 +130,7 @@ public class EventsApiControllerTests
         _users.GetUserInfoAsync(approved.SubmitterUserId, Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(approved.SubmitterUserId, "Host"),
                 ReadBoundary.Submitter, call.Arg<CancellationToken>())));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ReadAsync<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [approved.SubmitterUserId] = MakeUserInfo(approved.SubmitterUserId, "Host") },
                 ReadBoundary.Submitter, call.Arg<CancellationToken>())));
@@ -160,7 +160,7 @@ public class EventsApiControllerTests
     public async Task GetEvents_IndividualEventWithoutHost_FallsBackToSubmitterBurnerName()
     {
         var submitterId = Guid.NewGuid();
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = MakeUserInfo(submitterId, "Fire Dancer") });
         StubApprovedEvents(MakeEvent(campId: null, submitterId, host: null));
 
@@ -173,7 +173,7 @@ public class EventsApiControllerTests
     public async Task GetEvents_IndividualEventWithHost_UsesHost()
     {
         var submitterId = Guid.NewGuid();
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = MakeUserInfo(submitterId, "Fire Dancer") });
         StubApprovedEvents(MakeEvent(campId: null, submitterId, host: "Explicit Host"));
 

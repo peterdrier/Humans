@@ -115,14 +115,16 @@ public class TableModelBuilderTests
     }
 
     [HumansFact]
-    public void Footer_cells_are_carried_through()
+    public void Each_footer_call_adds_a_row()
     {
         var table = TableModel.For(Rows)
             .Column("Name", r => r.Name)
             .Footer(new TableFooterCell("Total"), new TableFooterCell("3.00", "text-end"))
+            .Footer(new TableFooterCell("Balance"), new TableFooterCell("0.00", "text-end"))
             .Build();
 
-        table.FooterCells.Should().HaveCount(2);
-        table.FooterCells[1].CssClass.Should().Be("text-end");
+        table.FooterRows.Should().HaveCount(2);
+        table.FooterRows[0][1].CssClass.Should().Be("text-end");
+        table.FooterRows[1][0].Text.Should().Be("Balance");
     }
 }

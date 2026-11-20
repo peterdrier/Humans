@@ -26,7 +26,7 @@ public sealed class TableModelBuilder<TRow> where TRow : class
     private string? _sortBy;
     private bool _sortDesc;
     private PagerViewModel? _pager;
-    private IReadOnlyList<TableFooterCell> _footerCells = [];
+    private readonly List<IReadOnlyList<TableFooterCell>> _footerRows = [];
     private Func<object?, IHtmlContent>? _extraFilterContent;
     private Func<TRow, string?>? _rowHref;
     private Func<TRow, string?>? _rowCss;
@@ -132,9 +132,10 @@ public sealed class TableModelBuilder<TRow> where TRow : class
         return this;
     }
 
+    /// <summary>Adds one footer row; call again for each further row.</summary>
     public TableModelBuilder<TRow> Footer(params TableFooterCell[] cells)
     {
-        _footerCells = cells;
+        _footerRows.Add(cells);
         return this;
     }
 
@@ -156,7 +157,7 @@ public sealed class TableModelBuilder<TRow> where TRow : class
         public string? SortBy { get; } = b._sortBy;
         public bool SortDesc { get; } = b._sortDesc;
         public PagerViewModel? Pager { get; } = b._pager;
-        public IReadOnlyList<TableFooterCell> FooterCells { get; } = b._footerCells;
+        public IReadOnlyList<IReadOnlyList<TableFooterCell>> FooterRows { get; } = b._footerRows;
         public IReadOnlyDictionary<string, string?> HiddenFields { get; } = b._hiddenFields;
         public Func<object?, IHtmlContent>? ExtraFilterContent { get; } = b._extraFilterContent;
 

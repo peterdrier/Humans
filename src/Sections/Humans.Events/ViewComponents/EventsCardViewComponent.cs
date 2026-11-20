@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Events.Contracts;
@@ -36,7 +37,7 @@ public sealed class EventsCardViewComponent(
                 return Content(string.Empty);
             }
 
-            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
+            if (UserClaimsPrincipal.GetUserId() is not { } viewerId)
                 return Content(string.Empty);
 
             var viewer = await users.GetUserInfoAsync(viewerId, ct);

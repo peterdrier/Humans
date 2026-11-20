@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Settings.Contracts;
@@ -24,7 +25,7 @@ internal sealed class DashboardShiftsViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (UserClaimsPrincipal.GetUserId() is not { } userId)
         {
             return Content(string.Empty);
         }

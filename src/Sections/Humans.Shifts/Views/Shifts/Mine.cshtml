@@ -2,7 +2,7 @@
 
 @{
     ViewData["Title"] = Localizer["Shifts_MyShiftsTitle"].Value;
-    var tz = Model.EventSettings != null ? DateTimeZoneProviders.Tzdb[Model.EventSettings.TimeZoneId] : null;
+    var tz = Model.EventSettings?.TimeZone;
 }
 
 <div class="container py-4">
@@ -17,7 +17,7 @@
         </ul>
     </div>
 
-    <vc:dietary-missing-banner user-id="@Model.UserId" />
+    <partial name="_PageBanners" model="Model.UserId" />
 
     @if (Model.EventSettings == null)
     {
@@ -72,8 +72,14 @@
                                 <div>
                                     <status-badge value="@shift.GetShiftPeriod(es)" text="@ShiftDisplayItem.PeriodLabel(shift.GetShiftPeriod(es), SharedLocalizer)" class="me-1" />
                                     <strong>@first.Signup.Rota.Name</strong> —
-                                    @es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToWeekdayDayMonth() to @es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToWeekdayDayMonth()
-                                    <small class="text-muted">(@block.Count() days)</small>
+                                    @if (block.Count() == 1)
+                                    {
+                                        @Localizer["Shifts_ConfirmSignup_Range_Single", es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToWeekdayDayMonth()]
+                                    }
+                                    else
+                                    {
+                                        @Localizer["Shifts_ConfirmSignup_Range", es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToWeekdayDayMonth(), es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToWeekdayDayMonth(), block.Count()]
+                                    }
                                     <span class="ms-1">@first.DepartmentName</span>
                                 </div>
                                 @if (bailLocked)

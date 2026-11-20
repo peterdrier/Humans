@@ -38,7 +38,6 @@ internal sealed record AdminTeamSummary(
     int RoleSlotCount,
     Instant CreatedAt,
     Guid? ParentTeamId,
-    int PendingShiftSignupCount,
     bool IsHidden);
 
 internal sealed record TeamJoinRequestSnapshot(

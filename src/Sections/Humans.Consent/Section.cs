@@ -7,12 +7,14 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
+using Humans.Consent.Health;
 using Humans.Consent.Jobs;
 using Humans.Consent.Services;
 using Humans.Consent.ViewComponents;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
+using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
@@ -32,10 +34,16 @@ public sealed class Section :
     ISectionAdminNav,
     ISectionHelp,
     ISectionJobs,
+    ISectionHealthChecks,
     ISectionPolicies,
     IUserPart,
     ISectionChrome
 {
+    void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
+    {
+        builder.AddCheck<GitHubHealthCheck>("github", tags: [HealthCheckTags.External]);
+    }
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(ConsentRoles.ConsentCoordinator, "Consent Coordinator",
@@ -54,6 +62,7 @@ public sealed class Section :
 
         services.AddSingleton<IAuditActionContributor, ConsentAuditActions>();
         services.AddSingleton<INotificationSourceContributor, ConsentNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, ConsentNotificationMeters>();
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
 
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();
@@ -201,6 +210,11 @@ public sealed class Section :
     {
         options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
             policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
+
+        // ShiftsAdmin (the Volunteer Coordinator) reads the queue; only ConsentCoordinatorBoardOrAdmin decides.
+        options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
+            policy.RequireRole(ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin,
+                RoleNames.Board, RoleNames.Admin));
     }
 
     IEnumerable<UserPart> IUserPart.Parts() =>

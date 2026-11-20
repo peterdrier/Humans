@@ -55,8 +55,8 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
 |-------|--------------|
 | Any authenticated human | Sees their own EE date on ticket-stub surfaces (homepage strip, holdings, transfer wizard). The stub and holdings view components answer for the user they are invoked with; an admin profile view shows the profiled user's. |
 | Gate / Scanner staff | Sees the *scanned attendee's* EE on the gate card (`ScannerController`, `GateService`). |
-| `ShiftsPolicies.Read` (Admin, Board, ShiftsNoInfo, ShiftsAdmin) | Reads the full cross-source roster at `/Shifts/Admin/EarlyEntry`. |
-| `EarlyEntryAdmin` | The grantable role this section declares (`EarlyEntryRoles`): grants, edits and revokes early-entry grants on any team with early entry enabled. Confers no access to the roster or anything else here. |
+| `EarlyEntryPolicies.Roster` (Admin, Board, EarlyEntryAdmin) | Reads the full cross-source roster at `/Shifts/Admin/EarlyEntry`. |
+| `EarlyEntryAdmin` | The grantable role this section declares (`EarlyEntryRoles`): grants, edits and revokes early-entry grants on any team with early entry enabled. Also reads the roster, reached from the admin shell's Early Entry group; confers nothing else here. |
 
 ## Invariants
 
@@ -71,8 +71,8 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
   `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`).
 - Per human: earliest date wins, sources are distinct and ordinal-compared in provider order,
   and `HasMultiple` is `Sources.Count > 1`.
-- The roster is gated by `ShiftsPolicies.Read`
-  (`EarlyEntryArchitectureTests.RosterRequiresShiftsRead`).
+- The roster is gated by the section's own `EarlyEntryPolicies.Roster`
+  (`EarlyEntryArchitectureTests.RosterIsGatedByEarlyEntrysOwnRoles`). Early entry references no Shifts project.
 - No `Resources/` folder: the roster is an admin page with inline English
   ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 
@@ -82,7 +82,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
   components answer for the user they are invoked with, so who may see another member's EE
   there is the invoking page's gate, not this section's. The gate card is the deliberate
   staff-facing exception.
-- A human without `ShiftsPolicies.Read` **cannot** reach `/Shifts/Admin/EarlyEntry`.
+- A human without Admin, Board or EarlyEntryAdmin **cannot** reach `/Shifts/Admin/EarlyEntry`; Shifts Admin and Shifts NoInfo alone no longer can.
 - The section exposes no write path, so no write **cannot**-clause applies.
 
 ## Triggers
@@ -93,7 +93,7 @@ the next request with no signal to this section.
 
 ## Cross-Section Dependencies
 
-Outbound (the `.csproj` references `Humans.Base` and `Humans.Shifts.Contracts` only):
+Outbound (the `.csproj` references `Humans.Base` only):
 
 - **Users** — `IUserService` through `HumansControllerBase.FindUserInfoByIdAsync`, for the
   roster's legal-name column.

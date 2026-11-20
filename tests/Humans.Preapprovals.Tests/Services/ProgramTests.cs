@@ -210,7 +210,7 @@ public sealed class ProgramTests : PreapprovalsTestHarness
             .AddInterceptors(new FailManagerSave())
             .Options;
         var service = new PreapprovalService(
-            new PreapprovalRepository(new TestDbContextFactory<PreapprovalsDbContext>(options)),
+            FixedOrgTimeZone.Madrid, new PreapprovalRepository(new TestDbContextFactory<PreapprovalsDbContext>(options)),
             Users, Finance, NewNotices(), AuditLog, Clock, Logger);
 
         Func<Task> update = () => service.UpdateProgramAsync(program.Id,

@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 
 namespace Humans.Web.Middleware;
@@ -16,10 +16,7 @@ public sealed class UserActivityTrackingMiddleware(RequestDelegate next, IUserAc
 
         if (principal.Identity?.IsAuthenticated == true)
         {
-            var idClaim = principal.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (idClaim is not null
-                && Guid.TryParse(idClaim, out var userId)
-                && userId != Guid.Empty)
+            if (principal.GetUserId() is { } userId && userId != Guid.Empty)
             {
                 tracker.Touch(userId);
             }

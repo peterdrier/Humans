@@ -159,4 +159,9 @@
   <data name="Consent_Queue_DocsNote" xml:space="preserve"><value>Profile review can proceed independently. Human will join Volunteers once all documents are signed.</value></data>
   <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Review</value></data>
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
+  <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Consent reviews pending</value></data>
+  <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboarding profiles pending</value></data>
+  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>Consent Coordinators</value></data>
+  <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
+  <data name="Consent_Meter_AudienceShiftsAdmin" xml:space="preserve"><value>Shifts Admins</value></data>
 </root>

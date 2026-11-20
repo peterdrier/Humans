@@ -48,9 +48,9 @@ Repository: `ILegalDocumentRepository`.
 | LegalDocuments | R/W |
 | DocumentVersions | R/W |
 
-Sole writer for both the GitHub-sync surface (`SyncDocumentAsync` /
-`SyncAllDocumentsAsync` — version add, sync-touch) and the admin surface
-(`CreateLegalDocumentAsync` / `UpdateLegalDocumentAsync` /
+Sole writer for the scheduled GitHub-sync surface (`SyncAllDocumentsAsync` —
+version add, sync-touch) and the actor-attributed admin surface
+(`SyncLegalDocumentAsync` / `CreateLegalDocumentWithInitialSyncAsync` / `UpdateLegalDocumentAsync` /
 `ArchiveLegalDocumentAsync` / `UpdateVersionSummaryAsync`). Calls
 `CachingLegalDocumentSyncService.InvalidateAll()` directly after each
 successful write. Cross-section calls via `INotificationEmitter`,
@@ -121,7 +121,7 @@ Repository: `IConsentRepository`.
 
 Cross-section calls via `ILegalDocumentSyncManagement`,
 `IHumanLifecycleService`, `IUserService`, `IHumansMetrics`, and, for the required-consent
-checks in `ConsentCompliance`, `ITeamService` and `IRoleAssignmentService`. Implements
+checks in `ConsentService`, `ITeamService` and `IRoleAssignmentService`. Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching
 lives in the decorator.
 

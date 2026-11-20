@@ -13,6 +13,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
+using Humans.Auth.Contracts;
 using NodaTime;
 using Humans.Base;
 using Humans.Base.Authorization;
@@ -29,6 +30,7 @@ internal sealed class ProfileViewController(
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
+    IRoleAssignmentService roleAssignments,
     IAuthorizationService authorizationService,
     MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
@@ -113,7 +115,8 @@ internal sealed class ProfileViewController(
         // Rendered admin-only in the view.
         var camp = await campService.GetCampUserInfoAsync(id, ct);
         var tier = await governanceService.GetMembershipTierAsync(id, ct);
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, camp);
+        var isBoard = await roleAssignments.IsUserBoardMemberAsync(id, ct);
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, isBoard, camp);
 
         return PartialView("_HumanPopover", vm);
     }

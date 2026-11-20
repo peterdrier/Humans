@@ -1,8 +1,9 @@
 @using NodaTime
 @model Humans.Governance.Models.AssemblyVoteListViewModel
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = Localizer["Governance_Votes_Title"].Value;
-    var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 @section Crumbs {
@@ -39,11 +40,11 @@ else
                 <p class="mb-2 text-muted">
                     @if (vote.Status == AssemblyVoteStatus.Open)
                     {
-                        @Localizer["Governance_Votes_ClosesAt", vote.ClosesAt.ToDateTime(madridZone)]
+                        @Localizer["Governance_Votes_ClosesAt", vote.ClosesAt.ToDateTime(orgZone)]
                     }
                     else if (vote.ClosedAt.HasValue)
                     {
-                        @Localizer["Governance_Votes_ClosedAt", vote.ClosedAt.Value.ToDateTime(madridZone)]
+                        @Localizer["Governance_Votes_ClosedAt", vote.ClosedAt.Value.ToDateTime(orgZone)]
                     }
                 </p>
 

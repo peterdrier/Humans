@@ -1153,10 +1153,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>Die Nachbarschaften, die Elsewhere wie zuhause fühlen lassen.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Magst du uns deine Essensvorlieben mitteilen?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Du bist für eine lange Schicht eingetragen. Wenn du uns deine Essensvorlieben mitteilst, kann die Kantine deine Mahlzeiten planen. Das ist freiwillig.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Sag es uns jetzt</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Ich möchte nicht antworten</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Alle meine Schichten anzeigen</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Sortierung</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Du hast die Schichtreihe abgesagt.</value></data>
@@ -1210,8 +1206,6 @@
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Diese Schicht ist voll belegt.</value></data>
   <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Dienstplan nicht gefunden.</value></data>
   <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Im angegebenen Datumsbereich wurden keine Schichten gefunden.</value></data>
-  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Du bist bereits für alle Schichten in diesem Zeitraum angemeldet.</value></data>
-  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Alle Schichten in diesem Zeitraum überschneiden sich mit bestehenden Anmeldungen.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Alle Schichten in diesem Zeitraum sind voll belegt.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Eine oder mehrere Schichten in diesem Zeitraum sind Koordinatoren und Administratoren vorbehalten.</value></data>
   <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Du bist bereits für eine oder mehrere Schichten in diesem Zeitraum angemeldet.</value></data>
@@ -1294,4 +1288,29 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>No-Show-Verlauf ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Schichten</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} Plätze belegt</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans angemeldet</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} ausstehend</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Noch keine Schichten konfiguriert.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Enthält Schichten von {0} Sub-Team(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Schichten verwalten</value>
+  </data>
 </root>

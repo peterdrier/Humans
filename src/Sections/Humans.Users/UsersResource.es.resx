@@ -798,4 +798,7 @@
   <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
     <value>Selecciona etiquetas que coincidan con el trabajo que te gusta. Los turnos coincidentes se resaltarán con una estrella.</value>
   </data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Junta</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminaciones de cuentas pendientes</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>administradores</value></data>
 </root>

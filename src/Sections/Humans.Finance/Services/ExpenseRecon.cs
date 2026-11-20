@@ -13,7 +13,7 @@ namespace Humans.Finance.Services;
 /// </summary>
 internal static partial class ExpenseRecon
 {
-    /// <summary>What the push writes in front of a line's description (Expenses' ExpenseHoldedPublisher.DocDescription,
+    /// <summary>What the push writes in front of a line's description (Expenses' ExpenseReportBackgroundProcessor.DocDescription,
     /// internal to that section).</summary>
     internal const string DescriptionMarker = "ER: ";
 
@@ -22,7 +22,6 @@ internal static partial class ExpenseRecon
 
     private const string PurchaseType = "purchase";
 
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     internal static ExpenseReconReport Unavailable(int? year, string reason) =>
         new(year, null, reason, [], [], [], [], new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0));
@@ -36,7 +35,8 @@ internal static partial class ExpenseRecon
         IReadOnlyDictionary<Guid, int> accountByUser,
         IReadOnlyDictionary<int, IReadOnlyList<HoldedLedgerLineInfo>> ledger,
         IReadOnlyList<SepaPayoutTransferRow> transfers,
-        Func<Guid, string> memberName)
+        Func<Guid, string> memberName,
+        DateTimeZone zone)
     {
         var purchases = ledger.ToDictionary(
             kv => kv.Key,
@@ -74,8 +74,8 @@ internal static partial class ExpenseRecon
                 : ExpenseReconLineStatus.Booked;
             return new ExpenseReconLine(
                 l.ExpenseReportId, l.LineId, l.CreditorUserId, memberName(l.CreditorUserId), l.Description,
-                l.BookedAmount, l.DocumentDate.InZone(MadridZone).Date, l.SyncState.ToString(), status, l.HoldedDocId,
-                hit?.Line.AccountNum, hit?.Line.EntryNumber, hit is null ? null : DateOf(hit.Line),
+                l.BookedAmount, l.DocumentDate.InZone(zone).Date, l.SyncState.ToString(), status, l.HoldedDocId,
+                hit?.Line.AccountNum, hit?.Line.EntryNumber, hit is null ? null : DateOf(hit.Line, zone),
                 extra.Select(x => x.Line.EntryNumber).ToList(), extra.Sum(x => x.Amount));
         }).ToList();
 
@@ -83,13 +83,13 @@ internal static partial class ExpenseRecon
         var allOrphans = purchases.Values.SelectMany(ps => ps)
             .Where(p => p.ClaimedBy is null && p.DuplicateOf is null && IsMarked(p.Text))
             .Select(p => new ExpenseReconOrphan(
-                p.Line.AccountNum, p.Line.EntryNumber, DateOf(p.Line), p.Line.Description ?? "", p.Amount,
+                p.Line.AccountNum, p.Line.EntryNumber, DateOf(p.Line, zone), p.Line.Description ?? "", p.Amount,
                 boundAccounts.Contains(p.Line.AccountNum)
                     ? ExpenseReconOrphanKind.NoMatchingLine
                     : ExpenseReconOrphanKind.UnboundContact))
             .ToList();
 
-        var members = Members(allLines, accountByUser, ledger, purchases, transfers, memberName);
+        var members = Members(allLines, accountByUser, ledger, purchases, transfers, memberName, zone);
 
         bool InYear(LocalDate date) => year is null || date.Year == year;
         var lines = allLines.Where(l => InYear(l.DocumentDate)).ToList();
@@ -159,7 +159,7 @@ internal static partial class ExpenseRecon
     private static bool IsPurchase(HoldedLedgerLineInfo l) =>
         string.Equals(l.Type, PurchaseType, StringComparison.OrdinalIgnoreCase);
 
-    private static LocalDate DateOf(HoldedLedgerLineInfo l) => l.Date.InZone(MadridZone).Date;
+    private static LocalDate DateOf(HoldedLedgerLineInfo l, DateTimeZone zone) => l.Date.InZone(zone).Date;
 
     /// <summary>Nothing has failed: the push has not run yet, or ran after the mirror last synced.</summary>
     private static bool IsPending(ExpenseHoldedReconLine line, Instant mirrorSyncedAt) =>
@@ -179,7 +179,8 @@ internal static partial class ExpenseRecon
         IReadOnlyDictionary<int, IReadOnlyList<HoldedLedgerLineInfo>> ledger,
         IReadOnlyDictionary<int, List<Purchase>> purchases,
         IReadOnlyList<SepaPayoutTransferRow> transfers,
-        Func<Guid, string> memberName)
+        Func<Guid, string> memberName,
+        DateTimeZone zone)
     {
         var transfersByAccount = transfers.Where(t => !t.IsWithdrawn).ToLookup(t => t.SupplierAccountNum);
         return lines.GroupBy(l => l.CreditorUserId).Select(g =>
@@ -198,7 +199,7 @@ internal static partial class ExpenseRecon
 
                 var rest = (ledger.GetValueOrDefault(account) ?? []).Where(l => !accounted.Contains(l)).ToList();
                 var debitDays = rest.Where(l => !IsPurchase(l) && l.Debit > 0m)
-                    .GroupBy(DateOf)
+                    .GroupBy(l => DateOf(l, zone))
                     .OrderBy(d => d.Key)
                     .Select(d => (Date: d.Key, Lines: d.ToList(), Sum: d.Sum(l => l.Debit - l.Credit)))
                     .ToList();
@@ -207,8 +208,8 @@ internal static partial class ExpenseRecon
                 var sepaPaid = 0m;
                 foreach (var t in transfersByAccount[account].Where(t => t.IsBooked).OrderBy(t => t.GeneratedAt))
                 {
-                    var from = t.GeneratedAt.InZone(MadridZone).Date.PlusDays(-1);
-                    var to = t.BookedAt!.Value.InZone(MadridZone).Date.PlusDays(1);
+                    var from = t.GeneratedAt.InZone(zone).Date.PlusDays(-1);
+                    var to = t.BookedAt!.Value.InZone(zone).Date.PlusDays(1);
                     var day = debitDays.FirstOrDefault(d =>
                         d.Date >= from && d.Date <= to && d.Sum == t.Amount && !d.Lines.Exists(sepaLines.Contains));
                     if (day.Lines is null)
@@ -221,7 +222,7 @@ internal static partial class ExpenseRecon
                 }
 
                 var other = rest.Where(l => !sepaLines.Contains(l))
-                    .Select(l => new ExpenseReconMovement(DateOf(l), l.EntryNumber, l.Type, l.Description, l.Debit - l.Credit))
+                    .Select(l => new ExpenseReconMovement(DateOf(l, zone), l.EntryNumber, l.Type, l.Description, l.Debit - l.Credit))
                     .ToList();
                 var status = missing == 0 && unclaimed.Count == 0 && unmatchedTransfers.Count == 0
                     ? ExpenseReconMemberStatus.Balanced

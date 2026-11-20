@@ -1,6 +1,6 @@
 @* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
-   here ships broken markup with a green build and no runtime error. CityPlanningPageRenderTests
-   is integration-only, not CI; the CI gate is tests/e2e/tests/city-planning.spec.ts, which runs after merge. *@
+   here ships broken markup with a green unit build; CityPlanningPageRenderTests (integration suite)
+   and tests/e2e/tests/city-planning.spec.ts catch it. *@
 @using Humans.Base.Extensions
 @using Humans.CityPlanning
 @using Humans.CityPlanning.Contracts

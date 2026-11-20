@@ -1,4 +1,4 @@
-@inject IAuthorizationService AuthService
+@inject IEnumerable<ITeamShiftsParts> ShiftsParts
 @model Humans.Teams.Models.AdminTeamViewModel
 
 <tr>
@@ -37,22 +37,9 @@
         }
     </td>
     <td>
-        @if (Model.PendingShiftSignupCount > 0)
+        @foreach (var part in ShiftsParts)
         {
-            @if ((await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded)
-            {
-                <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.Slug">
-                    <span class="badge bg-warning">@Model.PendingShiftSignupCount</span>
-                </a>
-            }
-            else
-            {
-                <span class="badge bg-warning">@Model.PendingShiftSignupCount</span>
-            }
-        }
-        else
-        {
-            <span class="text-muted">0</span>
+            @await Component.InvokeAsync(part.AdminRowCell, new TeamAdminRowShiftsArgs(Model.Id, Model.Slug))
         }
     </td>
     <td>

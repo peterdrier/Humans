@@ -437,21 +437,29 @@ public class AgentServiceTests
         preview.SystemPromptTokens.Should().Be(4096);
     }
 
-    [HumansFact]
-    public async Task PromptPreview_renders_without_a_token_count_when_count_tokens_fails()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task PromptPreview_classifies_failures_and_renders_without_a_token_count(bool unexpected)
     {
         var userId = Guid.NewGuid();
-        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
+        var logger = new Humans.Testing.CapturingLogger<AgentService>();
+        var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, logger: logger);
 
         var conversationId = await StartConversationAsync(svc, client, userId);
 
-        client.CountTokensThrows = true;
+        Exception failure = unexpected ? new InvalidOperationException("Token count failed") : new HttpRequestException("Token count failed");
+        client.CountTokensFailure = failure;
         var preview = await svc.GetPromptPreviewForAdminAsync(
             conversationId, Xunit.TestContext.Current.CancellationToken);
 
         preview.Should().NotBeNull();
         preview.SystemPromptTokens.Should().BeNull(
             "a count_tokens failure must never break the admin prompt-preview page");
+        var entry = logger.Entries.Single(entry => entry.Message.Contains("count_tokens failed", StringComparison.Ordinal));
+        entry.Level.Should().Be(unexpected ? LogLevel.Error : LogLevel.Warning);
+        entry.Exception.Should().BeSameAs(unexpected ? failure : null);
+        entry.Message.Should().Contain(failure.Message);
     }
 
     [HumansFact]

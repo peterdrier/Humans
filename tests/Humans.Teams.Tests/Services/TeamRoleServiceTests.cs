@@ -12,9 +12,6 @@ using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Shifts.Data;
-using Humans.Shifts.Services;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
@@ -73,21 +70,10 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .With(userService)
             .With(userService)
             .Build();
-        var shiftManagementService = new ShiftManagementService(
-            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
-            AuditLog,
-            AdminAuthorization,
-            serviceProvider,
-            Cache,
-            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
-            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
             AuditLog,
             Notifier,
-            shiftManagementService,
             AdminAuthorization,
             serviceProvider,
             Clock,

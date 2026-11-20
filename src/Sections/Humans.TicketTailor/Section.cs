@@ -14,8 +14,8 @@ namespace Humans.TicketTailor;
 /// <c>IHostEnvironment</c>, so the name comes from configuration.
 /// </para>
 /// <para>
-/// <c>TicketVendorSettings</c> is bound in Shell: it belongs to the Tickets port, and replacing this vendor must
-/// not take it along.
+/// <c>TicketVendorSettings</c> is bound by Tickets: it belongs to the port, and replacing this vendor must not take
+/// it along.
 /// </para>
 /// </summary>
 public sealed class Section : ISection

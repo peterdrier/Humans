@@ -31,14 +31,13 @@ namespace Humans.Store.Tests.Services;
 
 /// <summary>
 /// Issuance: the v2 create+approve pipeline, per-line
-/// revenue accounts, tax-0 deposit lines to the fianzas account, the receipt/factura branch, and
+/// revenue accounts, kept deposits and write-offs, the receipt/factura branch, and
 /// both idempotency guards — the local one, and the pre-issue search that adopts a document an
 /// earlier attempt approved before failing to save.
 /// </summary>
 public class ServiceIssueInvoiceTests
 {
     private const int IceAccountNum = 75_900_002;
-    private const int DepositAccountNum = 56_000_000;
 
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
@@ -51,10 +50,11 @@ public class ServiceIssueInvoiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 9, 1, 10, 0));
     private readonly StoreSettings _settings = new()
     {
-        DepositLiabilityAccountNum = DepositAccountNum,
         SimplifiedInvoiceThresholdEur = 400m,
     };
-    private readonly Service _service;
+    private readonly CatalogService _catalog;
+    private readonly Service _orders;
+    private readonly InvoiceService _service;
 
     private readonly Guid _productId = Guid.NewGuid();
     private readonly Guid _actor = Guid.NewGuid();
@@ -69,7 +69,6 @@ public class ServiceIssueInvoiceTests
         _holdedService.GetChartAsync(Arg.Any<CancellationToken>()).Returns(
         [
             Account(IceAccountNum),
-            Account(DepositAccountNum),
         ]);
         _holded.IssueSalesDocumentAsync(
                 Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
@@ -88,9 +87,12 @@ public class ServiceIssueInvoiceTests
         _holded.FindSalesDocumentsByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Found());
 
-        _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
+        _catalog = new CatalogService(_repo, _audit, _clock, _holdedService, NullLogger<CatalogService>.Instance);
+        _orders = new Service(
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _catalog,
             NullLogger<Service>.Instance);
+        _service = new InvoiceService(_repo, _audit, _clock, _holdedService, _holded, _stripe,
+            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), _orders, NullLogger<InvoiceService>.Instance);
     }
 
     private static HoldedChartAccountInfo Account(int number) =>
@@ -257,37 +259,150 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Deposit_lines_post_tax_free_to_the_liability_account()
+    public async Task Kept_deposits_go_on_as_income_at_21_percent_and_returned_deposits_only_in_the_notes()
     {
+        // EUR 60 charged, EUR 20 returned and refunded: EUR 40 kept, a net 33.06 + 6.94 VAT line on Ice's revenue account.
         var order = CampOrder(qty: 2, depositSnapshot: 30m);
         Arrange(order, IceProduct(unitPrice: 5m, deposit: 30m));
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 20m,
+            Method = PaymentMethod.DepositReturn,
+            Status = PaymentStatus.Paid,
+            ProductId = _productId,
+            ReceivedAt = Instant.FromUtc(2026, 8, 20, 0, 0),
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -20m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+        });
 
         var input = await CapturedInputAsync(order);
 
         input.Lines.Should().HaveCount(2);
-        var deposit = input.Lines[1];
-        deposit.AccountNum.Should().Be(DepositAccountNum);
-        deposit.Taxes.Should().Equal("s_iva_0");
-        deposit.Units.Should().Be(2m);
-        deposit.Price.Should().Be(30m);
-        // The goods line keeps its own rate and its own account.
-        input.Lines[0].AccountNum.Should().Be(IceAccountNum);
-        input.Lines[0].Taxes.Should().Equal("s_iva_21");
+        var kept = input.Lines[1];
+        kept.Name.Should().Be("Ice – kept deposit");
+        kept.AccountNum.Should().Be(IceAccountNum);
+        kept.Taxes.Should().Equal("s_iva_21");
+        kept.Units.Should().Be(1m);
+        kept.Price.Should().Be(33.06m);
+        input.Notes.Should().Contain("Deposit returned: EUR 20.00 on 2026-08-20 (Ice)");
     }
 
     [HumansFact]
-    public async Task Deposit_without_a_configured_liability_account_is_refused_before_calling_holded()
+    public async Task Returns_recorded_without_a_product_return_every_deposit()
     {
-        _settings.DepositLiabilityAccountNum = null;
-        var order = CampOrder(qty: 1, depositSnapshot: 30m);
-        Arrange(order, IceProduct(deposit: 30m));
+        var order = CampOrder(qty: 2, depositSnapshot: 30m);
+        Arrange(order, IceProduct(unitPrice: 5m, deposit: 30m));
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 60m,
+            Method = PaymentMethod.DepositReturn,
+            Status = PaymentStatus.Paid,
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -60m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+        });
+
+        var input = await CapturedInputAsync(order);
+
+        input.Lines.Should().ContainSingle().Which.Name.Should().Be("Ice");
+    }
+
+    [HumansFact]
+    public async Task A_write_off_goes_on_as_a_document_discount_that_lands_on_the_paid_amount()
+    {
+        // 20 x EUR 5 + 21% = 121.00; the camp paid 101.00 and 20.00 was written off.
+        var order = CampOrder();
+        Arrange(order, IceProduct(), settled: false);
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 101m,
+            Method = PaymentMethod.BankTransfer,
+            Status = PaymentStatus.Paid,
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 20m,
+            Method = PaymentMethod.WriteOff,
+            Status = PaymentStatus.Paid,
+            Notes = "Agreed with the camp",
+        });
+
+        var input = await CapturedInputAsync(order);
+
+        input.DiscountPercent.Should().NotBeNull();
+        var lines = input.Lines.Select(l => new StoreInvoicePlan.Line(Guid.Empty, l.Name, l.Units, l.Price, 21m, false)).ToList();
+        StoreInvoicePlan.Model(lines, input.DiscountPercent!.Value).Total.Should().Be(101m);
+    }
+
+    [HumansFact]
+    public async Task A_receipt_is_refused_when_a_refund_would_need_its_missing_contact()
+    {
+        var order = CampOrder(identified: false);
+        Arrange(order, IceProduct());
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 10m,
+            Method = PaymentMethod.BankTransfer,
+            Status = PaymentStatus.Paid,
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -10m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+        });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
-        result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Match("*deposit liability account*");
-        await _holded.DidNotReceive().IssueSalesDocumentAsync(
-            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        result.Refusal.Should().Match("*refund*contact*");
+        await _holded.DidNotReceiveWithAnyArgs().IssueSalesDocumentAsync(default, default!);
+    }
+
+    [HumansFact]
+    public async Task A_pending_refund_holds_the_invoice_back()
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -1m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Pending,
+            ExternalRef = "re_1",
+        });
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Match("*refund is still pending*");
+        await _holded.DidNotReceiveWithAnyArgs().IssueSalesDocumentAsync(default, default!);
     }
 
     [HumansTheory]
@@ -304,7 +419,7 @@ public class ServiceIssueInvoiceTests
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Match("*balance is zero*");
+        result.Refusal.Should().Match("*before invoicing*");
         await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
@@ -320,7 +435,7 @@ public class ServiceIssueInvoiceTests
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Match("*balance is zero*");
+        result.Refusal.Should().Match("*before invoicing*");
     }
 
     [HumansFact]
@@ -403,7 +518,7 @@ public class ServiceIssueInvoiceTests
     public async Task Account_missing_from_the_holded_chart_is_refused()
     {
         _holdedService.GetChartAsync(Arg.Any<CancellationToken>())
-            .Returns([Account(DepositAccountNum)]);
+            .Returns([Account(70_000_000)]);
         var order = CampOrder();
         Arrange(order, IceProduct());
 
@@ -463,7 +578,7 @@ public class ServiceIssueInvoiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, _actor.ToString())], "test"))
         };
-        var controller = new StoreController(_service, _camps, authorization, users, logger, localizer)
+        var controller = new StoreController(_orders, _catalog, _service, _camps, authorization, users, logger, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -629,7 +744,7 @@ public class ServiceIssueInvoiceTests
         await _holded.DidNotReceiveWithAnyArgs().ApproveSalesDocumentAsync(default, default!);
         if (isDraft)
         {
-            result.Refusal.Should().Match("*balance is zero*");
+            result.Refusal.Should().Match("*before invoicing*");
             await _repo.DidNotReceiveWithAnyArgs().SaveIssuedInvoiceAsync(default!, default!);
             order.State.Should().Be(OrderState.Open);
         }
@@ -895,9 +1010,9 @@ public class ServiceIssueInvoiceTests
         var order = CampOrder(qty: 10);
         Arrange(order, IceProduct(deposit: 3m));
         ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(
-            isDraft: false, subtotal: 80m, tax: 10.50m, total: 90.50m) with
+            isDraft: false, subtotal: 74.79m, tax: 15.71m, total: 90.50m) with
         {
-            Lines = [new("Ice — refundable deposit", 10m, 3m, 0m), new("Ice", 10m, 5m, 21m)],
+            Lines = [new("Ice – kept deposit", 1m, 24.79m, 21m), new("Ice", 10m, 5m, 21m)],
         });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);

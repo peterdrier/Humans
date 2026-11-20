@@ -187,9 +187,9 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var survivor = SeedUser("Ana", language: "ca", mergedIds: [archived]);
         var person = (await Users.GetUserInfoAsync(survivor, Ct))!;
         Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(person);
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                call.Arg<IReadOnlyCollection<Guid>>().Distinct()
+                call.Arg<IEnumerable<Guid>>().Distinct()
                     .Where(id => id == archived || id == survivor).ToDictionary(id => id, _ => person)));
         var program = await SeedProgramAsync(managers: managerNotice ? [archived, survivor] : []);
         var service = NewService();
@@ -390,7 +390,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
                 }
                 await actual.AddGrantsAsync(call.Arg<IReadOnlyList<PreapprovalGrant>>(), call.Arg<CancellationToken>());
             });
-        PreapprovalService ScopedService() => new(repository, Users, Finance, NewNotices(), AuditLog, Clock, Logger);
+        PreapprovalService ScopedService() => new(FixedOrgTimeZone.Madrid, repository, Users, Finance, NewNotices(), AuditLog, Clock, Logger);
         var first = ScopedService().ApplyAsync(program.Id, applicant, "First note", 400m, Ct);
         await saving.Task.WaitAsync(Ct);
         var next = ScopedService().ApplyAsync(program.Id, throughMergedAlias ? archived : applicant, "Latest note", 450m, Ct);

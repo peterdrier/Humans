@@ -1,7 +1,5 @@
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
-using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 
@@ -10,8 +8,6 @@ namespace Humans.Teams.Services;
 internal sealed class TeamPageService(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,
-    IShiftService shiftManagementService,
-    ISettingsService settingsService,
     IRoleAssignmentService roleAssignmentService) : ITeamPageService
 {
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
@@ -77,7 +73,6 @@ internal sealed class TeamPageService(
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,
-        bool canManageShiftsByRole,
         CancellationToken cancellationToken = default)
     {
         var detail = await GetTeamDetailAsync(slug, userId, cancellationToken);
@@ -86,21 +81,11 @@ internal sealed class TeamPageService(
             return null;
         }
 
-        var visibleMembers = detail.IsAuthenticated
+        var members = detail.IsAuthenticated
             ? detail.Members
             : detail.Team.ShowCoordinatorsOnPublicPage
                 ? detail.Members.Where(m => m.Role == TeamMemberRole.Coordinator).ToList()
                 : [];
-
-        var members = visibleMembers
-            .Select(member => new TeamPageMemberSummary(
-                member.UserId,
-                member.DisplayName,
-                detail.IsAuthenticated ? member.Email : null,
-                member.ProfilePictureUrl,
-                member.Role,
-                detail.IsAuthenticated ? member.JoinedAt : null))
-            .ToList();
 
         var resources = detail.IsAuthenticated
             ? (await teamResourceService.GetTeamResourcesAsync(detail.Team.Id, cancellationToken))
@@ -111,14 +96,6 @@ internal sealed class TeamPageService(
                     resource.ProvisionedAt))
                 .ToList()
             : [];
-
-        var shiftsSummary = await GetShiftsSummaryAsync(
-            detail.Team,
-            detail.ChildTeams,
-            userId,
-            detail.IsAuthenticated,
-            canManageShiftsByRole,
-            cancellationToken);
 
         var (subteamLeads, subteamMembers) = detail.IsAuthenticated && detail.ChildTeams.Count > 0
             ? await BuildSubteamRollupAsync(detail.ChildTeams, members, cancellationToken)
@@ -139,7 +116,6 @@ internal sealed class TeamPageService(
             detail.CanCurrentUserEditTeam,
             detail.CurrentUserPendingRequestId,
             detail.PendingRequestCount,
-            shiftsSummary,
             subteamLeads,
             subteamMembers);
     }
@@ -235,7 +211,7 @@ internal sealed class TeamPageService(
 
             var coordinators = team.Members
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .Select(MapTeamDetailMemberSummary)
+                .Select(MapTeamPageMemberSummary)
                 .ToList();
 
             return new TeamDetailResult(
@@ -279,7 +255,7 @@ internal sealed class TeamPageService(
         return new TeamDetailResult(
             Team: MapTeamSummary(team, parent?.IsHidden == true && !canSeeHiddenTeams ? null : parent),
             Members: team.Members
-                .Select(MapTeamDetailMemberSummary)
+                .Select(MapTeamPageMemberSummary)
                 .ToList(),
             ChildTeams: EnumerateChildren(team, teamsById)
                 .Where(c => c.IsActive && (!c.IsHidden || canSeeHiddenTeams))
@@ -333,14 +309,11 @@ internal sealed class TeamPageService(
     private static TeamPageTeamLink MapTeamLink(TeamInfo team) =>
         new(team.Id, team.Name, team.Slug);
 
-    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMemberInfo member) =>
+    private static TeamPageMemberSummary MapTeamPageMemberSummary(TeamMemberInfo member) =>
         new(
             UserId: member.UserId,
             DisplayName: member.DisplayName,
-            Email: member.Email,
-            ProfilePictureUrl: member.ProfilePictureUrl,
-            Role: member.Role,
-            JoinedAt: member.JoinedAt);
+            Role: member.Role);
 
     /// <summary>Other child-team members are deduplicated across child teams.</summary>
     private async Task<(IReadOnlyList<TeamPageChildTeamMemberSummary> Leads, IReadOnlyList<TeamPageChildTeamMemberSummary> Members)>
@@ -386,51 +359,5 @@ internal sealed class TeamPageService(
         }
 
         return (leads, rollupMembers);
-    }
-
-    private async Task<TeamPageShiftsSummary?> GetShiftsSummaryAsync(
-        TeamPageTeamSummary team,
-        IReadOnlyList<TeamPageTeamLink> childTeams,
-        Guid? userId,
-        bool isAuthenticated,
-        bool canManageShiftsByRole,
-        CancellationToken cancellationToken)
-    {
-        if (!isAuthenticated ||
-            !userId.HasValue ||
-            team.SystemTeamType != SystemTeamType.None)
-        {
-            return null;
-        }
-
-        var canManageShifts = canManageShiftsByRole ||
-            await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id, cancellationToken);
-
-        var activeEvent = settingsService.GetActiveEventSettings();
-        if (activeEvent is null)
-        {
-            return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
-        }
-
-        var activeChildTeamIds = childTeams.Select(c => c.Id).ToList();
-        var teamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
-        teamIds.AddRange(activeChildTeamIds);
-
-        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, teamIds, cancellationToken);
-        if (summaryData is null)
-        {
-            return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
-        }
-
-        var childTeamCountWithShifts = activeChildTeamIds
-            .Count(summaryData.TeamIdsWithShifts.Contains);
-
-        return new TeamPageShiftsSummary(
-            summaryData.TotalSlots,
-            summaryData.ConfirmedCount,
-            summaryData.PendingCount,
-            summaryData.UniqueVolunteerCount,
-            canManageShifts,
-            childTeamCountWithShifts);
     }
 }

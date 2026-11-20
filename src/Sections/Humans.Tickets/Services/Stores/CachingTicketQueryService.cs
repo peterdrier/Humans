@@ -74,14 +74,14 @@ internal sealed class CachingTicketQueryService
     public Task<List<string>> GetAvailableTicketTypesAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAvailableTicketTypesAsync(ct));
 
-    public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
-        WithInnerAsync(inner => inner.GetDashboardStatsAsync());
+    public Task<TicketDashboardStats> GetDashboardStatsAsync(CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetDashboardStatsAsync(ct));
 
     public Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold, decimal grossRevenue, string currency,
-        bool canAccessFinance, int fallbackTarget) =>
+        bool canAccessFinance, int fallbackTarget, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.CalculateBreakEvenAsync(
-            ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget));
+            ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget, ct));
 
     public Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetSalesAggregatesAsync(ct));

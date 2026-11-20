@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,7 @@ public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewC
         var ct = HttpContext.RequestAborted;
         try
         {
-            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            if (UserClaimsPrincipal.GetUserId() is not { } userId)
                 return Content(string.Empty);
 
             var settings = await campService.GetSettingsAsync(ct);
