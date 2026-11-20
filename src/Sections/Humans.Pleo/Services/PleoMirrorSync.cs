@@ -69,7 +69,8 @@ internal sealed class PleoMirrorSync(
                 state.LastError = categoryError;
                 // The mirror committed; finish its outcome independently of caller shutdown.
                 await repo.SaveSyncStateAsync(state, CancellationToken.None);
-                logger.LogInformation("Pleo sweep mirrored {Entries} entries ({Skipped} skipped), {Accounts} accounts, {Employees} cardholders",
+                logger.Log(skipped > 0 ? LogLevel.Warning : LogLevel.Information,
+                    "Pleo sweep mirrored {Entries} entries ({Skipped} skipped), {Accounts} accounts, {Employees} cardholders",
                     entries.Count, skipped, accounts.Count, employees.Count);
                 return categoryError is null ? PleoSyncOutcome.Synced : PleoSyncOutcome.SyncedWithoutCategories;
             }

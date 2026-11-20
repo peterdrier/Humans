@@ -30,6 +30,7 @@ public sealed class PleoSyncTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Service _service;
     private List<JsonElement> _entries = [];
+    private readonly CapturingLogger<Service> _logger = new();
 
     public PleoSyncTests()
     {
@@ -49,7 +50,7 @@ public sealed class PleoSyncTests
         _client.GetBalanceAsync(Arg.Any<CancellationToken>()).Returns(new PleoBalanceWire("EUR", 1_000_000, 990_000, 0));
 
         _service = new Service(_repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit,
-            NullLogger<Service>.Instance);
+            _logger);
     }
 
     private static JsonElement Entry(
@@ -345,8 +346,10 @@ public sealed class PleoSyncTests
             .Be(new Humans.Pleo.Contracts.PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
     }
 
-    [HumansFact]
-    public async Task Empty_rows_are_skipped_and_counted()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Empty_rows_are_skipped_counted_and_visible_in_logs(bool hasEmptyRows)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries =
@@ -357,12 +360,18 @@ public sealed class PleoSyncTests
             Parse("null"),
         ];
 
+        if (!hasEmptyRows) _entries = [Entry("a")];
+
         await SyncAsync();
 
         (await _repo.GetEntriesAsync(ct)).Select(e => e.Id).Should().Equal("a");
         var state = await _repo.GetSyncStateAsync(ct);
         state!.LastCount.Should().Be(1);
-        state.SkippedCount.Should().Be(3);
+        state.SkippedCount.Should().Be(hasEmptyRows ? 3 : 0);
+        var completion = _logger.Entries.Should().ContainSingle(entry =>
+            entry.Message.StartsWith("Pleo sweep mirrored", StringComparison.Ordinal)).Subject;
+        completion.Level.Should().Be(hasEmptyRows ? LogLevel.Warning : LogLevel.Information);
+        completion.Exception.Should().BeNull();
     }
 
     [HumansFact]
