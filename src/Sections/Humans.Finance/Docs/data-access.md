@@ -79,7 +79,7 @@ contact and purchase-document mirrors; refreshes the purchase mirror and 5720000
 `CreatePurchaseDocumentAsync`, `EnsurePurchaseDocumentApprovedAsync`, `PayPurchaseDocumentAsync`,
 `UploadPurchaseAttachmentAsync`, `EnsureExpenseAccountAsync` (only for its Holded id) and `PostJournalEntryAsync`. Reads
 and writes `finance_settings`, `finance_pleo_booking_claims` and `finance_pleo_receipt_uploads` through
-`IHoldedRepository`. `PleoBookingState` holds the current/last run; `PleoBookingRunner` runs `RunAsync` in its own
+`IFinanceRepository`. `PleoBookingState` holds the current/last run; `PleoBookingRunner` runs `RunAsync` in its own
 scope off the request. Injected by `FinanceController` and `FinanceSettingsTabViewComponent`.
 
 ### SepaBookingRunner (Singleton, section-internal)

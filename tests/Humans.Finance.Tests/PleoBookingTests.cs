@@ -19,7 +19,7 @@ internal static class TestPleo
 {
     public static PleoBooking Booking() => new(
         Substitute.For<IPleoService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
-        Substitute.For<IHoldedRepository>(), Substitute.For<IAuditLogService>(), new PleoBookingState(),
+        Substitute.For<IFinanceRepository>(), Substitute.For<IAuditLogService>(), new PleoBookingState(),
         SystemClock.Instance, NullLogger<PleoBooking>.Instance);
 
     public static PleoBookingRunner Runner() =>
@@ -44,7 +44,7 @@ public class PleoBookingTests
     private readonly IPleoService _pleo = Substitute.For<IPleoService>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly PleoBookingState _state = new();
     private readonly List<HoldedLedgerLineInfo> _ledger = [];
     private readonly List<HoldedLedgerLineInfo> _expenseLines = [];
