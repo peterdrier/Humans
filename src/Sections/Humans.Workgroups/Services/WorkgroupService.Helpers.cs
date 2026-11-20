@@ -1,4 +1,3 @@
-using static Humans.Workgroups.Services.WorkgroupJournal;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
@@ -13,8 +12,6 @@ namespace Humans.Workgroups.Services;
 /// <summary>Guards and crosscut calls, kept apart so the rule files read as rules.</summary>
 internal sealed partial class WorkgroupService
 {
-    private static WorkgroupInfo ToInfo(Workgroup w) => WorkgroupRegisterReader.ToInfo(w);
-
     private static WorkgroupRefusal? RequireReasons(string? reasons)
     {
         if (string.IsNullOrWhiteSpace(reasons))
@@ -31,7 +28,7 @@ internal sealed partial class WorkgroupService
             return new(Refusal: refusal);
         if (application.SecondCoordinatorUserId is not { } second)
             return new(application);
-        var coordinator = await access.ResolveMemberTargetAsync(second, ct);
+        var coordinator = await ResolveMemberTargetAsync(second, ct);
         return coordinator is null
             ? new(Refusal: new(WorkgroupErrorKeys.NotFound))
             : new(application with { SecondCoordinatorUserId = coordinator.Value });
@@ -45,7 +42,7 @@ internal sealed partial class WorkgroupService
             return new(WorkgroupErrorKeys.PurposeRequired);
         if (string.IsNullOrWhiteSpace(deliverable))
             return new(WorkgroupErrorKeys.DeliverableRequired);
-        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && WorkgroupRegisterReader.SafeHttpLink(discordChannelUrl) is null)
+        if (!string.IsNullOrWhiteSpace(discordChannelUrl) && SafeHttpLink(discordChannelUrl) is null)
             return new(WorkgroupErrorKeys.DiscordUrlInvalid);
         return null;
     }
@@ -132,16 +129,16 @@ internal sealed partial class WorkgroupService
             ClosePendingRequests(w, now));
         ct = CancellationToken.None;
 
-        await journal.AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
+        await AuditAsync(WorkgroupsAuditActions.WorkgroupClosed, w, $"Group ended ({reason})", actorUserId);
 
         var info = ToInfo(w);
         var coordinators = info.CoordinatorUserIds();
-        await notices.NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
+        await NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided,
             "Enum_WorkgroupLogKind_Ended", info, Trimmed(reasons), ct);
-        await notices.EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
+        await EmailAsync(coordinators, WorkgroupNoticeKind.Ended, info, Trimmed(reasons), ct);
 
         // Dormant: the access source now returns Viewer.
-        await GoogleResources.RequestGoogleSyncAsync(w, ct);
-        await Budgets.SetAccountActiveAsync(w, isActive: false, ct);
+        await RequestGoogleSyncAsync(w, ct);
+        await SetAccountActiveAsync(w, isActive: false, ct);
     }
 }

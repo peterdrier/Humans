@@ -11,16 +11,6 @@ namespace Humans.Workgroups.Services;
 /// </summary>
 internal sealed partial class WorkgroupService
 {
-    internal const string WorkgroupApplications = WorkgroupDataExport.WorkgroupApplications;
-    internal const string WorkgroupMemberships = WorkgroupDataExport.WorkgroupMemberships;
-    internal const string WorkgroupLogEntries = WorkgroupDataExport.WorkgroupLogEntries;
-    internal const string WorkgroupMeetings = WorkgroupDataExport.WorkgroupMeetings;
-    internal const string WorkgroupDocuments = WorkgroupDataExport.WorkgroupDocuments;
-    internal const string WorkgroupComments = WorkgroupDataExport.WorkgroupComments;
-
-    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        dataExport.ContributeForUserAsync(userId, ct);
-
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
@@ -37,7 +27,7 @@ internal sealed partial class WorkgroupService
 
         foreach (var info in orphaned)
         {
-            await notices.NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
+            await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
                 $"No coordinator: {info.Name}", info,
                 "The group's only coordinator was erased under GDPR. Name a coordinator from its members.", ct);
         }
