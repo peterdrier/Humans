@@ -1,30 +1,39 @@
 ---
 name: one-service-class-no-helpers
-description: HARD RULE. Each service is one class: `XService` implements `IXService` (and a writer interface only if another section must write). Never split it into Reader/Mutations/Notices helper classes it news up and forwards to.
+description: HARD RULE. Each service is one class implementing its interface(s); never split it into Reader/Mutations/Notices helper classes it news up and forwards to. A big section splits into separate services along natural lines, each its own DI registration, with one writer per cached graph.
 ---
 
-One service per section lane, one class. `XService` implements `IXService` for reads. Only when
-code outside the section genuinely has to write does the same class also implement the section's
-writer interface. Nothing outside the section writes without that justification.
+A service is one class. `XService` implements `IXService` for reads; only when code outside the
+section genuinely has to write does the same class also implement the section's writer interface.
 
-**Why:** Peter, 2026-11-20, after the nightly debt sweeps (from 2026-11-09) split ~40 services into
-`XReader`, `XMutations`, `XNotices`, `XJournal`, … classes that the service constructs itself
-(`private readonly XReader reader = new(...)`) and forwards calls to: "There should only be one
-service. There should never be a pass-through." Every read and write ended up written twice, the
-helpers had no interface or test seam of their own, and a reader had to open five files to follow
-one method. A big service file is not debt; a forwarding layer is.
+A section may have more than one service when its work falls into natural, separate jobs (Finance:
+category accounts, creditors, SEPA payouts). Each such service:
+- owns a job you can name without code nouns, and the tables or workflow that go with it;
+- is registered in DI on its own and reached through an interface (internal is fine), never `new`ed;
+- calls a sibling service through that sibling's interface, the same way another section would;
+- never forwards: a method whose body only calls another service's method is deleted, and the
+  caller uses that service directly.
+
+**Caches pin the line.** When a caching decorator holds a graph (`CachingTeamService` holds teams and
+members), every write to that graph goes through the one service behind that decorator. A split may
+move out only work whose writes the cache does not hold.
+
+**Size.** Aim for a service an agent can read in one go (about 25k tokens). Reforge's `classSize`
+charge says a class is big; it does not say where to cut. If no natural line exists, a big service
+stays big and the reason goes in the section's `health.md` load-bearing list.
+
+**Why:** Peter, 2026-11-20. The nightly debt sweeps (from 2026-11-09) split ~40 services into
+`XReader`, `XMutations`, `XNotices`, … classes the service constructed itself and forwarded to:
+"There should only be one service. There should never be a pass-through." Then, on what replaces
+them: "some sections have a lot going on … we don't want to split that code up in ways that's
+unnatural … for the ones that are big, is there a logical place to separate them? Let's do that."
 
 **How to apply:**
-- Never answer "this service is large" by moving methods into a new class in the same section. Size
-  is not a finding.
-- A service never `new`s a collaborator that holds its dependencies. If it needs one, it is either
-  the service itself or another section's interface injected by DI.
-- Talk about interfaces first: the shape is `IXService` (+ writer interface), implemented once.
-- Allowed: caching decorators over the service interface (`CachingXService`), pure static
-  calculators with no injected dependencies, view-model builders in the controller layer,
-  separate services that own a different lane with their own DI registration (sync jobs, webhooks).
-- Found an existing helper of this kind? Fold it back into the service: move the members, delete
-  the forwarding methods and the class. Don't copy it.
+- Never answer "this class is large" by moving methods into a helper the service constructs.
+- Allowed beside services: caching decorators over the service interface, pure static calculators
+  with no injected dependencies, view-model builders in the controller layer.
+- Found a constructed helper? Move its members into the service that owns the job and delete the
+  forwarders.
 
 **Related:** [`reuse-first-change-discipline`](../process/reuse-first-change-discipline.md),
 [`debt-sweep-standing-policy`](../process/debt-sweep-standing-policy.md)

@@ -150,7 +150,7 @@ Search at least these categories before declaring stasis:
 - full-service dependencies that should be read DTO/read-service dependencies
 - methods where callers only need one or two scalar values from a heavier service path
 - duplicate query/include/call sequences that can become one cohesive read shape
-- helper classes a service constructs and forwards to (`XReader`, `XMutations`, ...): fold them back into the service ([`one-service-class-no-helpers`](../../../memory/architecture/one-service-class-no-helpers.md)); never split a service by workflow
+- helper classes a service constructs and forwards to (`XReader`, `XMutations`, ...): move them back into the service ([`one-service-class-no-helpers`](../../../memory/architecture/one-service-class-no-helpers.md)); a big service splits only into separate DI-registered services along natural lines, with Peter's approval, never to lower `classSize`
 - stale public methods, DTO fields, or wrappers no longer used by production code
 - cross-section reads, entity returns, or persistence joins that bypass canonical read models
 - long parameter lists only when the fix is a real domain command/query object, not a parameter bag

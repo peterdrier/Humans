@@ -233,9 +233,9 @@ is empty. Re-run Finds for new actionable view moves.
 an unused enum flag) with no public-surface change. A "duplicate mutation
 pipeline" collapsed into one owner-section method replacing ≥2 identical
 caller sequences is pre-approved (D1) — do it and list it in the PR. Never split a large
-service into helper classes it constructs and forwards to
-([`one-service-class-no-helpers`](../../memory/architecture/one-service-class-no-helpers.md));
-an existing one is folded back into its service.
+service ([`one-service-class-no-helpers`](../../memory/architecture/one-service-class-no-helpers.md)):
+a helper it constructs and forwards to is forbidden, and a split into separate services is
+Peter's call, so propose it in the report instead. An existing helper moves back into its service.
 
 **Finds:** `review: light` rows mentioning dead/duplicate code:
 ```

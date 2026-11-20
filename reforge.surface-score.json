@@ -35,5 +35,8 @@
         "IRepository"
       ]
     }
+  },
+  "weights": {
+    "classSize": 2
   }
 }
