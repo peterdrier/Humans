@@ -1154,10 +1154,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>Los barrios que hacen que Elsewhere se sienta como casa.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>¿Nos cuentas tus preferencias alimentarias?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Estás en un turno largo. Si nos cuentas tus preferencias alimentarias, la cantina puede planificar tus comidas. Es opcional.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Decírnoslo ahora</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefiero no responder</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Ver todos mis turnos</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Orden</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Has cancelado el rango de turnos.</value></data>

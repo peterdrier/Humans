@@ -118,6 +118,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **AuditLog:** `IAuditLogService` records the weekly/daily CSV disclosures and the allergy / intolerance reveals.
 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
+- **Shifts pages:** Cantina fills Shifts' `IShiftsPageBanner` slot with `DietaryMissingBannerViewComponent`, shown on `/Shifts` and `/Shifts/Mine`.
 - **Settings:** `ISettingsService.GetActiveEventSettings` (active event/burn).
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.
 - **Gdpr / Users:** implements `IUserDataContributor` (Base) and `IUserMerge` (Users contract) in `DietaryProfileService`.

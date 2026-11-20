@@ -1154,10 +1154,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>De buurten die Elsewhere als thuis laten voelen.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Je eetvoorkeuren delen?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Je bent aangemeld voor een lange dienst. Als je je eetvoorkeuren doorgeeft, kan de cantina je maaltijden plannen. Het is optioneel.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Laat het ons nu weten</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Ik wil liever niet antwoorden</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Al mijn diensten bekijken</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Sorteervolgorde</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Je bent afgemeld voor de reeks diensten.</value></data>
