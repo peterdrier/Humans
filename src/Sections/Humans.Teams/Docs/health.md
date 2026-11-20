@@ -75,21 +75,20 @@ The shapes imply:
 
 ## 4. Invariants
 
-- At most one management role per team (`TeamRoleDefinitions.cs:115`, `TeamRoleDefinitions.cs:196`);
+- At most one management role per team (`TeamService.cs`);
   only TeamsAdmin/Admin may set or clear the flag (`TeamAdminController.cs:462`, and the edit
-  path keeps the stored flag for anyone else, `TeamRoleDefinitions.cs:96`).
+  path keeps the stored flag for anyone else, `TeamService.cs`).
 - A coordinator of a department has authority over its sub-teams; a sub-team manager has none
   over the department or its siblings (`TeamCoordinatorAccess.cs:11`).
-- Manual add, remove, join and leave on a system team are refused (`TeamMembershipAdministration.cs:34`,
-  `TeamMembershipAdministration.cs:74`, `TeamJoining.cs:51`); role assignment on a system team never
-  adds a non-member (`TeamRoleDefinitions.cs:285`).
-- One pending request per human per team (`TeamJoining.cs:72`); only a pending request can be
-  reviewed (`TeamJoining.cs:188`).
+- Manual add, remove, join and leave on a system team are refused (`TeamService.cs`); role assignment on a system team never
+  adds a non-member (`TeamService.cs`).
+- One pending request per human per team (`TeamService.cs`); only a pending request can be
+  reviewed (`TeamService.cs`).
 - Removing a member removes all their role assignments on that team (`TeamRepository.cs:592`).
 - Hidden teams are left out of every non-admin listing the directory builds (`TeamDirectoryBuilder.cs:83`).
-- Only departments can have a public page (`TeamPageContent.cs:46`).
-- `IsSensitive` is written only by a global Admin, on a change to the flag (`TeamLifecycle.cs:220`).
-- An early-entry grant may be created only while its team has `EarlyEntryEnabled` (`TeamEarlyEntry.cs:36`).
+- Only departments can have a public page (`TeamService.cs`).
+- `IsSensitive` is written only by a global Admin, on a change to the flag (`TeamService.cs`).
+- An early-entry grant may be created only while its team has `EarlyEntryEnabled` (`TeamService.cs`).
 - Slugs resolve on `Slug` or `CustomSlug`, case-insensitively (`TeamSlugResolver.cs:11`).
 - Erasure ends live memberships and hard-deletes join requests and EE grants (`TeamService.cs:481`);
   membership rows themselves are retained by legal basis.
