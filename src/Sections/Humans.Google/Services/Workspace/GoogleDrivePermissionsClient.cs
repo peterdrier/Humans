@@ -90,9 +90,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var permission = new SdkPermission
             {
                 Type = "user",
@@ -127,6 +127,11 @@ internal sealed class GoogleDrivePermissionsClient(
                 DrivePermissionCreateOutcome.Failed,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error granting {Role} to {Email} on {FileId}: {Reason}", role, userEmail, fileId, ex.Message);
+            return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Failed, new GoogleClientError(0, ex.Message));
+        }
     }
 
     public async Task<GoogleClientError?> UpdatePermissionAsync(
@@ -136,9 +141,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var request = drive.Permissions.Update(new SdkPermission { Role = role }, fileId, permissionId);
             request.SupportsAllDrives = true;
             await request.ExecuteAsync(ct);
@@ -151,6 +156,11 @@ internal sealed class GoogleDrivePermissionsClient(
                 permissionId, role, fileId, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
         }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error updating permission {PermissionId} to {Role} on {FileId}: {Reason}", permissionId, role, fileId, ex.Message);
+            return new GoogleClientError(0, ex.Message);
+        }
     }
 
     public async Task<DrivePermissionDeleteResult> DeletePermissionAsync(
@@ -159,9 +169,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var request = drive.Permissions.Delete(fileId, permissionId);
             request.SupportsAllDrives = true;
             await request.ExecuteAsync(ct);
@@ -184,6 +194,11 @@ internal sealed class GoogleDrivePermissionsClient(
             return new DrivePermissionDeleteResult(
                 DrivePermissionDeleteOutcome.Failed,
                 new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error deleting permission {PermissionId} on {FileId}: {Reason}", permissionId, fileId, ex.Message);
+            return new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Failed, new GoogleClientError(0, ex.Message));
         }
     }
 
@@ -230,9 +245,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var metadata = new SdkFile
             {
                 InheritedPermissionsDisabled = disabled
@@ -249,6 +264,11 @@ internal sealed class GoogleDrivePermissionsClient(
                 "Google API error setting inheritedPermissionsDisabled={Disabled} on {FileId}: Code={Code} Message={Message}",
                 disabled, fileId, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error setting inheritedPermissionsDisabled={Disabled} on {FileId}: {Reason}", disabled, fileId, ex.Message);
+            return new GoogleClientError(0, ex.Message);
         }
     }
 
@@ -287,9 +307,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var metadata = new SdkFile
             {
                 Name = name,
@@ -311,6 +331,11 @@ internal sealed class GoogleDrivePermissionsClient(
             return new DriveFolderCreateResult(
                 FolderId: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error creating folder '{Name}' under {ParentFolderId}: {Reason}", name, parentFolderId, ex.Message);
+            return new DriveFolderCreateResult(FolderId: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 

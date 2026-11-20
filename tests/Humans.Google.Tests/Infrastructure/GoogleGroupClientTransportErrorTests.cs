@@ -165,7 +165,27 @@ public sealed class GoogleGroupClientTransportErrorTests
     [Xunit.InlineData("drive", "io")]
     [Xunit.InlineData("drive", "cancel")]
     [Xunit.InlineData("drive", "credentials")]
-    public async Task Structured_reads_keep_transport_failures_separate_from_cancellation_and_credentials(string kind, string failure)
+    [Xunit.InlineData("create", "http")]
+    [Xunit.InlineData("create", "io")]
+    [Xunit.InlineData("create", "cancel")]
+    [Xunit.InlineData("create", "credentials")]
+    [Xunit.InlineData("update", "http")]
+    [Xunit.InlineData("update", "io")]
+    [Xunit.InlineData("update", "cancel")]
+    [Xunit.InlineData("update", "credentials")]
+    [Xunit.InlineData("delete", "http")]
+    [Xunit.InlineData("delete", "io")]
+    [Xunit.InlineData("delete", "cancel")]
+    [Xunit.InlineData("delete", "credentials")]
+    [Xunit.InlineData("inherit", "http")]
+    [Xunit.InlineData("inherit", "io")]
+    [Xunit.InlineData("inherit", "cancel")]
+    [Xunit.InlineData("inherit", "credentials")]
+    [Xunit.InlineData("folder", "http")]
+    [Xunit.InlineData("folder", "io")]
+    [Xunit.InlineData("folder", "cancel")]
+    [Xunit.InlineData("folder", "credentials")]
+    public async Task Structured_calls_keep_transport_failures_separate_from_cancellation_and_credentials(string kind, string failure)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
         if (failure is "cancel") await cancellation.CancelAsync();
@@ -192,6 +212,28 @@ public sealed class GoogleGroupClientTransportErrorTests
             }
             var drive = new GoogleDrivePermissionsClient(settings, driveLogger);
             if (failure is not "credentials") Inject(drive, "_driveService", sdk);
+            if (kind is "create")
+            {
+                var result = await drive.CreatePermissionAsync("file", "person@example.org", "reader", cancellation.Token);
+                result.Outcome.Should().Be(DrivePermissionCreateOutcome.Failed);
+                return result.Error;
+            }
+            if (kind is "update")
+                return await drive.UpdatePermissionAsync("file", "permission", "reader", cancellation.Token);
+            if (kind is "delete")
+            {
+                var result = await drive.DeletePermissionAsync("file", "permission", cancellation.Token);
+                result.Outcome.Should().Be(DrivePermissionDeleteOutcome.Failed);
+                return result.Error;
+            }
+            if (kind is "inherit")
+                return await drive.SetInheritedPermissionsDisabledAsync("file", true, cancellation.Token);
+            if (kind is "folder")
+            {
+                var result = await drive.CreateFolderAsync("parent", "Folder", cancellation.Token);
+                result.FolderId.Should().BeNull();
+                return result.Error;
+            }
             if (kind is "permissions")
             {
                 var result = await drive.ListPermissionsAsync("file", cancellation.Token);
