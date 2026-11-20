@@ -125,7 +125,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     [HumansFact]
     public async Task GetHoldedBookingsAsync_lists_linked_lines_with_the_values_the_push_wrote()
     {
-        // The same description, notes and booked total ExpenseHoldedPublisher writes; a trimmed
+        // The same description, notes and booked total ExpenseReportBackgroundProcessor writes; a trimmed
         // line reports what it booked, an unlinked or declined line is absent, a legacy
         // report-level doc is not a line booking.
         var report = MakeReport() with { Total = 30m, MaxAmount = 25m, HoldedContactId = "c-1" };

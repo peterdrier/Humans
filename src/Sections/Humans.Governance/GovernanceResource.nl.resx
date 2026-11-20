@@ -747,6 +747,14 @@
   <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Google-groep en bestanden</value></data>
   <data name="Governance_YourAccess" xml:space="preserve"><value>Jouw Google-toegang</value></data>
   <data name="Governance_ViewAll" xml:space="preserve"><value>Alles bekijken</value></data>
+  <data name="Governance_ManageBoard" xml:space="preserve"><value>Bestuursleden beheren</value></data>
+  <data name="Governance_FindPerson" xml:space="preserve"><value>Zoek een persoon</value></data>
+  <data name="Governance_AddBoardMember" xml:space="preserve"><value>Toevoegen aan het bestuur</value></data>
+  <data name="Governance_EndBoardSeat" xml:space="preserve"><value>Beëindigen</value></data>
+  <data name="Governance_BoardMemberAdded" xml:space="preserve"><value>{0} zit nu in het bestuur.</value></data>
+  <data name="Governance_BoardMemberEnded" xml:space="preserve"><value>{0} zit niet meer in het bestuur.</value></data>
+  <data name="Governance_BoardMemberAlreadyOn" xml:space="preserve"><value>{0} zit al in het bestuur.</value></data>
+  <data name="Governance_BoardMemberNotOn" xml:space="preserve"><value>{0} zit niet in het bestuur.</value></data>
   <data name="Governance_NeedsDecision" xml:space="preserve"><value>Wacht op een besluit</value></data>
   <data name="Governance_NothingToDecide" xml:space="preserve"><value>Er staat op dit moment niets open voor een besluit.</value></data>
   <data name="Governance_AllVotes" xml:space="preserve"><value>Alle stemmingen</value></data>

@@ -24,8 +24,6 @@ internal interface IWorkspaceIdentityManagement : IGoogleService, IGoogleWrite
     /// <summary>Every recorded Drive address, keyed by member, with the identity address it stands
     /// in for. Callers apply one only while that identity address is still the member's.</summary>
     Task<IReadOnlyDictionary<Guid, DriveEmailOverride>> GetDriveEmailsAsync(CancellationToken ct = default);
-
-
 }
 
 /// <summary>The address Drive grants (<paramref name="DriveEmail"/>) in place of the identity

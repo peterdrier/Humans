@@ -747,6 +747,14 @@
   <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Gruppo e file Google</value></data>
   <data name="Governance_YourAccess" xml:space="preserve"><value>Il tuo accesso Google</value></data>
   <data name="Governance_ViewAll" xml:space="preserve"><value>Vedi tutti</value></data>
+  <data name="Governance_ManageBoard" xml:space="preserve"><value>Gestisci i membri del Consiglio</value></data>
+  <data name="Governance_FindPerson" xml:space="preserve"><value>Cerca una persona</value></data>
+  <data name="Governance_AddBoardMember" xml:space="preserve"><value>Aggiungi al Consiglio</value></data>
+  <data name="Governance_EndBoardSeat" xml:space="preserve"><value>Termina</value></data>
+  <data name="Governance_BoardMemberAdded" xml:space="preserve"><value>{0} ora fa parte del Consiglio.</value></data>
+  <data name="Governance_BoardMemberEnded" xml:space="preserve"><value>{0} non fa più parte del Consiglio.</value></data>
+  <data name="Governance_BoardMemberAlreadyOn" xml:space="preserve"><value>{0} fa già parte del Consiglio.</value></data>
+  <data name="Governance_BoardMemberNotOn" xml:space="preserve"><value>{0} non fa parte del Consiglio.</value></data>
   <data name="Governance_NeedsDecision" xml:space="preserve"><value>In attesa di decisione</value></data>
   <data name="Governance_NothingToDecide" xml:space="preserve"><value>Al momento non c'è nulla da decidere.</value></data>
   <data name="Governance_AllVotes" xml:space="preserve"><value>Tutte le votazioni</value></data>

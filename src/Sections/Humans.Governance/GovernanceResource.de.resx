@@ -747,6 +747,14 @@
   <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Google-Gruppe und Dateien</value></data>
   <data name="Governance_YourAccess" xml:space="preserve"><value>Dein Google-Zugang</value></data>
   <data name="Governance_ViewAll" xml:space="preserve"><value>Alle anzeigen</value></data>
+  <data name="Governance_ManageBoard" xml:space="preserve"><value>Vorstandsmitglieder verwalten</value></data>
+  <data name="Governance_FindPerson" xml:space="preserve"><value>Person suchen</value></data>
+  <data name="Governance_AddBoardMember" xml:space="preserve"><value>Zum Vorstand hinzufügen</value></data>
+  <data name="Governance_EndBoardSeat" xml:space="preserve"><value>Beenden</value></data>
+  <data name="Governance_BoardMemberAdded" xml:space="preserve"><value>{0} ist jetzt im Vorstand.</value></data>
+  <data name="Governance_BoardMemberEnded" xml:space="preserve"><value>{0} ist nicht mehr im Vorstand.</value></data>
+  <data name="Governance_BoardMemberAlreadyOn" xml:space="preserve"><value>{0} ist bereits im Vorstand.</value></data>
+  <data name="Governance_BoardMemberNotOn" xml:space="preserve"><value>{0} ist nicht im Vorstand.</value></data>
   <data name="Governance_NeedsDecision" xml:space="preserve"><value>Entscheidung nötig</value></data>
   <data name="Governance_NothingToDecide" xml:space="preserve"><value>Derzeit steht nichts zur Entscheidung an.</value></data>
   <data name="Governance_AllVotes" xml:space="preserve"><value>Alle Abstimmungen</value></data>

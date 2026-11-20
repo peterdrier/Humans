@@ -311,6 +311,14 @@
   <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Google group and files</value></data>
   <data name="Governance_YourAccess" xml:space="preserve"><value>Your Google access</value></data>
   <data name="Governance_ViewAll" xml:space="preserve"><value>View all</value></data>
+  <data name="Governance_ManageBoard" xml:space="preserve"><value>Manage Board members</value></data>
+  <data name="Governance_FindPerson" xml:space="preserve"><value>Find a person</value></data>
+  <data name="Governance_AddBoardMember" xml:space="preserve"><value>Add to the Board</value></data>
+  <data name="Governance_EndBoardSeat" xml:space="preserve"><value>End</value></data>
+  <data name="Governance_BoardMemberAdded" xml:space="preserve"><value>{0} is now on the Board.</value></data>
+  <data name="Governance_BoardMemberEnded" xml:space="preserve"><value>{0} is no longer on the Board.</value></data>
+  <data name="Governance_BoardMemberAlreadyOn" xml:space="preserve"><value>{0} is already on the Board.</value></data>
+  <data name="Governance_BoardMemberNotOn" xml:space="preserve"><value>{0} is not on the Board.</value></data>
   <data name="Governance_NeedsDecision" xml:space="preserve"><value>Needs a decision</value></data>
   <data name="Governance_NothingToDecide" xml:space="preserve"><value>Nothing is open for a decision right now.</value></data>
   <data name="Governance_AllVotes" xml:space="preserve"><value>All votes</value></data>

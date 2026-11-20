@@ -49,7 +49,10 @@ public sealed class CampServiceTests : CampsTestHarness
         foreach (var id in new[] { source, live, other })
             _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = id == source ? live : id, PreferredLanguage = "es" }, [], [], null));
-        var notices = new CampMembershipNotices(repo, _userService, Notifier, NullLogger<CampService>.Instance);
+        var notices = new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService, Clock,
+            NullLogger<CampService>.Instance);
 
         if (notice == CanonicalNotice.SeasonClosure)
             await notices.NotifyPendingRequestersOfSeasonClosureAsync(Guid.NewGuid(), camp.Id, 2026);
@@ -2725,7 +2728,10 @@ public sealed class CampServiceTests : CampsTestHarness
         var repo = Substitute.For<ICampRepository>();
         repo.ReorderImagesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Save failed")));
-        var gallery = new CampImageGallery(repo, _fileStorage, Clock, AuditLog, NullLogger.Instance);
+        var gallery = new CampService(repo, AuditLog, Substitute.For<ISystemTeamSync>(), _fileStorage, Notifier,
+            new Lazy<ICampRoleService>(() => _campRoleService), new Lazy<ICityPlanningWrite>(() => _cityPlanningService),
+            _userService, Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService, Clock,
+            NullLogger<CampService>.Instance);
 
         var act = () => gallery.ReorderImagesAsync(Guid.NewGuid(), [], TestActorId, TestContext.Current.CancellationToken);
 

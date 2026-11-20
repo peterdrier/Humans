@@ -397,7 +397,7 @@ separately below the key table.
 | `TrackedCache<Guid, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Event | CachingRideshareService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` | Workgroups | `Workgroups.Register` | Single entry | CachingWorkgroupService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | own `GetOrdersAsync` pass-through (per event, after a successful pull) |
-| `TrackedCache<string, Dictionary<string, int>>` | Finance | `Finance.SepaStuckBankLines` | Single entry | `SepaBankBooking` sweep | `SepaBankBooking` (cleared when no line is stuck) |
+| `TrackedCache<string, Dictionary<string, int>>` | Finance | `Finance.SepaStuckBankLines` | Single entry | Finance `Service` sweep | Finance `Service` (cleared when no line is stuck) |
 
 ### Cache Issues / Notes
 

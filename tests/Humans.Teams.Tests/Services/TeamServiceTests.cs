@@ -75,7 +75,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
             team.Members.Add(new TeamMember { Id = Guid.NewGuid(), TeamId = team.Id, UserId = id, Role = TeamMemberRole.Coordinator });
         var provider = new ServiceLocatorBuilder().With(users).With<ITeamResourceService>(_teamResourceService)
             .With(_emailService).With(TestTeamsEmails.Create()).Build();
-        var notices = new TeamMembershipNotices(Notifier, provider, NullLogger<TeamService>.Instance);
+        var notices = new TeamService(Substitute.For<ITeamRepository>(), Substitute.For<IAuditLogService>(), Notifier,
+            Substitute.For<IShiftService>(), AdminAuthorization, provider, Clock, NullLogger<TeamService>.Instance);
         var ct = TestContext.Current.CancellationToken;
         switch (notice)
         {

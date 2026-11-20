@@ -41,6 +41,8 @@
                         </div>
                     </div>
 
+                    <p class="small text-muted">Board members are added on <a asp-controller="Governance" asp-action="Body" asp-route-body="Board">the Board page in Governance</a>.</p>
+
                     <div class="mb-3">
                         <label asp-for="Notes" class="form-label">@Localizer["Auth_AddRole_NotesLabel"]</label>
                         <textarea asp-for="Notes" class="form-control" rows="2" placeholder="@Localizer["Auth_AddRole_NotesPlaceholder"].Value"></textarea>

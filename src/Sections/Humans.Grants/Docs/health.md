@@ -30,7 +30,7 @@ somebody else's job.
 | **Whose grants** | `IGrantManagement.GetGrantsForUserAsync`, `MyGrantsViewComponent`, `UserGrantsViewComponent` | "What does this person hold?" — on their own profile, or on the admin human page. |
 | **May I** | `GrantsPolicyHandler`, `ProgramAuthorizationHandler`, `GrantsPolicies`, `GrantsRoles` | "Can this viewer open the pages, this program, or change it?" |
 | **The person's data** | `GrantService.ContributeForUserAsync`, `GrantService.EraseForUserAsync`, `GrantService.ReassignAsync` | Export, erase, and carry grants across an account merge. |
-| **Tell the person** | `GrantNotices`, `GrantsEmails`, `GrantsEmailPreviews` | One issued/revoked notice job: in-app plus email, in their language. |
+| **Tell the person** | `GrantService`, `GrantsEmails`, `GrantsEmailPreviews` | One issued/revoked notice job: in-app plus email, in their language. |
 
 ## 3. Structure
 
@@ -40,7 +40,7 @@ Contracts/                 IGrantWrite and its result records; GrantsPolicies (p
 Authorization/             the role, the pages policy handler and the per-program resource handler
 Controllers/               GrantsAdminController: translate only; one ManageAsync pipeline for issue/revoke/resend
 Services/GrantService.*    one partial class: reads, programs, grants, GDPR/merge
-Services/GrantNotices      the only sender; owns the profile link both channels point at
+Services/GrantService      the only sender; owns the profile link both channels point at
 Services/GrantsEmails      pure builder of the two emails
 Data/                      GrantRepository over GrantsDbContext; the only table access
 ViewComponents/, Views/    two profile cards and three admin pages
@@ -82,7 +82,7 @@ ViewComponents/, Views/    two profile cards and three admin pages
   `src/Sections/Humans.Grants/Services/GrantService.Grants.cs:106`,
   `src/Sections/Humans.Grants/Services/GrantService.Grants.cs:143`.
 - A notice failure never fails the write, and one channel never suppresses the other:
-  `src/Sections/Humans.Grants/Services/GrantNotices.cs:71`.
+  `src/Sections/Humans.Grants/Services/GrantService.cs`.
 - A merge revokes the newer duplicate and re-keys in one transaction:
   `src/Sections/Humans.Grants/Data/GrantRepository.cs:130`.
 - The "My grants" card renders only for the viewer's own profile:
