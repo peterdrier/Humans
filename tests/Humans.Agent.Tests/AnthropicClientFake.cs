@@ -11,9 +11,9 @@ internal sealed class AnthropicClientFake : IAnthropicClient
 
     public AnthropicRequest? LastRequest { get; private set; }
 
-    /// <summary>Value returned by <see cref="CountTokensAsync"/>; set <see cref="CountTokensThrows"/> to simulate an API failure.</summary>
+    /// <summary>Value returned by <see cref="CountTokensAsync"/>; set <see cref="CountTokensFailure"/> to simulate a failure.</summary>
     public int CountTokensResult { get; set; } = 1234;
-    public bool CountTokensThrows { get; set; }
+    public Exception? CountTokensFailure { get; set; }
     public Action<CancellationToken>? CountTokensStarted { get; set; }
 
     public void EnqueueTurn(params AgentTurnToken[] tokens) => _scripted.Enqueue(tokens);
@@ -22,8 +22,8 @@ internal sealed class AnthropicClientFake : IAnthropicClient
     {
         CountTokensStarted?.Invoke(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        return CountTokensThrows
-            ? throw new InvalidOperationException("simulated count_tokens failure")
+        return CountTokensFailure is { } failure
+            ? throw failure
             : Task.FromResult(CountTokensResult);
     }
 

@@ -12,7 +12,7 @@ internal sealed class EventGuideSettingsTabViewComponent(IEventManagement guide)
     {
         var ct = ViewComponentContext.ViewContext?.HttpContext?.RequestAborted ?? default;
         var existing = await guide.GetGuideSettingsAsync(ct);
-        var eventSettingsOptions = await BuildEventSettingsOptionsAsync(ct);
+        var eventSettingsOptions = EventSettingsOptionViewModel.From(guide.GetEventSettingsOptions());
 
         if (existing == null)
         {
@@ -36,11 +36,5 @@ internal sealed class EventGuideSettingsTabViewComponent(IEventManagement guide)
             AvailableEventSettings = eventSettingsOptions,
             TimeZoneId = eventSettings?.TimeZoneId
         });
-    }
-
-    private async Task<List<EventSettingsOptionViewModel>> BuildEventSettingsOptionsAsync(CancellationToken ct)
-    {
-        var options = await guide.GetEventSettingsOptionsAsync(ct);
-        return EventSettingsOptionViewModel.From(options);
     }
 }

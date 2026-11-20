@@ -89,6 +89,23 @@ One row per member; a member with no row is a Volunteer.
 
 **Read source:** tier reads, account merges and the register-of-members export use only `governance_membership_tiers`.
 
+### GovernanceBodyLinks (`governance_body_links`) and GovernanceBodyFile (`governance_body_files`)
+
+One row per body (`GovernanceBody`: Asociados, Colaboradores, Board) holding its Google group prefix, and one
+row per Google file (Drive folder, shared drive or file) its members get. Copied from the body's old system
+team by the `governance.body-links-from-teams` data migration; nothing claims them in Google yet.
+
+| Property | Type | Purpose |
+|---|---|---|
+| Body | GovernanceBody | PK of the links row, stored as string; FK on each file row |
+| GoogleGroupPrefix | string? | Group address before the @; null when the body has no group |
+| UpdatedAt | Instant | When the row was last written |
+| File: GoogleId, ResourceType, Name, Url, PermissionLevel | | The Google file and the level members get; unique per (Body, GoogleId) |
+
+**Copy rule:** until Governance claims these in Google, a body is pending whenever its stored links differ
+from its old team's (the team's prefix, and every active non-Group resource row), and applying overwrites
+them. Each write is audited as `GovernanceBodyLinksCopied` against the body's old team id.
+
 ### ApplicationStateHistory
 
 Append-only per design-rules.md, *Append-only entities* — `IApplicationRepository` exposes no update or delete surface for this table. (Append-only is enforced at the repository layer, not via DB triggers — only `consent_records` has DB-level immutability triggers.)
@@ -258,7 +275,7 @@ These controllers serve this section.
 
 | Controller | Routes | Notes |
 |------------|--------|-------|
-| `GovernanceController` | `GET /Governance` — association home: tier and Board counts, open votes, Board queue (Board only), workgroups slot, membership card, Board list, statutes |
+| `GovernanceController` | `GET /Governance` — association home: tier and Board counts (each tile links to its body page), open votes, Board queue (Board only), workgroups slot, membership card with the viewer's Google access, Board person cards, statutes | `GET /Governance/{Asociados,Colaboradores,Board}` — the body's members as person cards (authenticated); its Google group and files for its members, Board and Admin | `POST /Governance/Board/Add`, `POST /Governance/Board/End` — add or end a Board seat (`RoleAssignmentManage` on `Board`: UsersAdmin, Admin); the Manage card shows only to them |
 | `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin; `?userId=` lists one person's applications in every status, the link Users' admin detail page carries) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) | `GET /Governance/Applications/Admin/TermExpiry`, `POST /Governance/Applications/Admin/TermExpiry/Fix` — the temporary term-expiry repair page (AdminOnly) |
 | `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (AdminOnly) |
 | `GovernanceVotesController` | `GET /Governance/Votes` — every vote, Open first (authenticated) | `GET /Governance/Votes/{id}` — text, stats, and the ballot form for roster members | `POST /Governance/Votes/{id}/Ballot` — cast or change | `GET /Governance/Votes/{id}/Results` and `.../Results.csv` — the stored result (Closed only) |
@@ -274,7 +291,7 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated human | View own governance status (tier, active applications). Submit a Colaborador or Asociado application. See **every** assembly vote, its official text and its live participation stats, and the results of any closed vote — roster or not |
+| Any authenticated human | View own governance status (tier, active applications), and every body's member list. Submit a Colaborador or Asociado application. See **every** assembly vote, its official text and its live participation stats, and the results of any closed vote — roster or not |
 | Roster member (official) | Cast and change a ballot until the vote closes; see their own ballot history |
 | Roster member (indicative) | The same, with the ballot labelled indicative and excluded from the official result |
 | Board | Draft, edit and delete assembly-vote drafts; see every vote and its stats; list every individual ballot after close (audited). **Cannot** open, stop, extend, cancel or peek. View all pending applications and role assignments. Cast individual votes on applications. View Board voting detail. Views role assignments; cannot assign or end them |
@@ -316,6 +333,7 @@ Approval and rejection share the same ordered eligibility check (application exi
 - Application status follows: Submitted then Approved, Rejected, or Withdrawn. Member-visible history uses the same localized status captions as application details.
 - Application submission and withdrawal, Board voting, and finalization use request cancellation for the account lookup before mutation. Cancellation propagates before any application or vote write; decision, team-sync and email work retains its non-cancellable mutation boundary.
 - Each Board member gets exactly one vote per application (DB-enforced via unique index on `(ApplicationId, BoardMemberUserId)`).
+- Board dashboard rows carry applicant identity, tier, submission time and votes; motivation is projected only for detail. Neither Board page projects an unused application status.
 - Board dashboard and detail share one vote projection carrying voter IDs, choices, notes and timestamps in source order. The pages render voter identities through the Human component.
 - On approval, the term expiry is set to December 31 of the current cycle's odd year (the approval year if odd, otherwise the following year); from 1 October of an odd year it is the next cycle's, so a renewal approved in the reminder window is not born expired.
 - On approval, the human's membership tier is updated and they are added to the corresponding system team (Colaboradors or Asociados).
@@ -355,6 +373,8 @@ The Board-voting dashboard controller orders member columns by display name with
 
 - Regular humans **cannot** view other humans' applications, cast Board votes, or manage role assignments.
 - Board **cannot** assign the Admin role.
+- Board **cannot** add or end Board seats; only UsersAdmin and Admin can, on `/Governance/Board` (Auth's add-role form no longer offers Board).
+- A signed-in human outside a body, who is neither Board nor Admin, **cannot** see that body's Google group or files on `/Governance/{body}` (its member list stays visible).
 - UsersAdmin **cannot** assign the Admin role.
 - A human with a pending (Submitted) application **cannot** submit another, of any tier, until the first is resolved. Concurrent submissions share a short in-process gate; only one is inserted, and the other returns `AlreadyPending`.
 - Non-roster members **cannot** cast or change a ballot, and **cannot** see any individual ballot.
@@ -404,7 +424,7 @@ The Board-voting dashboard controller orders member columns by display name with
 
 ## Cross-Section Dependencies
 
-- **Audit actions:** declared on `GovernanceAuditActions` (`src/Sections/Humans.Governance/GovernanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `TierApplicationApproved`, `TierApplicationRejected`, `TierDowngraded`, `TierTermExpiryCorrected`, `AssemblyVoteOpened`, `AssemblyVoteStopped`, `AssemblyVoteExtended`, `AssemblyVoteCancelled`, `AssemblyVoteClosed`, `AssemblyVotePeeked`, `AssemblyBallotCast`, `AssemblyBallotChanged`, `AssemblyBallotsViewed`, `AssemblyVoteRosterMerged`, `AssemblyVoteRemindersSent`.
+- **Audit actions:** declared on `GovernanceAuditActions` (`src/Sections/Humans.Governance/GovernanceAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `TierApplicationApproved`, `TierApplicationRejected`, `TierDowngraded`, `TierTermExpiryCorrected`, `AssemblyVoteOpened`, `AssemblyVoteStopped`, `AssemblyVoteExtended`, `AssemblyVoteCancelled`, `AssemblyVoteClosed`, `AssemblyVotePeeked`, `AssemblyBallotCast`, `AssemblyBallotChanged`, `AssemblyBallotsViewed`, `AssemblyVoteRosterMerged`, `AssemblyVoteRemindersSent`, `GovernanceBodyLinksCopied`.
 - **Notifications:** `INotificationEmitter` (and `INotificationAutoResolve` where a source resolves). Its sources are declared in `GovernanceNotificationSources` (`src/Sections/Humans.Governance/GovernanceNotificationSources.cs`), one `NotificationSourceDefinition` each: `ApplicationApproved` (informational, to the applicant: board approves application); `ApplicationRejected` (informational, to the applicant: board rejects application); `TermRenewalReminder` (actionable, to the user: 90 days before term expiry); `AssemblyVoteOpened` (actionable, to the assembly roster: an assembly vote opens); `ApplicationSubmitted` (actionable, to board role: retired, purged nightly).
 - **Users:** `IUserService` — single-user tier reads and exports resolve the merge chain through `UserInfo.Id`. Users renders the tier on its popover, profile card, admin detail and duplicate-account queue through `IGovernanceService`, and the profile setup form links to `/Governance/Applications/Create`. `GovernanceIndexService` counts the sidebar tiers itself from `IUserService.GetAllUserInfosAsync`. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Users section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
 - **Teams:** `ISystemTeamSync` — tier approval adds the human to the Colaboradors/Asociados system team; the hourly sync removes them once the term lapses. Teams makes no Governance write.

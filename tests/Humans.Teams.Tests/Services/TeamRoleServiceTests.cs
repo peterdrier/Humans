@@ -78,8 +78,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            Cache,
-            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
             new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);

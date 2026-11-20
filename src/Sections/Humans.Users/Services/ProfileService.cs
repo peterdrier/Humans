@@ -22,12 +22,6 @@ internal sealed class ProfileService(IUserRepository userRepository,
         return fsBytes is not null ? (fsBytes, picture.ContentType) : null;
     }
 
-    public Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default) =>
-        userRepository.GetProfileNameMismatchesAsync(ct);
-
-    public Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default) =>
-        userRepository.CopyProfileNamesToUsersAsync(ct);
-
     public Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default) =>
         userRepository.GetProfileChildRowsWithoutUserAsync(ct);
 

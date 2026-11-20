@@ -431,9 +431,11 @@ public sealed class RideshareServiceTests : RideshareTestHarness
         var snapshot = await NewService().GetSnapshotAsync(EventId, Ct);
 
         var openView = snapshot.Trips.Single(t => t.Id == open.Id);
+        openView.SeatsAccepted.Should().Be(2);
         openView.SeatsRemaining.Should().Be(1);
         openView.IsFull.Should().BeFalse();
         var fullView = snapshot.Trips.Single(t => t.Id == full.Id);
+        fullView.SeatsAccepted.Should().Be(2);
         fullView.SeatsRemaining.Should().Be(0);
         fullView.IsFull.Should().BeTrue();
         fullView.IsJoinable.Should().BeFalse();

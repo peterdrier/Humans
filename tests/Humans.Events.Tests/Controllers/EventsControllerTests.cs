@@ -63,7 +63,7 @@ public class EventsControllerTests
     {
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
-        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
+        _guide.GetEventSettingsOptions().Returns([burn]);
         _guide.SaveGuideSettingsAsync(null, burn.Id, default, default, default, 0).ReturnsForAnyArgs(true);
         var controller = new EventsAdminController(_guide,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<EventsAdminController>.Instance, _users)
@@ -118,10 +118,7 @@ public class EventsControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(AdminFormAction.SettingsInvalid, AdminFormRead.Options)]
     [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Edition)]
-    [Xunit.InlineData(AdminFormAction.SettingsMissing, AdminFormRead.Options)]
-    [Xunit.InlineData(AdminFormAction.SettingsRefused, AdminFormRead.Options)]
     [Xunit.InlineData(AdminFormAction.CreateCategory, AdminFormRead.Slug)]
     [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Category)]
     [Xunit.InlineData(AdminFormAction.EditCategory, AdminFormRead.Slug)]
@@ -136,7 +133,6 @@ public class EventsControllerTests
         };
         controller.HttpContext.RequestAborted = request.Token;
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
-        if (action == AdminFormAction.SettingsInvalid) controller.ModelState.AddModelError("MaxPrintSlots", "Required");
         async Task<T> ReadAsync<T>(T value, AdminFormRead current, CancellationToken ct)
         {
             if (current == boundary)
@@ -151,8 +147,7 @@ public class EventsControllerTests
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventSettingsInfo?>(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
-        _guide.GetEventSettingsOptionsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<EventSettingsInfo>>([burn], AdminFormRead.Options, call.Arg<CancellationToken>()));
+        _guide.GetEventSettingsOptions().Returns([burn]);
         _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), AdminFormRead.Category, call.Arg<CancellationToken>()));
         _guide.CategorySlugExistsAsync("category", Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -168,17 +163,9 @@ public class EventsControllerTests
         };
 
         (await invoke.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
-        var writes = _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
+        _guide.ReceivedCalls().Where(call => call.GetMethodInfo().Name is
             nameof(IEventManagement.SaveGuideSettingsAsync) or nameof(IEventManagement.CreateCategoryAsync)
-            or nameof(IEventManagement.UpdateCategoryAsync) or nameof(IEventManagement.UpdateVenueAsync)).ToList();
-        if (action == AdminFormAction.SettingsRefused)
-        {
-            writes.Should().ContainSingle().Which.GetArguments()[^1].Should().Be(CancellationToken.None);
-        }
-        else
-        {
-            writes.Should().BeEmpty();
-        }
+            or nameof(IEventManagement.UpdateCategoryAsync) or nameof(IEventManagement.UpdateVenueAsync)).Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -722,12 +709,12 @@ public class EventsControllerTests
             ReadAsync<EventSettingsInfo?>(burn, "Burn", call.Arg<CancellationToken>()));
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventInfo?>(guideEvent, "Event", call.Arg<CancellationToken>()));
-        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<IReadOnlyList<EventInfo>>([], "Submissions", call.Arg<CancellationToken>()));
+        _guide.GetUserSubmissionsSummaryAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+            ReadAsync(new EventSubmissionsSummary(0, 0, 0, []), "Submissions", call.Arg<CancellationToken>()));
         _camps.GetCampsForEventAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<CampInfo>>([camp], "Camps", call.Arg<CancellationToken>()));
         _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync(new CampSubmissionsSummary(0, 0, 0, []), "CampSummary", call.Arg<CancellationToken>()));
+            ReadAsync(new EventSubmissionsSummary(0, 0, 0, []), "CampSummary", call.Arg<CancellationToken>()));
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<IReadOnlyList<EventCategoryView>>([], "Categories", call.Arg<CancellationToken>()));
         _guide.GetActiveVenuesAsync(Arg.Any<CancellationToken>()).Returns(call =>
@@ -950,9 +937,9 @@ public class EventsControllerTests
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _authz.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetUserSubmissionsSummaryAsync(userId, Arg.Any<CancellationToken>()).Returns(new EventSubmissionsSummary(0, 0, 0, []));
         _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(new CampSubmissionsSummary(0, 0, 0, []));
+            .Returns(new EventSubmissionsSummary(0, 0, 0, []));
         _guide.BuildBulkUploadTemplateAsync(campId, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
         var controller = BuildController(userId);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
@@ -1012,9 +999,9 @@ public class EventsControllerTests
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([selectedCamp, otherCamp]);
         _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns([selectedCamp, otherCamp with { Seasons = [unowned] }]);
-        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetUserSubmissionsSummaryAsync(userId, Arg.Any<CancellationToken>()).Returns(new EventSubmissionsSummary(0, 0, 0, []));
         _guide.GetCampSubmissionsSummaryAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new CampSubmissionsSummary(0, 0, 0, []));
+            .Returns(new EventSubmissionsSummary(0, 0, 0, []));
         var controller = BuildController(userId);
         controller.HttpContext.RequestAborted = request.Token;
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
@@ -1057,15 +1044,17 @@ public class EventsControllerTests
             SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
             SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0)
         });
-        _guide.GetUserSubmissionsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _guide.GetUserSubmissionsSummaryAsync(userId, Arg.Any<CancellationToken>()).Returns(new EventSubmissionsSummary(0, 0, 0, []));
         var older = new EventInfo(
             Guid.NewGuid(), campId, null, userId, Guid.NewGuid(), "Music", "music", false,
             null, "Older", "", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60, false,
             null, null, EventStatus.Pending, Instant.FromUtc(2026, 5, 1, 12, 0),
             Instant.FromUtc(2026, 5, 1, 12, 0), []);
         var newer = older with { Id = Guid.NewGuid(), Title = "Newer", SubmittedAt = older.SubmittedAt + Duration.FromDays(1) };
+        _guide.GetUserSubmissionsSummaryAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new EventSubmissionsSummary(7, 3, 2, [older with { CampId = null }, newer with { CampId = null }]));
         _guide.GetCampSubmissionsSummaryAsync(campId, Arg.Any<CancellationToken>())
-            .Returns(new CampSubmissionsSummary(2, 0, 2, [older, newer]));
+            .Returns(new EventSubmissionsSummary(2, 0, 2, [older, newer]));
         var controller = BuildController(userId);
         controller.TempData = new TempDataDictionary(controller.HttpContext, Substitute.For<ITempDataProvider>());
 
@@ -1075,6 +1064,10 @@ public class EventsControllerTests
             .Should().BeOfType<MySubmissionsViewModel>().Subject;
         model.Barrios.Should().ContainSingle().Which.Events.Select(e => e.Title)
             .Should().Equal("Newer", "Older");
+        model.Personal.SubmittedCount.Should().Be(7);
+        model.Personal.ApprovedCount.Should().Be(3);
+        model.Personal.PendingCount.Should().Be(2);
+        model.Personal.Events.Select(e => e.Title).Should().Equal("Newer", "Older");
     }
 
     private Guid StubEvent(Guid submitterId, Guid? campId, EventStatus status)
@@ -1451,8 +1444,8 @@ public class EventsControllerTests
     }
 }
 
-public enum AdminFormAction { SettingsInvalid, SettingsMissing, SettingsRefused, CreateCategory, EditCategory, EditVenue }
+public enum AdminFormAction { SettingsMissing, CreateCategory, EditCategory, EditVenue }
 
-public enum AdminFormRead { Edition, Options, Category, Slug, Venue }
+public enum AdminFormRead { Edition, Category, Slug, Venue }
 
 public enum OptionsRead { Categories, Venues }

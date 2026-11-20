@@ -132,11 +132,11 @@ internal interface IBudgetRepository : IRepository
         Instant now,
         CancellationToken ct = default);
 
-    /// <summary>Detached.</summary>
-    Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Null when the line item does not exist.</summary>
+    Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>Throws if the year is closed or the category does not exist.</summary>
-    Task<BudgetLineItem> CreateLineItemAsync(
+    Task CreateLineItemAsync(
         BudgetLineItemDraft draft,
         Guid actorUserId,
         Instant now,
@@ -237,6 +237,7 @@ internal sealed record TicketingProjectionUpdate(
     decimal StripeFeeFixed,
     decimal TicketTailorFeePercent);
 
+/// <summary>One completed ISO week, shared by ticket aggregation and persistence.</summary>
 internal sealed record TicketingWeeklyActualsInput(
     string WeekLabel,
     LocalDate Monday,

@@ -170,9 +170,6 @@ public class ShiftsControllerSummaryTests
             profile: new Profile
             {
                 UserId = userId,
-                BurnerName = "Coordinator",
-                FirstName = "Co",
-                LastName = "Ordinator",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

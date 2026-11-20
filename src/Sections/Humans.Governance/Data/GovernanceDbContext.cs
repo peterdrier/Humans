@@ -18,6 +18,8 @@ internal sealed class GovernanceDbContext(DbContextOptions<GovernanceDbContext> 
     public DbSet<AssemblyBallotHistory> AssemblyBallotHistories => Set<AssemblyBallotHistory>();
     public DbSet<AssemblyVotePeek> AssemblyVotePeeks => Set<AssemblyVotePeek>();
     public DbSet<MembershipTierRecord> MembershipTiers => Set<MembershipTierRecord>();
+    public DbSet<GovernanceBodyLinks> GovernanceBodyLinks => Set<GovernanceBodyLinks>();
+    public DbSet<GovernanceBodyFile> GovernanceBodyFiles => Set<GovernanceBodyFile>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -33,5 +35,7 @@ internal sealed class GovernanceDbContext(DbContextOptions<GovernanceDbContext> 
         builder.ApplyConfiguration(new AssemblyBallotHistoryConfiguration());
         builder.ApplyConfiguration(new AssemblyVotePeekConfiguration());
         builder.ApplyConfiguration(new MembershipTierRecordConfiguration());
+        builder.ApplyConfiguration(new GovernanceBodyLinksConfiguration());
+        builder.ApplyConfiguration(new GovernanceBodyFileConfiguration());
     }
 }

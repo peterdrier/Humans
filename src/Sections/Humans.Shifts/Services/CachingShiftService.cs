@@ -19,7 +19,7 @@ internal sealed class CachingShiftService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingShiftService> logger)
     : TrackedCache<Guid, ShiftAdminRota>("Shifts.Rota", warmOnStartup: true, logger),
-    IShiftRotaRows, IShiftManagement, IShiftSignupService, IUserMerge, IUserDataContributor
+    IShiftRotaRows, IShiftManagement, IShiftSignupService, IShiftRowView, IShiftView, IUserMerge, IUserDataContributor
 {
     /// <summary>DI key for the undecorated inner services.</summary>
     public const string InnerServiceKey = "shift-inner";
@@ -61,21 +61,12 @@ internal sealed class CachingShiftService(
             if (ids is { Count: 0 }) return;
 
             var rows = await RowsAsync(source => source.GetRotaRowsAsync(ids, CancellationToken.None));
-            var events = rows.Select(r => r.Rota.EventSettingsId).ToHashSet();
             foreach (var row in rows)
                 Replace(row.Rota.Id, row);
 
-            var gone = (ids ?? [.. AsReadOnlyDictionary.Keys]).Except(rows.Select(r => r.Rota.Id)).ToList();
+            var gone = (ids ?? [.. AsReadOnlyDictionary.Keys]).Except(rows.Select(r => r.Rota.Id));
             foreach (var id in gone)
-            {
-                if (TryGet(id, out var old)) events.Add(old.Rota.EventSettingsId);
                 DeleteKey(id);
-            }
-
-            // The inner write already cleared the dashboard memo, but a dashboard read before this refresh could
-            // have refilled it from the old rows.
-            foreach (var eventSettingsId in events)
-                InvalidateDashboardCaches(eventSettingsId);
         }
         catch (Exception ex)
         {
@@ -254,12 +245,25 @@ internal sealed class CachingShiftService(
     public Task<ShiftTagSummary> GetOrCreateTagAsync(string name) =>
         MgmtAsync(m => m.GetOrCreateTagAsync(name));
 
-    public void InvalidateDashboardCaches(Guid eventSettingsId)
+    // ── User views ──────────────────────────────────────────────────────
+
+    public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default) =>
+        (await GetUsersAsync([userId], ct))[userId];
+
+    public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
-        using var scope = scopeFactory.CreateScope();
-        scope.ServiceProvider.GetRequiredKeyedService<IShiftManagement>(InnerServiceKey)
-            .InvalidateDashboardCaches(eventSettingsId);
+        await using var scope = scopeFactory.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredKeyedService<IShiftRowView>(InnerServiceKey).GetUsersAsync(userIds, ct);
     }
+
+    // Explicit: these differ from the IShiftRowView members only in return type.
+    async ValueTask<ShiftUserSummary> IShiftView.GetUserAsync(Guid userId, CancellationToken ct) =>
+        (await GetUserAsync(userId, ct)).ToSummary();
+
+    async ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>> IShiftView.GetUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct) =>
+        (await GetUsersAsync(userIds, ct)).ToSummaries();
 
     // ── Reads, passed through until each moves onto the rows ────────────
 

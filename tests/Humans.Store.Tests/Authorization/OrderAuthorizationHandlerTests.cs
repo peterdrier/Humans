@@ -38,7 +38,7 @@ public class OrderAuthorizationHandlerTests
 
     public OrderAuthorizationHandlerTests()
     {
-        _shifts.GetActiveEventSettingsAsync().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
         _handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, new Microsoft.AspNetCore.Http.HttpContextAccessor());
@@ -117,7 +117,6 @@ public class OrderAuthorizationHandlerTests
     }
 
     [HumansTheory]
-    [InlineData("Date")]
     [InlineData("User")]
     [InlineData("Season")]
     [InlineData("Team")]
@@ -138,11 +137,7 @@ public class OrderAuthorizationHandlerTests
             }
             ct.ThrowIfCancellationRequested();
         }
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            Read("Date", call.Arg<CancellationToken>());
-            return BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
-        });
+        _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("User", call.Arg<CancellationToken>());
@@ -158,9 +153,7 @@ public class OrderAuthorizationHandlerTests
             Read("Team", call.Arg<CancellationToken>());
             return (TeamInfo?)null;
         });
-        object resource = string.Equals(boundary, "Date", StringComparison.Ordinal) ? new OrderLineContext(order, FutureDeadline) : order;
-        var requirement = string.Equals(boundary, "Date", StringComparison.Ordinal) ? OrderOperationRequirement.AddLine : OrderOperationRequirement.View;
-        var context = new AuthorizationHandlerContext([requirement], Principal(role: null, userId), resource);
+        var context = new AuthorizationHandlerContext([OrderOperationRequirement.View], Principal(role: null, userId), order);
         var handler = new OrderAuthorizationHandler(_campService, _teamService, _users, _shifts, _clock, http);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => handler.HandleAsync(context));
         Assert.Equal(request.Token, observed);

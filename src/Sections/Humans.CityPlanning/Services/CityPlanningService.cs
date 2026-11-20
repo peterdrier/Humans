@@ -29,8 +29,8 @@ internal sealed class CityPlanningService(
 
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 
-    private async Task<int> RequireCurrentYearAsync(CancellationToken cancellationToken) =>
-        await planningReader.GetCurrentYearAsync(cancellationToken)
+    private int RequireCurrentYear() =>
+        planningReader.GetCurrentYear()
         ?? throw new InvalidOperationException("No active event: city planning has no current year to write to.");
 
     /// <summary>
@@ -49,7 +49,7 @@ internal sealed class CityPlanningService(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var year = await RequireCurrentYearAsync(cancellationToken);
+        var year = RequireCurrentYear();
         var now = clock.GetCurrentInstant();
 
         var settings = await repo.GetOrCreateSettingsAsync(year, now, cancellationToken);

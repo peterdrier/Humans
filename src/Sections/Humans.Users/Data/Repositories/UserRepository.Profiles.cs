@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Users.Contracts;
+using Humans.Users.Data.Configurations;
 
 namespace Humans.Users.Data.Repositories;
 
@@ -89,103 +90,63 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddAsync(Profile profile, CancellationToken ct = default)
+    public async Task AddAsync(Profile profile, CancellationToken ct = default, UserNames? names = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Profiles.Add(profile);
-        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
+        await UpdateUserFromProfileAsync(ctx, profile, names, ct);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null)
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null,
+        UserNames? names = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Not ctx.Profiles.Update(profile): that cascades to the navigation collections and
         // could delete related rows that are simply unloaded on this entity.
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
+        // A detached profile carries no value for the legacy name columns; leave them as stored.
+        foreach (var legacyName in ProfileConfiguration.LegacyNameColumns)
+            ctx.Entry(profile).Property(legacyName).IsModified = false;
         if (volunteerHistory is not null)
             await ReconcileCVEntriesAsync(ctx, profile, volunteerHistory, ct);
-        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
+        await UpdateUserFromProfileAsync(ctx, profile, names, ct);
         await ctx.SaveChangesAsync(ct);
     }
 
-    private static async Task UpdateUserStateFromProfileAsync(
-        UsersDbContext ctx, Profile profile, CancellationToken ct)
+    private static async Task UpdateUserFromProfileAsync(
+        UsersDbContext ctx, Profile profile, UserNames? names, CancellationToken ct)
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is null)
             return;
 
-        // The names belong to the human; every Profile write funnels through here, so this is the one seam.
-        CopyNamesToUser(user, profile);
+        if (names is not null)
+            SetNames(user, names);
         user.State = UserStateEvaluator.Classify(user, profile);
     }
 
-    /// <summary>Mirrors the Profile's names onto the User row inside the same save.</summary>
-    private static void CopyNamesToUser(User user, Profile profile)
+    private static void SetNames(User user, UserNames names)
     {
-        user.BurnerName = profile.BurnerName;
-        user.FirstName = profile.FirstName;
-        user.LastName = profile.LastName;
+        user.BurnerName = names.BurnerName;
+        user.FirstName = names.FirstName;
+        user.LastName = names.LastName;
     }
 
     /// <summary>
-    /// Name mirror for the ctx-direct anonymize/merge paths, which do not route through
-    /// <see cref="UpdateAsync"/>.
+    /// Replaces a tombstoned human's names on the users row, and blanks the legacy profile columns so
+    /// the real names do not outlive the erasure there.
     /// </summary>
-    private static async Task MirrorProfileNamesToUserAsync(
-        UsersDbContext ctx, Profile profile, CancellationToken ct)
+    private static async Task SetTombstoneNamesAsync(
+        UsersDbContext ctx, Profile profile, UserNames names, CancellationToken ct)
     {
+        foreach (var legacyName in ProfileConfiguration.LegacyNameColumns)
+            ctx.Entry(profile).Property(legacyName).CurrentValue = string.Empty;
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is not null)
-            CopyNamesToUser(user, profile);
-    }
-
-    public async Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await NameMismatches(ctx.Users.AsNoTracking(), ctx.Profiles.AsNoTracking())
-            .Select(x => new ProfileNameMismatch(
-                x.User.Id,
-                x.User.BurnerName ?? "", x.User.FirstName ?? "", x.User.LastName ?? "",
-                x.Profile.BurnerName ?? "", x.Profile.FirstName ?? "", x.Profile.LastName ?? ""))
-            .ToListAsync(ct);
-    }
-
-    public async Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var profiles = await NameMismatches(ctx.Users.AsNoTracking(), ctx.Profiles.AsNoTracking())
-            .Select(x => x.Profile)
-            .ToListAsync(ct);
-        foreach (var profile in profiles)
-        {
-            var user = await ctx.Users.FindAsync([profile.UserId], ct);
-            if (user is null)
-                continue;
-            if (!string.IsNullOrEmpty(profile.BurnerName)) user.BurnerName = profile.BurnerName;
-            if (!string.IsNullOrEmpty(profile.FirstName)) user.FirstName = profile.FirstName;
-            if (!string.IsNullOrEmpty(profile.LastName)) user.LastName = profile.LastName;
-        }
-        await ctx.SaveChangesAsync(ct);
-        return profiles.Count;
-    }
-
-    // A blank profile name is never a mismatch: older stub profiles are blank where the users row holds the
-    // seeded name, and copying the blank across would erase it.
-    private static IQueryable<UserProfilePair> NameMismatches(IQueryable<User> users, IQueryable<Profile> profiles) =>
-        users
-            .Join(profiles, u => u.Id, p => p.UserId, (u, p) => new UserProfilePair { User = u, Profile = p })
-            .Where(x => ((x.Profile.BurnerName ?? "") != "" && x.User.BurnerName != x.Profile.BurnerName)
-                || ((x.Profile.FirstName ?? "") != "" && x.User.FirstName != x.Profile.FirstName)
-                || ((x.Profile.LastName ?? "") != "" && x.User.LastName != x.Profile.LastName));
-
-    private sealed class UserProfilePair
-    {
-        public required User User { get; init; }
-        public required Profile Profile { get; init; }
+            SetNames(user, names);
     }
 
     public async Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(
@@ -363,12 +324,9 @@ internal sealed partial class UserRepository
 
         // The row stays as the tombstone counterpart to User.MergedToUserId; only identifying
         // scalars are cleared.
-        sourceProfile.FirstName = "Merged";
-        sourceProfile.LastName = "User";
-        sourceProfile.BurnerName = "Merged User";
-        // Clear the User-side names in the same save, or the resolver (User.BurnerName) would keep
+        // Same save as the rest of the tombstone, or the resolver (User.BurnerName) would keep
         // rendering the merged human's real name.
-        await MirrorProfileNamesToUserAsync(ctx, sourceProfile, ct);
+        await SetTombstoneNamesAsync(ctx, sourceProfile, new UserNames("Merged User", "Merged", "User"), ct);
         sourceProfile.Bio = null;
         sourceProfile.City = null;
         sourceProfile.CountryCode = null;
@@ -400,10 +358,7 @@ internal sealed partial class UserRepository
         if (profile is null)
             return false;
 
-        profile.FirstName = "Deleted";
-        profile.LastName = "User";
-        profile.BurnerName = string.Empty;
-        await MirrorProfileNamesToUserAsync(ctx, profile, ct);
+        await SetTombstoneNamesAsync(ctx, profile, new UserNames(string.Empty, "Deleted", "User"), ct);
         profile.Bio = null;
         profile.City = null;
         profile.CountryCode = null;

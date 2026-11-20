@@ -129,14 +129,6 @@ internal sealed class LegalDocumentSyncService(
         return updatedDocuments;
     }
 
-    public Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default) =>
-        publication.SyncDocumentAsync(documentId, actorUserId: null, cancellationToken);
-
-
-    public Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
-        CancellationToken cancellationToken = default) =>
-        reader.GetActiveDocumentsAsync(cancellationToken);
-
     public Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(
         CancellationToken cancellationToken = default) =>
         reader.GetRequiredVersionsAsync(cancellationToken);

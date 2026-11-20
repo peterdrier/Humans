@@ -621,9 +621,9 @@ public sealed class SurveyAdminControllerTests
         var surveys = Substitute.For<ISurveyService>();
         surveys.GetPendingApprovalQueueAsync(Arg.Any<CancellationToken>())
             .Returns([
-                new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), "Author", Instant.FromUtc(2026, 2, 1, 0, 0)),
-                new SurveyPendingApprovalItem(olderId, "Older", Guid.NewGuid(), "Author", Instant.FromUtc(2026, 1, 1, 0, 0)),
-                new SurveyPendingApprovalItem(undatedId, "Undated", Guid.NewGuid(), "Author", null),
+                new SurveyPendingApprovalItem(surveyId, "Survey", Guid.NewGuid(), Instant.FromUtc(2026, 2, 1, 0, 0)),
+                new SurveyPendingApprovalItem(olderId, "Older", Guid.NewGuid(), Instant.FromUtc(2026, 1, 1, 0, 0)),
+                new SurveyPendingApprovalItem(undatedId, "Undated", Guid.NewGuid(), null),
             ]);
         surveys.RejectAsync(surveyId, Arg.Any<SurveyViewer>(), note, Arg.Any<CancellationToken>())
             .Returns(new SurveyReviewResult(Refusal: "A rejection note must be 4000 characters or fewer."));

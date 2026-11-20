@@ -5,7 +5,6 @@
     var viewer = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId = Model.UserId,
-        link = HumanLink.None,
     });
     using var viewerWriter = new System.IO.StringWriter();
     viewer.WriteTo(viewerWriter, System.Text.Encodings.Web.HtmlEncoder.Default);

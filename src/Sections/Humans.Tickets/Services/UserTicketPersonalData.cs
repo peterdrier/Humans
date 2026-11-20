@@ -62,7 +62,7 @@ internal sealed class UserTicketPersonalData(
             && !string.IsNullOrEmpty(syncState.VendorEventId)
             && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
         var postEventHoldDate = hasCurrentEventTicket
-            ? await GetPostEventHoldDateAsync(ct)
+            ? GetPostEventHoldDate()
             : null;
 
         return new UserTicketHoldings(
@@ -77,9 +77,9 @@ internal sealed class UserTicketPersonalData(
         };
     }
 
-    private async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct)
+    private Instant? GetPostEventHoldDate()
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null)
             return null;
 

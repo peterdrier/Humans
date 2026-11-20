@@ -1,3 +1,4 @@
+using Humans.Pleo.Contracts;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -82,8 +83,11 @@ internal sealed class PleoClient : IPleoClient
                 throw new PleoPermanentException($"Pleo balance: no primary account among {accounts.Count}.");
             var balance = primary.GetProperty("balance");
             var current = balance.GetProperty("current");
+            var currency = current.GetProperty("currency").GetString();
+            if (string.IsNullOrWhiteSpace(currency))
+                throw new PleoPermanentException("Pleo balance: primary account currency is missing.");
             return new PleoBalanceWire(
-                current.GetProperty("currency").GetString() ?? "",
+                currency,
                 current.GetProperty("value").GetInt64(),
                 balance.GetProperty("available").GetProperty("value").GetInt64(),
                 balance.GetProperty("pendingDebits").GetProperty("value").GetInt64());
@@ -130,6 +134,12 @@ internal sealed class PleoClient : IPleoClient
 
     private static T Read<T>(JsonElement item) where T : class
     {
+        if (item.ValueKind != JsonValueKind.Object
+            || !item.TryGetProperty("id", out var id)
+            || id.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(id.GetString()))
+            throw new PleoPermanentException($"Pleo returned a {typeof(T).Name} without a usable id.");
+
         try
         {
             return item.Deserialize<T>(Json) ?? throw new PleoPermanentException($"Pleo returned a null {typeof(T).Name}.");

@@ -186,16 +186,16 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == sourceId, TestContext.Current.CancellationToken);
         sourceProfile.Should().NotBeNull("source profile row is kept as a tombstone");
-        sourceProfile.FirstName.Should().Be("Merged");
-        sourceProfile.LastName.Should().Be("User");
-        sourceProfile.BurnerName.Should().Be("Merged User");
         sourceProfile.Bio.Should().BeNull();
+        var sourceUser = await db.Users.AsNoTracking().SingleAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
+        (sourceUser.BurnerName, sourceUser.FirstName, sourceUser.LastName).Should().Be(("Merged User", "Merged", "User"));
 
         var targetProfile = await db.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == targetId, TestContext.Current.CancellationToken);
         targetProfile.Should().NotBeNull();
-        targetProfile.FirstName.Should().Be("Target");
+        (await db.Users.AsNoTracking().SingleAsync(u => u.Id == targetId, TestContext.Current.CancellationToken))
+            .FirstName.Should().Be("Target");
     }
 
     [HumansFact(Timeout = 30_000)]

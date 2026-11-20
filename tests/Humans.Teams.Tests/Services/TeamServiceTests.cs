@@ -151,8 +151,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            Cache,
-            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
@@ -3787,11 +3785,11 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private ISettingsService NewSettingsServiceBackedByShiftsDb()
     {
         var settingsService = Substitute.For<ISettingsService>();
-        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+        settingsService.GetActiveEventSettings()
+            .Returns(_ =>
             {
                 var active = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
+                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.IsActive);
                 return active is null ? null : ToEventSettingsInfo(active);
             });
         return settingsService;

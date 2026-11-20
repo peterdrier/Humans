@@ -78,12 +78,12 @@ internal sealed class TicketQueryService(
         return types.ToList();
     }
 
-    public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
-        salesReports.GetDashboardStatsAsync();
+    public Task<TicketDashboardStats> GetDashboardStatsAsync(CancellationToken ct = default) =>
+        salesReports.GetDashboardStatsAsync(ct);
 
     public Task<BreakEvenResult> CalculateBreakEvenAsync(
-        int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) =>
-        salesReports.CalculateBreakEvenAsync(ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget);
+        int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget, CancellationToken ct = default) =>
+        salesReports.CalculateBreakEvenAsync(ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget, ct);
 
     public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default) =>
         salesReports.GetCodeTrackingDataAsync(search, ct);

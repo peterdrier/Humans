@@ -17,7 +17,7 @@ using static Humans.Finance.Services.SepaBankMatching;
 namespace Humans.Finance.Services;
 
 internal sealed class SepaBankBooking(
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
     IClock clock,
@@ -866,7 +866,7 @@ internal sealed class SepaBankBooking(
 
         if (remaining > CentEpsilon)
         {
-            IReadOnlyList<HoldedPurchaseDocListItemDto> open;
+            IReadOnlyList<HoldedPurchaseDocInfo> open;
             try
             {
                 // Synced just now: PaymentsPending is what keeps a paid document from being paid again.
@@ -875,7 +875,6 @@ internal sealed class SepaBankBooking(
                         "A Holded purchase-document sync is running — try again in a minute. Nothing was posted.");
                 open = OpenDocs((await holded.GetPurchaseDocumentsAsync(ct)).Docs
                         .Where(d => string.Equals(d.ContactId, binding.HoldedContactId, StringComparison.Ordinal))
-                        .Select(HoldedCreditorReader.ToListItem)
                         .ToList())
                     // Oldest first: the money the member has been owed longest clears first.
                     .OrderBy(d => d.Date)
@@ -894,7 +893,7 @@ internal sealed class SepaBankBooking(
             {
                 if (remaining <= CentEpsilon) break;
                 var amount = Math.Round(
-                    Math.Min(remaining, doc.PaymentsPending), 2, MidpointRounding.AwayFromZero);
+                    Math.Min(remaining, doc.PaymentsPending.GetValueOrDefault()), 2, MidpointRounding.AwayFromZero);
                 if (amount <= 0m) continue;
 
                 try
@@ -1354,8 +1353,8 @@ internal sealed class SepaBankBooking(
     }
 
     /// <summary>Approved and still owing. A draft books nothing to the ledger, so paying one posts against nothing.</summary>
-    internal static List<HoldedPurchaseDocListItemDto> OpenDocs(
-        IReadOnlyList<HoldedPurchaseDocListItemDto> docs) =>
-        docs.Where(d => d.IsDraft == false && d.PaymentsPending > 0m).ToList();
+    internal static List<HoldedPurchaseDocInfo> OpenDocs(
+        IReadOnlyList<HoldedPurchaseDocInfo> docs) =>
+        docs.Where(d => d.IsApproved && d.PaymentsPending > 0m).ToList();
 
 }

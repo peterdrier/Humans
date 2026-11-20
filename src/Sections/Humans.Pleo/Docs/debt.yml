@@ -2,10 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 2
-inbox:
-  - added: 2026-11-19
-    id: PLEO-1
-    what: "Views/Pleo/Entries.cshtml and Views/Pleo/Entry.cshtml show the original-currency amount as Minors / 100, assuming every currency has two decimals; a zero- or three-decimal currency (JPY, KWD) would show a wrong figure. The original amount belongs on PleoEntryRow, computed once in PleoMirrorReader. Blocked on confirming how Pleo's minors scale per currency. Found by section-doctor's controller-intent thread."
-    review: light
-    status: needs-detail
-    blocked_on: "A real non-two-decimal entry from Pleo, or Pleo's API docs on minor units per currency."
+inbox: []

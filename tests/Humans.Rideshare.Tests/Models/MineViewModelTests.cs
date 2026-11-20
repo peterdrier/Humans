@@ -109,7 +109,7 @@ public sealed class MineViewModelTests
 
     private static TripView Trip(Guid userId, RideshareDirection direction = RideshareDirection.Inbound, LocalDate? departure = null) =>
         new(Guid.NewGuid(), userId, direction, "Paris", 48.85, 2.35, [], null,
-            departure ?? July3, 1, null, VehicleType.Car, 3, 3,
+            departure ?? July3, 1, null, VehicleType.Car, 3, 0,
             LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, TripStatus.Active, Now);
 
     private static RequestView Request(Guid userId, RideshareDirection direction = RideshareDirection.Inbound, LocalDate? desired = null) =>

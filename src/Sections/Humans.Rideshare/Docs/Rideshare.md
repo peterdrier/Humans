@@ -235,6 +235,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- The trip snapshot carries the accepted-seat count computed from accepted interests; remaining capacity, season seats-filled totals, and day-roster display and sorting reuse it.
 - The cached snapshot leaves display ordering to the board, Mine, map and day-roster builders. Creation time breaks display ties; day-roster riders remain chronological.
 
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
@@ -314,7 +315,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   then drops interests the fold made self-interest (rider on their own trip, driver answering
   their own request) and duplicate pending interests on one trip/request (earliest wins).
   Idempotent; the decorator clears the snapshot cache afterwards.
-- **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active event everything anchors to;
+- **Settings**: `ISettingsService.GetActiveEventSettings()` — the active event everything anchors to;
   `GetAllEventSettingsAsync()` — resolves stored event ids and their names.
   The decorator implements `IEventSettingsChangeListener` and clears every snapshot when event metadata changes.
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined notifications. Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
@@ -361,7 +362,9 @@ which owns recipient-culture copy and best-effort delivery without a separate DI
 
 `IRouteProvider` (geocode + directions) is a section-internal abstraction over OpenRouteService
 (`OpenRouteServiceClient`, `HttpClient`-based). Provider failures — including malformed geometry,
-an unconfigured API key or a non-success response — log a warning and return null, keeping
-unavailable routing from blocking a save (see Invariants). Caller cancellation propagates.
+an unconfigured API key or a non-success response — log Warning without exception stacks and return null,
+keeping unavailable routing from blocking a save (see Invariants). Expected transport, timeout and response-shape
+failures retain their reason; unexpected faults log Error with the original exception and retain the null fallback.
+Caller cancellation propagates without a provider-failure log.
 
 Internal `RideshareInterestMutations` owns express, accept, decline and withdraw operations, including posting-owner checks, request compatibility and accepted-seat calculations. It receives the same static mutation lock used by offer/request edits and cancellations, so the shared boundary still covers every read/check/write through persistence; notifications remain after release. Posting updates and snapshot projection reuse its capacity calculations. Actor checks, refusal order, timestamps, cancellation and notice recipients are unchanged. Routing and waypoint storage retain their existing owners; no public contract or DI registration is added.

@@ -118,10 +118,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ProfileNameMismatch>> GetProfileNameMismatchesAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<int> CopyProfileNamesToUsersAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default) =>
@@ -135,9 +131,9 @@ public class AccountProvisioningServiceTests
         public Task ReplaceLanguagesAsync(
             Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task AddAsync(Profile profile, CancellationToken ct = default) =>
+        public Task AddAsync(Profile profile, CancellationToken ct = default, UserNames? names = null) =>
             throw new NotSupportedException();
-        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null) =>
+        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, UserNames? names = null) =>
             throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();

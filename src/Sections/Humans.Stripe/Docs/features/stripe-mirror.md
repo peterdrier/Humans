@@ -30,6 +30,8 @@ whose key is unset is shown as not configured and never swept. The existing `STR
 - **Payouts**, and for each automatic payout the transactions it paid out. Stripe links none to a manual payout.
 - **Balance** per currency: available and pending.
 
+Full transaction and payout reads require their core IDs, amounts, currency, classification, timestamps and flags explicitly in the response. Incomplete records fail before account replacement and retain the last good mirror; SDK defaults cannot manufacture financial facts. Payout-breakdown reads consume and validate IDs only. Explicit zero and signed amounts remain valid.
+
 ## Pages (`/Stripe`, `FinancePolicies.Read`; Sync now needs `FinancePolicies.Manage`)
 
 - **Accounts**: per account, Stripe's balance beside the sum of every mirrored net (red when they differ), gross

@@ -24,6 +24,7 @@ account state, the teams and the member's mail.
 | Review & sign | "Show one document; record my agreement" | `GetConsentReviewDetailAsync` + `IConsentSubmission.SubmitConsentAsync`; `/Consent`, `/Consent/Review`, `/Consent/Submit` |
 | My data | "What have I signed; is my deletion pending?" | `/Consent/MyData` over the internal dashboard read |
 | Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncService` + internal reads, all views over one cached active+required set |
+| Repository access | "Can the legal-document source be reached?" | `Health/GitHubHealthCheck`, registered as `github` through `ISectionHealthChecks` |
 | Keep documents current | "Has the source changed? Pull it." | the internal sync surface, the sync runner, the sync and reminder Hangfire jobs at 04:00 |
 | Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
 | Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |

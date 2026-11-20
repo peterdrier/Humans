@@ -89,7 +89,7 @@ internal sealed class CampaignController(
         {
             AddCampaignFormError(updated.ErrorKey);
 
-            var campaign = await campaignService.GetByIdAsync(id);
+            var campaign = await campaignService.GetByIdAsync(id, HttpContext.RequestAborted);
             if (campaign is null)
             {
                 return NotFound();

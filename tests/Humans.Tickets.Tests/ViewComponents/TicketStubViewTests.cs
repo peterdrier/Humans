@@ -27,7 +27,7 @@ public class TicketStubViewTests
         var activeEvent = eventName is null ? null : new EventSettingsInfo(
             Guid.NewGuid(), eventName, 2027, "Europe/Madrid", new LocalDate(2027, 7, 1),
             -14, 7, 10, new Dictionary<int, int>(), null, null);
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(activeEvent);
+        settings.GetActiveEventSettings().Returns(activeEvent);
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var localizer = services.GetRequiredService<IStringLocalizer<TicketsResource>>();
         var item = new RazorCompiledItemLoader().LoadItems(typeof(TicketStubViewComponent).Assembly)
@@ -56,6 +56,6 @@ public class TicketStubViewTests
         writer.ToString().Should().Contain(HtmlEncoder.Default.Encode(
             localizer["Tickets_TicketStub_EventLabel", expectedName].Value));
         writer.ToString().Should().NotContain("Elsewhere 2026");
-        await settings.Received(1).GetActiveEventSettingsAsync(cancellation.Token);
+        settings.Received(1).GetActiveEventSettings();
     }
 }

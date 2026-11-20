@@ -9,14 +9,14 @@ namespace Humans.Tickets.Services;
 /// <summary>Tickets-internal; other sections depend on <see cref="ITicketService"/>.</summary>
 internal interface ITicketManagement : ITicketService, IApplicationService
 {
-    Task<TicketDashboardStats> GetDashboardStatsAsync();
+    Task<TicketDashboardStats> GetDashboardStatsAsync(CancellationToken ct = default);
 
     Task<BreakEvenResult> CalculateBreakEvenAsync(
         int ticketsSold,
         decimal grossRevenue,
         string currency,
         bool canAccessFinance,
-        int fallbackTarget);
+        int fallbackTarget, CancellationToken ct = default);
 
     Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default);
 

@@ -438,8 +438,7 @@
                                                     <div class="d-flex flex-wrap gap-1">
                                                         @foreach (var ss in activeSignups)
                                                         {
-                                                            var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
-                                                            <span title="@(ssUser?.BurnerName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                            <span title="@(ss.Status == SignupStatus.Pending ? Localizer["Shifts_Pending"].Value : null)"
                                                                   style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")"><vc:human user-id="@ss.UserId" layout="Avatar" size="26" css-class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")" /></span>
                                                         }
                                                     </div>

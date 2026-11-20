@@ -57,10 +57,7 @@ internal sealed class SurveyAnswerProjection(Survey? survey, string culture)
             row => row.Value,
             row => row.Label.Resolve(culture, context.DefaultCulture),
             StringComparer.Ordinal);
-        var columns = question.Options.ToDictionary(
-            option => option.Value,
-            option => option.Label.Resolve(culture, context.DefaultCulture),
-            StringComparer.Ordinal);
+        var columns = context.OptionLabels[answer.QuestionId];
         return answer.GridSelections
             .Where(selection => selection.Value.Count > 0)
             .Select(selection => new ResolvedGridSelection(

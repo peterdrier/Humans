@@ -37,8 +37,7 @@ internal sealed class RideshareService(
     // camelCase + case-insensitive: WaypointsJson is {label, latitude, longitude}.
     private static readonly JsonSerializerOptions WaypointJsonOptions = new(JsonSerializerDefaults.Web);
 
-    public async Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default) =>
-        (await settingsService.GetActiveEventSettingsAsync(ct))?.Id;
+    public Guid? GetActiveEventId() => settingsService.GetActiveEventSettings()?.Id;
 
     public async Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default)
     {
@@ -452,7 +451,7 @@ internal sealed class RideshareService(
     private static TripView ToView(RideshareTrip t) => new(
         t.Id, t.UserId, t.Direction, t.MemberPlaceLabel, t.MemberLatitude, t.MemberLongitude,
         ParseWaypoints(t.WaypointsJson), t.RouteGeoJson, t.DepartureDate, t.ExpectedDurationDays, t.OvernightPlan,
-        t.VehicleType, t.SeatsOffered, RideshareInterestMutations.SeatsRemaining(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
+        t.VehicleType, t.SeatsOffered, RideshareInterestMutations.AcceptedSeats(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
         t.WillingToDetour, t.CostSharing, t.CostNote, t.LinkedTripId, t.Status, t.CreatedAt);
 
     // Matched only by a ride that fits the request: same direction, travelling on its date.

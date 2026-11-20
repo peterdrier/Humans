@@ -59,14 +59,14 @@ internal static class CantinaDailyMatrixCsvWriter
             {
                 var totals = new List<string>(cols.Count) { "TOTALS" };
                 foreach (var d in diet)
-                    totals.Add(CountAsString(dto.People.Count(p => string.Equals(p.DietaryPreference, d, StringComparison.Ordinal))));
+                    totals.Add(CountAsString(dto.CountDietaryPreference(d)));
                 foreach (var a in allergyChips)
-                    totals.Add(CountAsString(dto.People.Count(p => p.Allergies.Contains(a))));
-                totals.Add(CountAsString(dto.People.Count(p => p.Allergies.Contains(DietaryOptions.OtherOption))));
+                    totals.Add(CountAsString(dto.CountAllergy(a)));
+                totals.Add(CountAsString(dto.CountAllergy(DietaryOptions.OtherOption)));
                 totals.Add("—"); // free text can't be summed
                 foreach (var i in intoleranceChips)
-                    totals.Add(CountAsString(dto.People.Count(p => p.Intolerances.Contains(i))));
-                totals.Add(CountAsString(dto.People.Count(p => p.Intolerances.Contains(DietaryOptions.OtherOption))));
+                    totals.Add(CountAsString(dto.CountIntolerance(i)));
+                totals.Add(CountAsString(dto.CountIntolerance(DietaryOptions.OtherOption)));
                 totals.Add("—");
                 csv.WriteRow([.. totals]);
             }

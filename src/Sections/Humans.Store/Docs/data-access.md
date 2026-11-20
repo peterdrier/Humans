@@ -9,7 +9,7 @@
 Folder: `src/Sections/Humans.Store/Services/` (namespace
 `Humans.Store.Services`). **DbContext:** `StoreDbContext`. Owns
 `store_products`, `store_orders`, `store_order_lines`, `store_payments`,
-`store_invoices`.
+`store_invoices`, `store_settings`.
 
 ### Service (Scoped — `IApplicationService`)
 
@@ -23,6 +23,7 @@ Its admin summary delegates to `StoreOrderReader`; accounting consumers resolve 
 | store_order_lines | R/W |
 | store_payments | R/W |
 | store_invoices | R/W |
+| store_settings | R/W (`GetSettingsAsync` / `SaveSettingsAsync`, the `/Settings#store` tab) |
 
 Cross-section calls via `IAuditLogService`, `ICampService`,
 `ITeamService` (team-order counterparty surface),
@@ -64,14 +65,15 @@ Repository: `IStoreRepository`.
 | Table | R/W |
 |-------|-----|
 | store_products | R (`GetProductsByIdsAsync` — includes inactive products; each line's Holded revenue account) |
+| store_settings | R (`GetSettingsAsync` — Stripe gateway treasury, simplified invoice limit) |
 | store_invoices | W (`SaveIssuedInvoiceAsync`) |
 | store_orders | W (`SaveIssuedInvoiceAsync` — frozen `InvoiceIssued` row) |
 | store_order_lines | W (repriced line snapshots, same save) |
 
 Cross-section calls via `IHoldedService` / `IHoldedWrite` (the section's only outbound Holded write) and
-`IAuditLogService`, plus `IClock`, `IOptions<StoreSectionOptions>` and the shared
+`IAuditLogService`, plus `IClock` and the shared
 `StoreOrderReader`. Issuance reprices the order's line snapshots from the live catalog,
-builds one Holded line per order line (plus a tax-0 line per deposit), creates **and
+builds one Holded line per order line (plus one 21% line per product's kept deposit), creates **and
 approves** the document, then writes `store_invoices` and the frozen `store_orders` row in
 a single `SaveIssuedInvoiceAsync` — one `SaveChanges`, because an order must never be
 `InvoiceIssued` without its invoice row. No `IMemoryCache`.

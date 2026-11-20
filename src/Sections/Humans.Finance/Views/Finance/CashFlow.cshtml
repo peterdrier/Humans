@@ -96,16 +96,11 @@
                     }
                 </tbody>
                 <tfoot class="table-light">
-                    @{
-                        var totalIncome = Model.Periods.Sum(p => p.IncomeTotal);
-                        var totalExpenses = Model.Periods.Sum(p => p.ExpenseTotal);
-                        var totalNet = totalIncome + totalExpenses;
-                    }
                     <tr class="fw-bold">
                         <td>Total Scheduled</td>
-                        <td class="text-end text-success">@totalIncome.ToEuro()</td>
-                        <td class="text-end text-danger">@Math.Abs(totalExpenses).ToEuro()</td>
-                        <td class="text-end @(totalNet >= 0 ? "text-success" : "text-danger")">@totalNet.ToEuro()</td>
+                        <td class="text-end text-success">@Model.ScheduledIncomeTotal.ToEuro()</td>
+                        <td class="text-end text-danger">@Math.Abs(Model.ScheduledExpenseTotal).ToEuro()</td>
+                        <td class="text-end @(Model.ScheduledNet >= 0 ? "text-success" : "text-danger")">@Model.ScheduledNet.ToEuro()</td>
                         <td></td>
                         <td></td>
                     </tr>

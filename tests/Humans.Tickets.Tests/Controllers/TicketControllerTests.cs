@@ -32,11 +32,6 @@ namespace Humans.Tickets.Tests.Controllers;
 /// </summary>
 public class TicketControllerTests
 {
-    public enum PreflightRead
-    {
-        Viewer,
-        Settings
-    }
 
     public enum AuditedAction
     {
@@ -146,30 +141,19 @@ public class TicketControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false, PreflightRead.Viewer)]
-    [InlineData(true, PreflightRead.Viewer)]
-    [InlineData(false, PreflightRead.Settings)]
-    [InlineData(true, PreflightRead.Settings)]
-    public async Task AttendanceDeclaration_CancelsPreflightReadsWithoutFailureFeedback(bool undo, PreflightRead boundary)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AttendanceDeclaration_CancelsPreflightReadsWithoutFailureFeedback(bool undo)
     {
         using var request = new CancellationTokenSource();
         var id = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (boundary == PreflightRead.Viewer)
-            {
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return new ValueTask<UserInfo?>((UserInfo?)null);
-            }
-            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = id }, [], [], null));
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
         });
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Task.FromResult<EventSettingsInfo?>(null);
-        });
         var participations = Substitute.For<IEventParticipationManagement>();
         var localizer = Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<TicketsResource>>();
         localizer[Arg.Any<string>()].Returns(call => new Microsoft.Extensions.Localization.LocalizedString(call.Arg<string>(), call.Arg<string>()));
@@ -384,31 +368,6 @@ public class TicketControllerTests
             model.CsvData.Should().Be("parsed rows");
             controller.ModelState.ContainsKey(nameof(model.CsvData)).Should().BeFalse();
         }
-    }
-
-    [HumansFact]
-    public async Task ParticipationBackfill_RequestAborted_CancelsDefaultYearRead()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        var backfill = Substitute.For<IUserParticipationBackfillService>();
-        backfill.GetDefaultYearAsync(aborted.Token)
-            .Returns(Task.FromException<int>(new OperationCanceledException(aborted.Token)));
-        var queries = Substitute.For<ITicketManagement>();
-        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
-            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
-        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            backfill, dashboard, Substitute.For<IUserService>(), NullLogger<TicketController>.Instance)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token },
-            },
-        };
-
-        var act = () => controller.ParticipationBackfill();
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]

@@ -32,6 +32,8 @@ internal sealed record TransferRow(
     int Year, YearMonth Month, Guid TeamId, string TeamName, Guid ProductId, string ProductName,
     int? DepartmentAccount, int? TransferAccount, decimal Amount, TransferState State)
 {
+    public bool IsReady => State == TransferState.Ready;
+
     public LocalDate Date => Month.OnDayOfMonth(1).PlusMonths(1).PlusDays(-1);
 
     public (int Debit, int Credit) Sides => Amount > 0m
@@ -44,7 +46,13 @@ internal sealed record TransferRow(
 internal sealed record TransferBookedLine(TransferRow Row, TransferOutcome Outcome, string? Error);
 
 internal sealed record TransferPlan(
-    int Year, YearMonth? LastClosedMonth, IReadOnlyList<TransferRow> Rows, string? DepartmentAccountsUnavailable);
+    int Year, YearMonth? LastClosedMonth, IReadOnlyList<TransferRow> Rows, string? DepartmentAccountsUnavailable)
+{
+    public IReadOnlyList<TransferRow> Ready { get; } = Rows.Where(r => r.IsReady).ToList();
+    public decimal ReadyAmount => Ready.Sum(r => r.Amount);
+    public int BlockedCount => Rows.Count - Ready.Count;
+    public decimal BlockedAmount => Rows.Where(r => !r.IsReady).Sum(r => r.Amount);
+}
 
 /// <summary>
 /// Books team (department) store orders into Holded as internal transfers: one journal entry per team, product and
@@ -221,7 +229,7 @@ internal sealed partial class StoreTransferBooking(
             var (departments, _) = await DepartmentAccountsAsync(year, ct);
             var booked = await BookedAsync(accounts, ct);
             var ready = Plan(year, lines, catalog, booked, departments, LastClosedMonth())
-                .Where(r => r.State == TransferState.Ready).ToList();
+                .Where(r => r.IsReady).ToList();
 
             var results = new List<TransferBookedLine>();
             foreach (var row in ready)

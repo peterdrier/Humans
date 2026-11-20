@@ -231,7 +231,7 @@ internal sealed class TicketSyncService(
         using var scope = new TransactionScope(TransactionScopeOption.Required,
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
             TransactionScopeAsyncFlowOption.Enabled);
-        await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, ct);
         await transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
         scope.Complete();
     }
@@ -433,7 +433,7 @@ internal sealed class TicketSyncService(
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 

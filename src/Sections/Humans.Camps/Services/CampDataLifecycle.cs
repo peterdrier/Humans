@@ -4,7 +4,6 @@ using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
-using NodaTime;
 
 namespace Humans.Camps.Services;
 
@@ -17,11 +16,11 @@ internal sealed class CampDataLifecycle(
     internal const string CampRoleAssignments = "CampRoleAssignments";
     internal const string CampMemberships = "CampMemberships";
 
-    internal async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+    internal async Task ReassignAsync(Guid sourceUserId, Guid targetUserId,
         CancellationToken ct)
     {
         // Called from AccountMergeService.MergeAsync's ordered fan-out; must stay idempotent.
-        await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await _repo.ReassignMembershipsToUserAsync(sourceUserId, targetUserId, ct);
 
         // Lead moves change Barrio Leads team membership for both users.
         await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);

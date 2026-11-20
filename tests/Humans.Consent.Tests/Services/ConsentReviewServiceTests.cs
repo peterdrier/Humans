@@ -424,7 +424,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
                 Status = ConsentCheckStatus.Flagged,
                 RejectionReason = "dup",
                 RejectedAt = Earlier.ToDateTimeUtc(),
-                RejectedByName = reviewer.BurnerName,
+                RejectedByUserId = reviewer.Id,
             });
     }
 

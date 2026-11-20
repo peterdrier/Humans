@@ -55,17 +55,9 @@ internal sealed record MyTeamMembershipSummary(
     bool CanLeave,
     int PendingRequestCount);
 
-internal sealed record TeamDetailMemberSummary(
-    Guid UserId,
-    string DisplayName,
-    string? Email,
-    string? ProfilePictureUrl,
-    TeamMemberRole Role,
-    Instant JoinedAt);
-
 internal sealed record TeamDetailResult(
     TeamPageTeamSummary Team,
-    IReadOnlyList<TeamDetailMemberSummary> Members,
+    IReadOnlyList<TeamPageMemberSummary> Members,
     IReadOnlyList<TeamPageTeamLink> ChildTeams,
     IReadOnlyList<TeamRoleDefinitionSnapshot> RoleDefinitions,
     bool IsAuthenticated,
@@ -81,10 +73,7 @@ internal sealed record TeamDetailResult(
 internal sealed record TeamPageMemberSummary(
     Guid UserId,
     string DisplayName,
-    string? Email,
-    string? ProfilePictureUrl,
-    TeamMemberRole Role,
-    Instant? JoinedAt);
+    TeamMemberRole Role);
 
 internal sealed record TeamPageResourceSummary(
     string Name,

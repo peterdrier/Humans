@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Humans.Holded.Contracts;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Holded.Services;
 
@@ -77,5 +78,33 @@ internal static class HoldedJson
         logger.LogWarning(
             "Holded {Kind} document {DocumentId} is in {Currency}, not EUR; Humans reads its amounts as euros",
             kind, id, currency);
+    }
+
+    /// <summary>Shape: <c>{"id","amount":"17.00","date":"2026-10-16","bank_id"}</c>. Absent or non-array reads as no
+    /// payments. An unreadable entry is dropped rather than failing the document: it could never match in
+    /// a pay call, which then returns the <c>unconfirmed:</c> sentinel, as intended.</summary>
+    internal static IReadOnlyList<HoldedPaymentDetailDto> ReadPaymentsDetail(JsonNode? node)
+    {
+        if (node is not JsonArray arr) return [];
+        var list = new List<HoldedPaymentDetailDto>();
+        foreach (var item in arr)
+        {
+            try
+            {
+                var id = Prop(item, "id")?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(id)) continue;
+                list.Add(new HoldedPaymentDetailDto(
+                    id,
+                    ReadDecimalV2(Prop(item, "amount")),
+                    LocalDatePattern.Iso.Parse(Prop(item, "date")?.GetValue<string>() ?? "").Value,
+                    Prop(item, "bank_id")?.GetValue<string>()));
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException
+                or FormatException or OverflowException or UnparsableValueException)
+            {
+                // A GUI-entered payment in an unexpected shape must not fail the document.
+            }
+        }
+        return list;
     }
 }

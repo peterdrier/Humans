@@ -41,7 +41,6 @@ internal sealed class WorkgroupRegisterReader(IWorkgroupRepository repository) :
         w.Reasons,
         w.DriveFolderId,
         SafeHttpLink(w.DiscordChannelUrl),
-        w.AppliedByUserId,
         w.AppliedAt,
         w.RegisteredAt,
         w.EndedAt,
@@ -53,13 +52,13 @@ internal sealed class WorkgroupRegisterReader(IWorkgroupRepository repository) :
             .Where(m => m.DeletedAt is null)
             .Select(m => new WorkgroupMeetingInfo(
                 m.Id, m.Title, m.StartUtc, m.EndUtc, m.Location, SafeHttpLink(m.LocationUrl), m.IsPublic,
-                m.Minutes, m.CreatedByUserId, m.CreatedAt, m.UpdatedAt, m.Description,
+                m.Minutes, m.CreatedByUserId, m.Description,
                 m.RecurrenceRule, m.RecurrenceTimezone))
             .ToList(),
         w.LogEntries
             .Select(e => new WorkgroupLogEntryInfo(
                 e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
-                e.SurveyId, e.CreatedAt, e.UpdatedAt, e.MeetingId))
+                e.SurveyId, e.CreatedAt, e.MeetingId))
             .ToList(),
         w.Documents
             .Select(ToInfo)

@@ -919,11 +919,9 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
     }
 
     public async Task ReassignToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        Guid sourceUserId, Guid targetUserId,
         CancellationToken ct = default)
     {
-        _ = updatedAt;
-
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         var orders = await ctx.TicketOrders

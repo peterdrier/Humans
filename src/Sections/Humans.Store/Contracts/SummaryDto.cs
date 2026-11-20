@@ -4,7 +4,15 @@ internal sealed record SummaryDto(
     int Year,
     IReadOnlyList<OrderSummaryDto> ByCounterparty,
     IReadOnlyList<ProductAggregateDto> ByItem,
-    CrossTabDto CrossTab);
+    CrossTabDto CrossTab)
+{
+    public IReadOnlyList<OrderSummaryDto> CampOrders { get; } = ByCounterparty
+        .Where(r => r.CounterpartyType == OrderCounterpartyType.Camp).ToList();
+
+    public decimal CampTotalDueEur => CampOrders.Sum(r => r.TotalDueEur);
+    public decimal CampPaymentsTotalEur => CampOrders.Sum(r => r.PaymentsTotalEur);
+    public decimal CampBalanceEur => CampOrders.Sum(r => r.BalanceEur);
+}
 
 internal sealed record ProductAggregateDto(
     Guid ProductId,

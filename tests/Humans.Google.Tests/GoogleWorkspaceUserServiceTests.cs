@@ -29,17 +29,9 @@ public class GoogleWorkspaceUserServiceTests
     [HumansFact]
     public async Task ProvisionAccountAsync_ForwardsAllArguments()
     {
-        var expected = new WorkspaceUserAccount(
-            "new@nobodies.team", "New", "User", false, DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
-        _client.ProvisionAccountAsync(
-                "new@nobodies.team", "New", "User", "TempP@ss", "recover@example.com",
-                Arg.Any<CancellationToken>())
-            .Returns(expected);
-
-        var result = await _service.ProvisionAccountAsync(
+        await _service.ProvisionAccountAsync(
             "new@nobodies.team", "New", "User", "TempP@ss", "recover@example.com", TestContext.Current.CancellationToken);
 
-        result.Should().BeSameAs(expected);
         await _client.Received(1).ProvisionAccountAsync(
             "new@nobodies.team", "New", "User", "TempP@ss", "recover@example.com",
             Arg.Any<CancellationToken>());

@@ -114,7 +114,7 @@ Humans.Finance/
   Views/Finance/               those pages
   Services/
     Service.cs                 facade for shapes A–G
-    HoldedCreditorReader.cs     shape D: status, accounts and statements
+    CreditorReader.cs     shape D: status, accounts and statements
     FinancePersonalData.cs      financial export and retention declarations
     SepaBankBooking.cs         shape F and the sweep
     HoldedMatcher.cs           pure attribution, no dependencies
@@ -138,7 +138,7 @@ Humans.Finance/
 What the shapes say about the inside:
 
 - Shape **D**'s methods share one balance derivation and one accessor for the cached Holded
-  contact list in `HoldedCreditorReader`.
+  contact list in `CreditorReader`.
 - Shape **C**'s collision policy is one predicate with three call-site answers.
 - The member creditor block is one range, checked by one predicate wherever an account number is
   judged.
@@ -180,13 +180,13 @@ What the shapes say about the inside:
 - A linked Holded contact is never updated from here — only a member with no contact gets one
   created (`src/Sections/Humans.Finance/Services/Service.cs:872`).
 - Every read that draws on Holded's contact list for creditor accounts, and the manual bind, are
-  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/HoldedCreditorReader.cs`,
+  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/CreditorReader.cs`,
   `src/Sections/Humans.Finance/Services/Service.cs:743`).
 - Balances keep Holded's sign (`Σdebit − Σcredit`) on every DTO; the creditor list and the statement
   flip it for display, and a ledger line's running balance is computed from the member's side
   (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:105`,
   `src/Sections/Humans.Finance/Models/CreditorStatementVm.cs:14`,
-  `src/Sections/Humans.Finance/Services/HoldedCreditorReader.cs`).
+  `src/Sections/Humans.Finance/Services/CreditorReader.cs`).
 - A Holded outage costs account names, never a page; anything that is not a vendor failure throws
   (`src/Sections/Humans.Finance/Services/Service.cs:657`).
 - A payout transfer pays only a singly-bound account, never more than is owed, never more than the

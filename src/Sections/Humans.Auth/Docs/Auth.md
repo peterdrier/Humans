@@ -118,7 +118,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 **Former names.** The six renamed roles carry their old name in `FormerNames`. Rows stored under a former name keep working: every read goes through `RoleCatalog.StoredNames`/`Canonical`, so claims, filters, counts and the GDPR export report the current name, and a new assignment under the current name is refused while an active row exists under the former one. The operator-run data migration `auth.role-renames` (`/Debug/DataMigrations`) rewrites those rows once and is idempotent.
 
-`RoleAssignmentRules` (`Authorization/RoleAssignmentRules.cs`) decides who may assign or end which role: Admin any role; UsersAdmin any role but `Admin`; nobody else, Board included. `RoleAssignmentAuthorizationHandler` and the add-role form's role list both read it, and `AssignRoleAsync` refuses a name the catalog does not list (`UnknownRole`).
+`RoleAssignmentRules` (`Authorization/RoleAssignmentRules.cs`) decides who may assign or end which role: Admin any role; UsersAdmin any role but `Admin`; nobody else, Board included. `RoleAssignmentAuthorizationHandler` and the add-role form's role list both read it. The add-role form leaves out `Board` and its POST refuses it: Board seats are added and ended on `/Governance/Board`, which authorizes through the same `RoleAssignmentManage` check and writes through `IRoleAssignmentWrite`, and `AssignRoleAsync` refuses a name the catalog does not list (`UnknownRole`).
 
 ### Authorization-policy layout
 
@@ -133,7 +133,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 | Actor | Capabilities |
 |-------|--------------|
 | Anyone with a valid email | Request a magic-link login or signup |
-| Admin, UsersAdmin | Assign / end role assignments: Admin any role, UsersAdmin any role but Admin. Board sees the roster and assigns nothing. |
+| Admin, UsersAdmin | Assign / end role assignments: Admin any role, UsersAdmin any role but Admin; Board seats through `/Governance/Board`. Board sees the roster and assigns nothing. |
 
 ## Invariants
 
@@ -224,4 +224,4 @@ The section's outbound reference set is `Humans.Notifications.Contracts` (horizo
 - Do **not** inject a `DbContext` into `RoleAssignmentService` or `MagicLinkService`; `AuthDbContext` is internal and only the repository takes it.
 - Do **not** inject `IMemoryCache` into `MagicLinkService`. Use `IMagicLinkRateLimiter` (or add a new cross-cutting abstraction) for cache-backed state.
 - Do **not** add a sign-in call with `isPersistent: false`. There are zero left in `src/`; `SecurityHeaderTests` pins the resulting cookie policy.
-- Nothing outside the section reads `auth_role_assignments` directly: `AuthDbContext` is `internal` to `Humans.Auth`, so the compiler enforces it. Cross-section reads go through `IRoleAssignmentService` in `Contracts/`. `IRoleAssignmentWrite` carries the role mutations and cache invalidation other sections call; the internal `IRoleAssignmentManagement : IRoleAssignmentService, IRoleAssignmentWrite` adds the owner-only reads and `EndRoleAsync` (only the section's own admin page ends a single role). All three registrations resolve the same singleton caching decorator.
+- Nothing outside the section reads `auth_role_assignments` directly: `AuthDbContext` is `internal` to `Humans.Auth`, so the compiler enforces it. Cross-section reads go through `IRoleAssignmentService` in `Contracts/`. `IRoleAssignmentWrite` carries the role mutations and cache invalidation other sections call; the internal `IRoleAssignmentManagement : IRoleAssignmentService, IRoleAssignmentWrite` adds the owner-only reads. `IRoleAssignmentWrite.EndRoleAsync` ends one assignment whatever its role; its one outside caller, Governance's `GovernanceBoardSeats`, checks the row is a Board seat first. All three registrations resolve the same singleton caching decorator.

@@ -9,7 +9,7 @@ namespace Humans.Google.Jobs;
 /// name it (HUM0034 allows public job types).
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class ProcessGoogleSyncOutboxJob(
+internal sealed class ProcessGoogleSyncOutboxJob(
     IGoogleSyncOutboxProcessor outbox,
     IGoogleDriveActivityClient googleClient,
     IHumansMetrics metrics,

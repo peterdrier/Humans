@@ -122,7 +122,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var openYears = registration.Where(r => r.RegistrationOpen).Select(r => r.Year)
             .Distinct()
             .ToList();
-        var (activeYear, activeEventId) = await GetActiveEventAsync(cancellationToken);
+        var (activeYear, activeEventId) = GetActiveEvent();
         var info = new CampSettingsInfo(activeYear, openYears)
         {
             ActiveEventSettingsId = activeEventId,
@@ -151,7 +151,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)
     {
-        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = _settingsService.GetActiveEventSettings();
         if (activeEvent?.EarlyEntryStartOffset is not { } offset)
         {
             return [];
@@ -170,9 +170,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             .ToList();
     }
 
-    public async Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default)
+    public (int Year, Guid? EventSettingsId) GetActiveEvent()
     {
-        var activeEvent = await _settingsService.GetActiveEventSettingsAsync(cancellationToken);
+        var activeEvent = _settingsService.GetActiveEventSettings();
         return (activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year, activeEvent?.Id);
     }
 
@@ -237,7 +237,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         Guid campMemberId, CancellationToken cancellationToken = default) =>
         _readProjection.GetCampMemberStatusAsync(campMemberId, cancellationToken);
 
-    public Task<CampImageUploadResult> UploadImageAsync(
+    public Task<CampUpdateResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         _imageGallery.UploadImageAsync(campId, fileStream, fileName, contentType, length, actorUserId, cancellationToken);
@@ -307,7 +307,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>
-        _dataLifecycle.ReassignAsync(sourceUserId, targetUserId, actorUserId, updatedAt, ct);
+        _dataLifecycle.ReassignAsync(sourceUserId, targetUserId, ct);
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         _dataLifecycle.ContributeForUserAsync(userId, ct);

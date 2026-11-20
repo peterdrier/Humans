@@ -5,39 +5,13 @@ using NodaTime;
 namespace Humans.Holded.Contracts;
 
 /// <summary>
-/// The only way another section writes to Holded; nothing outside the Holded section calls Holded's API. The ensure
-/// members take Humans keys (account numbers, names, the text Humans wrote), find the Holded ids they need live inside
-/// the call, are safe to repeat, and return an outcome. The id-keyed members serve callers that already store Holded's
-/// ids (creditor bindings, expense lines, store orders, SEPA payment refs) and do exactly one step each. Writes never take a
+/// The only way another section writes to Holded; nothing outside the Holded section calls Holded's API.
+/// Callers store Holded ids for their creditor bindings, expense lines, store orders and SEPA payment refs.
+/// The expense-account and sales-document writes resolve chart numbers inside the call. Writes never take a
 /// request-scoped cancellation token.
 /// </summary>
 public interface IHoldedWrite : IApplicationService
 {
-    /// <summary>The creditor contact's ledger account (<c>supplier_record.num</c>, 41xxxxxx for a creditor). Found
-    /// by exact legal name among contacts with an account in 40000000–41999999 (any contact type: hand-made ones are
-    /// often <c>supplier</c>), else created. No <c>custom_id</c> lookup: Humans has never sent one, and whether v2's
-    /// create stores it needs a live write to confirm. Never
-    /// updates a contact: v2's PUT is a full replacement that would mint a second creditor account. Throws
-    /// <see cref="HoldedPermanentException"/> when Holded has not assigned the contact an account number.</summary>
-    [ExternalWrite]
-    Task<HoldedCreditorContactOutcome> EnsureCreditorContactAsync(
-        string legalName, string? tradeName, string? iban, CancellationToken ct = default);
-
-    /// <summary>
-    /// A purchase document on the creditor's contact booking <paramref name="amount"/> to
-    /// <paramref name="expenseAccountNum"/>. An existing document matches on contact, description, total and notes;
-    /// otherwise one is created. <paramref name="notes"/> is the document's Humans key and must name one document
-    /// (an expense line, not its report): identical lines with shared notes collapse into one document. The attachment is uploaded when the document is new, or when
-    /// <paramref name="attachmentUploaded"/> says an earlier call did not get that far: Holded's v2 purchase read
-    /// does not report attachments, so the caller remembers. A draft is approved.
-    /// Throws <see cref="HoldedPermanentException"/> when no contact owns the creditor account or the expense account
-    /// is not in the chart mirror.
-    /// </summary>
-    [ExternalWrite]
-    Task<HoldedPurchaseDocumentOutcome> EnsurePurchaseDocumentAsync(
-        int creditorAccountNum, int expenseAccountNum, string description, decimal amount, LocalDate date,
-        string notes, HoldedAttachmentInput? attachment, bool attachmentUploaded, CancellationToken ct = default);
-
     /// <summary>The expense account, created through <c>expenses-accounts</c> when neither the chart mirror nor Holded's
     /// live expense-account list has the number; the chart mirror is refreshed whenever the mirror lacked it.
     /// <paramref name="name"/> is used only to create.</summary>
@@ -90,14 +64,30 @@ public interface IHoldedWrite : IApplicationService
     Task<HoldedSalesDocumentDto> ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
-    /// <summary>Deletes the matching purchase document (contact, description, total and date) and re-syncs the ledger
-    /// window. Refused, untouched, when its notes are not <paramref name="expectedNotes"/> (someone else's document)
-    /// or it carries a payment. The re-sync is the trailing window: a document dated before it stays in the mirror
-    /// until the nightly balance check re-pulls the account.</summary>
+    /// <summary>Holded emails the sales document's PDF to <paramref name="emails"/>, or to its contact's addresses when
+    /// null. Not idempotent: each call sends
+    /// again.</summary>
     [ExternalWrite]
-    Task<HoldedDeleteOutcome> DeletePurchaseDocumentAsync(
-        int creditorAccountNum, string description, decimal amount, LocalDate date, string expectedNotes,
-        CancellationToken ct = default);
+    Task SendSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default);
+
+    /// <summary>Pays <paramref name="amount"/> (above zero: Holded takes no money back on a sales document) of one sales
+    /// document into <paramref name="treasuryId"/>, dated <paramref name="date"/>. Not idempotent. Returns the
+    /// payment's id for a bank-line reconcile, or an <c>unconfirmed:{documentId}</c> ref when Holded took it but the id
+    /// could not be read; it is posted either way. Throws only when nothing was posted.</summary>
+    [ExternalWrite]
+    Task<string> PaySalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, decimal amount, string treasuryId, LocalDate date,
+        string? description, CancellationToken ct = default);
+
+    /// <summary>A payment on a contact outside any document, through <paramref name="treasuryId"/>: money in
+    /// (<see cref="HoldedTreasuryPaymentKind.Collection"/>) or out (<see cref="HoldedTreasuryPaymentKind.Payment"/>).
+    /// Not idempotent. Returns its id for a bank-line reconcile, or <c>unconfirmed:payment</c> when Holded took it
+    /// without a readable id.</summary>
+    [ExternalWrite]
+    Task<string> CreateTreasuryPaymentAsync(
+        HoldedTreasuryPaymentKind kind, string contactId, string treasuryId, decimal amount, LocalDate date,
+        string? description, CancellationToken ct = default);
 
     /// <summary>Pays <paramref name="amount"/> of one purchase document from <paramref name="treasuryId"/> (Holded's
     /// default when blank), dated <paramref name="date"/>. Not idempotent. Returns the payment's ref, the one Holded id
@@ -124,24 +114,6 @@ public interface IHoldedWrite : IApplicationService
     Task<HoldedJournalEntryOutcome> PostJournalEntryAsync(
         LocalDate date, int debitAccount, int creditAccount, decimal amount, string description,
         CancellationToken ct = default);
-}
-
-/// <summary><paramref name="AccountNum"/> is the contact's ledger account; <paramref name="Created"/> is true when
-/// this call created the contact.</summary>
-public sealed record HoldedCreditorContactOutcome(int AccountNum, bool Created);
-
-/// <summary>What the call did. <paramref name="DocNumber"/> is Holded's human document number, for display.</summary>
-public sealed record HoldedPurchaseDocumentOutcome(bool Created, bool Attached, bool Approved, string DocNumber);
-
-public enum HoldedDeleteOutcome
-{
-    Deleted,
-    /// <summary>No live document matched: already gone, or never created.</summary>
-    NotFound,
-    /// <summary>A document matched but its notes differ: not this caller's to delete.</summary>
-    RefusedNotesDiffer,
-    /// <summary>The document carries a payment; Holded refuses those and so does this.</summary>
-    RefusedPaid,
 }
 
 public sealed record HoldedJournalEntryOutcome(bool Confirmed);

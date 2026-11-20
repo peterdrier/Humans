@@ -29,6 +29,15 @@ internal sealed record OrderDto(
 {
     public bool HasCheckoutAttempt { get; init; }
 
+    public decimal PendingSettlementTotalEur => Payments
+        .Where(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0)
+        .Sum(p => p.AmountEur);
+
+    public bool HasPendingSettlement => PendingSettlementTotalEur > 0;
+
+    /// <summary>What the order costs: lines, VAT and deposits, as the balance computes it.</summary>
+    public decimal TotalDueEur { get; init; }
+
     /// <summary>The state half of <c>DeleteOrderAsync</c>'s guard; authorization is separate.</summary>
     public bool IsDeletable => State == OrderState.Open && Payments.Count == 0 && BalanceEur == 0m && !HasCheckoutAttempt;
 
@@ -44,4 +53,5 @@ internal sealed record OrderPaymentDto(
     string? StripePaymentIntentId,
     string? ExternalRef,
     Instant ReceivedAt,
-    string? Notes);
+    string? Notes,
+    Guid? ProductId = null);

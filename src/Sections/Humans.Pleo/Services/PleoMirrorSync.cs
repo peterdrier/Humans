@@ -69,7 +69,8 @@ internal sealed class PleoMirrorSync(
                 state.LastError = categoryError;
                 // The mirror committed; finish its outcome independently of caller shutdown.
                 await repo.SaveSyncStateAsync(state, CancellationToken.None);
-                logger.LogInformation("Pleo sweep mirrored {Entries} entries ({Skipped} skipped), {Accounts} accounts, {Employees} cardholders",
+                logger.Log(skipped > 0 ? LogLevel.Warning : LogLevel.Information,
+                    "Pleo sweep mirrored {Entries} entries ({Skipped} skipped), {Accounts} accounts, {Employees} cardholders",
                     entries.Count, skipped, accounts.Count, employees.Count);
                 return categoryError is null ? PleoSyncOutcome.Synced : PleoSyncOutcome.SyncedWithoutCategories;
             }
@@ -110,7 +111,10 @@ internal sealed class PleoMirrorSync(
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Pleo category fetch failed; sweeping without refreshing categories");
+            if (ex is PleoApiException)
+                logger.LogWarning("Pleo category fetch failed; sweeping without refreshing categories: {Reason}", ex.Message);
+            else
+                logger.LogError(ex, "Pleo category fetch failed; sweeping without refreshing categories");
             return ([], PleoTextBounds.Bound($"Categories not refreshed: {ex.Message}", 2000));
         }
     }
@@ -182,7 +186,7 @@ internal sealed class PleoMirrorSync(
             var wire = item.ValueKind == JsonValueKind.Object
                 ? item.Deserialize<PleoEntryWire>(JsonSerializerOptions.Web)
                 : null;
-            if (wire is null || string.IsNullOrEmpty(wire.Id) || wire.Family is null)
+            if (wire is null || string.IsNullOrWhiteSpace(wire.Id) || string.IsNullOrWhiteSpace(wire.Family))
             {
                 skipped++;
                 continue;

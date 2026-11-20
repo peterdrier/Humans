@@ -9,9 +9,10 @@ and `AssemblyVoteRepository` inject
 `IDbContextFactory<GovernanceDbContext>` directly. Owns
 `Applications`, `MembershipTiers` (`governance_membership_tiers`), `ApplicationStateHistories`, `BoardVotes`,
 `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`,
-`AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`.
+`AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`, `GovernanceBodyLinks` (`governance_body_links`),
+`GovernanceBodyFiles` (`governance_body_files`).
 
-All three repositories are registered **Singleton** in `Section.cs`; they hold no state
+All four repositories (`GovernanceBodyRepository` included) are registered **Singleton** in `Section.cs`; they hold no state
 and take an `IDbContextFactory`. The services below are Scoped.
 
 `IGovernanceManagement` (internal) extends the public `IGovernanceService` (reads) with the
@@ -67,6 +68,25 @@ Cross-section reads: `IUserService` resolves the merge chain for single-user rea
 Implements `IUserDataContributor` (slice `MembershipTier`; erasure retains the row — register
 of members, Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b)) and `IUserMerge` (survivor's tier
 wins).
+
+### GovernanceBodyLinksService (Scoped, internal)
+
+Repository: `IGovernanceBodyRepository` (`GovernanceBodyRepository`).
+
+| Table | R/W |
+|-------|-----|
+| GovernanceBodyLinks | R/W |
+| GovernanceBodyFiles | R/W |
+
+Each body's (Asociados, Colaboradores, Board) Google group prefix and Google files. Cross-section reads for
+the `governance.body-links-from-teams` data migration only: `ITeamService.GetTeamAsync` (the old system
+team's `GoogleGroupPrefix`) and `ITeamResourceService.GetResourcesByTeamIdsAsync` (its active non-Group
+resources). No personal data.
+
+### GovernanceBoardSeats (Scoped, internal)
+
+No tables. Adds and ends Board seats through `IRoleAssignmentWrite.AssignRoleAsync` / `EndRoleAsync`, finding the
+seat with `IRoleAssignmentService.GetByUserIdAsync`; Auth stores and audits them.
 
 ### AssemblyVoteService (Scoped)
 

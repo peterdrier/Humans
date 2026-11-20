@@ -6,7 +6,6 @@
     var human = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
     {
         userId = Model.UserId,
-        link = Humans.Base.ViewComponents.HumanLink.None,
     });
     using var humanWriter = new System.IO.StringWriter();
     human.WriteTo(humanWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
@@ -27,8 +26,7 @@
             <div class="col-auto">
                 <vc:human user-id="@Model.UserId"
                           layout="Avatar"
-                          size="160"
-                          link="None" />
+                          size="160" />
             </div>
             <div class="col">
                 <h4>@humanHtml</h4>

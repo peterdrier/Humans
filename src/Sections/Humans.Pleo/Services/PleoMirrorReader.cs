@@ -69,8 +69,19 @@ internal sealed class PleoMirrorReader(
         return m.Entries
             .Where(e => e.SettledAt is { } s && s >= start && s < end)
             .Select(e => new PleoEntryInfo(e.Id, e.Family, e.SubFamily, e.Status, e.SettledAt!.Value, e.Currency,
-                e.Minors, e.AmountEur, e.MerchantName, e.EmployeeId, e.CategoryId, m.HoldedCodeOf(e), e.ReceiptCount > 0))
+                e.Minors, e.AmountEur, e.MerchantName, e.EmployeeId, e.CategoryId, m.HoldedCodeOf(e), e.ReceiptCount > 0,
+                e.Note, e.EmployeeId is null ? null : m.CardholderOf(e), ReceiptIdsOf(e)))
             .ToList();
+    }
+
+    /// <summary>From <see cref="PleoEntry.Raw"/>, the entry as the sweep read it: no column holds the ids.</summary>
+    internal static IReadOnlyList<string> ReceiptIdsOf(PleoEntry e)
+    {
+        if (e.ReceiptCount == 0) return [];
+        using var raw = JsonDocument.Parse(e.Raw);
+        return raw.RootElement.TryGetProperty("receiptIds", out var ids) && ids.ValueKind == JsonValueKind.Array
+            ? ids.EnumerateArray().Where(i => i.ValueKind == JsonValueKind.String).Select(i => i.GetString()!).ToList()
+            : [];
     }
 
     internal async Task<PleoWalletBalance?> GetWalletBalanceAsync(CancellationToken ct = default) =>
@@ -154,9 +165,8 @@ internal sealed class PleoMirrorReader(
         if (!string.IsNullOrEmpty(filter.Account)) rows = rows.Where(e => string.Equals(m.HoldedCodeOf(e), filter.Account, StringComparison.Ordinal));
         if (!string.IsNullOrEmpty(filter.Cardholder)) rows = rows.Where(e => string.Equals(e.EmployeeId, filter.Cardholder, StringComparison.Ordinal));
         if (!string.IsNullOrEmpty(filter.Family)) rows = rows.Where(e => string.Equals(e.Family, filter.Family, StringComparison.Ordinal));
-        // Both blocking filters leave loads out: a load is neither categorised nor receipted, and is booked another way.
-        if (filter.NoReceipt || filter.Unmapped)
-            rows = rows.Where(e => PleoEntryRules.KindOf(e.Family, e.SubFamily) != PleoEntryKind.Load);
+        // The blocking filters list exactly what /Pleo's blocking counts count.
+        if (filter.NoReceipt || filter.Unmapped) rows = rows.Where(IsSpend);
         if (filter.NoReceipt) rows = rows.Where(e => e.ReceiptCount == 0);
         if (filter.Unmapped) rows = rows.Where(e => m.HoldedCodeOf(e) is null);
 
@@ -174,11 +184,23 @@ internal sealed class PleoMirrorReader(
     private static PleoEntryRow ToRow(PleoEntry e, Mirror m)
     {
         var code = m.HoldedCodeOf(e);
+        var decimals = CurrencyDecimals(e.Currency);
+        var divisor = decimals switch { 0 => 1m, 3 => 1000m, 4 => 10000m, _ => 100m };
         return new PleoEntryRow(e.Id, e.PerformedAt, e.SettledAt, m.CardholderOf(e), e.MerchantName, e.Family,
-            e.SubFamily, e.Status, e.AmountEur, e.Currency, e.Minors, code,
+            e.SubFamily, e.Status, e.AmountEur, e.Currency, e.Minors / divisor, decimals, code,
             code is not null && m.AccountsByCode.TryGetValue(code, out var a) ? a.Name : null,
             e.ReceiptCount > 0);
     }
+
+    // ISO 4217 minor units (SIX list-one, 2026-09-17). Pleo uses these, including zero-decimal ISK.
+    private static int CurrencyDecimals(string currency) => currency switch
+    {
+        "BIF" or "CLP" or "DJF" or "GNF" or "ISK" or "JPY" or "KMF" or "KRW" or "PYG"
+            or "RWF" or "UGX" or "UYI" or "VND" or "VUV" or "XAF" or "XOF" or "XPF" => 0,
+        "BHD" or "IQD" or "JOD" or "KWD" or "LYD" or "OMR" or "TND" => 3,
+        "CLF" or "UYW" => 4,
+        _ => 2,
+    };
 
     internal async Task<PleoEntryView?> GetEntryViewAsync(string id, CancellationToken ct = default)
     {
@@ -203,7 +225,7 @@ internal sealed class PleoMirrorReader(
                 }
                 catch (PleoApiException ex)
                 {
-                    logger.LogWarning(ex, "Pleo receipt lookup failed for entry {EntryId}", id);
+                    logger.LogWarning("Pleo receipt lookup failed for entry {EntryId}: {Reason}", id, ex.Message);
                     receiptError = $"The receipt lookup failed: {ex.Message}";
                 }
             }
@@ -231,7 +253,7 @@ internal sealed class PleoMirrorReader(
         }
         catch (PleoApiException ex)
         {
-            logger.LogWarning(ex, "Pleo receipt {ReceiptId} fetch failed for entry {EntryId}", receiptId, entryId);
+            logger.LogWarning("Pleo receipt {ReceiptId} fetch failed for entry {EntryId}: {Reason}", receiptId, entryId, ex.Message);
             return null;
         }
     }

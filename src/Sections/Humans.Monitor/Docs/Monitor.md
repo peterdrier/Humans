@@ -61,6 +61,8 @@ pages and data.
 
 ## Triggers
 
+- `DriveActivityMonitorJob` stays internal to the section; registration and scheduling use its runtime type through `ISectionJobs`.
+
 - `DriveActivityMonitorJob` runs hourly.
 - `POST /Monitor/CheckDriveActivity` runs the same scan from the Audit Log toolbar.
 

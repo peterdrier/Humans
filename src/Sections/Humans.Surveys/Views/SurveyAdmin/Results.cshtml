@@ -354,9 +354,10 @@ else
                 var headingId = $"respondent-heading-{i}";
                 var collapseId = $"respondent-collapse-{i}";
                 <div class="accordion-item">
-                    <h3 class="accordion-header" id="@headingId">
+                    <h3 class="accordion-header d-flex align-items-center" id="@headingId">
+                        <span class="ps-3 text-nowrap"><vc:human user-id="@r.UserId" /></span>
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
-                            <vc:human user-id="@r.UserId" link="None" /> <span class="text-muted ms-2 small">@r.SubmittedAt</span>
+                            <span class="text-muted small">@r.SubmittedAt</span>
                         </button>
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#respondents">

@@ -2,14 +2,12 @@ using Humans.Base.Interfaces;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
 using Humans.Surveys.Domain;
-using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Services;
 
 internal sealed class SurveyDefinitionReader(
     ISurveyRepository repo,
-    ISurveyInviteTokenProvider tokenProvider,
-    IUserService userService) : IApplicationService
+    ISurveyInviteTokenProvider tokenProvider) : IApplicationService
 {
     public async Task<IReadOnlyList<SurveySummary>> GetSummariesAsync(CancellationToken ct = default)
     {
@@ -50,20 +48,12 @@ internal sealed class SurveyDefinitionReader(
 
     internal async Task<IReadOnlyList<SurveyPendingApprovalItem>> GetPendingApprovalQueueAsync(CancellationToken ct = default)
     {
-        var pending = (await repo.GetAllSummariesAsync(ct))
+        return (await repo.GetAllSummariesAsync(ct))
             .Where(s => s.Status == SurveyStatus.PendingApproval)
-            .ToList();
-        if (pending.Count == 0) return [];
-
-        var authorIds = pending.Select(s => s.CreatedByUserId).Distinct().ToList();
-        var authors = await userService.GetUserInfosAsync(authorIds, ct);
-
-        return pending
             .Select(s => new SurveyPendingApprovalItem(
                 s.Id,
                 s.Title.Resolve(s.DefaultCulture, s.DefaultCulture),
                 s.CreatedByUserId,
-                authors.TryGetValue(s.CreatedByUserId, out var author) ? author.BurnerName : s.CreatedByUserId.ToString(),
                 s.SubmittedAt))
             .ToList();
     }

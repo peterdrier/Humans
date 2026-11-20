@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Rideshare.Services.Routing;
 
-/// <summary>Every failure logs a warning and returns <c>null</c>: routing never blocks a save.</summary>
+/// <summary>Failures log and return <c>null</c>; requested cancellation propagates. Routing outages never block a save.</summary>
 internal sealed class OpenRouteServiceClient(
     HttpClient httpClient,
     IOptions<RouteProviderOptions> options,
@@ -37,7 +37,10 @@ internal sealed class OpenRouteServiceClient(
         }
         catch (Exception ex) when (IsProviderFailure(ex, ct))
         {
-            logger.LogWarning(ex, "OpenRouteService geocode failed for {Query}", query);
+            if (IsExpectedProviderFailure(ex))
+                logger.LogWarning("OpenRouteService geocode failed for {Query}: {Reason}", query, ex.Message);
+            else
+                logger.LogError(ex, "OpenRouteService geocode failed for {Query}", query);
             return null;
         }
     }
@@ -68,7 +71,10 @@ internal sealed class OpenRouteServiceClient(
         }
         catch (Exception ex) when (IsProviderFailure(ex, ct))
         {
-            logger.LogWarning(ex, "OpenRouteService directions failed for {PointCount} points", points.Count);
+            if (IsExpectedProviderFailure(ex))
+                logger.LogWarning("OpenRouteService directions failed for {PointCount} points: {Reason}", points.Count, ex.Message);
+            else
+                logger.LogError(ex, "OpenRouteService directions failed for {PointCount} points", points.Count);
             return null;
         }
     }
@@ -102,6 +108,10 @@ internal sealed class OpenRouteServiceClient(
     // malformed or unexpected JSON) is the provider being unavailable.
     private static bool IsProviderFailure(Exception ex, CancellationToken ct) =>
         ex is not OperationCanceledException || !ct.IsCancellationRequested;
+
+    private static bool IsExpectedProviderFailure(Exception ex) =>
+        ex is HttpRequestException or IOException or OperationCanceledException or JsonException
+            or KeyNotFoundException or InvalidOperationException or FormatException or OverflowException;
 
     // ORS expects lower-case "coordinates"; JsonContent's default web options camel-case it.
     private sealed record DirectionsRequest(double[][] Coordinates);

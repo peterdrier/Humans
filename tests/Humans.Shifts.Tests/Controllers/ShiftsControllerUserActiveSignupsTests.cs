@@ -352,9 +352,6 @@ public class ShiftsControllerUserActiveSignupsTests
             profile: new Profile
             {
                 UserId = userId,
-                BurnerName = "Burner",
-                FirstName = "First",
-                LastName = "Last",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

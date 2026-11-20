@@ -24,7 +24,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// <summary>
     /// The live active event's id (null before one exists) and year, the year falling back to the clock's.
     /// </summary>
-    Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default);
+    (int Year, Guid? EventSettingsId) GetActiveEvent();
 
     /// <summary>Season, user and status of one membership row; null when the row does not exist.</summary>
     Task<CampMemberLookup?> GetCampMemberStatusAsync(Guid campMemberId, CancellationToken cancellationToken = default);
@@ -58,7 +58,7 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// <summary>Returns a refusal if the name does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> RemoveHistoricalNameAsync(Guid scopedCampId, Guid historicalNameId, Guid actorUserId, CancellationToken cancellationToken = default);
 
-    Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, Guid actorUserId, CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, Guid actorUserId, CancellationToken cancellationToken = default);
     /// <summary>Returns a refusal if the image does not belong to <paramref name="scopedCampId"/> — the id arrives from a lead-facing form.</summary>
     Task<CampUpdateResult> DeleteImageAsync(Guid scopedCampId, Guid imageId, Guid actorUserId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, Guid actorUserId, CancellationToken cancellationToken = default);
@@ -233,13 +233,9 @@ internal sealed record CampEditData(
     SoundZone? SoundZone,
     ElectricalGrid? ElectricalGrid,
     IReadOnlyList<CampImageSummary> Images,
-    IReadOnlyList<CampHistoricalNameSummary> HistoricalNames);
-
-internal sealed record CampImageUploadResult(bool Succeeded, CampImage? Image, string? ErrorMessage)
+    IReadOnlyList<CampHistoricalNameSummary> HistoricalNames)
 {
-    public static CampImageUploadResult Success(CampImage image) => new(true, image, null);
-
-    public static CampImageUploadResult Failure(string errorMessage) => new(false, null, errorMessage);
+    public bool HasEarlyEntryCapacity { get; init; }
 }
 
 internal sealed record CampHistoricalNameSummary(

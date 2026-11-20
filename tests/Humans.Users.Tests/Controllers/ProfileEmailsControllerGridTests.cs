@@ -155,6 +155,33 @@ public class ProfileEmailsControllerGridTests
         _userEmailService.ReceivedCalls().Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddEmail_GridRedisplay_ObservesRequestCancellation(bool serviceRefused)
+    {
+        using var request = new CancellationTokenSource();
+        _controller.HttpContext.RequestAborted = request.Token;
+        _userEmailService.GetUserEmailsAsync(_userId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Array.Empty<UserEmailEditDto>();
+        });
+        const string address = "new@example.test";
+        _userEmailService.AddEmailAsync(_userId, address, CancellationToken.None, _userId)
+            .Returns(new AddEmailResult(Guid.Empty, string.Empty, false, "Users_EmailUpdate_AccountUnavailable"));
+        await request.CancelAsync();
+        var model = new EmailsViewModel { NewEmail = serviceRefused ? address : string.Empty };
+        var add = () => _controller.AddEmail(model);
+
+        await add.Should().ThrowAsync<OperationCanceledException>();
+        await _userEmailService.Received(1).GetUserEmailsAsync(_userId, request.Token);
+        if (serviceRefused)
+            await _userEmailService.Received(1).AddEmailAsync(_userId, address, CancellationToken.None, _userId);
+        else
+            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!, default, default);
+    }
+
     public enum AdminVerificationOutcome { NoPending, Refused, Verified, MergeRequested }
 
     [HumansTheory]

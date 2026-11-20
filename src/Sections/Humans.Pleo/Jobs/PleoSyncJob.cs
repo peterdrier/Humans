@@ -20,7 +20,7 @@ internal sealed class PleoSyncJob(IPleoAdminService pleo, ILogger<PleoSyncJob> l
         catch (PleoPermanentException ex)
         {
             // A 4xx is the key's limit, so Hangfire's retries would only repeat it; the sync row already holds the error.
-            logger.LogWarning(ex, "Nightly Pleo sweep failed permanently; not retrying.");
+            logger.LogWarning("Nightly Pleo sweep failed permanently; not retrying: {Reason}", ex.Message);
             return;
         }
 

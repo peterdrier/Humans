@@ -30,7 +30,6 @@
         var resolver = await Component.InvokeAsync(typeof(HumanViewComponent), new
         {
             userId = Model.ResolvedByUserId ?? Guid.Empty,
-            link = HumanLink.None,
         });
         using var resolverWriter = new System.IO.StringWriter();
         resolver.WriteTo(resolverWriter, System.Text.Encodings.Web.HtmlEncoder.Default);

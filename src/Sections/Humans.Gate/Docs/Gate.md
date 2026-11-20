@@ -227,7 +227,7 @@ nobodies-collective/Humans#933.)
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
   is the Tickets cache/sync interval, not real-time.
 - **Early Entry** — `IEarlyEntryService.GetForUserAsync`.
-- **Settings / Shifts** — `ISettingsService.GetActiveEventSettingsAsync` (Settings: event time zone for "today"; also the active
+- **Settings / Shifts** — `ISettingsService.GetActiveEventSettings` (Settings: event time zone for "today"; also the active
   event/year for the shift roster pre-fill and the Attended-participation write); and Shifts' `IShiftService.GetBrowseShiftsAsync`
   from `GateService`: `GetShiftRosterAsync` pre-fills the claim screen with the gate-shift roster
   (opt-in via `Gate:RosterTeamId`; see Configuration — claim flow unreachable since
@@ -273,7 +273,7 @@ There is no `Contracts/` folder: nothing outside the section calls into it.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
-**Jobs:** both in `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
+**Jobs:** both internal and owned by `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
 section's own `ISectionJobs` (`ISectionJobs`, discovered by Shell — cron `45 3 * * *`);
 `GateVendorCheckInJob` is enqueued fire-and-forget on admit (Hangfire serializes the method
 reference, so it needs no registration).

@@ -97,7 +97,7 @@ public class CantinaDailyRosterServiceTests
         // shift cohort of its own — must still surface them in People and
         // count them in the day's aggregates.
         var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
         SetupDay(2, id);
@@ -118,7 +118,7 @@ public class CantinaDailyRosterServiceTests
         // neither work day 0 nor arrive on it (their arrival is day 1), so
         // they must be absent.
         var ev = ActiveEventWithRange(buildStart: -2, strikeEnd: 8);
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        _burnSettings.GetActiveEventSettings().Returns(ev);
 
         var id = Guid.NewGuid();
         SetupDay(2, id);
@@ -133,7 +133,7 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_NoActiveEventSettings_ReturnsEmpty()
     {
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(dayOffset: 3, ct: Xunit.TestContext.Current.CancellationToken));
 
@@ -151,7 +151,7 @@ public class CantinaDailyRosterServiceTests
     public async Task GetDailyRoster_NoOnSiteUsers_ReturnsZeroState()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveEventSettings().Returns(es);
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken));
 
@@ -166,7 +166,7 @@ public class CantinaDailyRosterServiceTests
     public async Task GetDailyRoster_PopulatedDay_BuildsAggregatesAndPeople()
     {
         var es = ActiveEvent();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveEventSettings().Returns(es);
 
         // 3-user fixture mixing dietary, allergy, intolerance and "Other"-with-text combinations.
         var a = Guid.NewGuid();
@@ -226,7 +226,7 @@ public class CantinaDailyRosterServiceTests
         // UserInfo.BurnerName is the resolved name (User.BurnerName → Profile.BurnerName → legacy
         // display name). Reading ProfileInfo.BurnerName instead renders "(unknown)" for a human
         // whose name only ever landed on the user row.
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
+        _burnSettings.GetActiveEventSettings().Returns(ActiveEvent());
 
         var userId = Guid.NewGuid();
         SetupDay(0, userId);
@@ -263,7 +263,7 @@ public class CantinaDailyRosterServiceTests
             "DailyPersonRowDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 
         var es = ActiveEvent();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveEventSettings().Returns(es);
 
         var userId = Guid.NewGuid();
         SetupDay(0, userId);
@@ -284,7 +284,7 @@ public class CantinaDailyRosterServiceTests
         //   day -3 = Sat 4 Jul   → Monday of week = Mon 29 Jun → offset -8
         //   day +5 = Sun 12 Jul  → Monday of week = Mon 6 Jul → offset -1
         var es = ActiveEvent();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveEventSettings().Returns(es);
 
         Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(0, ct: Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-1);
         Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(-3, ct: Xunit.TestContext.Current.CancellationToken)).WeekStartOffset.Should().Be(-8);
@@ -296,7 +296,7 @@ public class CantinaDailyRosterServiceTests
     {
         // Clock is 7 Jul 2026 12:00 UTC — 14:00 in Madrid, same calendar day —
         // and GateOpening is 7 Jul, so "today" is offset 0.
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ActiveEvent());
+        _burnSettings.GetActiveEventSettings().Returns(ActiveEvent());
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken));
 
@@ -306,7 +306,7 @@ public class CantinaDailyRosterServiceTests
     [HumansFact]
     public async Task GetDailyRoster_NoOffsetAndNoActiveEvent_DefaultsToZero()
     {
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _burnSettings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await _service.GetDailyRosterAsync(ct: Xunit.TestContext.Current.CancellationToken));
 
@@ -320,7 +320,7 @@ public class CantinaDailyRosterServiceTests
         // (memory/architecture/display-sort-in-controllers.md). Hand the service a
         // reverse-alphabetical order; the result must preserve it.
         var es = ActiveEvent();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveEventSettings().Returns(es);
 
         var c = Guid.NewGuid();
         var b = Guid.NewGuid();
@@ -343,7 +343,7 @@ public class CantinaDailyRosterServiceTests
         var fakeClock = new FakeClock(Instant.FromUtc(2026, 7, 7, 23, 30));
         var service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, fakeClock, _audit);
         var es = ActiveEvent();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _burnSettings.GetActiveEventSettings().Returns(es);
 
         var result = Xunit.Assert.IsType<DailyMatrixDto>(await service.GetDailyRosterAsync(dayOffset: 0, ct: Xunit.TestContext.Current.CancellationToken));
 

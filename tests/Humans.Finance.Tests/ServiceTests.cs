@@ -36,7 +36,7 @@ public class HoldedFinanceServiceTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 5, 1, 12, 0);
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IHoldedFeed _feed = Substitute.For<IHoldedFeed>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = TestContacts.Holded();
@@ -168,7 +168,8 @@ public class HoldedFinanceServiceTests
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
                 Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-                Microsoft.Extensions.Options.Options.Create(new FinanceStripeOptions()), SystemClock.Instance),
+                Substitute.For<Humans.Finance.Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+                SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(),
             new SepaBookingRunner(Substitute.For<IServiceScopeFactory>(), SystemClock.Instance,
                 NullLogger<SepaBookingRunner>.Instance),
@@ -1284,7 +1285,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = cat, HoldedContactId = "c-cat", SupplierAccountNum = 40000006, Source = CreditorContactSource.Manual },
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c-cat2", SupplierAccountNum = 40000006, Source = CreditorContactSource.Auto },
         });
-        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocListItemDto>
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocInfo>
         {
             OpenDoc("a1", "c-ana", 10m), OpenDoc("a2", "c-ana", 20m),
             OpenDoc("a3", "c-ana", 0m),                   // paid off
@@ -1302,19 +1303,8 @@ public class HoldedFinanceServiceTests
         rows.Single(r => r.SupplierAccountNum == 40000007).OpenDocumentCount.Should().BeNull("unbound");
         await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
 
-        static HoldedPurchaseDocListItemDto OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new()
-        {
-            Id = id,
-            DocNumber = id,
-            ContactId = contactId,
-            ContactName = "x",
-            Date = FixedNow,
-            Subtotal = 10m,
-            Tax = 0m,
-            Total = 10m,
-            PaymentsPending = pending,
-            IsDraft = draft,
-        };
+        static HoldedPurchaseDocInfo OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new HoldedPurchaseDocInfo(
+            id, id, "x", contactId, null, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, 10m, 0m, 10m, "eur", draft == false, null, [], null, "", pending);
     }
 
     [HumansFact]
@@ -1753,7 +1743,7 @@ public class HoldedFinanceServiceTests
         await _write.Received(1).EnsureExpenseAccountAsync(
             Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         var row = _repo.ReceivedCalls()
-            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IFinanceRepository.AddCategoryMapAsync), StringComparison.Ordinal))
             .Select(c => (HoldedCategoryMap)c.GetArguments()[0]!)
             .Should().ContainSingle().Subject;
         row.BudgetCategoryId.Should().Be(catA);          // "Alpha" sorts first
@@ -1777,7 +1767,7 @@ public class HoldedFinanceServiceTests
 
         created.Should().Be(2);
         var numbers = _repo.ReceivedCalls()
-            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IHoldedRepository.AddCategoryMapAsync), StringComparison.Ordinal))
+            .Where(c => string.Equals(c.GetMethodInfo().Name, nameof(IFinanceRepository.AddCategoryMapAsync), StringComparison.Ordinal))
             .Select(c => ((HoldedCategoryMap)c.GetArguments()[0]!).HoldedAccountNumber);
         numbers.Should().Equal(6290010, 6290011);
         // Provisioning is additive: the repository has no map-delete method and none is called.
@@ -2883,23 +2873,12 @@ public class HoldedFinanceServiceTests
     }
 
     /// <summary>An approved Holded purchase document on contact "c1" with something still owed.</summary>
-    private static HoldedPurchaseDocListItemDto Doc(
+    private static HoldedPurchaseDocInfo Doc(
         string id, decimal pending, int dayOfMonth, string contactId = "c1", bool? draft = false) =>
-        new()
-        {
-            Id = id,
-            DocNumber = id.ToUpperInvariant(),
-            ContactId = contactId,
-            ContactName = "Ana Ruiz",
-            Date = Instant.FromUtc(2026, 4, dayOfMonth, 0, 0),
-            Subtotal = pending,
-            Tax = 0m,
-            Total = pending,
-            PaymentsPending = pending,
-            IsDraft = draft,
-        };
+        new HoldedPurchaseDocInfo(
+            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, dayOfMonth, 0, 0)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, 0m, pending, "eur", draft == false, null, [], null, "", pending);
 
-    private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
+    private void SeedOpenDocs(params HoldedPurchaseDocInfo[] docs) =>
         _feed.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
 
     private void SeedPaymentIds(params string[] ids)
@@ -2934,13 +2913,10 @@ public class HoldedFinanceServiceTests
                 },
             });
         _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedAccountDto>
+            .Returns(new List<HoldedChartAccountInfo>
             {
-                new()
-                {
-                    Id = "acc-1", Number = 40000004, Name = "Ana Ruiz",
-                    Debit = 0m, Credit = owed, Balance = -owed,
-                },
+                new HoldedChartAccountInfo(
+                    40000004, "Ana Ruiz", null, null, false, -owed),
             });
     }
 

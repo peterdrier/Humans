@@ -6013,7 +6013,7 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task GetPendingApprovalQueueAsync_returns_only_pending_surveys_with_author_names_and_timestamps()
+    public async Task GetPendingApprovalQueueAsync_returns_only_pending_surveys_with_authors_and_timestamps()
     {
         var authorA = Guid.NewGuid();
         var authorB = Guid.NewGuid();
@@ -6023,16 +6023,11 @@ public class SurveyServiceTests
         newer.SubmittedAt = _clock.GetCurrentInstant() - Duration.FromDays(1);
         var draft = SurveyWith(SurveyStatus.Draft, null, null);
         _repo.GetAllSummariesAsync(Arg.Any<CancellationToken>()).Returns(new List<Survey> { newer, older, draft });
-        var authorAInfo = UserWithLastLogin(authorA, null);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                new Dictionary<Guid, UserInfo> { [authorA] = authorAInfo }));
-
         var result = await CreateService().GetPendingApprovalQueueAsync(TestContext.Current.CancellationToken);
 
         result.Select(r => r.Id).Should().BeEquivalentTo([older.Id, newer.Id]);
         result.Should().NotContain(r => r.Id == draft.Id);
-        result.Single(r => r.Id == older.Id).CreatedByName.Should().Be(authorAInfo.BurnerName);
+        result.Single(r => r.Id == older.Id).CreatedByUserId.Should().Be(authorA);
         result.Single(r => r.Id == older.Id).SubmittedAt.Should().Be(older.SubmittedAt);
         result.Single(r => r.Id == newer.Id).SubmittedAt.Should().Be(newer.SubmittedAt);
     }

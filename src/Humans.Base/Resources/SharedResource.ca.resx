@@ -1502,6 +1502,12 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Porta</value>
   </data>
+  <data name="Settings_TabStore" xml:space="preserve">
+    <value>Botiga</value>
+  </data>
+  <data name="Settings_TabFinance" xml:space="preserve">
+    <value>Finances</value>
+  </data>
   <data name="Settings_TabBarrios" xml:space="preserve">
     <value>Barris</value>
   </data>

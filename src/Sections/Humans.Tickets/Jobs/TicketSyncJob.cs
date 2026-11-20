@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 namespace Humans.Tickets.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class TicketSyncJob(
+internal sealed class TicketSyncJob(
     ITicketSync syncService,
     IOptions<TicketVendorSettings> settings,
     ILogger<TicketSyncJob> logger) : IRecurringJob

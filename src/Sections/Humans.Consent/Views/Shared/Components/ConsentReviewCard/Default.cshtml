@@ -17,9 +17,9 @@
                     {
                         @Model.RejectedAt.Value.ToDateTime()
                     }
-                    @if (!string.IsNullOrEmpty(Model.RejectedByName))
+                    @if (Model.RejectedByUserId is { } rejectedBy)
                     {
-                        <text> by @Model.RejectedByName</text>
+                        <text> by </text><vc:human user-id="@rejectedBy" />
                     }
                 </small>
             </div>

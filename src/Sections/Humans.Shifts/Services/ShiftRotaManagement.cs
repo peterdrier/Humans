@@ -17,7 +17,6 @@ internal sealed class ShiftRotaManagement(
     IServiceProvider serviceProvider,
     EventCalendarResolver calendarResolver,
     ShiftEventSettings shiftSettings,
-    CachingShiftViewService viewInvalidator,
     IClock clock) : IApplicationService
 {
     // Lazy, to break the DI cycle with TeamService.
@@ -57,15 +56,8 @@ internal sealed class ShiftRotaManagement(
         await shiftSettings.EnsureKnobsRowAsync(rota.EventSettingsId);
 
         rota.UpdatedAt = clock.GetCurrentInstant();
-        try
-        {
-            await repo.SaveRotaAsync(rota, EntityMutationMode.Add,
-                tagIds: tagIds is { Count: > 0 } ? tagIds : null);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateRota(rota.Id);
-        }
+        await repo.SaveRotaAsync(rota, EntityMutationMode.Add,
+            tagIds: tagIds is { Count: > 0 } ? tagIds : null);
     }
 
     internal async Task<bool> UpdateRotaAsync(UpdateRotaInput input)
@@ -81,14 +73,7 @@ internal sealed class ShiftRotaManagement(
         rota.Period = input.Period;
         rota.IsVisibleToVolunteers = input.IsVisibleToVolunteers;
         rota.UpdatedAt = clock.GetCurrentInstant();
-        try
-        {
-            await repo.SaveRotaAsync(rota, EntityMutationMode.Update, tagIds: input.TagIds);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateRota(rota.Id);
-        }
+        await repo.SaveRotaAsync(rota, EntityMutationMode.Update, tagIds: input.TagIds);
 
         return true;
     }
@@ -113,15 +98,8 @@ internal sealed class ShiftRotaManagement(
         var oldTeamName = oldTeam?.Name ?? "(unknown)";
 
         // Targeted write: only TeamId + UpdatedAt are marked modified so concurrent edits don't clobber.
-        try
-        {
-            await repo.UpdateRotaTeamAssignmentAsync(
-                rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
-        }
-        finally
-        {
-            viewInvalidator.InvalidateRota(rota.Id);
-        }
+        await repo.UpdateRotaTeamAssignmentAsync(
+            rota.Id, input.TargetTeamId, clock.GetCurrentInstant());
 
         await auditLogService.LogAsync(
             ShiftsAuditActions.RotaMovedToTeam, nameof(Rota), rota.Id,

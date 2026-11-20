@@ -22,7 +22,7 @@ internal sealed class ShiftAdminController(
     IShiftManagement shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
-    IShiftRowView shiftView,
+    IShiftRotaRows rotaRows,
     IUserService userService,
     IAuthorizationService authorizationService,
     IClock clock,
@@ -404,8 +404,9 @@ internal sealed class ShiftAdminController(
 
     private async Task<IReadOnlyList<string>> GetRotaRecipientNamesAsync(Guid rotaId, CancellationToken ct = default)
     {
-        var view = await shiftView.GetRotaAsync(rotaId, ct);
-        var userIds = view.Signups
+        var rows = await rotaRows.GetRotaRowsAsync([rotaId], ct);
+        var userIds = rows
+            .SelectMany(r => r.Shifts.SelectMany(s => s.Signups))
             .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .Select(s => s.UserId)
             .Distinct()

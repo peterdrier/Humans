@@ -7,6 +7,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
+using Humans.Consent.Health;
 using Humans.Consent.Jobs;
 using Humans.Consent.Services;
 using Humans.Consent.ViewComponents;
@@ -32,10 +33,16 @@ public sealed class Section :
     ISectionAdminNav,
     ISectionHelp,
     ISectionJobs,
+    ISectionHealthChecks,
     ISectionPolicies,
     IUserPart,
     ISectionChrome
 {
+    void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
+    {
+        builder.AddCheck<GitHubHealthCheck>("github", tags: [HealthCheckTags.External]);
+    }
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(ConsentRoles.ConsentCoordinator, "Consent Coordinator",
