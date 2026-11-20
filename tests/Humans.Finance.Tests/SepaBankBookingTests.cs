@@ -1305,7 +1305,7 @@ public class SepaBankBookingTests
                 second.IsCompleted.Should().BeFalse("the second booking must wait for the first");
             }
 
-            return (IReadOnlyList<HoldedAccountDto>)accounts;
+            return (IReadOnlyList<HoldedChartAccountInfo>)accounts;
         });
 
         var first = await service.BookSepaTransferAsync(TransferId, MovementId, Guid.NewGuid());
@@ -1375,16 +1375,8 @@ public class SepaBankBookingTests
         // honoured the two net to zero, "posted" reads 0, and everything is posted again.
         SeedTaggedLines(
             TaggedLine(30m),
-            new HoldedLedgerLineDto
-            {
-                EntryNumber = 1,
-                Line = 2,
-                Date = FixedNow,
-                AccountNum = 57200001,
-                Debit = 0m,
-                Credit = 30m,
-                Description = Tag,
-            });
+            new HoldedLedgerLineInfo(
+                1, 2, 57200001, FixedNow, null, Tag, 0m, 30m));
         SeedOwed(0m);
         SeedOpenDocs();
 
@@ -2512,13 +2504,9 @@ public class SepaBankBookingTests
                     .ToList();
             });
 
-    private static List<HoldedAccountDto> OwedAccounts(decimal owed) =>
+    private static List<HoldedChartAccountInfo> OwedAccounts(decimal owed) =>
     [
-        new()
-        {
-            Id = "acc", Number = Account, Name = "Creditor",
-            Debit = 0m, Credit = owed, Balance = -owed,
-        },
+        new(Account, "Creditor", null, null, false, -owed),
     ];
 
     private SepaPayoutTransfer Transfer(decimal amount, Instant? bookedAt = null) =>
@@ -2598,32 +2586,16 @@ public class SepaBankBookingTests
     private void SeedOwed(decimal owed, params (int Account, decimal Owed)[] others) =>
         _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
             others.Prepend((Account: Account, Owed: owed))
-                .Select(a => new HoldedAccountDto
-                {
-                    Id = "acc-" + a.Account,
-                    Number = a.Account,
-                    Name = "Creditor",
-                    Debit = 0m,
-                    Credit = a.Owed,
-                    Balance = -a.Owed,
-                })
+                .Select(a => new HoldedChartAccountInfo(
+                    a.Account, "Creditor", null, null, false, -a.Owed))
                 .ToList());
 
     /// <summary>A ledger line this transfer's tag already put on the creditor account — what a
     /// crashed earlier run left behind.</summary>
-    private static HoldedLedgerLineDto TaggedLine(decimal debit) =>
-        new()
-        {
-            EntryNumber = 1,
-            Line = 1,
-            Date = FixedNow,
-            AccountNum = Account,
-            Debit = debit,
-            Credit = 0m,
-            Description = Tag,
-        };
+    private static HoldedLedgerLineInfo TaggedLine(decimal debit) =>
+        new(1, 1, Account, FixedNow, null, Tag, debit, 0m);
 
-    private void SeedTaggedLines(params HoldedLedgerLineDto[] lines) =>
+    private void SeedTaggedLines(params HoldedLedgerLineInfo[] lines) =>
         _feed.ListLedgerEntriesAsync(
                 Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(lines.ToList());
@@ -2647,16 +2619,8 @@ public class SepaBankBookingTests
     /// <summary>Document-payment lines on the creditor account dated the bank line, in the ledger mirror.</summary>
     private void SeedPaymentLines(params decimal[] amounts) =>
         SeedTaggedLines(amounts
-            .Select((a, i) => new HoldedLedgerLineDto
-            {
-                EntryNumber = 100 + i,
-                Line = 1,
-                Date = LineDate.AtMidnight().InZoneLeniently(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant(),
-                AccountNum = Account,
-                Debit = a,
-                Credit = 0m,
-                Type = "payment",
-            })
+            .Select((a, i) => new HoldedLedgerLineInfo(
+                100 + i, 1, Account, LineDate.AtMidnight().InZoneLeniently(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant(), "payment", null, a, 0m))
             .ToArray());
 
     private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>

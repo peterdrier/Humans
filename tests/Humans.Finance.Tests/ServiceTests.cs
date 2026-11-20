@@ -2935,13 +2935,10 @@ public class HoldedFinanceServiceTests
                 },
             });
         _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<HoldedAccountDto>
+            .Returns(new List<HoldedChartAccountInfo>
             {
-                new()
-                {
-                    Id = "acc-1", Number = 40000004, Name = "Ana Ruiz",
-                    Debit = 0m, Credit = owed, Balance = -owed,
-                },
+                new HoldedChartAccountInfo(
+                    40000004, "Ana Ruiz", null, null, false, -owed),
             });
     }
 

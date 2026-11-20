@@ -1,3 +1,4 @@
+using Humans.Holded.Services;
 using AwesomeAssertions;
 using Hangfire;
 using Humans.Holded.Contracts;

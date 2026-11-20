@@ -5,6 +5,7 @@ using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
+using Humans.Holded.Services;
 using Humans.Holded.Data;
 using Humans.Holded.Jobs;
 using Microsoft.Extensions.Configuration;

@@ -91,8 +91,9 @@ Structural facts the layout should make obvious:
 - **The connector is a leaf.** `IHoldedClient` holds no table and no mirror invariant; it is
   internal so the compiler, not review, keeps every other section off Holded's API.
 - **Connector-only DTOs do not belong in `Contracts/`.** The usage, expense-account, purchase
-  read and payment-detail DTOs and `HoldedClientOptions` cross no section boundary; their place
-  in the public folder is debt, not design (`Docs/debt.yml`).
+  detail, account, ledger-line and payment-detail DTOs and `HoldedClientOptions` are internal
+  in `Services/`. Finance tests seed account and ledger mirrors through the public read models.
+  Purchase-list and purchase-line DTOs remain public because Finance consumes them.
 - **`Models/HoldedAdminModels.cs` stays internal.** One escaped type makes the screen a contract.
 
 ## 4. Invariants

@@ -4,7 +4,7 @@ using NSubstitute;
 
 namespace Humans.Finance.Tests;
 
-/// <summary>Holded's data as a test seeds it, in the shape Holded returns it. Finance never sees this:
+/// <summary>Mirror data as a test seeds it:
 /// <see cref="TestHoldedSync"/> serves it through the <see cref="IHoldedService"/> syncs and mirrors.</summary>
 public interface IHoldedFeed
 {
@@ -12,10 +12,10 @@ public interface IHoldedFeed
 
     Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<HoldedLedgerLineDto>> ListLedgerEntriesAsync(
+    Task<IReadOnlyList<HoldedLedgerLineInfo>> ListLedgerEntriesAsync(
         LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default);
 
-    Task<IReadOnlyList<HoldedAccountDto>> ListAccountingAccountsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedChartAccountInfo>> ListAccountingAccountsAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<HoldedBankMovementDto>> ListBankMovementsAsync(
         string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default,
@@ -59,11 +59,9 @@ internal static class TestHoldedSync
             var account = ci.ArgAt<int>(0);
             var entries = (await feed.ListLedgerEntriesAsync(
                     LocalDate.MinIsoValue, LocalDate.MaxIsoValue, account, CancellationToken.None))
-                .Select(l => new HoldedLedgerLineInfo(
-                    l.EntryNumber, l.Line, l.AccountNum, l.Date, l.Type, l.Description, l.Debit, l.Credit))
                 .ToList();
             var balance = (await feed.ListAccountingAccountsAsync(CancellationToken.None))
-                .Where(a => a.Number == account).Select(a => a.Balance).DefaultIfEmpty(0m).First();
+                .Where(a => a.Number == account).Select(a => a.HoldedBalance).DefaultIfEmpty(0m).First();
             var opening = -balance + entries.Where(l => l.AccountNum == account).Sum(l => l.Debit - l.Credit);
             return (IReadOnlyList<HoldedLedgerLineInfo>)entries
                 .Prepend(new HoldedLedgerLineInfo(0, 0, account, Instant.FromUtc(2026, 1, 1, 0, 0), "opening", null,
