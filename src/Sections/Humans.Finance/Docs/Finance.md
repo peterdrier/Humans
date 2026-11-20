@@ -377,7 +377,7 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 - Batches run oldest settled first, `N` at a time (default 1). Nothing books without a click; a job may later call `BookAsync` the same way, but none is scheduled.
 - **Identity:** an entry is in Holded when a 57200003 line's description starts `Pleo {Id}:`. Lines without a Pleo id (booked before this, e.g. entry 2061) count once each for the oldest entry on the same side with the same amount within 3 days, so they are never booked again. Finance stores no Holded id; the ledger is the record of what is booked.
 - **Duplicates kept rare, not impossible** (Peter's call: a duplicate is deleted in Holded): (1) a process-wide gate (one server) admits one run; the runner refuses a second click and the gate refuses any other caller. (2) Every run first re-pulls 57200003's whole history from Holded (`IHoldedService.SyncAccountLedgerAsync`) and skips every entry it shows. (3) An unconfirmed post (`Confirmed = false`) or one Holded did not answer is shown "check in Holded"; an unanswered one stops the run. If Holded took it but does not list it by the next run, it is posted again, and the duplicate banner names both entries.
-- After a run with posts, 57200003 is re-pulled once more so each booked line names its Holded entry.
+- After a run with posts, 57200003 is re-pulled once more so each booked line names its Holded entry. The existing line/run projections own outcome summaries: Posted and Unconfirmed both count as booked and trigger that refresh; Failed and Skipped do not. Running and final page summaries share the projection's failed count.
 - Posts never take the request's token: an abandoned call would only hide a post Holded made.
 
 ## Negative Access Rules

@@ -298,7 +298,7 @@ internal sealed class PleoBooking(
     /// <summary>Re-pulls 57200003 once more, so each booked line names its Holded entry.</summary>
     private async Task ConfirmInLedgerAsync(List<PleoBookingLine> lines)
     {
-        if (!lines.Any(l => l.Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed)) return;
+        if (!lines.Any(line => line.WasPosted)) return;
         try
         {
             if (!await holded.SyncAccountLedgerAsync(PleoTreasury, CancellationToken.None)) return;

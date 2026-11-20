@@ -173,6 +173,8 @@ public class PleoBookingTests
         var run = await Booking().BookAsync(null, null);
 
         run.Lines.Select(l => l.PleoId).Should().Equal("todo");
+        run.BookedCount.Should().Be(1);
+        run.FailedCount.Should().Be(0);
         await _write.ReceivedWithAnyArgs(1).PostJournalEntryAsync(default, default, default, default, default!, default);
         await _holded.Received().SyncAccountLedgerAsync(PleoBooking.PleoTreasury, Arg.Any<CancellationToken>());
     }
@@ -205,6 +207,10 @@ public class PleoBookingTests
         first.Lines.Single().Should().Match<PleoBookingLine>(l =>
             l.PleoId == "a" && l.Outcome == PleoBookingOutcome.Unconfirmed && l.Error!.Contains("check in Holded"));
 
+        first.BookedCount.Should().Be(1);
+        first.FailedCount.Should().Be(0);
+        await _holded.Received(2).SyncAccountLedgerAsync(PleoBooking.PleoTreasury, Arg.Any<CancellationToken>());
+
         _ledger.Add(Line(4800, 1, 0m, 10m, "Pleo a: MAKRO"));
         var second = await Booking().BookAsync(1, null);
         second.Lines.Single().PleoId.Should().Be("b");
@@ -223,6 +229,8 @@ public class PleoBookingTests
 
         run.Lines.Select(l => (l.PleoId, l.Outcome)).Should().Equal(
             ("a", PleoBookingOutcome.Failed), ("b", PleoBookingOutcome.Failed));
+        run.BookedCount.Should().Be(0);
+        run.FailedCount.Should().Be(2);
         run.Refused.Should().Contain("Stopped");
         await _write.ReceivedWithAnyArgs(2).PostJournalEntryAsync(default, default, default, default, default!, default);
     }

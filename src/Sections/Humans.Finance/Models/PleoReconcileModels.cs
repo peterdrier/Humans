@@ -39,7 +39,10 @@ internal enum PleoBookingOutcome { Posted, Unconfirmed, Failed, Skipped }
 /// <summary>One line of a booking run. Amount is signed as in Pleo (− spend, + refund).</summary>
 internal sealed record PleoBookingLine(
     string PleoId, LocalDate Date, string? Merchant, int Account, decimal Amount,
-    PleoBookingOutcome Outcome, int? HoldedEntry, string? Error);
+    PleoBookingOutcome Outcome, int? HoldedEntry, string? Error)
+{
+    public bool WasPosted => Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed;
+}
 
 /// <summary>A booking run, current or last. <see cref="Refused"/> says why nothing (more) was booked.</summary>
 internal sealed record PleoBookingRunVm(
@@ -47,6 +50,8 @@ internal sealed record PleoBookingRunVm(
     string? Refused)
 {
     public bool IsRunning => FinishedAt is null;
+    public int BookedCount => Lines.Count(line => line.WasPosted);
+    public int FailedCount => Lines.Count(line => line.Outcome == PleoBookingOutcome.Failed);
 }
 
 internal sealed record PleoAccountTotalVm(int AccountNum, string Name, int Count, decimal Total);

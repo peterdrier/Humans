@@ -133,7 +133,7 @@
         {
             <div class="alert alert-info mb-0">
                 <i class="fa-solid fa-spinner fa-spin me-1"></i>
-                Booking… @(run?.Lines.Count ?? 0) / @(run?.Total ?? 0) done@(run is not null && run.Lines.Any(l => l.Outcome == PleoBookingOutcome.Failed) ? $" · {run.Lines.Count(l => l.Outcome == PleoBookingOutcome.Failed)} failed" : "").
+                Booking… @(run?.Lines.Count ?? 0) / @(run?.Total ?? 0) done@(run is not null && run.FailedCount > 0 ? $" · {run.FailedCount} failed" : "").
                 This page refreshes itself; leaving it does not stop the run.
             </div>
             <script>setTimeout(function () { location.reload(); }, 3000);</script>
@@ -169,8 +169,8 @@
         <div class="card-body border-top">
             <div class="mb-2">
                 <strong>Last run</strong> @run.StartedAt.ToInvariantTimestamp():
-                @run.Lines.Count(l => l.Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed) booked
-                of @run.Total · @run.Lines.Count(l => l.Outcome == PleoBookingOutcome.Failed) failed
+                @run.BookedCount booked
+                of @run.Total · @run.FailedCount failed
                 @if (run.Refused is { } why)
                 {
                     <div class="text-danger small">@why</div>
