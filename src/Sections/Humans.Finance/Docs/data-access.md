@@ -87,7 +87,8 @@ mirror for actuals, the unmatched queue and expense recon),
 `IUserService` / `IEmailService` (the payout-generated and
 payout-withdrawn notification to each creditor, through the section's `FinanceEmails` builder).
 Implements the public `IFinanceService` and `IFinanceWrite` (their IBAN members delegate to
-`IPaymentDetailsManagement`), the internal `IFinanceAdminService` and `IUserDataContributor`.
+`IPaymentDetailsManagement`), the internal `IFinanceAdminService`, `IUserDataContributor` and
+`IUserMerge` (an unbound survivor takes the archived creditor binding; both bound, both stay).
 Injects `IOptions<SepaOptions>` for the organisation's SEPA identity and the singleton
 `TrackedCache<string, Dictionary<string, int>>` (`CacheKeys.SepaStuckBankLines`) for sweep failure counts. No `IMemoryCache`; Holded contacts are read from the
 Holded mirror through `IHoldedService.GetContactsAsync`.

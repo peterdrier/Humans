@@ -10,7 +10,8 @@ public class CspNonceMiddleware(RequestDelegate next)
         var nonce = Convert.ToBase64String(nonceBytes);
         context.Items["CspNonce"] = nonce;
 
-        context.Response.Headers.Append("Content-Security-Policy",
+        // Assigned, not appended: a status-code re-execute runs this again, and browsers enforce every CSP header.
+        context.Response.Headers.ContentSecurityPolicy =
             $"default-src 'self'; " +
             $"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com; " +
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://unpkg.com; " +
@@ -18,7 +19,7 @@ public class CspNonceMiddleware(RequestDelegate next)
             "img-src 'self' https: data:; " +
             "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com https://places.googleapis.com https://server.arcgisonline.com https://tile.openstreetmap.org wss: ws:; " +
             "worker-src blob:; " +
-            "frame-ancestors 'none'");
+            "frame-ancestors 'none'";
 
         await next(context);
     }
