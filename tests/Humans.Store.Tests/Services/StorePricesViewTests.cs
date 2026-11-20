@@ -147,6 +147,8 @@ public class StorePricesViewTests
         var row = new StripeReconciliationRow("cs", "pi", 100m, "paid", now, Guid.NewGuid(), "Camp", (StripeReconciliationStatus)status);
         var report = new StripeReconciliationReport(true, true, true, [row],
             orphan ? [new StripeOrphanPayment("pi_orphan", Guid.NewGuid(), "Camp", 100m, now)] : []);
+        report.IsReconciled.Should().Be(expectedSuccess);
+        report.RecordedFailedCount.Should().Be(status == (int)StripeReconciliationStatus.RecordedFailed ? 1 : 0);
         var model = new PaymentsReconciliationViewModel { Report = report, Rows = [] };
 
         var html = await RenderAsync("Payments", model, viewPath: "/Views/StoreAdmin/Payments.cshtml");
