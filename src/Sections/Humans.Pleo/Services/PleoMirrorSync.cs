@@ -111,7 +111,10 @@ internal sealed class PleoMirrorSync(
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Pleo category fetch failed; sweeping without refreshing categories");
+            if (ex is PleoApiException)
+                logger.LogWarning("Pleo category fetch failed; sweeping without refreshing categories: {Reason}", ex.Message);
+            else
+                logger.LogError(ex, "Pleo category fetch failed; sweeping without refreshing categories");
             return ([], PleoTextBounds.Bound($"Categories not refreshed: {ex.Message}", 2000));
         }
     }

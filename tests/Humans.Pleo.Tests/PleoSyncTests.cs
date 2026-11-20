@@ -472,13 +472,18 @@ public sealed class PleoSyncTests
         state.LastError.Should().Contain("403");
     }
 
-    [HumansFact]
-    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error(bool unexpected)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var before = await _repo.GetCategoriesAsync(ct);
+        Exception failure = unexpected
+            ? new InvalidOperationException("Unexpected category failure")
+            : new PleoPermanentException("Pleo bookkeeping-categories:search: 403 Forbidden", 403);
         _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns<IReadOnlyList<PleoCategoryWire>>(
-            _ => throw new PleoPermanentException("Pleo bookkeeping-categories:search: 403 Forbidden", 403));
+            _ => throw failure);
         _entries = [Entry("a")];
 
         (await SyncAsync()).Should().Be(PleoSyncOutcome.SyncedWithoutCategories);
@@ -487,7 +492,43 @@ public sealed class PleoSyncTests
         (await _repo.GetCategoriesAsync(ct)).Should().BeEquivalentTo(before);
         var state = await _repo.GetSyncStateAsync(ct);
         state!.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
-        state.LastError.Should().Contain("403");
+        state.LastError.Should().Contain(failure.Message);
+        var entry = _logger.Entries.Should().ContainSingle(log =>
+            log.Message.StartsWith("Pleo category fetch failed", StringComparison.Ordinal)).Subject;
+        entry.Level.Should().Be(unexpected ? LogLevel.Error : LogLevel.Warning);
+        entry.Exception.Should().BeSameAs(unexpected ? failure : null);
+        if (!unexpected) entry.Message.Should().Contain(failure.Message);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task Receipt_failures_keep_the_fallback_and_warn_without_stacks(bool download, bool transient)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("a")];
+        await SyncAsync();
+        _logger.Entries.Clear();
+        PleoApiException failure = transient
+            ? new PleoTransientException("Pleo receipt unavailable")
+            : new PleoPermanentException("Pleo receipt forbidden", 403);
+        _client.ListReceiptsAsync("a", ct).Returns<IReadOnlyList<PleoReceiptWire>>(_ => throw failure);
+        _client.GetReceiptFileAsync("a", "r1", ct).Returns<PleoReceiptFile>(_ => throw failure);
+
+        if (download)
+            (await _service.GetReceiptFileAsync("a", "r1", ct)).Should().BeNull();
+        else
+        {
+            var detail = await _service.GetEntryViewAsync("a", ct);
+            detail!.Receipts.Should().BeEmpty();
+            detail.ReceiptError.Should().Contain(failure.Message);
+        }
+        var entry = _logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain("a").And.Contain(failure.Message);
     }
 
     [HumansFact]

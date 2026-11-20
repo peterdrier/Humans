@@ -214,7 +214,7 @@ internal sealed class PleoMirrorReader(
                 }
                 catch (PleoApiException ex)
                 {
-                    logger.LogWarning(ex, "Pleo receipt lookup failed for entry {EntryId}", id);
+                    logger.LogWarning("Pleo receipt lookup failed for entry {EntryId}: {Reason}", id, ex.Message);
                     receiptError = $"The receipt lookup failed: {ex.Message}";
                 }
             }
@@ -242,7 +242,7 @@ internal sealed class PleoMirrorReader(
         }
         catch (PleoApiException ex)
         {
-            logger.LogWarning(ex, "Pleo receipt {ReceiptId} fetch failed for entry {EntryId}", receiptId, entryId);
+            logger.LogWarning("Pleo receipt {ReceiptId} fetch failed for entry {EntryId}: {Reason}", receiptId, entryId, ex.Message);
             return null;
         }
     }
