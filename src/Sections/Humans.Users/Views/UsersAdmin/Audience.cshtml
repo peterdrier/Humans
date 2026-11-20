@@ -77,12 +77,13 @@
 
 @if (Model.TotalAccounts > 0)
 {
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
     var profileOnly = Model.WithProfile - Model.WithBoth;
     var ticketOnly = Model.WithTicket - Model.WithBoth;
-    var profileOnlyPct = Math.Round(profileOnly * 100.0 / Model.TotalAccounts, 1);
-    var ticketOnlyPct = Math.Round(ticketOnly * 100.0 / Model.TotalAccounts, 1);
-    var bothPct = Math.Round(Model.WithBoth * 100.0 / Model.TotalAccounts, 1);
-    var neitherPct = Math.Round(Model.WithNeither * 100.0 / Model.TotalAccounts, 1);
+    var profileOnlyPct = Math.Round(profileOnly * 100.0 / Model.TotalAccounts, 1).ToString(invariant);
+    var ticketOnlyPct = Math.Round(ticketOnly * 100.0 / Model.TotalAccounts, 1).ToString(invariant);
+    var bothPct = Math.Round(Model.WithBoth * 100.0 / Model.TotalAccounts, 1).ToString(invariant);
+    var neitherPct = Math.Round(Model.WithNeither * 100.0 / Model.TotalAccounts, 1).ToString(invariant);
 
     <div class="card mb-4">
         <div class="card-header">
