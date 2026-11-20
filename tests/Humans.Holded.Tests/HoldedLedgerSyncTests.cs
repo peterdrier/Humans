@@ -212,8 +212,8 @@ public sealed class HoldedLedgerSyncTests
         var canceled = new OperationCanceledException("Call log save canceled");
         repository.AddApiCallsAsync(Arg.Any<IReadOnlyList<HoldedApiCall>>(), CancellationToken.None)
             .Returns(Task.FromException(canceled));
-        var sync = new HoldedMirrorSync(repository, _client, _callLog, new FakeClock(FixedNow),
-            NullLogger<Service>.Instance, new HoldedAccountReader(repository));
+        var sync = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
 
         var action = () => sync.DrainCallLogAsync(TestContext.Current.CancellationToken);
         (await action.Should().ThrowAsync<InvalidOperationException>()).Which.InnerException.Should().BeSameAs(canceled);
