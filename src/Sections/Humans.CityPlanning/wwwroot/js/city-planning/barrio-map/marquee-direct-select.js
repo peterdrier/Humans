@@ -35,7 +35,6 @@ function selectVerticesInRect(mode, state, rect) {
         ? [...(state.selectedCoordPaths ?? []).map(p => ({ feature_id: featureId, coord_path: p })), ...newSelected]
         : newSelected;
 
-    // Deduplicate (Shift can produce overlaps)
     const seen = new Set();
     combined = combined.filter(c => {
         if (seen.has(c.coord_path)) return false;
@@ -55,7 +54,6 @@ export const MarqueeDirectSelectMode = {
         // Defensive: clear any orphaned marquee element from a drag released outside the map
         if (state.marqueeEl) { state.marqueeEl.remove(); state.marqueeEl = null; }
         const meta = e.featureTarget?.properties?.meta;
-        // Delegate to parent for vertex/midpoint (existing select) and feature (whole-polygon drag)
         if (meta === 'vertex' || meta === 'midpoint' || meta === 'feature') {
             return DirectSelectMode.onMouseDown.call(this, state, e);
         }

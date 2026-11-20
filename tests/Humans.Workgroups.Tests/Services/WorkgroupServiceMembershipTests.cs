@@ -28,7 +28,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var group = await SeedWorkgroupAsync();
         var actor = group.Members.Single().UserId;
         var people = await Users.GetUserInfosAsync([actor], Ct);
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(c =>
             {
                 c.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -210,7 +210,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         var failure = new IOException("required name lookup failed");
         Users.GetUserInfoAsync(member, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<UserInfo?>(failure));
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure));
         await using var beforeContext = OpenContext();
         var before = await beforeContext.Members.Where(m => m.WorkgroupId == group.Id)

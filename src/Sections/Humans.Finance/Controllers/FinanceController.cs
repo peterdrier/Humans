@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using System.Text;
 using Humans.Expenses.Contracts;
@@ -18,6 +19,7 @@ namespace Humans.Finance.Controllers;
 [Authorize(Policy = FinancePolicies.Read)]
 [Route("Finance")]
 internal sealed class FinanceController(
+    IOrgTimeZone orgTimeZone,
     IUserService userService,
     IFinanceService finance,
     IFinanceAdminService holdedConnector,
@@ -30,7 +32,7 @@ internal sealed class FinanceController(
     SepaBookingRunner sepaRunner,
     ILogger<FinanceController> logger) : HumansControllerBase(userService)
 {
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -50,16 +52,57 @@ internal sealed class FinanceController(
     [HttpPost("Pleo/Book")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public IActionResult BookPleo([BindRequired] string batch)
+    public IActionResult BookPleo([BindRequired] string batch) => StartPleoRun(PleoRunKind.Book, batch);
+
+    [HttpPost("Pleo/Receipts")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public IActionResult AttachPleoReceipts() => StartPleoRun(PleoRunKind.Receipts, "all");
+
+    [HttpPost("Pleo/Corrections")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public IActionResult CorrectPleo([BindRequired] string batch) => StartPleoRun(PleoRunKind.Corrections, batch);
+
+    private IActionResult StartPleoRun(PleoRunKind kind, string batch)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         int? limit = batch switch { "1" => 1, "10" => 10, "50" => 50, "all" => null, _ => 0 };
         if (!ModelState.IsValid || limit == 0) return BadRequest();
-        if (pleoRunner.TryStart(limit, actorUserId))
-            SetSuccess("Booking started.");
+        if (pleoRunner.TryStart(kind, limit, actorUserId))
+            SetSuccess("Started.");
         else
-            SetError("A booking run is already going; nothing more was started.");
+            SetError("A Pleo run is already going; nothing more was started.");
         return RedirectToAction(nameof(Pleo));
+    }
+
+    /// <summary>Posted from the Finance tab on /Settings.</summary>
+    [HttpPost("PleoSettings")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SavePleoSettings(string? contactId, string? treasuryId)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        await pleoBooking.SaveSettingsAsync(contactId, treasuryId, actorUserId, HttpContext.RequestAborted);
+        SetSuccess("Pleo settings saved.");
+        return Redirect("/Settings#finance");
+    }
+
+    /// <summary>Posted from the Finance tab on /Settings.</summary>
+    [HttpPost("StripeLinks")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveStripeLinks(List<FinanceStripeLinkInput> rows)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        if (rows.GroupBy(r => r.LedgerAccountNum).Any(g => g.Count() > 1)) return BadRequest();
+        if (await overview.SaveStripeLinksAsync(
+                rows.ToDictionary(r => r.LedgerAccountNum, r => r.StripeAccountId), actorUserId,
+                HttpContext.RequestAborted) is { } refusal)
+            SetError(refusal);
+        else
+            SetSuccess("Stripe links saved.");
+        return Redirect("/Settings#finance");
     }
 
     [HttpGet("CashFlow")]
@@ -475,14 +518,14 @@ internal sealed class FinanceController(
     // Holded books one transfer as a payment line per purchase it settles. We pay a member at most once a day, so
     // consecutive same-day, same-direction payment lines are one transfer and show as one row; requiring them to be
     // consecutive keeps each row's running balance true.
-    private static List<CreditorStatementLineVm> StatementRows(IEnumerable<CreditorLedgerLine> lines, string memberName)
+    private List<CreditorStatementLineVm> StatementRows(IEnumerable<CreditorLedgerLine> lines, string memberName)
     {
         var groups = new List<List<CreditorLedgerLine>>();
         foreach (var line in lines.OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ThenBy(l => l.Line))
         {
             var last = groups.Count > 0 ? groups[^1][^1] : null;
             if (last is not null && IsPayment(line) && IsPayment(last)
-                && line.Date.InZone(MadridZone).Date == last.Date.InZone(MadridZone).Date
+                && line.Date.InZone(OrgZone).Date == last.Date.InZone(OrgZone).Date
                 && line.Debit > 0 == last.Debit > 0)
                 groups[^1].Add(line);
             else

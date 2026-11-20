@@ -45,6 +45,8 @@
       _ConsentReviewBody partial the widget's Consents step renders.
     -->
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
+    <!-- ShiftsAdmin: the ReviewQueueAccess policy and the onboarding-profiles meter. A leaf over Base only, so no cycle. -->
+    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

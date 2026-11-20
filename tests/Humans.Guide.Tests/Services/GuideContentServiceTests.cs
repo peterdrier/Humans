@@ -52,7 +52,8 @@ public class GuideContentServiceTests
     private static GuideContentService CreateService(
         IGuideContentSource source,
         IGuideRenderer renderer,
-        out IMemoryCache cache)
+        out IMemoryCache cache,
+        Microsoft.Extensions.Logging.ILogger<GuideContentService>? logger = null)
     {
         cache = new MemoryCache(new MemoryCacheOptions());
         var settings = Options.Create(new GuideSettings { CacheTtlHours = 6 });
@@ -62,7 +63,45 @@ public class GuideContentServiceTests
             GuideTestRoles.Segmenter,
             cache,
             settings,
-            NullLogger<GuideContentService>.Instance);
+            logger ?? NullLogger<GuideContentService>.Instance);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(GuideRefreshFailure.Api)]
+    [Xunit.InlineData(GuideRefreshFailure.Http)]
+    [Xunit.InlineData(GuideRefreshFailure.Io)]
+    [Xunit.InlineData(GuideRefreshFailure.Timeout)]
+    [Xunit.InlineData(GuideRefreshFailure.Cancelled)]
+    [Xunit.InlineData(GuideRefreshFailure.Unexpected)]
+    public async Task Refresh_classifies_failures_while_preserving_the_cached_page(GuideRefreshFailure kind)
+    {
+        var source = new FakeSource { MarkdownFor = _ => "# Original" };
+        var logger = new Humans.Testing.CapturingLogger<GuideContentService>();
+        var service = CreateService(source, new StubRenderer(), out _, logger);
+        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
+        logger.Entries.Clear();
+        Exception failure = kind switch
+        {
+            GuideRefreshFailure.Api => new Octokit.ApiException("GitHub unavailable", System.Net.HttpStatusCode.ServiceUnavailable),
+            GuideRefreshFailure.Http => new HttpRequestException("GitHub transport unavailable"),
+            GuideRefreshFailure.Io => new IOException("GitHub stream failed"),
+            GuideRefreshFailure.Timeout => new TimeoutException("GitHub timed out"),
+            GuideRefreshFailure.Cancelled => new TaskCanceledException("GitHub request timed out"),
+            _ => new InvalidOperationException("Unexpected fetch failure")
+        };
+        source.FailFor = stem => string.Equals(stem, "Profiles", StringComparison.Ordinal) ? failure : null;
+
+        (await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().Equal("Profiles");
+        (await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain("Original");
+
+        var entry = logger.Entries.Should().ContainSingle(entry =>
+            entry.Message.Contains("guide file Profiles", StringComparison.Ordinal)).Subject;
+        var unexpected = kind is GuideRefreshFailure.Unexpected;
+        entry.Level.Should().Be(unexpected ? Microsoft.Extensions.Logging.LogLevel.Error : Microsoft.Extensions.Logging.LogLevel.Warning);
+        if (unexpected) entry.Exception.Should().BeSameAs(failure);
+        else entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain(failure.Message);
     }
 
     [HumansFact]
@@ -259,3 +298,5 @@ public class GuideContentServiceTests
         cached.Should().NotBeNull();
     }
 }
+
+public enum GuideRefreshFailure { Api, Http, Io, Timeout, Cancelled, Unexpected }

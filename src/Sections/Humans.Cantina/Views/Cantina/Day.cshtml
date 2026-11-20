@@ -118,7 +118,7 @@
                     @foreach (var p in Model.People)
                     {
                         <tr>
-                            <th scope="row"><vc:human user-id="@p.UserId" link="None" /></th>
+                            <th scope="row"><vc:human user-id="@p.UserId" /></th>
                             @foreach (var d in dietPrefs)
                             {
                                 <td class="text-center">@(p.DietaryPreference == d ? "x" : Html.Raw("&middot;"))</td>
@@ -146,21 +146,21 @@
                         <th scope="row">@Localizer["Cantina_Matrix_Totals"]</th>
                         @foreach (var d in dietPrefs)
                         {
-                            <td class="text-center fw-bold">@Model.People.Count(p => p.DietaryPreference == d)</td>
+                            <td class="text-center fw-bold">@Model.CountDietaryPreference(d)</td>
                         }
                         @if (healthRevealed)
                         {
                             @foreach (var a in allergyChips)
                             {
-                                <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(a))</td>
+                                <td class="text-center fw-bold">@Model.CountAllergy(a)</td>
                             }
-                            <td class="text-center fw-bold">@Model.People.Count(p => p.Allergies.Contains(DietaryOptions.OtherOption))</td>
+                            <td class="text-center fw-bold">@Model.CountAllergy(DietaryOptions.OtherOption)</td>
                             <td class="text-muted">—</td>
                             @foreach (var i in intoleranceChips)
                             {
-                                <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(i))</td>
+                                <td class="text-center fw-bold">@Model.CountIntolerance(i)</td>
                             }
-                            <td class="text-center fw-bold">@Model.People.Count(p => p.Intolerances.Contains(DietaryOptions.OtherOption))</td>
+                            <td class="text-center fw-bold">@Model.CountIntolerance(DietaryOptions.OtherOption)</td>
                             <td class="text-muted">—</td>
                         }
                     </tr>

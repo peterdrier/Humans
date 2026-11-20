@@ -608,7 +608,7 @@ On Google API error (resource sync):
 
 ### Failed-Sync Admin Meter
 
-Failed Google sync health surfaces to Admins as a notification meter (`NotificationMeterProvider`), backed by `IGoogleSyncService.GetFailedSyncEventCountAsync` — the count of outbox events that are `FailedPermanently` or unprocessed with a non-null `LastError`. The meter links to `/Google/SyncOutbox`.
+Failed Google sync health surfaces to Admins as a notification meter (`GoogleNotificationMeters`, an `INotificationMeterContributor`), backed by `IGoogleSyncService.GetFailedSyncEventCountAsync` — the count of outbox events that are `FailedPermanently` or unprocessed with a non-null `LastError`. The meter links to `/Google/SyncOutbox`.
 
 ## Security Considerations
 

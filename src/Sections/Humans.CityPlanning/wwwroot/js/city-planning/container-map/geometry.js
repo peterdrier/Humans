@@ -3,8 +3,8 @@
 // The door triangle has a half-width base (1.2m) centered on the door face.
 // All functions depend on the global `turf` (loaded via CDN before this module).
 
-const HALF_LEN_M      = 3;    // metres: half the container body length
-const HALF_W_M        = 1.2;  // metres: half the container width
+const HALF_LEN_M      = 3;
+const HALF_W_M        = 1.2;
 const TIP_DIST_M      = 4.2;  // metres: center → triangle tip (3 + 1.2)
 const HALF_TRI_BASE_M = 0.6;  // metres: half the door triangle base (half of HALF_W_M)
 
@@ -22,12 +22,10 @@ export const TRIANGLE_TIP_INDEX = 4;
 export function buildContainerPolygon(centerLng, centerLat, rotationDegrees) {
     const center = [centerLng, centerLat];
 
-    // Cardinal destinations from center (unrotated: east = door direction)
     const west = turf.destination(center, HALF_LEN_M, 270, { units: 'meters' }).geometry.coordinates;
     const east = turf.destination(center, HALF_LEN_M,  90, { units: 'meters' }).geometry.coordinates;
     const tip  = turf.destination(center, TIP_DIST_M,  90, { units: 'meters' }).geometry.coordinates;
 
-    // Lat offsets for full width and half-width triangle base
     const northLat    = turf.destination(center, HALF_W_M,        0,   { units: 'meters' }).geometry.coordinates[1];
     const triNorthLat = turf.destination(center, HALF_TRI_BASE_M, 0,   { units: 'meters' }).geometry.coordinates[1];
     const dLat    = northLat    - centerLat;
@@ -67,9 +65,6 @@ export function getRotationHandleCoordsForContainer(feature) {
     ];
 }
 
-/**
- * Wraps a single Feature in a FeatureCollection for MapLibre source.setData().
- */
 export function featureToCollection(feature) {
     return { type: 'FeatureCollection', features: [feature] };
 }

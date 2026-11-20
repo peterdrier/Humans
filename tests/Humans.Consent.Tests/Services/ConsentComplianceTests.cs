@@ -4,7 +4,11 @@ using Humans.Auth.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Consent.Contracts;
+using Humans.Consent.Data;
 using Humans.Consent.Services;
+using Humans.Base.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -17,12 +21,12 @@ public sealed class ConsentComplianceTests
 {
     private static readonly Instant Now = Instant.FromUtc(2026, 6, 1, 0, 0);
 
-    private readonly IConsentService _consents = Substitute.For<IConsentService>();
-    private readonly ILegalDocumentSyncService _legalDocuments = Substitute.For<ILegalDocumentSyncService>();
+    private readonly IConsentManagement _consents = Substitute.For<IConsentManagement>();
+    private readonly ILegalDocumentSyncManagement _legalDocuments = Substitute.For<ILegalDocumentSyncManagement>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roleAssignments = Substitute.For<IRoleAssignmentService>();
     private readonly Dictionary<Guid, IReadOnlySet<Guid>> _signed = [];
-    private readonly ConsentCompliance _sut;
+    private readonly ConsentService _sut;
 
     public ConsentComplianceTests()
     {
@@ -34,8 +38,15 @@ public sealed class ConsentComplianceTests
             .Returns(call => SignedBy(call.Arg<Guid>()));
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
 
-        _sut = new ConsentCompliance(
-            _consents, _legalDocuments, _teams, _roleAssignments, Substitute.For<IUserService>(), new FakeClock(Now));
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IConsentManagement>(CachingConsentService.InnerServiceKey, (_, _) => _consents);
+        var cache = new CachingConsentService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingConsentService>.Instance);
+        _sut = new ConsentService(
+            Substitute.For<IConsentRepository>(), cache, _legalDocuments, Substitute.For<IHumanLifecycleService>(),
+            Substitute.For<IUserService>(), _teams, _roleAssignments, Substitute.For<IServiceProvider>(),
+            Substitute.For<IHumansMetrics>(), new FakeClock(Now), NullLogger<ConsentService>.Instance);
     }
 
     private IReadOnlySet<Guid> SignedBy(Guid userId) => _signed.GetValueOrDefault(userId) ?? new HashSet<Guid>();

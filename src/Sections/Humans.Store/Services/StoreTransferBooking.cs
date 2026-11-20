@@ -32,6 +32,8 @@ internal sealed record TransferRow(
     int Year, YearMonth Month, Guid TeamId, string TeamName, Guid ProductId, string ProductName,
     int? DepartmentAccount, int? TransferAccount, decimal Amount, TransferState State)
 {
+    public bool IsReady => State == TransferState.Ready;
+
     public LocalDate Date => Month.OnDayOfMonth(1).PlusMonths(1).PlusDays(-1);
 
     public (int Debit, int Credit) Sides => Amount > 0m
@@ -44,7 +46,13 @@ internal sealed record TransferRow(
 internal sealed record TransferBookedLine(TransferRow Row, TransferOutcome Outcome, string? Error);
 
 internal sealed record TransferPlan(
-    int Year, YearMonth? LastClosedMonth, IReadOnlyList<TransferRow> Rows, string? DepartmentAccountsUnavailable);
+    int Year, YearMonth? LastClosedMonth, IReadOnlyList<TransferRow> Rows, string? DepartmentAccountsUnavailable)
+{
+    public IReadOnlyList<TransferRow> Ready { get; } = Rows.Where(r => r.IsReady).ToList();
+    public decimal ReadyAmount => Ready.Sum(r => r.Amount);
+    public int BlockedCount => Rows.Count - Ready.Count;
+    public decimal BlockedAmount => Rows.Where(r => !r.IsReady).Sum(r => r.Amount);
+}
 
 /// <summary>
 /// Books team (department) store orders into Holded as internal transfers: one journal entry per team, product and
@@ -61,6 +69,7 @@ internal sealed record TransferPlan(
 /// second run; the run re-pulls the accounts after posting to keep that window short.
 /// </remarks>
 internal sealed partial class StoreTransferBooking(
+    IOrgTimeZone orgTimeZone,
     IStoreAccountingRead orders,
     IStoreRepository repo,
     IBudgetService budget,
@@ -75,7 +84,7 @@ internal sealed partial class StoreTransferBooking(
     private const string AuditEntityType = "StoreTransfer";
     private const int TransferBlockStart = 62990000;
     private const int TransferBlockEnd = 62999999;
-    private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
     private static readonly SemaphoreSlim Gate = new(1, 1);
 
     [GeneratedRegex(@"^Store transfer (?<y>\d{4}) (?<my>\d{4})-(?<mm>\d{2}) T(?<t>[0-9a-f]{32}) P(?<p>[0-9a-f]{32}):",
@@ -118,7 +127,8 @@ internal sealed partial class StoreTransferBooking(
         IReadOnlyDictionary<Guid, int?> transferAccounts,
         IReadOnlyList<BookedLine> booked,
         IReadOnlyDictionary<Guid, int> departmentAccounts,
-        YearMonth lastClosedMonth)
+        YearMonth lastClosedMonth,
+        DateTimeZone zone)
     {
         var teamLines = lines.Where(l => l.Year == year && l.TeamId is not null).ToList();
         var bookedThisYear = booked.Where(b => b.Key.Year == year).ToList();
@@ -134,7 +144,7 @@ internal sealed partial class StoreTransferBooking(
             var mine = teamLines.Where(l => l.TeamId == team && l.ProductId == product).ToList();
             var mineBooked = bookedThisYear.Where(b => b.Key.TeamId == team && b.Key.ProductId == product).ToList();
 
-            var first = mine.Count > 0 ? mine.Min(l => MonthOf(l.AddedAt)) : lastClosedMonth;
+            var first = mine.Count > 0 ? mine.Min(l => MonthOf(l.AddedAt, zone)) : lastClosedMonth;
             if (mineBooked.Count > 0)
             {
                 var resume = mineBooked.Max(b => b.Key.Month).PlusMonths(1);
@@ -163,7 +173,7 @@ internal sealed partial class StoreTransferBooking(
             var bookedTotal = mineBooked.Where(b => b.Account == current).Sum(b => b.Amount);
             for (var month = first; month.CompareTo(lastClosedMonth) <= 0; month = month.PlusMonths(1))
             {
-                var target = mine.Where(l => MonthOf(l.AddedAt).CompareTo(month) <= 0).Sum(l => l.LineNet);
+                var target = mine.Where(l => MonthOf(l.AddedAt, zone).CompareTo(month) <= 0).Sum(l => l.LineNet);
                 var delta = target - bookedTotal;
                 if (delta == 0m) continue;
                 rows.Add(Row(month, current, delta));
@@ -179,15 +189,15 @@ internal sealed partial class StoreTransferBooking(
         return slash < 0 ? (label, "(unknown product)") : (label[..slash], label[(slash + 3)..]);
     }
 
-    private static YearMonth MonthOf(Instant at)
+    private static YearMonth MonthOf(Instant at, DateTimeZone zone)
     {
-        var date = at.InZone(Madrid).Date;
+        var date = at.InZone(zone).Date;
         return new YearMonth(date.Year, date.Month);
     }
 
     private YearMonth LastClosedMonth()
     {
-        var today = clock.GetCurrentInstant().InZone(Madrid).Date;
+        var today = clock.GetCurrentInstant().InZone(OrgZone).Date;
         return new YearMonth(today.Year, today.Month).PlusMonths(-1);
     }
 
@@ -199,7 +209,7 @@ internal sealed partial class StoreTransferBooking(
         var (departments, unavailable) = await DepartmentAccountsAsync(year, ct);
         var booked = await BookedAsync(await AccountsToReadAsync(catalog, ct), ct);
         var lastClosed = LastClosedMonth();
-        return new TransferPlan(year, lastClosed, Plan(year, lines, catalog, booked, departments, lastClosed), unavailable);
+        return new TransferPlan(year, lastClosed, Plan(year, lines, catalog, booked, departments, lastClosed, OrgZone), unavailable);
     }
 
     /// <summary>Posts every ready row of <paramref name="year"/>. Refused, nothing posted, while another run holds
@@ -220,8 +230,8 @@ internal sealed partial class StoreTransferBooking(
 
             var (departments, _) = await DepartmentAccountsAsync(year, ct);
             var booked = await BookedAsync(accounts, ct);
-            var ready = Plan(year, lines, catalog, booked, departments, LastClosedMonth())
-                .Where(r => r.State == TransferState.Ready).ToList();
+            var ready = Plan(year, lines, catalog, booked, departments, LastClosedMonth(), OrgZone)
+                .Where(r => r.IsReady).ToList();
 
             var results = new List<TransferBookedLine>();
             foreach (var row in ready)

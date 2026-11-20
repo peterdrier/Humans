@@ -15,6 +15,10 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
     public DbSet<SepaPayoutFile> SepaPayoutFiles => Set<SepaPayoutFile>();
     public DbSet<SepaPayoutTransfer> SepaPayoutTransfers => Set<SepaPayoutTransfer>();
     public DbSet<PaymentDetails> PaymentDetails => Set<PaymentDetails>();
+    public DbSet<StripeLedgerLink> StripeLedgerLinks => Set<StripeLedgerLink>();
+    public DbSet<FinanceSettings> Settings => Set<FinanceSettings>();
+    public DbSet<PleoBookingClaim> PleoBookingClaims => Set<PleoBookingClaim>();
+    public DbSet<PleoReceiptUpload> PleoReceiptUploads => Set<PleoReceiptUpload>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -28,5 +32,9 @@ internal sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> option
         builder.ApplyConfiguration(new SepaPayoutFileConfiguration());
         builder.ApplyConfiguration(new SepaPayoutTransferConfiguration());
         builder.ApplyConfiguration(new PaymentDetailsConfiguration());
+        builder.ApplyConfiguration(new StripeLedgerLinkConfiguration());
+        builder.ApplyConfiguration(new FinanceSettingsConfiguration());
+        builder.ApplyConfiguration(new PleoBookingClaimConfiguration());
+        builder.ApplyConfiguration(new PleoReceiptUploadConfiguration());
     }
 }

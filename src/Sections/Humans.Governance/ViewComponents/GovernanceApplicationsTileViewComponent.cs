@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Teams.Contracts;
 using System.Security.Claims;
@@ -11,7 +12,7 @@ public sealed class GovernanceApplicationsTileViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (UserClaimsPrincipal.GetUserId() is not { } userId)
         {
             return Content(string.Empty);
         }

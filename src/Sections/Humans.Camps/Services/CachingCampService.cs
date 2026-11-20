@@ -89,15 +89,18 @@ internal sealed class CachingCampService(
         var snapshot = _settings ?? await LoadSettingsAsync(cancellationToken);
         // The active event is Settings-owned and making another event active is not a change this section hears
         // about, so it is resolved live on every read; only the rest of the snapshot is cached.
-        var (activeYear, activeEventId) = await GetActiveEventAsync(cancellationToken);
+        var (activeYear, activeEventId) = GetActiveEvent();
         return snapshot with { PublicYear = activeYear, ActiveEventSettingsId = activeEventId };
     }
 
     public Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct) =>
         WithInnerAsync(inner => inner.GetEarlyEntriesAsync(ct));
 
-    public Task<(int Year, Guid? EventSettingsId)> GetActiveEventAsync(CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetActiveEventAsync(cancellationToken));
+    public (int Year, Guid? EventSettingsId) GetActiveEvent()
+    {
+        using var scope = scopeFactory.CreateScope();
+        return scope.ServiceProvider.GetRequiredKeyedService<ICampManagement>(InnerServiceKey).GetActiveEvent();
+    }
 
     public async Task<CampUserInfo> GetCampUserInfoAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -317,7 +320,7 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task<CampImageUploadResult> UploadImageAsync(
+    public Task<CampUpdateResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
@@ -355,6 +358,14 @@ internal sealed class CachingCampService(
             await WithInnerAsync(inner => inner.OpenSeasonAsync(eventSettingsId, actorUserId, cancellationToken));
             // Registration changes alter which years the decorator warms.
             RefreshAll();
+            await InvalidateSettingsAsync(cancellationToken);
+        });
+
+    public Task SetRegistrationInfoAsync(
+        Guid eventSettingsId, string? registrationInfo, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerAsync(inner => inner.SetRegistrationInfoAsync(eventSettingsId, registrationInfo, actorUserId, cancellationToken));
             await InvalidateSettingsAsync(cancellationToken);
         });
 

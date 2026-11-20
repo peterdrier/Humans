@@ -1,6 +1,6 @@
+using Humans.Base.Extensions;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
-using System.Security.Claims;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
@@ -33,7 +33,7 @@ internal sealed class OnboardingWidgetController(
 
     // [Authorize] guarantees NameIdentifier is present.
     private Guid CurrentUserId() =>
-        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        User.GetUserId()!.Value;
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -113,7 +113,7 @@ internal sealed class OnboardingWidgetController(
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
-        var es = await settingsService.GetActiveEventSettingsAsync(ct);
+        var es = settingsService.GetActiveEventSettings();
         if (es is null)
             return View(OnboardingShiftsStepBuilder.BuildEmpty(priority ?? string.Empty));
 

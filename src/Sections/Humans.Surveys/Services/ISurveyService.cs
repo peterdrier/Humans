@@ -6,7 +6,8 @@ using NodaTime;
 
 namespace Humans.Surveys.Services;
 
-internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
+/// <summary>Authoring, approval, opening and closing, invitations and the admin lists.</summary>
+internal interface ISurveyService : IApplicationService
 {
     Task<SurveyDetail?> GetForEditAsync(Guid surveyId, CancellationToken ct = default);
 
@@ -52,6 +53,27 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     /// <summary>Transitions PendingApproval → Draft, recording the reviewer's note. Surveys Admin/Admin only, enforced here.</summary>
     Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default);
 
+    /// <summary>The current Human's official entry link for an Open survey: their unspent invitation, or the public slug fallback.</summary>
+    Task<SurveyOfficialLink?> GetOfficialLinkAsync(
+        Guid surveyId,
+        Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Strikes ranked options from the count of a Closed survey. Rewrites no stored ballot;
+    /// audit-logged as a survey update.
+    /// </summary>
+    Task<SurveySaveResult> SetRankedAvailabilityAsync(
+        Guid surveyId,
+        Guid questionId,
+        IReadOnlyList<string> unavailableValues,
+        SurveyViewer viewer,
+        CancellationToken ct = default);
+}
+
+/// <summary>Invitation emails: audience preview, send, per-recipient status and reminders.</summary>
+internal interface ISurveyInvitations : IApplicationService
+{
     /// <summary>
     /// Resolves the survey's audience and returns the number of net-new recipients who would receive
     /// an invitation on the next send; 0 if there is no configured audience or everyone is invited.
@@ -67,21 +89,16 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
 
     /// <summary>Per-invite delivery/participation status for the admin Send page, with display names stitched in. Unsorted — caller sorts.</summary>
     Task<IReadOnlyList<SurveyInviteStatus>> GetInviteStatusesAsync(Guid surveyId, CancellationToken ct = default);
+}
 
-    /// <summary>The current Human's official entry link for an Open survey: their unspent invitation, or the public slug fallback.</summary>
-    Task<SurveyOfficialLink?> GetOfficialLinkAsync(
-        Guid surveyId,
-        Guid userId,
-        CancellationToken ct = default);
-
+/// <summary>Answering a survey: starts, drafts, the wizard and submission.</summary>
+internal interface ISurveyResponses : IApplicationService
+{
     /// <summary>
     /// Resolves a tokenised invite link into the answering context (survey definition + any resumable
     /// Identified draft), or null when the token is invalid/expired or the invitation/survey is gone.
     /// </summary>
     Task<SurveyAnswerContext?> ResolveAnswerContextAsync(string token, CancellationToken ct = default);
-
-    /// <summary>Whether the Human currently holds active, approved Asociado voting rights.</summary>
-    Task<bool> IsEligibleAsociadoAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Creates (or, idempotently, returns the existing) Identified in-progress draft response for the
@@ -148,7 +165,11 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
     Task<SurveyWizardAdvanceResult> AdvanceWizardAsync(
         SurveyWizardState state, int page, bool back, IReadOnlyList<SurveyAnswerInput> postedAnswers,
         CancellationToken ct = default);
+}
 
+/// <summary>Read-only analysis; <see cref="ISurveyAnalysisRead"/> is the part other sections use.</summary>
+internal interface ISurveyResults : ISurveyAnalysisRead
+{
     /// <summary>
     /// Results for one anonymity scope, or null if not found. While an Asociado vote is Open the
     /// result is participation-only (<c>IsEmbargoed</c>); after close it carries unattributed ballots.
@@ -157,18 +178,6 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         Guid surveyId,
         SurveyResultsScope scope,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Strikes ranked options from the count of a Closed survey. Rewrites no stored ballot;
-    /// audit-logged as a survey update.
-    /// </summary>
-    Task<SurveySaveResult> SetRankedAvailabilityAsync(
-        Guid surveyId,
-        Guid questionId,
-        IReadOnlyList<string> unavailableValues,
-        SurveyViewer viewer,
-        CancellationToken ct = default);
-
 }
 
 internal sealed record SurveyOfficialLink(string? InvitationToken, string? PublicSlug);
@@ -244,7 +253,6 @@ internal sealed record SurveyPendingApprovalItem(
     Guid Id,
     string Title,
     Guid CreatedByUserId,
-    string CreatedByName,
     Instant? SubmittedAt);
 
 /// <summary>Everything the builder edits. Question/option <c>Id</c> null = new (assigned on save).</summary>
@@ -410,7 +418,7 @@ internal sealed record SurveyAnswerInput(
 
 /// <summary>
 /// Per-session state of the answering wizard. The Web layer JSON-serialises it into the HTTP session
-/// and hands it to <see cref="ISurveyService.AdvanceWizardAsync"/>, which owns all flow decisions.
+/// and hands it to <see cref="ISurveyResponses.AdvanceWizardAsync"/>, which owns all flow decisions.
 /// Answers are keyed by <c>QuestionId.ToString()</c> (Guid object keys don't round-trip through JSON
 /// cleanly; string keys do).
 /// </summary>

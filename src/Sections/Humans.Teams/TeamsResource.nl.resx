@@ -525,4 +525,6 @@
   <data name="Teams_Notification_ReviewRequest" xml:space="preserve"><value>Verzoek beoordelen</value></data>
   <data name="Teams_Notification_ViewMembers" xml:space="preserve"><value>Leden bekijken</value></data>
   <data name="Teams_Notification_Someone" xml:space="preserve"><value>Iemand</value></data>
+  <data name="Teams_Meter_JoinRequestsPending" xml:space="preserve"><value>Verzoeken om teamlid te worden in afwachting</value></data>
+  <data name="Teams_Meter_AudienceAdmin" xml:space="preserve"><value>Beheerders</value></data>
 </root>

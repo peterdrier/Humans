@@ -27,10 +27,11 @@ internal sealed class GoogleGroupMembershipClient(
         using var _ = logger.TimeOperation();
         var memberships = new List<GroupMembership>();
         string? pageToken = null;
+        var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
+        var directory = await GetDirectoryServiceAsync(ct);
         try
         {
-            var directory = await GetDirectoryServiceAsync(ct);
             do
             {
                 var request = directory.Members.List(groupGoogleId);
@@ -42,6 +43,14 @@ internal sealed class GoogleGroupMembershipClient(
 
                 var response = await request.ExecuteAsync(ct);
 
+                pageToken = response.NextPageToken;
+                if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                {
+                    logger.LogWarning("Google group memberships returned a repeated page token for {GroupId}.", groupGoogleId);
+                    return new GroupMembershipListResult(Memberships: null,
+                        Error: new GoogleClientError(502, "Google group memberships returned a repeated page token."));
+                }
+
                 if (response.MembersValue is not null)
                 {
                     foreach (var m in response.MembersValue)
@@ -51,15 +60,13 @@ internal sealed class GoogleGroupMembershipClient(
                             ResourceName: $"groups/{groupGoogleId}/memberships/{m.Email}"));
                     }
                 }
-
-                pageToken = response.NextPageToken;
             } while (!string.IsNullOrEmpty(pageToken));
 
             return new GroupMembershipListResult(memberships, Error: null);
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error listing memberships for group {GroupId}: Code={Code} Message={Message}",
                 groupGoogleId, ex.Error?.Code, ex.Error?.Message);
             return new GroupMembershipListResult(
@@ -68,7 +75,7 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error listing memberships for group {GroupId}", groupGoogleId);
+            logger.LogWarning("Transport error listing memberships for group {GroupId}: {Reason}", groupGoogleId, ex.Message);
             return new GroupMembershipListResult(Memberships: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -79,9 +86,9 @@ internal sealed class GoogleGroupMembershipClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var directory = await GetDirectoryServiceAsync(ct);
         try
         {
-            var directory = await GetDirectoryServiceAsync(ct);
             var member = new Member
             {
                 Email = memberEmail,
@@ -105,7 +112,7 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error adding {Email} to group {GroupId}: Code={Code} Message={Message}",
                 memberEmail, groupGoogleId, ex.Error?.Code, ex.Error?.Message);
             return new GroupMembershipMutationResult(
@@ -114,7 +121,7 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error adding {Email} to group {GroupId}", memberEmail, groupGoogleId);
+            logger.LogWarning("Transport error adding {Email} to group {GroupId}: {Reason}", memberEmail, groupGoogleId, ex.Message);
             return new GroupMembershipMutationResult(
                 GroupMembershipMutationOutcome.Failed, Error: new GoogleClientError(0, ex.Message));
         }
@@ -139,22 +146,22 @@ internal sealed class GoogleGroupMembershipClient(
         var groupKey = parts[1];
         var memberKey = parts[3];
 
+        var directory = await GetDirectoryServiceAsync(ct);
         try
         {
-            var directory = await GetDirectoryServiceAsync(ct);
             await directory.Members.Delete(groupKey, memberKey).ExecuteAsync(ct);
             return null;
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error deleting membership {Name}: Code={Code} Message={Message}",
                 membershipResourceName, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error deleting membership {Name}", membershipResourceName);
+            logger.LogWarning("Transport error deleting membership {Name}: {Reason}", membershipResourceName, ex.Message);
             return new GoogleClientError(0, ex.Message);
         }
     }

@@ -213,18 +213,6 @@ internal sealed class CityPlanningController(
         return Redirect("/Settings#city-planning");
     }
 
-    [HttpPost("BarrioMap/Admin/UpdateRegistrationInfo")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateRegistrationInfo(string? registrationInfo, CancellationToken cancellationToken)
-    {
-        var (error, user) = await RequireMapAdminAsync(cancellationToken);
-        if (error is not null) return error;
-
-        await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo, user!.Id, cancellationToken);
-        SetSuccess("Registration info updated.");
-        return Redirect("/Settings#city-planning");
-    }
-
     private static string PlacementScheduleErrorMessage(string? errorKey) => errorKey switch
     {
         "OutOfRange" => $"Schedule days must be within {CityPlanningService.MaxPlacementOffsetDays} days of gate opening.",

@@ -15,6 +15,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 
 using Humans.Users.Contracts;
+using Humans.Holded.Contracts;
 
 namespace Humans.Store.Controllers;
 
@@ -22,6 +23,8 @@ namespace Humans.Store.Controllers;
 [Route("Store")]
 internal sealed class StoreController(
     Service storeService,
+    CatalogService catalogService,
+    InvoiceService invoiceService,
     ICampService campService,
     IAuthorizationService authService,
     IUserService userService,
@@ -91,14 +94,15 @@ internal sealed class StoreController(
             canDeletePayment,
             catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
             removableLineIds);
+        if (model.CanIssueInvoice)
+            model.InvoicePlan = await invoiceService.GetInvoicePlanAsync(order.Id, ct);
+        if (order.IssuedInvoiceId is not null)
+            model.Invoice = await invoiceService.GetInvoiceAsync(order.Id, ct);
         if (canRecordFinancePayment)
         {
-            model.StripeRefundLinks = order.Payments
+            model.StripeRefundUrls = order.Payments
                 .Where(p => p.Method == PaymentMethod.Stripe && p.Status == PaymentStatus.Paid && p.StripePaymentIntentId is not null)
-                .OrderBy(p => p.ReceivedAt)
-                .Select(p => new StripeRefundLink(p.StripePaymentIntentId!, p.AmountEur,
-                    storeService.StripePaymentDashboardUrl(p.StripePaymentIntentId!)))
-                .ToList();
+                .ToDictionary(p => p.Id, p => storeService.DashboardUrl(p.StripePaymentIntentId!));
         }
         return View(model);
     }
@@ -134,7 +138,7 @@ internal sealed class StoreController(
         {
             if (!deadlineByProduct.TryGetValue(line.ProductId, out var deadline))
             {
-                deadline = (await storeService.GetProductAsync(line.ProductId, ct))?.OrderableUntil;
+                deadline = (await catalogService.GetProductAsync(line.ProductId, ct))?.OrderableUntil;
                 deadlineByProduct[line.ProductId] = deadline;
             }
             // Missing product: leave the button visible; the service rejects authoritatively.
@@ -196,9 +200,15 @@ internal sealed class StoreController(
         {
             // No request token: issuance creates and approves a Holded document, and a torn write leaves one we have
             // no local record of.
-            var result = await storeService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
+            var result = await invoiceService.IssueInvoiceAsync(id, user.Id, CancellationToken.None);
             if (result.Succeeded) SetSuccess(localizer["Store_InvoiceIssued"].Value);
             else SetError(result.Refusal ?? localizer["Store_InvoiceFailed"].Value);
+        }
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 403)
+        {
+            // The key lacks a scope: the message names it and where to add it.
+            logger.LogWarning("Holded refused invoice issuance for order {OrderId}: {Message}", id, ex.Message);
+            SetError(ex.Message);
         }
         catch (Exception ex)
         {
@@ -208,23 +218,71 @@ internal sealed class StoreController(
         return RedirectToAction(nameof(Order), new { id });
     }
 
+    /// <summary>Books the invoiced order's money in Holded again: after "waiting for the feed", or after a stop a person
+    /// has looked at. FinanceAdmin-only control: plain strings.</summary>
+    [HttpPost("Order/{id:guid}/BookInvoice")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookInvoice(Guid id)
+    {
+        var (errorResult, user, order) = await RequireOrderAsync(id, HttpContext.RequestAborted);
+        if (errorResult is not null) return errorResult;
+        if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
+            return Forbid();
+        if (order.IssuedInvoiceId is null) return NotFound();
+
+        var state = await invoiceService.BookAsync(id, user.Id, CancellationToken.None);
+        if (state == InvoiceBookingState.Booked) SetSuccess("The invoice is booked in Holded.");
+        else SetError("The invoice is not booked yet; see the invoice box for why.");
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    /// <summary>Holded emails the invoice to the camp again. FinanceAdmin-only control: plain strings.</summary>
+    [HttpPost("Order/{id:guid}/ResendInvoice")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResendInvoice(Guid id)
+    {
+        var (errorResult, user, order) = await RequireOrderAsync(id, HttpContext.RequestAborted);
+        if (errorResult is not null) return errorResult;
+        if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
+            return Forbid();
+
+        var result = await invoiceService.ResendInvoiceAsync(id, user.Id);
+        if (result.Succeeded) SetSuccess("The invoice was sent again.");
+        else SetError(result.Refusal!);
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    /// <summary>Anyone who can see the order can download its invoice; Holded renders it on request.</summary>
+    [HttpGet("Order/{id:guid}/Invoice")]
+    public async Task<IActionResult> InvoicePdf(Guid id, CancellationToken ct)
+    {
+        var (errorResult, _, order) = await RequireOrderAsync(id, ct);
+        if (errorResult is not null) return errorResult;
+        if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.View)).Succeeded)
+            return Forbid();
+
+        var pdf = await invoiceService.GetInvoicePdfAsync(id, ct);
+        if (pdf is not { } file) return NotFound();
+        return File(file.Pdf, "application/pdf", $"{file.DocNumber}.pdf");
+    }
+
     [HttpPost("Order/{id:guid}/RecordPayment")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordPayment(
         Guid id, PaymentMethod method, decimal amountEur, string? externalRef, string? notes, LocalDate? valueDate,
-        CancellationToken ct)
+        Guid? productId, CancellationToken ct)
     {
         var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment);
         if (!auth.Succeeded) return Forbid();
-        if (method is PaymentMethod.Refund or PaymentMethod.BankTransfer
+        if (method is PaymentMethod.Refund or PaymentMethod.BankTransfer or PaymentMethod.WriteOff
             && !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
             return Forbid();
 
         var result = await storeService.RecordAdminPaymentAsync(
-            id, method, amountEur, externalRef, notes, valueDate, user.Id, CancellationToken.None);
+            id, method, amountEur, externalRef, notes, valueDate, user.Id, CancellationToken.None, productId);
         if (result.Succeeded) SetSuccess(localizer["Store_PaymentRecorded"].Value);
         else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });
@@ -247,12 +305,17 @@ internal sealed class StoreController(
             SetError(refusal);
         else
         {
-            var message = result.RecordedCount == 0
-                ? "No new Stripe refunds to record."
-                : $"Recorded {result.RecordedCount} Stripe refund(s) totalling {result.TotalEur.ToEuro()}.";
-            if (result.UnsettledCount > 0)
-                message += $" {result.UnsettledCount} refund(s) still pending in Stripe; check again once they complete.";
-            SetSuccess(message);
+            var parts = new List<string>();
+            if (result.RecordedCount > 0)
+                parts.Add($"Recorded {result.RecordedCount} Stripe refund(s) totalling {result.TotalEur.ToEuro()}"
+                    + (result.PendingCount > 0 ? $", {result.PendingCount} still pending in Stripe." : "."));
+            if (result.SettledCount > 0)
+                parts.Add($"{result.SettledCount} pending refund(s) completed.");
+            if (result.CancelledCount > 0)
+                parts.Add($"{result.CancelledCount} refund(s) failed or were cancelled in Stripe and no longer count.");
+            var message = parts.Count == 0 ? "No new Stripe refunds to record." : string.Join(" ", parts);
+            if (result.CancelledCount > 0) SetError(message);
+            else SetSuccess(message);
         }
         return RedirectToAction(nameof(Order), new { id });
     }
@@ -350,7 +413,7 @@ internal sealed class StoreController(
         if (errorResult is not null) return errorResult;
 
         // Unknown product: fall back to the plain order resource; the service rejects it as not found.
-        var product = await storeService.GetProductAsync(productId, ct);
+        var product = await catalogService.GetProductAsync(productId, ct);
         object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.AddLine);
         if (!auth.Succeeded) return Forbid();
@@ -375,7 +438,7 @@ internal sealed class StoreController(
 
         // Unknown line or product: fall back to the plain order resource; the service rejects it.
         var lineProductId = order.Lines.FirstOrDefault(l => l.Id == lineId)?.ProductId;
-        var product = lineProductId is { } pid ? await storeService.GetProductAsync(pid, ct) : null;
+        var product = lineProductId is { } pid ? await catalogService.GetProductAsync(pid, ct) : null;
         object resource = product is null ? order : new OrderLineContext(order, product.OrderableUntil);
         var auth = await authService.AuthorizeAsync(User, resource, OrderOperationRequirement.RemoveLine);
         if (!auth.Succeeded) return Forbid();

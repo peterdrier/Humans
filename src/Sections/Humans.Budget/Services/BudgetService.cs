@@ -8,6 +8,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Finance.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
+using Humans.Base.Interfaces;
 
 namespace Humans.Budget.Services;
 
@@ -21,38 +22,6 @@ internal sealed class BudgetService(
 {
     /// <summary>GDPR export JSON key.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
-
-    private readonly BudgetYearManagement yearManagement = new(repository, teamService, clock, logger);
-    private readonly BudgetReader reader = new(repository, teamService, clock);
-
-    public Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default) =>
-        reader.GetAllYearsAsync(includeArchived, ct);
-
-    public Task<BudgetYearDetail?> GetYearByIdAsync(Guid id, CancellationToken ct = default) => reader.GetYearByIdAsync(id, ct);
-
-    public Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default) => reader.GetActiveYearAsync(ct);
-
-    private static BudgetGroupDetail ToGroupDetail(BudgetGroup group) => BudgetReader.ToGroupDetail(group);
-
-    private static BudgetCategoryDetail ToCategoryDetail(BudgetCategory category) => BudgetReader.ToCategoryDetail(category);
-
-    public Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId) =>
-        yearManagement.CreateYearAsync(year, name, actorUserId);
-
-    public Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId) =>
-        yearManagement.UpdateYearStatusAsync(yearId, status, actorUserId);
-
-    public Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId) =>
-        yearManagement.UpdateYearAsync(yearId, year, name, vendorEventId, actorUserId);
-
-    public Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId) =>
-        yearManagement.DeleteYearAsync(yearId, actorUserId);
-
-    public Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId) =>
-        yearManagement.SyncDepartmentsAsync(budgetYearId, actorUserId);
-
-    public Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId) =>
-        yearManagement.EnsureTicketingGroupAsync(budgetYearId, actorUserId);
 
     public async Task<BudgetGroupDetail> CreateGroupAsync(
         Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
@@ -91,11 +60,6 @@ internal sealed class BudgetService(
         logger.LogInformation("Deleted budget group {GroupId}", groupId);
         return new();
     }
-
-    public Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default) => reader.GetCategoryByIdAsync(id, ct);
-
-    public Task<IReadOnlyList<TeamInfo>> GetActiveTeamsAsync(CancellationToken ct = default) =>
-        reader.GetActiveTeamsAsync(ct);
 
     public async Task<BudgetSaveResult<BudgetCategoryDetail>> CreateCategoryAsync(
         Guid budgetGroupId, string name, decimal allocatedAmount,
@@ -143,11 +107,7 @@ internal sealed class BudgetService(
         return new();
     }
 
-    public Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default) => reader.GetLineItemByIdAsync(id, ct);
-
-    private static BudgetLineItemSnapshot ToLineItemSnapshot(BudgetLineItem lineItem) => BudgetReader.ToLineItemSnapshot(lineItem);
-
-    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(
+    public async Task<BudgetSaveResult> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
@@ -169,16 +129,16 @@ internal sealed class BudgetService(
             ExpectedDate: expectedDate,
             VatRate: vatRate);
 
-        var lineItem = await repository.CreateLineItemAsync(draft, actorUserId, now);
+        await repository.CreateLineItemAsync(draft, actorUserId, now);
 
         logger.LogInformation(
             "Created line item '{Description}' in category {CategoryId}",
             description, budgetCategoryId);
 
-        return new(ToLineItemSnapshot(lineItem));
+        return new();
     }
 
-    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(
+    public async Task<BudgetSaveResult> UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
@@ -225,7 +185,7 @@ internal sealed class BudgetService(
     private static string? VatRateRefusal(int vatRate) =>
         vatRate is < 0 or > 21 ? "VAT rate must be between 0 and 21." : null;
 
-    public async Task<BudgetSaveResult<BudgetLineItemSnapshot>> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
+    public async Task<BudgetSaveResult> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
@@ -274,12 +234,6 @@ internal sealed class BudgetService(
         return new(created);
     }
 
-    public Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default) =>
-        reader.GetAuditLogAsync(budgetYearId, ct);
-
-    public Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
-        reader.GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
-
     public BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups) =>
         BudgetSummaryCalculator.ComputeBudgetSummary(groups);
 
@@ -289,28 +243,15 @@ internal sealed class BudgetService(
     // The repository materializes projected weeks, so they never lag one sync behind.
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
-        IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         Guid? actorUserId,
         CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var today = now.InUtc().Date;
 
-        var actualsInputs = weeklyActuals
-            .Select(w => new TicketingWeeklyActualsInput(
-                WeekLabel: w.WeekLabel,
-                Monday: w.Monday,
-                TicketCount: w.TicketCount,
-                Revenue: w.Revenue,
-                StripeFees: w.StripeFees,
-                TicketTailorFees: w.TicketTailorFees,
-                StripeFeeTax: w.StripeFeeTax,
-                StripeFeesTaxUnknown: w.StripeFeesTaxUnknown,
-                StripeFeesUntaxed: w.StripeFeesUntaxed))
-            .ToList();
-
         var changed = await repository.SyncTicketingActualsAsync(
-            budgetYearId, actualsInputs, today, actorUserId, now, ct);
+            budgetYearId, weeklyActuals, today, actorUserId, now, ct);
 
         logger.LogInformation(
             "Ticketing budget sync: {Created} line items created/updated for {Weeks} actual weeks + projections",
@@ -318,9 +259,6 @@ internal sealed class BudgetService(
 
         return changed;
     }
-
-    public Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
-        Guid budgetGroupId, CancellationToken ct = default) => reader.GetTicketingProjectionEntriesAsync(budgetGroupId, ct);
 
     public int GetActualTicketsSold(BudgetGroupDetail ticketingGroup)
     {
@@ -388,4 +326,308 @@ internal sealed class BudgetService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+
+    public async Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default)
+    {
+        var years = await repository.GetAllYearsAsync(includeArchived, ct);
+        return years.Select(ToYearSummarySnapshot).ToList();
+    }
+
+    private static BudgetYearSummarySnapshot ToYearSummarySnapshot(BudgetYear year) =>
+        new(
+            year.Id,
+            year.Year,
+            year.Name,
+            year.Status,
+            year.IsDeleted,
+            year.Groups
+                .Select(group => new BudgetGroupSummarySnapshot(
+                    group.Id,
+                    group.Name,
+                    group.SortOrder,
+                    group.IsRestricted,
+                    group.IsDepartmentGroup))
+                .ToList(),
+            year.VendorEventId);
+
+    public async Task<BudgetYearDetail?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var year = await repository.GetYearByIdAsync(id, ct);
+        return year is null ? null : ToYearDetail(year);
+    }
+
+    public async Task<BudgetYearDetail?> GetActiveYearAsync(CancellationToken ct = default)
+    {
+        var year = await repository.GetActiveYearAsync(ct);
+        return year is null ? null : ToYearDetail(year);
+    }
+
+    internal static BudgetYearDetail ToYearDetail(BudgetYear year) =>
+        new(
+            year.Id,
+            year.Year,
+            year.Name,
+            year.Status,
+            year.IsDeleted,
+            year.Groups
+                .Select(ToGroupDetail)
+                .ToList(),
+            year.VendorEventId);
+
+    internal static BudgetGroupDetail ToGroupDetail(BudgetGroup group) =>
+        new(
+            group.Id,
+            group.BudgetYearId,
+            group.Name,
+            group.SortOrder,
+            group.IsRestricted,
+            group.IsDepartmentGroup,
+            group.IsTicketingGroup,
+            group.TicketingProjection is null
+                ? null
+                : new TicketingProjectionSnapshot(
+                    group.TicketingProjection.Id,
+                    group.TicketingProjection.BudgetGroupId,
+                    group.TicketingProjection.StartDate,
+                    group.TicketingProjection.EventDate,
+                    group.TicketingProjection.InitialSalesCount,
+                    group.TicketingProjection.DailySalesRate,
+                    group.TicketingProjection.AverageTicketPrice,
+                    group.TicketingProjection.VatRate,
+                    group.TicketingProjection.StripeFeePercent,
+                    group.TicketingProjection.StripeFeeFixed,
+                    group.TicketingProjection.TicketTailorFeePercent,
+                    group.TicketingProjection.CreatedAt,
+                    group.TicketingProjection.UpdatedAt),
+            group.Categories
+                .Select(ToCategoryDetail)
+                .ToList());
+
+    internal static BudgetCategoryDetail ToCategoryDetail(BudgetCategory category) =>
+        new(
+            category.Id,
+            category.BudgetGroupId,
+            category.Name,
+            category.AllocatedAmount,
+            category.ExpenditureType,
+            category.TeamId,
+            category.SortOrder,
+            category.LineItems
+                .Select(item => new BudgetLineItemDetail(
+                    item.Id,
+                    item.BudgetCategoryId,
+                    item.Description,
+                    item.Amount,
+                    item.ResponsibleTeamId,
+                    item.Notes,
+                    item.ExpectedDate,
+                    item.VatRate,
+                    item.IsAutoGenerated,
+                    item.IsCashflowOnly,
+                    item.SortOrder))
+                .ToList());
+
+    public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var category = await repository.GetCategoryByIdAsync(id, ct);
+        if (category is null)
+            return null;
+
+        var teamIds = category.LineItems
+            .Select(li => li.ResponsibleTeamId)
+            .Where(tid => tid.HasValue)
+            .Select(tid => tid!.Value)
+            .Distinct()
+            .ToList();
+
+        var teamNamesById = new Dictionary<Guid, string>();
+        if (teamIds.Count > 0)
+        {
+            var teams = await teamService.GetTeamsAsync(ct);
+            foreach (var teamId in teamIds)
+            {
+                if (teams.TryGetValue(teamId, out var team))
+                    teamNamesById[teamId] = team.Name;
+            }
+        }
+
+        return ToCategorySnapshot(category, teamNamesById);
+    }
+
+    public async Task<IReadOnlyList<TeamInfo>> GetActiveTeamsAsync(CancellationToken ct = default) =>
+        (await teamService.GetTeamsAsync(ct)).Values.Where(team => team.IsActive).ToList();
+
+    private static BudgetCategorySnapshot ToCategorySnapshot(
+        BudgetCategory category,
+        IReadOnlyDictionary<Guid, string> teamNamesById) =>
+        new(
+            category.Id,
+            category.BudgetGroupId,
+            category.Name,
+            category.AllocatedAmount,
+            category.ExpenditureType,
+            category.TeamId,
+            category.SortOrder,
+            category.BudgetGroup is null
+                ? null
+                : new BudgetCategoryGroupSnapshot(
+                    category.BudgetGroup.Id,
+                    category.BudgetGroup.BudgetYearId,
+                    category.BudgetGroup.Name,
+                    category.BudgetGroup.IsRestricted,
+                    category.BudgetGroup.IsTicketingGroup,
+                    category.BudgetGroup.BudgetYear is null
+                        ? null
+                        : new BudgetCategoryYearSnapshot(
+                            category.BudgetGroup.BudgetYear.Id,
+                            category.BudgetGroup.BudgetYear.Year,
+                            category.BudgetGroup.BudgetYear.Name,
+                            category.BudgetGroup.BudgetYear.IsDeleted)),
+            category.LineItems
+                .Select(item => new BudgetCategoryLineItemSnapshot(
+                    item.Id,
+                    item.BudgetCategoryId,
+                    item.Description,
+                    item.Amount,
+                    item.ResponsibleTeamId,
+                    item.ResponsibleTeamId is { } rtid && teamNamesById.TryGetValue(rtid, out var name) ? name : null,
+                    item.Notes,
+                    item.ExpectedDate,
+                    item.VatRate,
+                    item.IsAutoGenerated,
+                    item.IsCashflowOnly,
+                    item.SortOrder))
+                .ToList());
+
+    public Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default) =>
+        repository.GetLineItemCategoryIdAsync(id, ct);
+
+    public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default)
+    {
+        var entries = await repository.GetAuditLogAsync(budgetYearId, ct);
+        return entries.Select(e => new BudgetAuditLogSnapshot(
+            e.Id,
+            e.BudgetYearId,
+            e.EntityType,
+            e.EntityId,
+            e.FieldName,
+            e.OldValue,
+            e.NewValue,
+            e.Description,
+            e.ActorUserId,
+            e.OccurredAt)).ToList();
+    }
+
+    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
+        (await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, ct)).ToHashSet();
+
+    public async Task<int> GetProjectedRemainingTicketsAsync(
+        Guid budgetGroupId, CancellationToken ct = default)
+    {
+        var projection = await repository.GetTicketingProjectionAsync(budgetGroupId, ct);
+        return projection?.CalculateWeeks(clock.GetCurrentInstant().InUtc().Date)
+            .Sum(week => week.Tickets) ?? 0;
+    }
+
+    public async Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId)
+    {
+        var now = clock.GetCurrentInstant();
+
+        var teamRefs = await GetBudgetableTeamsAsync();
+
+        var draft = new BudgetYearDraft(
+            Id: Guid.NewGuid(),
+            Year: year,
+            Name: name,
+            BudgetableTeams: teamRefs,
+            ActorUserId: actorUserId,
+            Now: now);
+
+        await repository.CreateYearWithScaffoldAsync(draft);
+
+        logger.LogInformation(
+            "Created budget year {Year} ({Name}) with {TeamCount} department categories",
+            year, name, teamRefs.Count);
+
+        return new BudgetYearDetail(
+            draft.Id,
+            year,
+            name,
+            BudgetYearStatus.Draft,
+            IsDeleted: false,
+            Groups: []);
+    }
+
+    public async Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
+    {
+        var now = clock.GetCurrentInstant();
+
+        var result = await repository.UpdateYearStatusAsync(yearId, status, actorUserId, now);
+        if (!result.Succeeded) return result;
+
+        logger.LogInformation(
+            "Updated budget year {YearId} status to {NewStatus}",
+            yearId, status);
+        return result;
+    }
+
+    public async Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId)
+    {
+        var now = clock.GetCurrentInstant();
+
+        var result = await repository.UpdateYearAsync(
+            yearId, year, name, string.IsNullOrWhiteSpace(vendorEventId) ? null : vendorEventId.Trim(), actorUserId, now);
+        return result;
+    }
+
+    public async Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId)
+    {
+        var now = clock.GetCurrentInstant();
+
+        var result = await repository.SoftDeleteYearAsync(yearId, actorUserId, now);
+        if (!result.Succeeded) return result;
+
+        logger.LogInformation("Archived budget year {YearId}", yearId);
+        return result;
+    }
+
+    private async Task<List<BudgetableTeamRef>> GetBudgetableTeamsAsync() =>
+        (await teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive && t.HasBudget)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .Select(t => new BudgetableTeamRef(t.Id, t.Name))
+            .ToList();
+
+    public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
+    {
+        var now = clock.GetCurrentInstant();
+
+        var teamRefs = await GetBudgetableTeamsAsync();
+
+        var created = await repository.SyncDepartmentCategoriesAsync(
+            budgetYearId, teamRefs, actorUserId, now);
+
+        if (created > 0)
+            logger.LogInformation(
+                "Synced {Count} departments into budget year {YearId}",
+                created, budgetYearId);
+
+        return created;
+    }
+
+    public async Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId)
+    {
+        var now = clock.GetCurrentInstant();
+
+        var created = await repository.EnsureTicketingGroupAsync(budgetYearId, actorUserId, now);
+
+        if (created)
+            logger.LogInformation("Added ticketing group to budget year {YearId}", budgetYearId);
+
+        return new EnsureTicketingGroupResult(
+            created,
+            created
+                ? "Ticketing group added to this budget year."
+                : "Ticketing group already exists for this budget year.");
+    }
 }

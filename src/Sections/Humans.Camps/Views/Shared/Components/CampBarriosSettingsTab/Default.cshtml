@@ -44,6 +44,22 @@ else
                         </form>
                     </td>
                 </tr>
+                <tr>
+                    <td colspan="3" class="border-top-0 pt-0">
+                        <form asp-controller="CampAdmin" asp-action="RegistrationInfo"
+                              asp-route-eventSettingsId="@ev.EventSettingsId" method="post">
+                            @Html.AntiForgeryToken()
+                            <label class="form-label small text-muted" for="registration-info-@ev.EventSettingsId">
+                                Registration info: Markdown shown at the top of the Register page while this event takes registrations. Leave empty to hide.
+                            </label>
+                            <textarea id="registration-info-@ev.EventSettingsId" name="registrationInfo"
+                                      class="form-control form-control-sm mb-2" rows="3">@ev.RegistrationInfo</textarea>
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fa-solid fa-save me-1"></i>Save
+                            </button>
+                        </form>
+                    </td>
+                </tr>
             }
         </tbody>
     </table>

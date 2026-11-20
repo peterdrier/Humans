@@ -43,9 +43,9 @@ internal sealed class EventsController(
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
         var isSubmissionOpen = IsSubmissionOpen(guideSettings);
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
 
-        var individualEvents = await guide.GetUserSubmissionsAsync(user.Id, ct);
+        var personalSummary = await guide.GetUserSubmissionsSummaryAsync(user.Id, ct);
 
         // Camps the user leads or runs workshops for.
         var managedCamps = (await LoadCampsByIdAsync(CampService, guideSettings?.EventSettingsId, ct)).Values
@@ -95,10 +95,10 @@ internal sealed class EventsController(
             TimeZoneId = eventSettings?.TimeZoneId,
             Personal = new PersonalSubmissionsBlock
             {
-                SubmittedCount = individualEvents.Count,
-                ApprovedCount = individualEvents.Count(e => e.Status == EventStatus.Approved),
-                PendingCount = individualEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = individualEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
+                SubmittedCount = personalSummary.SubmittedCount,
+                ApprovedCount = personalSummary.ApprovedCount,
+                PendingCount = personalSummary.PendingCount,
+                Events = personalSummary.Events.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
                 {
                     Id = e.Id,
                     Title = e.Title,
@@ -163,7 +163,7 @@ internal sealed class EventsController(
             return View("IndividualEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
             model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
@@ -226,7 +226,7 @@ internal sealed class EventsController(
 
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildFormAsync(eventSettings, ct);
@@ -271,7 +271,7 @@ internal sealed class EventsController(
             return View("IndividualEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
             model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
@@ -364,7 +364,7 @@ internal sealed class EventsController(
     private void ValidateSchedule(DateOnly date, TimeOnly time, int durationMinutes, EventSettingsInfo settings)
     {
         if (!ModelState.IsValid || CanDisplaySchedule(
-            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, GetTimeZone(settings))) return;
+            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, settings?.TimeZone)) return;
         logger.LogWarning("Event form rejected: schedule is outside the supported calendar range");
         ModelState.AddModelError(nameof(IndividualEventFormViewModel.StartDate),
             localizer["Events_Upload_DateRange"].Value);
@@ -468,7 +468,7 @@ internal sealed class EventsController(
             return View("BarrioEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
@@ -530,7 +530,7 @@ internal sealed class EventsController(
             ?? throw new InvalidOperationException("Guide settings not configured.");
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildBarrioFormAsync(slug, camp, eventSettings, ct);
@@ -576,7 +576,7 @@ internal sealed class EventsController(
             return View("BarrioEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
             model.CategoryId, VenueId: null, model.Title, model.Description,
             ToInstant(model.StartDate.ToDateTime(model.StartTime), tz), model.DurationMinutes,
@@ -660,8 +660,7 @@ internal sealed class EventsController(
 
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var tz = GetTimeZone(eventSettings)
-            ?? throw new InvalidOperationException("Event timezone not configured.");
+        var tz = eventSettings.TimeZone;
 
         BulkCsvParseResult parsed;
         try

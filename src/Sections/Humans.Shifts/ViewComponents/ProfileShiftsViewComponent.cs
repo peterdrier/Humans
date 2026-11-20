@@ -50,7 +50,7 @@ internal sealed class ProfileShiftsViewComponent(
 
     private async Task<bool> IsCoordinatorAsync(CancellationToken ct)
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var claimId))
+        if (UserClaimsPrincipal.GetUserId() is not { } claimId)
             return false;
         // A session from a merged-away account asks as the survivor.
         var viewer = await users.GetUserInfoAsync(claimId, ct);

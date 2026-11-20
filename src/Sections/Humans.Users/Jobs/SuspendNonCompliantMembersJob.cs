@@ -10,7 +10,7 @@ namespace Humans.Users.Jobs;
 /// The schedule, metric and failure boundary; the sweep is <see cref="INonCompliantMemberSuspension"/>.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SuspendNonCompliantMembersJob(
+internal sealed class SuspendNonCompliantMembersJob(
     INonCompliantMemberSuspension suspension,
     IHumansMetrics metrics,
     ILogger<SuspendNonCompliantMembersJob> logger,

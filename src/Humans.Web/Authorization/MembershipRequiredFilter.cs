@@ -1,10 +1,8 @@
 using System.Reflection;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Humans.Backdoor.Contracts;
 using Humans.Base.Attributes;
 using Humans.Users.Contracts;
 
@@ -25,14 +23,6 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         var user = context.HttpContext.User;
 
         if (user.Identity?.IsAuthenticated != true)
-        {
-            return next();
-        }
-
-        // A Backdoor API key authenticates a machine, not a browsing session: there is no onboarding page to send a
-        // JSON client to, and the key's owner never passes through claims transformation, so the state claim this
-        // gate reads is absent by construction.
-        if (IsMachineRequest(user))
         {
             return next();
         }
@@ -96,8 +86,4 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true)
          || cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true))
         && cad is not { ControllerName: "Home", ActionName: "Index" };
-
-    /// <summary>True when the principal came from a Backdoor API key rather than a sign-in cookie.</summary>
-    internal static bool IsMachineRequest(ClaimsPrincipal user) =>
-        string.Equals(user.Identity?.AuthenticationType, BackdoorAuthentication.SchemeName, StringComparison.Ordinal);
 }

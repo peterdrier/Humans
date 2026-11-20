@@ -42,6 +42,7 @@ public sealed class StoreControllerRecordPaymentTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private Service _service = null!;
+    private CatalogService _catalog = null!;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Order _order = new()
     {
@@ -56,7 +57,7 @@ public sealed class StoreControllerRecordPaymentTests
     private StoreController BuildController(string role, IUserService? identityUsers = null)
     {
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        settings.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         var camps = Substitute.For<ICampService>();
         camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
         var teams = Substitute.For<ITeamService>();
@@ -66,10 +67,14 @@ public sealed class StoreControllerRecordPaymentTests
         _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
+        var stripe = Substitute.For<IStripeService>();
+        var holded = Substitute.For<IHoldedService>();
+        _catalog = new CatalogService(_repo, _audit, clock, holded, NullLogger<CatalogService>.Instance);
         var service = _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings,
-            Substitute.For<IStripeService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
-            Options.Create(new StoreSectionOptions()), NullLogger<Service>.Instance);
+            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings, stripe, _catalog,
+            NullLogger<Service>.Instance);
+        var invoices = new InvoiceService(_repo, _audit, clock, holded, Substitute.For<IHoldedWrite>(), stripe,
+            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), service, NullLogger<InvoiceService>.Instance);
 
         var users = identityUsers ?? Substitute.For<IUserService>();
         if (identityUsers is null)
@@ -93,7 +98,7 @@ public sealed class StoreControllerRecordPaymentTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _userId.ToString()), new Claim(ClaimTypes.Role, role)], "test")),
         };
-        return new StoreController(service, camps, auth, users, NullLogger<StoreController>.Instance, localizer)
+        return new StoreController(service, _catalog, invoices, camps, auth, users, NullLogger<StoreController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -137,7 +142,7 @@ public sealed class StoreControllerRecordPaymentTests
         controller.HttpContext.RequestAborted = request.Token;
         controller.Url = Substitute.For<IUrlHelper>();
         controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("https://example.org/order");
-        var admin = new StoreAdminController(_service, users)
+        var admin = new StoreAdminController(_service, _catalog, users)
         {
             ControllerContext = controller.ControllerContext,
             TempData = controller.TempData,
@@ -154,7 +159,7 @@ public sealed class StoreControllerRecordPaymentTests
         {
             "pay" => controller.Pay(_order.Id, 10m, request.Token),
             "invoice" or "invoice-order" => controller.IssueInvoice(_order.Id),
-            "record-payment" => controller.RecordPayment(_order.Id, PaymentMethod.DepositReturn, 10m, null, null, null, request.Token),
+            "record-payment" => controller.RecordPayment(_order.Id, PaymentMethod.DepositReturn, 10m, null, null, null, null, request.Token),
             "delete-payment" => controller.DeletePayment(_order.Id, Guid.NewGuid(), request.Token),
             "create" => controller.Create(_order.CampSeasonId!.Value, request.Token),
             "create-team" => controller.CreateTeamOrder(Guid.NewGuid(), request.Token),
@@ -224,7 +229,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
-            _order.Id, Enum.Parse<PaymentMethod>(methodName), 10m, "re_123", null, new LocalDate(2026, 6, 24),
+            _order.Id, Enum.Parse<PaymentMethod>(methodName), 10m, "re_123", null, new LocalDate(2026, 6, 24), null,
             TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
@@ -252,7 +257,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(role);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.Refund, 10m, "re_123", null, null, TestContext.Current.CancellationToken);
+            _order.Id, PaymentMethod.Refund, 10m, "re_123", null, null, null, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).AddPaymentAsync(
@@ -279,7 +284,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(role);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.BankTransfer, 7216.71m, " 6a3b8e7cbd5b6f5ec40cbb87 ", null, new LocalDate(2026, 6, 24),
+            _order.Id, PaymentMethod.BankTransfer, 7216.71m, " 6a3b8e7cbd5b6f5ec40cbb87 ", null, new LocalDate(2026, 6, 24), null,
             TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
@@ -291,7 +296,7 @@ public sealed class StoreControllerRecordPaymentTests
         payment.ReceivedAt.Should().Be(Instant.FromUtc(2026, 6, 24, 0, 0));
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, payment.Id,
-            Arg.Is<string>(d => d.Contains("BankTransfer") && d.Contains("7216.71")
+            Arg.Is<string>(d => d.Contains("bank transfer") && d.Contains("7216.71")
                 && d.Contains("6a3b8e7cbd5b6f5ec40cbb87") && d.Contains("2026-06-24")),
             _userId, _order.Id, AuditEntityTypes.Order);
         (await _service.GetOrderAsync(_order.Id, TestContext.Current.CancellationToken))!.BalanceEur.Should().Be(0m);
@@ -300,18 +305,19 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansFact]
     public async Task StoreAdmin_can_still_record_a_deposit_return()
     {
+        var productId = Guid.NewGuid();
         _order.Lines =
         [
             new OrderLine
             {
-                Id = Guid.NewGuid(), OrderId = _order.Id, ProductId = Guid.NewGuid(), Qty = 1,
+                Id = Guid.NewGuid(), OrderId = _order.Id, ProductId = productId, Qty = 1,
                 UnitPriceSnapshot = 5m, VatRateSnapshot = 21m, DepositAmountSnapshot = 30m,
             },
         ];
         var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.DepositReturn, 30m, null, null, null, TestContext.Current.CancellationToken);
+            _order.Id, PaymentMethod.DepositReturn, 30m, null, null, null, productId, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).AddPaymentAsync(
@@ -381,7 +387,7 @@ public sealed class StoreControllerRecordPaymentTests
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StorePaymentDeleted, AuditEntityTypes.Payment, mistaken.Id,
             Arg.Is<string>(d => d.Contains("Refund") && d.Contains("-3.00") && d.Contains("Paid")
-                && d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")
+                && !d.Contains(_order.Id.ToString()) && d.Contains("ref-1") && d.Contains("2026-08-01")
                 && d.Contains(recorder.ToString()) && d.Contains("wrong order")),
             _userId, _order.Id, AuditEntityTypes.Order);
         (await _service.GetOrderAsync(_order.Id, TestContext.Current.CancellationToken))!.BalanceEur.Should().Be(0m);
@@ -414,7 +420,7 @@ public sealed class StoreControllerRecordPaymentTests
         {
             _ = operation switch
             {
-                "record" => await controller.RecordPayment(_order.Id, PaymentMethod.Refund, 10m, "refund-ref", null, null,
+                "record" => await controller.RecordPayment(_order.Id, PaymentMethod.Refund, 10m, "refund-ref", null, null, null,
                     TestContext.Current.CancellationToken),
                 "payment-delete" => await controller.DeletePayment(_order.Id, payment.Id, TestContext.Current.CancellationToken),
                 _ => await controller.Delete(_order.Id, TestContext.Current.CancellationToken)

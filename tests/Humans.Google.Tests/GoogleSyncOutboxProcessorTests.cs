@@ -44,7 +44,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         // No test here seeds a user; the drain only reads this lookup to name the human in
         // its failure log, so an empty result is the whole fixture.
         _userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
         _teamService = Substitute.For<ITeamService>();
@@ -499,7 +499,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
         var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
         var survivorId = Guid.NewGuid();
         _userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
                 {

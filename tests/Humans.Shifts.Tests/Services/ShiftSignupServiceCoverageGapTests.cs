@@ -49,8 +49,6 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
@@ -64,7 +62,6 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             AuditLog,
             _notificationService,
             AdminAuthorization,
-            new ShiftViewProbe().Cache,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

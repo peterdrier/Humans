@@ -52,8 +52,11 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
             sp.GetRequiredService<IGovernanceService>(), sp.GetRequiredService<ITicketService>(),
             sp.GetRequiredService<IShiftView>(), sp.GetRequiredService<ILogger<SurveyService>>()));
         services.AddScoped<SurveyInvitationDelivery>();
+        services.AddScoped<ISurveyInvitations>(sp => sp.GetRequiredService<SurveyInvitationDelivery>());
         services.AddScoped<ISurveyReminderSender>(sp => sp.GetRequiredService<SurveyInvitationDelivery>());
-        services.AddScoped<ISurveyAnalysisRead>(sp => sp.GetRequiredService<SurveyService>());
+        services.AddScoped<ISurveyResponses, SurveyResponseService>();
+        services.AddScoped<ISurveyResults, SurveyResultsService>();
+        services.AddScoped<ISurveyAnalysisRead>(sp => sp.GetRequiredService<ISurveyResults>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<SurveyService>());
         services.AddScoped<ISurveyInviteTokenProvider, SurveyInviteTokenProvider>();

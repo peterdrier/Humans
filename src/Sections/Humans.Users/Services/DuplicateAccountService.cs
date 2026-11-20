@@ -29,20 +29,25 @@ internal sealed class DuplicateAccountService(
         // Tombstones must stay absent: a merged account keeps its legacy User.Email column, so it
         // would re-collide with its own survivor and the pair would reappear forever.
         var users = allInfos
-            .Where(u => !string.IsNullOrEmpty(u.Email))
+            .Where(u => !string.IsNullOrEmpty(u.IdentityEmailColumn) || u.UserEmails.Count > 0)
             .ToList();
 
         var emailToUsers = new Dictionary<string, List<(Guid UserId, string Source)>>(StringComparer.Ordinal);
 
         foreach (var u in users)
         {
-            var normalized = EmailNormalization.NormalizeForComparison(u.Email!);
-            if (!emailToUsers.TryGetValue(normalized, out var list))
+            // The raw column, not the resolved Email: once a user has another verified row, the resolved
+            // value hides a legacy address that has since been verified on a second account.
+            if (!string.IsNullOrEmpty(u.IdentityEmailColumn))
             {
-                list = [];
-                emailToUsers[normalized] = list;
+                var normalized = EmailNormalization.NormalizeForComparison(u.IdentityEmailColumn);
+                if (!emailToUsers.TryGetValue(normalized, out var list))
+                {
+                    list = [];
+                    emailToUsers[normalized] = list;
+                }
+                list.Add((u.Id, $"User.Email ({u.IdentityEmailColumn})"));
             }
-            list.Add((u.Id, $"User.Email ({u.Email})"));
 
             foreach (var ue in u.UserEmails)
             {
@@ -143,16 +148,16 @@ internal sealed class DuplicateAccountService(
             var low = ids[0];
             var high = ids[1];
             var flagged = await auditViewer.GetFilteredAsync(
-                entityType: nameof(User), entityId: low, userId: null,
+                entityType: AuditSubjectTypes.User, entityId: low, userId: null,
                 actions: [UsersAuditActions.DuplicateAccountFlagged.Name], limit: 100, ct: ct);
             if (flagged.Any(e => e.RelatedEntityId == high))
                 continue;
 
             await auditLogService.LogAsync(
-                UsersAuditActions.DuplicateAccountFlagged, nameof(User), low,
+                UsersAuditActions.DuplicateAccountFlagged, AuditSubjectTypes.User, low,
                 $"Flagged as a duplicate-account candidate: shares an email address with {high}.",
                 ScanJobName,
-                relatedEntityId: high, relatedEntityType: nameof(User));
+                relatedEntityId: high, relatedEntityType: AuditSubjectTypes.User);
         }
     }
 

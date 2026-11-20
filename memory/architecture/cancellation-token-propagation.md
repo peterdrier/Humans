@@ -29,7 +29,7 @@ and no compensation for.
   cancellable. Integrity first, cost second.
 - **Irreversible multi-step writes detach inside the service too:** once step 1 has committed at the
   vendor, use a local `CancellationToken.None` for the rest
-  (`TicketTransferVendorExchange.WriteToVendorAsync`).
+  (`TicketTransferService.WriteToVendorAsync`).
 - There is no user-operated "cancel this sync" affordance today, so no call site may claim genuine
   caller cancellation.
 

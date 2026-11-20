@@ -236,7 +236,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
             Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
                 .ThrowsAsync(unavailable);
         else
-            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(unavailable));
 
         var id = (await NewService().ApplyAsync(SeedUser(), new WorkgroupApplication(
@@ -251,7 +251,7 @@ public sealed class WorkgroupServiceRegistrationTests : WorkgroupsTestHarness
     public async Task Register_EmailRecipientLookupFailureStillRequestsDriveAccessSync()
     {
         var workgroup = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied, driveFolderId: null);
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(
                 new InvalidOperationException("Email recipient lookup unavailable")));
 

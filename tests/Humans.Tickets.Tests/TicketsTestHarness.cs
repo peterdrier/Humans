@@ -74,10 +74,10 @@ public abstract class TicketsTestHarness : IDisposable
             .Returns(call => new ValueTask<UserInfo?>(
                 Db.Users.FirstOrDefault(u => u.Id == call.Arg<Guid>()) is { } u ? UserInfoFor(u) : null));
 
-        userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                var ids = call.Arg<IEnumerable<Guid>>().ToList();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids.Count == 0
                     ? new Dictionary<Guid, UserInfo>()
                     : Db.Users.Where(u => ids.Contains(u.Id)).ToDictionary(u => u.Id, UserInfoFor);

@@ -31,9 +31,9 @@ public sealed class HoldedPurchaseDocSyncTests
         var callLog = Substitute.For<IHoldedCallLog>();
         callLog.DrainAll().Returns([]);
         _service = new Service(new Repository(new TestDbContextFactory<HoldedDbContext>(options)), _client, callLog,
-            new FakeClock(FixedNow), Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            new FakeClock(FixedNow), Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
         _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Full(ci.Arg<string>(), $"notes {ci.Arg<string>()}"));
+            .Returns(ci => Full($"notes {ci.Arg<string>()}"));
     }
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
@@ -51,15 +51,8 @@ public sealed class HoldedPurchaseDocSyncTests
         IsDraft = draft,
     };
 
-    private static HoldedPurchaseDocumentDto Full(string id, string? notes) => new()
+    private static HoldedPurchaseDocumentDto Full(string? notes) => new()
     {
-        Id = id,
-        DocNumber = id,
-        Subtotal = 0m,
-        Tax = 0m,
-        Total = 0m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 0m,
         Notes = notes,
     };
 

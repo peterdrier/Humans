@@ -57,6 +57,8 @@ None — Search owns no tables. It is a read-only fan-out over five other sectio
 
 ## Invariants
 
+- Bucket helpers have no varying limit: every owning-section read receives the same unbounded cap. The Humans bucket calls Users directly; the other helpers only map section search hits.
+
 - A query shorter than 2 characters after trim short-circuits to an empty `GlobalSearchResults` — no section is called.
 - `onlyType` skips the other four sections entirely — not called, rather than called and discarded.
 - **Every hit arrives pre-scored by its owning section; `SearchService` never rescores.** Teams/Camps/Shifts/Events score against `StringSearchExtensions.NameMatchScore` in `Humans.Base` (exact 100, prefix 80, contains 60; Events halves the tiers for a Description-only match). Humans arrive from `PersonSearchMatcher`, which adds a whole-name-prefix tier (85) and a non-name public-field tier (40) — so a Humans score of 85 or 40 is correct, not a defect. A GUID hit scores 100 in every bucket.

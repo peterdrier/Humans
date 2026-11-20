@@ -41,6 +41,7 @@ internal sealed class WorkspaceUserDirectoryClient(
         var service = await GetDirectoryServiceAsync();
         var accounts = new List<WorkspaceUserAccount>();
         string? pageToken = null;
+        var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -53,6 +54,10 @@ internal sealed class WorkspaceUserDirectoryClient(
 
             var response = await request.ExecuteAsync(ct);
 
+            pageToken = response.NextPageToken;
+            if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                throw new InvalidOperationException("Google accounts returned a repeated page token.");
+
             if (response.UsersValue is not null)
             {
                 foreach (var user in response.UsersValue)
@@ -60,8 +65,6 @@ internal sealed class WorkspaceUserDirectoryClient(
                     accounts.Add(MapToAccount(user));
                 }
             }
-
-            pageToken = response.NextPageToken;
         } while (!string.IsNullOrEmpty(pageToken));
 
         return accounts;
@@ -81,11 +84,10 @@ internal sealed class WorkspaceUserDirectoryClient(
         request.MaxResults = 1;
 
         var response = await request.ExecuteAsync(ct);
-        var user = response.UsersValue?.FirstOrDefault();
-        return user is null ? null : MapToAccount(user);
+        return response.UsersValue is { Count: > 0 } users ? MapToAccount(users[0]) : null;
     }
 
-    public async Task<WorkspaceUserAccount> ProvisionAccountAsync(
+    public async Task ProvisionAccountAsync(
         string primaryEmail,
         string firstName,
         string lastName,
@@ -115,8 +117,7 @@ internal sealed class WorkspaceUserDirectoryClient(
             newUser.RecoveryEmail = recoveryEmail;
         }
 
-        var created = await service.Users.Insert(newUser).ExecuteAsync(ct);
-        return MapToAccount(created);
+        await service.Users.Insert(newUser).ExecuteAsync(ct);
     }
 
     public async Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default)
@@ -168,8 +169,11 @@ internal sealed class WorkspaceUserDirectoryClient(
         return codes;
     }
 
-    private static WorkspaceUserAccount MapToAccount(User user)
+    private static WorkspaceUserAccount MapToAccount(User? user)
     {
+        if (user is null || string.IsNullOrWhiteSpace(user.PrimaryEmail))
+            throw new InvalidOperationException("Google Workspace returned an account without a usable primary email address.");
+
         return new WorkspaceUserAccount(
             PrimaryEmail: user.PrimaryEmail,
             FirstName: user.Name?.GivenName ?? string.Empty,

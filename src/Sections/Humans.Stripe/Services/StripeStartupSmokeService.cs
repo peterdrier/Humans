@@ -72,9 +72,9 @@ internal sealed class StripeStartupSmokeService(IOptions<StripeSettings> setting
         }
         catch (StripeException ex)
         {
-            logger.LogWarning(ex,
-                "Stripe {Key} key probe failed. Stripe error: {Code} {Type}",
-                key, ex.StripeError?.Code, ex.StripeError?.Type);
+            logger.LogWarning(
+                "Stripe {Key} key probe failed. Stripe error: {Code} {Type}: {Reason}",
+                key, ex.StripeError?.Code, ex.StripeError?.Type, ex.Message);
         }
         catch (OperationCanceledException)
         {
@@ -82,7 +82,7 @@ internal sealed class StripeStartupSmokeService(IOptions<StripeSettings> setting
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Stripe {Key} key probe failed unexpectedly.", key);
+            logger.LogError(ex, "Stripe {Key} key probe failed unexpectedly.", key);
         }
     }
 

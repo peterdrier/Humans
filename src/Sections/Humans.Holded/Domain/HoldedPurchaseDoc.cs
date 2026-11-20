@@ -14,7 +14,7 @@ internal sealed class HoldedPurchaseDoc
     public string? ContactId { get; set; }
     public string? Description { get; set; }
 
-    /// <summary>The document's Europe/Madrid date.</summary>
+    /// <summary>The document's date in the org time zone.</summary>
     public LocalDate Date { get; set; }
 
     public decimal Subtotal { get; set; }

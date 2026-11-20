@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Net;
 using System.Globalization;
 using System.Text;
@@ -15,18 +16,18 @@ namespace Humans.Holded.Tests.Services;
 
 public class HoldedClientReadTests
 {
-    private static HoldedClient Make(StubHandler handler, ILogger<HoldedClient>? logger = null) =>
+    private static HoldedClient Make(StubHandler handler, ILogger<HoldedClient>? logger = null, IOrgTimeZone? zone = null) =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             logger ?? NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
-            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), zone ?? FixedOrgTimeZone.Madrid);
 
     [HumansFact]
-    public async Task ListExpenseAccounts_parses_num_and_name()
+    public async Task ListExpenseAccounts_reads_identity_without_parsing_unused_name()
     {
-        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000.0,"archived":false}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"a1","name":42,"account_num":62900000.0,"archived":false}],"cursor":null,"has_more":false}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
@@ -34,7 +35,6 @@ public class HoldedClientReadTests
 
         accounts.Should().HaveCount(1);
         accounts[0].Id.Should().Be("a1");
-        accounts[0].Name.Should().Be("Otros servicios");
         accounts[0].AccountNum.Should().Be(62900000);
     }
 
@@ -158,6 +158,18 @@ public class HoldedClientReadTests
         var line = doc.Lines[0];
         line.AccountId.Should().Be("acc-629");
         line.Tags.Should().ContainSingle("adminstaff");
+    }
+
+    [HumansFact]
+    public async Task ListPurchaseDocuments_reads_dates_in_the_org_zone()
+    {
+        var json = """{"items":[{"id":"doc-1","document_number":"F001","contact_name":"Alice","date":"2026-05-14","subtotal":"1.00","tax":"0.00","total":"1.00","payments_pending":"0.00","currency":"eur","lines":[]}],"cursor":null,"has_more":false}""";
+        var lisbon = DateTimeZoneProviders.Tzdb["Europe/Lisbon"];
+
+        var docs = await Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)), zone: new FixedOrgTimeZone(lisbon))
+            .ListPurchaseDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        docs.Single().Date.Should().Be(new LocalDate(2026, 5, 14).AtStartOfDayInZone(lisbon).ToInstant());
     }
 
     [HumansFact]
@@ -613,11 +625,13 @@ public class HoldedClientReadTests
         account.Archived.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task GetUsage_parses_period_and_usage()
+    [HumansTheory]
+    [Xunit.InlineData(0L)]
+    [Xunit.InlineData(36L)]
+    public async Task GetUsage_parses_period_and_usage(long count)
     {
-        var json = """
-        {"type":"automation_token","period":"2026-08","usage":36,"limit":2000000,
+        var json = $$"""
+        {"type":"automation_token","period":"2026-08","usage":{{count}},"limit":2000000,
          "count":1,"secondary_usages":{"api_v1_legacy_1":35},"user_usages":[],
          "next_plan":null,"next_limit":null}
         """;
@@ -626,7 +640,21 @@ public class HoldedClientReadTests
         var usage = await client.GetUsageAsync(Xunit.TestContext.Current.CancellationToken);
 
         usage.Period.Should().Be("2026-08");
-        usage.Usage.Should().Be(36);
+        usage.Usage.Should().Be(count);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("{\"period\":\"2026-08\"}")]
+    [Xunit.InlineData("{\"period\":\"2026-08\",\"usage\":null}")]
+    [Xunit.InlineData("{\"usage\":36}")]
+    [Xunit.InlineData("{\"status\":0,\"message\":\"error\"}")]
+    public async Task GetUsage_rejects_incomplete_readings(string json)
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = () => client.GetUsageAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]

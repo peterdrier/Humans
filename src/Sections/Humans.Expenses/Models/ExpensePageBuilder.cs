@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using Humans.Base.Helpers;
 using Humans.Budget.Contracts;
@@ -12,16 +13,17 @@ using NodaTime;
 namespace Humans.Expenses.Models;
 
 internal sealed class ExpensePageBuilder(
+    IOrgTimeZone orgTimeZone,
     IExpenseReportManagement service,
+    IExpenseReview review,
     IBudgetService budgetService,
     IFinanceService finance,
     IPreapprovalService preapprovals,
     IClock clock,
     IStringLocalizer<ExpensesResource> localizer)
 {
-    /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    internal LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
+    internal LocalDate Today => clock.GetCurrentInstant().InZone(OrgZone).Date;
 
     public async Task<ExpensesIndexViewModel> BuildIndexAsync(UserInfo viewer, CancellationToken ct = default)
     {
@@ -33,7 +35,7 @@ internal sealed class ExpensePageBuilder(
 
         var bookingLabels = await ResolveBookingLabelsAsync(reports, ct);
 
-        var coordinatorQueue = await service.GetCoordinatorQueueAsync(userId, ct);
+        var coordinatorQueue = await review.GetCoordinatorQueueAsync(userId, ct);
         var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
         var openGrants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct))
             .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
@@ -86,7 +88,7 @@ internal sealed class ExpensePageBuilder(
             BookingLabels = await ResolveBookingLabelsAsync(reports, ct),
             Grants = await ResolveGrantsAsync(reports, ct),
             FailedHoldedPushReportIds = isFinanceAdmin
-                ? (await service.GetFailedHoldedPushReportIdsAsync(ct)).ToHashSet()
+                ? (await review.GetFailedHoldedPushReportIdsAsync(ct)).ToHashSet()
                 : [],
             IsFinanceAdmin = isFinanceAdmin,
         };

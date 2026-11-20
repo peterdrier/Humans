@@ -98,4 +98,8 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Mostra al·lèrgies i intoleràncies</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Els detalls d'al·lèrgies i intoleràncies estan ocults. Mostrar-los queda registrat al registre d'auditoria.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Mostrar-los queda registrat al registre d'auditoria.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Title" xml:space="preserve"><value>Ens expliques les teves preferències alimentàries?</value></data>
+  <data name="Cantina_DietaryMissingBanner_Body" xml:space="preserve"><value>Estàs en un torn llarg. Si ens expliques les teves preferències alimentàries, la cantina pot planificar els teus àpats. És opcional.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Cta" xml:space="preserve"><value>Digues-nos-ho ara</value></data>
+  <data name="Cantina_DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefereixo no respondre</value></data>
 </root>

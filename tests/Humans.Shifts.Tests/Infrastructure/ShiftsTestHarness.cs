@@ -157,11 +157,11 @@ public abstract class ShiftsTestHarness : IDisposable
                 return local is null ? null : ToEventSettingsInfo(local);
             });
 
-        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+        settingsService.GetActiveEventSettings()
+            .Returns(_ =>
             {
                 var local = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
+                    ?? ShiftsDb.EventSettings.FirstOrDefault(e => e.IsActive);
                 return local is null ? null : ToEventSettingsInfo(local);
             });
 
@@ -187,10 +187,10 @@ public abstract class ShiftsTestHarness : IDisposable
     {
         var svc = Substitute.For<IUserService>();
 
-        svc.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        svc.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var ids = callInfo.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = Db.Users
                     .Where(u => ids.Contains(u.Id))
                     .ToList()

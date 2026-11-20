@@ -108,7 +108,7 @@
                     @foreach (var id in Model.ManagerUserIds.Distinct())
                     {
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <vc:human user-id="@id" link="None" />
+                            <vc:human user-id="@id" />
                             <input type="hidden" name="ManagerUserIds" value="@id" />
                             <button type="button" class="btn btn-sm btn-outline-secondary human-selection-remove">✕</button>
                         </li>

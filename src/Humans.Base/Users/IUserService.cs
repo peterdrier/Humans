@@ -21,10 +21,10 @@ public interface IUserService
 
     /// <summary>
     /// Keyed by the requested id, valued by the resolved record: all three ids of an A→B→C chain map to C. Ids with
-    /// no user are absent.
+    /// no user are absent. Duplicates in <paramref name="userIds"/> are fine; callers need not de-duplicate.
     /// </summary>
     ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-        IReadOnlyCollection<Guid> userIds,
+        IEnumerable<Guid> userIds,
         CancellationToken ct = default);
 
     /// <summary>

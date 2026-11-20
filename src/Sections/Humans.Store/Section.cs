@@ -9,6 +9,7 @@ using Humans.Store.Authorization;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Services;
+using Humans.Store.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,8 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionAdminTiles,
-    ISectionPolicies
+    ISectionPolicies,
+    ISectionSettings
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -33,13 +35,14 @@ public sealed class Section :
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, StoreAuditActions>();
-        services.Configure<StoreSectionOptions>(configuration.GetSection(StoreSectionOptions.Section));
 
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
 
         services.AddSingleton<IStoreRepository, Repository>();
         services.AddScoped<Service>();
-        services.AddScoped<IStoreAccountingRead, StoreOrderReader>();
+        services.AddScoped<CatalogService>();
+        services.AddScoped<InvoiceService>();
+        services.AddScoped<IStoreAccountingRead>(sp => sp.GetRequiredService<Service>());
         services.AddScoped<StoreTransferBooking>();
 
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
@@ -65,7 +68,7 @@ public sealed class Section :
 
     private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
+        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
         if (activeEvent is not { Year: > 0 })
             return new AdminTileValue("", Detail: "no active event", Secondary: "—");
 
@@ -83,4 +86,9 @@ public sealed class Section :
         options.AddPolicy(StorePolicies.Manage, policy =>
             policy.RequireRole(StoreRoles.StoreAdmin, FinanceRoles.FinanceAdmin, RoleNames.Admin));
     }
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("store", "Settings_TabStore", typeof(StoreSettingsTabViewComponent), StorePolicies.Manage)
+    ];
 }

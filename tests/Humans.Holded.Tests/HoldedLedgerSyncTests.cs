@@ -37,7 +37,7 @@ public sealed class HoldedLedgerSyncTests
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedAccountDto>());
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
     }
 
     private static HoldedLedgerLineDto Dto(int entry, int line, int account, Instant date,
@@ -137,7 +137,7 @@ public sealed class HoldedLedgerSyncTests
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(async Task<IReadOnlyList<HoldedAccountDto>> (_) => { await PrepareAsync(SyncPath.Accounts); return []; });
         var service = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
         Task RunAsync() => path switch
         {
             SyncPath.Ledger => service.SyncLedgerAsync(ct: shutdown.Token),
@@ -194,7 +194,7 @@ public sealed class HoldedLedgerSyncTests
             .Returns(async _ => await shutdown.CancelAsync());
         StubWindowFetch();
         var service = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
         Func<Task> action = chart ? () => service.SyncChartAsync(shutdown.Token)
             : () => service.SyncAccountLedgerAsync(123, shutdown.Token);
 
@@ -212,8 +212,8 @@ public sealed class HoldedLedgerSyncTests
         var canceled = new OperationCanceledException("Call log save canceled");
         repository.AddApiCallsAsync(Arg.Any<IReadOnlyList<HoldedApiCall>>(), CancellationToken.None)
             .Returns(Task.FromException(canceled));
-        var sync = new HoldedMirrorSync(repository, _client, _callLog, new FakeClock(FixedNow),
-            NullLogger<Service>.Instance, new HoldedAccountReader(repository));
+        var sync = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
 
         var action = () => sync.DrainCallLogAsync(TestContext.Current.CancellationToken);
         (await action.Should().ThrowAsync<InvalidOperationException>()).Which.InnerException.Should().BeSameAs(canceled);
@@ -235,7 +235,7 @@ public sealed class HoldedLedgerSyncTests
             .Returns(async _ => await shutdown.CancelAsync());
         StubWindowFetch();
         var service = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
 
         var action = () => service.SyncLedgerAsync(ct: shutdown.Token);
         await action.Should().ThrowAsync<OperationCanceledException>();
@@ -391,7 +391,7 @@ public sealed class HoldedLedgerSyncTests
         using var cancellation = new CancellationTokenSource();
         var logger = new CapturingLogger<Service>();
         var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), logger);
+            Options.Create(new HoldedSectionOptions()), logger, FixedOrgTimeZone.Madrid);
         _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ =>
             {
@@ -417,7 +417,7 @@ public sealed class HoldedLedgerSyncTests
         using var cancellation = new CancellationTokenSource();
         var logger = new CapturingLogger<Service>();
         var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), logger);
+            Options.Create(new HoldedSectionOptions()), logger, FixedOrgTimeZone.Madrid);
         _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>());
         _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
         _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())

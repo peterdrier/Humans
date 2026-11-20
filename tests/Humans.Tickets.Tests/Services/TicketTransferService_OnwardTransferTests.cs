@@ -43,10 +43,10 @@ public sealed class TicketTransferService_OnwardTransferTests
             _auditLog,
             _clock, NullLogger<TicketTransferService>.Instance);
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var ids = callInfo.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids.ToDictionary(
                     id => id,
                     id => UserInfoFixtures.FromUser(new User { Id = id, DisplayName = id.ToString() }));

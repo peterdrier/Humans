@@ -33,7 +33,7 @@ public sealed class HoldedPublicReadsTests
         var callLog = Substitute.For<IHoldedCallLog>();
         callLog.DrainAll().Returns([]);
         _service = new Service(_repo, _client, callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
     }
 
     private static Instant Day(int month, int day) =>
@@ -82,79 +82,6 @@ public sealed class HoldedPublicReadsTests
     {
         _client.IsConfigured.Returns(configured);
         _service.IsConfigured.Should().Be(configured);
-    }
-
-    [HumansFact]
-    public async Task GetEntry_returns_every_leg_with_the_entry_id_and_tick()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        await SeedAsync(ct,
-            Line(7, 2, 62900300, "purchase", debit: 121m, entryId: "e7", isChecked: true),
-            Line(7, 1, 40000099, "purchase", credit: 121m, entryId: "e7"),
-            Line(8, 1, 57200001, "entry", debit: 5m));
-
-        var entry = await _service.GetEntryAsync(7, ct);
-
-        entry.Select(l => l.Line).Should().Equal(1, 2);
-        entry.Should().OnlyContain(l => l.EntryId == "e7");
-        entry[1].Checked.Should().BeTrue();
-        entry[0].Checked.Should().BeNull("a line not re-synced since the column arrived has no tick to report");
-        (await _service.GetEntryAsync(99, ct)).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPurchaseLines_keeps_purchase_lines_on_the_account_matching_the_prefix()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        await SeedAsync(ct,
-            Line(1, 1, 40000004, "purchase", credit: 50m, description: "Purchase  Expense report 12"),
-            Line(2, 1, 40000004, "purchase", credit: 50m, description: "Purchase  Expense report 12"),
-            Line(3, 1, 40000004, "purchase", credit: 9m, description: "Purchase  Truck"),
-            Line(4, 1, 40000004, "payment", debit: 50m, description: "Purchase  Expense report 12"),
-            Line(5, 1, 40000005, "purchase", credit: 50m, description: "Purchase  Expense report 12"));
-
-        (await _service.GetPurchaseLinesAsync(40000004, ct: ct)).Should().HaveCount(3);
-        var matched = await _service.GetPurchaseLinesAsync(40000004, "Purchase  Expense report", ct);
-        matched.Select(l => l.EntryNumber).Should().Equal(1, 2);
-    }
-
-    [HumansFact]
-    public async Task GetOpenDocumentAmounts_is_purchases_less_refunds_and_payments_per_account_in_range()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        await SeedAsync(ct,
-            Line(1, 1, 40000004, "purchase", credit: 121m),
-            Line(2, 1, 40000004, "payment", debit: 90m),
-            Line(7, 1, 40000004, "purchaserefund", debit: 10m),
-            Line(3, 1, 40000004, "entry", debit: 21m),          // a journal entry is not a payment
-            Line(4, 1, 41000001, "purchase", credit: 10m),
-            Line(5, 1, 41000002, "payment", debit: 3m),         // paid with no purchase mirrored
-            Line(6, 1, 62900300, "purchase", debit: 121m));     // outside the range
-
-        var open = await _service.GetOpenDocumentAmountsAsync(40000000, 41999999, ct);
-
-        open.Should().BeEquivalentTo(new Dictionary<int, decimal>
-        {
-            [40000004] = 21m,
-            [41000001] = 10m,
-            [41000002] = -3m,
-        });
-    }
-
-    [HumansFact]
-    public async Task GetSumsByAccount_sums_the_inclusive_madrid_window_and_zero_fills()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        await SeedAsync(ct,
-            Line(1, 1, 62900300, "purchase", debit: 100m, date: Day(3, 1)),
-            Line(2, 1, 62900300, "purchase", debit: 50m, date: Day(3, 31)),
-            Line(3, 1, 62900300, "purchase", debit: 7m, date: Day(4, 1)),
-            Line(4, 1, 62900300, "purchaserefund", credit: 20m, date: Day(3, 15)));
-
-        var sums = await _service.GetSumsByAccountAsync(
-            new HashSet<int> { 62900300, 62900301 }, new LocalDate(2026, 3, 1), new LocalDate(2026, 3, 31), ct);
-
-        sums.Should().BeEquivalentTo(new Dictionary<int, decimal> { [62900300] = 130m, [62900301] = 0m });
     }
 
     [HumansFact]

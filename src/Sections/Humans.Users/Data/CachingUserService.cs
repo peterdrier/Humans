@@ -177,12 +177,12 @@ internal sealed class CachingUserService(
 
     /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
         // Warm first: a cold cache turns every requested id into a per-row load.
         await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
-        var result = new Dictionary<Guid, UserInfo>(userIds.Count);
+        var result = new Dictionary<Guid, UserInfo>();
         foreach (var id in userIds.Distinct())
         {
             var info = await GetAsync(id, ct).ConfigureAwait(false);

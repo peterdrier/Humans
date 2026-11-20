@@ -101,10 +101,16 @@ internal sealed class AccountMergeService(
         if (survivor is null) return new(Refusal: $"Survivor user {survivorUserId} not found.");
         var archived = await userService.GetRawUserInfoAsync(archivedUserId, ct);
         if (archived is null) return new(Refusal: $"Archived user {archivedUserId} not found.");
-        if (survivor.IsMerged)
+        if (survivor.State == UserState.Deleted || survivor.IsGdprAnonymized)
+            return new(Refusal: $"Survivor user {survivorUserId} is deleted and cannot be merged.");
+        if (survivor.IsTombstone)
             return new(Refusal: $"Survivor user {survivorUserId} is already tombstoned.");
-        if (archived.IsMerged)
-            return new(Refusal: $"Archived user {archivedUserId} is already tombstoned (merged into {archived.MergedToUserId}).");
+        if (archived.State == UserState.Deleted || archived.IsGdprAnonymized)
+            return new(Refusal: $"Archived user {archivedUserId} is deleted and cannot be merged.");
+        if (archived.IsTombstone)
+            return new(Refusal: archived.MergedToUserId is { } mergedTo
+                ? $"Archived user {archivedUserId} is already tombstoned (merged into {mergedTo})."
+                : $"Archived user {archivedUserId} is already tombstoned.");
 
         ct.ThrowIfCancellationRequested();
         // Section writes commit independently: finish the fold even if the admin stops watching.
@@ -134,10 +140,10 @@ internal sealed class AccountMergeService(
             // 4. Audit.
             await auditLogService.LogAsync(
                 UsersAuditActions.AccountMergeAccepted,
-                nameof(User), archivedUserId,
+                AuditSubjectTypes.User, archivedUserId,
                 $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
                 adminUserId,
-                relatedEntityId: survivorUserId, relatedEntityType: nameof(User));
+                relatedEntityId: survivorUserId, relatedEntityType: AuditSubjectTypes.User);
 
             // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
             await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);

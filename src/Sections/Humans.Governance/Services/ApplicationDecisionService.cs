@@ -19,6 +19,8 @@ using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 
 using Humans.Teams.Contracts;
+using System.Globalization;
+using System.Resources;
 
 namespace Humans.Governance.Services;
 
@@ -37,8 +39,6 @@ internal sealed class ApplicationDecisionService(
     IClock clock,
     ILogger<ApplicationDecisionService> logger) : IGovernanceManagement, IUserDataContributor, IUserMerge
 {
-    private readonly ApplicationReader reader = new(repository, userService, roleAssignmentService);
-    private readonly ApplicationDecisionNotices notices = new(userService, emailService, emailMessages, notificationService, logger);
     private static readonly TrackedLock SubmissionLock = new("Governance.SubmitApplication");
 
     internal const string Applications = "Applications";
@@ -78,7 +78,7 @@ internal sealed class ApplicationDecisionService(
             await syncJob.SyncMembershipForUserAsync(
                 application.UserId, SystemTeamType.Asociados, cancellationToken);
 
-        await notices.SendApprovalAsync(application, cancellationToken);
+        await SendApprovalAsync(application, cancellationToken);
 
         return new ApplicationDecisionResult(true);
     }
@@ -109,7 +109,7 @@ internal sealed class ApplicationDecisionService(
 
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
-        await notices.SendRejectionAsync(application, reason, cancellationToken);
+        await SendRejectionAsync(application, reason, cancellationToken);
 
         return new ApplicationDecisionResult(true);
     }
@@ -164,13 +164,6 @@ internal sealed class ApplicationDecisionService(
             "Application {ApplicationId} {Decision} by {UserId}",
             application.Id, decision, reviewerUserId);
     }
-
-    public Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
-        Guid userId, CancellationToken ct = default) => reader.GetUserApplicationsAsync(userId, ct);
-
-    public Task<ApplicationUserDetailDto?> GetUserApplicationDetailAsync(
-        Guid applicationId, Guid userId, CancellationToken ct = default) =>
-        reader.GetUserApplicationDetailAsync(applicationId, userId, ct);
 
     public ApplicationDecisionResult ValidateSubmission(
         MembershipTier tier, string? motivation,
@@ -272,10 +265,6 @@ internal sealed class ApplicationDecisionService(
         return new ApplicationDecisionResult(true);
     }
 
-    public Task<(IReadOnlyList<ApplicationAdminRowDto> Items, int TotalCount)> GetFilteredApplicationsAsync(
-        string? statusFilter, string? tierFilter, Guid? userId, int page, int pageSize, CancellationToken ct = default) =>
-        reader.GetFilteredApplicationsAsync(statusFilter, tierFilter, userId, page, pageSize, ct);
-
     /// <summary>
     /// Approved applications whose stored expiry disagrees with the calculator for their
     /// approval date. Temporary: repairs rows approved under the pre-September-2026 rule.
@@ -321,18 +310,6 @@ internal sealed class ApplicationDecisionService(
         logger.LogInformation("Term expiry corrected on {Count} applications by {UserId}", drift.Count, adminUserId);
         return drift.Count;
     }
-
-    public Task<ApplicationAdminDetailDto?> GetApplicationDetailAsync(
-        Guid applicationId, CancellationToken ct = default) => reader.GetApplicationDetailAsync(applicationId, ct);
-
-    public Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
-        Guid userId, CancellationToken ct = default) => reader.GetSubmittedApplicationForUserAsync(userId, ct);
-
-    public Task<BoardVotingDashboardData> GetBoardVotingDashboardAsync(CancellationToken ct = default) =>
-        reader.GetBoardVotingDashboardAsync(ct);
-
-    public Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(Guid applicationId, CancellationToken ct = default) =>
-        reader.GetBoardVotingDetailAsync(applicationId, ct);
 
     public async Task<ApplicationDecisionResult> CastBoardVoteAsync(
         Guid applicationId,
@@ -385,10 +362,6 @@ internal sealed class ApplicationDecisionService(
 
     /// <summary>One Board member's unvoted-application count; this service is its only reader and evicter.</summary>
     internal static string VotingBadgeCacheKey(Guid boardMemberUserId) => $"NavBadge:Voting:{boardMemberUserId:N}";
-
-    public Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default) => reader.GetAdminStatsAsync(ct);
-
-    public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) => reader.GetPendingApplicationCountAsync(ct);
 
     public async Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
         LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default)
@@ -483,4 +456,329 @@ internal sealed class ApplicationDecisionService(
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.ScrubFreeTextForUserAsync(userId, clock.GetCurrentInstant(), ct);
 
+    private static readonly ResourceManager NoticeResources = new(typeof(GovernanceResource));
+
+    internal async Task SendApprovalAsync(MemberApplication application, CancellationToken cancellationToken)
+    {
+        var (recipientId, culture) = await SendDecisionEmailAsync(
+            application,
+            "approval",
+            (recipientEmail, user, language) => emailMessages.ApplicationApproved(
+                user.Id,
+                recipientEmail,
+                user.BurnerName,
+                application.MembershipTier,
+                language),
+            cancellationToken);
+
+        await SendDecisionNotificationAsync(
+            application,
+            recipientId,
+            GovernanceNotificationSources.ApplicationApproved,
+            "Governance_Notification_ApplicationApproved",
+            "Governance_Notification_ApplicationApprovedBody",
+            "ApplicationApproved",
+            culture,
+            cancellationToken);
+    }
+
+    internal async Task SendRejectionAsync(MemberApplication application, string reason, CancellationToken cancellationToken)
+    {
+        var (recipientId, culture) = await SendDecisionEmailAsync(
+            application,
+            "rejection",
+            (recipientEmail, user, language) => emailMessages.ApplicationRejected(
+                user.Id,
+                recipientEmail,
+                user.BurnerName,
+                application.MembershipTier,
+                reason,
+                language),
+            cancellationToken);
+
+        await SendDecisionNotificationAsync(
+            application,
+            recipientId,
+            GovernanceNotificationSources.ApplicationRejected,
+            "Governance_Notification_ApplicationRejected",
+            "Governance_Notification_ApplicationRejectedBody",
+            "ApplicationRejected",
+            culture,
+            cancellationToken);
+    }
+
+    private async Task<(Guid UserId, CultureInfo Culture)> SendDecisionEmailAsync(
+        MemberApplication application,
+        string decisionName,
+        Func<string, UserInfo, string, EmailMessage> buildMessage,
+        CancellationToken cancellationToken)
+    {
+        var recipientId = application.UserId;
+        var culture = CultureInfo.GetCultureInfo("en");
+        try
+        {
+            var user = await userService.GetUserInfoAsync(application.UserId, cancellationToken);
+            if (user is null)
+                return (recipientId, culture);
+
+            recipientId = user.Id;
+            culture = CultureInfo.GetCultureInfo(user.PreferredLanguage.IsSupportedCultureCode() ? user.PreferredLanguage : "en");
+
+            var recipientEmail = user.Email;
+            if (!string.IsNullOrWhiteSpace(recipientEmail))
+            {
+                await emailService.SendAsync(buildMessage(recipientEmail, user, culture.Name));
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Skipping {DecisionName} email for application {ApplicationId} because user {UserId} has no notification-target email",
+                    decisionName, application.Id, application.UserId);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to send {DecisionName} email for {ApplicationId}",
+                decisionName, application.Id);
+        }
+        return (recipientId, culture);
+    }
+
+    private async Task SendDecisionNotificationAsync(
+        MemberApplication application,
+        Guid recipientUserId,
+        NotificationSourceDefinition source,
+        string titleKey,
+        string bodyKey,
+        string logName,
+        CultureInfo culture,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await notificationService.SendAsync(
+                source,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                string.Format(culture, NoticeResources.GetString(titleKey, culture)!, application.MembershipTier),
+                [recipientUserId],
+                body: string.Format(culture, NoticeResources.GetString(bodyKey, culture)!, application.MembershipTier),
+                actionUrl: "/Governance/Applications",
+                actionLabel: NoticeResources.GetString("Governance_Notification_ViewApplication", culture),
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to dispatch {NotificationName} notification for {ApplicationId}",
+                logName, application.Id);
+        }
+    }
+
+    public async Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var applications = await repository.GetByUserIdAsync(userId, ct);
+        return applications
+            .Select(application => new UserApplicationSnapshot(
+                application.Id,
+                application.UserId,
+                application.Status,
+                application.MembershipTier,
+                application.SubmittedAt,
+                application.ResolvedAt,
+                application.TermExpiresAt,
+                application.Motivation,
+                application.AdditionalInfo,
+                application.SignificantContribution,
+                application.RoleUnderstanding))
+            .ToList();
+    }
+
+    public async Task<ApplicationUserDetailDto?> GetUserApplicationDetailAsync(
+        Guid applicationId, Guid userId, CancellationToken ct = default)
+    {
+        var application = await repository.GetByIdAsync(applicationId, ct);
+        if (application is null || application.UserId != userId)
+            return null;
+
+        var historyDtos = ProjectHistory(application);
+
+        return new ApplicationUserDetailDto(
+            Id: application.Id,
+            Status: application.Status,
+            MembershipTier: application.MembershipTier,
+            Motivation: application.Motivation,
+            AdditionalInfo: application.AdditionalInfo,
+            SignificantContribution: application.SignificantContribution,
+            RoleUnderstanding: application.RoleUnderstanding,
+            SubmittedAt: application.SubmittedAt,
+            ResolvedAt: application.ResolvedAt,
+            ReviewedByUserId: application.ReviewedByUserId,
+            ReviewNotes: application.ReviewNotes,
+            History: historyDtos);
+    }
+
+    public async Task<(IReadOnlyList<ApplicationAdminRowDto> Items, int TotalCount)> GetFilteredApplicationsAsync(
+        string? statusFilter, string? tierFilter, Guid? userId, int page, int pageSize, CancellationToken ct = default)
+    {
+        ApplicationStatus? status = null;
+        if (!string.IsNullOrWhiteSpace(statusFilter)
+            && Enum.TryParse<ApplicationStatus>(statusFilter, ignoreCase: true, out var parsedStatus))
+        {
+            status = parsedStatus;
+        }
+
+        MembershipTier? tier = null;
+        if (!string.IsNullOrWhiteSpace(tierFilter)
+            && Enum.TryParse<MembershipTier>(tierFilter, ignoreCase: true, out var parsedTier))
+        {
+            tier = parsedTier;
+        }
+
+        var (apps, totalCount) = await repository.GetFilteredAsync(status, tier, userId, page, pageSize, ct);
+        if (apps.Count == 0)
+        {
+            return ([], totalCount);
+        }
+
+        var userIds = apps.Select(a => a.UserId);
+        var users = await userService.GetUserInfosAsync(userIds, ct);
+
+        var rows = apps.Select(a =>
+        {
+            var user = users.GetValueOrDefault(a.UserId);
+            return new ApplicationAdminRowDto(
+                Id: a.Id,
+                UserId: a.UserId,
+                UserEmail: user?.Email ?? string.Empty,
+                Status: a.Status,
+                MembershipTier: a.MembershipTier,
+                SubmittedAt: a.SubmittedAt,
+                Motivation: a.Motivation);
+        }).ToList();
+
+        return (rows, totalCount);
+    }
+
+    public async Task<ApplicationAdminDetailDto?> GetApplicationDetailAsync(
+        Guid applicationId, CancellationToken ct = default)
+    {
+        var application = await repository.GetByIdAsync(applicationId, ct);
+        if (application is null)
+            return null;
+
+        var applicant = await userService.GetUserInfoAsync(application.UserId, ct);
+        var history = ProjectHistory(application);
+
+        return new ApplicationAdminDetailDto(
+            Id: application.Id,
+            UserId: application.UserId,
+            UserEmail: applicant?.Email ?? string.Empty,
+            Status: application.Status,
+            MembershipTier: application.MembershipTier,
+            Motivation: application.Motivation,
+            AdditionalInfo: application.AdditionalInfo,
+            SignificantContribution: application.SignificantContribution,
+            RoleUnderstanding: application.RoleUnderstanding,
+            Language: application.Language,
+            SubmittedAt: application.SubmittedAt,
+            ReviewedByUserId: application.ReviewedByUserId,
+            ReviewNotes: application.ReviewNotes,
+            History: history);
+    }
+
+    public async Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var application = await repository.GetSubmittedForUserAsync(userId, ct);
+        return application is null
+            ? null
+            : new SubmittedApplicationSnapshot(
+                application.Id,
+                application.MembershipTier,
+                application.Motivation);
+    }
+
+    public async Task<BoardVotingDashboardData> GetBoardVotingDashboardAsync(
+        CancellationToken ct = default)
+    {
+        var applications = await repository.GetAllSubmittedWithVotesAsync(ct);
+
+        var rows = applications.Select(a => new BoardVotingDashboardRow(
+            ApplicationId: a.Id,
+            UserId: a.UserId,
+            MembershipTier: a.MembershipTier,
+            SubmittedAt: a.SubmittedAt,
+            Votes: ProjectBoardVotes(a))).ToList();
+
+        var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
+            RoleNames.Board, ct);
+        var boardUsersById = await userService.GetUserInfosAsync(boardMemberIds, ct);
+        var boardMembers = boardUsersById.Values
+            .Select(u => new BoardMemberInfo(u.Id, u.BurnerName))
+            .ToList();
+
+        return new BoardVotingDashboardData(rows, boardMembers);
+    }
+
+    public async Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(
+        Guid applicationId, CancellationToken ct = default)
+    {
+        var application = await repository.GetByIdAsync(applicationId, ct);
+        if (application is null)
+            return null;
+
+        var applicantInfo = await userService.GetUserInfoAsync(application.UserId, ct);
+
+        return new BoardVotingDetailData(
+            ApplicationId: application.Id,
+            UserId: application.UserId,
+            FirstName: applicantInfo?.FirstName ?? string.Empty,
+            LastName: applicantInfo?.LastName ?? string.Empty,
+            MembershipTier: application.MembershipTier,
+            Motivation: application.Motivation,
+            AdditionalInfo: application.AdditionalInfo,
+            SignificantContribution: application.SignificantContribution,
+            RoleUnderstanding: application.RoleUnderstanding,
+            SubmittedAt: application.SubmittedAt,
+            Votes: ProjectBoardVotes(application));
+    }
+
+    public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
+    {
+        var applications = await repository.GetNonWithdrawnAsync(ct);
+        return new ApplicationAdminStats(
+            applications.Count,
+            applications.Count(a => a.Status == ApplicationStatus.Approved),
+            applications.Count(a => a.Status == ApplicationStatus.Rejected),
+            applications.Count(a => a.MembershipTier == MembershipTier.Colaborador),
+            applications.Count(a => a.MembershipTier == MembershipTier.Asociado));
+    }
+
+    public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
+        repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);
+
+    private static IReadOnlyList<BoardVoteRow> ProjectBoardVotes(MemberApplication application) =>
+        application.BoardVotes
+            .Select(vote => new BoardVoteRow(
+                BoardMemberUserId: vote.BoardMemberUserId,
+                Vote: vote.Vote,
+                Note: vote.Note,
+                VotedAt: vote.VotedAt))
+            .ToList();
+
+    private static IReadOnlyList<ApplicationStateHistoryDto> ProjectHistory(MemberApplication application) =>
+        application.StateHistory
+            .Select(h => new ApplicationStateHistoryDto(
+                Status: h.Status,
+                ChangedAt: h.ChangedAt,
+                ChangedByUserId: h.ChangedByUserId,
+                Notes: h.Notes))
+            .ToList();
 }

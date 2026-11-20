@@ -1,0 +1,91 @@
+@using Microsoft.AspNetCore.Html
+@model CatalogAccountsViewModel
+@{
+    ViewData["Title"] = "Store accounts";
+}
+
+<page-header title="@($"Store accounts — {Model.Year}")">
+    <a asp-action="Catalog" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to catalog
+    </a>
+</page-header>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-4 text-muted">No products defined for @Model.Year.</div>
+    </div>
+}
+else
+{
+    <p>
+        @if (Model.MissingIncomeCount == 0)
+        {
+            <span class="text-success"><i class="fa-solid fa-check me-1"></i>Every product has an income account.</span>
+        }
+        else
+        {
+            <span class="text-warning-emphasis"><i class="fa-solid fa-triangle-exclamation me-1"></i>@Model.MissingIncomeCount of @Model.Rows.Count products have no income account. Camp invoices need one.</span>
+        }
+    </p>
+
+    Func<CatalogAccountsRow, IHtmlContent> nameCell = @<text>
+        <input type="hidden" name="rows[@item.Index].ProductId" value="@item.Product.Id" />
+        <strong>@item.Product.Name</strong>
+    </text>;
+    Func<CatalogAccountsRow, IHtmlContent> incomeCell = @<text><partial name="_AccountPicker" model="@(new AccountPickerModel($"rows[{item.Index}].Income", $"rows_{item.Index}__Income", $"Income account for {item.Product.Name}", item.Income, Model.Choices.Income))" /></text>;
+    Func<CatalogAccountsRow, IHtmlContent> costCell = @<text><partial name="_AccountPicker" model="@(new AccountPickerModel($"rows[{item.Index}].Cost", $"rows_{item.Index}__Cost", $"Cost account for {item.Product.Name}", item.Cost, Model.Choices.Cost))" /></text>;
+    Func<CatalogAccountsRow, IHtmlContent> teamUsageCell = @<text><partial name="_AccountPicker" model="@(new AccountPickerModel($"rows[{item.Index}].TeamUsage", $"rows_{item.Index}__TeamUsage", $"Dept transfers for {item.Product.Name}", item.TeamUsage, Model.Choices.TeamUsage))" /></text>;
+    Func<CatalogAccountsRow, IHtmlContent> copyCell = @<text>
+        @if (item.Index > 0)
+        {
+            <button type="button" class="btn btn-sm btn-outline-secondary js-copy-row-above" title="Copy accounts from the row above">
+                <i class="fa-solid fa-arrow-up"></i><span class="visually-hidden">Copy accounts from the row above</span>
+            </button>
+        }
+    </text>;
+
+    <form asp-action="SaveAccounts" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="year" value="@Model.Year" />
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <div class="card">
+            @{
+                var accountsTable = TableModel.For(Model.Rows)
+                    .Id("store-accounts")
+                    .Template("Product", nameCell, c => c.NoSort())
+                    .Column("VAT %", r => r.Product.VatRatePercent, c => c.Number().End().NoSort())
+                    .Column("Unit price", r => r.Product.UnitPriceEur, c => c.Currency().End().NoSort())
+                    .Template("Income account", incomeCell, c => c.NoSort().Css("w-25"))
+                    .Template("Cost account", costCell, c => c.NoSort().Css("w-25"))
+                    .Template("Dept transfers", teamUsageCell, c => c.NoSort().Css("w-25"))
+                    .Template("", copyCell, c => c.NoSort().End())
+                    .RowCss(r => r.Product.IsActive ? null : "text-muted")
+                    .Build();
+            }
+            <partial name="_Table" model="accountsTable" />
+        </div>
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk me-1"></i>Save
+            </button>
+        </div>
+    </form>
+}
+
+@section Scripts {
+    <partial name="_AccountPickerScripts" />
+    <script nonce="@Context.Items["CspNonce"]">
+        document.querySelectorAll('.js-copy-row-above').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var row = button.closest('tr');
+                var above = row.previousElementSibling;
+                if (!above) return;
+                var from = above.querySelectorAll('select.js-account-picker');
+                row.querySelectorAll('select.js-account-picker').forEach(function (select, i) {
+                    if (from[i]) select.tomselect.setValue(from[i].value);
+                });
+            });
+        });
+    </script>
+}

@@ -396,9 +396,6 @@
   <!-- ======================== -->
   <!-- Email grid               -->
   <!-- ======================== -->
-  <data name="Users_EmailGrid_AdminContextBanner" xml:space="preserve">
-    <value>E-Mails eines anderen Benutzers verwalten</value>
-  </data>
   <data name="Users_EmailGrid_AdminContextBannerNamed" xml:space="preserve">
     <value>E-Mails von {0} verwalten</value>
     <comment>{0} = target user display name</comment>
@@ -801,4 +798,7 @@
   <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
     <value>Wähle Tags aus, die zur Art von Arbeit passen, die du magst. Passende Schichten werden mit einem Stern markiert.</value>
   </data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Vorstand</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Ausstehende Kontolöschungen</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
 </root>

@@ -48,9 +48,6 @@ public sealed class DuplicateAccountServiceTests
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Test",
-            FirstName = "Test",
-            LastName = "User",
             CreatedAt = Now,
             UpdatedAt = Now,
         };
@@ -101,6 +98,22 @@ public sealed class DuplicateAccountServiceTests
         var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
         groups.Should().ContainSingle("two live accounts sharing a verified email is a real duplicate");
+    }
+
+    [HumansFact]
+    public async Task DetectDuplicatesAsync_FlagsALegacyColumnHiddenBehindAnotherVerifiedRow()
+    {
+        var legacy = Guid.NewGuid();
+        var bare = Guid.NewGuid();
+        SetUsers(
+            MakeInfo(legacy, identityEmailColumn: "old@gmail.com",
+                emails: [Email(legacy, "new@hotmail.fr", verified: true, primary: true)]),
+            MakeInfo(bare, emails: [Email(bare, "old@gmail.com", verified: true, primary: true)]));
+
+        var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        groups.Should().ContainSingle().Which.Accounts.Select(a => a.UserId)
+            .Should().BeEquivalentTo([legacy, bare]);
     }
 
     [HumansFact]

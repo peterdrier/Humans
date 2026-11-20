@@ -49,9 +49,9 @@ internal sealed class AccountProvisioningService(
             }
 
             await AuditProvisioningAsync(provisioned.Result, provisioned.ProfileBackfilled, email, source);
-            await auditLogService.LogAsync(UsersAuditActions.UserEmailDeleted, nameof(UserEmail), emailId,
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailDeleted, AuditSubjectTypes.UserEmail, emailId,
                 $"Replaced unverified email {email} with verified import account {provisioned.Result.UserId} from {source}",
-                nameof(AccountProvisioningService), relatedEntityId: userId, relatedEntityType: nameof(User));
+                nameof(AccountProvisioningService), relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
             return provisioned.Result;
         }
         finally
@@ -163,11 +163,11 @@ internal sealed class AccountProvisioningService(
         AccountProvisioningResult result, bool profileBackfilled, string email, ContactSource source)
     {
         if (result.Created)
-            return auditLogService.LogAsync(UsersAuditActions.ContactCreated, nameof(User), result.UserId,
+            return auditLogService.LogAsync(UsersAuditActions.ContactCreated, AuditSubjectTypes.User, result.UserId,
                 $"Account pre-created from {source} — {email}", nameof(AccountProvisioningService));
 
         return profileBackfilled
-            ? auditLogService.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), result.UserId,
+            ? auditLogService.LogAsync(UsersAuditActions.StubProfileBackfilled, AuditSubjectTypes.User, result.UserId,
                 $"Completed missing profile provisioning from {source}.", nameof(AccountProvisioningService))
             : Task.CompletedTask;
     }
@@ -210,7 +210,7 @@ internal sealed class AccountProvisioningService(
 
             if (await userService.EnsureStubProfileAsync(
                 existingUser.Id, burnerName, firstName, lastName, ct))
-                await auditLogService.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), existingUser.Id,
+                await auditLogService.LogAsync(UsersAuditActions.StubProfileBackfilled, AuditSubjectTypes.User, existingUser.Id,
                     "Completed missing profile after interrupted magic-link signup.", existingUser.Id);
             await userService.RecordLoginAsync(existingUser.Id, ct);
             return new MagicLinkSignupCompletionResult(

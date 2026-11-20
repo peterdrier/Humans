@@ -153,7 +153,7 @@ public sealed class IssuesControllerTests
         else
             result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
         await users.DidNotReceive().GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

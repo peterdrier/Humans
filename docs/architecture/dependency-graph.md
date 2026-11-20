@@ -122,6 +122,7 @@ graph LR
     Consent -.-> Governance
     Consent -.-> Notifications
     Consent -.-> Onboarding
+    Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
     Containers -.-> Camps
@@ -140,7 +141,6 @@ graph LR
     Development -.-> Shifts
     Development -.-> Teams
     Development -.-> Users
-    EarlyEntry -.-> Shifts
     Email --> Settings
     Email -.-> Users
     Events --> Calendar
@@ -158,6 +158,7 @@ graph LR
     Finance --> Expenses
     Finance --> Holded
     Finance --> Pleo
+    Finance --> Settings
     Finance --> Stripe
     Finance -.-> Email
     Finance -.-> Tickets
@@ -202,14 +203,7 @@ graph LR
     Monitor --> Google
     Monitor --> Settings
     Notifications --> Auth
-    Notifications --> Consent
-    Notifications --> Google
-    Notifications -.-> Camps
     Notifications -.-> Email
-    Notifications -.-> Governance
-    Notifications -.-> Shifts
-    Notifications -.-> Teams
-    Notifications -.-> Tickets
     Onboarding --> Consent
     Onboarding --> Issues
     Onboarding --> Settings
@@ -239,7 +233,6 @@ graph LR
     Search --> Users
     Shifts --> Auth
     Shifts --> Calendar
-    Shifts --> Cantina
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
@@ -276,7 +269,6 @@ graph LR
     Teams -.-> Email
     Teams -.-> Governance
     Teams -.-> Notifications
-    Teams -.-> Shifts
     Teams -.-> Tickets
     TicketTailor --> Tickets
     Tickets --> AuditLog
@@ -292,6 +284,7 @@ graph LR
     Tickets -.-> Email
     Tickets -.-> Finance
     Tickets -.-> Governance
+    Tickets -.-> Notifications
     Tickets -.-> Teams
     Tickets -.-> Users
     Users --> AuditLog

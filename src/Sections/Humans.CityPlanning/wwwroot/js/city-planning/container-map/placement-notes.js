@@ -1,12 +1,10 @@
-// Placement-notes modal: view & edit PlacementNotes + PlacementImage for a placed container.
-
 import { CONFIG }                from './config.js';
 import { updatePlacementNotes }  from './api.js';
 
 let _modalEl       = null;
 let _form          = null;
 let _openVersion   = 0;
-let _current       = null;   // container currently shown in the modal
+let _current       = null;
 let _onSaved       = null;   // callback(container.id, { placementNotes, placementImageUrl, placementImageFileName })
 let _bound         = false;
 

@@ -212,11 +212,11 @@ public sealed class CachingRideshareServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveEventId_PassesThrough()
+    public void GetActiveEventId_PassesThrough()
     {
-        _inner.GetActiveEventIdAsync(Arg.Any<CancellationToken>()).Returns(Event2027);
+        _inner.GetActiveEventId().Returns(Event2027);
 
-        (await _service.GetActiveEventIdAsync(Ct)).Should().Be(Event2027);
+        _service.GetActiveEventId().Should().Be(Event2027);
     }
 
     [HumansFact]

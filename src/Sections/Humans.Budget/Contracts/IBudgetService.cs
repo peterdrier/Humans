@@ -43,7 +43,12 @@ public sealed record BudgetGroupDetail(
     bool IsDepartmentGroup,
     bool IsTicketingGroup,
     TicketingProjectionSnapshot? TicketingProjection,
-    IReadOnlyList<BudgetCategoryDetail> Categories);
+    IReadOnlyList<BudgetCategoryDetail> Categories)
+{
+    internal decimal AllocatedAmount => Categories.Sum(category => category.AllocatedAmount);
+    internal decimal LineItemTotal => Categories.Sum(category => category.LineItemTotal);
+    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+}
 
 public sealed record BudgetCategoryDetail(
     Guid Id,
@@ -53,7 +58,11 @@ public sealed record BudgetCategoryDetail(
     ExpenditureType ExpenditureType,
     Guid? TeamId,
     int SortOrder,
-    IReadOnlyList<BudgetLineItemDetail> LineItems);
+    IReadOnlyList<BudgetLineItemDetail> LineItems)
+{
+    internal decimal LineItemTotal => LineItems.Where(item => !item.IsCashflowOnly).Sum(item => item.Amount);
+    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+}
 
 public sealed record BudgetLineItemDetail(
     Guid Id,
@@ -92,7 +101,11 @@ public sealed record BudgetCategorySnapshot(
     Guid? TeamId,
     int SortOrder,
     BudgetCategoryGroupSnapshot? BudgetGroup,
-    IReadOnlyList<BudgetCategoryLineItemSnapshot> LineItems);
+    IReadOnlyList<BudgetCategoryLineItemSnapshot> LineItems)
+{
+    internal decimal LineItemTotal => LineItems.Where(item => !item.IsCashflowOnly).Sum(item => item.Amount);
+    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+}
 
 public sealed record BudgetCategoryGroupSnapshot(
     Guid Id,

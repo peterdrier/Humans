@@ -55,15 +55,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             repo, AuditLog, Substitute.For<Humans.Teams.Contracts.ISystemTeamSync>(),
             new InMemoryFileStorage(), Notifier,
             new Lazy<ICampRoleService>(() => Substitute.For<ICampRoleService>()),
-            new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
-                Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
+            new Lazy<IEnumerable<ICampDeletionListener>>(() => []),
             Substitute.For<IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);
-        _innerSubstitute.GetActiveEventAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+        _innerSubstitute.GetActiveEvent()
+            .Returns(_ =>
             {
-                var (year, _) = await inner.GetActiveEventAsync(ci.Arg<CancellationToken>());
+                var (year, _) = inner.GetActiveEvent();
                 return (year, (Guid?)EventIdFor(year));
             });
         _innerSubstitute.GetEarlyEntriesAsync(Arg.Any<CancellationToken>())
@@ -438,14 +437,14 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     {
         // PublicYear comes from Settings, whose writes never reach this section's
         // invalidator — so it must not be served from the cached snapshot.
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
 
         (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
             .PublicYear.Should().Be(2026);
 
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2027));
 
         (await _service.GetSettingsAsync(TestContext.Current.CancellationToken))
@@ -459,7 +458,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     {
         var eeStartDate = new LocalDate(2026, 7, 7);
         var burn = BurnFixtures.Burn(year: 2026, gateOpeningDate: new LocalDate(2026, 7, 14), earlyEntryStartOffset: -7);
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(burn);
+        _settingsService.GetActiveEventSettings().Returns(burn);
         _settingsService.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([burn]);
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
@@ -478,7 +477,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     [HumansFact]
     public async Task GetEarlyEntriesAsync_NoOffsetConfigured_ReturnsEmpty()
     {
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
         await SeedSettingsAsync(publicYear: 2026, openSeasons: [2026]);
         var (_, season) = await SeedCampWithSeasonAsync(year: 2026);
@@ -854,7 +853,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         _innerSubstitute.UploadImageAsync(
                 Arg.Any<Guid>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<long>(), actorUserId: TestActorId, Arg.Any<CancellationToken>())
-            .Returns(new CampImageUploadResult(true, null, null));
+            .Returns(CampUpdateResult.Success());
         _innerSubstitute.LeaveCampAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(CampMembershipMutationResult.Success());
         _innerSubstitute.CreateCampAsync(

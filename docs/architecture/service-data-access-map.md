@@ -164,15 +164,14 @@ Every table is owned by exactly one repository; there are no HUM0025
    need: `IUserWrite`), `ITeamService` (`ITeamWrite`), `IRoleAssignmentService`
    (`IRoleAssignmentWrite`), `IConsentService`,
    `ICampService`, `ITicketService`, `IGoogleSyncService`
-   (consumed by `NotificationMeterProvider` for failed-sync-event counts;
-   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IFinanceService`
+   (foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IFinanceService`
    (writes via `IFinanceWrite`),
    `ICampaignService` (consumed by `TicketQueryService`; writes via
    `ICampaignWrite`),
    `IEventService` (consumed by `EventsCardViewComponent`
    for the camp detail page's events card),
-   `ICityPlanningService` (exposes `GetSettingsAsync` /
-   `GetRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
+   `ICityPlanningService` (exposes `IsContainerPlacementOpenAsync` /
+   `GetLegacyRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and
    Governance's `IGovernanceService`
@@ -254,11 +253,9 @@ Every table is owned by exactly one repository; there are no HUM0025
    `IMemoryCache` coupling in the Application layer.
 
 9. **Notification meters are computed, not queried.**
-   `NotificationMeterProvider` reads no tables directly — every counter
-   fans out through an owning-service interface call (`IUserService`,
-   `ITeamService`, `IGovernanceService`, `IConsentService`, `ITicketSync`,
-   `IGoogleSyncService`, `ICampService`). The meter cache expires on
-   its 2-minute TTL; nothing evicts it.
+   `NotificationMeterProvider` reads no other section: each section pushes
+   its own meters through `INotificationMeterContributor`, computing and
+   caching the counts over its own data.
 
 10. **HUM analyzers enforce the boundaries at compile time.** Roslyn
     analyzers ratchet the layering rules: `HUM0008` blocks any per-section
@@ -363,7 +360,6 @@ separately below the key table.
 
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
-| `NotificationMeters` | 2 min | Static | NotificationMeterProvider | TTL only |
 | `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |
@@ -397,7 +393,7 @@ separately below the key table.
 | `TrackedCache<Guid, RideshareSnapshot>` | Rideshare | `Rideshare.Snapshot` | Per-Event | CachingRideshareService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<byte, IReadOnlyList<WorkgroupInfo>>` | Workgroups | `Workgroups.Register` | Single entry | CachingWorkgroupService lazy load | full `Clear()` after every delegated write |
 | `TrackedCache<string, CachedVendorEventSummary>` | Tickets | `Tickets.VendorEventSummary` | Per-Entity (15-min freshness in value) | CachingTicketVendorService lazy load | own `GetOrdersAsync` pass-through (per event, after a successful pull) |
-| `TrackedCache<string, Dictionary<string, int>>` | Finance | `Finance.SepaStuckBankLines` | Single entry | `SepaBankBooking` sweep | `SepaBankBooking` (cleared when no line is stuck) |
+| `TrackedCache<string, Dictionary<string, int>>` | Finance | `Finance.SepaStuckBankLines` | Single entry | Finance `Service` sweep | Finance `Service` (cleared when no line is stuck) |
 
 ### Cache Issues / Notes
 

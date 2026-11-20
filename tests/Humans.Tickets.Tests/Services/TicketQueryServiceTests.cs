@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Humans.Tickets.Services.Stores;
 using Humans.Governance.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Controllers;
@@ -48,7 +50,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns([]);
 
         _service = new TicketQueryService(
-            _repo,
+            FixedOrgTimeZone.Madrid, _repo,
             _transferRepo,
             _budgetService,
             _campaignService,
@@ -79,6 +81,80 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         _campaignService.GetCodeTrackingAsync(Arg.Any<CancellationToken>())
             .Returns(new CampaignCodeTrackingData([], []));
+    }
+
+    [HumansTheory]
+    [InlineData(TicketDashboardRead.Recovery, true)]
+    [InlineData(TicketDashboardRead.Totals, true)]
+    [InlineData(TicketDashboardRead.Payments, true)]
+    [InlineData(TicketDashboardRead.Dates, true)]
+    [InlineData(TicketDashboardRead.Recent, true)]
+    [InlineData(TicketDashboardRead.Budget, true)]
+    [InlineData(TicketDashboardRead.Vendor, true)]
+    [InlineData(TicketDashboardRead.Vendor, false)]
+    public async Task Dashboard_preserves_request_cancellation_through_all_reads(TicketDashboardRead boundary, bool requested)
+    {
+        using var request = new CancellationTokenSource();
+        var repository = Substitute.For<ITicketRepository>();
+        var seen = new List<CancellationToken>();
+        async Task<T> ReadAsync<T>(TicketDashboardRead stage, CancellationToken ct, T value)
+        {
+            seen.Add(ct);
+            if (stage == boundary)
+            {
+                if (!requested) throw new TaskCanceledException("Vendor timeout");
+                await request.CancelAsync();
+                ct.ThrowIfCancellationRequested();
+            }
+            return value;
+        }
+        repository.ResetStaleRunningStateAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<TicketSyncState?>(TicketDashboardRead.Recovery, call.Arg<CancellationToken>(), null));
+        repository.GetDashboardTotalsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync(TicketDashboardRead.Totals, call.Arg<CancellationToken>(),
+                new TicketDashboardTotals { TicketsSold = 1, GrossRevenue = 10m }));
+        repository.GetPaidOrderPaymentMethodsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<IReadOnlyList<PaidOrderPaymentMethodRow>>(TicketDashboardRead.Payments, call.Arg<CancellationToken>(), []));
+        repository.GetOrderDateAttendeeCountsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<IReadOnlyList<OrderDateAndCount>>(TicketDashboardRead.Dates, call.Arg<CancellationToken>(), []));
+        repository.GetRecentOrdersAsync(10, Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<IReadOnlyList<RecentOrder>>(TicketDashboardRead.Recent, call.Arg<CancellationToken>(), []));
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<BudgetYearDetail?>(TicketDashboardRead.Budget, call.Arg<CancellationToken>(), null));
+        var vendor = Substitute.For<ITicketVendorService>();
+        vendor.GetEventSummaryAsync("event", Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
+        var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
+            _shiftManagementService, _auditLog, Clock, _participations);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ITicketManagement>(CachingTicketQueryService.InnerServiceKey, (_, _) => service);
+        await using var provider = services.BuildServiceProvider();
+        var decorator = new CachingTicketQueryService(provider.GetRequiredService<IServiceScopeFactory>(),
+            Clock, NullLogger<CachingTicketQueryService>.Instance);
+        var logger = new Humans.Testing.CapturingLogger<TicketDashboardPageBuilder>();
+        var dashboard = new TicketDashboardPageBuilder(vendor,
+            Options.Create(new TicketVendorSettings { EventId = "event", ApiKey = "key" }), decorator, logger);
+        var controller = new TicketController(decorator, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, _userService, NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }
+        };
+        var load = () => controller.Index();
+
+        if (requested)
+        {
+            (await load.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
+            logger.Entries.Should().BeEmpty();
+        }
+        else
+        {
+            var result = (await load()).Should().BeOfType<ViewResult>().Subject;
+            result.Model.Should().BeOfType<TicketDashboardViewModel>().Which.TotalCapacity.Should().Be(0);
+            logger.Entries.Should().ContainSingle();
+        }
+        seen.Should().OnlyContain(ct => ct == request.Token);
     }
 
     [HumansTheory]
@@ -116,7 +192,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     [InlineData("matched", true)]
     [InlineData("emails", true)]
     [InlineData("aliases", true)]
-    [InlineData("hold", true)]
     [InlineData("matched", false)]
     [InlineData("emails", false)]
     [InlineData("aliases", false)]
@@ -169,15 +244,11 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 });
                 break;
             case "hold":
-                _shiftManagementService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
-                {
-                    await CancelAndCheckAsync(call.Arg<CancellationToken>());
-                    return null;
-                });
+                _shiftManagementService.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
                 break;
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
-        var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
+        var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations);
 
         if (cancel)
@@ -408,6 +479,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         weekly.VatAmount.Should().Be(9.09m);
         weekly.TicketsSold.Should().Be(1);
         weekly.VipDonations.Should().Be(0m);
+        weekly.NetTicketRevenue.Should().Be(90.91m);
+        result.QuarterlySales.Single().NetTicketRevenue.Should().Be(90.91m);
     }
 
     [HumansFact]
@@ -471,6 +544,21 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         may.RefundedGross.Should().Be(315m);
         may.StripeFees.Should().Be(6m);
         may.ApplicationFees.Should().Be(2.50m);
+
+        var total = MonthlySalesAggregate.Total(result.MonthlySales);
+        total.OrderCount.Should().Be(2);
+        total.TicketsSold.Should().Be(2);
+        total.GrossRevenue.Should().Be(740m);
+        total.Donations.Should().Be(25m);
+        total.VipDonations.Should().Be(85m);
+        total.VatAmount.Should().Be(57.28m);
+        total.TicketIncomeInclVat.Should().Be(630m);
+        total.TicketIncomeExVat.Should().Be(572.72m);
+        total.StripeFees.Should().Be(18.50m);
+        total.ApplicationFees.Should().Be(7m);
+        total.FeeTax.Should().Be(2m);
+        total.WithheldTax.Should().Be(0.30m);
+        total.RefundedGross.Should().Be(515m);
     }
 
     [HumansFact]
@@ -858,7 +946,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Rows[0].VatAmount.Should().Be(9.09m);
         result.Rows[1].MatchedUserId.Should().BeNull();
         await _userService.DidNotReceive().GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact(Timeout = 10000)]
@@ -959,7 +1047,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Rows.Should().OnlyContain(row => row.MatchedUserId == human.Id
             && string.Equals(row.TicketTypeName, "Full Week", StringComparison.Ordinal) && row.Price == TicketConstants.VipThresholdEuros);
         await _userService.DidNotReceive().GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1408,7 +1496,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
 
-        _shiftManagementService.GetActiveEventSettingsAsync()
+        _shiftManagementService.GetActiveEventSettings()
             .Returns((EventSettingsInfo?)null);
     }
 
@@ -1533,3 +1621,5 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                     TeamMemberRole.Member, Instant.FromUtc(2026, 1, 1, 0, 0)))
                 .ToList());
 }
+
+public enum TicketDashboardRead { Recovery, Totals, Payments, Dates, Recent, Budget, Vendor }

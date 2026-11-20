@@ -50,8 +50,7 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>()).Returns(senderInfo);
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(receiver, null));
         var request = MakePending(Guid.NewGuid(), "recorded@example.org");
-        var notices = new TicketTransferNotices(_ticketRepo, _userService, _emailService, _emailMessages,
-            NullLogger<TicketTransferService>.Instance);
+        var notices = _service;
 
         if (notice == TransferNotice.Requested)
             await notices.NotifyRequestedAsync(request, MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid),
@@ -355,7 +354,7 @@ public sealed class TicketTransferServiceTests
     public async Task TransferRows_NameLookupFailurePreservesTransferData(bool afterWrite)
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 Task.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("name lookup unavailable"))));
         TicketTransferRowDto row;

@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Extensions;
 using Humans.Preapprovals.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -35,7 +35,7 @@ internal sealed class ProgramAuthorizationHandler(IUserService users, IHttpConte
             context.Succeed(requirement);
         }
         else if (requirement != ProgramOperationRequirement.Administer
-            && Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            && context.User.GetUserId() is { } userId
             && await users.GetUserInfoAsync(userId,
                 httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None) is { } viewer
             && viewer.AllUserIds.Any(resource.IsManager))

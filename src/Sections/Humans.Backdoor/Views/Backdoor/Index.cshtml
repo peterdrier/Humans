@@ -1,12 +1,13 @@
 @model BackdoorKeysViewModel
 @using NodaTime
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "API keys";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 
     string Stamp(Instant? at) => at is null
         ? "never"
-        : at.Value.ToDateTime(madrid);
+        : at.Value.ToDateTime(orgZone);
 
     Func<BackdoorKeyListItem, IHtmlContent> keyCell = @<text><code>@item.DisplayPrefix…</code></text>;
     Func<BackdoorKeyListItem, IHtmlContent> createdCell = @<text>@Stamp(item.CreatedAt)</text>;
@@ -40,7 +41,7 @@
         }
     </text>;
     var keysTable = TableModel.For(Model.Keys)
-        .Human("Owner", k => k.UserId, HumanLink.None)
+        .Human("Owner", k => k.UserId)
         .Column("Label", k => k.Label)
         .Template("Key", keyCell)
         .Template("Created", createdCell, c => c.Css("text-nowrap"), sortBy: k => k.CreatedAt)

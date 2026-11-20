@@ -130,7 +130,7 @@ internal sealed class TeamAdminController(
 
         var members = team.Members;
         var infos = await _userService.GetUserInfosAsync(
-            members.Select(m => m.UserId).ToList(), ct);
+            members.Select(m => m.UserId), ct);
 
         // The table's headers re-sort client-side from here.
         var rows = members
@@ -279,7 +279,7 @@ internal sealed class TeamAdminController(
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var memberUserIds = members.Select(m => m.UserId).ToList();
+        var memberUserIds = members.Select(m => m.UserId);
         var memberInfos = await _userService.GetUserInfosAsync(memberUserIds, HttpContext.RequestAborted);
 
         var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;
@@ -728,7 +728,7 @@ internal sealed class TeamAdminController(
     private async Task<TeamEarlyEntryPageViewModel> BuildEarlyEntryPageAsync(TeamInfo team, CancellationToken ct)
     {
         var events = await settings.GetAllEventSettingsAsync(ct);
-        var activeEvent = await settings.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settings.GetActiveEventSettings();
         var grants = await _teamService.GetEarlyEntryGrantsForTeamAsync(team.Id, ct);
         var rows = grants
             .Select(g => new TeamEarlyEntryRowViewModel

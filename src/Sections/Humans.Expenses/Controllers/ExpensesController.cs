@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using System.Globalization;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
@@ -23,15 +24,17 @@ namespace Humans.Expenses.Controllers;
 internal sealed class ExpensesController(
     IUserService userService,
     IExpenseReportManagement service,
+    IExpenseReview review,
     IBudgetService budgetService,
     IFinanceService finance,
     IPreapprovalService preapprovals,
     IAuthorizationService authService,
     IClock clock,
+    IOrgTimeZone orgTimeZone,
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly ExpensePageBuilder pageBuilder = new(service, budgetService, finance, preapprovals, clock, localizer);
+    private readonly ExpensePageBuilder pageBuilder = new(orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
     private readonly IUserService _userService = userService;
 
     private LocalDate Today => pageBuilder.Today;
@@ -143,23 +146,21 @@ internal sealed class ExpensesController(
             SetError(GetErrorMessage(result.Error) is { } reason
                 ? $"{localizer["Expenses_Flash_CreateFailed"]} {reason}"
                 : localizer["Expenses_Flash_CreateFailed"].Value);
-            model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user);
-            return View(model);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
             SetError(localizer["Expenses_Flash_CreateFailed"]);
-            model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user);
-            return View(model);
         }
+
+        model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
+        await PopulateGrantOptionsAsync(model, user, HttpContext.RequestAborted);
+        return View(model);
     }
 
     /// <summary>The viewer's claimable grants, plus the preselected one when it is somebody else's (an admin filing on
     /// their behalf).</summary>
-    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, UserInfo viewer, CancellationToken ct = default)
+    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, UserInfo viewer, CancellationToken ct)
     {
         var grants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct)).OrderBy(g => g.ClaimBy).ToList();
         if (model.PreapprovalGrantId is { } wanted && grants.All(g => g.Id != wanted)
@@ -645,7 +646,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.CoordinatorEndorseWithResultAsync(
+        var result = await review.CoordinatorEndorseWithResultAsync(
             id, user.Id, input.MaxAmount, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportEndorsed"], localizer["Expenses_Flash_EndorseFailed"]);
 
@@ -665,7 +666,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.CoordinatorRejectWithResultAsync(
+        var result = await review.CoordinatorRejectWithResultAsync(
             id, user.Id, input.Reason, auditReviewerLabel: await IsFinanceAdminAsync() ? "Finance admin" : null);
         SetMutationResult(result, localizer["Expenses_Flash_ReportRejected"], localizer["Expenses_Flash_RejectFailed"]);
 
@@ -687,8 +688,8 @@ internal sealed class ExpensesController(
         }
 
         var result = await IsFinanceAdminAsync()
-            ? await service.DeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId, input.Reason)
-            : await service.DeclineLineWithResultAsync(id, user.Id, lineId, input.Reason);
+            ? await review.DeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId, input.Reason)
+            : await review.DeclineLineWithResultAsync(id, user.Id, lineId, input.Reason);
         SetMutationResult(result, "Line declined.", "Could not decline the line.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -702,8 +703,8 @@ internal sealed class ExpensesController(
         if (errorResult is not null) return errorResult;
 
         var result = await IsFinanceAdminAsync()
-            ? await service.UndoDeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId)
-            : await service.UndoDeclineLineWithResultAsync(id, user.Id, lineId);
+            ? await review.UndoDeclineLineForFinanceReviewWithResultAsync(id, user.Id, lineId)
+            : await review.UndoDeclineLineWithResultAsync(id, user.Id, lineId);
         SetMutationResult(result, "Decline undone.", "Could not undo the decline.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -762,7 +763,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.ApproveWithResultAsync(
+        var result = await review.ApproveWithResultAsync(
             id, user.Id, input.OverrideAccountNumber, input.MaxAmount);
         SetMutationResult(result, "Report approved.", "Could not approve the report.");
 
@@ -783,7 +784,7 @@ internal sealed class ExpensesController(
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var result = await service.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
+        var result = await review.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
         SetMutationResult(result, "Report rejected.", "Could not reject the report.");
 
         return RedirectToAction(nameof(Detail), new { id });
@@ -797,7 +798,7 @@ internal sealed class ExpensesController(
         var (errorResult, user, report) = await RequireReportAsync(id, ExpenseReportOperation.RequeueHoldedPush, HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await service.RequeueHoldedPushWithResultAsync(id, user.Id);
+        var result = await review.RequeueHoldedPushWithResultAsync(id, user.Id);
         SetMutationResult(result,
             "Holded push re-queued — it runs on the next drain pass.",
             "Could not re-queue the Holded push.");
@@ -897,7 +898,7 @@ internal sealed class ExpensesController(
     /// <summary>Budget-category accounts first. The service refuses a cross-year rebooking, so one list serves the new
     /// form, the edit form and the approval override.</summary>
     private async Task<IReadOnlyList<ExpenseAccountOption>> BuildAccountOptionsAsync(
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
         var accounts = await finance.ListExpenseAccountsAsync(activeOnly: true, ct);
         return accounts

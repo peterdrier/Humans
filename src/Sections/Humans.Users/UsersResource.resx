@@ -182,7 +182,6 @@
   <!-- ======================== -->
   <!-- Email grid               -->
   <!-- ======================== -->
-  <data name="Users_EmailGrid_AdminContextBanner" xml:space="preserve"><value>Managing emails for another user</value></data>
   <data name="Users_EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>Managing emails for {0}</value><comment>{0} = target user display name</comment></data>
   <data name="Users_EmailGrid_Email" xml:space="preserve"><value>Email</value></data>
   <data name="Users_EmailGrid_Status" xml:space="preserve"><value>Status</value></data>
@@ -425,4 +424,7 @@
   <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Select a valid location.</value></data>
   <data name="Users_ProfileEdit_ShiftPreferences" xml:space="preserve"><value>Edit preferences</value></data>
   <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve"><value>Select tags that match the kind of work you enjoy. Matching shifts will be highlighted with a star.</value></data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Pending account deletions</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
 </root>

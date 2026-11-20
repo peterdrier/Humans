@@ -67,7 +67,7 @@ public class CalendarLabelsViewTests
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
         var detail = new CalendarEventDetail(Guid.NewGuid(), "Fixture", null, null, null,
             Guid.NewGuid(), now, now + Duration.FromHours(1), false, null, null, now, now);
-        var model = new CalendarEventViewModel(detail, "Team", [], false, "Europe/Madrid");
+        var model = new CalendarEventViewModel(detail, "Team", [], "Europe/Madrid");
 
         var html = await RenderAsync("Event", model);
 

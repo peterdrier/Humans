@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -18,13 +19,13 @@ public sealed class MemberTicketStatusViewComponent(
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (UserClaimsPrincipal.GetUserId() is not { } userId)
         {
             return Content(string.Empty);
         }
 
         var ct = HttpContext.RequestAborted;
-        var activeEvent = await ActiveEventAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent?.IsOffSeason == true)
         {
             return Content(string.Empty);
@@ -60,23 +61,6 @@ public sealed class MemberTicketStatusViewComponent(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load ticket status for user {UserId}", userId);
-            return null;
-        }
-    }
-
-    private async Task<EventSettingsInfo?> ActiveEventAsync(CancellationToken ct)
-    {
-        try
-        {
-            return await settingsService.GetActiveEventSettingsAsync(ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to load active event for the dashboard ticket card");
             return null;
         }
     }

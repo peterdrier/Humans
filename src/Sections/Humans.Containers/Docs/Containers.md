@@ -130,13 +130,13 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 
 - **Audit actions:** declared on `ContainersAuditActions` (`src/Sections/Humans.Containers/ContainersAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `ContainerCreated`, `ContainerUpdated`, `ContainerDeleted`, `ContainerPlacementSaved`, `ContainerPlacementCleared`, `ContainerPlacementNotesUpdated`.
 - **Camps:** `ICampService` — `GetCampBySlugAsync`, `GetCampsForYearAsync` — camp lookups and lead verification for authorization (lead status derived via LINQ over `GetCampsForYearAsync` + `Season.IsLead`). `Container.CampId` is a bare Guid pointing at `camps.Id`.
-- **City Planning:** `ICityPlanningService` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container API endpoints (prefix `api/city-planning`: `GET containers/{year}`, `GET containers/{year}/export.geojson`, `PUT containers/{id}/placement/{year}`, `PUT containers/{id}/placement/{year}/notes`, `DELETE containers/{id}/placement/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
+- **City Planning:** `ICityPlanningService` — `IsContainerPlacementOpenAsync` (placement phase gate, for the request's year or the active event's from `ISettingsService`), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container API endpoints (prefix `api/city-planning`: `GET containers/{year}`, `GET containers/{year}/export.geojson`, `PUT containers/{id}/placement/{year}`, `PUT containers/{id}/placement/{year}/notes`, `DELETE containers/{id}/placement/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 - **Audit Log:** `IAuditLogService.LogAsync` on every write, under the literal entity types in `Services/AuditEntityTypes.cs`.
 - **Users:** `IUserService`, injected by `ContainerController` for `HumansControllerBase`'s current-user resolution, and by `ContainerAuthorizationHandler` to resolve the session's account to its survivor.
 
 ## Architecture
 
-The internal `ContainerReader` owns camp/all/individual container reads, yearly placements, the admin overview and shared gallery/placement projection. `Service` forwards existing reads and reuses the same projection after mutations. Legacy gallery entries, image order, camp/year grouping and placement metadata remain unchanged. Authorization, file validation/rollback/cleanup and all writes retain their existing boundaries; no public contract or DI registration is added.
+`Service` owns camp/all/individual container reads, yearly placements, the admin overview and the gallery/placement projection it reuses after mutations.
 
 **Owning services:** `Service` (`Humans.Containers.Services`)
 **Owned tables:** `containers`, `container_images`, `container_placements`

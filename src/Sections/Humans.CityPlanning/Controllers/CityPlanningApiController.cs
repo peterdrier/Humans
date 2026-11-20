@@ -31,10 +31,11 @@ internal sealed class CityPlanningApiController(
     private async Task<bool> IsMapAdminAsync() =>
         (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
 
-    private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
+    private async Task<HashSet<Guid>> FindUserLeadCampIdsAsync(Guid userId, int year, CancellationToken ct)
     {
         var camps = await campService.GetCampsForYearAsync(year, ct);
-        return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue)?.Id;
+        return camps.Where(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue)
+            .Select(camp => camp.Id).ToHashSet();
     }
 
     /// <summary>Settings, all camp polygons, and unmapped seasons.</summary>
@@ -85,7 +86,7 @@ internal sealed class CityPlanningApiController(
         var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
         if (userError is not null) return userError;
         var userId = user.Id;
-        if (!CampsRoles.IsCampsAdmin(User) &&
+        if (!await IsMapAdminAsync() &&
             !await cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
         {
             return Forbid();
@@ -93,7 +94,7 @@ internal sealed class CityPlanningApiController(
 
         var saved = await cityPlanningService.SaveCampPolygonAsync(
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
-            note: request.Note ?? "Saved",
+            note: request.Note,
             cancellationToken: cancellationToken);
         if (saved.Refusal is { } refusal)
         {
@@ -212,9 +213,9 @@ internal sealed class CityPlanningApiController(
         if (userError is not null) return userError;
         var userId = user.Id;
         var isMapAdmin = await IsMapAdminAsync();
-        var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
+        var userCampIds = await FindUserLeadCampIdsAsync(userId, year, cancellationToken);
 
-        if (!isMapAdmin && !userCampId.HasValue)
+        if (!isMapAdmin && userCampIds.Count == 0)
         {
             return Forbid();
         }
@@ -227,7 +228,7 @@ internal sealed class CityPlanningApiController(
             .Where(p => p.LocationGeoJson is not null)
             .Where(p => containersById.ContainsKey(p.ContainerId))
             .Select(p => (Placement: p, Container: containersById[p.ContainerId]))
-            .Where(t => isMapAdmin || t.Container.CampId == userCampId)
+            .Where(t => isMapAdmin || userCampIds.Contains(t.Container.CampId))
             .ToList();
 
         var features = placed.Select(t =>

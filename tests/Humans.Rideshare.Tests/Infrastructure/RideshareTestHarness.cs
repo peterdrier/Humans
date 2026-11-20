@@ -63,7 +63,7 @@ public abstract class RideshareTestHarness : IDisposable
             });
 
         BurnSettings = Substitute.For<ISettingsService>();
-        BurnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        BurnSettings.GetActiveEventSettings()
             .Returns(Burn);
         BurnSettings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>())
             .Returns([Burn]);

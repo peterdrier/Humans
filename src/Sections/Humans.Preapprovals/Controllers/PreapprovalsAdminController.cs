@@ -1,3 +1,5 @@
+using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
 using Humans.Base.Controllers;
 using Humans.Finance.Contracts;
 using Humans.Preapprovals.Authorization;
@@ -18,6 +20,7 @@ namespace Humans.Preapprovals.Controllers;
 [Authorize(Policy = PreapprovalsPolicies.Manage)]
 [Route("Preapprovals/Admin")]
 internal sealed class PreapprovalsAdminController(
+    IOrgTimeZone orgTimeZone,
     IPreapprovalManagement preapprovals,
     IUserService users,
     IFinanceService finance,
@@ -26,7 +29,7 @@ internal sealed class PreapprovalsAdminController(
     IClock clock,
     ILogger<PreapprovalsAdminController> logger) : HumansControllerBase(users)
 {
-    private LocalDate Today => clock.GetCurrentInstant().InZone(PreapprovalReader.MadridZone).Date;
+    private LocalDate Today => clock.TodayIn(orgTimeZone.Zone);
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

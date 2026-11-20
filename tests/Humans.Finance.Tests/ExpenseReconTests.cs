@@ -74,7 +74,7 @@ public class ExpenseReconTests
         ExpenseRecon.Build(year, SyncedAt, lines, accounts ?? Accounts,
             ledger.GroupBy(l => l.AccountNum)
                 .ToDictionary(g => g.Key, g => (IReadOnlyList<HoldedLedgerLineInfo>)g.ToList()),
-            transfers, id => id == Alice ? "Alice" : "Bob");
+            transfers, id => id == Alice ? "Alice" : "Bob", FixedOrgTimeZone.Madrid.Zone);
 
     [HumansFact]
     public void LineMatchesItsLedgerPurchase_WhateverTheStoredDocIdPointsAt()
@@ -248,13 +248,13 @@ public class ExpenseReconTests
 
     // --- the service: mirror reads plus the cached contact list ---
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private Service MakeService() => new(
-        _repo, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
+        FixedOrgTimeZone.Madrid, _repo, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
         Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
@@ -277,7 +277,7 @@ public class ExpenseReconTests
             .Returns(new Dictionary<int, decimal> { [contacts] = -100m, [stored] = 0m });
         _holded.GetLedgerLinesAsync(contacts, Arg.Any<CancellationToken>()).Returns([Purchase(account: contacts)]);
         _holded.GetLedgerLinesAsync(stored, Arg.Any<CancellationToken>()).Returns([]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);

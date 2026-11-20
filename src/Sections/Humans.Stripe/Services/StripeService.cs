@@ -410,6 +410,40 @@ internal sealed class StripeService(
         return results;
     }
 
+    public async Task<StoreChargeData?> GetStoreChargeAsync(string paymentIntentId, CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        if (StoreAccount is not { IsConfigured: true } account)
+        {
+            logger.LogWarning("Store charge for {PaymentIntentId} requested without a configured Store mirror account; Stripe not queried.",
+                paymentIntentId);
+            return null;
+        }
+
+        var client = new StripeClient(account.ApiKey, httpClient: httpClient);
+        var request = account.UsesOrgKey ? new RequestOptions { StripeContext = account.Id } : new RequestOptions();
+        try
+        {
+            var pi = await new PaymentIntentService(client).GetAsync(
+                paymentIntentId, new PaymentIntentGetOptions { Expand = ["latest_charge"] }, request, ct);
+            if (pi.LatestCharge is not { } charge) return null;
+            if (!string.Equals(charge.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Stripe charge {charge.Id} does not declare EUR currency.");
+            return new StoreChargeData(
+                charge.Id,
+                paymentIntentId,
+                FromStripeMinorUnits(charge.Amount),
+                Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc)));
+        }
+        catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
+        {
+            logger.LogWarning(
+                "Stripe permission_error reading the charge of {PaymentIntentId}: the Store account's read key is missing payment read scope. {Message}",
+                paymentIntentId, ex.Message);
+            return null;
+        }
+    }
+
     public string StorePaymentDashboardUrl(string paymentIntentId)
     {
         var id = Uri.EscapeDataString(paymentIntentId);

@@ -10,10 +10,10 @@
 }
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
-    <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
+    <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="InsideControl" />
     <div>
         <div class="fw-semibold">
-            <vc:human user-id="@Model.UserId" link="None" />
+            <vc:human user-id="@Model.UserId" link="InsideControl" />
             @if ((await AuthService.AuthorizeAsync(User, UsersPolicies.Read)).Succeeded
                 && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
             {
@@ -27,6 +27,10 @@
         else if (Model.IsSuspended)
         {
             <span class="badge bg-danger" style="font-size: 0.7rem;">@Localizer["Users_ProfileCard_Suspended"]</span>
+        }
+        else if (Model.IsBoardMember)
+        {
+            <span class="badge bg-success" style="font-size: 0.7rem;">@Localizer["Users_Status_Board"]</span>
         }
         else if (!string.IsNullOrEmpty(Model.MembershipTier)
             && !string.Equals(Model.MembershipTier, "Volunteer", StringComparison.OrdinalIgnoreCase))

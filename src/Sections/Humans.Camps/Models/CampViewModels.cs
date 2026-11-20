@@ -197,6 +197,7 @@ internal sealed class CampEditViewModel : CampRegisterViewModel
     public int EeSlotCount { get; set; }
     /// <summary>Count of active members with HasEarlyEntry=true for the current season.</summary>
     public int EeGrantedCount { get; set; }
+    public bool HasEarlyEntryCapacity { get; set; }
 
     /// <summary>Null when the camp has no open season; the view hides the panel.</summary>
     public CampRolesPanelViewModel? RolesPanel { get; set; }
@@ -264,6 +265,10 @@ internal sealed class CampAdminViewModel
     public IReadOnlyList<CampEventRegistration> Events { get; set; } = [];
     public IReadOnlyDictionary<Guid, NodaTime.LocalDate?> NameLockDates { get; set; } = new Dictionary<Guid, NodaTime.LocalDate?>();
     public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = [];
+    public int TotalReportedMembers => AllCampSummaries.Sum(camp => camp.MemberCount);
+    public int TotalJoinedMembers => AllCampSummaries.Sum(camp => camp.JoinedMemberCount);
+    public int TotalEeGranted => AllCampSummaries.Sum(camp => camp.EeGrantedCount);
+    public int TotalEeSlots => AllCampSummaries.Sum(camp => camp.EeSlotCount);
     /// <summary>The "Seed system roles" admin card renders only when this is true.</summary>
     public bool HasMissingSpecialRoles { get; set; }
 }

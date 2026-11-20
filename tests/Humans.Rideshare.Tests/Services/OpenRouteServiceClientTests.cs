@@ -111,14 +111,58 @@ public sealed class OpenRouteServiceClientTests
             .And.OnlyContain(e => e.Message.Contains("403") && e.Message.Contains("quota exceeded"));
     }
 
-    [HumansFact]
-    public async Task TransportFailure_ReturnsNull_AndLogsAWarning()
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task Failure_ReturnsNull_AndDistinguishesExpectedFromUnexpected(bool directions, bool unexpected)
     {
-        var client = Make(Key, _ => throw new HttpRequestException("connection refused"));
+        Exception failure = unexpected ? new NotSupportedException("Unexpected provider fault")
+            : new HttpRequestException("connection refused");
+        var client = Make(Key, _ => throw failure);
 
-        (await client.GeocodeAsync("Paris", Ct)).Should().BeNull();
+        if (directions)
+            (await client.GetRouteGeoJsonAsync(TwoPoints, Ct)).Should().BeNull();
+        else
+            (await client.GeocodeAsync("Paris", Ct)).Should().BeNull();
 
-        _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Exception is HttpRequestException);
+        var log = _logger.Entries.Should().ContainSingle().Subject;
+        log.Level.Should().Be(unexpected ? LogLevel.Error : LogLevel.Warning);
+        log.Exception.Should().BeSameAs(unexpected ? failure : null);
+        if (!unexpected) log.Message.Should().Contain(failure.Message);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task Cancellation_PropagatesOnlyWhenRequested(bool directions, bool requested)
+    {
+        using var request = new CancellationTokenSource();
+        if (requested) await request.CancelAsync();
+        var client = Make(Key, _ => throw new OperationCanceledException("Provider timeout", request.Token));
+        Func<Task> read = async () =>
+        {
+            if (directions)
+                (await client.GetRouteGeoJsonAsync(TwoPoints, request.Token)).Should().BeNull();
+            else
+                (await client.GeocodeAsync("Paris", request.Token)).Should().BeNull();
+        };
+
+        if (requested)
+        {
+            await read.Should().ThrowAsync<OperationCanceledException>();
+            _logger.Entries.Should().BeEmpty();
+        }
+        else
+        {
+            await read();
+            var log = _logger.Entries.Should().ContainSingle().Subject;
+            log.Level.Should().Be(LogLevel.Warning);
+            log.Exception.Should().BeNull();
+        }
     }
 
     [HumansTheory]
@@ -137,7 +181,7 @@ public sealed class OpenRouteServiceClientTests
         var client = Make(Key, _ => Json(HttpStatusCode.OK,
             $$"""{"features":[{"geometry":{{geometry}}}]}"""));
         (await client.GetRouteGeoJsonAsync(TwoPoints, Ct)).Should().BeNull();
-        _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning);
+        _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Exception == null);
     }
 
     [HumansTheory]
@@ -151,7 +195,7 @@ public sealed class OpenRouteServiceClientTests
         var client = Make(Key, _ => Json(HttpStatusCode.OK,
             $$"""{"features":[{"geometry":{{geometry}}}]}"""));
         (await client.GeocodeAsync("Paris", Ct)).Should().BeNull();
-        _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning);
+        _logger.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning && e.Exception == null);
     }
 
     private static HttpResponseMessage Json(HttpStatusCode status, string json) =>

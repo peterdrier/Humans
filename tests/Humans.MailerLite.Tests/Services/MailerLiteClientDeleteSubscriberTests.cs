@@ -44,6 +44,11 @@ public class MailerLiteClientDeleteSubscriberTests
     [InlineData("unconfirmed", HttpStatusCode.NoContent)]
     [InlineData("bounced", HttpStatusCode.NoContent)]
     [InlineData("junk", HttpStatusCode.NoContent)]
+    [InlineData("Active", HttpStatusCode.NoContent)]
+    [InlineData("UNSUBSCRIBED", HttpStatusCode.NoContent)]
+    [InlineData("Unconfirmed", HttpStatusCode.NoContent)]
+    [InlineData("BOUNCED", HttpStatusCode.NoContent)]
+    [InlineData("Junk", HttpStatusCode.NoContent)]
     [InlineData("active", HttpStatusCode.NotFound)]
     public async Task DeleteSubscriberAsync_UpdatesStatusTotals(string status, HttpStatusCode response)
     {
@@ -57,6 +62,23 @@ public class MailerLiteClientDeleteSubscriberTests
         var after = await client.GetAccountSummaryAsync(TestContext.Current.CancellationToken);
         (after.ActiveCount + after.UnsubscribedCount + after.UnconfirmedCount
             + after.BouncedCount + after.JunkCount).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task Unknown_status_remains_in_the_snapshot_and_logs_a_warning()
+    {
+        var logger = new CapturingLogger<MailerLiteClient>();
+        var client = BuildClient(new DeleteHandler(HttpStatusCode.NoContent, "future-status"), logger);
+
+        var summary = await client.GetAccountSummaryAsync(TestContext.Current.CancellationToken);
+
+        (summary.ActiveCount + summary.UnsubscribedCount + summary.UnconfirmedCount
+            + summary.BouncedCount + summary.JunkCount).Should().Be(0);
+        (await SnapshotEmailsAsync(client)).Should().Contain(Erased);
+        var warning = logger.Entries.Should().ContainSingle().Subject;
+        warning.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+        warning.Message.Should().Contain("future-status");
+        warning.Exception.Should().BeNull();
     }
 
     [HumansFact]
@@ -85,9 +107,9 @@ public class MailerLiteClientDeleteSubscriberTests
         return emails;
     }
 
-    private static MailerLiteClient BuildClient(HttpMessageHandler handler) =>
+    private static MailerLiteClient BuildClient(HttpMessageHandler handler, Microsoft.Extensions.Logging.ILogger<MailerLiteClient>? logger = null) =>
         new(new StubHttpClientFactory(handler), NodaTime.SystemClock.Instance,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<MailerLiteClient>.Instance);
+            logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<MailerLiteClient>.Instance);
 
     // One subscriber on the first subscribers page, empty thereafter; DELETE answers
     // with the status under test.

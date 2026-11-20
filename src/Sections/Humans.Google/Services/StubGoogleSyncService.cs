@@ -144,14 +144,14 @@ internal sealed class StubGoogleSyncService(
     public async Task<int> RequeueAllFailedOutboxEventsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("[STUB] Would requeue all permanently-failed Google sync outbox events");
-        await GoogleSyncOutboxAdministration.AuditRequeueAllAsync(auditLogService, 0, actorUserId);
+        await GoogleWorkspaceSyncService.AuditRequeueAllAsync(auditLogService, 0, actorUserId);
         return 0;
     }
 
     public async Task<int> EnqueueUserSyncAsync(Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("[STUB] Would enqueue Google sync re-run for user {UserId}", userId);
-        await GoogleSyncOutboxAdministration.AuditUserSyncRerunAsync(auditLogService, userId, 0, actorUserId);
+        await GoogleWorkspaceSyncService.AuditUserSyncRerunAsync(auditLogService, userId, 0, actorUserId);
         return 0;
     }
 }

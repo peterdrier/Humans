@@ -18,10 +18,28 @@ namespace Humans.Finance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Humans.Finance.Domain.FinanceSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PleoHoldedContactId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PleoHoldedTreasuryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("finance_settings", (string)null);
+                });
 
             modelBuilder.Entity("Humans.Finance.Domain.HoldedCategoryMap", b =>
                 {
@@ -276,6 +294,41 @@ namespace Humans.Finance.Data.Migrations
                     b.ToTable("finance_payment_details", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Finance.Domain.PleoBookingClaim", b =>
+                {
+                    b.Property<string>("PleoEntryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PleoEntryId");
+
+                    b.ToTable("finance_pleo_booking_claims", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Finance.Domain.PleoReceiptUpload", b =>
+                {
+                    b.Property<string>("PleoEntryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ReceiptId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PleoEntryId", "ReceiptId");
+
+                    b.ToTable("finance_pleo_receipt_uploads", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Finance.Domain.SepaPayoutFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -375,6 +428,21 @@ namespace Humans.Finance.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("finance_sepa_payout_transfers", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Finance.Domain.StripeLedgerLink", b =>
+                {
+                    b.Property<int>("LedgerAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StripeAccountId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("LedgerAccountNum");
+
+                    b.ToTable("finance_stripe_ledger_links", (string)null);
                 });
 #pragma warning restore 612, 618
         }

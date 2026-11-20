@@ -1153,10 +1153,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>Les quartiers qui font qu'Elsewhere se sent comme chez soi.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Tu nous indiques tes préférences alimentaires ?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Tu es inscrit·e à un long créneau. Si tu nous indiques tes préférences alimentaires, la cantine peut prévoir tes repas. C'est facultatif.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Dis-le-nous maintenant</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Voir tous mes créneaux</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre de tri</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Tu t'es retiré de la série de créneaux.</value></data>
@@ -1210,8 +1206,6 @@
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Ce créneau est complet.</value></data>
   <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Planning introuvable.</value></data>
   <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Aucun créneau trouvé dans la période indiquée.</value></data>
-  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Vous êtes déjà inscrit à tous les créneaux de cette période.</value></data>
-  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tous les créneaux de cette période chevauchent des inscriptions existantes.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tous les créneaux de cette période sont complets.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un ou plusieurs créneaux de cette période sont réservés aux coordinateurs et aux administrateurs.</value></data>
   <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Vous avez déjà une inscription pour un ou plusieurs créneaux de cette période.</value></data>
@@ -1294,4 +1288,29 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>Historique des absences ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Marqué par</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Marqué le</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Quarts</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} places remplies</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans inscrits</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} en attente</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Aucun quart configuré pour le moment.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Inclut les quarts de {0} sous-équipe(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Gérer les quarts</value>
+  </data>
 </root>

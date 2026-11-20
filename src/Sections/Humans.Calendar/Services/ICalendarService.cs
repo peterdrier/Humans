@@ -32,7 +32,6 @@ internal interface ICalendarService : IApplicationService
         IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to, DateTimeZone viewerZone,
         Guid? teamId = null, CancellationToken ct = default);
 
-
     // Only the result-returning forms are published: a caller catching ValidationException to fill a form field
     // would be doing the service's job.
     Task<CalendarEventMutationResult> CreateEventWithResultAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);

@@ -171,15 +171,18 @@
                     <tr><td colspan="@cols.Count" class="text-muted text-center">@Model.EmptyMessage</td></tr>
                 }
             </tbody>
-            @if (Model.FooterCells.Count > 0)
+            @if (Model.FooterRows.Count > 0)
             {
                 <tfoot class="table-group-divider">
-                    <tr class="fw-semibold">
-                        @foreach (var cell in Model.FooterCells)
-                        {
-                            <td class="@cell.CssClass">@cell.Text</td>
-                        }
-                    </tr>
+                    @foreach (var footerRow in Model.FooterRows)
+                    {
+                        <tr class="fw-semibold">
+                            @foreach (var cell in footerRow)
+                            {
+                                <td class="@cell.CssClass">@cell.Text</td>
+                            }
+                        </tr>
+                    }
                 </tfoot>
             }
         </table>

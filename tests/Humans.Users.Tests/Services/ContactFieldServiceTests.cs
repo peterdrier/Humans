@@ -754,8 +754,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            FirstName = "Test",
-            LastName = "User",
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };

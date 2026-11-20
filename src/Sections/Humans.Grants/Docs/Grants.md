@@ -119,7 +119,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 - **Users**: `IUserService.GetUserInfoAsync` (merged ids, preferred language, burner names and canonical notice address). Implements `IUserMerge`.
 - **Notifications**: `INotificationEmitter.SendAsync` (`GrantReceived`, `GrantRevoked`). Its sources are declared in `GrantsNotificationSources` (`src/Sections/Humans.Grants/GrantsNotificationSources.cs`), one `NotificationSourceDefinition` each: `GrantReceived` (informational, to the grant holder: a grant issued to the person, or its notice resent); `GrantRevoked` (informational, to the former holder: a grant the person held was revoked).
 - **Email**: `IEmailService.SendAsync`; contributes `IEmailPreviewContributor` samples.
-- **Settings**: `ISettingsService.GetAllEventSettingsAsync` (the events a program can be for, and naming them), `GetActiveEventSettingsAsync` (the new-program default).
+- **Settings**: `ISettingsService.GetAllEventSettingsAsync` (the events a program can be for, and naming them), `GetActiveEventSettings` (the new-program default).
 - **LowIncome** (caller): issues and revokes through `IGrantWrite` with source key `low-income`.
 - **Gdpr**: implements `IUserDataContributor` (slices `Grants`, `GrantDecisions`).
 - Email and Tickets do not know Grants exists; delivery of the thing (e.g. a vendor code) is a later, separate concern.
@@ -128,7 +128,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 
 Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`: selected IDs are unique, removable hidden inputs; batch submit is enabled only for a nonempty list. The views initialize it in the layout's Scripts section after the shared helpers load.
 
-The internal `GrantNotices` (not registered in DI) owns recipient lookup, the profile link and the complete issued/revoked email and in-app job, reused for resend. `GrantService` owns persistence, audit ordering and `NotifiedAt`.
+`GrantService` owns recipient lookup, the profile link and the complete issued/revoked email and in-app job (reused for resend), plus persistence, audit ordering and `NotifiedAt`.
 
 **Owning services:** `GrantService`
 **Owned tables:** `grant_programs`, `grant_program_managers`, `grants`
@@ -145,8 +145,4 @@ The internal `GrantNotices` (not registered in DI) owns recipient lookup, the pr
 - No caching decorator: a handful of programs, read on a few admin pages and one profile card.
 - Display stitching through `<vc:human>`.
 
-Internal `GrantReader` owns program/member grant reads, manager visibility, event enrichment and merged-account id lookup. Holding checks, mutation audit year resolution and GDPR export reuse its helpers. Settings lookup order, current-event-year fallback, archived-id handling, DTO fields and ordering are unchanged. The façade retains its entry points, Madrid-date rule, mutations, notice/audit ordering and retention. No public contract or DI registration is added.
-
-Internal `GrantProgramAdministration` owns complete program creation/update, validation, event/source selection and manager reconciliation. `GrantReader` shares live-person checks and the open-source predicate with grant issuance; `GrantJournal` owns the existing audit metadata and optional-text normalization. Refusal order, manager canonicalization, source uniqueness, event-change descriptions, timestamps and persistence/audit order are unchanged. Grant issuance, revocation and notices retain their workflow; no public contract or DI registration is added.
-
-Internal `GrantPersonalData` owns both personal-data slices, their retention declarations, erasure and merge handling. It reuses the existing reader for merged ids and current event-year projection. Slice keys, export shape/order, empty-decision behavior, retention wording, per-user erasure scope and merge side-effect order are unchanged. The existing façade remains the registered contributor and merge entry point; no public contract or DI registration is added.
+`GrantService` is one class (partial files by area: grants, programs, GDPR); it news up no helper classes.

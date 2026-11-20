@@ -87,14 +87,15 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public void Assignable_FollowsTheSameRule_InCatalogOrder()
+    public void Assignable_FollowsTheSameRule_InCatalogOrder_LeavingBoardToGovernance()
     {
         var catalog = TestRoles.Catalog();
 
         RoleAssignmentRules.Assignable(CreateUserWithRoles(RoleNames.Admin), catalog)
-            .Select(r => r.Name).Should().Equal(catalog.Roles.Select(r => r.Name));
+            .Select(r => r.Name).Should().Equal(catalog.Roles.Select(r => r.Name).Where(n => !string.Equals(n, RoleNames.Board, StringComparison.Ordinal)));
         RoleAssignmentRules.Assignable(CreateUserWithRoles(UsersRoles.UsersAdmin), catalog)
-            .Select(r => r.Name).Should().Equal(catalog.Roles.Select(r => r.Name).Where(n => !string.Equals(n, RoleNames.Admin, StringComparison.Ordinal)));
+            .Select(r => r.Name).Should().Equal(catalog.Roles.Select(r => r.Name)
+                .Where(n => !string.Equals(n, RoleNames.Admin, StringComparison.Ordinal) && !string.Equals(n, RoleNames.Board, StringComparison.Ordinal)));
         RoleAssignmentRules.Assignable(CreateUserWithRoles(RoleNames.Board), catalog).Should().BeEmpty();
     }
 

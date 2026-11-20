@@ -13,6 +13,8 @@
 
 <!-- Stateless read section: serves markdown from docs/guide/ via a GitHub content source, segmented and cached in-memory, with role-scoped filtering per request before rendering. -->
 
+Guide refresh logs expected GitHub API/transport failures and independent timeouts at Warning without exception objects; unexpected fetch or segmentation failures log at Error with their original exception. Stale-cache retention and requested-cancellation propagation are unchanged.
+
 ## Concepts
 
 - A **guide page** is one markdown file under `docs/guide/` in the Humans
@@ -75,7 +77,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.
 - Caller cancellation stops a GitHub fetch/refresh without treating it as an availability failure or publishing a partially refreshed cache. Existing cached documents remain intact.
-- Configured GitHub health probes await the repository read with the framework's timeout/abort token. Requested cancellation propagates without logging or returning an availability failure; an already-canceled probe starts no request.
+- The `github` health check belongs to Consent and probes the legal-document repository (`GitHubSettings`); it does not report availability of Guide's source (`GuideSettings`).
 
 ## Negative Access Rules
 
@@ -105,7 +107,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 ## Architecture
 
-**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter`, `GuideRolePrivilegeMap` (catalog-backed), `GuideFilter` (static) — all `internal` in `Humans.Guide.Services`; `GitHubHealthCheck` in `Humans.Guide.Health`
+**Owning services:** `GuideContentService`, `GuideRoleResolver`, `GuideRenderer`, `GuideHtmlPostprocessor`, `GuideSegmenter`, `GuideRolePrivilegeMap` (catalog-backed), `GuideFilter` (static) — all `internal` in `Humans.Guide.Services`
 **Owned tables:** None — orchestrator over the Base GitHub content source + `IMemoryCache`
 **Status:** (A) Migrated — `src/Sections/Humans.Guide` (nobodies-collective/Humans#866, G5). No repository and no `DbContext` (no tables), `GuideResource` owns localized navigation copy (fallback pages reuse Base’s shared resources), and `Contracts/` is an empty folder: nothing outside the section reads a guide page.
 

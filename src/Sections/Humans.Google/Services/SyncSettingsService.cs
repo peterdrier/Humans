@@ -36,5 +36,4 @@ internal sealed class SyncSettingsService(ISyncSettingsRepository repository, IC
         await audit.LogAsync(GoogleAuditActions.SyncModeChanged, "SyncServiceSettings", updated.Id,
             $"{serviceType} sync mode set to {mode}", actorUserId);
     }
-
 }

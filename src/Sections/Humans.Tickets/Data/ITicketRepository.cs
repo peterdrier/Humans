@@ -155,8 +155,8 @@ internal interface ITicketRepository : IRepository
     /// <summary>Paid orders with fewer live (Valid or CheckedIn) tickets than attendees.</summary>
     Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
 
-    /// <summary>Plain re-FK: tickets are unique per purchase. <paramref name="updatedAt"/> is unused.</summary>
-    Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default);
+    /// <summary>Plain re-FK: tickets are unique per purchase.</summary>
+    Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Tombstones buyer and attendee name and email on the user's rows and drops <c>MatchedUserId</c>. The rows stay

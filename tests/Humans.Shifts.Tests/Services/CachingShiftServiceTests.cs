@@ -11,7 +11,6 @@ using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -44,14 +43,10 @@ public class CachingShiftServiceTests
         await using var provider = BuildProvider(options);
         var rows = provider.GetRequiredService<IShiftRotaRows>();
         (await rows.GetRotaRowsAsync()).Single().Shifts.Should().HaveCount(2);
-        var memo = provider.GetRequiredService<IMemoryCache>();
-        var overviewKey = ShiftManagementService.OverviewCacheKey(rota.EventSettingsId, null);
-        memo.Set(overviewKey, "built from the old rows");
 
         await using (var scope = provider.CreateAsyncScope())
             await scope.ServiceProvider.GetRequiredService<IShiftManagement>().DeleteShiftAsync(deleted.Id, Guid.NewGuid());
         (await rows.GetRotaRowsAsync()).Single().Shifts.Select(s => s.Shift.Id).Should().Equal(kept.Id);
-        memo.TryGetValue(overviewKey, out _).Should().BeFalse("the dashboard memo is cleared once the rows are refreshed");
 
         await using (var scope = provider.CreateAsyncScope())
             await scope.ServiceProvider.GetRequiredService<IShiftManagement>().DeleteRotaAsync(rota.Id, Guid.NewGuid());

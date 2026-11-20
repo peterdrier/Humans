@@ -22,10 +22,6 @@ using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Shifts.Data;
-using Humans.Shifts.Domain;
-using Humans.Shifts.Services;
 using Humans.Teams.Contracts;
 using Humans.Teams.Models;
 using Humans.Teams.Data;
@@ -68,14 +64,15 @@ public sealed class TeamServiceTests : TeamsTestHarness
         foreach (var id in new[] { source, live, other })
             users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(id == other
                 ? UserInfo.Create(new User { Id = other, PreferredLanguage = "es" }, [], [], null) : liveInfo);
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [source] = liveInfo });
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         foreach (var id in new[] { source, live, other })
             team.Members.Add(new TeamMember { Id = Guid.NewGuid(), TeamId = team.Id, UserId = id, Role = TeamMemberRole.Coordinator });
         var provider = new ServiceLocatorBuilder().With(users).With<ITeamResourceService>(_teamResourceService)
             .With(_emailService).With(TestTeamsEmails.Create()).Build();
-        var notices = new TeamMembershipNotices(Notifier, provider, NullLogger<TeamService>.Instance);
+        var notices = new TeamService(Substitute.For<ITeamRepository>(), Substitute.For<IAuditLogService>(), Notifier,
+            AdminAuthorization, provider, Clock, NullLogger<TeamService>.Instance);
         var ct = TestContext.Current.CancellationToken;
         switch (notice)
         {
@@ -146,30 +143,17 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With(userService)
             .With(userService)
             .Build();
-        var shiftManagementService = new ShiftManagementService(
-            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
-            AuditLog,
-            AdminAuthorization,
-            serviceProvider,
-            Cache,
-            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
-            new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
-            Clock,
-            NullLogger<ShiftManagementService>.Instance);
-        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(shiftManagementService);
 
         _service = new TeamService(
             new TeamRepository(TeamsDbFactory),
             AuditLog,
             Notifier,
-            shiftManagementService,
             AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
-            _service, _teamResourceService, shiftManagementService,
-            NewSettingsServiceBackedByShiftsDb(), _roleAssignmentService);
+            _service, _teamResourceService, _roleAssignmentService);
     }
 
     [HumansTheory]
@@ -698,7 +682,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         var service = new TeamService(
             repo, Substitute.For<IAuditLogService>(), Notifier,
-            Substitute.For<IShiftService>(),
             AdminAuthorization,
             new ServiceLocatorBuilder().Build(), Clock, NullLogger<TeamService>.Instance);
 
@@ -1364,7 +1347,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         }
         var provider = new ServiceLocatorBuilder().Build();
         TeamService NewService() => new(repository, AuditLog, Notifier,
-            Substitute.For<IShiftService>(),
             AdminAuthorization, provider, Clock,
             NullLogger<TeamService>.Instance);
         var userId = Guid.NewGuid();
@@ -1643,7 +1625,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(call => LookupUserAsync(call.Arg<CancellationToken>()));
         _userService.GetUserInfosAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)), Arg.Any<CancellationToken>())
+                Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -1967,7 +1949,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             _teamResourceService.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<IReadOnlyList<GoogleResourceSnapshot>>(new IOException("Email resource lookup unavailable")));
         if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
-            _userService.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
+            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Profile lookup unavailable")));
 
         await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct);
@@ -1984,7 +1966,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                     && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
                 Arg.Any<CancellationToken>());
         await _userService.Received(1).GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -3085,7 +3067,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             ProfilePictureUrl = "/updated-photo.png",
         });
         // Users keys its merge-resolved read by the requested id, even when the value is a survivor.
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = replacement });
 
         var after = read switch
@@ -3543,55 +3525,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
         result[0].IsFilled.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task GetAdminTeamListAsync_CountsPendingShiftSignupsForActiveEvent()
-    {
-        var team = SeedTeam("Dept A");
-        var user = SeedUser();
-        SeedTeamMember(team.Id, user.Id);
-
-        var activeEvent = SeedEventSettings("Active Event", isActive: true);
-        var inactiveEvent = SeedEventSettings("Old Event", isActive: false);
-
-        var activeRota = SeedRota(team.Id, activeEvent.Id, "Gate Shifts");
-        var shift1 = SeedShift(activeRota.Id);
-        SeedShiftSignup(shift1.Id, user.Id, SignupStatus.Pending);
-        SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Pending);
-        SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Confirmed);
-
-        // Rota on an inactive event: must NOT be counted.
-        var oldRota = SeedRota(team.Id, inactiveEvent.Id, "Old Shifts");
-        var oldShift = SeedShift(oldRota.Id);
-        SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
-
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
-
-        var summary = result.Should().ContainSingle(t => t.Name == "Dept A").Subject;
-        summary.PendingShiftSignupCount.Should().Be(2);
-    }
-
-    [HumansFact]
-    public async Task GetAdminTeamListAsync_ReturnsZeroPendingShifts_WhenNoActiveEvent()
-    {
-        var team = SeedTeam("Dept B");
-        var user = SeedUser();
-        SeedTeamMember(team.Id, user.Id);
-
-        var inactiveEvent = SeedEventSettings("Past Event", isActive: false);
-        var rota = SeedRota(team.Id, inactiveEvent.Id, "Shifts");
-        var shift = SeedShift(rota.Id);
-        SeedShiftSignup(shift.Id, user.Id, SignupStatus.Pending);
-
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var result = await _service.GetAdminTeamListAsync(TestContext.Current.CancellationToken);
-
-        var summary = result.Should().ContainSingle(t => t.Name == "Dept B").Subject;
-        summary.PendingShiftSignupCount.Should().Be(0);
-    }
-
     [HumansTheory]
     [InlineData("missing")]
     [InlineData("system")]
@@ -3780,107 +3713,9 @@ public sealed class TeamServiceTests : TeamsTestHarness
         TeamsDb.TeamRoleAssignments.Add(assignment);
     }
 
-    /// <summary>
-    /// A fake <see cref="ISettingsService"/> resolving "the active event" off this test's ShiftsDb-seeded
-    /// rows, like <c>ShiftsTestHarness.NewCalendarResolver</c>, which this class cannot reach.
-    /// </summary>
-    private ISettingsService NewSettingsServiceBackedByShiftsDb()
-    {
-        var settingsService = Substitute.For<ISettingsService>();
-        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(async ci =>
-            {
-                var active = ShiftsDb.EventSettings.Local.FirstOrDefault(e => e.IsActive)
-                    ?? await ShiftsDb.EventSettings.FirstOrDefaultAsync(e => e.IsActive, ci.Arg<CancellationToken>());
-                return active is null ? null : ToEventSettingsInfo(active);
-            });
-        return settingsService;
-    }
-
     private static string Notice(string culture, string key, params object[] args)
     {
         var info = CultureInfo.GetCultureInfo(culture);
         return string.Format(info, new ResourceManager(typeof(TeamsResource)).GetString(key, info)!, args);
     }
-
-    private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
-        Id: src.Id,
-        EventName: src.EventName,
-        Year: src.Year,
-        TimeZoneId: src.TimeZoneId,
-        GateOpeningDate: src.GateOpeningDate,
-        BuildStartOffset: src.BuildStartOffset,
-        EventEndOffset: src.EventEndOffset,
-        StrikeEndOffset: src.StrikeEndOffset,
-        EarlyEntryCapacity: new Dictionary<int, int>(src.EarlyEntryCapacity),
-        BarriosEarlyEntryAllocation: src.BarriosEarlyEntryAllocation is null
-            ? null : new Dictionary<int, int>(src.BarriosEarlyEntryAllocation),
-        EarlyEntryClose: src.EarlyEntryClose);
-
-    private EventSettings SeedEventSettings(string name, bool isActive)
-    {
-        var es = new EventSettings
-        {
-            Id = Guid.NewGuid(),
-            EventName = name,
-            TimeZoneId = "Europe/Madrid",
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            BuildStartOffset = -7,
-            EventEndOffset = 5,
-            StrikeEndOffset = 7,
-            IsActive = isActive,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        ShiftsDb.EventSettings.Add(es);
-        return es;
-    }
-
-    private Rota SeedRota(Guid teamId, Guid eventSettingsId, string name)
-    {
-        var rota = new Rota
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            EventSettingsId = eventSettingsId,
-            Name = name,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        ShiftsDb.Rotas.Add(rota);
-        return rota;
-    }
-
-    private Shift SeedShift(Guid rotaId)
-    {
-        var shift = new Shift
-        {
-            Id = Guid.NewGuid(),
-            RotaId = rotaId,
-            DayOffset = 0,
-            StartTime = new LocalTime(9, 0),
-            Duration = Duration.FromHours(4),
-            MinVolunteers = 1,
-            MaxVolunteers = 5,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        ShiftsDb.Shifts.Add(shift);
-        return shift;
-    }
-
-    private void SeedShiftSignup(Guid shiftId, Guid userId, SignupStatus status)
-    {
-        var signup = new ShiftSignup
-        {
-            Id = Guid.NewGuid(),
-            ShiftId = shiftId,
-            UserId = userId,
-            Status = status,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
-        };
-        ShiftsDb.ShiftSignups.Add(signup);
-    }
-
 }

@@ -63,6 +63,13 @@ public interface IStripeService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<StoreRefundData>?> ListStoreRefundsAsync(string paymentIntentId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The settled charge behind a Store-account PaymentIntent, read with the org read key: its gross amount and the
+    /// second it was created, which is how the Holded gateway feed line for it is found. Null means unknown: the key or
+    /// the Store account is not configured, the key lacks the read scope, or the intent has no charge yet.
+    /// </summary>
+    Task<StoreChargeData?> GetStoreChargeAsync(string paymentIntentId, CancellationToken ct = default);
+
     /// <summary>The Stripe dashboard page for a Store-account payment, where a person issues its refund.</summary>
     string StorePaymentDashboardUrl(string paymentIntentId);
 }
@@ -72,6 +79,9 @@ public interface IStripeService : IApplicationService
 /// <c>failed</c>, <c>canceled</c>). <paramref name="AmountEur"/> is positive, already converted from minor units.
 /// </summary>
 public sealed record StoreRefundData(string RefundId, string PaymentIntentId, decimal AmountEur, string Status, Instant CreatedAt);
+
+/// <summary><paramref name="AmountEur"/> is the gross charge, positive, converted from minor units.</summary>
+public sealed record StoreChargeData(string ChargeId, string PaymentIntentId, decimal AmountEur, Instant CreatedAt);
 
 /// <summary>One amount per Stripe balance-transaction fee bucket, in EUR.</summary>
 /// <remarks>

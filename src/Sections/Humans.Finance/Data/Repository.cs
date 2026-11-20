@@ -7,7 +7,7 @@ using NodaTime;
 namespace Humans.Finance.Data;
 
 internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
-    : IHoldedRepository
+    : IFinanceRepository
 {
     public async Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default)
     {
@@ -114,6 +114,32 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
             return false;
         }
         return true;
+    }
+
+    public async Task<HoldedCreditorContact?> MoveCreditorContactAsync(
+        Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var source = await ctx.HoldedCreditorContacts.FirstOrDefaultAsync(c => c.UserId == fromUserId, ct);
+        if (source is null || await ctx.HoldedCreditorContacts.AnyAsync(c => c.UserId == toUserId, ct))
+            return null;
+
+        source.UserId = toUserId;
+        source.UpdatedAt = now;
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // The target was bound after the check above; its binding stands.
+            return null;
+        }
+        return source;
     }
 
     public async Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
@@ -227,4 +253,93 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         existing.ReconciledAt = reconciledAt;
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyDictionary<int, string>> GetStripeLedgerLinksAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.StripeLedgerLinks.AsNoTracking().ToDictionaryAsync(l => l.LedgerAccountNum, l => l.StripeAccountId, ct);
+    }
+
+    public async Task ReplaceStripeLedgerLinksAsync(IReadOnlyDictionary<int, string> links, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var rows = await ctx.StripeLedgerLinks.ToListAsync(ct);
+        ctx.StripeLedgerLinks.RemoveRange(rows.Where(r => !links.ContainsKey(r.LedgerAccountNum)));
+        foreach (var (num, accountId) in links)
+        {
+            if (rows.FirstOrDefault(r => r.LedgerAccountNum == num) is { } row)
+                row.StripeAccountId = accountId;
+            else
+                ctx.StripeLedgerLinks.Add(new StripeLedgerLink { LedgerAccountNum = num, StripeAccountId = accountId });
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<FinanceSettings> GetSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == FinanceSettings.SingletonId, ct)
+            ?? new FinanceSettings();
+    }
+
+    public async Task SaveSettingsAsync(FinanceSettings settings, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        if (await ctx.Settings.FirstOrDefaultAsync(s => s.Id == FinanceSettings.SingletonId, ct) is { } row)
+        {
+            row.PleoHoldedContactId = settings.PleoHoldedContactId;
+            row.PleoHoldedTreasuryId = settings.PleoHoldedTreasuryId;
+        }
+        else
+        {
+            ctx.Settings.Add(settings);
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlySet<string>> GetPleoBookingClaimsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return (await ctx.PleoBookingClaims.AsNoTracking().Select(c => c.PleoEntryId).ToListAsync(ct))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    public async Task<bool> TryClaimPleoBookingAsync(string pleoEntryId, Instant at, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.PleoBookingClaims.Add(new PleoBookingClaim { PleoEntryId = pleoEntryId, ClaimedAt = at });
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "PK_finance_pleo_booking_claims"
+        })
+        {
+            return false;
+        }
+    }
+
+    public async Task ReleasePleoBookingClaimAsync(string pleoEntryId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await ctx.PleoBookingClaims.Where(c => c.PleoEntryId == pleoEntryId).ExecuteDeleteAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<PleoReceiptUpload>> GetPleoReceiptUploadsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.PleoReceiptUploads.AsNoTracking().ToListAsync(ct);
+    }
+
+    public async Task AddPleoReceiptUploadAsync(PleoReceiptUpload row, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.PleoReceiptUploads.Add(row);
+        await ctx.SaveChangesAsync(ct);
+    }
 }
+

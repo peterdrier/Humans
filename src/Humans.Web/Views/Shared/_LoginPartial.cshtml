@@ -1,12 +1,10 @@
 @using System.Security.Claims
-@using Microsoft.AspNetCore.Identity
-@inject SignInManager<User> SignInManager
 @inject IUserService UserService
 
-@if (SignInManager.IsSignedIn(User))
+@if (User.Identity?.IsAuthenticated == true)
 {
     UserInfo? currentUser = null;
-    if (Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+    if (User.GetUserId() is { } currentUserId)
     {
         currentUser = await UserService.GetUserInfoAsync(currentUserId);
     }
@@ -20,7 +18,7 @@
                 aria-expanded="false">
             @if (currentUser is not null)
             {
-                <vc:human user-id="@currentUser.Id" layout="Avatar" size="34" bg-color="bg-secondary" link="None" />
+                <vc:human user-id="@currentUser.Id" layout="Avatar" size="34" bg-color="bg-secondary" link="InsideControl" />
             }
             <span class="d-none d-md-inline profile-dropdown-name">@displayName</span>
         </button>

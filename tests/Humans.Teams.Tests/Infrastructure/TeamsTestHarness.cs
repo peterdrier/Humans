@@ -4,8 +4,6 @@ using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Shifts.Data;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
@@ -45,10 +43,6 @@ public abstract class TeamsTestHarness : IDisposable
     private protected GoogleIntegrationDbContext GoogleDb => _googleIntegrationDb.Value.Context;
     private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleDbFactory => _googleIntegrationDb.Value.Factory;
 
-    private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
-    private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
-    private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
-
     private readonly Lazy<SectionDb<TeamsDbContext>> _teamsDb;
     private protected TeamsDbContext TeamsDb => _teamsDb.Value.Context;
     private protected TestDbContextFactory<TeamsDbContext> TeamsDbFactory => _teamsDb.Value.Factory;
@@ -73,7 +67,6 @@ public abstract class TeamsTestHarness : IDisposable
 
         _authDb = RegisterSection<AuthDbContext>(o => new(o));
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
-        _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));

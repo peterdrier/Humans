@@ -3,7 +3,7 @@
 @{
     var item = Model.Item;
     var es = Model.Es;
-    var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+    var tz = es.TimeZone;
     var shift = item.Shift;
     var isFull = item.RemainingSlots <= 0;
     var understaffed = item.ConfirmedCount < shift.MinVolunteers;

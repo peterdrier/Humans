@@ -134,7 +134,7 @@ public class GoogleControllerSyncCancellationTests
             var teamId = Guid.NewGuid();
             _syncService.GetRecentOutboxEventsAsync(200, Arg.Any<CancellationToken>())
                 .Returns([new GoogleSyncOutboxEventSnapshot(Guid.NewGuid(), "test", teamId, userId, default, null, 0, null, false)]);
-            _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<Guid, UserInfo>());
             var teams = Substitute.For<ITeamService>();
             teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
@@ -145,7 +145,7 @@ public class GoogleControllerSyncCancellationTests
 
             await _syncService.Received(1).GetRecentOutboxEventsAsync(200, ct);
             await _users.Received(1).GetUserInfosAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(userId)), ct);
+                Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(userId)), ct);
             await teams.Received(1).GetTeamsAsync(ct);
             await _resources.Received(1).GetResourcesByTeamIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(teamId)), ct);
         }
@@ -155,9 +155,9 @@ public class GoogleControllerSyncCancellationTests
                 DateTime.UnixEpoch, null, null, null, false, false);
             var first = second with { PrimaryEmail = "aaron@nobodies.team" };
             _admin.GetWorkspaceAccountListAsync(Arg.Any<CancellationToken>())
-                .Returns(new WorkspaceAccountListResult([second, first], 2, 2, 0, 0, 2, 0, 2));
+                .Returns(new WorkspaceAccountListResult([second, first]));
             var view = (await controller.Accounts()).Should().BeOfType<ViewResult>().Subject;
-            var model = view.Model.Should().BeOfType<WorkspaceEmailListViewModel>().Subject;
+            var model = view.Model.Should().BeOfType<WorkspaceAccountListResult>().Subject;
             model.Accounts.Select(a => a.PrimaryEmail).Should().Equal(first.PrimaryEmail, second.PrimaryEmail);
             model.TotalAccounts.Should().Be(2);
             model.MissingTwoFactorCount.Should().Be(2);

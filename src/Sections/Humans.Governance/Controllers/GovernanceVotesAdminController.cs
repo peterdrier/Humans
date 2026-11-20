@@ -1,4 +1,5 @@
 using Humans.Base.Authorization;
+using Humans.Base.Interfaces;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Governance.Models;
@@ -20,6 +21,7 @@ namespace Humans.Governance.Controllers;
 internal sealed class GovernanceVotesAdminController(
     IUserService userService,
     IAssemblyVoteService voteService,
+    IOrgTimeZone orgTimeZone,
     ILogger<GovernanceVotesAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -49,7 +51,7 @@ internal sealed class GovernanceVotesAdminController(
         if (!ModelState.IsValid)
             return View("~/Views/Governance/Votes/Admin/Create.cshtml", model);
 
-        var voteId = await voteService.CreateDraftAsync(model.ToDraft(), actor.Id, ct);
+        var voteId = await voteService.CreateDraftAsync(model.ToDraft(orgTimeZone.Zone), actor.Id, ct);
         if (voteId is null)
         {
             SetError("That draft was rejected — check the required fields and options.");
@@ -74,7 +76,7 @@ internal sealed class GovernanceVotesAdminController(
         var draft = await voteService.GetDraftAsync(voteId, ct);
         if (draft is null) return NotFound();
 
-        return View("~/Views/Governance/Votes/Admin/Edit.cshtml", AssemblyVoteDraftFormViewModel.FromDraft(voteId, draft));
+        return View("~/Views/Governance/Votes/Admin/Edit.cshtml", AssemblyVoteDraftFormViewModel.FromDraft(voteId, draft, orgTimeZone.Zone));
     }
 
     [HttpPost("{voteId:guid}/Edit")]
@@ -88,7 +90,7 @@ internal sealed class GovernanceVotesAdminController(
         if (!ModelState.IsValid)
             return RedisplayEdit(voteId, model, "That draft was rejected — check the required fields and options.");
 
-        var result = await voteService.UpdateDraftAsync(voteId, model.ToDraft(), actor.Id, ct);
+        var result = await voteService.UpdateDraftAsync(voteId, model.ToDraft(orgTimeZone.Zone), actor.Id, ct);
         if (result == AssemblyVoteActionResult.Ok && IsTranslate(submitAction))
         {
             // Saved already, so a translation failure reports rather than re-rendering.
@@ -166,7 +168,7 @@ internal sealed class GovernanceVotesAdminController(
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Challenge();
 
-        var result = await voteService.ExtendAsync(voteId, model.ToInstant(), actor.Id, ct);
+        var result = await voteService.ExtendAsync(voteId, model.ToInstant(orgTimeZone.Zone), actor.Id, ct);
         return result switch
         {
             AssemblyVoteActionResult.Ok => Success("Closing time extended.", nameof(Index)),

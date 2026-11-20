@@ -69,6 +69,8 @@ internal sealed class CampsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition CampRegistrationClosed = new("CampRegistrationClosed");
 
+    public static readonly AuditActionDefinition CampRegistrationInfoUpdated = new("CampRegistrationInfoUpdated");
+
     public static readonly AuditActionDefinition CampNameLockDateChanged = new("CampNameLockDateChanged");
 
     public static readonly AuditActionDefinition CampsExported = new("CampsExported");

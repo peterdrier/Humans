@@ -1,0 +1,21 @@
+@model Humans.Governance.Services.GovernanceBodyAccess
+<ul class="list-group list-group-flush">
+    @if (Model.GroupAddress is { } address)
+    {
+        <li class="list-group-item"><i class="fa-solid fa-envelope me-2 text-muted"></i>@address</li>
+    }
+    @foreach (var file in Model.Files.OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase))
+    {
+        <li class="list-group-item">
+            <i class="fa-brands fa-google-drive me-2 text-muted"></i>
+            @if (!string.IsNullOrEmpty(file.Url))
+            {
+                <a href="@file.Url" target="_blank" rel="noopener noreferrer">@file.Name</a>
+            }
+            else
+            {
+                @file.Name
+            }
+        </li>
+    }
+</ul>

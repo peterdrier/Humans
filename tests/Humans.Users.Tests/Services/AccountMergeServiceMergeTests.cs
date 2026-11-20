@@ -146,8 +146,8 @@ public class AccountMergeServiceMergeTests
         var ct = TestContext.Current.CancellationToken;
         var source = new User { Id = Guid.NewGuid(), BurnerName = "Source" };
         var target = new User { Id = Guid.NewGuid(), BurnerName = "Target" };
-        var sourceProfile = new Profile { Id = Guid.NewGuid(), UserId = source.Id, FirstName = "Source", LastName = "Human" };
-        var targetProfile = new Profile { Id = Guid.NewGuid(), UserId = target.Id, FirstName = "Target", LastName = "Human" };
+        var sourceProfile = new Profile { Id = Guid.NewGuid(), UserId = source.Id };
+        var targetProfile = new Profile { Id = Guid.NewGuid(), UserId = target.Id };
         var field = new ContactField
         {
             Id = Guid.NewGuid(),
@@ -551,6 +551,78 @@ public class AccountMergeServiceMergeTests
         SetupUsers(src, tgt, sourceTombstoned: true);
         var act = () => BuildSut().MergeAsync(tgt, src, Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
         (await act()).Refusal.Should().Contain("tombstoned");
+    }
+
+    // A GDPR-erased side must never fold: as survivor it would absorb the live human's logins onto
+    // a walled tombstone; as archived its Deleted state would be overwritten with Merged.
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MergeAsync_DeletedSide_RefusesWithoutTouchingEitherAccount(bool survivorDeleted)
+    {
+        var survivor = Guid.NewGuid(); var archived = Guid.NewGuid();
+        var merger = SetupDeletedPair(survivor, archived, survivorDeleted);
+
+        var result = await BuildSut().MergeAsync(
+            survivor, archived, Guid.NewGuid(), pendingEmailIdToVerify: Guid.NewGuid(),
+            ct: TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Contain("is deleted");
+        await AssertNothingMutatedAsync(merger);
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AcceptAsync_DeletedSide_RefusesAndLeavesRequestPending(bool survivorDeleted)
+    {
+        var survivor = Guid.NewGuid(); var archived = Guid.NewGuid();
+        var merger = SetupDeletedPair(survivor, archived, survivorDeleted);
+        var req = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(),
+            SourceUserId = archived,
+            TargetUserId = survivor,
+            PendingEmailId = Guid.NewGuid(),
+            Email = "dupe@example.com",
+            Status = AccountMergeRequestStatus.Pending,
+        };
+        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
+
+        var result = await BuildSut().AcceptAsync(
+            req.Id, Guid.NewGuid(), survivor, ct: TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Contain("is deleted");
+        req.Status.Should().Be(AccountMergeRequestStatus.Pending);
+        await AssertNothingMutatedAsync(merger);
+    }
+
+    private IUserMerge SetupDeletedPair(Guid survivorId, Guid archivedId, bool survivorDeleted)
+    {
+        _userService.GetRawUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User
+            {
+                Id = survivorId,
+                State = survivorDeleted ? UserState.Deleted : UserState.Active,
+            }));
+        _userService.GetRawUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User
+            {
+                Id = archivedId,
+                State = survivorDeleted ? UserState.Active : UserState.Deleted,
+            }));
+        var merger = Substitute.For<IUserMerge>();
+        _userMerges.Add(merger);
+        return merger;
+    }
+
+    private async Task AssertNothingMutatedAsync(IUserMerge merger)
+    {
+        merger.ReceivedCalls().Should().BeEmpty();
+        _userEmailRepo.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        await _userService.DidNotReceiveWithAnyArgs().AnonymizeForMergeAsync(default, default, default, default);
+        await _mergeRepo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
     }
 
     [HumansFact]

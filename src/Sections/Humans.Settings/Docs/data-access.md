@@ -32,7 +32,7 @@ outside Settings writes them. Each writes one `IAuditLogService` entry
 | Table | R/W |
 |-------|-----|
 | `settings_system_values` | R/W (`GetValueAsync` / `SetValueAsync`, by key; `GetTimeZoneIdAsync` on the cross-section interface and `SaveTimeZoneAsync` on `ISettingsWriteService` for `Event:TimeZoneId`) |
-| `settings_events` | R/W (`GetActiveEventSettingsAsync` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` on the cross-section interface; `SaveEventSettingsAsync`, `ActivateEventSettingsAsync` on `ISettingsWriteService`; `CreateActiveEventAsync` / `DeleteEventAsync` on `IEventSettingsSeeding`) |
+| `settings_events` | R/W (`GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` on the cross-section interface; `SaveEventSettingsAsync`, `ActivateEventSettingsAsync` on `ISettingsWriteService`; `CreateActiveEventAsync` / `DeleteEventAsync` on `IEventSettingsSeeding`) |
 
 The table's row rules (one active row, ordered windows, early-entry range,
 representable dates, no overlaps) are service-enforced, never DB constraints

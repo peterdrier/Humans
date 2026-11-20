@@ -396,9 +396,6 @@
   <!-- ======================== -->
   <!-- Email grid               -->
   <!-- ======================== -->
-  <data name="Users_EmailGrid_AdminContextBanner" xml:space="preserve">
-    <value>E-mailadressen beheren voor een andere gebruiker</value>
-  </data>
   <data name="Users_EmailGrid_AdminContextBannerNamed" xml:space="preserve">
     <value>E-mailadressen van {0} beheren</value>
     <comment>{0} = target user display name</comment>
@@ -809,4 +806,7 @@
   <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
     <value>Selecteer tags die passen bij het soort werk dat je leuk vindt. Bijpassende diensten worden gemarkeerd met een ster.</value>
   </data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Bestuur</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Accountverwijderingen in afwachting</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Beheerders</value></data>
 </root>

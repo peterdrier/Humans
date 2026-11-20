@@ -13,17 +13,6 @@ internal sealed class Profile
     public Guid UserId { get; init; }
 
     [PersonalData]
-    public string BurnerName { get; set; } = string.Empty;
-
-    /// <summary>Visible to the member and the Board only.</summary>
-    [PersonalData]
-    public string FirstName { get; set; } = string.Empty;
-
-    /// <summary>Visible to the member and the Board only.</summary>
-    [PersonalData]
-    public string LastName { get; set; } = string.Empty;
-
-    [PersonalData]
     public string? City { get; set; }
 
     /// <summary>ISO 3166-1 alpha-2.</summary>
@@ -88,8 +77,6 @@ internal sealed class Profile
     /// <summary>Notes to the Board, visible to self and the Board only.</summary>
     [PersonalData]
     public string? BoardNotes { get; set; }
-
-    public string FullName => $"{FirstName} {LastName}".Trim();
 
     public bool HasCustomProfilePicture => ProfilePictureContentType is not null;
 

@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Auth.Contracts;
 using Humans.Base.Controllers;
 using System.Security.Claims;
@@ -21,6 +22,7 @@ public class AccountController(
     IUserService userService,
     IUserWrite userWrite,
     IClock clock,
+    IOrgTimeZone orgTimeZone,
     ILogger<AccountController> logger,
     IExternalLoginService externalLoginService,
     IMagicLinkService magicLinkService,
@@ -76,10 +78,12 @@ public class AccountController(
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        var result = await signIn.ExternalLoginSignInAsync(info);
-
-        // Already signed in means this callback links a Google account, not a sign-in.
+        // Already signed in means this callback links a Google account, not a sign-in —
+        // skip ExternalLoginSignInAsync so Identity cannot overwrite the session cookie with another account.
         var wasAuthenticated = IsAuthenticated();
+        var result = wasAuthenticated
+            ? Microsoft.AspNetCore.Identity.SignInResult.Failed
+            : await signIn.ExternalLoginSignInAsync(info);
 
         // Deliberately not passing HttpContext.RequestAborted: a client disconnect
         // mid-provisioning would abort past the rollback and strand a half-built
@@ -173,9 +177,8 @@ public class AccountController(
         }
 
         // Always show "check your email" — no account enumeration.
-        var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var expiryInstant = clock.GetCurrentInstant() + Duration.FromMinutes(15);
-        var expiryLocal = expiryInstant.InZone(madridZone);
+        var expiryLocal = expiryInstant.InZone(orgTimeZone.Zone);
         ViewData["ExpiryTime"] = DateFormattingExtensions.TimeOfDayPattern.Format(expiryLocal.TimeOfDay);
         return View("MagicLinkSent");
     }

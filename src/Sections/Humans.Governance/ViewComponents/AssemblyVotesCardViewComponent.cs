@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;
@@ -10,7 +11,7 @@ internal sealed class AssemblyVotesCardViewComponent(IAssemblyVoteService votes)
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (UserClaimsPrincipal.GetUserId() is not { } userId)
         {
             return Content(string.Empty);
         }

@@ -11,15 +11,12 @@
         <page-header-subtitle>
             <a asp-action="Team" asp-route-teamId="@Model.Event.OwningTeamId">@Model.OwningTeamName</a>
         </page-header-subtitle>
-        @if (Model.CanEdit)
-        {
-            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Event.Id">@SharedLocalizer["Common_Edit"]</a>
-            <form asp-action="Delete" asp-route-id="@Model.Event.Id" method="post" class="d-inline"
-                  data-confirm="@Localizer["Calendar_DeleteConfirm"]">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-sm btn-outline-danger">@SharedLocalizer["Common_Delete"]</button>
-            </form>
-        }
+        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Event.Id">@SharedLocalizer["Common_Edit"]</a>
+        <form asp-action="Delete" asp-route-id="@Model.Event.Id" method="post" class="d-inline"
+              data-confirm="@Localizer["Calendar_DeleteConfirm"]">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-outline-danger">@SharedLocalizer["Common_Delete"]</button>
+        </form>
     </page-header>
 
     <dl class="row">
@@ -95,7 +92,7 @@
                             <em class="text-muted">— @o.Title</em>
                         }
                     </span>
-                    @if (Model.CanEdit && o.IsRecurring && (o.OriginalOccurrenceStartUtc is not null || o.OriginalOccurrenceDate is not null))
+                    @if (o.IsRecurring && (o.OriginalOccurrenceStartUtc is not null || o.OriginalOccurrenceDate is not null))
                     {
                         <a class="btn btn-sm btn-outline-secondary"
                            asp-action="EditOccurrence"

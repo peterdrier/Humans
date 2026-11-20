@@ -113,18 +113,14 @@ Humans.Finance/
   Models/                      view models and the payout file's input records
   Views/Finance/               those pages
   Services/
-    Service.cs                 facade for shapes A–G
-    HoldedCreditorReader.cs     shape D: status, accounts and statements
-    FinancePersonalData.cs      financial export and retention declarations
-    SepaBankBooking.cs         shape F and the sweep
+    Service.cs                 shapes A–G: creditor reads, bindings, bank booking and the sweep,
+                               duplicate review, payout generation and emails, financial export
     HoldedMatcher.cs           pure attribution, no dependencies
     HoldedDuplicateMatcher.cs  pure duplicate detection, no dependencies
-    HoldedDuplicateReview.cs   preview, fresh-sync confirmation and removal
     ExpenseRecon.cs            pure reconciliation report, no dependencies
-    SepaPayoutGeneration.cs    preview, plan and persisted payment-file generation
     SepaPaymentFileBuilder.cs  pure pain.001 XML from a batch, no dependencies
     SepaSchema.cs, SepaText.cs the schema and the character rules that builder obeys
-    SepaPayoutEmails.cs, FinanceEmails.cs, FinanceEmailPreviews.cs  the payout emails and their preview
+    FinanceEmails.cs, FinanceEmailPreviews.cs  the payout emails and their preview
     CashFlowService.cs         shape H
     PaymentDetailsService.cs   shapes I and J for the IBAN
     I*.cs                      the internal interfaces
@@ -138,7 +134,7 @@ Humans.Finance/
 What the shapes say about the inside:
 
 - Shape **D**'s methods share one balance derivation and one accessor for the cached Holded
-  contact list in `HoldedCreditorReader`.
+  contact list in `Service`.
 - Shape **C**'s collision policy is one predicate with three call-site answers.
 - The member creditor block is one range, checked by one predicate wherever an account number is
   judged.
@@ -175,56 +171,50 @@ What the shapes say about the inside:
   bind and the seed refuse (`src/Sections/Humans.Finance/Services/Service.cs:750`,
   `src/Sections/Humans.Finance/Services/Service.cs:855`), the post-push number write records Holded's
   fact and logs the collision (`src/Sections/Humans.Finance/Services/Service.cs:991`).
+- "A member" is a human across merges: a binding on one of their own ids never conflicts, and a merge
+  moves the archived binding to an unbound survivor but never drops one when both are bound
+  (`ReassignAsync`, `FindConflictingBinding` in `src/Sections/Humans.Finance/Services/Service.cs`).
 - A member's binding is never downgraded from a hand-made link to an automatic one
   (`src/Sections/Humans.Finance/Services/Service.cs:929`).
 - A linked Holded contact is never updated from here — only a member with no contact gets one
   created (`src/Sections/Humans.Finance/Services/Service.cs:872`).
 - Every read that draws on Holded's contact list for creditor accounts, and the manual bind, are
-  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/HoldedCreditorReader.cs`,
+  filtered to the 40000000–41999999 block (`src/Sections/Humans.Finance/Services/Service.cs`,
   `src/Sections/Humans.Finance/Services/Service.cs:743`).
 - Balances keep Holded's sign (`Σdebit − Σcredit`) on every DTO; the creditor list and the statement
   flip it for display, and a ledger line's running balance is computed from the member's side
   (`src/Sections/Humans.Finance/Controllers/FinanceController.cs:105`,
   `src/Sections/Humans.Finance/Models/CreditorStatementVm.cs:14`,
-  `src/Sections/Humans.Finance/Services/HoldedCreditorReader.cs`).
+  `src/Sections/Humans.Finance/Services/Service.cs`).
 - A Holded outage costs account names, never a page; anything that is not a vendor failure throws
   (`src/Sections/Humans.Finance/Services/Service.cs:657`).
 - A payout transfer pays only a singly-bound account, never more than is owed, never more than the
   posted cap, and only to the IBAN Holded holds for the contact the binding names
-  (`src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
-  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
-  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
+  (`src/Sections/Humans.Finance/Services/Service.cs`,
   `src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:174`).
 - An account with an unbooked transfer in an earlier file, or with duplicate documents in Holded,
   or whose documents cannot be read, is not paid again
-  (`src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`,
-  `src/Sections/Humans.Finance/Services/SepaPayoutGeneration.cs`).
+  (`src/Sections/Humans.Finance/Services/Service.cs`).
 - A generated file validates against the schema before it is stored, and is stored as sent
   (`src/Sections/Humans.Finance/Services/SepaPaymentFileBuilder.cs:123`,
   `src/Sections/Humans.Finance/Services/Service.cs:1160`).
 - A transfer is withdrawn only while nothing has moved: never once booked, tied to a bank line, or
   carrying a Holded payment (`src/Sections/Humans.Finance/Services/Service.cs:1215`).
 - A transfer books at most once: the row's `BookedAt` refuses a second booking, and every booking on
-  the server runs one at a time (`src/Sections/Humans.Finance/Services/SepaBankBooking.cs:621`,
-  `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:493`).
+  the server runs one at a time (`src/Sections/Humans.Finance/Services/Service.cs`).
 - Booking re-pairs the bank line itself and refuses a binding that no longer names the transfer's
-  account or contact (`src/Sections/Humans.Finance/Services/SepaBankBooking.cs:687`,
-  `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:639`,
-  `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:654`).
+  account or contact (`src/Sections/Humans.Finance/Services/Service.cs`).
 - Booking writes two kinds of entry into the books and nothing else: a payment against an approved
   purchase document, and one journal entry for the remainder against the configured treasury ledger
-  account (`src/Sections/Humans.Finance/Services/SepaBankBooking.cs:770`,
-  `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:787`).
+  account (`src/Sections/Humans.Finance/Services/Service.cs`).
 - A booking is saved before the bank line is reconciled
-  (`src/Sections/Humans.Finance/Services/SepaBankBooking.cs:813`).
+  (`src/Sections/Humans.Finance/Services/Service.cs`).
 - The sweep books a transfer only against a line whose text names the account and that matches
   exactly one transfer; whole-file and textless lines are booked only by a person
-  (`src/Sections/Humans.Finance/Services/SepaBankBooking.cs:343`,
-  `src/Sections/Humans.Finance/Services/SepaBankBooking.cs:346`).
+  (`src/Sections/Humans.Finance/Services/Service.cs`).
 - A duplicate document is deleted only when its notes match the push exactly; a contact is deleted
   only once every document it held was deleted without a failure
-  (`src/Sections/Humans.Finance/Services/HoldedDuplicateReview.cs`,
-  `src/Sections/Humans.Finance/Services/HoldedDuplicateReview.cs`).
+  (`src/Sections/Humans.Finance/Services/Service.cs`).
 - A raw IBAN lives in the payment-details row, the bank file, the transfer row and the contact
   create that hands it to Holded; audit entries, exports and cross-section rows carry it masked
   (`src/Sections/Humans.Finance/Services/Service.cs:1117`,

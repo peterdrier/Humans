@@ -10,5 +10,6 @@ internal sealed class CampEventSettingsConfiguration : IEntityTypeConfiguration<
         builder.ToTable("camp_event_settings");
         builder.HasKey(s => s.EventSettingsId);
         builder.Property(s => s.EventSettingsId).ValueGeneratedNever();
+        builder.Property(s => s.RegistrationInfo).HasColumnType("text");
     }
 }

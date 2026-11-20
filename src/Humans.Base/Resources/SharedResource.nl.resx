@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Overeenkomsten bekijken</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Aanmelding afgewezen</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>Je aanmelding is beoordeeld en niet goedgekeurd. Heb je vragen, neem dan contact op met het beheerteam.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Reden</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Dit is er gaande.</value>
   </data>
@@ -1080,31 +1071,6 @@
   <data name="Nav_Guide" xml:space="preserve">
     <value>Help</value>
   </data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
-    <value>Diensten</value>
-  </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
-    <value>{0} / {1} plekken bezet</value>
-    <comment>{0} = filled, {1} = total</comment>
-  </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
-    <value>{0} humans aangemeld</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
-    <value>{0} in afwachting</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
-    <value>Nog geen diensten ingesteld.</value>
-  </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
-    <value>Inclusief diensten van {0} subteam(s)</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
-    <value>Diensten beheren</value>
-  </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans beheert het lidmaatschap van Nobodies Collective en verwerkt persoonsgegevens in overeenstemming met de AVG en de Spaanse wet op de gegevensbescherming (LOPDGDD).</value>
   </data>
@@ -1501,6 +1467,12 @@
   </data>
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Gate</value>
+  </data>
+  <data name="Settings_TabStore" xml:space="preserve">
+    <value>Winkel</value>
+  </data>
+  <data name="Settings_TabFinance" xml:space="preserve">
+    <value>Financiën</value>
   </data>
   <data name="Settings_TabBarrios" xml:space="preserve">
     <value>Barrio's</value>

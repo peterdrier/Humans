@@ -3,6 +3,7 @@ using Humans.Shifts.Domain;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Auth.Contracts;
 using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
@@ -44,9 +45,31 @@ public sealed class RotaCoordinatorMessageServiceTests
                 var found = _calendars.TryGetValue(ci.Arg<Guid>(), out var es);
                 return Task.FromResult(found ? ToEventSettingsInfo(es!) : null);
             });
-        return new(_repo, _teamService, _userService, _emailService, _emailMessages, _auditLog,
-            new EventCalendarResolver(_settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), _clock,
+        var resolver = new EventCalendarResolver(_settingsService, Substitute.For<IShiftManagementRepository>());
+        // The rows come from the inner management service over the rotas each test stubs on _repo.
+        var rowsRepo = Substitute.For<IShiftManagementRepository>();
+        rowsRepo.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>())
+            .Returns(ci => StubbedRotasAsync(ci.Arg<IReadOnlyCollection<Guid>?>()));
+        IShiftRotaRows rows = new ShiftManagementService(rowsRepo, _auditLog, Substitute.For<IAdminAuthorizationService>(),
+            Substitute.For<IServiceProvider>(), resolver, _clock, NullLogger<ShiftManagementService>.Instance);
+        return new(rows, _teamService, _userService, _emailService, _emailMessages, _auditLog, resolver, _clock,
             logger ?? NullLogger<RotaCoordinatorMessageService>.Instance);
+    }
+
+    private async Task<IReadOnlyList<Rota>> StubbedRotasAsync(IReadOnlyCollection<Guid>? rotaIds)
+    {
+        var rotas = new List<Rota>();
+        if (rotaIds is null)
+        {
+            foreach (var eventId in _calendars.Keys)
+                rotas.AddRange(await _repo.GetRotasAsync(eventId, [], RotaReadShape.View));
+        }
+        else
+        {
+            foreach (var id in rotaIds)
+                if (await _repo.GetRotaAsync(id, RotaReadShape.View) is { } rota) rotas.Add(rota);
+        }
+        return rotas;
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(
@@ -231,7 +254,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA, userB);
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
                 [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Usera", language),
@@ -369,11 +392,11 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         // sender + withEmail have addresses; noEmail's UserInfo has an empty email.
         // Need to make sender resolvable too.
-        _userService.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(sender)), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(c => c.Contains(sender)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = MakeUserInfoWithEmail(sender, "sender@example.com", "Sender") }));
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(withEmail) || c.Contains(noEmail)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(withEmail) || c.Contains(noEmail)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -507,7 +530,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendTeamRotasMessageAsync_ReturnsFailure_WhenNoActiveEvent()
     {
         var teamId = StubTeam();
-        // No StubEvent() call — _settingsService.GetActiveEventSettingsAsync defaults to null.
+        // No StubEvent() call — _settingsService.GetActiveEventSettings defaults to null.
 
         var result = await CreateSut().SendTeamRotasMessageAsync(teamId, Guid.NewGuid(), "hello", includeShifts: true, TeamRotasAudienceFilter.Default, Xunit.TestContext.Current.CancellationToken);
 
@@ -606,7 +629,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA);
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
                 [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Usera", language),
@@ -770,7 +793,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota1, rota2]);
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA) && c.Contains(userB)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA) && c.Contains(userB)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -879,7 +902,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
             .Returns([rota]);
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Alice") }));
 
@@ -924,7 +947,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
         _calendars[es.Id] = es;
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(ToEventSettingsInfo(es));
         return es;
     }
@@ -1071,13 +1094,13 @@ public sealed class RotaCoordinatorMessageServiceTests
         }
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Count == 1 && c.Contains(sender)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Distinct().Count() == 1 && c.Contains(sender)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = senderInfo }));
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => recipients.All(c.Contains)),
+            Arg.Is<IEnumerable<Guid>>(c => recipients.All(c.Contains)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(recipientInfos));
     }

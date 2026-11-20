@@ -15,7 +15,7 @@ internal interface IGrantManagement : IGrantWrite, IApplicationService
 
     Task<bool> ManagesAnyProgramAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Europe/Madrid, the date expiry is checked against.</summary>
+    /// <summary>Org time zone, the date expiry is checked against.</summary>
     LocalDate Today { get; }
 
     /// <summary>The program's year follows the chosen event, which must exist and not be deleted.</summary>

@@ -10,11 +10,6 @@
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
-      Same shape, same expiry: Humans.Teams.Tests' harness seeds this section's rows
-      through its own copy of ServiceTestHarness (Teams finding 36's two-way pattern).
-    -->
-    <InternalsVisibleTo Include="Humans.Teams.Tests" />
-    <!--
       AuthorizationPolicyTests builds its own ServiceCollection rather than the full
       Section.Register graph, so it registers IsAnyTeamManagerOrCoordinatorHandler
       directly (backs PolicyNames.ShiftDepartmentManager).
@@ -44,9 +39,6 @@
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <!-- ICantinaService (Contracts/ folder): the missing-dietary banner.
-         Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
-    <ProjectReference Include="..\Humans.Cantina\Humans.Cantina.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Humans.Shifts
       type (they may name Humans.Shifts.Contracts, which is

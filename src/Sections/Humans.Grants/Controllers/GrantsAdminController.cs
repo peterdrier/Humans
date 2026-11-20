@@ -48,7 +48,7 @@ internal sealed class GrantsAdminController(
     [Authorize(Policy = GrantsPolicies.Manage)]
     public async Task<IActionResult> New(CancellationToken ct)
     {
-        var active = await settings.GetActiveEventSettingsAsync(ct);
+        var active = settings.GetActiveEventSettings();
         return View("Form", await FillAsync(new ProgramFormViewModel { EventSettingsId = active?.Id }, ct));
     }
 

@@ -1,7 +1,8 @@
 @model StripeTransactionsPage
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Stripe transactions";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
     var f = Model.Filter;
     var matched = (int)(ViewData["MatchCount"] ?? 0);
     string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
@@ -81,7 +82,7 @@
             @foreach (var t in Model.Rows)
             {
                 <tr>
-                    <td class="text-nowrap"><a asp-action="Transaction" asp-route-id="@t.Id">@t.Created.ToDateTime(madrid)</a></td>
+                    <td class="text-nowrap"><a asp-action="Transaction" asp-route-id="@t.Id">@t.Created.ToDateTime(orgZone)</a></td>
                     <td class="small">@t.AccountName</td>
                     <td class="small">
                         @t.Type

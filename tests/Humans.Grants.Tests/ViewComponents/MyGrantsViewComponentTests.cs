@@ -58,7 +58,7 @@ public sealed class MyGrantsViewComponentTests : GrantsTestHarness
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, SeedUser("Other").ToString())], "test"))
         };
-        var component = new MyGrantsViewComponent(NewService(), Users)
+        var component = new MyGrantsViewComponent(NewService(), Users, FixedOrgTimeZone.Madrid)
         {
             ViewComponentContext = new ViewComponentContext { ViewContext = new ViewContext { HttpContext = http } }
         };
@@ -75,7 +75,7 @@ public sealed class MyGrantsViewComponentTests : GrantsTestHarness
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, (viewerClaim ?? holder).ToString())], "test"))
         };
-        var component = new MyGrantsViewComponent(NewService(), Users)
+        var component = new MyGrantsViewComponent(NewService(), Users, FixedOrgTimeZone.Madrid)
         {
             ViewComponentContext = new ViewComponentContext { ViewContext = new ViewContext { HttpContext = http } }
         };

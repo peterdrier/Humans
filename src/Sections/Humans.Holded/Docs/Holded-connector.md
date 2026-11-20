@@ -1,7 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/Services/IHoldedClient.cs
   src/Sections/Humans.Holded/Contracts/Holded*.cs
-  src/Sections/Humans.Holded/Services/Holded*Client.cs
+  src/Sections/Humans.Holded/Services/HoldedClient.cs
+  src/Sections/Humans.Holded/Services/Holded*Dto*.cs
+  src/Sections/Humans.Holded/Services/HoldedClientOptions.cs
   src/Sections/Humans.Holded/Services/HoldedTransport.cs
   src/Sections/Humans.Holded/Services/HoldedJson.cs
   src/Sections/Humans.Holded/Services/HoldedCallLog.cs
@@ -45,7 +47,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 ## Invariants
 
 - Contact creation accepts no custom user id: Holded v2 cannot write it. Finance keeps the user-to-contact binding locally.
-- Connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata; consumers use document totals, the draft flag and bank reconciliation status.
+- Purchase detail reads parse only approval time, notes and payment details. Identity, document number, totals, balances and tags come from the list mirror where needed; unused detail metadata cannot fail approval, note sync or payment-reference reads. Other connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata.
 - Every HTTP send goes through `HoldedTransport`, which owns Bearer authorization, retry, the
   cursor page walk, the call-meter record and the timed-operation log. The metered endpoint name is
   the operation's method name.
@@ -71,12 +73,12 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   new `payments_detail` entry matching amount, date and treasury on a re-read of the document
   (the POST answers `{"status":"paid"}` alone); an entry's id comes from its own response body.
   Callers must not repeat a posting because its reference is unconfirmed.
-- Expense-account `account_num` and `id`, and chart account `id`, are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
+- Expense-account reads need only `account_num` and `id`; the unused name is not parsed. Both fields, and chart account `id`, are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
 - Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. An unreadable contact fails the complete list with `HoldedPermanentException`; valid contacts are never returned as a shortened replacement dataset.
 - Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. Approved (`draft: false`) purchase documents require a non-null `payments_pending`; a missing balance fails the complete read with `HoldedPermanentException`. Otherwise Finance could omit an unpaid invoice and post a journal remainder instead. Drafts and unknown approval states may omit the balance and read as 0; neither is bookable.
 - Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
 - A sales-document read returns its `lines` (v2's name for v1's `products`) as name, units, unit price and the line's `tax`, which the v2 spec defines as the primary tax percent (the document-level `tax` is an amount); not yet confirmed against a live read. The read follows an approval, so a line without a readable `units`, `price` or `tax` never fails it: the document reads as having no lines, with a warning.
-- Contact and sales-document detail IDs must be nonblank when returned; an absent/null ID retains the requested-ID fallback. Contact lists reject unidentified rows rather than omitting them from mirror replacement or live contact matching. Tagged sales-document searches reject unidentified matches, including whitespace IDs, rather than returning an incomplete recovery result.
+- Sales-document detail IDs must be nonblank when returned; an absent/null ID retains the requested-ID fallback. Contact lists reject unidentified rows rather than omitting them from mirror replacement or live contact matching. Tagged sales-document searches reject unidentified matches, including whitespace IDs, rather than returning an incomplete recovery result.
 - Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
 - A `ledger-entries` item is exactly `id, entry_number, line, date, type, description,
   doc_description, account, debit, credit, tags[], checked`. `id` is the journal entry's id
@@ -119,14 +121,13 @@ usage) and `HoldedWrite`. Outbound: none — the connector owns no tables and no
 ## Architecture
 
 **Owning surface:** `IHoldedClient`, its impl `HoldedClient` and the `IHoldedCallLog` singleton are
-`internal` in `Humans.Holded/Services/`, so the compiler stops any other section from calling Holded. Its DTOs,
-typed exceptions and `HoldedClientOptions` stay public in `Humans.Holded/Contracts/`, because
-`IHoldedService` and `IHoldedWrite` carry them. All of it is registered by this
+`internal` in `Humans.Holded/Services/`, so the compiler stops any other section from calling Holded. Connector-only DTOs and `HoldedClientOptions` are internal beside the client in `Services/`.
+The DTOs carried by `IHoldedService` and `IHoldedWrite` and typed exceptions remain public in
+`Contracts/`. Finance uses the purchase mirror directly, never a connector list shape. All of it is registered by this
 section's `Section.cs`.
 
-`HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over
-one `HoldedTransport`. Operation clients own their wire payloads, parsing and endpoint-specific
-failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
+`HoldedClient` holds the purchases, sales, contacts, accounting and treasury calls over one
+`HoldedTransport`: their wire payloads, parsing and endpoint-specific failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
 options.
 
 **Consumers outside the section:** none, and none can compile: every other section calls only

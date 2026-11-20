@@ -67,6 +67,7 @@ public sealed class Section :
 
         services.AddSingleton<IAuditActionContributor, TeamsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, TeamsNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, TeamsNotificationMeters>();
         services.AddSectionDbContext<TeamsDbContext>(sentinelTable: "teams");
 
         services.AddSingleton<ITeamRepository, TeamRepository>();

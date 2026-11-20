@@ -65,7 +65,7 @@
         }
     </text>;
     var membersTable = TableModel.For(members)
-        .Human("Member", r => r.UserId, HumanLink.None)
+        .Human("Member", r => r.UserId)
         .Template("Account", memberAccountCell, sortBy: m => m.SupplierAccountNum)
         .Template("Expenses", expensesCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.ExpensePurchases)
         .Template("SEPA paid", sepaPaidCell, o => o.End().Css("text-nowrap"), sortBy: m => -m.SepaPaid)

@@ -89,10 +89,10 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
                 return Task.FromResult(team is null ? null : ToTeamInfo(team));
             });
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                var ids = ci.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids
                     .Where(_names.ContainsKey)
                     .ToDictionary(id => id, id => UserFixtures.MakeUserInfo(id, displayName: _names[id]));
@@ -120,8 +120,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            Cache,
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -138,8 +136,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         var services = new ServiceLocatorBuilder()
             .With(_teamService).With(_userService).With(_campService).With(rows).Build();
         var service = new ShiftManagementService(
-            Substitute.For<IShiftManagementRepository>(), AuditLog, AdminAuthorization, services, Cache,
-            new ShiftViewProbe().Cache, NewCalendarResolver(), Clock,
+            Substitute.For<IShiftManagementRepository>(), AuditLog, AdminAuthorization, services, NewCalendarResolver(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var summary = await service.BuildSummaryAsync(_burn, "power", _rPower, cancellation.Token);

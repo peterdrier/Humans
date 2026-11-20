@@ -19,7 +19,7 @@ namespace Humans.Holded.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -111,6 +111,9 @@ namespace Humans.Holded.Data.Migrations
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(14,2)");
+
+                    b.Property<Instant?>("BookedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<LocalDate>("Date")
                         .HasColumnType("date");

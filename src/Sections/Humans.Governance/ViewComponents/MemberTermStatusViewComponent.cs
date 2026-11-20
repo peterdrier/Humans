@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Teams.Contracts;
 using System.Security.Claims;
@@ -17,7 +18,7 @@ internal sealed class MemberTermStatusViewComponent(
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var ct = HttpContext.RequestAborted;
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (UserClaimsPrincipal.GetUserId() is not { } userId)
         {
             return Content(string.Empty);
         }

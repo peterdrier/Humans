@@ -1,14 +1,15 @@
 @model HoldedSummary
 @using System.Globalization
 @using NodaTime
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Holded";
     var o = Model;
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 
     string Stamp(Instant? at) => at is null
         ? "never"
-        : at.Value.ToDateTime(madrid);
+        : at.Value.ToDateTime(orgZone);
 
     string StatusBadge(string status) => status switch
     {

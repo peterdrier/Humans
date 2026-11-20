@@ -55,7 +55,7 @@
                     <div class="issue-comment border-start ps-3 mb-3 @(ev.ActorIsReporter ? "border-info" : "border-secondary")">
                         <div class="d-flex justify-content-between small text-muted">
                             <span>
-                                <strong><vc:human user-id="@(ev.ActorUserId ?? Guid.Empty)" link="None" /></strong>
+                                <strong><vc:human user-id="@(ev.ActorUserId ?? Guid.Empty)" /></strong>
                                 @if (ev.ActorIsReporter)
                                 {
                                     <span class="badge bg-info bg-opacity-25 text-info-emphasis ms-1" style="font-size: 0.65rem;">@Localizer["Issue_Reporter"]</span>
@@ -73,7 +73,7 @@
                         <strong>
                             @if (ev.ActorUserId is { } actorUserId)
                             {
-                                <vc:human user-id="@actorUserId" link="None" />
+                                <vc:human user-id="@actorUserId" />
                             }
                             else
                             {
@@ -273,7 +273,7 @@
                         @Model.ResolvedAt.Value.ToDate()
                         @if (Model.ResolvedByUserId is { } resolverId)
                         {
-                            <div class="text-muted">@Localizer["Issue_ResolvedBy"] <vc:human user-id="@resolverId" link="None" /></div>
+                            <div class="text-muted">@Localizer["Issue_ResolvedBy"] <vc:human user-id="@resolverId" /></div>
                         }
                     </dd>
                 }

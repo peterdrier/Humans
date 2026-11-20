@@ -26,28 +26,15 @@ public sealed class EventsModerationControllerTests
     private readonly ICampService _camps = Substitute.For<ICampService>();
 
     [HumansTheory]
-    [Xunit.InlineData(true, false, "2", null, 0, 2, true, 2)]
-    [Xunit.InlineData(false, true, null, "2", 2, 0, true, 2)]
-    [Xunit.InlineData(true, true, "1", "2", 0, 0, true, null)]
-    [Xunit.InlineData(true, true, "1,2", "1,2", 0, 0, true, 1)]
-    [Xunit.InlineData(true, true, "1", "2", 0, 0, false, 0)]
-    [Xunit.InlineData(false, false, null, null, 0, 0, true, 0)]
-    public async Task Index_DuplicateWarningsCompareActualOccurrencesOncePerOtherEvent(
-        bool queuedRecurring, bool otherRecurring, string? queuedDays, string? otherDays,
-        int queuedStartDay, int otherStartDay, bool hasSettings, int? expectedDay)
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Index_FormatsTheDuplicateCandidatesSuppliedByTheService(bool hasSettings)
     {
         var settings = BurnFixtures.Burn(year: 2026);
-        var gate = settings.GateOpeningDate;
-        var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
-        var pending = MakeEvent(Guid.NewGuid(), EventStatus.Pending) with
-        {
-            StartAt = gate.PlusDays(queuedStartDay).At(new LocalTime(10, 0)).InZoneLeniently(zone).ToInstant(),
-            IsRecurring = queuedRecurring,
-            RecurrenceDays = queuedDays
-        };
-        var other = new CampEventOverlap(Guid.NewGuid(), pending.CampId, "Other",
-            gate.PlusDays(otherStartDay).At(new LocalTime(10, 30)).InZoneLeniently(zone).ToInstant(),
-            60, EventStatus.Approved, otherRecurring, otherDays);
+        var start = Instant.FromUtc(2026, 7, 1, 10, 30);
+        var other = new CampEventOverlap(Guid.NewGuid(), Guid.NewGuid(), "Other", start,
+            60, EventStatus.Approved, false, null);
+        var pending = MakeEvent(Guid.NewGuid(), EventStatus.Pending) with { DuplicateCandidates = [other] };
         if (hasSettings)
         {
             _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
@@ -57,28 +44,16 @@ public sealed class EventsModerationControllerTests
         }
         _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
         _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
-        _guide.GetCampEventsForOverlapAsync(Arg.Any<CancellationToken>()).Returns([
-            other,
-            other with { Id = pending.Id },
-            other with { Id = Guid.NewGuid(), CampId = Guid.NewGuid() }
-        ]);
         _camps.GetCampsForEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
 
         var view = (await BuildController(Guid.NewGuid(), pending.Id).Index(null, Xunit.TestContext.Current.CancellationToken))
             .Should().BeOfType<ViewResult>().Subject;
         var row = ((ModerationQueueViewModel)view.Model!).Events.Should().ContainSingle().Subject;
-
-        if (expectedDay is { } day)
-        {
-            var candidate = row.DuplicateCandidates.Should().ContainSingle().Subject;
-            candidate.Id.Should().Be(other.Id);
-            var expected = gate.PlusDays(day).At(new LocalTime(10, 30));
-            candidate.StartAt.Should().Be(hasSettings
-                ? expected.ToDateTimeUnspecified()
-                : other.StartAt.ToDateTimeUtc());
-        }
-        else
-            row.DuplicateCandidates.Should().BeEmpty();
+        var candidate = row.DuplicateCandidates.Should().ContainSingle().Subject;
+        candidate.Id.Should().Be(other.Id);
+        candidate.StartAt.Should().Be(hasSettings
+            ? start.InZone(DateTimeZoneProviders.Tzdb[settings.TimeZoneId]).ToDateTimeUnspecified()
+            : start.ToDateTimeUtc());
     }
 
     [HumansTheory]
@@ -290,10 +265,9 @@ public sealed class EventsModerationControllerTests
             settings.TimeZoneId, Instant.MinValue, Instant.MinValue));
         _guide.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
         _camps.GetCampsForEventAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
-        _guide.GetCampEventsForOverlapAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<CampEventOverlap>());
         _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
         _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = UserInfoFor(submitterId) });
 
         var controller = BuildController(moderatorId, pending.Id);
@@ -309,9 +283,8 @@ public sealed class EventsModerationControllerTests
         await _guide.Received(1).GetEventSettingsByIdAsync(settings.Id, request.Token);
         await _guide.Received(1).GetEventStatusCountsAsync(request.Token);
         await _guide.Received(1).GetEventsByStatusAsync(EventStatus.Pending, request.Token);
-        await _guide.Received(1).GetCampEventsForOverlapAsync(request.Token);
         await _camps.Received(1).GetCampsForEventAsync(settings.Id, request.Token);
-        await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

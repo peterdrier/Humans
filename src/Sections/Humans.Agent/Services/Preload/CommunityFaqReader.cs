@@ -44,7 +44,9 @@ internal sealed class CommunityFaqReader(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Failed to list community KB folder {Folder}; returning empty index", FolderPath);
+            var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+            logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                "Failed to list community KB folder {Folder}; returning empty index: {Reason}", FolderPath, ex.Message);
             return ([], false);
         }
 
@@ -96,7 +98,9 @@ internal sealed class CommunityFaqReader(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Community KB reload: listing {Folder} failed; keeping existing cache", FolderPath);
+            var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+            logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                "Community KB reload: listing {Folder} failed; keeping existing cache: {Reason}", FolderPath, ex.Message);
             return false;
         }
 
@@ -111,7 +115,9 @@ internal sealed class CommunityFaqReader(
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                logger.LogWarning(ex, "Community KB reload: fetch failed for {Stem}; keeping existing cache", stem);
+                var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+                logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                    "Community KB reload: fetch failed for {Stem}; keeping existing cache: {Reason}", stem, ex.Message);
                 return false;
             }
             documents.Add(stem, body);
@@ -157,7 +163,9 @@ internal sealed class CommunityFaqReader(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Failed to fetch community KB file {Stem} from GitHub; returning null", stem);
+            var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+            logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                "Failed to fetch community KB file {Stem} from GitHub; returning null: {Reason}", stem, ex.Message);
             return null;
         }
     }
