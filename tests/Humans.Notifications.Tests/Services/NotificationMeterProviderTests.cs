@@ -22,6 +22,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Humans.Users.Contracts;
 using Xunit;
 
@@ -282,6 +283,47 @@ public class NotificationMeterProviderTests : IDisposable
         meters.Should().ContainSingle(m =>
             string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal) &&
             m.Count == 3);
+    }
+
+    public enum MeterSource { Users, Consent, Google, Tickets }
+
+    [HumansTheory]
+    [InlineData(MeterSource.Users)]
+    [InlineData(MeterSource.Consent)]
+    [InlineData(MeterSource.Google)]
+    [InlineData(MeterSource.Tickets)]
+    public async Task GetMetersForUserAsync_SourceFailureKeepsIndependentCachedCounts(MeterSource source)
+    {
+        var people = MakeNeedsConsentReview(1).Append(UserInfoFixtures.FromUser(new User
+        {
+            Id = Guid.NewGuid(), DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
+        })).ToList();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(people);
+        _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(3);
+        _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var failure = new InvalidOperationException("source unavailable");
+        switch (source)
+        {
+            case MeterSource.Users:
+                _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+            case MeterSource.Consent:
+                _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+            case MeterSource.Google:
+                _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+            case MeterSource.Tickets:
+                _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+        }
+
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), TestContext.Current.CancellationToken);
+
+        meters.Any(m => string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal)).Should().Be(source is not (MeterSource.Users or MeterSource.Consent));
+        meters.Any(m => string.Equals(m.Title, "Pending account deletions", StringComparison.Ordinal) && m.Count == 1).Should().Be(source != MeterSource.Users);
+        meters.Any(m => string.Equals(m.Title, "Failed Google sync events", StringComparison.Ordinal) && m.Count == 3).Should().Be(source != MeterSource.Google);
+        meters.Any(m => string.Equals(m.Title, "Ticket sync error", StringComparison.Ordinal) && m.Count == 1).Should().Be(source != MeterSource.Tickets);
     }
 
     [HumansFact]
