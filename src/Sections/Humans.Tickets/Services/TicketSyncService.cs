@@ -231,7 +231,7 @@ internal sealed class TicketSyncService(
         using var scope = new TransactionScope(TransactionScopeOption.Required,
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
             TransactionScopeAsyncFlowOption.Enabled);
-        await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, ct);
         await transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
         scope.Complete();
     }

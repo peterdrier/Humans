@@ -234,7 +234,7 @@ internal sealed partial class CampRepository
     }
 
     public async Task ReassignMembershipsToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        Guid sourceUserId, Guid targetUserId,
         CancellationToken ct = default)
     {
         using var scope = new TransactionScope(TransactionScopeOption.Required,

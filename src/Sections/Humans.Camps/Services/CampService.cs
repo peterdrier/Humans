@@ -307,7 +307,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>
-        _dataLifecycle.ReassignAsync(sourceUserId, targetUserId, actorUserId, updatedAt, ct);
+        _dataLifecycle.ReassignAsync(sourceUserId, targetUserId, ct);
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         _dataLifecycle.ContributeForUserAsync(userId, ct);
