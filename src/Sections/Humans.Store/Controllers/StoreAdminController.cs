@@ -16,6 +16,7 @@ namespace Humans.Store.Controllers;
 [Route("Store/Admin")]
 internal sealed class StoreAdminController(
     Service storeService,
+    CatalogService catalogService,
     IUserService userService) : HumansControllerBase(userService)
 {
     private const decimal SpanishStandardVatRatePercent = 21m;
@@ -24,7 +25,7 @@ internal sealed class StoreAdminController(
     public async Task<IActionResult> Catalog(CancellationToken ct)
     {
         var year = storeService.GetCurrentEventYear();
-        var products = (await storeService.GetAllProductsForYearAsync(year, ct))
+        var products = (await catalogService.GetAllProductsForYearAsync(year, ct))
             .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
@@ -154,7 +155,7 @@ internal sealed class StoreAdminController(
             VatRatePercent = SpanishStandardVatRatePercent,
             OrderableUntil = $"{year}-12-31",
             IsActive = true,
-            AccountChoices = await storeService.GetAccountChoicesAsync(ct)
+            AccountChoices = await catalogService.GetAccountChoicesAsync(ct)
         };
         return View("CatalogEdit", model);
     }
@@ -163,7 +164,7 @@ internal sealed class StoreAdminController(
     [Authorize(Policy = StorePolicies.Manage)]
     public async Task<IActionResult> Edit(Guid id, CancellationToken ct)
     {
-        var p = await storeService.GetProductAsync(id, ct);
+        var p = await catalogService.GetProductAsync(id, ct);
         if (p is null) return NotFound();
 
         var model = new ProductInputModel
@@ -180,7 +181,7 @@ internal sealed class StoreAdminController(
             HoldedTransferAccountNum = p.HoldedTransferAccountNum,
             OrderableUntil = LocalDatePattern.Iso.Format(p.OrderableUntil),
             IsActive = p.IsActive,
-            AccountChoices = await storeService.GetAccountChoicesAsync(ct)
+            AccountChoices = await catalogService.GetAccountChoicesAsync(ct)
         };
         return View("CatalogEdit", model);
     }
@@ -193,11 +194,11 @@ internal sealed class StoreAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        input.AccountChoices = await storeService.GetAccountChoicesAsync(ct);
+        input.AccountChoices = await catalogService.GetAccountChoicesAsync(ct);
         if (!ModelState.IsValid)
             return View("CatalogEdit", input);
 
-        var result = await storeService.SaveProductWithResultAsync(
+        var result = await catalogService.SaveProductWithResultAsync(
             new ProductSaveRequest(
                 input.Id,
                 input.Year,
@@ -240,7 +241,7 @@ internal sealed class StoreAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var result = await storeService.SaveProductAccountsAsync(
+        var result = await catalogService.SaveAccountsAsync(
             year, rows.Select(r => new ProductAccounts(r.ProductId, r.Income, r.Cost, r.TeamUsage)).ToList(), user.Id, ct);
         if (!result.Succeeded)
         {
@@ -255,7 +256,7 @@ internal sealed class StoreAdminController(
     private async Task<CatalogAccountsViewModel> BuildAccountsViewAsync(
         int year, IReadOnlyList<CatalogAccountsInput>? posted, CancellationToken ct)
     {
-        var products = (await storeService.GetAllProductsForYearAsync(year, ct))
+        var products = (await catalogService.GetAllProductsForYearAsync(year, ct))
             .OrderByDescending(p => p.IsActive)
             .ThenBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
@@ -263,7 +264,7 @@ internal sealed class StoreAdminController(
         return new CatalogAccountsViewModel
         {
             Year = year,
-            Choices = await storeService.GetAccountChoicesAsync(ct),
+            Choices = await catalogService.GetAccountChoicesAsync(ct),
             Rows = products.Select((p, i) => postedById.TryGetValue(p.Id, out var r)
                     ? new CatalogAccountsRow(i, p, r.Income, r.Cost, r.TeamUsage)
                     : new CatalogAccountsRow(i, p, p.HoldedRevenueAccountNum, p.HoldedExpenseAccountNum, p.HoldedTransferAccountNum))
@@ -281,7 +282,7 @@ internal sealed class StoreAdminController(
         if (errorResult is not null) return errorResult;
 
         var result = ModelState.IsValid
-            ? await storeService.SaveSettingsAsync(
+            ? await catalogService.SaveSettingsAsync(
                 new StoreSettingsDto(model.StripeGatewayTreasuryId, model.SimplifiedInvoiceThresholdEur), user.Id, ct)
             : AdminMutationResult.Refused("Invalid store settings.");
         if (result.Succeeded)
@@ -299,7 +300,7 @@ internal sealed class StoreAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var result = await storeService.DeactivateProductAsync(id, user.Id, ct);
+        var result = await catalogService.DeactivateProductAsync(id, user.Id, ct);
         if (result.Succeeded)
             SetSuccess("Product deactivated.");
         else

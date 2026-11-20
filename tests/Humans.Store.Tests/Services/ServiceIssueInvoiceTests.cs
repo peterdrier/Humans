@@ -52,7 +52,9 @@ public class ServiceIssueInvoiceTests
     {
         SimplifiedInvoiceThresholdEur = 400m,
     };
-    private readonly Service _service;
+    private readonly CatalogService _catalog;
+    private readonly Service _orders;
+    private readonly InvoiceService _service;
 
     private readonly Guid _productId = Guid.NewGuid();
     private readonly Guid _actor = Guid.NewGuid();
@@ -85,9 +87,12 @@ public class ServiceIssueInvoiceTests
         _holded.FindSalesDocumentsByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Found());
 
-        _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _holdedService, _holded,
-            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), NullLogger<Service>.Instance);
+        _catalog = new CatalogService(_repo, _audit, _clock, _holdedService, NullLogger<CatalogService>.Instance);
+        _orders = new Service(
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _catalog,
+            NullLogger<Service>.Instance);
+        _service = new InvoiceService(_repo, _audit, _clock, _holdedService, _holded, _stripe,
+            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), _orders, NullLogger<InvoiceService>.Instance);
     }
 
     private static HoldedChartAccountInfo Account(int number) =>
@@ -573,7 +578,7 @@ public class ServiceIssueInvoiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, _actor.ToString())], "test"))
         };
-        var controller = new StoreController(_service, _camps, authorization, users, logger, localizer)
+        var controller = new StoreController(_orders, _catalog, _service, _camps, authorization, users, logger, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
