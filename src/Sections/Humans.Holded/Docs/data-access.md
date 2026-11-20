@@ -45,7 +45,7 @@ dependencies, plus `IOptions<HoldedSectionOptions>` for the monthly
 call-budget display. Implements `IHoldedService` (the mirror reads and syncs other
 sections call; [`Holded.md`](Holded.md) lists who calls what) and `IHoldedAdminService` (the
 `/Holded` pages — summary, accounts, calls by month, account statements, entries). No
-`IMemoryCache`. Syncs run in the internal `HoldedMirrorSync`, where one in-process
+`IMemoryCache`. Syncs run in `Service`, where one in-process
 `SemaphoreSlim` gate per sync kind (ledger, purchase documents, contacts, bank movements)
 serializes runs: the nightly Hangfire job and an admin-triggered sync can otherwise race the
 replace window.

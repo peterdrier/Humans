@@ -1,0 +1,81 @@
+@model GovernanceBodyViewModel
+@{
+    var title = Model.Body switch
+    {
+        GovernanceBody.Asociados => Localizer["Governance_Asociados"].Value,
+        GovernanceBody.Colaboradores => Localizer["Governance_Colaboradores"].Value,
+        _ => Localizer["Governance_TheBoard"].Value,
+    };
+    ViewData["Title"] = title;
+}
+
+@section Crumbs {
+    <a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a>
+    <span>@title</span>
+}
+
+<page-header title="@title" />
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header fw-semibold">@Localizer["Governance_Body_MemberCount", Model.MemberIds.Count]</div>
+            <div class="card-body">
+                @if (Model.MemberIds.Count == 0)
+                {
+                    <empty-state class="mb-0">@Localizer["Governance_Body_NoMembers"]</empty-state>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var memberId in Model.MemberIds)
+                        {
+                            <div class="col-6 col-sm-4 col-md-3">
+                                <vc:human user-id="@memberId" layout="Card" size="102" />
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Links is not null || Model.CanManageBoard)
+    {
+        <div class="col-lg-4">
+            @if (Model.Links is { } links)
+            {
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">@Localizer["Governance_GroupAndFiles"]</div>
+                    <partial name="_BodyLinks" model="links" />
+                </div>
+            }
+            @if (Model.CanManageBoard)
+            {
+                <div class="card">
+                    <div class="card-header fw-semibold">@Localizer["Governance_ManageBoard"]</div>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var memberId in Model.MemberIds)
+                        {
+                            <li class="list-group-item d-flex align-items-center gap-2">
+                                <span class="flex-grow-1"><vc:human user-id="@memberId" layout="AvatarName" size="24" /></span>
+                                <form asp-action="EndBoardMember" method="post" class="m-0">
+                                    <input type="hidden" name="userId" value="@memberId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Governance_EndBoardSeat"]</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                    <div class="card-body">
+                        <form asp-action="AddBoardMember" method="post" class="d-flex flex-wrap gap-2">
+                            <div class="flex-grow-1">
+                                <vc:human-search field-name="userId" scope="Name" exclude-user-ids="Model.MemberIds" placeholder="@Localizer["Governance_FindPerson"].Value" />
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary">@Localizer["Governance_AddBoardMember"]</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -33,13 +33,16 @@ public class AccountingReadTests
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly StoreOrderReader _reader;
+    private readonly Service _reader;
 
     public AccountingReadTests()
     {
-        _reader = new StoreOrderReader(
-            _repo, _camps, _teams,
-            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(), _auditViewer, _audit);
+        _reader = new Service(
+            _repo, _audit, _auditViewer, _camps, _teams,
+            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(),
+            Substitute.For<Humans.Stripe.Contracts.IStripeService>(), Substitute.For<Humans.Holded.Contracts.IHoldedService>(),
+            Substitute.For<Humans.Holded.Contracts.IHoldedWrite>(), Substitute.For<Humans.Finance.Contracts.IFinanceService>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfo(SeasonId, "Camp Alpha")]);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())

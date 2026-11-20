@@ -1,7 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Holded/Services/IHoldedClient.cs
   src/Sections/Humans.Holded/Contracts/Holded*.cs
-  src/Sections/Humans.Holded/Services/Holded*Client.cs
+  src/Sections/Humans.Holded/Services/HoldedClient.cs
   src/Sections/Humans.Holded/Services/Holded*Dto*.cs
   src/Sections/Humans.Holded/Services/HoldedClientOptions.cs
   src/Sections/Humans.Holded/Services/HoldedTransport.cs
@@ -126,9 +126,8 @@ The DTOs carried by `IHoldedService` and `IHoldedWrite` and typed exceptions rem
 `Contracts/`. Finance uses the purchase mirror directly, never a connector list shape. All of it is registered by this
 section's `Section.cs`.
 
-`HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over
-one `HoldedTransport`. Operation clients own their wire payloads, parsing and endpoint-specific
-failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
+`HoldedClient` holds the purchases, sales, contacts, accounting and treasury calls over one
+`HoldedTransport`: their wire payloads, parsing and endpoint-specific failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
 options.
 
 **Consumers outside the section:** none, and none can compile: every other section calls only

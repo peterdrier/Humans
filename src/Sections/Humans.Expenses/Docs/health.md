@@ -62,7 +62,7 @@ What the shapes imply, written fresh:
   action it took — normally one, and two where approval also overrides the category.
 - **One repository** owning the section's tables, each write atomic, returning DTOs only.
 - **The outbox drain owns queue semantics** in `ExpenseReportBackgroundProcessor`;
-  `ExpenseHoldedPublisher` owns the Holded conversation, and the scheduler shim holds neither —
+  `ExpenseReportBackgroundProcessor` owns the Holded conversation, and the scheduler shim holds neither —
   with **one cap allocation** (`PayableAllocation`) that the push, the detail page and the audit
   text all read.
 - **The public surface is what another section consumes:** `Section`, the background-processor
@@ -99,9 +99,9 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:123`) and never reach Holded —
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
-  no upload (`ExpenseHoldedPublisher.PushPerLineDocsAsync`).
+  no upload (`ExpenseReportBackgroundProcessor.PushPerLineDocsAsync`).
 - **A retried push resumes from what it recorded.** A line's doc id is written the moment Holded
-  issues it (`ExpenseHoldedPublisher.PushPerLineDocsAsync`), an upload is stamped
+  issues it (`ExpenseReportBackgroundProcessor.PushPerLineDocsAsync`), an upload is stamped
   (`UploadLineAttachmentAsync`), and a legacy single-doc claim resumes onto its one
   doc (`ResumeLegacySingleDocPushAsync`). A failure between Holded issuing a doc and that
   write can still mint a second one; nothing guards that window, by the small-scale rule.

@@ -242,7 +242,6 @@ internal sealed class AttendeeContactImportService(
             attendee.MatchedUserId = userId;
             state.ToUpsert.Add(attendee);
         }
-
     }
 
     private async Task<AttendeeImportDecision> ClassifyAsync(
