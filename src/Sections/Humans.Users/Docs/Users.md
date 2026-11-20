@@ -598,7 +598,7 @@ Users' one-off copies are **data migrations** (`ISectionDataMigrations`, impleme
 
 | Key | Copies | Per-row audit |
 |-----|--------|---------------|
-| `users.legacy-identity-emails` | A verified `UserEmail` row from the legacy `User.Email` Identity column, via `IEmailProblemsService.BackfillLegacyIdentityEmailsAsync` (the Email Problems page still lists these rows and links to the migration); a row the add refuses is skipped, logged, and stays listed | `LegacyIdentityEmailBackfilled` |
+| `users.legacy-identity-emails` | A verified `UserEmail` row from the legacy `User.Email` Identity column, via `IEmailProblemsService.BackfillLegacyIdentityEmailsAsync` (the Email Problems page still lists these rows and links to the migration); an existing unverified row for the address is verified instead, and one verified on another account becomes a merge request; a row the add refuses is skipped, logged, and stays listed | `LegacyIdentityEmailBackfilled` |
 | `users.profile-children-user-id` | The owning `UserId` onto every `user_contact_fields`, `user_profile_languages` and `user_volunteer_history_entries` row that lacks one (one pending row per user, with counts per table). Production `done` gates switching those tables' reads to `UserId` and dropping `ProfileId` | none (the screen's `DataMigrationApplied` entry) |
 
 The legacy-email scan and migration share the same eligibility selection: a non-tombstone with a nonempty legacy address and no case-insensitive matching verified `UserEmail`. Profile-less accounts remain eligible.

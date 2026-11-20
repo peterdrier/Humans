@@ -516,6 +516,61 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
     }
 
     [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_ExistingUnverifiedRow_VerifiesIt()
+    {
+        var actorId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pending = Email(userId, "legacy@x.com", isVerified: false);
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails: [pending]));
+        _userEmailService.AddVerifiedEmailAsync(userId, "legacy@x.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(pending.Id, Added: false, IsConflict: false));
+        _userEmailService.AdminMarkVerifiedAsync(userId, pending.Id, actorId, Arg.Any<CancellationToken>())
+            .Returns(new VerifyEmailResult("legacy@x.com", MergeRequestCreated: false));
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(actorId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle().Which.Should().Be((userId, "legacy@x.com"));
+        await _userEmailService.Received(1).AdminMarkVerifiedAsync(
+            userId, pending.Id, actorId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_ExistingRowVerifiedElsewhere_IsNotCountedOrAudited()
+    {
+        var userId = Guid.NewGuid();
+        var pending = Email(userId, "legacy@x.com", isVerified: false);
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails: [pending]));
+        _userEmailService.AddVerifiedEmailAsync(userId, "legacy@x.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(pending.Id, Added: false, IsConflict: false));
+        _userEmailService.AdminMarkVerifiedAsync(userId, pending.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new VerifyEmailResult("legacy@x.com", MergeRequestCreated: true));
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEmpty();
+        await _audit.DidNotReceive().LogAsync(
+            UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), userId,
+            Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task DoesNotFlagLegacyEmail_WhenVerifiedRowIsTheGooglemailSpelling()
+    {
+        var userId = Guid.NewGuid();
+        AddInfo(MakeInfo(userId, identityEmailColumn: "Legacy@gmail.com", emails:
+        [
+            Email(userId, "legacy@googlemail.com", isVerified: true, isPrimary: true)
+        ]));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Problems.Should().NotContain(p =>
+            p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails);
+    }
+
+    [HumansFact]
     public async Task BackfillLegacyIdentityEmails_MergedSentinelColumnBehindVerifiedRow_SkipsUser()
     {
         var userId = Guid.NewGuid();
