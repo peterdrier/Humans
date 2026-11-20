@@ -171,7 +171,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    `ICampaignWrite`),
    `IEventService` (consumed by `EventsCardViewComponent`
    for the camp detail page's events card),
-   `ICityPlanningService` (exposes `GetSettingsAsync` /
+   `ICityPlanningService` (exposes `IsContainerPlacementOpenAsync` /
    `GetLegacyRegistrationInfoAsync` / `IsCityPlanningTeamMemberAsync` — current
    consumers are Web-layer controllers/handlers, no Application-layer
    service consumer yet), and

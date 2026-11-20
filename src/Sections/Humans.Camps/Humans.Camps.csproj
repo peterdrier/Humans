@@ -45,19 +45,11 @@
          referencing only Base, so acyclic (Tickets reaches Camps through Humans.Camps.Contracts). -->
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <!--
-      CampService clears a deleted camp's polygons through Lazy<ICityPlanningWrite>. The
-      other direction goes through Humans.Camps.Contracts, never this project, which is what
-      keeps the pair acyclic.
+      Temporary: the camps.registration-info-from-city-planning data migration and the Register
+      page fallback read ICityPlanningService.GetLegacyRegistrationInfoAsync. Both go when that
+      migration retires, and this reference with them.
     -->
     <ProjectReference Include="..\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
-    <!--
-      Camp/Details.cshtml renders the placement-phase block with CityPlanning's own copy, so
-      it binds IStringLocalizer<CityPlanningResource> — a section *resource marker*, which is a
-      section type rather than a leaf one (Budget's rule: the consumer takes the section
-      project). Acyclic for the same reason as the leaf reference above: CityPlanning reaches
-      Camps only through Humans.Camps.Contracts.
-    -->
-    <ProjectReference Include="..\Humans.CityPlanning\Humans.CityPlanning.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
   </ItemGroup>
 
