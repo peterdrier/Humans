@@ -75,7 +75,9 @@ internal sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSu
 
     private static Instant? ParseDate(JsonElement obj, string name)
     {
-        if (!obj.TryGetProperty(name, out var el) || el.ValueKind != JsonValueKind.String) return null;
+        if (!obj.TryGetProperty(name, out var el) || el.ValueKind == JsonValueKind.Null) return null;
+        if (el.ValueKind != JsonValueKind.String)
+            throw new JsonException($"subscriber.{name} must be a timestamp string or null");
         var raw = el.GetString();
         if (string.IsNullOrEmpty(raw)) return null;
         var dt = DateTime.ParseExact(raw, DateFormattingExtensions.MailerLiteTimestampPattern,

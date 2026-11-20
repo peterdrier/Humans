@@ -55,6 +55,8 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
+- Subscriber subscription, unsubscription and opt-in timestamps reject supplied non-string values before cache replacement. Missing, null and empty-string timestamps remain absent; malformed date strings still fail the read. A failed refresh preserves the previous snapshot and fetch timestamp.
+
 - Account status totals compare subscriber statuses case-insensitively, matching import classification. Unknown statuses remain in the subscriber snapshot, are excluded from named counters, and log Warning with their value. Refresh and deletion use the same summary calculation.
 
 - Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Dashboard summary/group/drift timeouts render the existing unavailable-state error while preserving local counts; requested cancellation propagates. Dashboard audience-statistics HTTP warnings retain status and reason without an exception stack. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.

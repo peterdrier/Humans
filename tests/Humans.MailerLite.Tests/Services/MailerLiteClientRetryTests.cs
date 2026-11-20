@@ -95,6 +95,9 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("groups", "[\"\"]", "subscriber.groups contains an invalid id")]
     [Xunit.InlineData("groups", "[{\"id\":\"  \"}]", "subscriber.groups contains an invalid id")]
     [Xunit.InlineData("groups", "[{}]", "subscriber.groups contains an invalid id")]
+    [Xunit.InlineData("subscribed_at", "42", "subscriber.subscribed_at must be a timestamp string or null")]
+    [Xunit.InlineData("unsubscribed_at", "true", "subscriber.unsubscribed_at must be a timestamp string or null")]
+    [Xunit.InlineData("opted_in_at", "{}", "subscriber.opted_in_at must be a timestamp string or null")]
     public async Task RefreshAsync_RejectsInvalidSubscriberAndPreservesSnapshot(string field, string? jsonValue, string error)
     {
         var handler = new ScriptedHandler();
