@@ -115,6 +115,42 @@ public sealed class GoogleDriveActivityClientTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData("  ")]
+    [Xunit.InlineData("member@nobodies.team")]
+    public async Task Person_resolution_returns_null_for_unusable_email_addresses(string? email)
+    {
+        using var handler = new SequenceHandler((HttpStatusCode.OK, System.Text.Json.JsonSerializer.Serialize(new { primaryEmail = email })));
+        var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
+        factory.CreateHttpClient(Arg.Any<CreateHttpClientArgs>())
+            .Returns(new ConfigurableHttpClient(new ConfigurableMessageHandler(handler)));
+        using var directory = new global::Google.Apis.Admin.Directory.directory_v1.DirectoryService(
+            new BaseClientService.Initializer { HttpClientFactory = factory });
+        var logger = new Humans.Testing.CapturingLogger<GoogleDriveActivityClient>();
+        var client = new GoogleDriveActivityClient(Options.Create(new GoogleWorkspaceSettings()), logger);
+        typeof(GoogleDriveActivityClient).GetField("_directoryService", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(client, directory);
+
+        var result = await client.TryResolvePersonEmailAsync("people/123", Xunit.TestContext.Current.CancellationToken);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            result.Should().BeNull();
+            var entry = logger.Entries.Should().ContainSingle(entry =>
+                entry.Message.Contains("people/123", StringComparison.Ordinal)).Subject;
+            entry.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+            entry.Exception.Should().BeNull();
+        }
+        else
+        {
+            result.Should().Be(email);
+            logger.Entries.Should().NotContain(entry => entry.Message.Contains("people/123", StringComparison.Ordinal));
+        }
+        handler.Calls.Should().Be(1);
+    }
+
     private static async Task<List<DriveActivityEvent>> QueryAllAsync(GoogleDriveActivityClient client)
     {
         var events = new List<DriveActivityEvent>();

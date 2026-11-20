@@ -157,7 +157,12 @@ internal sealed class GoogleDriveActivityClient(
             var directoryService = await GetDirectoryServiceAsync(ct);
             var userId = peopleId["people/".Length..];
             var user = await directoryService.Users.Get(userId).ExecuteAsync(ct);
-            return user?.PrimaryEmail;
+            if (string.IsNullOrWhiteSpace(user?.PrimaryEmail))
+            {
+                logger.LogWarning("Directory API returned no usable email address for {PeopleId}", peopleId);
+                return null;
+            }
+            return user.PrimaryEmail;
         }
         catch (global::Google.GoogleApiException ex) when (!ct.IsCancellationRequested)
         {
