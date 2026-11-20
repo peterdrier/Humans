@@ -232,9 +232,10 @@ is empty. Re-run Finds for new actionable view moves.
 **What:** Confirmed-dead code (zero call sites, a duplicate private helper,
 an unused enum flag) with no public-surface change. A "duplicate mutation
 pipeline" collapsed into one owner-section method replacing ≥2 identical
-caller sequences is pre-approved (D1) — do it and list it in the PR, as is a section-internal
-split into a new `internal` class (D1). Only a "god class" split needing a NEW interface or service goes to Peter, as a D3
-yes/no proposal with the concrete signatures.
+caller sequences is pre-approved (D1) — do it and list it in the PR. Never split a large
+service into helper classes it constructs and forwards to
+([`one-service-class-no-helpers`](../../memory/architecture/one-service-class-no-helpers.md));
+an existing one is folded back into its service.
 
 **Finds:** `review: light` rows mentioning dead/duplicate code:
 ```
