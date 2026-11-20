@@ -1,12 +1,12 @@
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.Guide.Health;
+using Humans.Consent.Health;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Humans.Guide.Tests.Health;
+namespace Humans.Consent.Tests.Health;
 
 public class GitHubHealthCheckTests
 {

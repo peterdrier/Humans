@@ -38,11 +38,10 @@
       parses the rendered HTML for GuideHtmlPostprocessor. No AspNetCore package: those ship with
       no PackageVersion on purpose and would fail the build with NU1010 under Central Package
       Management — IMemoryCache and IOptions arrive through the framework reference Sdk.Razor
-      already adds. Octokit is for GitHubHealthCheck (nobodies-collective/Humans#1075).
+      already adds.
     -->
     <PackageReference Include="AngleSharp" />
     <PackageReference Include="Markdig" />
-    <PackageReference Include="Octokit" />
   </ItemGroup>
 
   <ItemGroup>
