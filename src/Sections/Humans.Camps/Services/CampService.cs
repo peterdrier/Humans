@@ -237,7 +237,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         Guid campMemberId, CancellationToken cancellationToken = default) =>
         _readProjection.GetCampMemberStatusAsync(campMemberId, cancellationToken);
 
-    public Task<CampImageUploadResult> UploadImageAsync(
+    public Task<CampUpdateResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         _imageGallery.UploadImageAsync(campId, fileStream, fileName, contentType, length, actorUserId, cancellationToken);

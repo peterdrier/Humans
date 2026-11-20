@@ -388,7 +388,7 @@ public class CampControllerTests
         _camps.WithdrawSeasonAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
         _camps.MarkSeasonFullAsync(camp.Id, season.Id, actorId).Returns(CampUpdateResult.Failure(key));
         _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorId)
-            .Returns(CampImageUploadResult.Failure(key));
+            .Returns(CampUpdateResult.Failure(key));
         _camps.DeleteImageAsync(camp.Id, imageId, actorId).Returns(CampUpdateResult.Failure(key));
         var controller = BuildController(actorId);
         using var image = new MemoryStream([1]);
@@ -739,7 +739,7 @@ public class CampControllerTests
         })
         {
             _camps.UploadImageAsync(camp.Id, Arg.Any<Stream>(), "camp.jpg", "image/jpeg", 1, actorUserId: Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-                .Returns(CampImageUploadResult.Failure(key));
+                .Returns(CampUpdateResult.Failure(key));
 
             await controller.UploadImage(camp.Slug, file);
 

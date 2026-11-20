@@ -2676,8 +2676,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
-        var first = (await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, TestActorId, ct)).Image!;
-        var second = (await _service.UploadImageAsync(camp.Id, Stream.Null, "second.jpg", "image/jpeg", 1, TestActorId, ct)).Image!;
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "second.jpg", "image/jpeg", 1, TestActorId, ct);
+        var uploaded = await CampsDb.CampImages.AsNoTracking().Where(image => image.CampId == camp.Id)
+            .ToDictionaryAsync(image => image.FileName, StringComparer.Ordinal, ct);
+        var first = uploaded["first.jpg"];
+        var second = uploaded["second.jpg"];
         AuditLog.ClearReceivedCalls();
 
         await _service.ReorderImagesAsync(camp.Id, [second.Id, first.Id], TestActorId, ct);
@@ -2878,11 +2882,12 @@ public sealed class CampServiceTests : CampsTestHarness
         var upload = await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length, actorUserId: TestActorId, TestContext.Current.CancellationToken);
         upload.Succeeded.Should().BeTrue();
 
-        var action = () => _service.DeleteImageAsync(Guid.NewGuid(), upload.Image!.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken);
+        var image = await CampsDb.CampImages.AsNoTracking().SingleAsync(i => i.CampId == camp.Id, TestContext.Current.CancellationToken);
+        var action = () => _service.DeleteImageAsync(Guid.NewGuid(), image.Id, actorUserId: TestActorId, TestContext.Current.CancellationToken);
 
         (await action()).ErrorKey.Should().Be("Camps_Flash_ImageWrongCamp");
 
-        var stillThere = await CampsDb.CampImages.AsNoTracking().FirstOrDefaultAsync(i => i.Id == upload.Image!.Id, TestContext.Current.CancellationToken);
+        var stillThere = await CampsDb.CampImages.AsNoTracking().FirstOrDefaultAsync(i => i.Id == image.Id, TestContext.Current.CancellationToken);
         stillThere.Should().NotBeNull();
     }
 
@@ -2936,7 +2941,7 @@ public sealed class CampServiceTests : CampsTestHarness
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Camps_Validation_ImageFilenameLength");
+        result.ErrorKey.Should().Be("Camps_Validation_ImageFilenameLength");
         (await CampsDb.CampImages.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
@@ -2954,7 +2959,7 @@ public sealed class CampServiceTests : CampsTestHarness
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be(key);
+        result.ErrorKey.Should().Be(key);
         _fileStorage.Files.Should().BeEmpty();
         (await CampsDb.CampImages.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
@@ -2965,20 +2970,21 @@ public sealed class CampServiceTests : CampsTestHarness
         var ct = TestContext.Current.CancellationToken;
         await SeedSettingsAsync();
         var camp = await CreateTestCampAsync();
-        var first = await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
-        var middle = await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
-        var last = await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
-        await _service.DeleteImageAsync(camp.Id, middle.Image!.Id, actorUserId: TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "first.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "middle.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        await _service.UploadImageAsync(camp.Id, Stream.Null, "last.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
+        var uploaded = await CampsDb.CampImages.AsNoTracking().Where(image => image.CampId == camp.Id)
+            .ToDictionaryAsync(image => image.FileName, StringComparer.Ordinal, ct);
+        await _service.DeleteImageAsync(camp.Id, uploaded["middle.jpg"].Id, actorUserId: TestActorId, ct);
 
         var appended = await _service.UploadImageAsync(camp.Id, Stream.Null, "appended.jpg", "image/jpeg", 1, actorUserId: TestActorId, ct);
 
         appended.Succeeded.Should().BeTrue();
-        appended.Image!.SortOrder.Should().Be(3);
         var images = await CampsDb.CampImages.AsNoTracking()
             .Where(i => i.CampId == camp.Id).ToListAsync(ct);
-        images.Single(i => i.Id == first.Image!.Id).SortOrder.Should().Be(0);
-        images.Single(i => i.Id == last.Image!.Id).SortOrder.Should().Be(2);
-        images.Single(i => i.Id == appended.Image.Id).SortOrder.Should().Be(3);
+        images.Single(i => i.Id == uploaded["first.jpg"].Id).SortOrder.Should().Be(0);
+        images.Single(i => i.Id == uploaded["last.jpg"].Id).SortOrder.Should().Be(2);
+        images.Single(i => string.Equals(i.FileName, "appended.jpg", StringComparison.Ordinal)).SortOrder.Should().Be(3);
         _fileStorage.Files.Should().HaveCount(3);
     }
 
@@ -2998,7 +3004,7 @@ public sealed class CampServiceTests : CampsTestHarness
             TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Camps_Validation_ImageCount");
+        result.ErrorKey.Should().Be("Camps_Validation_ImageCount");
         _fileStorage.Files.Should().HaveCount(5);
         (await CampsDb.CampImages.CountAsync(TestContext.Current.CancellationToken)).Should().Be(5);
     }

@@ -854,7 +854,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         _innerSubstitute.UploadImageAsync(
                 Arg.Any<Guid>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<long>(), actorUserId: TestActorId, Arg.Any<CancellationToken>())
-            .Returns(new CampImageUploadResult(true, null, null));
+            .Returns(CampUpdateResult.Success());
         _innerSubstitute.LeaveCampAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(CampMembershipMutationResult.Success());
         _innerSubstitute.CreateCampAsync(
