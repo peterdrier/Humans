@@ -205,6 +205,38 @@ public class ExpenseReportViewTests
             await users.DidNotReceive().GetUserInfoAsync(report.SubmitterUserId, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task Invoice_proof_totals_exclude_other_invoices_in_detail_and_the_proof_page()
+    {
+        using var culture = new CultureScope("en");
+        var report = Report(ExpenseReportStatus.Draft);
+        var invoiceId = Guid.NewGuid();
+        ExpenseLineDto Line(Guid id, Guid? parent, decimal amount) => new()
+        {
+            Id = id, ExpenseReportId = report.Id, Description = "Expense", Amount = amount,
+            LineType = parent is null ? ExpenseLineType.Invoice : ExpenseLineType.Receipt,
+            ParentLineId = parent, SortOrder = 0,
+        };
+        var invoice = Line(invoiceId, null, 100m);
+        var proofs = new[] { Line(Guid.NewGuid(), invoiceId, 20m), Line(Guid.NewGuid(), invoiceId, 30m) };
+        var otherInvoice = Line(Guid.NewGuid(), null, 200m);
+        report = report with
+        {
+            Total = 300m,
+            Lines = [invoice, .. proofs, otherInvoice, Line(Guid.NewGuid(), otherInvoice.Id, 999m)],
+        };
+        var proofPage = new ExpenseLineProofsViewModel
+        {
+            Report = report, InvoiceLine = invoice, Proofs = proofs, CanEditLines = false,
+        };
+
+        proofPage.ProofTotal.Should().Be(50m);
+        var html = await RenderAsync("Detail", new ExpenseDetailViewModel { Report = report, BookingLabel = "2026" });
+
+        var expected = new ResourceManager(typeof(ExpensesResource)).GetString("Expenses_Detail_InvoicedProofAmount", CultureInfo.CurrentUICulture)!;
+        html.Should().Contain(HtmlEncoder.Default.Encode(string.Format(CultureInfo.CurrentUICulture, expected, 50m.ToEuro(), 100m.ToEuro())));
+    }
+
     private static ExpenseReportDto Report(ExpenseReportStatus status, string? note = null) => new()
     {
         Id = Guid.NewGuid(),

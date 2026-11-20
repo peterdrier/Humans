@@ -49,4 +49,8 @@ public sealed record ExpenseReportDto
     public required Instant CreatedAt { get; init; }
     public required Instant UpdatedAt { get; init; }
     public required IReadOnlyList<ExpenseLineDto> Lines { get; init; }
+
+    internal decimal ProofTotalFor(Guid invoiceLineId) => Lines
+        .Where(line => line.ParentLineId == invoiceLineId)
+        .Sum(line => line.Amount);
 }
