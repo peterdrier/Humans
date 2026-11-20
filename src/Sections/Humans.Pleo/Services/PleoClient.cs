@@ -130,6 +130,12 @@ internal sealed class PleoClient : IPleoClient
 
     private static T Read<T>(JsonElement item) where T : class
     {
+        if (item.ValueKind != JsonValueKind.Object
+            || !item.TryGetProperty("id", out var id)
+            || id.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(id.GetString()))
+            throw new PleoPermanentException($"Pleo returned a {typeof(T).Name} without a usable id.");
+
         try
         {
             return item.Deserialize<T>(Json) ?? throw new PleoPermanentException($"Pleo returned a null {typeof(T).Name}.");
