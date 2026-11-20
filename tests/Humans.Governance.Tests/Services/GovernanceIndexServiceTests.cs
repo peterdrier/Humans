@@ -106,7 +106,7 @@ public sealed class GovernanceIndexServiceTests
         var data = await CreateService().GetIndexDataAsync(viewer);
 
         data.CurrentTier.Should().Be(MembershipTier.Asociado);
-        data.MemberSince.Should().Be(seated.ToDateTimeUtc());
+        data.MemberSince.Should().Be(seated);
     }
 
     [HumansFact]

@@ -31,7 +31,7 @@ internal sealed record GovernanceIndexData(
     int UnvotedApplicationCount,
     IReadOnlyList<GovernanceBodyAccess> YourAccess,
     MembershipTier CurrentTier,
-    DateTime? MemberSince);
+    Instant? MemberSince);
 
 internal sealed record GovernanceBodyPageData(
     GovernanceBody Body,

@@ -93,7 +93,7 @@ internal sealed class GovernanceIndexService(
     }
 
     /// <summary>The earliest approved application or Board seat, whichever came first.</summary>
-    private async Task<DateTime?> GetMemberSinceAsync(
+    private async Task<Instant?> GetMemberSinceAsync(
         Guid userId, IReadOnlyList<UserApplicationSnapshot> applications, CancellationToken ct)
     {
         var starts = applications
@@ -103,7 +103,7 @@ internal sealed class GovernanceIndexService(
                 .Where(r => string.Equals(r.RoleName, RoleNames.Board, StringComparison.Ordinal))
                 .Select(r => r.ValidFrom))
             .ToList();
-        return starts.Count == 0 ? null : starts.Min().ToDateTimeUtc();
+        return starts.Count == 0 ? null : starts.Min();
     }
 
     private static GovernanceBodyAccess ToAccess(GovernanceBodyLinks links) => new(

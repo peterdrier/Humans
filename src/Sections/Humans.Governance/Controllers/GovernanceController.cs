@@ -47,7 +47,7 @@ internal sealed class GovernanceController(
             IsApprovedColaborador = data.IsApprovedColaborador,
             CurrentTier = data.CurrentTier,
             IsBoardMember = data.BoardMemberIds.Contains(user.Id),
-            MemberSince = data.MemberSince,
+            MemberSince = data.MemberSince?.ToDateTimeUtc(),
             ColaboradorCount = data.ColaboradorCount,
             AsociadoCount = data.AsociadoCount,
             BoardMemberIds = data.BoardMemberIds
