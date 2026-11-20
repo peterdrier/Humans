@@ -121,7 +121,7 @@ internal sealed class LegalDocumentSyncRunner(
             return;
         }
 
-        var users = await userService.GetUserInfosAsync(userDocuments.Keys.ToList(), cancellationToken);
+        var users = await userService.GetUserInfosAsync(userDocuments.Keys, cancellationToken);
         var recipients = userDocuments.Keys
             .Where(id => users.TryGetValue(id, out var user) && user.IsActive)
             .GroupBy(id => users[id].Id).ToList();

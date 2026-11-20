@@ -2395,9 +2395,7 @@ internal sealed class TeamService(
         var usersById = requests.Count == 0
             ? new Dictionary<Guid, UserInfo>()
             : await UserService.GetUserInfosAsync(
-                requests.Select(request => request.UserId)
-                    .Distinct()
-                    .ToList(),
+                requests.Select(request => request.UserId),
                 cancellationToken);
         return requests
             .Select(request => ToJoinRequestSnapshot(request, usersById))

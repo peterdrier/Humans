@@ -264,7 +264,7 @@ internal sealed class RotaCoordinatorMessageService(
         if (byUser.Count == 0)
             return new DispatchSummary(0, 0, 0);
 
-        var recipientIds = byUser.Keys.ToList();
+        var recipientIds = byUser.Keys;
         var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
 
         var requested = 0;

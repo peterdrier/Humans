@@ -961,12 +961,12 @@ internal sealed class UserService(
     }
 
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
-        if (userIds.Count == 0)
+        var requested = userIds as IReadOnlySet<Guid> ?? new HashSet<Guid>(userIds);
+        if (requested.Count == 0)
             return new Dictionary<Guid, UserInfo>();
 
-        var requested = userIds as IReadOnlySet<Guid> ?? new HashSet<Guid>(userIds);
         var all = await GetAllUserInfosAsync(ct);
         return all
             .Where(u => requested.Contains(u.Id))

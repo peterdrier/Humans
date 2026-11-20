@@ -1030,7 +1030,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         // Gmail, so the base address must be used for the API call.
         const string plusAddressedEmail = "alice+travel@gmail.com";
         const string canonicalEmail = "alice@gmail.com";
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [TestUserId] = MakeUser(TestUserId, plusAddressedEmail) });
 
         _syncSettingsService
@@ -1165,10 +1165,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
         // member never resolves to Correct and thrashes grant/revoke every night.
         const string plusAddressedEmail = "alice+travel@gmail.com";
         const string canonicalEmail = "alice@gmail.com";
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [TestUserId] = MakeUser(TestUserId, plusAddressedEmail) });
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [TestUserId] = MakeUser(TestUserId, plusAddressedEmail) }));
 
@@ -1312,7 +1312,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
                     IsPrimary: true, IsVerified: true,
                     UpdatedAt: SystemClock.Instance.GetCurrentInstant())
             ]);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [departed] = MakeUser(departed, "olduser@gmail.com") }));
 

@@ -168,7 +168,7 @@ public class GoogleAdminServiceTests
             ]);
 
         var testUser = new User { Id = userId, DisplayName = "Test User" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(testUser) }));
 
@@ -246,7 +246,7 @@ public class GoogleAdminServiceTests
             ]);
 
         var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [verifiedUserId] = UserInfoFixtures.FromUser(verifiedUser) }));
 

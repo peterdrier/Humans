@@ -137,7 +137,7 @@ internal sealed class GateController(
             .OrderByRelevance()
             .ToList();
         if (matches.Count == 0) return Json(new List<HumanLookupSearchResult>());
-        var infos = await UserService.GetUserInfosAsync(matches.Select(m => m.UserId).Distinct().ToArray(), ct);
+        var infos = await UserService.GetUserInfosAsync(matches.Select(m => m.UserId), ct);
         var rows = matches.Select(m => new HumanLookupSearchResult(
             m.UserId, m.BurnerName, Detail: MaskEmail(PublicEmail(infos.GetValueOrDefault(m.UserId))),
             ProfilePictureUrl: m.ProfilePictureUrl)).ToList();

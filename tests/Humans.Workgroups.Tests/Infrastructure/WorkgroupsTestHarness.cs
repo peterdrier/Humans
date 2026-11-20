@@ -52,10 +52,10 @@ public abstract class WorkgroupsTestHarness : IDisposable
                 var id = call.Arg<Guid>();
                 return new ValueTask<UserInfo?>(_users.GetValueOrDefault(id));
             });
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                var ids = call.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids
                     .Where(_users.ContainsKey)
                     .ToDictionary(id => id, id => _users[id]);

@@ -185,7 +185,7 @@ public sealed class AssemblyVoteRosterTests : IDisposable
                 State = UserState.Suspended
             })
         };
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map));
 
         await _fx.Service.OpenAsync(vote.Id, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);

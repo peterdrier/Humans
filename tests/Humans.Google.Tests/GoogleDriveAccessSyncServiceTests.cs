@@ -38,7 +38,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .Returns(Array.Empty<GoogleSyncLogView>());
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
     }
@@ -1549,10 +1549,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
         var user = new User { Id = userId, DisplayName = "NoEmail", CreatedAt = _now };
         _usersById[userId] = UserInfoFixtures.FromUser(user);
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
+                var requested = call.ArgAt<IEnumerable<Guid>>(0).ToHashSet();
                 IReadOnlyDictionary<Guid, UserInfo> dict = _usersById
                     .Where(kv => requested.Contains(kv.Key))
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -1578,10 +1578,10 @@ public sealed class GoogleDriveAccessSyncServiceTests
                         null, null, null, null, _now, _now)]
                 };
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
+                var requested = call.ArgAt<IEnumerable<Guid>>(0).ToHashSet();
                 IReadOnlyDictionary<Guid, UserInfo> dict = _usersById
                     .Where(kv => requested.Contains(kv.Key))
                     .ToDictionary(kv => kv.Key, kv => kv.Value);

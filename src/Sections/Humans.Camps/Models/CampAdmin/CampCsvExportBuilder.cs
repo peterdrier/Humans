@@ -18,9 +18,7 @@ internal sealed class CampCsvExportBuilder(
             : [];
 
         var leadUserIds = camps
-            .SelectMany(camp => camp.Seasons.FirstOrDefault()?.LeadUserIds ?? Array.Empty<Guid>())
-            .Distinct()
-            .ToList();
+            .SelectMany(camp => camp.Seasons.FirstOrDefault()?.LeadUserIds ?? Array.Empty<Guid>());
         var leadUsers = await userService.GetUserInfosAsync(leadUserIds, ct);
 
         var rowCount = 0;

@@ -354,7 +354,7 @@ public sealed class TicketTransferServiceTests
     public async Task TransferRows_NameLookupFailurePreservesTransferData(bool afterWrite)
     {
         StubAttendee(TicketAttendeeStatus.Valid, _senderId);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 Task.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("name lookup unavailable"))));
         TicketTransferRowDto row;

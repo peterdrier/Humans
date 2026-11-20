@@ -1470,7 +1470,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // Resolving recipients happens after the vote is already persisted Open, and Open is
         // irreversible with no retry path.
         var infos = await _fx.Users.GetUserInfosAsync([asociado], TestContext.Current.CancellationToken);
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => ResolveRecipientsAsync(call.Arg<CancellationToken>()));
 
         async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveRecipientsAsync(CancellationToken ct)
@@ -1994,7 +1994,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var row = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true, notified: false);
         var member = UserInfoFixtures.FromUser(new User { Id = userId, BurnerName = "Member", Email = address });
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [userId] = member });
 
         await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
@@ -2004,7 +2004,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .SingleAsync(entry => entry.Id == row.Id, TestContext.Current.CancellationToken))
             .NotifiedAt.Should().BeNull();
 
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [userId] = member with { IdentityEmailColumn = "member@example.org" } });
         await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
@@ -2028,7 +2028,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: false, notified: false);
         _fx.StubMergedInto(source, survivor);
         if (lookupFails)
-            _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Identity lookup unavailable")));
         var effects = new AssemblyVoteService(_fx.Repository, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
@@ -2491,7 +2491,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var info = (await _fx.Users.GetUserInfosAsync([member], ct))[member]
             with
         { PreferredLanguage = language };
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [member] = info }));
         var reminder = string.Equals(phase, "reminder", StringComparison.Ordinal);
@@ -2766,8 +2766,8 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var reachedRow = await _fx.AddRosterRowAsync(reachedVote.Id, reached, isOfficial: true, notified: reminder);
         var failure = new IOException("Vote recipient discovery failed");
         var recovered = false;
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
-            .Returns(call => !recovered && call.Arg<IReadOnlyCollection<Guid>>().Contains(failed)
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
+            .Returns(call => !recovered && call.Arg<IEnumerable<Guid>>().Contains(failed)
                 ? ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure)
                 : ValueTask.FromResult(people));
         var run = () => _fx.Service.RunLapseAndReminderSweepAsync(ct);

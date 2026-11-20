@@ -130,7 +130,7 @@ internal sealed class TeamAdminController(
 
         var members = team.Members;
         var infos = await _userService.GetUserInfosAsync(
-            members.Select(m => m.UserId).ToList(), ct);
+            members.Select(m => m.UserId), ct);
 
         // The table's headers re-sort client-side from here.
         var rows = members
@@ -279,7 +279,7 @@ internal sealed class TeamAdminController(
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var memberUserIds = members.Select(m => m.UserId).ToList();
+        var memberUserIds = members.Select(m => m.UserId);
         var memberInfos = await _userService.GetUserInfosAsync(memberUserIds, HttpContext.RequestAborted);
 
         var canToggleManagement = (await AuthorizationService.AuthorizeAsync(User, TeamsPolicies.Manage)).Succeeded;

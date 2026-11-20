@@ -119,7 +119,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         // No test seeds a user through the fixture — every user read that matters is stubbed
         // per-test below — so the default is an empty map rather than a DB-backed stitcher.
         _userService = Substitute.For<IUserService>();
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         _roleAssignmentService.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
@@ -1466,7 +1466,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await SaveAllAsync(TestContext.Current.CancellationToken);
         ClearAllTrackers();
         _userService.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(_ => ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(
                 new IOException("Unused voter name lookup failed")));
 
@@ -1734,7 +1734,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.History.Should().NotBeEmpty();
         result.History[0].ChangedByUserId.Should().Be(reviewerId);
         await _userService.DidNotReceive().GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -1888,7 +1888,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Email = "a@t.com"
         };
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(user) }));

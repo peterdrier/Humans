@@ -187,10 +187,10 @@ public abstract class ShiftsTestHarness : IDisposable
     {
         var svc = Substitute.For<IUserService>();
 
-        svc.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        svc.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var ids = callInfo.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = Db.Users
                     .Where(u => ids.Contains(u.Id))
                     .ToList()

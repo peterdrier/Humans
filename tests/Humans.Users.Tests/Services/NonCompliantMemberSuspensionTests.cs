@@ -95,7 +95,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         using var shutdown = new CancellationTokenSource();
         var user = SetupUser();
         _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), shutdown.Token).Returns(new[] { user.Id });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), shutdown.Token)
             .Returns(async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> (_) =>
             {
                 await shutdown.CancelAsync();
@@ -117,7 +117,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         var users = new[] { SetupUser(), SetupUser() };
         var ids = users.Select(u => u.Id).ToArray();
         _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), shutdown.Token).Returns(ids);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), shutdown.Token)
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(users.ToDictionary(u => u.Id, u => UserInfoFixtures.FromUser(u))));
         _userService.SuspendProfilesForMissingConsentAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
@@ -210,7 +210,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new List<Guid> { user.Id });
         StubSuspendSucceeds([user.Id]);
         var failure = new IOException("Directory unavailable");
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure));
 
         var thrown = await Assert.ThrowsAsync<IOException>(() =>
@@ -231,7 +231,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         var ids = users.Select(user => user.Id).ToList();
         _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(ids);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 users.ToDictionary(user => user.Id, user => UserInfoFixtures.FromUser(user))));
         StubSuspendSucceeds(ids.Take(2).ToList());
@@ -298,7 +298,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
             .Returns(new HashSet<Guid> { userId });
 
         _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<IEnumerable<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
@@ -337,7 +337,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
     public async Task ExecuteAsync_LocalizesSuspensionNoticeAndEmailReasonForMember()
     {
         var user = SetupUser();
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             { [user.Id] = UserInfoFixtures.FromUser(user) with { PreferredLanguage = "de" } }));
         _consentService.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
@@ -416,7 +416,7 @@ public class NonCompliantMemberSuspensionTests : IDisposable
         };
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(user) }));

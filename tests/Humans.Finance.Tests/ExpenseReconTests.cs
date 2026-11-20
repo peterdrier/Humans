@@ -277,7 +277,7 @@ public class ExpenseReconTests
             .Returns(new Dictionary<int, decimal> { [contacts] = -100m, [stored] = 0m });
         _holded.GetLedgerLinesAsync(contacts, Arg.Any<CancellationToken>()).Returns([Purchase(account: contacts)]);
         _holded.GetLedgerLinesAsync(stored, Arg.Any<CancellationToken>()).Returns([]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);

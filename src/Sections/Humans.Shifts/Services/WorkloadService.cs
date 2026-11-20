@@ -195,7 +195,7 @@ internal sealed class WorkloadService(
 
         if (perUser.Count == 0) return new List<WorkloadByPersonRow>();
 
-        var users = await userService.GetUserInfosAsync(perUser.Keys.ToList(), ct);
+        var users = await userService.GetUserInfosAsync(perUser.Keys, ct);
 
         return perUser
             .Select(kvp =>

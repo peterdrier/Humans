@@ -237,7 +237,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
             Members = new[] { person, reached }.Select(user => new TeamMemberInfo(
                 Guid.NewGuid(), user.Id, user.BurnerName, user.Email, null, TeamMemberRole.Member, default)).ToList()
         });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person, [reached.Id] = reached });
         var consents = Substitute.For<IConsentService>();
         consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -310,7 +310,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         {
             Members = [new TeamMemberInfo(Guid.NewGuid(), person.Id, person.BurnerName, person.Email, null, TeamMemberRole.Member, default)]
         });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person });
         var consents = Substitute.For<IConsentService>();
         consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -1154,8 +1154,8 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
                 Guid.NewGuid(), u.Id, "Member", u.Email, null, TeamMemberRole.Member, default)).ToList()
         });
         var everyone = members.Concat(outsiders).ToDictionary(u => u.Id);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ci.ArgAt<IReadOnlyCollection<Guid>>(0)
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ci.ArgAt<IEnumerable<Guid>>(0)
                 .Where(everyone.ContainsKey).ToDictionary(id => id, id => everyone[id])));
     }
 

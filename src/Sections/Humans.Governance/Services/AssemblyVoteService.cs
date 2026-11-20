@@ -1529,7 +1529,7 @@ internal sealed class AssemblyVoteService(
         var ballots = await repository.GetBallotsAsync(voteId, ct);
         var byRoster = ballots.ToDictionary(b => b.RosterId);
 
-        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value).ToList();
+        var userIds = roster.Where(r => r.UserId is not null).Select(r => r.UserId!.Value);
         var infos = await users.GetUserInfosAsync(userIds, ct);
 
         return roster

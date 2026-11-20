@@ -699,9 +699,9 @@ public class EventsControllerTests
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<UserInfo?>(ReadAsync<UserInfo?>(MakeUserInfo(call.Arg<Guid>(), "Human"),
                 call.Arg<Guid>() == userId ? "Viewer" : "Submitter", call.Arg<CancellationToken>())));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
             new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(ReadAsync<IReadOnlyDictionary<Guid, UserInfo>>(
-                call.Arg<IReadOnlyCollection<Guid>>().Distinct().ToDictionary(id => id, id => MakeUserInfo(id, "Human")),
+                call.Arg<IEnumerable<Guid>>().Distinct().ToDictionary(id => id, id => MakeUserInfo(id, "Human")),
                 "Submitter", call.Arg<CancellationToken>())));
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventGuideSettingsView?>(settings, "Guide", call.Arg<CancellationToken>()));
@@ -765,7 +765,7 @@ public class EventsControllerTests
             var item = browse.DayGroups.SelectMany(g => g.Items).Should().ContainSingle().Which;
             item.SubmitterUserId.Should().Be(submitterId);
             item.Host.Should().BeNull();
-            await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+            await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
         }
         if (string.Equals(route, nameof(EventsController.BulkUploadTemplate), StringComparison.Ordinal))
             loaded.Should().BeOfType<FileContentResult>();
