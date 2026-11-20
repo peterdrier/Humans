@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;
 using Humans.Backdoor.Services;
@@ -198,7 +197,7 @@ public class BackdoorFinanceControllerTests
         };
         if (userId is { } id)
             httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, id.ToString())], BackdoorAuthentication.SchemeName));
+                [new Claim(ClaimTypes.NameIdentifier, id.ToString())], BackdoorApiKeyAuthFilter.AuthenticationScheme));
         _sut.ControllerContext = new ControllerContext { HttpContext = httpContext };
     }
 

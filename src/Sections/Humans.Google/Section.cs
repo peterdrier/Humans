@@ -28,7 +28,6 @@ using static Humans.Base.Models.AccessMatrixFeature;
 
 namespace Humans.Google;
 
-/// <summary><c>GoogleWorkspaceOptions</c> is bound in Shell, not here: Camps and Users read it too.</summary>
 public sealed class Section :
     ISection,
     ISectionAccessMatrix,
@@ -77,6 +76,7 @@ public sealed class Section :
         services.AddSingleton<IAuditActionContributor, GoogleAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GoogleNotificationSources>();
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
+        services.Configure<GoogleWorkspaceOptions>(configuration.GetSection(GoogleWorkspaceOptions.SectionName));
 
         var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);
         var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||

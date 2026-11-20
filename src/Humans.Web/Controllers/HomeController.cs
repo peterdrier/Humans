@@ -2,7 +2,6 @@ using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Configuration;
 using Humans.Web.Models;
-using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
@@ -12,7 +11,6 @@ namespace Humans.Web.Controllers;
 
 public class HomeController(
     IUserService userService,
-    IConsentService consentService,
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     IAuthorizationService authorizationService) : HumansControllerBase(userService)
@@ -34,16 +32,12 @@ public class HomeController(
             return View();
         }
 
-        var review = await consentService.GetConsentReviewAsync(user.Id, ct);
-
         // Name-only access: the MembershipRequiredFilter routes non-Active users away, so any
         // authenticated user reaching the dashboard is Active (named, not suspended/etc.).
         var viewModel = new DashboardViewModel
         {
             UserId = user.Id,
             DisplayName = user.BurnerName,
-            IsRejected = user.Profile is not null && review.IsRejected,
-            RejectionReason = user.Profile is null ? null : review.RejectionReason,
         };
 
         return View("Dashboard", viewModel);

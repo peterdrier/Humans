@@ -6,8 +6,9 @@ using Humans.Web.Extensions;
 namespace Humans.Web.Tests.Infrastructure;
 
 /// <summary>
-/// Deactivating a section that Shell or a running section consumes fails startup. No section is named here: that would
-/// be the pinned list the mechanism exists to avoid.
+/// Deactivating a section that Shell or a running section consumes is reported, never thrown. No section is named here
+/// except in <see cref="ShellNoLongerPinsTheNonCoreSections"/>: anywhere else that would be the pinned list the
+/// mechanism exists to avoid.
 /// </summary>
 public sealed class SectionActivationTests
 {
@@ -41,13 +42,12 @@ public sealed class SectionActivationTests
     [HumansFact]
     public void EverySectionActiveMeetsEveryDependency()
     {
-        var act = () => SectionActivation.ThrowOnUnmetDependencies(Discovered, Shell, AllActive());
-
-        act.Should().NotThrow(because: "the shipped default runs every section that ships");
+        SectionActivation.UnmetDependencies(Discovered, Shell, AllActive()).Should().BeEmpty(
+            because: "the shipped default runs every section that ships");
     }
 
     [HumansFact]
-    public void DeactivatingASectionShellItselfConsumesFails()
+    public void DeactivatingASectionShellItselfConsumesIsReportedNotThrown()
     {
         var shellDependencies = SectionActivation.ShellDependencies(Discovered, Shell);
         shellDependencies.Should().NotBeEmpty(
@@ -57,23 +57,34 @@ public sealed class SectionActivationTests
         var active = Active([.. Discovered.Select(SectionName)
             .Where(name => !name.Equals(dropped, StringComparison.OrdinalIgnoreCase))]);
 
-        var act = () => SectionActivation.ThrowOnUnmetDependencies(Discovered, Shell, active);
+        var unmet = SectionActivation.UnmetDependencies(Discovered, Shell, active);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{dropped}*{SectionName(Shell)}*",
-                because: "Shell always runs, so nothing may deactivate what Shell consumes");
+        unmet.Should().ContainKey(dropped);
+        unmet[dropped].Should().Contain(SectionName(Shell),
+            because: "Shell always runs, so whatever it consumes is reported when deactivated");
     }
 
     [HumansFact]
-    public void DeactivatingAConsumedSectionFailsAndNamesTheDependents()
+    public void DeactivatingAConsumedSectionNamesTheDependents()
     {
         var (dependent, dependency) = FirstEdge();
 
-        var act = () => SectionActivation.ThrowOnUnmetDependencies(Discovered, Shell, Active(dependent));
+        var unmet = SectionActivation.UnmetDependencies(Discovered, Shell, Active(dependent));
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage($"*{dependency}*{dependent}*",
-                because: "the message has to say what is missing and who wanted it");
+        unmet.Should().ContainKey(dependency);
+        unmet[dependency].Should().Contain(dependent,
+            because: "the report has to say what is missing and who wanted it");
+    }
+
+    /// <summary>
+    /// The one place sections are named: these were Shell's compiled pins before their bindings, policies and views
+    /// moved behind seams, and a new Shell reference to any of them re-pins it.
+    /// </summary>
+    [HumansFact]
+    public void ShellNoLongerPinsTheNonCoreSections()
+    {
+        SectionActivation.ShellDependencies(Discovered, Shell).Should().NotContain(
+            ["Backdoor", "Consent", "Governance", "Google", "Shifts", "Tickets"]);
     }
 
     [HumansFact]
