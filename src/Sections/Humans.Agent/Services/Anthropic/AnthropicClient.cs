@@ -254,7 +254,10 @@ internal sealed class AnthropicClient : IAnthropicClient
     public async Task<IReadOnlyList<AnthropicModelInfo>> ListModelsAsync(CancellationToken cancellationToken = default)
     {
         var page = await _sdk.Models.List(new ModelListParams { Limit = 100 }, cancellationToken).ConfigureAwait(false);
-        return page.Items.Select(m => new AnthropicModelInfo(m.ID, m.DisplayName)).ToList();
+        var models = new List<AnthropicModelInfo>();
+        await foreach (var model in global::Anthropic.IPageExtensions.Paginate(page, cancellationToken).ConfigureAwait(false))
+            models.Add(new AnthropicModelInfo(model.ID, model.DisplayName));
+        return models;
     }
 
     private static int ClampToInt(long value) => value > int.MaxValue ? int.MaxValue : (int)value;

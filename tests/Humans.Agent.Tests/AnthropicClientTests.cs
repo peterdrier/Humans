@@ -228,6 +228,61 @@ public sealed class AnthropicClientTests
         logger.Entries.Should().NotContain(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("complete")]
+    [Xunit.InlineData("failure")]
+    [Xunit.InlineData("cancelled")]
+    public async Task ListModelsAsync_ReadsEveryPageOrPropagatesTheLaterFailure(string outcome)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        var handler = new ModelPagesHandler(outcome, cancellation);
+        using var http = new HttpClient(handler);
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var adapter = new ClientAdapter(provider, NullLogger<ClientAdapter>.Instance);
+        var read = () => adapter.ListModelsAsync(cancellation.Token);
+
+        if (outcome is "failure")
+            await read.Should().ThrowAsync<global::Anthropic.Exceptions.AnthropicApiException>();
+        else if (outcome is "cancelled")
+            await read.Should().ThrowAsync<OperationCanceledException>();
+        else
+        {
+            var models = await read();
+            models.Select(model => (model.Id, model.DisplayName)).Should()
+                .Equal(("model-new", "New model"), ("model-old", "Old model"));
+        }
+
+        handler.Queries.Should().HaveCount(2);
+        handler.Queries[0].Should().Contain("limit=100");
+        handler.Queries[1].Should().Contain("after_id=model-new");
+    }
+
+    private sealed class ModelPagesHandler(string outcome, CancellationTokenSource cancellation) : HttpMessageHandler
+    {
+        public List<string> Queries { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Queries.Add(request.RequestUri!.Query);
+            var first = Queries.Count == 1;
+            if (!first && outcome is "cancelled")
+            {
+                await cancellation.CancelAsync();
+                return await Task.FromCanceled<HttpResponseMessage>(cancellationToken);
+            }
+            var failed = !first && outcome is "failure";
+            var body = failed ? "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Later page unavailable\"}}"
+                : first
+                    ? "{\"data\":[{\"id\":\"model-new\",\"display_name\":\"New model\",\"created_at\":\"2026-01-02T00:00:00Z\",\"type\":\"model\"}],\"has_more\":true,\"first_id\":\"model-new\",\"last_id\":\"model-new\"}"
+                    : "{\"data\":[{\"id\":\"model-old\",\"display_name\":\"Old model\",\"created_at\":\"2026-01-01T00:00:00Z\",\"type\":\"model\"}],\"has_more\":false,\"first_id\":\"model-old\",\"last_id\":\"model-old\"}";
+            return new HttpResponseMessage(failed ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK)
+            {
+                RequestMessage = request,
+                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
     private sealed class FailedResponseHandler(string kind, Exception? failure) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
