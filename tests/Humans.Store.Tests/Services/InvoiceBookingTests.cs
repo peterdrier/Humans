@@ -36,7 +36,7 @@ public class InvoiceBookingTests
     private readonly List<HoldedPaymentDetailDto> _invoicePayments = [];
     private readonly Order _order;
     private readonly Invoice _invoice;
-    private readonly StoreInvoiceBooking _booking;
+    private readonly Service _booking;
 
     public InvoiceBookingTests()
     {
@@ -89,8 +89,9 @@ public class InvoiceBookingTests
             return Task.CompletedTask;
         });
 
-        _booking = new StoreInvoiceBooking(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)), _holded, _write,
-            _stripe, _finance, NullLogger.Instance);
+        _booking = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), Substitute.For<Humans.Camps.Contracts.ICampService>(),
+            Substitute.For<Humans.Teams.Contracts.ITeamService>(), new FakeClock(Instant.FromUtc(2026, 9, 1, 10, 0)),
+            Substitute.For<Humans.Settings.Contracts.ISettingsService>(), _stripe, _holded, _write, _finance, NullLogger<Service>.Instance);
     }
 
     private void Charge(string pi, decimal amount, Instant created, bool fedToHolded = true)
