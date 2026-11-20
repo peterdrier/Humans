@@ -466,6 +466,21 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         may.RefundedGross.Should().Be(315m);
         may.StripeFees.Should().Be(6m);
         may.ApplicationFees.Should().Be(2.50m);
+
+        var total = MonthlySalesAggregate.Total(result.MonthlySales);
+        total.OrderCount.Should().Be(2);
+        total.TicketsSold.Should().Be(2);
+        total.GrossRevenue.Should().Be(740m);
+        total.Donations.Should().Be(25m);
+        total.VipDonations.Should().Be(85m);
+        total.VatAmount.Should().Be(57.28m);
+        total.TicketIncomeInclVat.Should().Be(630m);
+        total.TicketIncomeExVat.Should().Be(572.72m);
+        total.StripeFees.Should().Be(18.50m);
+        total.ApplicationFees.Should().Be(7m);
+        total.FeeTax.Should().Be(2m);
+        total.WithheldTax.Should().Be(0.30m);
+        total.RefundedGross.Should().Be(515m);
     }
 
     [HumansFact]

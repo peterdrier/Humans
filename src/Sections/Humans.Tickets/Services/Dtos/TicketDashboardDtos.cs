@@ -119,6 +119,22 @@ internal sealed class MonthlySalesAggregate
     public decimal TicketIncomeInclVat { get; init; }
 
     public decimal TicketIncomeExVat => TicketIncomeInclVat - VatAmount;
+
+    internal static MonthlySalesAggregate Total(IReadOnlyCollection<MonthlySalesAggregate> months) => new()
+    {
+        OrderCount = months.Sum(m => m.OrderCount),
+        TicketsSold = months.Sum(m => m.TicketsSold),
+        GrossRevenue = months.Sum(m => m.GrossRevenue),
+        Donations = months.Sum(m => m.Donations),
+        VipDonations = months.Sum(m => m.VipDonations),
+        VatAmount = months.Sum(m => m.VatAmount),
+        StripeFees = months.Sum(m => m.StripeFees),
+        ApplicationFees = months.Sum(m => m.ApplicationFees),
+        FeeTax = months.Sum(m => m.FeeTax),
+        WithheldTax = months.Sum(m => m.WithheldTax),
+        RefundedGross = months.Sum(m => m.RefundedGross),
+        TicketIncomeInclVat = months.Sum(m => m.TicketIncomeInclVat),
+    };
 }
 
 internal sealed class TicketTypeSalesAggregate
