@@ -880,6 +880,12 @@ public sealed class CampServiceTests : CampsTestHarness
 
         var season = await CampsDb.CampSeasons.FirstAsync(s => s.CampId == camp.Id, TestContext.Current.CancellationToken);
         season.NameLockDate = new LocalDate(2026, 3, 1);
+        foreach (var status in new[] { CampMemberStatus.Active, CampMemberStatus.Pending, CampMemberStatus.Removed })
+            CampsDb.CampMembers.Add(new CampMember
+            {
+                Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
+                Status = status, HasEarlyEntry = true, RequestedAt = Clock.GetCurrentInstant(),
+            });
 
         CampsDb.CampImages.Add(new CampImage
         {
@@ -907,6 +913,17 @@ public sealed class CampServiceTests : CampsTestHarness
         seasonInfo.IsNameLocked(new LocalDate(2026, 3, 2)).Should().BeTrue();
         seasonInfo.KidsVisiting.Should().Be(KidsVisitingPolicy.DaytimeOnly);
         seasonInfo.HasPerformanceSpace.Should().Be(PerformanceSpaceStatus.Yes);
+        seasonInfo.JoinedMemberCount.Should().Be(2);
+        seasonInfo.EeGrantedCount.Should().Be(1);
+        seasonInfo.Members.Should().HaveCount(3);
+        var byId = (await _service.GetCampByIdAsync(camp.Id, TestContext.Current.CancellationToken))!.Seasons.Single();
+        var byYear = (await _service.GetCampsForYearAsync(2026, TestContext.Current.CancellationToken))
+            .Single(row => row.Id == camp.Id).Seasons.Single();
+        byId.JoinedMemberCount.Should().Be(seasonInfo.JoinedMemberCount);
+        byYear.EeGrantedCount.Should().Be(seasonInfo.EeGrantedCount);
+        var directSeason = await _service.GetCampSeasonByIdAsync(season.Id, TestContext.Current.CancellationToken);
+        directSeason!.JoinedMemberCount.Should().BeNull("the direct season repository read does not load members");
+        directSeason.EeGrantedCount.Should().BeNull();
     }
 
     [HumansTheory]

@@ -54,7 +54,6 @@ internal sealed class CampReadProjection(
 
     internal static CampInfo CreateCampInfo(
         Camp camp,
-        bool includeEarlyEntryGrantCount = true,
         CampRoleProjection? roles = null)
     {
         return new CampInfo(
@@ -65,7 +64,7 @@ internal sealed class CampReadProjection(
             camp.IsSwissCamp,
             camp.TimesAtNowhere,
             camp.Seasons
-                .Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount, roles))
+                .Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: true, roles: roles))
                 .ToList())
         {
             WebOrSocialUrl = camp.WebOrSocialUrl,
@@ -195,19 +194,15 @@ internal sealed class CampReadProjection(
     public async Task<CampInfo?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         var camp = await repo.GetBySlugAsync(slug, cancellationToken);
-        // GetBySlugAsync does not load Seasons.Members, so EE/member counts are
-        // unknown here — emit null rather than a misleading 0.
         if (camp is null) return null;
         var roles = await GetRoleProjectionForYearsAsync(
             camp.Seasons.Select(season => season.Year).Distinct().ToList(),
             cancellationToken);
-        return CreateCampInfo(camp, includeEarlyEntryGrantCount: false, roles);
+        return CreateCampInfo(camp, roles: roles);
     }
 
     public async Task<CampInfo?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)
     {
-        // GetByIdAsync loads Seasons.Members, so the EE grant count projects correctly here
-        // (unlike the by-slug read above).
         var camp = await repo.GetByIdAsync(campId, cancellationToken);
         if (camp is null) return null;
         var roles = await GetRoleProjectionForYearsAsync(
