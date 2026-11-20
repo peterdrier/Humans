@@ -123,5 +123,4 @@ internal sealed class SurveyAudience(
             && IsEligibleAsociado(info)
             && await governanceService.GetMembershipTierAsync(userId, ct) == MembershipTier.Asociado;
     }
-
 }
