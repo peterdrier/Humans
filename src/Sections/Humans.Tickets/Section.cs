@@ -10,6 +10,7 @@ using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
+using Humans.Notifications.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Health;
@@ -65,6 +66,7 @@ public sealed class Section :
         });
 
         services.AddSingleton<IAuditActionContributor, TicketsAuditActions>();
+        services.AddScoped<INotificationMeterContributor, TicketsNotificationMeters>();
         services.AddSectionDbContext<TicketsDbContext>(sentinelTable: "ticket_orders");
 
         services.AddSingleton<ITicketRepository, TicketRepository>();

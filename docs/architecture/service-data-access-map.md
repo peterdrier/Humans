@@ -164,8 +164,7 @@ Every table is owned by exactly one repository; there are no HUM0025
    need: `IUserWrite`), `ITeamService` (`ITeamWrite`), `IRoleAssignmentService`
    (`IRoleAssignmentWrite`), `IConsentService`,
    `ICampService`, `ITicketService`, `IGoogleSyncService`
-   (consumed by `NotificationMeterProvider` for failed-sync-event counts;
-   foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IFinanceService`
+   (foreign writes go through `IGoogleSyncWrite`), `ITeamResourceService`, `IFinanceService`
    (writes via `IFinanceWrite`),
    `ICampaignService` (consumed by `TicketQueryService`; writes via
    `ICampaignWrite`),
@@ -254,11 +253,9 @@ Every table is owned by exactly one repository; there are no HUM0025
    `IMemoryCache` coupling in the Application layer.
 
 9. **Notification meters are computed, not queried.**
-   `NotificationMeterProvider` reads no tables directly — every counter
-   fans out through an owning-service interface call (`IUserService`,
-   `ITeamService`, `IGovernanceService`, `IConsentService`, `ITicketSync`,
-   `IGoogleSyncService`, `ICampService`). The meter cache expires on
-   its 2-minute TTL; nothing evicts it.
+   `NotificationMeterProvider` reads no other section: each section pushes
+   its own meters through `INotificationMeterContributor`, computing and
+   caching the counts over its own data.
 
 10. **HUM analyzers enforce the boundaries at compile time.** Roslyn
     analyzers ratchet the layering rules: `HUM0008` blocks any per-section
@@ -363,7 +360,6 @@ separately below the key table.
 
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
-| `NotificationMeters` | 2 min | Static | NotificationMeterProvider | TTL only |
 | `HoldedContacts` | 2 min | Static | **Finance** `Service` (Holded contact list) | expiry only |
 | `NavBadge:Voting:{userId}` | 2 min | Per-User | **ApplicationDecisionService** (`GetUnvotedApplicationCountAsync`) | ApplicationDecisionService (evicts its own key) |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService (GitHub-source read-through) | LegalDocumentService |

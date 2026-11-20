@@ -75,6 +75,7 @@ public sealed class Section :
 
         services.AddSingleton<IAuditActionContributor, GoogleAuditActions>();
         services.AddSingleton<INotificationSourceContributor, GoogleNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, GoogleNotificationMeters>();
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
         services.Configure<GoogleWorkspaceOptions>(configuration.GetSection(GoogleWorkspaceOptions.SectionName));
 

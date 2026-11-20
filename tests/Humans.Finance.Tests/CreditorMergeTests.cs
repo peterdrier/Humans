@@ -50,7 +50,7 @@ public class CreditorMergeTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private Service MakeService() => new(
-        new Repository(_factory), Substitute.For<IBudgetService>(), TestContacts.Holded(), _write,
+        FixedOrgTimeZone.Madrid, new Repository(_factory), Substitute.For<IBudgetService>(), TestContacts.Holded(), _write,
         Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(Now), _audit, _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>(
@@ -62,8 +62,13 @@ public class CreditorMergeTests
         await using var ctx = await _factory.CreateDbContextAsync(Ct);
         ctx.HoldedCreditorContacts.Add(new HoldedCreditorContact
         {
-            Id = Guid.NewGuid(), UserId = userId, HoldedContactId = contactId, SupplierAccountNum = accountNum,
-            Source = CreditorContactSource.Auto, CreatedAt = Now, UpdatedAt = Now,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            HoldedContactId = contactId,
+            SupplierAccountNum = accountNum,
+            Source = CreditorContactSource.Auto,
+            CreatedAt = Now,
+            UpdatedAt = Now,
         });
         await ctx.SaveChangesAsync(Ct);
     }

@@ -107,4 +107,6 @@
   <data name="Google_TeamResources_ResourceSynced" xml:space="preserve"><value>Resource permissions synced successfully.</value></data>
   <data name="Google_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Failed to sync resource permissions: {0}</value><comment>{0} = error message</comment></data>
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Service account: {0}</value><comment>{0} = service account email</comment></data>
+  <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Failed Google sync events</value></data>
+  <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
 </root>

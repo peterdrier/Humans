@@ -1,0 +1,62 @@
+using System.Security.Claims;
+using Humans.Base.Constants;
+using Humans.Consent.Contracts;
+using Humans.Notifications.Contracts;
+using Humans.Shifts.Contracts;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Localization;
+
+namespace Humans.Consent.Services;
+
+/// <summary>
+/// The review queue's pending count, read live like the queue's nav pill: users come from Users' in-RAM snapshot.
+/// Board and Shifts Admin see the same count under a label that matches how they think of it.
+/// </summary>
+internal sealed class ConsentNotificationMeters(
+    IUserService userService,
+    IConsentService consentService,
+    IStringLocalizer<ConsentResource> localizer) : INotificationMeterContributor
+{
+    public async Task<IReadOnlyList<NotificationMeter>> GetMetersAsync(
+        ClaimsPrincipal viewer, Guid viewerId, CancellationToken ct = default)
+    {
+        var isReviewer = viewer.IsInRole(RoleNames.Admin) || viewer.IsInRole(ConsentRoles.ConsentCoordinator);
+        var isBoard = viewer.IsInRole(RoleNames.Board);
+        var isOnboarder = isBoard || viewer.IsInRole(ShiftsRoles.ShiftsAdmin);
+        if (!isReviewer && !isOnboarder)
+            return [];
+
+        var reviews = await consentService.GetConsentReviewsAsync(ct);
+        var pending = (await userService.GetAllUserInfosAsync(ct)).Count(u =>
+            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u));
+        if (pending == 0)
+            return [];
+
+        var meters = new List<NotificationMeter>();
+        if (isReviewer)
+        {
+            meters.Add(new NotificationMeter
+            {
+                Title = localizer["Consent_Meter_ReviewsPending"],
+                Count = pending,
+                ActionUrl = "/Consent/ReviewQueue",
+                Audience = localizer["Consent_Meter_AudienceConsentCoordinator"],
+                Priority = 10,
+            });
+        }
+
+        if (isOnboarder)
+        {
+            meters.Add(new NotificationMeter
+            {
+                Title = localizer["Consent_Meter_OnboardingProfilesPending"],
+                Count = pending,
+                ActionUrl = "/Consent/ReviewQueue",
+                Audience = localizer[isBoard ? "Consent_Meter_AudienceBoard" : "Consent_Meter_AudienceShiftsAdmin"],
+                Priority = 6,
+            });
+        }
+
+        return meters;
+    }
+}

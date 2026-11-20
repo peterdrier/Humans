@@ -69,6 +69,7 @@ public sealed class Section :
     {
         services.AddSingleton<IAuditActionContributor, UsersAuditActions>();
         services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, UsersNotificationMeters>();
         services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
         services.AddIdentity<User, IdentityRole<Guid>>(options =>

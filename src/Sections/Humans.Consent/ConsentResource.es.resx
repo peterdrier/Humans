@@ -373,4 +373,9 @@
   </data>
   <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Revisar</value></data>
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Seleccionar {0}</value></data>
+  <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Revisiones de consentimiento pendientes</value></data>
+  <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Perfiles de incorporación pendientes</value></data>
+  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>coordinadores de consentimiento</value></data>
+  <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
+  <data name="Consent_Meter_AudienceShiftsAdmin" xml:space="preserve"><value>administradores de turnos</value></data>
 </root>

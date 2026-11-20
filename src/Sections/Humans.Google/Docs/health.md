@@ -39,7 +39,7 @@ pages render for a resource or a person.
 | "Provision `name@nobodies.team` for this person" | Teams' team-admin page, this section's person page | `IEmailProvisioningService.ProvisionNobodiesEmailAsync` |
 | "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
 | "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
-| "How many sync events have failed?" | Notifications' admin meter | `IGoogleSyncService.GetFailedSyncEventCountAsync` |
+| "How many sync events have failed?" | Admin's notification meter (`GoogleNotificationMeters`) | `IGoogleSyncService.GetFailedSyncEventCountAsync` |
 | "What did sync do to this resource / person / overall?" | `/Google/Resource/{id}`, `/Google/Human/{id}`, `/Google/ActivityLog` | `IGoogleSyncLogViewer` / `IGoogleSyncLogService` |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens and its `/Settings` tab | `GoogleController` → internal services |
 | Nightly: reconcile, inheritance, paths, settings; every 10 min: drain the queue | Hangfire | `GoogleResourceReconciliationJob`, `ProcessGoogleSyncOutboxJob` |

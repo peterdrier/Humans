@@ -100,4 +100,6 @@
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>No se pudo deshacer; es posible que la sincronización de entradas haya actualizado tu estado.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Tu estado de entrada no está disponible en este momento. Inténtalo de nuevo más tarde.</value></data>
   <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Los motivos no pueden superar los 1000 caracteres.</value></data>
+  <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Error de sincronización de entradas</value></data>
+  <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>administradores</value></data>
 </root>
