@@ -1581,10 +1581,21 @@ public class ServiceTests
         {
             Payments =
             [
-                new OrderPaymentDto(Guid.NewGuid(), 30m, PaymentMethod.Stripe, PaymentStatus.Pending, "pi_pending", null, Instant.FromUtc(2026, 5, 1, 0, 0), null)
+                new OrderPaymentDto(Guid.NewGuid(), 30m, PaymentMethod.Stripe, PaymentStatus.Pending, "pi_pending", null, Instant.FromUtc(2026, 5, 1, 0, 0), null),
+                new OrderPaymentDto(Guid.NewGuid(), -10m, PaymentMethod.Refund, PaymentStatus.Pending, null, "re_pending", default, null),
+                new OrderPaymentDto(Guid.NewGuid(), 40m, PaymentMethod.Stripe, PaymentStatus.Paid, "pi_paid", null, default, null),
+                new OrderPaymentDto(Guid.NewGuid(), 50m, PaymentMethod.Stripe, PaymentStatus.Failed, "pi_failed", null, default, null)
             ]
         };
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
+
+        order.PendingSettlementTotalEur.Should().Be(30m);
+        var page = await _service.GetOrderPageDataAsync(order, canEdit: false, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
+        page.CanPay.Should().BeFalse();
+        var refundOnly = order with { Payments = order.Payments.Where(p => p.AmountEur < 0).ToList() };
+        refundOnly.PendingSettlementTotalEur.Should().Be(0m);
+        var refundPage = await _service.GetOrderPageDataAsync(refundOnly, canEdit: false, canPayAuthorized: true, ct: TestContext.Current.CancellationToken);
+        refundPage.CanPay.Should().BeTrue();
 
         var result = await _service.CreateStripeCheckoutSessionAsync(order, 20m, "https://humans.test/order", TestContext.Current.CancellationToken);
 
