@@ -1712,7 +1712,8 @@ public sealed class EventServiceTests
             seed.Events.AddRange(existing);
             await seed.SaveChangesAsync(ct);
         }
-        var importer = new EventBulkImporter(new EventRepository(factory), _clock, _localizer);
+        var importer = new EventService(new EventRepository(factory), _burnSettings, _userService, _camps, _audit, _emailService,
+            _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
         var import = () => importer.ImportAsync(campId, submitter, eventId,
             [Row(id: existing[0].Id, title: "First revised event"),
              Row(id: existing[1].Id, title: "Second revised event", rowNumber: 3),
