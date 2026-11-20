@@ -271,3 +271,5 @@ described in [`Holded-connector.md`](Holded-connector.md).
 **Owned tables:** those above
 **Target shape:** [`health.md`](health.md). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
+
+Expected API failures during bank-feed/usage reads, contact refresh and payment verification, plus unreadable accepted ledger responses, log Warning with a reason and no exception stack. Requested bank-feed cancellation warns without a stack and propagates; unrelated cancellation and unexpected bank-feed/startup catch-up faults log Error with their original exception. Existing unconfirmed-write outcomes, optional startup behavior and sync-error persistence remain unchanged.

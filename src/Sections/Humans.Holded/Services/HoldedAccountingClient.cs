@@ -43,9 +43,9 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            logger.LogWarning(ex,
-                "Holded accepted a ledger entry (debit {Debit}, credit {Credit}, {Amount}) but its response could not be parsed.",
-                debitAccount, creditAccount, money);
+            logger.LogWarning(
+                "Holded accepted a ledger entry (debit {Debit}, credit {Credit}, {Amount}) but its response could not be parsed: {Reason}",
+                debitAccount, creditAccount, money, ex.Message);
         }
 
         if (!string.IsNullOrWhiteSpace(id)) return id;

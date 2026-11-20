@@ -195,9 +195,9 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex,
-                "Holded {Outcome} a payment on purchase document {DocumentId} but the document could not be re-read for its id; recording it as unconfirmed.",
-                refused is null ? "accepted" : "answered " + refused.Message + " to", documentId);
+            logger.LogWarning(
+                "Holded {Outcome} a payment on purchase document {DocumentId} but the document could not be re-read for its id; recording it as unconfirmed: {Reason}",
+                refused is null ? "accepted" : "answered " + refused.Message + " to", documentId, ex.Message);
             return UnconfirmedPaymentRefPrefix + documentId;
         }
 

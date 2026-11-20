@@ -103,7 +103,7 @@ internal sealed class HoldedWrite(
         }
         catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
         {
-            logger.LogWarning(ex, "The contact mirror could not be refreshed after a contact write.");
+            logger.LogWarning("The contact mirror could not be refreshed after a contact write: {Reason}", ex.Message);
         }
     }
 
