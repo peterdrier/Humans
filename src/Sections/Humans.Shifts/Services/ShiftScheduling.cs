@@ -227,7 +227,7 @@ internal sealed class ShiftScheduling(
         const string refusal = "Shift start and end must fit within years 0001–9999 in UTC and the event timezone.";
         try
         {
-            var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
+            var zone = settings.TimeZone;
             var start = Shift.ResolveAbsoluteStart(dayOffset, startTime, isAllDay, settings);
             var end = Shift.ResolveAbsoluteEnd(dayOffset, startTime, duration, isAllDay, settings);
             return start.InUtc().Year < 1 || start.InZone(zone).Year < 1

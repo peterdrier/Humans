@@ -836,8 +836,7 @@ internal sealed class TicketQueryService(
         if (activeEvent is null)
             return null;
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId)
-                 ?? DateTimeZone.Utc;
+        var tz = activeEvent.TimeZone;
         var postEventDate = activeEvent.GateOpeningDate
             .PlusDays(activeEvent.StrikeEndOffset + 1);
         var postEventInstant = postEventDate

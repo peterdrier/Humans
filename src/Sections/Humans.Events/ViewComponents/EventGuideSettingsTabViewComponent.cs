@@ -24,7 +24,7 @@ internal sealed class EventGuideSettingsTabViewComponent(IEventManagement guide)
         }
 
         var eventSettings = await guide.GetEventSettingsByIdAsync(existing.EventSettingsId, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         return View(new GuideSettingsViewModel
         {
             Id = existing.Id,

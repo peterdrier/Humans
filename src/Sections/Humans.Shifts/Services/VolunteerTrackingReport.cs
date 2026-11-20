@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
@@ -25,8 +26,8 @@ internal sealed class VolunteerTrackingReport(
         if (es is null)
             return new VolunteerTrackingViewModel(false, 0, default, default, [], []);
 
-        var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
-        var today = clock.GetCurrentInstant().InZone(zone).Date;
+        var zone = es.TimeZone;
+        var today = clock.TodayIn(zone);
         var todayOffset = OffsetOf(es, today);
 
         var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
@@ -263,8 +264,8 @@ internal sealed class VolunteerTrackingReport(
         var es = await calendarResolver.GetActiveAsync(ct).ConfigureAwait(false);
         if (es is null) return null;
 
-        var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
-        var todayOffset = OffsetOf(es, clock.GetCurrentInstant().InZone(zone).Date);
+        var zone = es.TimeZone;
+        var todayOffset = OffsetOf(es, clock.TodayIn(zone));
 
         var signups = await shiftManagement.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, ct).ConfigureAwait(false);
         var daySignups = BuildPerUserSignupMap(signups.Where(s => s.UserId == userId))

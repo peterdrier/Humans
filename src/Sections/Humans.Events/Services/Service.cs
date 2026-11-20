@@ -77,9 +77,7 @@ internal sealed class EventService(
         var campEvents = await GetCampSubmissionsAsync(campId, ct);
         var categories = await GetActiveCategoriesAsync(ct);
 
-        DateTimeZone? tz = eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
+        DateTimeZone? tz = eventSettings?.TimeZone;
         LocalDate? gateDate = eventSettings?.GateOpeningDate;
         return EventBulkUploadTemplateBuilder.Build(campName, campEvents, categories, tz, gateDate, clock);
     }
@@ -122,7 +120,7 @@ internal sealed class EventService(
         var context = guideEventId is { } id
             ? await settingsService.GetEventSettingsByIdAsync(id, ct) : null;
         var candidates = await repo.GetActiveCampEventsAsync(guideEventId, ct);
-        var zone = Helpers.EventsTimeHelpers.GetTimeZone(context);
+        var zone = context?.TimeZone;
         return events.Select(e => e with
         {
             DuplicateCandidates = EventConflictDetector.FindCampDuplicateCandidates(
@@ -460,7 +458,7 @@ internal sealed class EventService(
             return false;
         }
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
+        var tz = burn.TimeZone;
         var now = clock.GetCurrentInstant();
 
         var settings = new EventGuideSettings
@@ -572,7 +570,7 @@ internal sealed class EventService(
         var events = (await repo.GetApprovedEventsAsync(null, null, null, null, [], ct))
             .Where(e => e.IsInEvent(settings?.EventSettingsId)).Select(EventInfo.FromEvent).ToList();
         var eventSettings = settings is null ? null : await settingsService.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
         var submitters = await LoadSubmittersAsync(
             userService, events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct(), ct);
@@ -642,7 +640,8 @@ internal sealed class EventService(
         var eventSettings = guideSettings is null
             ? null
             : await settingsService.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
-        var canExpand = GetTimeZone(eventSettings) is not null;
+        // An unknown zone id must not expand recurrences in UTC, so this checks the raw id, not TimeZone.
+        var canExpand = eventSettings is not null && DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) is not null;
         var projected = favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
                 f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, EventInfo.FromEvent(f.Event)))
             .GroupBy(f => f.GuideEventId)
@@ -707,6 +706,7 @@ internal sealed class EventService(
         var approved = favourites.Where(f => f.Event.Status == EventStatus.Approved).ToList();
         if (approved.Count == 0) return [];
 
+        // Deliberately not burn.TimeZone: an unknown id must fall back to single occurrences, not expand in UTC.
         var tz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         if (burn is not null && tz is null)
         {

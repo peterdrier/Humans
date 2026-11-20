@@ -27,7 +27,7 @@ internal sealed class ShiftCoverageReports(
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return ShiftStaffingSnapshot.Empty;
 
-        var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+        var tz = es.TimeZone;
 
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return ShiftStaffingSnapshot.Empty;
@@ -164,7 +164,7 @@ internal sealed class ShiftCoverageReports(
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
+        var tz = es.TimeZone;
 
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
@@ -227,7 +227,7 @@ internal sealed class ShiftCoverageReports(
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return empty;
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
+        var tz = es.TimeZone;
 
         var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return empty;
