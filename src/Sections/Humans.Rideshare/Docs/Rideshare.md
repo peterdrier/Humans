@@ -235,6 +235,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- The trip snapshot carries the accepted-seat count computed from accepted interests; remaining capacity, season seats-filled totals, and day-roster display and sorting reuse it.
 - The cached snapshot leaves display ordering to the board, Mine, map and day-roster builders. Creation time breaks display ties; day-roster riders remain chronological.
 
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
