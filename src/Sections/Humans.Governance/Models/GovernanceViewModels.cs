@@ -25,6 +25,13 @@ internal sealed class GovernanceIndexViewModel
     public bool CanApply { get; set; }
     public bool IsApprovedColaborador { get; set; }
 
+    /// <summary>Volunteer when the viewer holds no tier.</summary>
+    public MembershipTier CurrentTier { get; set; }
+    public bool IsBoardMember { get; set; }
+
+    /// <summary>The earliest approved application or Board seat; null for non-members.</summary>
+    public DateTime? MemberSince { get; set; }
+
     public int ColaboradorCount { get; set; }
     public int AsociadoCount { get; set; }
 

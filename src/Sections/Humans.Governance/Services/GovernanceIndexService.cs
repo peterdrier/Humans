@@ -3,6 +3,7 @@ using Humans.Base.Constants;
 using Humans.Governance.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Governance.Domain;
+using Humans.Governance.Services.Dtos;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -36,6 +37,13 @@ internal sealed class GovernanceIndexService(
             .Where(v => v.Status == AssemblyVoteStatus.Open)
             .ToList();
 
+        var currentTier = rosters[GovernanceBody.Asociados].Contains(userId) ? MembershipTier.Asociado
+            : isApprovedColaborador ? MembershipTier.Colaborador
+            : MembershipTier.Volunteer;
+        var memberSince = currentTier != MembershipTier.Volunteer || boardMemberIds.Contains(userId)
+            ? await GetMemberSinceAsync(userId, applications, ct)
+            : null;
+
         var yourAccess = (await bodyLinks.GetAllAsync(ct))
             .Where(l => rosters[l.Body].Contains(userId) && HasAnyLink(l))
             .Select(ToAccess)
@@ -56,7 +64,9 @@ internal sealed class GovernanceIndexService(
             boardMemberIds,
             openVotes,
             unvoted,
-            yourAccess);
+            yourAccess,
+            currentTier,
+            memberSince);
     }
 
     public async Task<GovernanceBodyPageData> GetBodyPageAsync(GovernanceBody body, CancellationToken ct = default)
@@ -80,6 +90,20 @@ internal sealed class GovernanceIndexService(
         return raw.ToDictionary(
             e => e.Key,
             e => (IReadOnlyList<Guid>)[.. e.Value.Where(id => infos.TryGetValue(id, out var info) && info.IsActive)]);
+    }
+
+    /// <summary>The earliest approved application or Board seat, whichever came first.</summary>
+    private async Task<Instant?> GetMemberSinceAsync(
+        Guid userId, IReadOnlyList<UserApplicationSnapshot> applications, CancellationToken ct)
+    {
+        var starts = applications
+            .Where(a => a.Status == ApplicationStatus.Approved && a.ResolvedAt.HasValue)
+            .Select(a => a.ResolvedAt!.Value)
+            .Concat((await roleAssignments.GetByUserIdAsync(userId, ct))
+                .Where(r => string.Equals(r.RoleName, RoleNames.Board, StringComparison.Ordinal))
+                .Select(r => r.ValidFrom))
+            .ToList();
+        return starts.Count == 0 ? null : starts.Min();
     }
 
     private static GovernanceBodyAccess ToAccess(GovernanceBodyLinks links) => new(

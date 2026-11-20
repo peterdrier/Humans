@@ -347,4 +347,6 @@
   <data name="Governance_Application_MotivationRequired" xml:space="preserve"><value>A motivation statement is required for Colaborador and Asociado applications.</value></data>
   <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Applications pending your vote</value></data>
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
+  <data name="Governance_Status_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="Governance_MemberSince" xml:space="preserve"><value>Member since</value></data>
 </root>
