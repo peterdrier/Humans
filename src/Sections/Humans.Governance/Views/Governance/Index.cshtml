@@ -106,16 +106,39 @@
         <div class="card mb-4">
             <div class="card-header d-flex align-items-center">
                 <span class="fw-semibold">@Localizer["Governance_YourMembership"]</span>
-                <vc:membership-tier-badge user-id="@Model.UserId" />
             </div>
             <div class="card-body">
-                @if (!Model.HasApplication)
+                @{
+                    var isMember = Model.IsBoardMember || Model.CurrentTier != MembershipTier.Volunteer;
+                    var latestApproved = Model.ApplicationStatus == ApplicationStatus.Approved;
+                }
+                @if (isMember)
+                {
+                    <div class="mb-2">
+                        <span class="badge bg-primary fs-6">@(Model.IsBoardMember ? Localizer["Governance_Status_Board"].Value : Model.CurrentTier.ToString())</span>
+                    </div>
+                    <dl class="row small mb-2">
+                        @if (Model.MemberSince.HasValue)
+                        {
+                            <dt class="col-6 fw-normal text-muted">@Localizer["Governance_MemberSince"]</dt>
+                            <dd class="col-6 mb-1">@Model.MemberSince.ToDate()</dd>
+                        }
+                        @if (latestApproved && Model.ApplicationTermExpiresAt.HasValue)
+                        {
+                            <dt class="col-6 fw-normal text-muted">@Localizer["Governance_TermExpiry"]</dt>
+                            <dd class="col-6 mb-1">@Model.ApplicationTermExpiresAt.ToDate()</dd>
+                        }
+                    </dl>
+                }
+                @if (!Model.HasApplication && !isMember)
                 {
                     <p class="small text-muted">@Localizer["Governance_Optional"]</p>
                     <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-outline-primary">@Localizer["Governance_ApplyButton"]</a>
                 }
-                else
+                else if (Model.HasApplication)
                 {
+                    @if (!(isMember && latestApproved))
+                    {
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                         <span>@Localizer["Governance_YourApplication"]</span>
                         @if (Model.ApplicationTier.HasValue)
@@ -158,6 +181,8 @@
                         {
                             <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-outline-primary mb-2">@Localizer["Governance_ApplyButton"]</a>
                         }
+                    }
+
                     }
 
                     @if (Model.IsApprovedColaborador && Model.CanApply)

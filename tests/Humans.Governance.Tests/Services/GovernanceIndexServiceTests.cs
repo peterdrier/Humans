@@ -88,6 +88,28 @@ public sealed class GovernanceIndexServiceTests
     }
 
     [HumansFact]
+    public async Task A_board_member_is_a_member_since_the_earlier_of_their_seat_and_approval()
+    {
+        var viewer = Guid.NewGuid();
+        var approved = Instant.FromUtc(2026, 9, 12, 0, 0);
+        var seated = Instant.FromUtc(2024, 3, 1, 0, 0);
+        Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
+            new UserApplicationSnapshot(Guid.NewGuid(), viewer, ApplicationStatus.Approved, MembershipTier.Asociado,
+                approved, approved, new LocalDate(2027, 12, 31), "m", null, null, null)]);
+        Applications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns([viewer]);
+        Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
+        Roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
+            new RoleAssignmentSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
+                Guid.NewGuid(), null, seated)]);
+
+        var data = await CreateService().GetIndexDataAsync(viewer);
+
+        data.CurrentTier.Should().Be(MembershipTier.Asociado);
+        data.MemberSince.Should().Be(seated.ToDateTimeUtc());
+    }
+
+    [HumansFact]
     public async Task Rosters_leave_out_inactive_accounts_and_your_access_lists_only_your_bodies()
     {
         var viewer = Guid.NewGuid();

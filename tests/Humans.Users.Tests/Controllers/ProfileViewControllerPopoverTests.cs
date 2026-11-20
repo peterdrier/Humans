@@ -71,6 +71,7 @@ public class ProfileViewControllerPopoverTests
             _teamService,
             _campService,
             Substitute.For<IGovernanceService>(),
+            Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>(),
             _authorizationService,
             new MedicalConditionsService(
                 Substitute.For<Humans.Users.Data.Repositories.IUserRepository>(), _userService,

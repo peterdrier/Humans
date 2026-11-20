@@ -813,4 +813,6 @@
   </data>
   <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Aanvragen die op je stem wachten</value></data>
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>het bestuur</value></data>
+  <data name="Governance_Status_Board" xml:space="preserve"><value>Bestuur</value></data>
+  <data name="Governance_MemberSince" xml:space="preserve"><value>Lid sinds</value></data>
 </root>

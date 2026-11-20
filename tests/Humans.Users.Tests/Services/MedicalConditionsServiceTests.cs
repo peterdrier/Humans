@@ -138,6 +138,7 @@ public class MedicalConditionsServiceTests
             Substitute.For<IShiftService>(),
             Substitute.For<IStringLocalizer<SharedResource>>(), Substitute.For<ITeamService>(),
             Substitute.For<ICampService>(), Substitute.For<IGovernanceService>(),
+            Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>(),
             Substitute.For<IAuthorizationService>(), _sut);
         controller.ControllerContext = new ControllerContext
         {

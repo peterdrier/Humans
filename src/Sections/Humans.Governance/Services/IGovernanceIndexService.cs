@@ -29,7 +29,9 @@ internal sealed record GovernanceIndexData(
     IReadOnlyList<Guid> BoardMemberIds,
     IReadOnlyList<AssemblyVoteListItem> OpenVotes,
     int UnvotedApplicationCount,
-    IReadOnlyList<GovernanceBodyAccess> YourAccess);
+    IReadOnlyList<GovernanceBodyAccess> YourAccess,
+    MembershipTier CurrentTier,
+    DateTime? MemberSince);
 
 internal sealed record GovernanceBodyPageData(
     GovernanceBody Body,

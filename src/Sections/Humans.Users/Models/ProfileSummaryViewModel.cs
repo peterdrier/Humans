@@ -9,6 +9,9 @@ internal sealed class ProfileSummaryViewModel
     public string? Email { get; set; }
     public string? PreferredLanguage { get; set; }
     public string? MembershipTier { get; set; }
+
+    /// <summary>Shown instead of the tier: a Board seat outranks it.</summary>
+    public bool IsBoardMember { get; set; }
     public string? MembershipStatus { get; set; }
     public DateTime? MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
