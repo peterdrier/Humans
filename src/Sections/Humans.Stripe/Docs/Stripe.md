@@ -185,7 +185,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   every configured account. No key: logs and skips. A failed account fails the job run.
 - At boot, the smoke probe lists one PaymentIntent (Tickets key) and one Checkout Session
   (Store key), logging a warning per unconfigured or under-scoped key. It never blocks or
-  fails startup.
+  fails startup. Expected Stripe/API boot failures log Warning with their reason and no exception stack; unexpected faults log Error with the original exception. Webhook cleanup treats only 404 as an already-deleted endpoint; other Stripe deletion failures remain visible at Warning. GitHub cleanup-read failures follow the same expected/unexpected distinction. Cleanup continuation, timeout handling and startup behavior are unchanged.
 - At boot in an ephemeral environment, the registrar lists the account's webhook endpoints
   once and, from that one listing, deletes any `{N}.n.burn.camp` endpoint whose PR `{N}` is no
   longer open and then any endpoint already pointing at this host's URL — then creates a fresh
