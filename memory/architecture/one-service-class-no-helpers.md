@@ -1,6 +1,6 @@
 ---
 name: one-service-class-no-helpers
-description: HARD RULE. A section's service is one class: `XService` implements `IXService` (and a writer interface only if another section must write). Never split it into Reader/Mutations/Notices helper classes it news up and forwards to.
+description: HARD RULE. Each service is one class: `XService` implements `IXService` (and a writer interface only if another section must write). Never split it into Reader/Mutations/Notices helper classes it news up and forwards to.
 ---
 
 One service per section lane, one class. `XService` implements `IXService` for reads. Only when
