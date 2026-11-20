@@ -89,7 +89,6 @@ public class AboutController(
                 {
                     roleSections.Add(new StaffRoleSectionViewModel
                     {
-                        RoleName = roleDef.Name,
                         DisplayTitle = roleDef.Title,
                         Blurb = roleDef.Blurb,
                         Icon = roleDef.Icon,
