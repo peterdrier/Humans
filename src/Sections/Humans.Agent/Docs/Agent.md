@@ -12,6 +12,8 @@
 
 Conversational helper backed by Anthropic Claude. Available to any authenticated, consented user when `AgentSettings.Enabled = true`.
 
+Section-guide, feature-spec and community-KB readers log expected GitHub API/transport failures and independent timeouts at Warning without exception objects. Unexpected failures log at Error with their original exception. Null/empty fallbacks, explicit not-found handling, cache preservation and requested cancellation are unchanged.
+
 ## Concepts
 
 - **Turn** — one user message + one streamed assistant response (may include tool calls).

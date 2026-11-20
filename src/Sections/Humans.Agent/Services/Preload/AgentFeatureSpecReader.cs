@@ -80,7 +80,9 @@ internal sealed partial class AgentFeatureSpecReader(
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             // An index that keeps failing is why the agent's miss messages stop naming any stems.
-            logger.LogWarning(ex, "Failed to index agent feature specs; returning an empty index");
+            var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+            logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                "Failed to index agent feature specs; returning an empty index: {Reason}", ex.Message);
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
     }
@@ -126,8 +128,9 @@ internal sealed partial class AgentFeatureSpecReader(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex,
-                "Failed to fetch agent feature spec {Stem} from GitHub; returning null", stem);
+            var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+            logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                "Failed to fetch agent feature spec {Stem} from GitHub; returning null: {Reason}", stem, ex.Message);
             return null;
         }
     }

@@ -13,6 +13,8 @@
 
 <!-- Stateless read section: serves markdown from docs/guide/ via a GitHub content source, segmented and cached in-memory, with role-scoped filtering per request before rendering. -->
 
+Guide refresh logs expected GitHub API/transport failures and independent timeouts at Warning without exception objects; unexpected fetch or segmentation failures log at Error with their original exception. Stale-cache retention and requested-cancellation propagation are unchanged.
+
 ## Concepts
 
 - A **guide page** is one markdown file under `docs/guide/` in the Humans
