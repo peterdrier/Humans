@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,7 +8,7 @@ namespace Humans.AuditLog.ViewComponents;
 internal sealed class AuditLogGalleryViewComponent : ViewComponent
 {
     public IViewComponentResult Invoke() =>
-        Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId)
+        UserClaimsPrincipal.GetUserId() is { } currentUserId
             ? View(currentUserId)
             : Content(string.Empty);
 }

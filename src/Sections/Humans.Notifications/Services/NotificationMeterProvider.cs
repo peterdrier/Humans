@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Shifts.Contracts;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.Localization;
@@ -42,7 +43,7 @@ internal sealed class NotificationMeterProvider(
         var counts = await GetCachedCountsAsync(cancellationToken);
         var meters = new List<NotificationMeter>();
         var viewerId = resolvedUserId;
-        if (viewerId is null && Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var claimedUserId))
+        if (viewerId is null && user.GetUserId() is { } claimedUserId)
             viewerId = claimedUserId;
 
         var isAdmin = user.IsInRole(RoleNames.Admin);

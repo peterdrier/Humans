@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -70,8 +71,7 @@ public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionF
             return;
         }
 
-        var raw = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(raw, out var userId))
+        if (user.GetUserId() is not { } userId)
         {
             await next();
             return;

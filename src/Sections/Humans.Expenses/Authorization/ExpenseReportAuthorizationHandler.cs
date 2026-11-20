@@ -1,6 +1,6 @@
+using Humans.Base.Extensions;
 using Humans.Finance.Contracts;
 using Humans.Base.Authorization;
-using System.Security.Claims;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
@@ -23,7 +23,7 @@ internal sealed class ExpenseReportAuthorizationHandler(
         ExpenseReportOperationRequirement requirement,
         ExpenseReportDto resource)
     {
-        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (context.User.GetUserId() is not { } userId)
             return;
 
         var op = requirement.Operation;

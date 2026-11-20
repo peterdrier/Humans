@@ -502,8 +502,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var userIdRaw = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (Guid.TryParse(userIdRaw, out var userId))
+            if (context.User.GetUserId() is { } userId)
             {
                 var users = context.RequestServices.GetRequiredService<IUserService>();
                 var user = await users.GetUserInfoAsync(userId, context.RequestAborted);

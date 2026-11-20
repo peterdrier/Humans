@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Base.Enums;
 using Humans.Campaigns.Contracts;
@@ -11,7 +12,7 @@ public sealed class MyCodesViewComponent(ICampaignService campaigns) : ViewCompo
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
         if (viewMode != ProfileCardViewMode.Self
-            || !Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId)
+            || UserClaimsPrincipal.GetUserId() is not { } viewerId
             || viewerId != userId)
             return Content(string.Empty);
 
