@@ -200,8 +200,8 @@ internal sealed class CachingEventService(
             await RefreshVenuesAsync(ct);
         }, ct);
 
-    public Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetUserSubmissionsAsync(userId, ct));
+    public Task<EventSubmissionsSummary> GetUserSubmissionsSummaryAsync(Guid userId, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetUserSubmissionsSummaryAsync(userId, ct));
 
     public Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetUserEventAsync(eventId, userId, ct));
@@ -212,7 +212,7 @@ internal sealed class CachingEventService(
     public Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetCampEventAsync(eventId, campId, ct));
 
-    public Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default) =>
+    public Task<EventSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetCampSubmissionsSummaryAsync(campId, ct));
 
     public Task<byte[]> BuildBulkUploadTemplateAsync(Guid campId, string campName, CancellationToken ct = default) =>

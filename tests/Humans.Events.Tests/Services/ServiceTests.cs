@@ -1996,6 +1996,34 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserSubmissionsSummaryAsync_CountsOnlyTheUsersIndividualEventsInTheConfiguredEdition()
+    {
+        var userId = Guid.NewGuid();
+        var editionId = Guid.NewGuid();
+        _repo.Settings = new EventGuideSettings { EventSettingsId = editionId };
+        var statuses = Enum.GetValues<EventStatus>();
+        foreach (var status in statuses)
+            _repo.Events.Add(new Event
+            {
+                Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = editionId, Status = status
+            });
+        _repo.Events.AddRange([
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = Guid.NewGuid(), Status = EventStatus.Approved },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = editionId, CampId = Guid.NewGuid(), Status = EventStatus.Approved },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), EventSettingsId = editionId, Status = EventStatus.Pending },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, Status = EventStatus.Pending }
+        ]);
+
+        var summary = await _service.GetUserSubmissionsSummaryAsync(userId, TestContext.Current.CancellationToken);
+
+        summary.SubmittedCount.Should().Be(statuses.Length);
+        summary.ApprovedCount.Should().Be(1);
+        summary.PendingCount.Should().Be(1);
+        summary.Events.Select(e => e.Status).Should().BeEquivalentTo(statuses);
+        summary.Events.Should().OnlyContain(e => e.SubmitterUserId == userId && e.CampId == null && e.EventSettingsId == editionId);
+    }
+
+    [HumansFact]
     public async Task GetCampSubmissionsSummaryAsync_BucketsByStatusAndIncludesOnlyCampEvents()
     {
         var campId = Guid.NewGuid();

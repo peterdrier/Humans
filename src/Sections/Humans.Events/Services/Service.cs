@@ -101,11 +101,11 @@ internal sealed class EventService(
     public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default) =>
         guideConfiguration.MoveVenueAsync(id, direction, ct);
 
-    public async Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<EventSubmissionsSummary> GetUserSubmissionsSummaryAsync(Guid userId, CancellationToken ct = default)
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetUserSubmissionsAsync(userId, ct);
-        return events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
+        return EventSubmissionsSummary.From(events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList());
     }
 
     public async Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
@@ -127,14 +127,10 @@ internal sealed class EventService(
         return guideEvent is null ? null : EventInfo.FromEvent(guideEvent);
     }
 
-    public async Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default)
+    public async Task<EventSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default)
     {
         var events = await GetCampSubmissionsAsync(campId, ct);
-        return new CampSubmissionsSummary(
-            SubmittedCount: events.Count,
-            ApprovedCount: events.Count(e => e.Status == EventStatus.Approved),
-            PendingCount: events.Count(e => e.Status == EventStatus.Pending),
-            Events: events);
+        return EventSubmissionsSummary.From(events);
     }
 
     public Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default) =>
