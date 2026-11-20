@@ -48,9 +48,9 @@ Repository: `ILegalDocumentRepository`.
 | LegalDocuments | R/W |
 | DocumentVersions | R/W |
 
-Sole writer for both the GitHub-sync surface (`SyncDocumentAsync` /
-`SyncAllDocumentsAsync` — version add, sync-touch) and the admin surface
-(`CreateLegalDocumentAsync` / `UpdateLegalDocumentAsync` /
+Sole writer for the scheduled GitHub-sync surface (`SyncAllDocumentsAsync` —
+version add, sync-touch) and the actor-attributed admin surface
+(`SyncLegalDocumentAsync` / `CreateLegalDocumentWithInitialSyncAsync` / `UpdateLegalDocumentAsync` /
 `ArchiveLegalDocumentAsync` / `UpdateVersionSummaryAsync`). Calls
 `CachingLegalDocumentSyncService.InvalidateAll()` directly after each
 successful write. Cross-section calls via `INotificationEmitter`,

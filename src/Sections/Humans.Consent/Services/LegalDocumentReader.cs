@@ -87,13 +87,6 @@ internal sealed class LegalDocumentReader(
                 .ToList());
     }
 
-    internal async Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var documents = await repository.GetActiveDocumentsAsync(cancellationToken);
-        return documents.Select(ToDocumentSnapshot).ToList();
-    }
-
     internal async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -181,18 +174,4 @@ internal sealed class LegalDocumentReader(
                 d.Versions.Select(ToVersionSnapshot).ToList());
         }).ToList();
     }
-
-    private static LegalDocumentSnapshot ToDocumentSnapshot(LegalDocument document) =>
-        new(
-            document.Id,
-            document.Name,
-            document.TeamId,
-            document.GracePeriodDays,
-            document.GitHubFolderPath,
-            document.CurrentCommitSha,
-            document.IsRequired,
-            document.IsActive,
-            document.CreatedAt,
-            document.LastSyncedAt,
-            document.Versions.Select(ToVersionSnapshot).ToList());
 }

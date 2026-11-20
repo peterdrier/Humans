@@ -17,11 +17,6 @@ internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
     Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
         CancellationToken cancellationToken = default, ICollection<Exception>? failures = null);
 
-    /// <summary>Returns a summary message if updated, or null if already up to date.</summary>
-    Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default);
-
     Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default);
 
     /// <summary>With team names stitched and version snapshots populated; null selects all teams.</summary>
@@ -40,19 +35,6 @@ internal sealed record ActiveRequiredLegalDocumentSnapshot(
     public LegalDocumentVersionSnapshot? CurrentVersionAt(Instant now) =>
         Versions.Where(version => version.EffectiveFrom <= now).MaxBy(version => version.EffectiveFrom);
 }
-
-internal sealed record LegalDocumentSnapshot(
-    Guid Id,
-    string Name,
-    Guid TeamId,
-    int GracePeriodDays,
-    string? GitHubFolderPath,
-    string CurrentCommitSha,
-    bool IsRequired,
-    bool IsActive,
-    Instant CreatedAt,
-    Instant LastSyncedAt,
-    IReadOnlyList<LegalDocumentVersionSnapshot> Versions);
 
 internal sealed record LegalDocumentVersionSnapshot(
     Guid Id,

@@ -81,17 +81,9 @@ internal sealed class CachingLegalDocumentSyncService(
         return await WithInnerAsync(inner => inner.GetVersionByIdAsync(versionId, cancellationToken));
     }
 
-    public Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetActiveDocumentsAsync(cancellationToken));
-
     public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
         CancellationToken cancellationToken = default, ICollection<Exception>? failures = null) =>
         WithInnerAsync(inner => inner.SyncAllDocumentsAsync(cancellationToken, failures));
-
-    public Task<string?> SyncDocumentAsync(
-        Guid documentId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.SyncDocumentAsync(documentId, cancellationToken));
 
     /// <summary>Wholesale: the cache is one bag, so there is no per-document evict.</summary>
     public void InvalidateAll()
