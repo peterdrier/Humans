@@ -6,7 +6,7 @@ using Humans.Monitor.Contracts;
 namespace Humans.Monitor.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class DriveActivityMonitorJob(
+internal sealed class DriveActivityMonitorJob(
     IDriveActivityMonitorService monitorService,
     IHumansMetrics metrics,
     ILogger<DriveActivityMonitorJob> logger,

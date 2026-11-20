@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Jobs;
 
-public class AgentConversationRetentionJob(
+internal sealed class AgentConversationRetentionJob(
     IAgentConversationRetention retention,
     ILogger<AgentConversationRetentionJob> logger) : IRecurringJob
 {

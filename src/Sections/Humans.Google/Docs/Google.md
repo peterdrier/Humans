@@ -275,6 +275,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Triggers
 
+- `ProcessGoogleSyncOutboxJob` stays internal to the section; registration and scheduling use its runtime type through `ISectionJobs`.
+
 - When team membership changes, Drive sync outbox events are queued and scoped Google Group membership sync requests are enqueued after the team write commits.
 - When a human selects a different Google email, the new canonical address starts `Unknown` (status is per-address, #687); fresh Drive sync events and scoped Google Group sync requests are enqueued for current team memberships.
 - When a Google resource is linked to a team, current team members are synced to that resource.

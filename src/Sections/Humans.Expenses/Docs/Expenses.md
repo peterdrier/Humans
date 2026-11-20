@@ -266,6 +266,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Triggers
 
+- `HoldedExpenseOutboxJob` stays internal to the section; registration and scheduling use its runtime type through `ISectionJobs`.
+
 - Pre-approval claim/re-stamp, draft grant release, withdrawal release and approval consumption keep report/grant metadata in one ambient transaction. These report transitions share one process-wide gate across scoped requests, from the initial report read through transaction disposal and completion. Two reports cannot claim the same grant from overlapping uncommitted snapshots. Waiting observes caller cancellation; failure or rollback releases the gate. Their Preapprovals-owned audits and inbox completion run only after successful disposal, without request cancellation; refusals, failed report writes and rollback discard those effects. Completion is best-effort and cannot reverse committed financial state.
 
 - On **create for another member**: audit entry `ExpenseCreatedOnBehalf` written, naming the actor and the member. A self-created draft stays unaudited — the report is its own record.
