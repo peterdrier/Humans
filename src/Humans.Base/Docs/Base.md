@@ -58,6 +58,8 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 - The human-search picker rejects stale searches: a lookup dismissed with Escape or an outside click is invalidated, timers and response versions belong to each input, and an older response never replaces a newer result.
 - The email composer preview is ordered per modal: only the latest preview can replace its frame, subject or error, and separate modal instances stay independent.
 
+- `CultureScope` leaves both ambient cultures unchanged for blank or unknown culture codes. When supplied a logger, an unknown culture emits a Warning with the rejected code and fallback, without an exception stack; valid scopes restore both prior cultures on disposal.
+
 ## Tests
 
 The architecture tests over the base and the section graph live in `tests/Humans.Web.Tests/Architecture/` (entity ownership per context, view component slot contracts, tag helper binding, the `IMemoryCache` allowlist); `TrackedCache` has its own unit tests in `tests/Humans.Base.Tests/Caching/`.
