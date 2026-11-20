@@ -198,7 +198,7 @@ it wrote.
 - Purchase-document sync is a full pull with replace semantics (Holded's purchase list has no
   reliable incremental key). Notes need one GET per doc: only docs the mirror has no notes for,
   newest first, at most 50 a run; a transient failure ends that run's fetching and never fails the
-  sync. A failed list records `Error` on the `PurchaseDocs` state and keeps the last good mirror.
+  sync. Unreadable notes log their document ID at Warning with a reason for transient failures, or Error with exception details for permanent/malformed responses; the run also warns with the failure count. A failed list records `Error` on the `PurchaseDocs` state and keeps the last good mirror.
 - Each sync kind is serialized by its own non-blocking in-process gate; a second caller is
   skipped and told so, never queued (single-server deployment).
 - `SyncAccountLedgerAsync(accountNum)` re-pulls one account's whole history (inception to today) and replaces

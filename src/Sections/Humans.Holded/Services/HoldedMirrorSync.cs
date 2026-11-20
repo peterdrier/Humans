@@ -366,14 +366,14 @@ internal sealed class HoldedMirrorSync(
             catch (HoldedTransientException ex)
             {
                 failed++;
-                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
+                logger.LogWarning("Holded purchase document {DocId} could not be read for its notes: {Reason}", doc.Id, ex.Message);
                 break;
             }
             catch (Exception ex) when (ex is HoldedPermanentException or System.Text.Json.JsonException
                                            or InvalidOperationException)
             {
                 failed++;
-                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
+                logger.LogError(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
             }
         }
 
