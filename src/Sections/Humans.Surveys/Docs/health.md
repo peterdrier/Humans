@@ -46,10 +46,13 @@ thinnest: one status, one queue, two verbs.
 
 Written fresh, not as today's layout with fixes.
 
-- **One service.** Authoring, approval, sending, answering, results, voting and GDPR are one lane
-  over one aggregate; splitting them would put the anonymity contract — and now the embargo and
-  the approval gate — in more than one place. The service is the only repository caller and
-  returns DTOs.
+- **Four services over one aggregate, split by job.** `SurveyService` authors, approves, opens and
+  closes surveys and holds GDPR and merge; `SurveyInvitationDelivery` sends invitations and
+  reminders; `SurveyResponseService` takes answers (starts, drafts, the wizard, submission) and
+  alone writes responses, so the anonymity contract's write side lives in one place;
+  `SurveyResultsService` is read-only (summaries, the question graph, results, export) and alone
+  implements `ISurveyAnalysisRead`, so the tier and embargo rules on reads live in one place. They
+  read definitions through `ISurveyService.GetForEditAsync`. All return DTOs.
 - **One repository over all of `survey_*`.** Those tables are touched nowhere else, and
   `ISurveyRepository` is internal so that cannot be arranged by accident.
 - **Controllers split by audience, not by verb** — `SurveyAdmin` (anyone who may author, plus
@@ -87,14 +90,14 @@ the line that enforces it.
 
 - **Identity is written onto a response only for the Identified tier**; the other two tiers leave
   no link, and nothing downstream — results, export, API, drill-down — can re-attach one:
-  `SurveyService.PersistResponseAsync` writes the identity only for Identified responses;
-  `SurveyService` honour the tier on reads.
+  `SurveyResponseService.PersistResponseAsync` writes the identity only for Identified responses;
+  `SurveyResultsService` honours the tier on reads.
 - **No completion timestamp for a tracked-but-unlinked answer, and no `UpdatedAt` on the ledger**
   — a time is a join key: `src/Sections/Humans.Surveys/Domain/SurveyInvitation.cs:15`, with the
   shared epoch that keeps a public start uncorrelated at
-  `SurveyService.NonCorrelatablePublicParticipationCreatedAt`.
+  `SurveyResponseService.NonCorrelatablePublicParticipationCreatedAt`.
 - **Branching is decided on the server at submit**; a hidden question's answer never lands:
-  `SurveyService.PrepareSubmissionAsync`, over its `VisibleAnswers` effective-state pass.
+  `SurveyResponseService.PrepareSubmissionAsync`, over its `VisibleAnswers` effective-state pass.
 - **Sending is additive and idempotent** — the same audience resolved twice invites nobody twice,
   and never revokes: `src/Sections/Humans.Surveys/Services/SurveyService.cs:716`, with the
   re-queue-not-re-create branch at `:739`.
@@ -104,7 +107,7 @@ the line that enforces it.
 - **Individual submissions are never audit-logged; survey lifecycle, sends and availability
   recounts always are**: the lifecycle writes sit at
   `src/Sections/Humans.Surveys/Services/SurveyService.cs:544`, `:559`, `:787` and `:882`, and
-  `SurveyService` has no audit dependency or individual-submission audit call.
+  `SurveyResponseService` has no audit dependency at all.
 - **Preview writes nothing to this section's tables** — no invitation, response, draft, reminder
   or funnel event. The rendering previews build view models and call no writing service method:
   `src/Sections/Humans.Surveys/Controllers/SurveyAdminController.cs:242` through

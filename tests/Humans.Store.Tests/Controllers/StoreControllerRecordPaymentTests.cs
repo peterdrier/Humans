@@ -42,6 +42,7 @@ public sealed class StoreControllerRecordPaymentTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private Service _service = null!;
+    private CatalogService _catalog = null!;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Order _order = new()
     {
@@ -66,10 +67,14 @@ public sealed class StoreControllerRecordPaymentTests
         _repo.GetOrderWithLinesAndPaymentsAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
         _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(new List<Product>());
+        var stripe = Substitute.For<IStripeService>();
+        var holded = Substitute.For<IHoldedService>();
+        _catalog = new CatalogService(_repo, _audit, clock, holded, NullLogger<CatalogService>.Instance);
         var service = _service = new Service(
-            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings,
-            Substitute.For<IStripeService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
-            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), NullLogger<Service>.Instance);
+            _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings, stripe, _catalog,
+            NullLogger<Service>.Instance);
+        var invoices = new InvoiceService(_repo, _audit, clock, holded, Substitute.For<IHoldedWrite>(), stripe,
+            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), service, NullLogger<InvoiceService>.Instance);
 
         var users = identityUsers ?? Substitute.For<IUserService>();
         if (identityUsers is null)
@@ -93,7 +98,7 @@ public sealed class StoreControllerRecordPaymentTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _userId.ToString()), new Claim(ClaimTypes.Role, role)], "test")),
         };
-        return new StoreController(service, camps, auth, users, NullLogger<StoreController>.Instance, localizer)
+        return new StoreController(service, _catalog, invoices, camps, auth, users, NullLogger<StoreController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -137,7 +142,7 @@ public sealed class StoreControllerRecordPaymentTests
         controller.HttpContext.RequestAborted = request.Token;
         controller.Url = Substitute.For<IUrlHelper>();
         controller.Url.Action(Arg.Any<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()).Returns("https://example.org/order");
-        var admin = new StoreAdminController(_service, users)
+        var admin = new StoreAdminController(_service, _catalog, users)
         {
             ControllerContext = controller.ControllerContext,
             TempData = controller.TempData,

@@ -31,6 +31,7 @@ public sealed class ExpensesControllerPreapprovalTests
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IExpenseReportManagement _reports = Substitute.For<IExpenseReportManagement>();
+    private readonly IExpenseReview _review = Substitute.For<IExpenseReview>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IPreapprovalService _preapprovals = Substitute.For<IPreapprovalService>();
@@ -43,7 +44,7 @@ public sealed class ExpensesControllerPreapprovalTests
         _users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = _actorId }, [], [], null));
         _reports.GetForSubmitterAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
-        _reports.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
+        _review.GetCoordinatorQueueAsync(_actorId, Arg.Any<CancellationToken>()).Returns([]);
         _budget.GetEffectiveCoordinatorTeamIdsAsync(_actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         _finance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
             .Returns([new ExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
@@ -232,7 +233,7 @@ public sealed class ExpensesControllerPreapprovalTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test"))
         };
-        return new ExpensesController(_users, _reports, _budget, _finance, _preapprovals,
+        return new ExpensesController(_users, _reports, _review, _budget, _finance, _preapprovals,
             _authorization, TestClock, logger ?? NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -351,6 +352,7 @@ public sealed class ExpensesControllerPreapprovalTests
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();
         _reports.ReceivedCalls().Should().OnlyContain(call => call.GetMethodInfo().Name == nameof(IExpenseReportManagement.GetAsync));
+        _review.ReceivedCalls().Should().BeEmpty();
         _authorization.ReceivedCalls().Should().BeEmpty();
     }
 
@@ -626,13 +628,13 @@ public sealed class ExpensesControllerPreapprovalTests
             .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _reports.DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
+        _review.DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
-        _reports.DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
+        _review.DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
-        _reports.UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+        _review.UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
-        _reports.UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+        _review.UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
         var controller = Build();
 
@@ -640,7 +642,7 @@ public sealed class ExpensesControllerPreapprovalTests
             ? await controller.UndoDeclineLine(report.Id, lineId)
             : await controller.DeclineLine(report.Id, lineId, new DeclineLineInputModel { Reason = "Missing invoice" });
 
-        var decisions = _reports.ReceivedCalls().Where(call =>
+        var decisions = _review.ReceivedCalls().Where(call =>
             call.GetMethodInfo().Name.Contains("DeclineLine", StringComparison.Ordinal)).ToList();
         if (!permitted)
         {
@@ -651,13 +653,13 @@ public sealed class ExpensesControllerPreapprovalTests
         result.Should().BeOfType<RedirectToActionResult>();
         decisions.Should().ContainSingle();
         if (undo && financeAccess)
-            await _reports.Received(1).UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
+            await _review.Received(1).UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
         else if (undo)
-            await _reports.Received(1).UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
+            await _review.Received(1).UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
         else if (financeAccess)
-            await _reports.Received(1).DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
+            await _review.Received(1).DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
         else
-            await _reports.Received(1).DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
+            await _review.Received(1).DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
     }
 
     [HumansTheory]
@@ -676,9 +678,9 @@ public sealed class ExpensesControllerPreapprovalTests
             .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _reports.CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _review.CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(ExpenseMutationResult.Success);
-        _reports.CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _review.CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(ExpenseMutationResult.Success);
         var controller = Build();
 
@@ -689,16 +691,16 @@ public sealed class ExpensesControllerPreapprovalTests
         if (!permitted)
         {
             result.Should().BeOfType<ForbidResult>();
-            await _reports.DidNotReceiveWithAnyArgs().CoordinatorEndorseWithResultAsync(default, default, null);
-            await _reports.DidNotReceiveWithAnyArgs().CoordinatorRejectWithResultAsync(default, default, "");
+            await _review.DidNotReceiveWithAnyArgs().CoordinatorEndorseWithResultAsync(default, default, null);
+            await _review.DidNotReceiveWithAnyArgs().CoordinatorRejectWithResultAsync(default, default, "");
             return;
         }
         result.Should().BeOfType<RedirectToActionResult>();
         var label = financeAccess ? "Finance admin" : null;
         if (string.Equals(action, "Endorse", StringComparison.Ordinal))
-            await _reports.Received(1).CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, CancellationToken.None, label);
+            await _review.Received(1).CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, CancellationToken.None, label);
         else
-            await _reports.Received(1).CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", CancellationToken.None, label);
+            await _review.Received(1).CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", CancellationToken.None, label);
     }
 
     [HumansTheory]
@@ -711,7 +713,7 @@ public sealed class ExpensesControllerPreapprovalTests
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         _reports.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([]);
-        _reports.GetFailedHoldedPushReportIdsAsync(Arg.Any<CancellationToken>()).Returns([failedId]);
+        _review.GetFailedHoldedPushReportIdsAsync(Arg.Any<CancellationToken>()).Returns([failedId]);
         var controller = Build();
         controller.HttpContext.RequestAborted = request.Token;
 
@@ -722,12 +724,12 @@ public sealed class ExpensesControllerPreapprovalTests
         if (financeAccess)
         {
             model.FailedHoldedPushReportIds.Should().BeEquivalentTo([failedId]);
-            await _reports.Received(1).GetFailedHoldedPushReportIdsAsync(request.Token);
+            await _review.Received(1).GetFailedHoldedPushReportIdsAsync(request.Token);
         }
         else
         {
             model.FailedHoldedPushReportIds.Should().BeEmpty();
-            await _reports.DidNotReceiveWithAnyArgs().GetFailedHoldedPushReportIdsAsync(default);
+            await _review.DidNotReceiveWithAnyArgs().GetFailedHoldedPushReportIdsAsync(default);
         }
     }
 
