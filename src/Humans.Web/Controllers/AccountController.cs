@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Auth.Contracts;
 using Humans.Base.Controllers;
 using System.Security.Claims;
@@ -21,6 +22,7 @@ public class AccountController(
     IUserService userService,
     IUserWrite userWrite,
     IClock clock,
+    IOrgTimeZone orgTimeZone,
     ILogger<AccountController> logger,
     IExternalLoginService externalLoginService,
     IMagicLinkService magicLinkService,
@@ -173,9 +175,8 @@ public class AccountController(
         }
 
         // Always show "check your email" — no account enumeration.
-        var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
         var expiryInstant = clock.GetCurrentInstant() + Duration.FromMinutes(15);
-        var expiryLocal = expiryInstant.InZone(madridZone);
+        var expiryLocal = expiryInstant.InZone(orgTimeZone.Zone);
         ViewData["ExpiryTime"] = DateFormattingExtensions.TimeOfDayPattern.Format(expiryLocal.TimeOfDay);
         return View("MagicLinkSent");
     }

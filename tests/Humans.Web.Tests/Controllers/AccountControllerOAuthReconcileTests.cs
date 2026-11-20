@@ -74,6 +74,7 @@ public class AccountControllerOAuthReconcileTests
             _userService,
             _userService,
             _clock,
+            FixedOrgTimeZone.Madrid,
             NullLogger<AccountController>.Instance,
             externalLoginService,
             _magicLinkService,

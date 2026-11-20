@@ -207,7 +207,7 @@ public sealed class SurveyAdminControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString()),
                 new Claim(ClaimTypes.Role, RoleNames.Board)], "test"))
         };
-        var controller = new SurveyAdminController(surveys, Substitute.For<ITeamService>(), users, authorization,
+        var controller = new SurveyAdminController(FixedOrgTimeZone.Madrid, surveys, Substitute.For<ITeamService>(), users, authorization,
             localizer, NullLogger<SurveyAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -800,7 +800,7 @@ public sealed class SurveyAdminControllerTests
         users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var sut = new SurveyAdminController(
-            surveys,
+            FixedOrgTimeZone.Madrid, surveys,
             Substitute.For<ITeamService>(),
             users,
             Substitute.For<IAuthorizationService>(),
@@ -921,6 +921,7 @@ public sealed class SurveyAdminControllerTests
         if (role is not null) claims.Add(new Claim(ClaimTypes.Role, role));
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")) };
         return new(
+            FixedOrgTimeZone.Madrid,
             surveys,
             teams ?? Substitute.For<ITeamService>(),
             users,

@@ -36,6 +36,7 @@ public sealed class AccountControllerSignupTests
             new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new AccountController(
             null!, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(), SystemClock.Instance,
+            FixedOrgTimeZone.Madrid,
             NullLogger<AccountController>.Instance, Substitute.For<IExternalLoginService>(), magicLinks,
             provisioning, null!, new LoginMethodCounter(), localizer)
         {
@@ -124,7 +125,7 @@ public sealed class AccountControllerSignupTests
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new AccountController(
             signIn, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(),
-            SystemClock.Instance, NullLogger<AccountController>.Instance, Substitute.For<IExternalLoginService>(),
+            SystemClock.Instance, FixedOrgTimeZone.Madrid, NullLogger<AccountController>.Instance, Substitute.For<IExternalLoginService>(),
             magicLinks, provisioning, null!, new LoginMethodCounter(), localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },

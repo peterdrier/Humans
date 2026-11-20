@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Calendar.Services.Dtos;
 using Humans.Calendar.Services;
 using Humans.Teams.Contracts;
@@ -23,6 +24,7 @@ internal sealed class CalendarController : HumansControllerBase
     private readonly ITeamService _teams;
     private readonly ICalendarFeedTokenService _feedTokens;
     private readonly IClock _clock;
+    private readonly IOrgTimeZone _orgTimeZone;
     private readonly ILogger<CalendarController> _logger;
     private readonly Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> _localizer;
 
@@ -33,6 +35,7 @@ internal sealed class CalendarController : HumansControllerBase
         ICalendarService calendar,
         ITeamService teams,
         IClock clock,
+        IOrgTimeZone orgTimeZone,
         Microsoft.Extensions.Localization.IStringLocalizer<CalendarResource> localizer,
         ILogger<CalendarController> logger)
         : base(userService)
@@ -42,6 +45,7 @@ internal sealed class CalendarController : HumansControllerBase
         _calendar = calendar;
         _teams = teams;
         _clock = clock;
+        _orgTimeZone = orgTimeZone;
         _localizer = localizer;
         _logger = logger;
     }
@@ -465,5 +469,5 @@ internal sealed class CalendarController : HumansControllerBase
         .ToList();
 
     private DateTimeZone GetViewerZone() =>
-        HttpContext.Session.GetUserTimeZone("Europe/Madrid");
+        HttpContext.Session.GetUserTimeZone(_orgTimeZone.Zone.Id);
 }

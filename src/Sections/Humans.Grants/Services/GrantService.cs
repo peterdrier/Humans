@@ -14,6 +14,7 @@ namespace Humans.Grants.Services;
 
 /// <summary>Nothing runs on a timer: expiry is a date compared when read.</summary>
 internal sealed partial class GrantService(
+    IOrgTimeZone orgTimeZone,
     IGrantRepository repository,
     IUserService users,
     INotificationEmitter notifications,
@@ -24,9 +25,9 @@ internal sealed partial class GrantService(
     IClock clock,
     ILogger<GrantService> logger) : IGrantManagement
 {
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
-    public LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    public LocalDate Today => clock.GetCurrentInstant().InZone(OrgZone).Date;
 
     public async Task<IReadOnlyList<ProgramInfo>> GetProgramsAsync(CancellationToken ct = default)
     {

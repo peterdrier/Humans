@@ -1,8 +1,9 @@
 @model SurveyPendingApprovalViewModel
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 
 @{
     ViewData["Title"] = Localizer["Surveys_Admin_Queue_Title"].Value;
-    var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 <page-header title="@(Localizer["Surveys_Admin_Queue_Title"].Value)" />
@@ -18,7 +19,7 @@ else
         <div class="card-body p-0">
             @{
                 Func<SurveyPendingApprovalItem, IHtmlContent> columntitleCell = @<text>@(string.IsNullOrWhiteSpace(item.Title) ? Localizer["Surveys_Admin_Index_Untitled"].Value : item.Title)</text>;
-                Func<SurveyPendingApprovalItem, IHtmlContent> submittedCell = @<text>@(item.SubmittedAt is { } at ? at.ToDateTime(zone) : "—")</text>;
+                Func<SurveyPendingApprovalItem, IHtmlContent> submittedCell = @<text>@(item.SubmittedAt is { } at ? at.ToDateTime(orgZone) : "—")</text>;
                 Func<SurveyPendingApprovalItem, IHtmlContent> queueActionsCell = @<text>
                     <div class="d-inline" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
                         <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@item.Id" method="post" class="d-inline">

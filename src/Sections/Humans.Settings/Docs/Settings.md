@@ -25,6 +25,9 @@ cycles and of which one is active.
 - **The event timezone is global.** One `settings_system_values` key, `Event:TimeZoneId`
   (absent means Europe/Madrid), applies to every event. `EventSettingsInfo.TimeZoneId`
   is filled from it on every read.
+  The same zone is the organisation's zone for every org-local date (money, votes,
+  surveys, sign-in links): Base's `IOrgTimeZone`, served from the settings cache.
+  Never hardcode a zone id.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
   Other sections store the id, so a cycle ends by going `Inactive`; nothing sets
   `Deleted` today. The only row removal is `IEventSettingsSeeding.DeleteEventAsync`,

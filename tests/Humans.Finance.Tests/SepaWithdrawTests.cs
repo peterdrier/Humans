@@ -39,7 +39,7 @@ public class SepaWithdrawTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
 
     private Service MakeService() => new(
-        _repo, Substitute.For<IBudgetService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
+        FixedOrgTimeZone.Madrid, _repo, Substitute.For<IBudgetService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
         Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(FixedNow),
         _audit, _users, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),

@@ -1,7 +1,8 @@
 @model StripeSummary
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Stripe";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
     string N(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
     string StatusBadge(string status) => status switch
     {
@@ -62,7 +63,7 @@
                             @if (a.Sync is { } s)
                             {
                                 <span class="badge @StatusBadge(s.Status)">@s.Status</span>
-                                <span class="ms-1">@(s.LastSyncAt is { } at ? at.ToDateTime(madrid) : "never")</span>
+                                <span class="ms-1">@(s.LastSyncAt is { } at ? at.ToDateTime(orgZone) : "never")</span>
                                 @if (s.LastError is not null)
                                 {
                                     <div class="text-danger mt-1">@s.LastError</div>

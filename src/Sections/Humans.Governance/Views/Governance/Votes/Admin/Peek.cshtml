@@ -1,8 +1,9 @@
 @model AssemblyVotePeekViewModel
 @using NodaTime
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Vote peek";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 
     var audiences = new List<(string Label, AssemblyVoteAudienceResult Audience, bool IsIndicative)>
     {
@@ -24,7 +25,7 @@
 </div>
 
 <page-header title="Live tally">
-    <page-header-subtitle>Method: @Model.Result.Method · Computed for this peek at @Model.Result.ComputedAt.ToDateTime(madrid)</page-header-subtitle>
+    <page-header-subtitle>Method: @Model.Result.Method · Computed for this peek at @Model.Result.ComputedAt.ToDateTime(orgZone)</page-header-subtitle>
 </page-header>
 
 @foreach (var (label, audience, isIndicative) in audiences)

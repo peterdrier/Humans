@@ -147,7 +147,7 @@ public sealed partial class ExpenseReportServiceTests
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         using var request = new CancellationTokenSource();
         var controller = new ExpensesController(_userService, _sut, _budgetService, _finance, _preapprovals,
-            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -206,7 +206,7 @@ public sealed partial class ExpenseReportServiceTests
                 return Task.FromResult<byte[]?>([4, 5, 6]);
             });
         var controller = new ExpensesController(_userService, _sut, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -241,7 +241,7 @@ public sealed partial class ExpenseReportServiceTests
             return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
         var controller = new ExpensesController(_userService, _sut, _budgetService, _finance, _preapprovals,
-            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -302,7 +302,7 @@ public sealed partial class ExpenseReportServiceTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
         var controller = new ExpensesController(_userService, _sut, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -351,7 +351,7 @@ public sealed partial class ExpenseReportServiceTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
         var controller = new ExpensesController(_userService, _sut, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
             {
@@ -942,7 +942,7 @@ public sealed partial class ExpenseReportServiceTests
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
         var controller = new ExpensesController(_userService, reports, _budgetService, _finance, _preapprovals,
-            authorization, Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())
@@ -3314,7 +3314,7 @@ public sealed partial class ExpenseReportServiceTests
                 [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
         var controller = new ExpensesController(_userService, reports, _budgetService, _finance, _preapprovals,
-            Substitute.For<IAuthorizationService>(), Clock, NullLogger<ExpensesController>.Instance, _localizer)
+            Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
             TempData = new TempDataDictionary(context, Substitute.For<ITempDataProvider>())

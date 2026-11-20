@@ -10,6 +10,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Pleo.Services;
 
 internal sealed class Service(
+    IOrgTimeZone orgTimeZone,
     IPleoRepository repo,
     IPleoClient client,
     IClock clock,
@@ -79,7 +80,7 @@ internal sealed class Service(
         category.SetAt = clock.GetCurrentInstant();
     }
 
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     private static readonly PleoEntryKind[] SpendKinds =
         [PleoEntryKind.CardPurchase, PleoEntryKind.PleoInvoice, PleoEntryKind.OutOfPocket];
@@ -129,8 +130,8 @@ internal sealed class Service(
     public async Task<IReadOnlyList<PleoEntryInfo>> GetSettledEntriesAsync(
         LocalDate from, LocalDate to, CancellationToken ct = default)
     {
-        var start = from.AtStartOfDayInZone(MadridZone).ToInstant();
-        var end = to.PlusDays(1).AtStartOfDayInZone(MadridZone).ToInstant();
+        var start = from.AtStartOfDayInZone(OrgZone).ToInstant();
+        var end = to.PlusDays(1).AtStartOfDayInZone(OrgZone).ToInstant();
         var m = await LoadAsync(ct);
         return m.Entries
             .Where(e => e.SettledAt is { } s && s >= start && s < end)

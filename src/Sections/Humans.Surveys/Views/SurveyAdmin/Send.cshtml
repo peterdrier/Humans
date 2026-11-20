@@ -1,12 +1,13 @@
 @model Humans.Surveys.Models.SurveySendViewModel
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 
 @{
     ViewData["Title"] = "Send survey";
 
-    var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 
     string FormatInstant(Instant? instant) =>
-        instant is null ? "—" : instant.Value.ToDateTime(zone);
+        instant is null ? "—" : instant.Value.ToDateTime(orgZone);
 
     static string AudienceLabel(SurveyAudienceType audience) => audience switch
     {

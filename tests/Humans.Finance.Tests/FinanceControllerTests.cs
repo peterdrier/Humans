@@ -73,9 +73,9 @@ public class FinanceControllerTests
     }
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, _holdedLedger, _expenses,
+        new(FixedOrgTimeZone.Madrid, _users, _finance, _connector, _holdedLedger, _expenses,
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
-            new FinanceOverviewService(_holdedLedger, _finance, _connector, _expenses, _budget,
+            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holdedLedger, _finance, _connector, _expenses, _budget,
                 new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
                 Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
                 Substitute.For<Humans.Finance.Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
@@ -1358,6 +1358,7 @@ public class FinanceControllerTests
         var urls = Substitute.For<IUrlHelperFactory>();
         urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
         builder.Services.AddSingleton(urls);
+        builder.Services.AddSingleton<Humans.Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
