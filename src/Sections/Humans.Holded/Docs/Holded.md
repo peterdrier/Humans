@@ -81,7 +81,8 @@ under Accounts. Each page does one thing.
 
 - `/Holded` — summary: configured or not (`IsConfigured`), the stored API usage reading as one
   line with when it was read and a refresh button (one GET /usage, `FinancePolicies.Manage`;
-  loading the page never calls Holded; budget = `Holded:MonthlyCallBudget`, default 2000), per
+  loading the page never calls Holded; budget = `Holded:MonthlyCallBudget`, default 2000;
+  the optional budget key and its configured value are listed on `/Debug/Configuration`), per
   sync kind the last run, status, count and error, mirror counts (lines, entries, non-archived
   accounts), the number of accounts where mirror ≠ Holded (linked to `/Holded/Accounts?mismatched=true`),
   and the Sync now / Full resync buttons with the full resync's cost estimate (one call per 200

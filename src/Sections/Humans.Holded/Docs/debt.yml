@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 5
-inbox:
-  - added: 2026-11-13
-    id: HOLDED-3
-    what: "Section.cs reads Holded:MonthlyCallBudget but DeclareSettings declares only Holded:BaseUrl and HOLDED_API_KEY_V2, so the admin configuration page never lists the budget. Found by section-doctor's behaviour read."
-    review: light
+inbox: []

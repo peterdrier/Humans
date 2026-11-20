@@ -75,6 +75,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {
         configuration.GetOptionalSetting(registry, "Holded:BaseUrl", "Holded");
+        configuration.GetOptionalSetting(registry, "Holded:MonthlyCallBudget", "Holded");
         registry.RegisterEnvironmentVariable("HOLDED_API_KEY_V2", "Holded", isSensitive: true,
             importance: ConfigurationImportance.Recommended);
     }
