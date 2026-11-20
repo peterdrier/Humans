@@ -83,6 +83,11 @@ the `governance.body-links-from-teams` data migration only: `ITeamService.GetTea
 team's `GoogleGroupPrefix`) and `ITeamResourceService.GetResourcesByTeamIdsAsync` (its active non-Group
 resources). No personal data.
 
+### GovernanceBoardSeats (Scoped, internal)
+
+No tables. Adds and ends Board seats through `IRoleAssignmentWrite.AssignRoleAsync` / `EndRoleAsync`, finding the
+seat with `IRoleAssignmentService.GetByUserIdAsync`; Auth stores and audits them.
+
 ### AssemblyVoteService (Scoped)
 
 Repositories: `IAssemblyVoteRepository`, plus the section's `IApplicationRepository`

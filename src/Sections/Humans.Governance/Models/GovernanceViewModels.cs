@@ -45,4 +45,7 @@ internal sealed class GovernanceBodyViewModel
 
     /// <summary>Null when the viewer may not see them, or the body has none.</summary>
     public GovernanceBodyAccess? Links { get; init; }
+
+    /// <summary>Board page only: the viewer may add and end Board seats.</summary>
+    public bool CanManageBoard { get; init; }
 }
