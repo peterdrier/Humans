@@ -99,7 +99,7 @@
         @(item.AmountEur is { } eur ? eur.ToSignedEuro() : "—")
         @if (!string.IsNullOrWhiteSpace(item.Currency) && item.Currency != "EUR")
         {
-            <div class="small text-muted">@((item.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @item.Currency</div>
+            <div class="small text-muted">@(item.OriginalAmount.ToString($"N{item.CurrencyDecimals}", CultureInfo.InvariantCulture)) @item.Currency</div>
         }
 
     </text>;

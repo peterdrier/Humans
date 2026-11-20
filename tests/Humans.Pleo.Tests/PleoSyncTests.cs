@@ -54,7 +54,7 @@ public sealed class PleoSyncTests
 
     private static JsonElement Entry(
         string id, string family = "CARD_PURCHASE", string? subFamily = "IN_STORE", long minors = 1000,
-        long? bill = null, string? category = LaCantinaCategory, string status = "COMPLETED")
+        long? bill = null, string? category = LaCantinaCategory, string status = "COMPLETED", string currency = "EUR")
     {
         var json = JsonSerializer.Serialize(new
         {
@@ -66,12 +66,38 @@ public sealed class PleoSyncTests
             accountId = category,
             settledAt = "2026-07-01T10:00:00Z",
             performedAt = "2026-07-01T10:00:00Z",
-            transactionValue = new { currency = "EUR", minors },
+            transactionValue = new { currency, minors },
             totalBillValue = bill is null ? null : new { currency = "EUR", minors = bill },
             merchant = new { name = "Makro" },
             receiptIds = string.Equals(family, "PLEO_INVOICE", StringComparison.Ordinal) ? Array.Empty<string>() : ["r1"],
         });
         return JsonDocument.Parse(json).RootElement.Clone();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("JPY", 1500L, "1500", 0)]
+    [Xunit.InlineData("ISK", 1500L, "1500", 0)]
+    [Xunit.InlineData("KWD", 12345L, "12.345", 3)]
+    [Xunit.InlineData("CLF", 12345L, "1.2345", 4)]
+    [Xunit.InlineData("GBP", 6580L, "65.80", 2)]
+    [Xunit.InlineData("EUR", 0L, "0", 2)]
+    [Xunit.InlineData("KWD", -12345L, "-12.345", 3)]
+    public async Task Entry_list_and_detail_preserve_original_currency_units(
+        string currency, long minors, decimal expected, int decimals)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("currency-entry", minors: minors, currency: currency)];
+        _client.ListReceiptsAsync("currency-entry", ct).Returns(Array.Empty<PleoReceiptWire>());
+        await SyncAsync();
+
+        var page = await _service.GetEntriesPageAsync(new PleoEntriesFilter(null, null, null, false, false), ct);
+        var row = page.Rows.Should().ContainSingle().Subject;
+        row.OriginalAmount.Should().Be(expected);
+        row.CurrencyDecimals.Should().Be(decimals);
+        row.Currency.Should().Be(currency);
+        var detail = await _service.GetEntryViewAsync("currency-entry", ct);
+        detail.Should().NotBeNull();
+        detail!.Row.Should().Be(row);
     }
 
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement.Clone();

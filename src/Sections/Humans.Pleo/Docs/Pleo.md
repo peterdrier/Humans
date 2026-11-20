@@ -73,6 +73,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 ## Invariants
 
+- List and detail original-currency amounts use ISO 4217 minor-unit scales in their shared row projection, including zero-decimal ISK/JPY, three-decimal KWD and four-decimal CLF. Views preserve that precision. Pleo's [accounting-entry money schema](https://developers.pleo.io/reference/accounting-entries/v1/search-accounting-entries) defines currency-specific minor units; scales follow [SIX's ISO 4217 list](https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml). EUR reconciliation still uses Pleo's bill value and existing sign rules.
+
 - A category link with a missing or blank Pleo id is refused before anything is saved or audited.
 - Entry notes and stored sync errors are cut to their column length, and HTTP-error previews to 300 characters,
   never mid-character (`PleoTextBounds`). `Raw` keeps the entry as Pleo returned it.

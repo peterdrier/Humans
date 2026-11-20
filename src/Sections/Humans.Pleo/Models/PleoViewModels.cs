@@ -50,7 +50,8 @@ internal sealed record PleoEntryRow(
     string? Status,
     decimal? AmountEur,
     string Currency,
-    long Minors,
+    decimal OriginalAmount,
+    int CurrencyDecimals,
     string? HoldedCode,
     string? HoldedName,
     bool HasReceipt);

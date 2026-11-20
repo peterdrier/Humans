@@ -173,11 +173,23 @@ internal sealed class PleoMirrorReader(
     private static PleoEntryRow ToRow(PleoEntry e, Mirror m)
     {
         var code = m.HoldedCodeOf(e);
+        var decimals = CurrencyDecimals(e.Currency);
+        var divisor = decimals switch { 0 => 1m, 3 => 1000m, 4 => 10000m, _ => 100m };
         return new PleoEntryRow(e.Id, e.PerformedAt, e.SettledAt, m.CardholderOf(e), e.MerchantName, e.Family,
-            e.SubFamily, e.Status, e.AmountEur, e.Currency, e.Minors, code,
+            e.SubFamily, e.Status, e.AmountEur, e.Currency, e.Minors / divisor, decimals, code,
             code is not null && m.AccountsByCode.TryGetValue(code, out var a) ? a.Name : null,
             e.ReceiptCount > 0);
     }
+
+    // ISO 4217 minor units (SIX list-one, 2026-09-17). Pleo uses these, including zero-decimal ISK.
+    private static int CurrencyDecimals(string currency) => currency switch
+    {
+        "BIF" or "CLP" or "DJF" or "GNF" or "ISK" or "JPY" or "KMF" or "KRW" or "PYG"
+            or "RWF" or "UGX" or "UYI" or "VND" or "VUV" or "XAF" or "XOF" or "XPF" => 0,
+        "BHD" or "IQD" or "JOD" or "KWD" or "LYD" or "OMR" or "TND" => 3,
+        "CLF" or "UYW" => 4,
+        _ => 2,
+    };
 
     internal async Task<PleoEntryView?> GetEntryViewAsync(string id, CancellationToken ct = default)
     {
