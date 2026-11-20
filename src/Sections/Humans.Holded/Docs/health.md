@@ -36,7 +36,7 @@ lines with who the money moved to or from.
 
 | # | Question the caller is asking | Answered by | Members |
 |---|---|---|---|
-| 1 | *What does the book say?* | `IHoldedService` | `GetLedgerLinesAsync`, `GetAccountBalancesAsync`, `GetEntryAsync`, `GetLedgerSyncedAtAsync` |
+| 1 | *What does the book say?* | `IHoldedService` | `GetLedgerLinesAsync`, `GetAccountBalancesAsync`, `GetLedgerSyncedAtAsync` |
 | 2 | *What accounts exist to book to?* | `IHoldedService` | `GetChartAsync`, `SyncChartAsync` |
 | 3 | *What documents, contacts and bank lines does Holded hold?* | `IHoldedService` | `GetPurchaseDocumentsAsync`, `GetContactsAsync`, `GetBankMovementsAsync` |
 | 4 | *Make a copy current before I act on it.* | `IHoldedService` | `SyncLedgerAsync`, `SyncAccountLedgerAsync`, `SyncPurchaseDocumentsAsync`, `SyncPurchaseDocumentNotesAsync`, `SyncContactsAsync`, `SyncBankMovementsAsync` |
@@ -50,11 +50,6 @@ lines with who the money moved to or from.
 
 Shapes 1–5 are the mirror, 6–9 the write face, 10 the admin screen. Every shape sits on the
 internal connector, `IHoldedClient`, which no other section can reach.
-
-Built with no caller yet (the single-mirror phase 1 added them ahead of phase 2's adopters):
-`IHoldedService.GetPurchaseLinesAsync`,
-`IHoldedService.GetOpenDocumentAmountsAsync`, `IHoldedService.GetSumsByAccountAsync` and
-`IHoldedService.GetChartSyncedAtAsync`. They are surface without a shape until a caller arrives.
 
 ## 3. Structure
 

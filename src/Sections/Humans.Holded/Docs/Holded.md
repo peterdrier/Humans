@@ -185,7 +185,7 @@ it wrote.
 
 - The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets oldest first (the pivot's columns). Services supply the state and aggregated counts without display ordering.
 
-- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too); `GetChartSyncedAtAsync` says when.
+- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too).
 
 - Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
 
@@ -203,15 +203,11 @@ it wrote.
   only that account's mirrored lines, under the same gate (false when a sweep holds it). Sync states are
   untouched. Finance's Pleo and SEPA bookings and Expenses' report publishing call it before posting onto
   an account, so their "already in Holded" judgement is Holded's own current ledger.
-- Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
-  chart, purchase documents, contacts, bank movements, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
+- Reads (`IHoldedService`: lines, balances, chart, purchase documents, contacts, bank movements, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
 - `GetLedgerSyncedAtAsync` is the later `LastSyncAt` of the `Ledger` and `FullSync` states, stamped only
   on success, so a failed sweep leaves the last good one. Finance's expense recon uses it to tell a push
   the ledger has not swept yet (Pending) from one that is absent (Missing).
-- `GetOpenDocumentAmountsAsync` is Σ (credit − debit) over `purchase`, `purchaserefund` and `payment`
-  lines per account: what documents leave open, not the balance (hand-booked entries and collections
-  are left out).
 - A ledger line keeps Holded's `id` as `EntryId` (the journal entry's id, shared by every line of
   the entry, so never a key: the natural key stays `(EntryNumber, Line)`) and `checked` as
   `Checked` (Holded's manual tick, not bank reconciliation; null until the line is re-synced).
