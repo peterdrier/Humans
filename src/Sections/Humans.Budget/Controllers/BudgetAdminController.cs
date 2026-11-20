@@ -651,16 +651,16 @@ internal sealed class BudgetAdminController(
             ViewBag.ActualTicketsSold = actualSold;
 
             var projections = await budgetService.GetTicketingProjectionEntriesAsync(ticketingGroup.Id, ct);
+            var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
+            ViewBag.ProjectedRemaining = projectedRemaining;
+            ViewBag.TotalTickets = actualSold + projectedRemaining;
             if (projections.Count > 0)
             {
-                var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
                 var today = clock.GetCurrentInstant().InUtc().Date;
                 var proj = ticketingGroup.TicketingProjection!;
                 var daysToEvent = Period.Between(today, proj.EventDate!.Value, PeriodUnits.Days).Days;
 
                 ViewBag.RemainingDays = Math.Max(0, daysToEvent);
-                ViewBag.ProjectedRemaining = projectedRemaining;
-                ViewBag.TotalTickets = actualSold + projectedRemaining;
             }
         }
 
