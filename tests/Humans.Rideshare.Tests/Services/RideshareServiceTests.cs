@@ -1067,7 +1067,7 @@ public sealed class RideshareServiceTests : RideshareTestHarness
             FromUserId = string.Equals(action, "received", StringComparison.Ordinal) ? actor : archived,
             Seats = 1
         };
-        var notices = new RideshareNotices(Users, Notifications, Logger);
+        var notices = NewService();
 
         switch (action)
         {
