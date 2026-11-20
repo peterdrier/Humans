@@ -96,9 +96,7 @@ internal sealed record WorkspaceAccountActionResult(
 /// <summary>Codes are returned once and cannot be retrieved again.</summary>
 internal sealed record WorkspaceBackupCodesResult(
     bool Success,
-    string? Email = null,
     IReadOnlyList<string>? Codes = null,
-    string? Message = null,
     string? ErrorMessage = null);
 
 /// <summary>One-shot: neither field can be retrieved again once the modal closes.</summary>

@@ -78,7 +78,6 @@ internal sealed class WorkspaceAccountRecovery(
             logger.LogError(ex, "Failed to generate backup codes for: {Email}", email);
             return new WorkspaceBackupCodesResult(
                 Success: false,
-                Email: email,
                 ErrorMessage: $"Failed to generate backup codes for {email}. Check logs for details.");
         }
 
@@ -90,7 +89,6 @@ internal sealed class WorkspaceAccountRecovery(
                 email);
             return new WorkspaceBackupCodesResult(
                 Success: false,
-                Email: email,
                 ErrorMessage: $"Backup codes were generated for {email} but none were returned. Check logs and try again.");
         }
 
@@ -115,9 +113,7 @@ internal sealed class WorkspaceAccountRecovery(
 
         return new WorkspaceBackupCodesResult(
             Success: true,
-            Email: email,
-            Codes: codes,
-            Message: $"Generated {codes.Count} backup code(s) for {email}. Deliver them securely — they cannot be retrieved again.");
+            Codes: codes);
     }
 
     internal async Task<WorkspaceRecoveryCredentialsResult> ResetPasswordAndGenerate2FaAsync(
