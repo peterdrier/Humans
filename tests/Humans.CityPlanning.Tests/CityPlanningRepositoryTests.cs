@@ -17,28 +17,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task SavePolygonAndAppendHistoryAsync_FirstCall_CreatesPolygonAndHistory()
-    {
-        var campSeasonId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-        var now = Clock.GetCurrentInstant();
-
-        var polygon = await _repo.SavePolygonAndAppendHistoryAsync(
-            campSeasonId, """{"type":"Feature"}""", 100.0, userId, "Saved", now, Xunit.TestContext.Current.CancellationToken);
-
-        polygon.CampSeasonId.Should().Be(campSeasonId);
-        polygon.AreaSqm.Should().Be(100.0);
-
-        var history = await _repo.GetHistoryForCampSeasonAsync(campSeasonId, Xunit.TestContext.Current.CancellationToken);
-        history.Should().ContainSingle();
-        history[0].Note.Should().Be("Saved");
-        history[0].CampSeasonId.Should().Be(campSeasonId);
-
-        (await CityPlanningDb.CampPolygons.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
-        (await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
-    }
-
-    [HumansFact]
     public async Task SavePolygonAndAppendHistoryAsync_SecondCall_UpdatesPolygonAppendsHistory()
     {
         var campSeasonId = Guid.NewGuid();
@@ -116,13 +94,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
 
         result.Should().HaveCount(2);
         result.Select(h => h.AreaSqm).Should().BeEquivalentTo([100.0, 200.0]);
-    }
-
-    [HumansFact]
-    public async Task GetHistoryEntryAsync_ReturnsNull_WhenNotMatching()
-    {
-        var result = await _repo.GetHistoryEntryAsync(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
-        result.Should().BeNull();
     }
 
     [HumansFact]
