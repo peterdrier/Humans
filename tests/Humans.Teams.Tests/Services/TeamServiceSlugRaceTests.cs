@@ -5,8 +5,6 @@ using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Shifts.Services;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -110,7 +108,6 @@ public class TeamServiceSlugRaceTests
             repo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),
-            Substitute.For<IShiftManagement>(),
             Substitute.For<IAdminAuthorizationService>(),
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()

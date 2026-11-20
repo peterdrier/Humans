@@ -192,7 +192,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Users.Contracts:** `IUserService` for member display data, account resolution and the sync's person reads.
 - **Auth:** `IRoleAssignmentService` for role holders, `IAdminAuthorizationService` for actor checks.
 - **Google:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.
-- **Shifts.Contracts:** `IShiftService` for the team page's shifts card and pending-shift counts.
+- **Shifts (through a slot):** Teams declares `ITeamShiftsParts` in `Teams.Contracts`; Shifts fills its `Box` (the team page's shifts card, shown to signed-in members with a profile on non-system teams) and `AdminRowCell` (the admin team list's pending-signups cell). Teams calls no Shifts code.
 - **Email.Contracts:** `IEmailService`, `IEmailMessageFactory` and `ICommunicationPreferenceService` for send as team and the welcome email; Teams owns its templates (`TeamsEmails`, previewed through `TeamsEmailPreviews`).
 - **EarlyEntry:** Teams implements `IEarlyEntryProvider` for the roster and reads `EarlyEntryRoles`.
 - **Tickets.Contracts:** `ITicketService.FindCurrentEventAttendeeByBarcodeAsync` for the early-entry ticket lookup.

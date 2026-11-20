@@ -23,6 +23,7 @@ using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.Shifts.ViewComponents;
+using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -50,6 +51,7 @@ public sealed class Section :
     ISectionPolicies,
     ISectionSettings,
     ISectionThingsToDo,
+    ITeamShiftsParts,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -247,6 +249,10 @@ public sealed class Section :
         [new("Nav_Shifts", Controller: "Shifts", Action: "Index", Policy: PolicyNames.AppAccess, Weight: 60)];
 
     Type IOnboardingShiftsStep.ShiftsList => typeof(OnboardingShiftsListViewComponent);
+
+    Type ITeamShiftsParts.Box => typeof(TeamShiftsBoxViewComponent);
+
+    Type ITeamShiftsParts.AdminRowCell => typeof(TeamAdminRowShiftsViewComponent);
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {

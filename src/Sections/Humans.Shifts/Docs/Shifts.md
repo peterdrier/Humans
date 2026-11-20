@@ -281,7 +281,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 
 - Instant-toggle HTTP failures keep the existing shift and description rows, restore the button for retry, and show the localized network-error toast; only successful row fragments replace them.
 
-- `IsDeptCoordinatorAsync` accepts an optional read token and forwards it through coordinator-cache misses and the parent-team lookup. `GetShiftsSummaryAsync` accepts the same optional token for its rota read, including summaries requested by team detail pages.
+- `IsDeptCoordinatorAsync` accepts an optional read token and forwards it through coordinator-cache misses and the parent-team lookup. `GetShiftsSummaryAsync` accepts the same optional token for its rota read, including summaries requested by the team page's shifts box.
 - Browse and My shifts GETs forward request cancellation to viewer, cached per-user rows and signup history. Browse also forwards it through coordinator cache misses, filtered/day-option/row browse reads, department options and their calendar/team/user/repository lookups. Gallery browse and department reads use the same request token. My shifts also forwards it to active-event and team-name reads.
 
 - Dashboard and department volunteer-search boxes debounce independently per shift. Each edit clears the prior results and invalidates pending responses, so older results or errors cannot expose an outdated assignment choice. Range-voluntell searches apply the same isolation per rota input, clear its form’s selected identity immediately, and enable assignment only after picking a current result.
@@ -436,6 +436,12 @@ approve/refuse/no-show review surface — has no caller outside the
 section and is not on the leaf. The active-burn read (`IBurnSettingsService` → `BurnSettingsInfo`), volunteer
 profiles, the build strip, no-show history and the staffing snapshot are section-internal too.
 
+**Team page parts.** Shifts fills Teams' `ITeamShiftsParts` slot (declared in `Teams.Contracts`). `Box` is the
+shifts card on a team page: slots filled, humans signed up and pending signups over the team and its sub-teams in
+the active event, plus a Manage Shifts link for a department manager by role or a coordinator of the team. Teams
+shows it only to signed-in members with a profile, on non-system teams. `AdminRowCell` is the pending-signups cell of
+the admin team list, counting a signup range once and linking to the team's shift admin page for Board and Admin.
+
 **Profile parts.** Shifts fills two Users slots through `IUserPart`: on another member's profile
 (`UserPartSlots.Profile`), a card with their signups, build strip and no-show history, shown only to a
 coordinator or a privileged signup approver and never on one's own profile; on the admin human-detail page
@@ -478,7 +484,7 @@ coordinator or a privileged signup approver and never on one's own profile; on t
 - **Architecture tests:** `tests/Humans.Shifts.Tests/Architecture/ShiftManagementArchitectureTests.cs`, `ShiftViewArchitectureTests.cs`.
 - Shift-preference free-text skill/language fields accept at most 200 characters, matching their inputs. Invalid form submissions return the entered wizard with localized validation errors before creating or changing the profile.
 - Shift-preference option labels and time descriptions use section resources; language names reuse `ToDisplayLanguageName` and Other uses `Common_Other`. Other free-text visibility follows the checkbox value, independent of its translated label. Submitted skill, quirk and language values retain their existing English vocabulary, including `Other:` free text.
-- **Resource set:** `ShiftsResource.{resx,es,ca,de,fr,it,nl}` at the project root — every `Shifts_` key no other section's view binds (including the `Shifts_ShiftDash_`, `Shifts_VolTrack_`, `Shifts_ShiftInfo_`, `Shifts_EmailRota_`, `Shifts_EmailTeamRotas_`, `Shifts_GetInvolved_`, `Shifts_Dashboard_` and `Shifts_DietaryMissingBanner_` families), including the `Shifts_Email_*` copy for the two coordinator messages `ShiftsEmails` builds (peterdrier/Humans#1651). Views bind it as `Localizer` and `SharedResource` as `SharedLocalizer` in `Views/_ViewImports.cshtml`; `ShiftsResource.cs`'s remarks name every key that stays in `SharedResource` and the renderer that pins it there (the `ShiftsSummary_` keys bound by Teams' `_ShiftsSummaryCard.cshtml`) — each is a reference cycle, since `Humans.Shifts` already references `Humans.Teams` and `Humans.Onboarding`. `ShiftsPageRenderTests` (`Humans.Integration.Tests`, a PR check) asserts no raw key reaches the HTML, in English and in Spanish.
+- **Resource set:** `ShiftsResource.{resx,es,ca,de,fr,it,nl}` at the project root — every `Shifts_` key no other section's view binds (including the `Shifts_ShiftDash_`, `Shifts_VolTrack_`, `Shifts_ShiftInfo_`, `Shifts_EmailRota_`, `Shifts_EmailTeamRotas_`, `Shifts_GetInvolved_` and `Shifts_Dashboard_` families), the `ShiftsSummary_` keys of the team page's shifts card, and the `Shifts_Email_*` copy for the two coordinator messages `ShiftsEmails` builds (peterdrier/Humans#1651). Views bind it as `Localizer` and `SharedResource` as `SharedLocalizer` in `Views/_ViewImports.cshtml`; `ShiftsResource.cs`'s remarks name every key that stays in `SharedResource` and the renderer that pins it there — each is a reference cycle, since `Humans.Shifts` already references `Humans.Teams` and `Humans.Onboarding`. `ShiftsPageRenderTests` (`Humans.Integration.Tests`, a PR check) asserts no raw key reaches the HTML, in English and in Spanish.
 
 ### Repository surface
 

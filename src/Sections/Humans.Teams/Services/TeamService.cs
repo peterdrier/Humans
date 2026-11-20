@@ -10,7 +10,6 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Data;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
@@ -22,7 +21,6 @@ internal sealed class TeamService(
     ITeamRepository repo,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
-    IShiftService shiftManagementService,
     IAdminAuthorizationService adminAuthorization,
     IServiceProvider serviceProvider,
     IClock clock,
@@ -31,7 +29,7 @@ internal sealed class TeamService(
     private readonly TeamLifecycle lifecycle = new(repo, adminAuthorization, auditLogService, clock, logger, serviceProvider);
     private readonly TeamDataExport dataExport = new(repo, serviceProvider);
     private readonly TeamPageContent pageContentOwner = new(repo, clock, auditLogService, logger);
-    private readonly TeamSnapshotReader snapshotReader = new(repo, serviceProvider, shiftManagementService);
+    private readonly TeamSnapshotReader snapshotReader = new(repo, serviceProvider);
     private TeamMembershipAdministration MembershipAdministration => new(
         repo, auditLogService, clock, logger, serviceProvider, snapshotReader, membershipOutbox, membershipNotices);
     private TeamJoining Joining => new(repo, auditLogService, clock, logger, snapshotReader, membershipOutbox, membershipNotices);

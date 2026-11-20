@@ -498,4 +498,11 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>No-Show History ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Marked By</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Marked At</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve"><value>Shifts</value></data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve"><value>{0} / {1} slots filled</value><comment>{0} = filled, {1} = total</comment></data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve"><value>{0} humans signed up</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve"><value>{0} pending</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve"><value>No shifts configured yet.</value></data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve"><value>Includes shifts from {0} sub-team(s)</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve"><value>Manage Shifts</value></data>
 </root>

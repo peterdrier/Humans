@@ -269,3 +269,29 @@
     </div>
     @ParamsBlock()
 </div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_TeamShiftsCard.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_TeamShiftsCard.cshtml</span>
+    </div>
+    <div class="wg-card-note">The team page's shift-staffing box: progress bar, slot count, sub-team note. Synthetic numbers in this gallery.</div>
+    @ParamsBlock(
+        ("@@model", "<code>TeamShiftsCardViewModel</code> — TotalSlots, ConfirmedCount, PendingCount, UniqueVolunteerCount, ShiftsUrl, CanManageShifts, IncludesSubTeamCount")
+    )
+    <div class="wg-card-example" style="max-width: 360px;">
+        @await Html.PartialAsync("_TeamShiftsCard", new TeamShiftsCardViewModel
+        {
+            TotalSlots = 24,
+            ConfirmedCount = 17,
+            PendingCount = 3,
+            UniqueVolunteerCount = 12,
+            ShiftsUrl = Url.Action("Index", "Shifts") ?? "#",
+            CanManageShifts = true,
+            IncludesSubTeamCount = 2,
+        })
+    </div>
+</div>

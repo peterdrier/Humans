@@ -3,7 +3,6 @@ using Humans.Base.Helpers;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Base.Enums;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
@@ -14,8 +13,7 @@ namespace Humans.Teams.Services;
 
 internal sealed class TeamSnapshotReader(
     ITeamRepository repo,
-    IServiceProvider serviceProvider,
-    IShiftService shiftManagementService) : IApplicationService
+    IServiceProvider serviceProvider) : IApplicationService
 {
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
@@ -35,17 +33,14 @@ internal sealed class TeamSnapshotReader(
     public async Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default)
     {
         var teams = await repo.GetAllForAdminAsync(cancellationToken);
-        var pendingShiftCounts = await shiftManagementService
-            .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
         var resourceSummaries = await TeamResourceService
             .GetTeamResourceSummariesAsync(teams.Select(t => t.Id).ToList(), cancellationToken);
 
-        return teams.Select(team => CreateAdminTeamSummary(team, pendingShiftCounts, resourceSummaries)).ToList();
+        return teams.Select(team => CreateAdminTeamSummary(team, resourceSummaries)).ToList();
     }
 
     private static AdminTeamSummary CreateAdminTeamSummary(
         Team team,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
         IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
     {
         var systemTeamType = team.SystemTeamType != SystemTeamType.None
@@ -71,7 +66,6 @@ internal sealed class TeamSnapshotReader(
             team.RoleDefinitions.Sum(role => role.SlotCount),
             team.CreatedAt,
             team.ParentTeamId,
-            pendingShiftCounts.GetValueOrDefault(team.Id),
             team.IsHidden);
     }
 

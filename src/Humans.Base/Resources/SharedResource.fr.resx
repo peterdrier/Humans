@@ -1080,31 +1080,6 @@
   <data name="Nav_Guide" xml:space="preserve">
     <value>Aide</value>
   </data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
-    <value>Quarts</value>
-  </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
-    <value>{0} / {1} places remplies</value>
-    <comment>{0} = filled, {1} = total</comment>
-  </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
-    <value>{0} humans inscrits</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
-    <value>{0} en attente</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
-    <value>Aucun quart configuré pour le moment.</value>
-  </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
-    <value>Inclut les quarts de {0} sous-équipe(s)</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
-    <value>Gérer les quarts</value>
-  </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gère les adhésions de Nobodies Collective et traite les données personnelles conformément au RGPD et à la loi espagnole sur la protection des données (LOPDGDD).</value>
   </data>

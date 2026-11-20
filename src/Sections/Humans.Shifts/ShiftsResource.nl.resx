@@ -1289,4 +1289,29 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>No-show-geschiedenis ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Gemarkeerd door</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Gemarkeerd op</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Diensten</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} plekken bezet</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans aangemeld</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} in afwachting</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Nog geen diensten ingesteld.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Inclusief diensten van {0} subteam(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Diensten beheren</value>
+  </data>
 </root>

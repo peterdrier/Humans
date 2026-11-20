@@ -65,7 +65,7 @@ public class TeamControllerPageContentTests
         AdminTeamSummary Row(string name, Guid? parentId = null, bool hidden = false, bool system = false) =>
             new(Guid.NewGuid(), name, name, true, false, system,
                 system ? nameof(SystemTeamType.Volunteers) : null, 0, 0, false, null, 0, 0,
-                Instant.FromUtc(2026, 1, 1, 0, 0), parentId, 0, hidden);
+                Instant.FromUtc(2026, 1, 1, 0, 0), parentId, hidden);
         var alpha = Row("Alpha");
         var zulu = Row("Zulu");
         var hidden = Row("Hidden", hidden: true);
@@ -886,9 +886,9 @@ public class TeamControllerPageContentTests
         };
         var page = new TeamPageDetailResult(
             team, [coordinator, zeta, alpha], children, [], [], false, false, false, false, false, false, false,
-            null, 0, null, [], []);
+            null, 0, [], []);
         var pages = Substitute.For<ITeamPageService>();
-        pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
+        pages.GetTeamPageDetailAsync("test", null, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
             Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),
@@ -922,9 +922,9 @@ public class TeamControllerPageContentTests
             markdown, [], Instant.FromUtc(2026, 1, 1, 0, 0), Guid.NewGuid(), null);
         var page = new TeamPageDetailResult(
             team, [], [], [], [], false, false, false, false, false, false, false,
-            null, 0, null, [], []);
+            null, 0, [], []);
         var pages = Substitute.For<ITeamPageService>();
-        pages.GetTeamPageDetailAsync("test", null, false, Arg.Any<CancellationToken>()).Returns(page);
+        pages.GetTeamPageDetailAsync("test", null, Arg.Any<CancellationToken>()).Returns(page);
         var controller = new TeamController(
             Substitute.For<ITeamManagementService>(), pages, Substitute.For<IUserService>(),
             Substitute.For<ITeamResourceService>(), Substitute.For<IStringLocalizer<TeamsResource>>(),

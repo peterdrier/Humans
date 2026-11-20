@@ -17,6 +17,13 @@ namespace Humans.Shifts.Services;
 internal interface IShiftManagement
     : IShiftService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
+    /// <summary>Holds a management role on the team's parent.</summary>
+    Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
+
+    /// <summary>Null when the teams have no rotas. Pending counts a signup range once.</summary>
+    Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
+        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
+
     /// <summary>
     /// Excludes admin-only shifts and hidden rotas unless asked; the role-protected dashboard opts in.
     /// </summary>
@@ -226,3 +233,10 @@ internal sealed record RotaMoveResult(bool Succeeded, string Message, string? Re
 }
 
 internal sealed record ShiftDeletionResult(string? ErrorKey = null, int ConfirmedSignups = 0);
+
+internal sealed record ShiftsSummaryData(
+    int TotalSlots,
+    int ConfirmedCount,
+    int PendingCount,
+    int UniqueVolunteerCount,
+    IReadOnlySet<Guid> TeamIdsWithShifts);

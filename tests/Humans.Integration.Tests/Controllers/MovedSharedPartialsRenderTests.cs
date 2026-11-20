@@ -28,7 +28,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
     private static readonly (string Name, string Owner)[] MovedPartials =
     [
         ("_VolunteerProfileBadges", "Humans.Shifts"),
-        ("_ShiftsSummaryCard", "Humans.Teams"),
+        ("_TeamShiftsCard", "Humans.Shifts"),
         ("_RoleBadge", "Humans.Teams"),
         ("_FavouriteButton", "Humans.Events"),
     ];
@@ -71,7 +71,7 @@ public class MovedSharedPartialsRenderTests(HumansTestDatabase database) : Integ
         html.Should().Contain("Welding",
             because: "_VolunteerProfileBadges (Humans.Shifts) renders WidgetGalleryController's hard-coded sample skill");
         html.Should().Contain("aria-valuenow=\"70\"",
-            because: "_ShiftsSummaryCard (Humans.Teams) renders 17 of 24 slots as a progress bar");
+            because: "_TeamShiftsCard (Humans.Shifts) renders 17 of 24 slots as a progress bar");
         html.Should().Contain("<span class=\"badge bg-warning text-dark\">Coordinator</span>",
             because: "_RoleBadge (Humans.Teams) renders the Coordinator variant");
         // Unbound, the element's match-snippet attribute still carries the snippet, so assert the wrapper the

@@ -87,7 +87,7 @@ Repository: `ITeamRepository`.
 | GoogleSyncOutboxEvents | W via `IGoogleSyncOutboxService` (not the Teams repo) |
 
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
-`IShiftService`, `IAdminAuthorizationService`; lazy-resolved via `IServiceProvider` for
+`IAdminAuthorizationService`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
 `IGoogleSyncWrite`, `ITeamResourceService`, `IRoleAssignmentService`,
 `IEmailService`, `IUserService`, `ISystemTeamSync`. Implements `ITeamManagementService`
@@ -131,7 +131,7 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
-`IShiftService`, `ISettingsService`, `IUserService` and Auth’s
+`IUserService` and Auth’s
 `IRoleAssignmentService`. It owns detail-page visibility, viewer affordances and
 member/child projections over the cached Teams-owned snapshot, with live
 pending-request reads through `ITeamManagementService`. The My Teams projection
@@ -197,5 +197,5 @@ registration. No cache of its own — the caching decorator serves the cross-sec
 | TeamRoleDefinitions | R |
 | TeamRoleAssignments | R (active management-role holders) |
 
-Cross-section calls via `IShiftService` (pending shift counts per team) and, lazy-resolved through
-`IServiceProvider`, `IUserService` and `ITeamResourceService` (linked Google resources).
+Cross-section calls, lazy-resolved through
+`IServiceProvider`: `IUserService` and `ITeamResourceService` (linked Google resources).

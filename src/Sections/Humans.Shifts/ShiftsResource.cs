@@ -6,7 +6,7 @@ namespace Humans.Shifts;
 /// localization check finds markers through <c>GetExportedTypes()</c>.
 /// </summary>
 /// <remarks>
-/// Keys rendered by Teams or Onboarding (<c>ShiftsSummary_</c>, <c>Shifts_SetUp</c>, <c>Shifts_All</c>…) stay in
+/// Keys rendered by Teams or Onboarding (<c>Shifts_SetUp</c>, <c>Shifts_All</c>…) stay in
 /// SharedResource: Shifts references those projects, so they cannot bind this set. Controllers never use SharedResource.
 /// </remarks>
 public class ShiftsResource;

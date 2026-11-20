@@ -1080,31 +1080,6 @@
   <data name="Nav_Guide" xml:space="preserve">
     <value>Ajuda</value>
   </data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
-    <value>Torns</value>
-  </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
-    <value>{0} / {1} places ocupades</value>
-    <comment>{0} = filled, {1} = total</comment>
-  </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
-    <value>{0} humans inscrits</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
-    <value>{0} pendents</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
-    <value>Encara no hi ha torns configurats.</value>
-  </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
-    <value>Inclou torns de {0} subequip(s)</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
-    <value>Gestionar torns</value>
-  </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gestiona la pertinença a Nobodies Collective i processa dades personals d'acord amb el RGPD i la llei espanyola de protecció de dades (LOPDGDD).</value>
   </data>
