@@ -68,7 +68,26 @@ public class ProfileBirthdayViewTests
         CultureInfo.CurrentCulture.Name.Should().Be("en");
     }
 
-    private static async Task<string> RenderAsync(string page, object model)
+    [HumansTheory]
+    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task AudienceProgressWidths_UseCssDecimalPointsInEveryCulture(string language)
+    {
+        using var culture = new CultureScope(language);
+        var html = await RenderAsync("Audience", new AudienceSegmentationViewModel
+        {
+            TotalAccounts = 6,
+            WithProfile = 2,
+            WithTicket = 3,
+            WithBoth = 1,
+            WithNeither = 2,
+        }, "UsersAdmin");
+
+        System.Text.RegularExpressions.Regex.Matches(html, "style=\"width: (?<width>[^\"]+)%\"",
+                System.Text.RegularExpressions.RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1))
+            .Select(match => match.Groups["width"].Value).Should().Equal("16.7", "33.3", "16.7", "33.3");
+    }
+
+    private static async Task<string> RenderAsync(string page, object model, string controller = "Profile")
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -90,11 +109,11 @@ public class ProfileBirthdayViewTests
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var result = services.GetRequiredService<IRazorViewEngine>()
-            .GetView(null, $"/Views/Profile/{page}.cshtml", isMainPage: false);
+            .GetView(null, $"/Views/{controller}/{page}.cshtml", isMainPage: false);
         result.Success.Should().BeTrue();
         var http = new DefaultHttpContext { RequestServices = services };
         var route = new RouteData();
-        route.Values["controller"] = "Profile";
+        route.Values["controller"] = controller;
         route.Values["action"] = page;
         var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };

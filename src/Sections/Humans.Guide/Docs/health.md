@@ -18,10 +18,9 @@ everything else opens away from the app.
 | S1 — read a page | "What does the guide say about X, for me?" | `GET /Guide`, `GET /Guide/{name}`: one pipeline; the home page differs only in which stem it fixes and which view wraps it |
 | S2 — re-read from GitHub | "Pick up the guide change that just merged." | `POST /Guide/Refresh`, admin only |
 | S3 — which sections have help | "Does this section have a guide page written for it?" | `ISectionAnnotations` on `Section`, read by `/Debug/Sections` |
-| S4 — is GitHub reachable | "Can the app still reach GitHub?" | `ISectionHealthChecks` on `Section`, registering the `github` check |
 
 S1 is the section. S2 is S1's cache primed on purpose instead of on demand: the same
-`PopulateAsync`. S3 and S4 are one-method seams that carry no request.
+`PopulateAsync`. S3 is a one-method seam that carries no request.
 
 Inside S1 the content passes through these steps, in order. Cached, once per file: **fetch**
 (Base's `IGuideContentSource`) → **segment** (each `## As a …` block becomes a `GuideSegment`
@@ -146,7 +145,7 @@ derivation matches because each step of the pipeline has exactly one home.
   segment's `Role`, and the rendered HTML carries no trace of it. The corpus-wide pinning tests in
   §4 guard that single point.
 - **The `github` health check probes `GitHubSettings`, the legal-documents repo**, not the repo the
-  guide is fetched from. It arrived here with the `github` monitoring key.
+  guide is fetched from. Consent owns and registers it alongside its legal-document sync.
 
 ## History
 

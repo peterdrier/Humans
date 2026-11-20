@@ -35,13 +35,13 @@ public sealed class GovernanceWorkgroupsViewComponentTests
     {
         var now = Instant.FromUtc(2026, 3, 1, 12, 0);
         var meeting = new WorkgroupMeetingInfo(Guid.NewGuid(), "Private sync", now.Plus(Duration.FromDays(1)),
-            now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, true, null, null, now, now);
+            now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, true, null, null);
         var document = new WorkgroupDocumentInfo(Guid.NewGuid(), Guid.NewGuid(), "Draft", Humans.Workgroups.Domain.WorkgroupDocumentKind.Other,
             "Body", Humans.Workgroups.Domain.WorkgroupDocumentStatus.Published, ["Scope"], now.Minus(Duration.FromHours(1)),
             now.Plus(Duration.FromDays(7)), null, null, null, null, null, null, null, now, now, []);
         WorkgroupInfo Group(string name, bool sensitive) => new(Guid.NewGuid(), name.ToLowerInvariant(), name, "Purpose",
             "A report", Humans.Workgroups.Domain.WorkgroupDeliverableKind.Report, Humans.Workgroups.Domain.WorkgroupAudience.Board,
-            null, Humans.Workgroups.Domain.WorkgroupStatus.Active, null, null, null, null, null, now, now, null,
+            null, Humans.Workgroups.Domain.WorkgroupStatus.Active, null, null, null, null, now, now, null,
             [],
             [
                 meeting with { Id = Guid.NewGuid(), StartUtc = now.Plus(Duration.FromDays(5)), EndUtc = now.Plus(Duration.FromDays(5)).Plus(Duration.FromHours(1)) },
@@ -175,7 +175,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
 
     private static WorkgroupInfo Group(Instant now) => new(Guid.NewGuid(), "group", "Group", "Purpose", "Report",
         WorkgroupDeliverableKind.Report, WorkgroupAudience.Board, null, WorkgroupStatus.Active,
-        null, null, null, null, null, now, now, null, [], [], [], [], null, null, null);
+        null, null, null, null, now, now, null, [], [], [], [], null, null, null);
 
     private static string PlainText(string html) =>
         WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", string.Empty, RegexOptions.NonBacktracking));

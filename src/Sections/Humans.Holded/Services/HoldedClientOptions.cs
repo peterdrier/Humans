@@ -1,6 +1,6 @@
-namespace Humans.Holded.Contracts;
+namespace Humans.Holded.Services;
 
-public sealed class HoldedClientOptions
+internal sealed class HoldedClientOptions
 {
     /// <summary>Bound from the HOLDED_API_KEY_V2 env var only — never appsettings.</summary>
     public string ApiKey { get; set; } = "";

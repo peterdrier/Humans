@@ -43,9 +43,9 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
             or FormatException or OverflowException)
         {
-            logger.LogWarning(ex,
-                "Holded accepted a ledger entry (debit {Debit}, credit {Credit}, {Amount}) but its response could not be parsed.",
-                debitAccount, creditAccount, money);
+            logger.LogWarning(
+                "Holded accepted a ledger entry (debit {Debit}, credit {Credit}, {Amount}) but its response could not be parsed: {Reason}",
+                debitAccount, creditAccount, money, ex.Message);
         }
 
         if (!string.IsNullOrWhiteSpace(id)) return id;
@@ -68,7 +68,6 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
             {
                 Id = ReadRequiredString(Prop(n, "id"), "id"),
                 AccountNum = ReadRequiredInt(Prop(n, "account_num"), "account_num"),
-                Name = Prop(n, "name")?.GetValue<string>() ?? "",
             }).ToList();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException
@@ -183,8 +182,9 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
                 ?? throw new HoldedTransientException("Holded returned empty body");
             return new HoldedUsageDto
             {
-                Period = Prop(node, "period")?.GetValue<string>() ?? "",
-                Usage = Prop(node, "usage")?.GetValue<long>() ?? 0,
+                Period = ReadRequiredString(Prop(node, "period"), "period"),
+                Usage = Prop(node, "usage")?.GetValue<long>()
+                    ?? throw new HoldedPermanentException("Holded usage is missing required field 'usage'."),
             };
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException

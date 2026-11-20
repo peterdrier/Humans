@@ -1,4 +1,6 @@
+using Humans.Base.Authorization;
 using Humans.Base.Models.Tables;
+using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +14,8 @@ namespace Humans.Governance.Controllers;
 [Route("[controller]")]
 internal sealed class GovernanceController(
     IUserService userService,
-    IGovernanceIndexService governanceIndexService) : HumansControllerBase(userService)
+    IGovernanceIndexService governanceIndexService,
+    IAuthorizationService authorization) : HumansControllerBase(userService)
 {
     public async Task<IActionResult> Index()
     {
@@ -43,9 +46,33 @@ internal sealed class GovernanceController(
                 .OrderBy(id => boardInfos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
             OpenVotes = data.OpenVotes.OrderBy(v => v.ClosesAt).ToList(),
-            UnvotedApplicationCount = data.UnvotedApplicationCount
+            UnvotedApplicationCount = data.UnvotedApplicationCount,
+            YourAccess = [.. data.YourAccess.OrderBy(a => a.Body)]
         };
 
         return View(viewModel);
+    }
+
+    [HttpGet("{body:regex(^(Asociados|Colaboradores|Board)$)}")]
+    public async Task<IActionResult> Body(string body)
+    {
+        var ct = HttpContext.RequestAborted;
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null || !Enum.TryParse<GovernanceBody>(body, ignoreCase: true, out var parsed))
+            return NotFound();
+
+        var data = await governanceIndexService.GetBodyPageAsync(parsed, ct);
+        // A body's group and files are for its own members; Board and Admin see every body's.
+        var seesLinks = data.MemberIds.Contains(user.Id)
+            || (await authorization.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded;
+        var infos = await UserService.GetUserInfosAsync(data.MemberIds, ct);
+
+        return View(new GovernanceBodyViewModel
+        {
+            Body = data.Body,
+            MemberIds = [.. data.MemberIds
+                .OrderBy(id => infos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)],
+            Links = seesLinks ? data.Links : null,
+        });
     }
 }

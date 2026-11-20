@@ -122,13 +122,20 @@ public class StorePricesViewTests
         {
             Summary = new SummaryDto(2026,
                 [new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Camp, Guid.NewGuid(), "Camp",
-                    OrderState.Open, 2469m, 1234.5m, 1234.5m)], [], new CrossTabDto([], [])),
+                    OrderState.Open, 2469m, 1234.5m, 1234.5m),
+                 new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Team, Guid.NewGuid(), "Team",
+                    OrderState.Open, 9000m, 0m, 0m)], [], new CrossTabDto([], [])),
         };
 
         var html = await RenderAsync("Summary", model, viewPath: "/Views/StoreAdmin/Summary.cshtml");
 
         var footer = html[html.IndexOf("<tfoot", StringComparison.Ordinal)..];
         footer = footer[..footer.IndexOf("</tfoot>", StringComparison.Ordinal)];
+        model.Summary.CampOrders.Should().ContainSingle();
+        model.Summary.CampTotalDueEur.Should().Be(2469m);
+        model.Summary.CampPaymentsTotalEur.Should().Be(1234.5m);
+        model.Summary.CampBalanceEur.Should().Be(1234.5m);
+        footer.Should().Contain("1 camps");
         footer.Should().Contain(HtmlEncoder.Default.Encode(due));
         footer.Split(HtmlEncoder.Default.Encode(paidAndBalance)).Should().HaveCount(3);
         CultureInfo.CurrentCulture.Name.Should().Be("en");
@@ -147,6 +154,8 @@ public class StorePricesViewTests
         var row = new StripeReconciliationRow("cs", "pi", 100m, "paid", now, Guid.NewGuid(), "Camp", (StripeReconciliationStatus)status);
         var report = new StripeReconciliationReport(true, true, true, [row],
             orphan ? [new StripeOrphanPayment("pi_orphan", Guid.NewGuid(), "Camp", 100m, now)] : []);
+        report.IsReconciled.Should().Be(expectedSuccess);
+        report.RecordedFailedCount.Should().Be(status == (int)StripeReconciliationStatus.RecordedFailed ? 1 : 0);
         var model = new PaymentsReconciliationViewModel { Report = report, Rows = [] };
 
         var html = await RenderAsync("Payments", model, viewPath: "/Views/StoreAdmin/Payments.cshtml");

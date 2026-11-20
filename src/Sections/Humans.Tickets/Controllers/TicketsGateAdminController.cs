@@ -18,7 +18,7 @@ internal sealed class TicketsGateAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var status = await gateAccount.GetStatusAsync();
+        var status = await gateAccount.GetStatusAsync(HttpContext.RequestAborted);
         return View("~/Views/Tickets/Admin/Gate.cshtml", status);
     }
 

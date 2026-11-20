@@ -239,7 +239,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         Guid campMemberId, CancellationToken cancellationToken = default) =>
         _readProjection.GetCampMemberStatusAsync(campMemberId, cancellationToken);
 
-    public Task<CampImageUploadResult> UploadImageAsync(
+    public Task<CampUpdateResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         _imageGallery.UploadImageAsync(campId, fileStream, fileName, contentType, length, actorUserId, cancellationToken);
@@ -268,13 +268,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var target = (await GetRegistrationByEventAsync(cancellationToken))
             .FirstOrDefault(r => r.EventSettingsId == eventSettingsId)
             ?? throw new InvalidOperationException($"Event {eventSettingsId} not found.");
-        var trimmed = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
+        // Empty, not null: a cleared event must not fall back to City Planning's old copy.
+        var trimmed = registrationInfo?.Trim() ?? string.Empty;
         // Complete the save and audit together even if the caller stops waiting.
         if (await _repo.SetRegistrationInfoAsync(eventSettingsId, trimmed, CancellationToken.None))
         {
             await _auditLog.LogAsync(
                 CampsAuditActions.CampRegistrationInfoUpdated, nameof(CampEventSettings), eventSettingsId,
-                trimmed is null
+                trimmed.Length == 0
                     ? $"Cleared the registration info for {target.EventName}"
                     : $"Updated the registration info for {target.EventName}",
                 actorUserId);
@@ -328,7 +329,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>
-        _dataLifecycle.ReassignAsync(sourceUserId, targetUserId, actorUserId, updatedAt, ct);
+        _dataLifecycle.ReassignAsync(sourceUserId, targetUserId, ct);
 
     public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
         _dataLifecycle.ContributeForUserAsync(userId, ct);

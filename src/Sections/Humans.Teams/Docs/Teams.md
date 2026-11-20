@@ -11,6 +11,8 @@
 
 Departments and sub-teams, their members, join requests, named role slots, team pages, early-entry grants, and the system teams computed from other sections' facts.
 
+Team create/edit form redisplays use request cancellation for parent-team picker reads, including write refusals, creation failures and group-reactivation confirmation. Creation redisplay reads run outside the write-error handler so abandoned reads do not produce a creation-error message. Team mutations and post-write diagnostic reads retain their independent cancellation boundaries.
+
 ## Concepts
 
 - A **Department** is a team with no parent. A **Sub-Team** sits under exactly one department; only one level of nesting is allowed.
@@ -228,7 +230,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Repository:** `ITeamRepository` / `TeamRepository` owns every Teams table; only `TeamService` and its internal workflow owners call it.
 - **Inner service:** `TeamService` is a facade over internal owners, one per shape: `TeamLifecycle`, `TeamJoining`, `TeamMembershipAdministration`, `TeamRoleDefinitions`, `TeamPageContent`, `TeamEarlyEntry`, `TeamDataExport`, `TeamGoogleGroupMemberships`, sharing `TeamSnapshotReader` for team, permission and account reads and `TeamMembershipOutbox` for the atomic membership-plus-outbox write.
 - **Decorator decision:** caching decorator. `CachingTeamService` is a singleton `TrackedCache` over `ITeamManagementService` holding the Teams-owned graph and a user-to-team index; member display data resolves live through `IUserService` on each read. Every write to the graph clears the cache and the next read re-warms it whole; early-entry grants are read live. Team search is served only from the cache.
-- **Page composer:** `TeamPageService` builds the directory, team detail, My Teams and roster pages from the cached graph and role checks; it owns no tables and calls no repository.
+- **Page composer:** `TeamPageService` builds the directory, team detail, My Teams and roster pages from the cached graph and role checks; it owns no tables and calls no repository. Detail-page member projections share one internal shape with ID, role and display name for ordering; names and avatars render through `<vc:human>`. They do not copy unused email, photo URL or join date into the page pipeline. Admin membership projections and My Teams join dates retain their separate live uses.
 - **Display stitching:** `IUserService.GetUserInfosAsync`.
 - **Architecture enforcement:** `tests/Humans.Teams.Tests/Architecture/TeamsArchitectureTests.cs` (one singleton behind every face), `TeamPageArchitectureTests.cs`.
 - **System-team sync:** `SystemTeamSyncJob` (internal, registered and scheduled in `Section.cs`) behind `ISystemTeamSync`. Hangfire keys the recurring job on its id.

@@ -140,7 +140,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   the others still sweep. A failed diagnostic save logs its exception and account ID without stopping healthy
   accounts or replacing caller cancellation; the sync gate is still released. The shared transaction, payout
   and automatic-payout breakdown pager requires an explicit boolean `has_more` in the raw response; the SDK's
-  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list.
+  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list. Every list item requires a nonblank ID. Full transaction records additionally require type, status, currency, reporting category, integer amount/fee/net and creation/availability timestamps; full payout records require currency, status, integer amount and creation/arrival timestamps, plus an explicit automatic flag. Missing fields fail the fetch rather than accepting SDK defaults. Payout-breakdown reads consume and validate IDs only; optional metadata remains optional.
   The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
   the job and Sync now.
 - Account startup saves are covered by account failure handling, so one failed `Running` save does not stop
@@ -186,7 +186,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   every configured account. No key: logs and skips. A failed account fails the job run.
 - At boot, the smoke probe lists one PaymentIntent (Tickets key) and one Checkout Session
   (Store key), logging a warning per unconfigured or under-scoped key. It never blocks or
-  fails startup.
+  fails startup. Expected Stripe/API boot failures log Warning with their reason and no exception stack; unexpected faults log Error with the original exception. Webhook cleanup treats only 404 as an already-deleted endpoint; other Stripe deletion failures remain visible at Warning. GitHub cleanup-read failures follow the same expected/unexpected distinction. Cleanup continuation, timeout handling and startup behavior are unchanged.
 - At boot in an ephemeral environment, the registrar lists the account's webhook endpoints
   once and, from that one listing, deletes any `{N}.n.burn.camp` endpoint whose PR `{N}` is no
   longer open and then any endpoint already pointing at this host's URL — then creates a fresh

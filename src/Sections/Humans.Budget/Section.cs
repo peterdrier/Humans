@@ -43,11 +43,7 @@ public sealed class Section :
 
         services.AddScoped<TicketingBudgetService>();
         services.AddScoped<ITicketingBudgetService>(sp => sp.GetRequiredService<TicketingBudgetService>());
-        // A factory: the job's constructor is internal, and DI's activation only sees public ones.
-        services.AddScoped(sp => new TicketingBudgetSyncJob(
-            sp.GetRequiredService<ITicketingBudgetService>(),
-            sp.GetRequiredService<IBudgetService>(),
-            sp.GetRequiredService<ILogger<TicketingBudgetSyncJob>>()));
+        services.AddScoped<TicketingBudgetSyncJob>();
 
         // Development drives this through the Contracts/ interface, which keeps Budget's write methods off the
         // public surface.

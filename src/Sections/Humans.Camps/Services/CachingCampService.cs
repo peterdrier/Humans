@@ -320,7 +320,7 @@ internal sealed class CachingCampService(
             return result;
         });
 
-    public Task<CampImageUploadResult> UploadImageAsync(
+    public Task<CampUpdateResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
         Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>

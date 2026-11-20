@@ -185,6 +185,45 @@ public class ShiftProfileControllerTests
         controller.TempData.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShiftInfo_RedisplayCatalog_PropagatesCancellation(bool saveFails)
+    {
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        using var request = new CancellationTokenSource();
+        var shifts = Substitute.For<IShiftManagement>();
+        var profiles = Substitute.For<IShiftVolunteerProfiles>();
+        var users = Substitute.For<IUserService>();
+        var userId = Guid.NewGuid();
+        users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = userId }, [], [], null)));
+        profiles.GetTagsAsync(null, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<ShiftTagSummary>>([]);
+        });
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            RequestAborted = request.Token,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+        };
+        var controller = Build(shifts, profiles, Substitute.For<IShiftView>(), users,
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(),
+            services.GetRequiredService<IStringLocalizer<ShiftsResource>>(), http);
+        profiles.SetVolunteerTagPreferencesAsync(userId, Arg.Any<IReadOnlyList<Guid>>()).Returns(saveFails);
+        if (saveFails)
+            shifts.UpdateShiftProfileAsync(Arg.Any<ShiftVolunteerProfileInfo>())
+                .Returns(_ => throw new IOException("Profile save unavailable."));
+
+        await request.CancelAsync();
+        Func<Task<IActionResult>> save = () => controller.ShiftInfo(new ShiftInfoViewModel());
+
+        await save.Should().ThrowAsync<OperationCanceledException>();
+        await profiles.Received(1).GetTagsAsync(null, request.Token);
+    }
+
     private static ShiftProfileController Build(
         IShiftManagement shifts, IShiftVolunteerProfiles profiles, IShiftView view, IUserService users,
         IStringLocalizer<SharedResource> shared, IStringLocalizer<ShiftsResource> shiftsLocalizer, DefaultHttpContext http)

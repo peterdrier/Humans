@@ -8,6 +8,10 @@ internal sealed class CashFlowViewModel
     public required string Period { get; init; } // "weekly" or "monthly"
     public required IReadOnlyList<CashFlowPeriodRow> Periods { get; init; }
     public required CashFlowUnscheduledSummary Unscheduled { get; init; }
+
+    public decimal ScheduledIncomeTotal => Periods.Sum(period => period.IncomeTotal);
+    public decimal ScheduledExpenseTotal => Periods.Sum(period => period.ExpenseTotal);
+    public decimal ScheduledNet => ScheduledIncomeTotal + ScheduledExpenseTotal;
 }
 
 internal sealed class CashFlowPeriodRow

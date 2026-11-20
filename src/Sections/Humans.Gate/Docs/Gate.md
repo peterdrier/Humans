@@ -273,7 +273,7 @@ There is no `Contracts/` folder: nothing outside the section calls into it.
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.
-**Jobs:** both in `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
+**Jobs:** both internal and owned by `Humans.Gate/Jobs/`. `GateRetentionJob` (recurring) is registered by the
 section's own `ISectionJobs` (`ISectionJobs`, discovered by Shell — cron `45 3 * * *`);
 `GateVendorCheckInJob` is enqueued fire-and-forget on admit (Hangfire serializes the method
 reference, so it needs no registration).

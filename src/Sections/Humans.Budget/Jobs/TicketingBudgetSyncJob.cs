@@ -5,18 +5,14 @@ using Humans.Budget.Services;
 
 namespace Humans.Budget.Jobs;
 
-/// <summary>
-/// Public with an internal constructor: Shell names the type for Hangfire, so DI registers it through a factory in
-/// <c>Section.Register</c>.
-/// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public sealed class TicketingBudgetSyncJob : IRecurringJob
+internal sealed class TicketingBudgetSyncJob : IRecurringJob
 {
     private readonly ITicketingBudgetService _ticketingBudgetService;
     private readonly IBudgetService _budgetService;
     private readonly ILogger<TicketingBudgetSyncJob> _logger;
 
-    internal TicketingBudgetSyncJob(
+    public TicketingBudgetSyncJob(
         ITicketingBudgetService ticketingBudgetService,
         IBudgetService budgetService,
         ILogger<TicketingBudgetSyncJob> logger)

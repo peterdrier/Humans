@@ -540,7 +540,7 @@ should end is the Board's decision, taken on the register in front of them.
 
 ## Architecture
 
-The internal `WorkgroupRegisterReader` owns register, slug, ID and member reads and their complete group/document projections. Mutation guards reuse those projections and the same safe Discord-link policy. `WorkgroupService` keeps the existing entry points; cached graphs, deleted-meeting filtering, member selection and workflow authorization remain unchanged. No public contract or DI registration is added.
+The internal `WorkgroupRegisterReader` owns register, slug, ID and member reads and their complete group/document projections. The cached projections omit unconsumed applicant attribution, meeting creation/update timestamps and log update timestamps; stored metadata and entity-based GDPR exports retain them. Mutation guards reuse those projections and the same safe Discord-link policy. `WorkgroupService` keeps the existing entry points; cached graphs, deleted-meeting filtering, member selection and workflow authorization remain unchanged. No public contract or DI registration is added.
 
 The internal `WorkgroupDataExport` owns all six GDPR export slices, including register-name lookup and author/responder/moderator attribution. `WorkgroupService` retains the existing entry point, erasure with coordinator-loss notification and account merge; export keys, shapes, ordering and cancellation are unchanged. No public contract or DI registration is added.
 

@@ -14,7 +14,7 @@ internal sealed class GoogleWorkspaceUserService(
         return accounts;
     }
 
-    public async Task<WorkspaceUserAccount> ProvisionAccountAsync(
+    public async Task ProvisionAccountAsync(
         string primaryEmail,
         string firstName,
         string lastName,
@@ -26,14 +26,12 @@ internal sealed class GoogleWorkspaceUserService(
             throw new InvalidOperationException(
                 $"Cannot provision account for {primaryEmail}: FamilyName is required but was empty. The user must have a last name in their profile.");
 
-        var created = await client.ProvisionAccountAsync(
+        await client.ProvisionAccountAsync(
             primaryEmail, firstName, lastName, temporaryPassword, recoveryEmail, ct);
 
         logger.LogInformation(
             "Provisioned workspace account: {Email} (recovery: {Recovery})",
             primaryEmail, recoveryEmail ?? "none");
-
-        return created;
     }
 
     public async Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default)

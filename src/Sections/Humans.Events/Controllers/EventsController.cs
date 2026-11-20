@@ -45,7 +45,7 @@ internal sealed class EventsController(
 
         var tz = GetTimeZone(eventSettings);
 
-        var individualEvents = await guide.GetUserSubmissionsAsync(user.Id, ct);
+        var personalSummary = await guide.GetUserSubmissionsSummaryAsync(user.Id, ct);
 
         // Camps the user leads or runs workshops for.
         var managedCamps = (await LoadCampsByIdAsync(CampService, guideSettings?.EventSettingsId, ct)).Values
@@ -95,10 +95,10 @@ internal sealed class EventsController(
             TimeZoneId = eventSettings?.TimeZoneId,
             Personal = new PersonalSubmissionsBlock
             {
-                SubmittedCount = individualEvents.Count,
-                ApprovedCount = individualEvents.Count(e => e.Status == EventStatus.Approved),
-                PendingCount = individualEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = individualEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
+                SubmittedCount = personalSummary.SubmittedCount,
+                ApprovedCount = personalSummary.ApprovedCount,
+                PendingCount = personalSummary.PendingCount,
+                Events = personalSummary.Events.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
                 {
                     Id = e.Id,
                     Title = e.Title,

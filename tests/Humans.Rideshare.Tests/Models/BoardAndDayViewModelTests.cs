@@ -64,6 +64,6 @@ public sealed class BoardAndDayViewModelTests
         TripStatus status = TripStatus.Active,
         int seatsRemaining = 3) =>
         new(Guid.NewGuid(), userId, direction, "Paris", 48.85, 2.35, [], null,
-            departure, durationDays, null, VehicleType.Car, 3, seatsRemaining,
+            departure, durationDays, null, VehicleType.Car, 3, 3 - seatsRemaining,
             LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, status, Now);
 }

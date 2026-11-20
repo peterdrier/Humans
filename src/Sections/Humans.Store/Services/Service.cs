@@ -58,15 +58,13 @@ internal sealed class Service(
             catalog = await GetActiveCatalogAsync(order.Year, ct);
         }
 
-        // A pending async payment is excluded from BalanceEur, so without this the full balance stays payable a second
-        // time while the mandate settles: a double charge.
-        var hasPendingPayment = order.Payments.Any(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0);
-
+        // A pending async payment is excluded from BalanceEur, so without the HasPendingSettlement guard the full
+        // balance stays payable a second time while the mandate settles: a double charge.
         return new OrderPageData(
             order,
             catalog,
             canEdit,
-            canPayAuthorized && order.BalanceEur > 0 && !hasPendingPayment && order.CounterpartyType == OrderCounterpartyType.Camp,
+            canPayAuthorized && order.BalanceEur > 0 && !order.HasPendingSettlement && order.CounterpartyType == OrderCounterpartyType.Camp,
             stripeService.IsStoreCheckoutConfigured);
     }
 

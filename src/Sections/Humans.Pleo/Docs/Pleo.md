@@ -73,6 +73,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 ## Invariants
 
+- List and detail original-currency amounts use ISO 4217 minor-unit scales in their shared row projection, including zero-decimal ISK/JPY, three-decimal KWD and four-decimal CLF. Views preserve that precision. Pleo's [accounting-entry money schema](https://developers.pleo.io/reference/accounting-entries/v1/search-accounting-entries) defines currency-specific minor units; scales follow [SIX's ISO 4217 list](https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml). EUR reconciliation still uses Pleo's bill value and existing sign rules.
+
 - A category link with a missing or blank Pleo id is refused before anything is saved or audited.
 - Entry notes and stored sync errors are cut to their column length, and HTTP-error previews to 300 characters,
   never mid-character (`PleoTextBounds`). `Raw` keeps the entry as Pleo returned it.
@@ -98,7 +100,10 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   on every page; only `false` completes the dataset. Missing, null or mistyped metadata fails instead of
   returning a prefix. A body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
   cap also throws, so a short fetch can never delete rows.
-- Entries without an id or family are skipped and counted on the sync row. A provided `transactionValue` or `totalBillValue` must contain both a nonblank currency and a minor-unit value; incomplete money objects fail the sweep before mirror replacement and record a sync error. Optional money objects may be absent, and explicit zero amounts remain valid. List/detail views omit the original-currency figure when no currency was supplied.
+- The primary balance requires a nonblank currency and explicit current, available and pending-debit minor-unit values. Explicit zero and foreign currencies remain valid mirror data; an incomplete balance fails before mirror replacement.
+- Account, category, cardholder and receipt items require a nonblank string id. Malformed identities fail their read as `PleoPermanentException` before returning typed rows. Required mirror reads retain the previous snapshot; categories retain their optional-failure policy.
+- Entries with a missing, empty or whitespace-only id or family are skipped and counted on the sync row. A completed sweep with skipped rows logs Warning without an exception; a clean sweep logs Information. A provided `transactionValue` or `totalBillValue` must contain both a nonblank currency and a minor-unit value; incomplete money objects fail the sweep before mirror replacement and record a sync error. Optional money objects may be absent, and explicit zero amounts remain valid. List/detail views omit the original-currency figure when no currency was supplied.
+- Expected API failures in optional category and receipt reads, and permanent nightly failures, log Warning with the reason and no exception stack. Unexpected optional-category failures log Error with the original exception. Receipt/category fallbacks and nightly retry policy are unchanged; requested cancellation still propagates.
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and
   told so. No key (`PLEO_API_KEY`, `PLEO_COMPANY_ID`): the job logs and skips, Sync now is disabled.
 - Employee sweeps request `includeDeleted=true` on every page, retaining former cardholders and their deleted

@@ -6,5 +6,4 @@ internal sealed record CalendarEventViewModel(
     CalendarEventDetail Event,
     string OwningTeamName,
     IReadOnlyList<CalendarOccurrence> UpcomingOccurrences,
-    bool CanEdit,
     string ViewerTimezoneLabel);

@@ -62,14 +62,19 @@ public class MailerLiteSubscriberConverterTests
         s.LastName.Should().Be("Lister");
     }
 
-    [HumansFact]
-    public void Tolerates_Missing_Fields_Object()
+    [HumansTheory]
+    [Xunit.InlineData(null, null)]
+    [Xunit.InlineData("[]", null)]
+    [Xunit.InlineData("[\"42\"]", "42")]
+    [Xunit.InlineData("[{\"id\":\"42\"}]", "42")]
+    public void Tolerates_Missing_Fields_Object_And_Maps_Optional_Groups(string? groupsJson, string? expectedGroupId)
     {
-        const string json = """
-        { "id": "1", "email": "x@y.z", "status": "active" }
-        """;
+        var json = "{\"id\":\"1\",\"email\":\"x@y.z\",\"status\":\"active\""
+            + (groupsJson is null ? "" : ",\"groups\":" + groupsJson) + "}";
         var s = JsonSerializer.Deserialize<MailerLiteSubscriber>(json, Opts)!;
         s.FirstName.Should().BeNull();
         s.LastName.Should().BeNull();
+        if (expectedGroupId is null) s.GroupIds.Should().BeEmpty();
+        else s.GroupIds.Should().Equal(expectedGroupId);
     }
 }

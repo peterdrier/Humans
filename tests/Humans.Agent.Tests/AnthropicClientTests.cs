@@ -169,6 +169,163 @@ public sealed class AnthropicClientTests
         blocks[3].GetProperty("input").GetProperty("section").GetString().Should().Be("Teams");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(ProviderFailureKind.Api)]
+    [Xunit.InlineData(ProviderFailureKind.Sse)]
+    [Xunit.InlineData(ProviderFailureKind.Transport)]
+    [Xunit.InlineData(ProviderFailureKind.Unexpected)]
+    public async Task StreamAsync_ClassifiesFailuresAndKeepsTheErrorFinalizer(ProviderFailureKind failureKind)
+    {
+        Exception? failure = failureKind switch
+        {
+            ProviderFailureKind.Transport => new HttpRequestException("Provider unavailable"),
+            ProviderFailureKind.Unexpected => new InvalidOperationException("Unexpected handler failure"),
+            _ => null,
+        };
+        using var http = new HttpClient(new FailedResponseHandler(failureKind, failure));
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var logger = new Humans.Testing.CapturingLogger<ClientAdapter>();
+        var adapter = new ClientAdapter(provider, logger);
+        var tokens = new List<AgentTurnToken>();
+
+        await foreach (var token in adapter.StreamAsync(
+            new AnthropicRequest("test-model", "System", [new AnthropicMessage("user", "Question", null, null)], [], 100),
+            Xunit.TestContext.Current.CancellationToken))
+            tokens.Add(token);
+
+        tokens.Should().ContainSingle(token => token.Finalizer != null);
+        tokens.Single(token => token.Finalizer != null).Finalizer!.StopReason.Should().Be("error");
+        var entry = logger.Entries.Where(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning)
+            .Should().ContainSingle().Subject;
+        entry.Level.Should().Be(failureKind is ProviderFailureKind.Unexpected
+            ? Microsoft.Extensions.Logging.LogLevel.Error : Microsoft.Extensions.Logging.LogLevel.Warning);
+        if (failureKind is ProviderFailureKind.Unexpected) entry.Exception.Should().BeSameAs(failure);
+        else entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain(failureKind is ProviderFailureKind.Unexpected ? "failed" : "Provider unavailable");
+    }
+
+    [HumansFact]
+    public async Task StreamAsync_PropagatesCallerCancellationWithoutAnErrorFinalizer()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        using var http = new HttpClient(new StreamResponseHandler(""));
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var logger = new Humans.Testing.CapturingLogger<ClientAdapter>();
+        var adapter = new ClientAdapter(provider, logger);
+        var tokens = new List<AgentTurnToken>();
+
+        var read = async () =>
+        {
+            await foreach (var token in adapter.StreamAsync(
+                new AnthropicRequest("test-model", "System", [new AnthropicMessage("user", "Question", null, null)], [], 100),
+                cancellation.Token))
+                tokens.Add(token);
+        };
+
+        await read.Should().ThrowAsync<OperationCanceledException>();
+        tokens.Should().NotContain(token => token.Finalizer != null);
+        logger.Entries.Should().NotContain(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ModelPagesOutcome.Complete)]
+    [Xunit.InlineData(ModelPagesOutcome.Failure)]
+    [Xunit.InlineData(ModelPagesOutcome.Cancelled)]
+    public async Task ListModelsAsync_ReadsEveryPageOrPropagatesTheLaterFailure(ModelPagesOutcome outcome)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        var handler = new ModelPagesHandler(outcome, cancellation);
+        using var http = new HttpClient(handler);
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var adapter = new ClientAdapter(provider, NullLogger<ClientAdapter>.Instance);
+        var read = () => adapter.ListModelsAsync(cancellation.Token);
+
+        if (outcome is ModelPagesOutcome.Failure)
+            await read.Should().ThrowAsync<HttpRequestException>();
+        else if (outcome is ModelPagesOutcome.Cancelled)
+            await read.Should().ThrowAsync<OperationCanceledException>();
+        else
+        {
+            var models = await read();
+            models.Select(model => (model.Id, model.DisplayName)).Should()
+                .Equal(("model-new", "New model"), ("model-old", "Old model"));
+        }
+
+        handler.Queries.Should().HaveCount(2);
+        handler.Queries[0].Should().Contain("limit=100");
+        handler.Queries[1].Should().Contain("after_id=model-new");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, ProviderFailureKind.Api)]
+    [Xunit.InlineData(true, ProviderFailureKind.Api)]
+    [Xunit.InlineData(false, ProviderFailureKind.Transport)]
+    [Xunit.InlineData(true, ProviderFailureKind.Transport)]
+    [Xunit.InlineData(false, ProviderFailureKind.Unexpected)]
+    [Xunit.InlineData(true, ProviderFailureKind.Unexpected)]
+    public async Task Optional_reads_normalize_provider_failures_without_hiding_unexpected_errors(bool models, ProviderFailureKind kind)
+    {
+        Exception? failure = kind switch
+        {
+            ProviderFailureKind.Transport => new HttpRequestException("Provider unavailable"),
+            ProviderFailureKind.Unexpected => new InvalidOperationException("Unexpected handler failure"),
+            _ => null,
+        };
+        using var http = new HttpClient(new FailedResponseHandler(kind, failure));
+        var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
+        var adapter = new ClientAdapter(provider, NullLogger<ClientAdapter>.Instance);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Task ReadAsync() => models ? adapter.ListModelsAsync(ct) : adapter.CountTokensAsync("test-model", "Text", ct);
+        var read = ReadAsync;
+
+        if (kind is ProviderFailureKind.Api) await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*Provider unavailable*");
+        else if (kind is ProviderFailureKind.Transport) await read.Should().ThrowAsync<IOException>().WithMessage("*Provider unavailable*");
+        else (await read.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
+    }
+
+    private sealed class ModelPagesHandler(ModelPagesOutcome outcome, CancellationTokenSource cancellation) : HttpMessageHandler
+    {
+        public List<string> Queries { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Queries.Add(request.RequestUri!.Query);
+            var first = Queries.Count == 1;
+            if (!first && outcome is ModelPagesOutcome.Cancelled)
+            {
+                await cancellation.CancelAsync();
+                return await Task.FromCanceled<HttpResponseMessage>(cancellationToken);
+            }
+            var failed = !first && outcome is ModelPagesOutcome.Failure;
+            var body = failed ? "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Later page unavailable\"}}"
+                : first
+                    ? "{\"data\":[{\"id\":\"model-new\",\"display_name\":\"New model\",\"created_at\":\"2026-01-02T00:00:00Z\",\"type\":\"model\"}],\"has_more\":true,\"first_id\":\"model-new\",\"last_id\":\"model-new\"}"
+                    : "{\"data\":[{\"id\":\"model-old\",\"display_name\":\"Old model\",\"created_at\":\"2026-01-01T00:00:00Z\",\"type\":\"model\"}],\"has_more\":false,\"first_id\":\"model-old\",\"last_id\":\"model-old\"}";
+            return new HttpResponseMessage(failed ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK)
+            {
+                RequestMessage = request,
+                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
+    private sealed class FailedResponseHandler(ProviderFailureKind kind, Exception? failure) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (failure is not null) return Task.FromException<HttpResponseMessage>(failure);
+            return Task.FromResult(new HttpResponseMessage(kind is ProviderFailureKind.Api ? HttpStatusCode.TooManyRequests : HttpStatusCode.OK)
+            {
+                RequestMessage = request,
+                Content = new StringContent(kind is ProviderFailureKind.Api
+                    ? "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Provider unavailable\"}}"
+                    : "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Provider unavailable\"}}\n\n",
+                    Encoding.UTF8, kind is ProviderFailureKind.Api ? "application/json" : "text/event-stream"),
+            });
+        }
+    }
+
     private sealed class StreamResponseHandler(string body) : HttpMessageHandler
     {
         public string? LastRequestBody { get; private set; }
@@ -185,3 +342,7 @@ public sealed class AnthropicClientTests
         }
     }
 }
+
+public enum ProviderFailureKind { Api, Sse, Transport, Unexpected }
+
+public enum ModelPagesOutcome { Complete, Failure, Cancelled }

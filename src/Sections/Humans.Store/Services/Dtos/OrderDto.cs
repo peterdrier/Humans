@@ -29,6 +29,12 @@ internal sealed record OrderDto(
 {
     public bool HasCheckoutAttempt { get; init; }
 
+    public decimal PendingSettlementTotalEur => Payments
+        .Where(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0)
+        .Sum(p => p.AmountEur);
+
+    public bool HasPendingSettlement => PendingSettlementTotalEur > 0;
+
     /// <summary>What the order costs: lines, VAT and deposits, as the balance computes it.</summary>
     public decimal TotalDueEur { get; init; }
 

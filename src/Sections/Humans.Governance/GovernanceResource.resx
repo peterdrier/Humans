@@ -306,6 +306,11 @@
   <data name="Governance_BoardMembers" xml:space="preserve"><value>Board members</value></data>
   <data name="Governance_TheBoard" xml:space="preserve"><value>The Board</value></data>
   <data name="Governance_NoBoardMembers" xml:space="preserve"><value>No one holds the Board role right now.</value></data>
+  <data name="Governance_Body_MemberCount" xml:space="preserve"><value>{0} members</value></data>
+  <data name="Governance_Body_NoMembers" xml:space="preserve"><value>No one is in this group right now.</value></data>
+  <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Google group and files</value></data>
+  <data name="Governance_YourAccess" xml:space="preserve"><value>Your Google access</value></data>
+  <data name="Governance_ViewAll" xml:space="preserve"><value>View all</value></data>
   <data name="Governance_NeedsDecision" xml:space="preserve"><value>Needs a decision</value></data>
   <data name="Governance_NothingToDecide" xml:space="preserve"><value>Nothing is open for a decision right now.</value></data>
   <data name="Governance_AllVotes" xml:space="preserve"><value>All votes</value></data>

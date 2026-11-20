@@ -419,16 +419,9 @@ internal sealed class GoogleController(
             SetError(result.ErrorMessage);
         }
 
-        var model = new WorkspaceEmailListViewModel
+        var model = result with
         {
-            Accounts = result.Accounts.OrderBy(a => a.PrimaryEmail, StringComparer.OrdinalIgnoreCase).ToList(),
-            TotalAccounts = result.TotalAccounts,
-            ActiveAccounts = result.ActiveAccounts,
-            SuspendedAccounts = result.SuspendedAccounts,
-            LinkedAccounts = result.LinkedAccounts,
-            UnlinkedAccounts = result.UnlinkedAccounts,
-            NotPrimaryCount = result.NotPrimaryCount,
-            MissingTwoFactorCount = result.MissingTwoFactorCount
+            Accounts = result.Accounts.OrderBy(a => a.PrimaryEmail, StringComparer.OrdinalIgnoreCase).ToList()
         };
 
         // TempData is single-use: the recovery credentials show once, then are gone.

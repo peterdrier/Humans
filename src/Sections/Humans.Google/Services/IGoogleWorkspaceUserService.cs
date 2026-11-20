@@ -12,7 +12,7 @@ internal interface IGoogleWorkspaceUserService : IApplicationService
     /// should not be @nobodies.team.
     /// </summary>
     [ExternalWrite]
-    Task<WorkspaceUserAccount> ProvisionAccountAsync(
+    Task ProvisionAccountAsync(
         string primaryEmail,
         string firstName,
         string lastName,

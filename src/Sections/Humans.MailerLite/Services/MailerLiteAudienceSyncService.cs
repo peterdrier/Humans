@@ -94,7 +94,7 @@ internal sealed class MailerLiteAudienceSyncService(
         var userEmailMap = await emails.GetNotificationTargetEmailsAsync(memberUserIds.ToList(), ct);
         var droppedNoEmail = memberUserIds.Count - userEmailMap.Count;
         if (droppedNoEmail > 0)
-            logger.LogInformation(
+            logger.LogWarning(
                 "Audience {Audience}: dropped {Count} candidates with no notification-target email",
                 audience.Key, droppedNoEmail);
 

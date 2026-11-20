@@ -7,6 +7,7 @@ using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
+using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
@@ -199,11 +200,18 @@ public class SepaWithdrawTests
     public async Task CancelFile_IsRefused_WhenAnyTransferIsBooked_OrTheFileIsAlreadyCancelled(bool booked)
     {
         var fileId = Guid.NewGuid();
-        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>
+        var rows = new List<SepaPayoutTransferRow>
         {
             FileRow(fileId, 1000m, withdrawnAt: booked ? null : GeneratedAt),
             FileRow(fileId, 250m, bookedAt: booked ? FixedNow : null, withdrawnAt: booked ? null : GeneratedAt),
-        });
+        };
+        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(rows);
+        var file = new SepaPayoutFileVm(fileId, "f.xml", GeneratedAt, Actor,
+            rows.Select(row => new SepaTransferVm(row, "Member")).ToList(), null);
+        file.IsCancelled.Should().Be(!booked);
+        file.CanCancel.Should().BeFalse();
+        file.SummaryTransferCount.Should().Be(2);
+        file.SummaryTotal.Should().Be(1250m);
 
         var result = await MakeService().CancelSepaFileAsync(fileId, Actor, TestContext.Current.CancellationToken);
 

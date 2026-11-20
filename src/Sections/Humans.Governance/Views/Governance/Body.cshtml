@@ -1,0 +1,52 @@
+@model GovernanceBodyViewModel
+@{
+    var title = Model.Body switch
+    {
+        GovernanceBody.Asociados => Localizer["Governance_Asociados"].Value,
+        GovernanceBody.Colaboradores => Localizer["Governance_Colaboradores"].Value,
+        _ => Localizer["Governance_TheBoard"].Value,
+    };
+    ViewData["Title"] = title;
+}
+
+@section Crumbs {
+    <a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a>
+    <span>@title</span>
+}
+
+<page-header title="@title" />
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header fw-semibold">@Localizer["Governance_Body_MemberCount", Model.MemberIds.Count]</div>
+            <div class="card-body">
+                @if (Model.MemberIds.Count == 0)
+                {
+                    <empty-state class="mb-0">@Localizer["Governance_Body_NoMembers"]</empty-state>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var memberId in Model.MemberIds)
+                        {
+                            <div class="col-6 col-sm-4 col-md-3">
+                                <vc:human user-id="@memberId" layout="Card" size="102" />
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Links is { } links)
+    {
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header fw-semibold">@Localizer["Governance_GroupAndFiles"]</div>
+                <partial name="_BodyLinks" model="links" />
+            </div>
+        </div>
+    }
+</div>

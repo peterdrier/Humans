@@ -293,7 +293,7 @@ public sealed class CampRepositoryTests : IDisposable
         var target = Guid.NewGuid();
         await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
 
-        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        await _repo.ReassignMembershipsToUserAsync(source, target, ct);
 
         (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
         var moved = await _dbContext.CampMembers.AsNoTracking().SingleAsync(m => m.UserId == target, ct);
@@ -312,7 +312,7 @@ public sealed class CampRepositoryTests : IDisposable
         var member = await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
         await SeedAssignmentAsync(season.Id, leadDef.Id, member.Id);
 
-        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        await _repo.ReassignMembershipsToUserAsync(source, target, ct);
 
         var assignment = await _dbContext.CampRoleAssignments.AsNoTracking()
             .Include(a => a.CampMember)
@@ -345,12 +345,12 @@ public sealed class CampRepositoryTests : IDisposable
         var repo = new CampRepository(new TestDbContextFactory<CampsDbContext>(options));
         if (failMemberRemoval)
         {
-            Func<Task> merge = () => repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+            Func<Task> merge = () => repo.ReassignMembershipsToUserAsync(source, target, ct);
             await merge.Should().ThrowAsync<IOException>();
         }
         else
         {
-            await repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+            await repo.ReassignMembershipsToUserAsync(source, target, ct);
         }
 
         probe.TransactionIds.Should().HaveCount(2).And.NotContainNulls();
@@ -383,7 +383,7 @@ public sealed class CampRepositoryTests : IDisposable
         await SeedMemberAsync(season.Id, source, CampMemberStatus.Removed);
         await SeedMemberAsync(season.Id, target, CampMemberStatus.Active);
 
-        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        await _repo.ReassignMembershipsToUserAsync(source, target, ct);
 
         // Removed rows ignore the active-unique index, so the history row carries over
         // and coexists with the survivor's live membership.
@@ -406,9 +406,9 @@ public sealed class CampRepositoryTests : IDisposable
         using var scope = new TransactionScope(TransactionScopeOption.Required,
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
             TransactionScopeAsyncFlowOption.Enabled);
-        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        await _repo.ReassignMembershipsToUserAsync(source, target, ct);
         // Second run finds nothing left on source — must be a safe no-op, not a duplicate or throw.
-        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        await _repo.ReassignMembershipsToUserAsync(source, target, ct);
 
         (await _dbContext.CampMembers.AsNoTracking().CountAsync(m => m.UserId == source, ct)).Should().Be(0);
         (await _dbContext.CampMembers.AsNoTracking()
@@ -427,7 +427,7 @@ public sealed class CampRepositoryTests : IDisposable
         await SeedMemberAsync(season.Id, source, CampMemberStatus.Active);
         await SeedMemberAsync(season.Id, target, CampMemberStatus.Pending);
 
-        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        await _repo.ReassignMembershipsToUserAsync(source, target, ct);
 
         // Survivor must not be downgraded to the target's Pending state — active
         // role-assignment queries filter Status == Active, so a Pending survivor
@@ -450,7 +450,7 @@ public sealed class CampRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync(ct);
         await SeedMemberAsync(season.Id, target, CampMemberStatus.Active); // survivor has no EE grant
 
-        await _repo.ReassignMembershipsToUserAsync(source, target, _clock.GetCurrentInstant(), ct);
+        await _repo.ReassignMembershipsToUserAsync(source, target, ct);
 
         // The archived member's early-entry grant must survive the collision-drop.
         var survivor = await _dbContext.CampMembers.AsNoTracking()

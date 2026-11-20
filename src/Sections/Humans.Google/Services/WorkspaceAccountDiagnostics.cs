@@ -38,17 +38,11 @@ internal sealed class WorkspaceAccountDiagnostics(
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             var accountInfos = new List<WorkspaceAccountInfo>();
-            var notPrimaryCount = 0;
 
             foreach (var account in accounts)
             {
                 matchByEmail.TryGetValue(account.PrimaryEmail, out var matched);
                 var isUsedAsPrimary = matched is { IsPrimary: true };
-
-                if (matched is not null && !isUsedAsPrimary)
-                {
-                    notPrimaryCount++;
-                }
 
                 var matchedUser = matched is not null
                     ? usersById.GetValueOrDefault(matched.UserId)
@@ -68,19 +62,7 @@ internal sealed class WorkspaceAccountDiagnostics(
                     RecoveryEmail: account.RecoveryEmail));
             }
 
-            var linkedCount = accountInfos.Count(a => a.MatchedUserId.HasValue);
-            // Suspended accounts cannot sign in, so their missing 2FA is noise.
-            var missingTwoFactorCount = accountInfos.Count(a => !a.IsSuspended && !a.IsEnrolledIn2Sv);
-
-            return new WorkspaceAccountListResult(
-                Accounts: accountInfos,
-                TotalAccounts: accountInfos.Count,
-                ActiveAccounts: accountInfos.Count(a => !a.IsSuspended),
-                SuspendedAccounts: accountInfos.Count(a => a.IsSuspended),
-                LinkedAccounts: linkedCount,
-                UnlinkedAccounts: accountInfos.Count - linkedCount,
-                NotPrimaryCount: notPrimaryCount,
-                MissingTwoFactorCount: missingTwoFactorCount);
+            return new WorkspaceAccountListResult(accountInfos);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -92,13 +74,6 @@ internal sealed class WorkspaceAccountDiagnostics(
             logger.LogError(ex, "Failed to load @nobodies.team accounts");
             return new WorkspaceAccountListResult(
                 Accounts: [],
-                TotalAccounts: 0,
-                ActiveAccounts: 0,
-                SuspendedAccounts: 0,
-                LinkedAccounts: 0,
-                UnlinkedAccounts: 0,
-                NotPrimaryCount: 0,
-                MissingTwoFactorCount: 0,
                 ErrorMessage: "Failed to load @nobodies.team accounts. Check the logs for details.");
         }
     }

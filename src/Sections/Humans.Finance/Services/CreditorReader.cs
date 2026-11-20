@@ -100,7 +100,7 @@ internal sealed class CreditorReader(
         var mirror = await holded.GetPurchaseDocumentsAsync(ct);
         if (mirror.LastSyncAt is not null)
         {
-            var purchaseDocs = mirror.Docs.Select(ToListItem).ToList();
+            var purchaseDocs = mirror.Docs;
             if (mirror.Docs.All(d => d.PaymentsPending is not null))
                 openDocsByContact = SepaBankBooking.OpenDocs(purchaseDocs)
                     .Where(d => !string.IsNullOrEmpty(d.ContactId))
@@ -162,24 +162,6 @@ internal sealed class CreditorReader(
 
         return (rows, unresolved, null);
     }
-
-    /// <summary>The list shape the booking filter and duplicate matcher read.</summary>
-    internal static HoldedPurchaseDocListItemDto ToListItem(HoldedPurchaseDocInfo d) => new()
-    {
-        Id = d.Id,
-        DocNumber = d.DocNumber,
-        ContactId = d.ContactId,
-        ContactName = d.ContactName,
-        Description = d.Description,
-        Date = d.Date.AtStartOfDayInZone(MadridZone).ToInstant(),
-        Subtotal = d.Subtotal,
-        Tax = d.Tax,
-        Total = d.Total,
-        PaymentsPending = d.PaymentsPending ?? 0m,
-        IsDraft = !d.IsApproved,
-        Currency = d.Currency,
-        Tags = d.Tags,
-    };
 
     private static string? GetNotPayableReason(CreditorAccountRow row)
     {
@@ -287,7 +269,7 @@ internal sealed class CreditorReader(
     }
 
     private async Task<IReadOnlyList<HoldedDuplicateMatcher.Match>> FindDuplicateDocumentsAsync(
-        IReadOnlyList<HoldedPurchaseDocListItemDto> docs,
+        IReadOnlyList<HoldedPurchaseDocInfo> docs,
         IReadOnlyDictionary<string, HoldedContactDto> contactById, CancellationToken ct)
     {
         var bookings = await expenses.GetHoldedBookingsAsync(ct);

@@ -911,7 +911,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task Approve_ShiftAtMaxVolunteers_ReturnsError()
+    public async Task Approve_ShiftAtMaxVolunteers_RefusesLikeAFullRangeDay()
     {
         var (_, _, shift) = SeedShiftScenario(SignupPolicy.RequireApproval);
         for (var i = 0; i < shift.MaxVolunteers; i++)
@@ -924,7 +924,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         result.Success.Should().BeFalse();
         result.Error.Should().Contain("at capacity");
         (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == pendingSignup.Id, TestContext.Current.CancellationToken))
-            .Status.Should().Be(SignupStatus.Pending);
+            .Status.Should().Be(SignupStatus.Refused);
     }
 
     [HumansFact]
@@ -1578,7 +1578,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var result = await _service.VoluntellRangeAsync(userId, rota.Id, -3, -1, Guid.NewGuid());
 
         result.Success.Should().BeTrue();
-        result.Warning.Should().Contain("time conflicts");
+        result.Warning.Should().Contain("Time conflict");
         var signups = await ShiftsDb.ShiftSignups.AsNoTracking()
             .Where(s => s.UserId == userId).Include(s => s.Shift)
             .ToListAsync(TestContext.Current.CancellationToken);
@@ -2120,7 +2120,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().Be(!allAtCapacity);
         if (allAtCapacity)
-            result.Error.Should().Be("Cannot approve: all shifts in this range are at capacity.");
+            result.Error.Should().Be("Cannot approve: all shifts in this range are at capacity, so the requests were refused.");
         else
             result.Warning.Should().Contain("capacity");
         (await ShiftsDb.ShiftSignups.SingleAsync(s => s.Id == freePending.Id, TestContext.Current.CancellationToken))

@@ -289,6 +289,9 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- Creditor open-document counts, SEPA payment selection and duplicate review consume Holded's `HoldedPurchaseDocInfo` mirror directly. Approval and nullable payment state are preserved; FIFO uses the mirrored accounting date and document id. No conversion back to connector payloads or midnight instants occurs.
+
+
 - Handled Holded read failures for creditor/duplicate planning and the SEPA page or sweep retain Warning logs with their reason, without exception stacks. Existing unavailable-data, omitted-balance and no-write fallbacks remain. Handled SEPA reconciliation refusals, chunk retries and verification failures also retain Warning and their reasons without exception stacks; an unverified reconciliation stays pending.
 
 - Provisioning, SEPA generation/booking/withdrawal (including whole-file cancellation), duplicate removal, creditor binding changes and IBAN reveals resolve the acting account through Users before calling the service. Merged sessions use the surviving actor ID; missing accounts retain the action's Challenge/Forbid response and perform no operation. Account reads observe request cancellation, while each service call retains its existing cancellation boundary.
@@ -455,6 +458,11 @@ Internal `CreditorBindings` owns binding lookup, manual bind/unbind, automatic c
 Internal `CategoryAccounts` owns category-account provisioning, map projections, active-year labels, generated tags, managed expense-account creation/linking, activation and listing, and purchase-document attribution for category actuals and the unmatched queue. Managed-account metadata is projected by this same owner. The main `Service` delegates these existing entry points and retains creditor-report composition, expense reconciliation and SEPA workflows. Account allocation order, live-chart collision checks, audit-before-map-save ordering, additive mappings and cancellation are unchanged. Expense-account options reuse the same category label lookup; no DI registration or public contract is added.
 
 **Owning service:** `Service` (`Humans.Finance.Services`) implements both faces published from the contracts leaf: `IFinanceService`, the read surface for cross-section callers (`BudgetAdminController`, Expenses, Preapprovals, `Backdoor.BackdoorFinanceController`) and Finance's own `FinanceController`, and `IFinanceWrite`, the narrow write surface (Expenses for the IBAN and creditor-contact calls, `Workgroups.WorkgroupService` for the expense-account calls). The IBAN members delegate to the internal `PaymentDetailsService`.
+
+The internal SEPA file projection owns header lifecycle facts: withdrawn and unbooked counts, whether every remaining unbooked transfer is matched, and the summarized count/amount. A fully cancelled file retains its original count/amount; other files exclude withdrawn transfers. Cancellation eligibility reuses the booking service's rule; the view still resolves authorization and configuration availability, and mutations revalidate at execution.
+
+The overview and cash-flow view models supply their page totals: in-progress SEPA sums only the already-selected unbooked/unwithdrawn transfers, while scheduled cash-flow income, expenses and net sum the dated periods and exclude the separate unscheduled bucket. Views format those totals.
+
 **Cash flow:** `CashFlowService` (internal, scoped, no repository) owns bucketing, running net and runway; reads Budget and Tickets contracts. The view orders scheduled and unscheduled category rows by group then category name with ordinal case-insensitive comparison. Chronological period ordering stays in the service because running balances depend on it. `VatCalculation` in Finance.Contracts owns VAT-inclusive portion and quarterly settlement-date math, shared with Budget summaries and category projections.
 **Pure matcher:** `HoldedMatcher` (static, no dependencies)
 **Pure file builder:** `SepaPaymentFileBuilder` with `SepaSchema` and `SepaText` (no IO, no clock, no configuration)

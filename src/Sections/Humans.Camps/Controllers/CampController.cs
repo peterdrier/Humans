@@ -52,13 +52,14 @@ internal sealed class CampController(
     }
 
     /// <summary>New camps register for the open event with the latest gate opening; null when none is open.</summary>
-    private async Task<CampEventRegistration?> PopulateRegisterSeasonAsync(CancellationToken ct = default)
+    private async Task<CampEventRegistration?> PopulateRegisterSeasonAsync(CancellationToken ct)
     {
         var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.FirstOrDefault();
         ViewData["SeasonYear"] = registrationEvent?.Year ?? 0;
         ViewData["RegistrationInfo"] = registrationEvent is null
             ? null
-            // The City Planning fallback goes in the retirement PR of camps.registration-info-from-city-planning.
+            // Null is never set (empty is cleared). The fallback goes in the retirement PR of
+            // camps.registration-info-from-city-planning.
             : registrationEvent.RegistrationInfo
               ?? await cityPlanningService.GetLegacyRegistrationInfoAsync(registrationEvent.Year, ct);
         return registrationEvent;
@@ -310,7 +311,7 @@ internal sealed class CampController(
                 logger.LogWarning("Camp registration refused for user {UserId}, event {EventSettingsId}: {ErrorKey}",
                     user.Id, registrationEvent.EventSettingsId, key);
                 ModelState.AddModelError(string.Empty, campsLocalizer[key, model.Name].Value);
-                await PopulateRegisterSeasonAsync();
+                await PopulateRegisterSeasonAsync(ct);
                 return View(model);
             }
             SetSuccess(campsLocalizer["Camps_Flash_RegistrationPendingReview"].Value);
@@ -321,7 +322,7 @@ internal sealed class CampController(
             logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in event {EventSettingsId}",
                 user.Id, registrationEvent.EventSettingsId);
             ModelState.AddModelError(string.Empty, campsLocalizer["Camps_Flash_RegistrationFailed"].Value);
-            await PopulateRegisterSeasonAsync();
+            await PopulateRegisterSeasonAsync(ct);
             return View(model);
         }
     }
@@ -491,7 +492,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
-            await PopulateEditReadOnlyFieldsAsync(model, camp);
+            await PopulateEditReadOnlyFieldsAsync(model, camp, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -513,7 +514,7 @@ internal sealed class CampController(
             logger.LogWarning("Camp update refused for {CampId}, slug {Slug}, season {SeasonId}: {ErrorKey}",
                 camp.Id, slug, model.SeasonId, result.ErrorKey);
             ModelState.AddModelError(string.Empty, campsLocalizer[result.ErrorKey ?? "Camps_Flash_UpdateFailed"].Value);
-            await PopulateEditReadOnlyFieldsAsync(model, camp);
+            await PopulateEditReadOnlyFieldsAsync(model, camp, HttpContext.RequestAborted);
             return View(model);
         }
 
@@ -680,7 +681,7 @@ internal sealed class CampController(
         }
         else
         {
-            SetError(campsLocalizer[result.ErrorMessage ?? "Camps_Flash_ImageUploadFailed"].Value);
+            SetError(campsLocalizer[result.ErrorKey ?? "Camps_Flash_ImageUploadFailed"].Value);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -1107,12 +1108,12 @@ internal sealed class CampController(
             ElectricalGrid: model.ElectricalGrid);
     }
 
-    private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model, CampInfo camp)
+    private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model, CampInfo camp, CancellationToken ct)
     {
         var season = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
         var editData = season is null
             ? null
-            : await _campService.GetCampEditDataAsync(camp.Id, season.EventSettingsId);
+            : await _campService.GetCampEditDataAsync(camp.Id, season.EventSettingsId, ct);
         if (editData is null)
         {
             model.Images = [];
@@ -1127,6 +1128,7 @@ internal sealed class CampController(
                 SortOrder = image.SortOrder
             })
             .ToList();
+        model.HasEarlyEntryCapacity = editData.HasEarlyEntryCapacity;
         PopulateEditMembers(model, season);
     }
 
@@ -1139,6 +1141,7 @@ internal sealed class CampController(
             Year = editData.Year,
             EventSettingsId = editData.EventSettingsId,
             IsNameLocked = editData.IsNameLocked,
+            HasEarlyEntryCapacity = editData.HasEarlyEntryCapacity,
             Name = editData.Name,
             ContactEmail = editData.ContactEmail,
             ContactPhone = editData.ContactPhone,

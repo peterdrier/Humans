@@ -441,7 +441,6 @@ internal sealed partial class CampRepository : ICampRepository
         var row = await ctx.CampEventSettings.FindAsync([eventSettingsId], ct);
         if (row is null)
         {
-            if (registrationInfo is null) return false;
             ctx.CampEventSettings.Add(new CampEventSettings { EventSettingsId = eventSettingsId, RegistrationInfo = registrationInfo });
         }
         else if (string.Equals(row.RegistrationInfo, registrationInfo, StringComparison.Ordinal))

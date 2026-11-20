@@ -36,7 +36,7 @@ lines with who the money moved to or from.
 
 | # | Question the caller is asking | Answered by | Members |
 |---|---|---|---|
-| 1 | *What does the book say?* | `IHoldedService` | `GetLedgerLinesAsync`, `GetAccountBalancesAsync`, `GetEntryAsync`, `GetLedgerSyncedAtAsync` |
+| 1 | *What does the book say?* | `IHoldedService` | `GetLedgerLinesAsync`, `GetAccountBalancesAsync`, `GetLedgerSyncedAtAsync` |
 | 2 | *What accounts exist to book to?* | `IHoldedService` | `GetChartAsync`, `SyncChartAsync` |
 | 3 | *What documents, contacts and bank lines does Holded hold?* | `IHoldedService` | `GetPurchaseDocumentsAsync`, `GetContactsAsync`, `GetBankMovementsAsync` |
 | 4 | *Make a copy current before I act on it.* | `IHoldedService` | `SyncLedgerAsync`, `SyncAccountLedgerAsync`, `SyncPurchaseDocumentsAsync`, `SyncPurchaseDocumentNotesAsync`, `SyncContactsAsync`, `SyncBankMovementsAsync` |
@@ -44,18 +44,12 @@ lines with who the money moved to or from.
 | 6 | *Book a cost we owe.* | `IHoldedWrite` | `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachmentAsync`, `EnsurePurchaseDocumentApprovedAsync`, `DeletePurchaseDocumentByIdAsync`, `EnsureExpenseAccountAsync` |
 | 7 | *Record that money moved.* | `IHoldedWrite` | `PayPurchaseDocumentAsync`, `ReconcileBankMovementAsync`, `PostJournalEntryAsync` |
 | 8 | *Book money we are owed.* | `IHoldedWrite` | `FindSalesDocumentsByTagAsync`, `IssueSalesDocumentAsync`, `ApproveSalesDocumentAsync`, `SendSalesDocumentAsync`, `PaySalesDocumentAsync`, `CreateTreasuryPaymentAsync` |
-| 9 | *Who is the counterparty?* | `IHoldedWrite` | `EnsureCreditorContactAsync`, `CreateContactAsync`, `DeleteContactAsync` |
+| 9 | *Who is the counterparty?* | `IHoldedWrite` | `CreateContactAsync`, `DeleteContactAsync` |
 | 10 | *Show the copies and the meter.* | `IHoldedAdminService` + `/Holded/*` | `GetSummaryAsync`, `RefreshUsageAsync`, `SyncNowAsync`, `GetAccountsPageAsync`, `GetAccountStatementAsync`, `GetEntryViewAsync`, `GetCallsByMonthAsync` |
 | 11 | *Can we call Holded at all?* | `IHoldedService` | `IsConfigured` |
 
 Shapes 1–5 are the mirror, 6–9 the write face, 10 the admin screen. Every shape sits on the
 internal connector, `IHoldedClient`, which no other section can reach.
-
-Built with no caller yet (the single-mirror phase 1 added them ahead of phase 2's adopters):
-`IHoldedWrite.EnsurePurchaseDocumentAsync`, `IHoldedWrite.DeletePurchaseDocumentAsync` (the
-match-and-refuse delete), `IHoldedService.GetPurchaseLinesAsync`,
-`IHoldedService.GetOpenDocumentAmountsAsync`, `IHoldedService.GetSumsByAccountAsync` and
-`IHoldedService.GetChartSyncedAtAsync`. They are surface without a shape until a caller arrives.
 
 ## 3. Structure
 
@@ -91,8 +85,9 @@ Structural facts the layout should make obvious:
 - **The connector is a leaf.** `IHoldedClient` holds no table and no mirror invariant; it is
   internal so the compiler, not review, keeps every other section off Holded's API.
 - **Connector-only DTOs do not belong in `Contracts/`.** The usage, expense-account, purchase
-  read and payment-detail DTOs and `HoldedClientOptions` cross no section boundary; their place
-  in the public folder is debt, not design (`Docs/debt.yml`).
+  detail, account, ledger-line and payment-detail DTOs and `HoldedClientOptions` are internal
+  in `Services/`. Finance tests seed account and ledger mirrors through the public read models.
+  Purchase-list and purchase-line DTOs are internal too; Finance consumes `HoldedPurchaseDocInfo` directly.
 - **`Models/HoldedAdminModels.cs` stays internal.** One escaped type makes the screen a contract.
 
 ## 4. Invariants
