@@ -182,8 +182,9 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
                 ?? throw new HoldedTransientException("Holded returned empty body");
             return new HoldedUsageDto
             {
-                Period = Prop(node, "period")?.GetValue<string>() ?? "",
-                Usage = Prop(node, "usage")?.GetValue<long>() ?? 0,
+                Period = ReadRequiredString(Prop(node, "period"), "period"),
+                Usage = Prop(node, "usage")?.GetValue<long>()
+                    ?? throw new HoldedPermanentException("Holded usage is missing required field 'usage'."),
             };
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException

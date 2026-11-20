@@ -612,11 +612,13 @@ public class HoldedClientReadTests
         account.Archived.Should().BeFalse();
     }
 
-    [HumansFact]
-    public async Task GetUsage_parses_period_and_usage()
+    [HumansTheory]
+    [Xunit.InlineData(0L)]
+    [Xunit.InlineData(36L)]
+    public async Task GetUsage_parses_period_and_usage(long count)
     {
-        var json = """
-        {"type":"automation_token","period":"2026-08","usage":36,"limit":2000000,
+        var json = $$"""
+        {"type":"automation_token","period":"2026-08","usage":{{count}},"limit":2000000,
          "count":1,"secondary_usages":{"api_v1_legacy_1":35},"user_usages":[],
          "next_plan":null,"next_limit":null}
         """;
@@ -625,7 +627,21 @@ public class HoldedClientReadTests
         var usage = await client.GetUsageAsync(Xunit.TestContext.Current.CancellationToken);
 
         usage.Period.Should().Be("2026-08");
-        usage.Usage.Should().Be(36);
+        usage.Usage.Should().Be(count);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("{\"period\":\"2026-08\"}")]
+    [Xunit.InlineData("{\"period\":\"2026-08\",\"usage\":null}")]
+    [Xunit.InlineData("{\"usage\":36}")]
+    [Xunit.InlineData("{\"status\":0,\"message\":\"error\"}")]
+    public async Task GetUsage_rejects_incomplete_readings(string json)
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var act = () => client.GetUsageAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]
