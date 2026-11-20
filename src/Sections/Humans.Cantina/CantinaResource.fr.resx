@@ -98,4 +98,8 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Afficher les allergies et intolérances</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Les détails des allergies et intolérances sont masqués. Les afficher est enregistré dans le journal d'audit.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Les afficher est enregistré dans le journal d'audit.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Title" xml:space="preserve"><value>Tu nous indiques tes préférences alimentaires ?</value></data>
+  <data name="Cantina_DietaryMissingBanner_Body" xml:space="preserve"><value>Tu es inscrit·e à un long créneau. Si tu nous indiques tes préférences alimentaires, la cantine peut prévoir tes repas. C'est facultatif.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Cta" xml:space="preserve"><value>Dis-le-nous maintenant</value></data>
+  <data name="Cantina_DietaryMissingBanner_Decline" xml:space="preserve"><value>Je préfère ne pas répondre</value></data>
 </root>

@@ -642,13 +642,6 @@
   <data name="Nav_Legal" xml:space="preserve"><value>Legal</value></data>
   <data name="Nav_Staff" xml:space="preserve"><value>Staff</value></data>
   <data name="Nav_Guide" xml:space="preserve"><value>Help</value></data>
-  <data name="ShiftsSummary_Title" xml:space="preserve"><value>Shifts</value></data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve"><value>{0} / {1} slots filled</value><comment>{0} = filled, {1} = total</comment></data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve"><value>{0} humans signed up</value><comment>{0} = count</comment></data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve"><value>{0} pending</value><comment>{0} = count</comment></data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve"><value>No shifts configured yet.</value></data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve"><value>Includes shifts from {0} sub-team(s)</value><comment>{0} = count</comment></data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve"><value>Manage Shifts</value></data>
   <data name="Privacy_Lead" xml:space="preserve"><value>Humans manages membership for Nobodies Collective and processes personal data in accordance with GDPR and Spanish data protection law (LOPDGDD).</value></data>
   <data name="Privacy_DataControllerTitle" xml:space="preserve"><value>Data Controller</value></data>
   <data name="Privacy_DataControllerBody" xml:space="preserve"><value>A Spanish nonprofit association based in Madrid (NIF G26726299).</value></data>

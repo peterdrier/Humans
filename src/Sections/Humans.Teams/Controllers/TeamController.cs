@@ -1,4 +1,3 @@
-using Humans.Shifts.Contracts;
 using Humans.Teams.Data;
 using Humans.Google.Contracts;
 using Humans.Base.Extensions;
@@ -92,7 +91,6 @@ internal sealed class TeamController(
         var teamPage = await teamPageService.GetTeamPageDetailAsync(
             slug,
             effectiveUserId,
-            ShiftsRoles.CanManageDepartment(User),
             ct);
         if (teamPage is null)
         {
@@ -148,7 +146,7 @@ internal sealed class TeamController(
             CanCurrentUserEditTeam = teamPage.CanCurrentUserEditTeam,
             CurrentUserPendingRequestId = teamPage.CurrentUserPendingRequestId,
             PendingRequestCount = teamPage.PendingRequestCount,
-            ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug),
+            ViewerUserId = effectiveUserId,
         };
 
         var teamInfo = await teamService.GetTeamAsync(team.Id, ct);
@@ -191,25 +189,6 @@ internal sealed class TeamController(
         Role = member.Role,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
     };
-
-    private ShiftsSummaryCardViewModel? MapShiftsSummary(TeamPageShiftsSummary? summary, string slug)
-    {
-        if (summary is null)
-        {
-            return null;
-        }
-
-        return new ShiftsSummaryCardViewModel
-        {
-            TotalSlots = summary.TotalSlots,
-            ConfirmedCount = summary.ConfirmedCount,
-            PendingCount = summary.PendingCount,
-            UniqueVolunteerCount = summary.UniqueVolunteerCount,
-            ShiftsUrl = Url.Action("Index", "ShiftAdmin", new { slug })!,
-            CanManageShifts = summary.CanManageShifts,
-            IncludesSubTeamCount = summary.IncludesSubTeamCount
-        };
-    }
 
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
@@ -498,7 +477,6 @@ internal sealed class TeamController(
             RoleSlotCount = summary.RoleSlotCount,
             CreatedAt = summary.CreatedAt.ToDateTimeUtc(),
             IsChildTeam = summary.ParentTeamId.HasValue,
-            PendingShiftSignupCount = summary.PendingShiftSignupCount,
             IsHidden = summary.IsHidden
         }))
         {

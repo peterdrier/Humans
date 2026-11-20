@@ -2,12 +2,14 @@ using Humans.Cantina.Contracts;
 using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Shifts.ViewComponents;
+namespace Humans.Cantina.ViewComponents;
 
 /// <summary>
-/// Never blocks a signup. The visibility gate lives inside, so callers invoke it unconditionally. Spec:
+/// Fills Shifts' <see cref="IShiftsPageBanner"/> slot. Never blocks a signup. The visibility gate lives inside,
+/// so Shifts invokes it unconditionally. Spec:
 /// <c>src/Sections/Humans.Cantina/Docs/features/dietary-nudge.md</c>.
 /// </summary>
+// Public: MVC only discovers public view components.
 public sealed class DietaryMissingBannerViewComponent : ViewComponent
 {
     private readonly IShiftService _shiftMgmt;

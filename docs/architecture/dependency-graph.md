@@ -141,7 +141,6 @@ graph LR
     Development -.-> Shifts
     Development -.-> Teams
     Development -.-> Users
-    EarlyEntry -.-> Shifts
     Email --> Settings
     Email -.-> Users
     Events --> Calendar
@@ -234,7 +233,6 @@ graph LR
     Search --> Users
     Shifts --> Auth
     Shifts --> Calendar
-    Shifts --> Cantina
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
@@ -271,7 +269,6 @@ graph LR
     Teams -.-> Email
     Teams -.-> Governance
     Teams -.-> Notifications
-    Teams -.-> Shifts
     Teams -.-> Tickets
     TicketTailor --> Tickets
     Tickets --> AuditLog

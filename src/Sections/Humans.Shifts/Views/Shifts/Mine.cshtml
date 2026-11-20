@@ -17,7 +17,7 @@
         </ul>
     </div>
 
-    <vc:dietary-missing-banner user-id="@Model.UserId" />
+    <partial name="_PageBanners" model="Model.UserId" />
 
     @if (Model.EventSettings == null)
     {

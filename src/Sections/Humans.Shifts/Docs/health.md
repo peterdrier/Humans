@@ -115,8 +115,6 @@ The shapes imply:
   but never rendered (documented write-path asymmetry).
 - Voluntell is allowed on past shifts (retroactive correction); the volunteer notification is
   suppressed for past shifts, the audit entry never is.
-- `ShiftsResource` leaves `ShiftsSummary_` keys in `SharedResource`
-  because the partials that bind them live in Teams/UI and a rebind would be a reference cycle.
 
 ## History
 

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Shifts.Contracts;
-using Humans.Shifts.ViewComponents;
+using Humans.Cantina.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
@@ -9,7 +9,7 @@ using NSubstitute;
 using Xunit;
 using Humans.Cantina.Contracts;
 
-namespace Humans.Shifts.Tests.ViewComponents;
+namespace Humans.Cantina.Tests.ViewComponents;
 
 public class DietaryMissingBannerViewComponentTests
 {

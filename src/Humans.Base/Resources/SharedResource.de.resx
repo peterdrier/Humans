@@ -1071,31 +1071,6 @@
   <data name="Nav_Guide" xml:space="preserve">
     <value>Hilfe</value>
   </data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
-    <value>Schichten</value>
-  </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
-    <value>{0} / {1} Plätze belegt</value>
-    <comment>{0} = filled, {1} = total</comment>
-  </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
-    <value>{0} humans angemeldet</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
-    <value>{0} ausstehend</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
-    <value>Noch keine Schichten konfiguriert.</value>
-  </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
-    <value>Enthält Schichten von {0} Sub-Team(s)</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
-    <value>Schichten verwalten</value>
-  </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans verwaltet die Mitgliedschaft von Nobodies Collective und verarbeitet personenbezogene Daten gemäß DSGVO und spanischem Datenschutzrecht (LOPDGDD).</value>
   </data>

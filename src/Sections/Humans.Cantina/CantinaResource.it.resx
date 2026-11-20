@@ -98,4 +98,8 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Mostra allergie e intolleranze</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>I dettagli su allergie e intolleranze sono nascosti. Mostrarli viene registrato nel registro di audit.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Mostrarli viene registrato nel registro di audit.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Title" xml:space="preserve"><value>Ci dici le tue preferenze alimentari?</value></data>
+  <data name="Cantina_DietaryMissingBanner_Body" xml:space="preserve"><value>Sei iscritto a un turno lungo. Se ci dici le tue preferenze alimentari, la mensa può pianificare i tuoi pasti. È facoltativo.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Cta" xml:space="preserve"><value>Diccelo ora</value></data>
+  <data name="Cantina_DietaryMissingBanner_Decline" xml:space="preserve"><value>Preferisco non rispondere</value></data>
 </root>

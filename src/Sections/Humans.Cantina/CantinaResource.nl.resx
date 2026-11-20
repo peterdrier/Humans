@@ -98,4 +98,8 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Allergieën en intoleranties tonen</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Details over allergieën en intoleranties zijn verborgen. Het tonen ervan wordt vastgelegd in de auditlog.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Het tonen ervan wordt vastgelegd in de auditlog.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Title" xml:space="preserve"><value>Je eetvoorkeuren delen?</value></data>
+  <data name="Cantina_DietaryMissingBanner_Body" xml:space="preserve"><value>Je bent aangemeld voor een lange dienst. Als je je eetvoorkeuren doorgeeft, kan de cantina je maaltijden plannen. Het is optioneel.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Cta" xml:space="preserve"><value>Laat het ons nu weten</value></data>
+  <data name="Cantina_DietaryMissingBanner_Decline" xml:space="preserve"><value>Ik wil liever niet antwoorden</value></data>
 </root>

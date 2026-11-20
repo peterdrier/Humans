@@ -11,9 +11,6 @@ namespace Humans.Shifts.Contracts;
 /// </summary>
 public interface IShiftService : IApplicationService
 {
-    /// <summary>Holds a management role on the team's parent.</summary>
-    Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
-
     /// <summary>Departments and sub-teams the user coordinates or manages.</summary>
     Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
 
@@ -33,14 +30,6 @@ public interface IShiftService : IApplicationService
 
     /// <summary>Includes full shifts.</summary>
     Task<IReadOnlyList<UrgentShiftInfo>> GetBrowseShiftsAsync(ShiftBrowseQuery query, CancellationToken ct = default);
-
-    /// <summary>Null when the teams have no rotas.</summary>
-    Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
-        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
-
-    /// <summary>Distinct pending signups per team, in the active event.</summary>
-    Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// A Pending or Confirmed signup on a current or future shift long enough for cantina meals. Fails closed with
@@ -82,10 +71,3 @@ public sealed record ShiftBrowseQuery(
     LocalDate? ToDate = null,
     ShiftBrowseQueryFlags Flags = ShiftBrowseQueryFlags.None,
     Guid? ViewerUserId = null);
-
-public record ShiftsSummaryData(
-    int TotalSlots,
-    int ConfirmedCount,
-    int PendingCount,
-    int UniqueVolunteerCount,
-    IReadOnlySet<Guid> TeamIdsWithShifts);

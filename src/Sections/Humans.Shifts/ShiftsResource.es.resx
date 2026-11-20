@@ -1154,10 +1154,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>Los barrios que hacen que Elsewhere se sienta como casa.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>¿Nos cuentas tus preferencias alimentarias?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Estás en un turno largo. Si nos cuentas tus preferencias alimentarias, la cantina puede planificar tus comidas. Es opcional.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Decírnoslo ahora</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefiero no responder</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Ver todos mis turnos</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Orden</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Has cancelado el rango de turnos.</value></data>
@@ -1293,4 +1289,29 @@
   <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>Historial de ausencias ({0})</value></data>
   <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Marcado por</value></data>
   <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Marcado el</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Turnos</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} plazas ocupadas</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans inscritos</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} pendientes</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Aún no hay turnos configurados.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Incluye turnos de {0} subequipo(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Gestionar turnos</value>
+  </data>
 </root>

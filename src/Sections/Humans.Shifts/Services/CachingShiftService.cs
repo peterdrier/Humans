@@ -290,10 +290,6 @@ internal sealed class CachingShiftService(
         Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default) =>
         MgmtAsync(m => m.GetShiftsSummaryAsync(eventSettingsId, teamIds, ct));
 
-    public Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
-        CancellationToken cancellationToken = default) =>
-        MgmtAsync(m => m.GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken));
-
     public Task<bool> HasQualifyingCantinaSignupAsync(Guid userId, CancellationToken ct = default) =>
         MgmtAsync(m => m.HasQualifyingCantinaSignupAsync(userId, ct));
 
