@@ -434,6 +434,19 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     }
 
     [HumansFact]
+    public async Task SaveCampPolygon_UserWhoMayNotEdit_IsForbiddenAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = await CreateController().SaveCampPolygon(
+            _campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
+
+        result.Should().BeOfType<ForbidResult>();
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(0);
+        _allClients.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task SaveCampPolygon_BroadcastsTheSavedShapeToEveryConnectedMap()
     {
         var ct = TestContext.Current.CancellationToken;

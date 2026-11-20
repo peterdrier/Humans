@@ -75,7 +75,7 @@ internal sealed class CityPlanningService(
 
     public async Task<CampPolygonSaveResult> SaveCampPolygonAsync(
         Guid campSeasonId, string geoJson, double areaSqm, Guid modifiedByUserId,
-        string note = "Saved", CancellationToken cancellationToken = default)
+        string? note = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(geoJson) || !CityPlanningGeoJsonValidation.IsValidCampGeometry(geoJson))
             return new(string.Empty, 0, Refusal: "Invalid GeoJSON.");
@@ -87,7 +87,7 @@ internal sealed class CityPlanningService(
 
         var now = clock.GetCurrentInstant();
         var polygon = await repo.SavePolygonAndAppendHistoryAsync(
-            campSeasonId, geoJson, areaSqm, modifiedByUserId, note, now, cancellationToken);
+            campSeasonId, geoJson, areaSqm, modifiedByUserId, note ?? "Saved", now, cancellationToken);
         return new CampPolygonSaveResult(polygon.GeoJson, polygon.AreaSqm);
     }
 

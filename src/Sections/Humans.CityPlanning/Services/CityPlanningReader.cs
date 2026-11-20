@@ -208,7 +208,7 @@ internal sealed class CityPlanningReader(
     internal async Task<bool> CanUserEditAsync(
         Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default)
     {
-        // Team-specific access only; Admin/CampAdmin claims are checked at the controller.
+        // Team-specific access only; Admin and CampsAdmin pass at the controller through the map-admin policy.
         if (await IsCityPlanningTeamMemberAsync(userId, cancellationToken)) return true;
 
         var settings = await GetSettingsAsync(cancellationToken);

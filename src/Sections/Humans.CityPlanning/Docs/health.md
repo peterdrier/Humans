@@ -98,12 +98,12 @@ Stated so a violation is recognisable:
    `Restored from {timestamp} UTC`, composed server-side (`Services/CityPlanningService.cs:102`);
    it never rewinds history. A history id that is not the season's restores nothing and answers
    404 (`Controllers/CityPlanningApiController.cs:125`). The note on an ordinary save is whatever the caller sends,
-   falling back to `Saved` (`Controllers/CityPlanningApiController.cs:96`).
+   falling back to `Saved` (`Services/CityPlanningService.cs:90`).
 4. A camp lead may create or edit their own polygon only while placement is Open, may only
    adjust an existing one while Changeable, and only for a season of the settings year
    (`Services/CityPlanningReader.cs:224`). City-planning team members
-   (`Services/CityPlanningReader.cs:212`) and `CampsAdmin`/`Admin`
-   (`Controllers/CityPlanningApiController.cs:88`) are exempt from the phase and the ownership check.
+   (`Services/CityPlanningReader.cs:212`) and `CampsAdmin`/`Admin`, through the map-admin policy
+   (`Controllers/CityPlanningApiController.cs:88`), are exempt from the phase and the ownership check.
 5. A polygon save or restore for a camp season that does not exist writes nothing and answers
    400, for map admins too (`Services/CityPlanningService.cs:85`).
 6. A camp lead may place, annotate or clear their own camp's containers only while

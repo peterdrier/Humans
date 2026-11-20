@@ -85,7 +85,7 @@ internal sealed class CityPlanningApiController(
         var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
         if (userError is not null) return userError;
         var userId = user.Id;
-        if (!CampsRoles.IsCampsAdmin(User) &&
+        if (!await IsMapAdminAsync() &&
             !await cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
         {
             return Forbid();
@@ -93,7 +93,7 @@ internal sealed class CityPlanningApiController(
 
         var saved = await cityPlanningService.SaveCampPolygonAsync(
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
-            note: request.Note ?? "Saved",
+            note: request.Note,
             cancellationToken: cancellationToken);
         if (saved.Refusal is { } refusal)
         {
