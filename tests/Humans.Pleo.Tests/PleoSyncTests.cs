@@ -357,6 +357,9 @@ public sealed class PleoSyncTests
             Entry("a"),
             Parse("""{"id":null,"family":null,"transactionValue":null}"""),
             Parse("""{"id":"x","family":null}"""),
+            Parse("""{"id":" \t ","family":"CARD"}"""),
+            Parse("""{"id":"empty-family","family":""}"""),
+            Parse("""{"id":"blank-family","family":" \t "}"""),
             Parse("null"),
         ];
 
@@ -367,7 +370,7 @@ public sealed class PleoSyncTests
         (await _repo.GetEntriesAsync(ct)).Select(e => e.Id).Should().Equal("a");
         var state = await _repo.GetSyncStateAsync(ct);
         state!.LastCount.Should().Be(1);
-        state.SkippedCount.Should().Be(hasEmptyRows ? 3 : 0);
+        state.SkippedCount.Should().Be(hasEmptyRows ? 6 : 0);
         var completion = _logger.Entries.Should().ContainSingle(entry =>
             entry.Message.StartsWith("Pleo sweep mirrored", StringComparison.Ordinal)).Subject;
         completion.Level.Should().Be(hasEmptyRows ? LogLevel.Warning : LogLevel.Information);

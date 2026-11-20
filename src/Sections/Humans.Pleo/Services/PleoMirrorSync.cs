@@ -186,7 +186,7 @@ internal sealed class PleoMirrorSync(
             var wire = item.ValueKind == JsonValueKind.Object
                 ? item.Deserialize<PleoEntryWire>(JsonSerializerOptions.Web)
                 : null;
-            if (wire is null || string.IsNullOrEmpty(wire.Id) || wire.Family is null)
+            if (wire is null || string.IsNullOrWhiteSpace(wire.Id) || string.IsNullOrWhiteSpace(wire.Family))
             {
                 skipped++;
                 continue;
