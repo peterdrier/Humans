@@ -1,3 +1,9 @@
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using Google.Apis.Drive.v3;
+using Google.Apis.DriveActivity.v2;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Reflection;
 using AwesomeAssertions;
 using Google.Apis.Admin.Directory.directory_v1;
@@ -17,7 +23,7 @@ public sealed class GoogleGroupClientTransportErrorTests
     [HumansFact]
     public async Task LookupGroupIdAsync_TransportError_ReturnsStructuredError()
     {
-        using var cloudIdentity = new CloudIdentityService(ResettingInitializer());
+        using var cloudIdentity = new CloudIdentityService(CreateInitializer());
         var logger = new Humans.Testing.CapturingLogger<GoogleGroupProvisioningClient>();
         var client = new GoogleGroupProvisioningClient(
             Options.Create(new GoogleWorkspaceSettings()), logger);
@@ -36,7 +42,7 @@ public sealed class GoogleGroupClientTransportErrorTests
     [HumansFact]
     public async Task ListMembershipsAsync_TransportError_ReturnsStructuredError()
     {
-        using var directory = new DirectoryService(ResettingInitializer());
+        using var directory = new DirectoryService(CreateInitializer());
         var logger = new Humans.Testing.CapturingLogger<GoogleGroupMembershipClient>();
         var client = new GoogleGroupMembershipClient(
             Options.Create(new GoogleWorkspaceSettings()), logger);
@@ -52,16 +58,134 @@ public sealed class GoogleGroupClientTransportErrorTests
         warning.Message.Should().Contain("An error occurred while sending the request.");
     }
 
-    private static BaseClientService.Initializer ResettingInitializer()
+    [HumansTheory]
+    [Xunit.InlineData("accounts", "repeat")]
+    [Xunit.InlineData("accounts", "cycle")]
+    [Xunit.InlineData("accounts", "valid")]
+    [Xunit.InlineData("groups", "repeat")]
+    [Xunit.InlineData("groups", "cycle")]
+    [Xunit.InlineData("groups", "valid")]
+    [Xunit.InlineData("members", "repeat")]
+    [Xunit.InlineData("members", "cycle")]
+    [Xunit.InlineData("members", "valid")]
+    [Xunit.InlineData("permissions", "repeat")]
+    [Xunit.InlineData("permissions", "cycle")]
+    [Xunit.InlineData("permissions", "valid")]
+    [Xunit.InlineData("activity", "repeat")]
+    [Xunit.InlineData("activity", "cycle")]
+    [Xunit.InlineData("activity", "valid")]
+    public async Task Paginated_reads_reject_repeated_tokens_without_completing_a_partial_list(string kind, string sequence)
+    {
+        using var handler = new PageHandler(kind, sequence);
+        var initializer = CreateInitializer(handler);
+        using BaseClientService sdk = kind switch
+        {
+            "permissions" => new DriveService(initializer),
+            "activity" => new DriveActivityService(initializer),
+            _ => new DirectoryService(initializer)
+        };
+        var settings = Options.Create(new GoogleWorkspaceSettings());
+        GoogleClientError? error = null;
+        async Task<int> FetchAsync()
+        {
+            switch (kind)
+            {
+                case "accounts":
+                    var accounts = new WorkspaceUserDirectoryClient(settings, NullLogger<WorkspaceUserDirectoryClient>.Instance);
+                    Inject(accounts, "_directoryService", sdk);
+                    return (await accounts.ListAccountsAsync(Xunit.TestContext.Current.CancellationToken)).Count;
+                case "groups":
+                    var groups = new GoogleDirectoryClient(settings, NullLogger<GoogleDirectoryClient>.Instance);
+                    Inject(groups, "_directoryService", sdk);
+                    var groupResult = await groups.ListDomainGroupsAsync(Xunit.TestContext.Current.CancellationToken);
+                    error = groupResult.Error;
+                    if (error is not null) groupResult.Groups.Should().BeNull();
+                    return groupResult.Groups?.Count ?? 0;
+                case "members":
+                    var members = new GoogleGroupMembershipClient(settings, NullLogger<GoogleGroupMembershipClient>.Instance);
+                    Inject(members, "_directoryService", sdk);
+                    var memberResult = await members.ListMembershipsAsync("group", Xunit.TestContext.Current.CancellationToken);
+                    error = memberResult.Error;
+                    if (error is not null) memberResult.Memberships.Should().BeNull();
+                    return memberResult.Memberships?.Count ?? 0;
+                case "permissions":
+                    var permissions = new GoogleDrivePermissionsClient(settings, NullLogger<GoogleDrivePermissionsClient>.Instance);
+                    Inject(permissions, "_driveService", sdk);
+                    var permissionResult = await permissions.ListPermissionsAsync("file", Xunit.TestContext.Current.CancellationToken);
+                    error = permissionResult.Error;
+                    if (error is not null) permissionResult.Permissions.Should().BeNull();
+                    return permissionResult.Permissions?.Count ?? 0;
+                default:
+                    var activity = new GoogleDriveActivityClient(settings, NullLogger<GoogleDriveActivityClient>.Instance);
+                    Inject(activity, "_activityService", sdk);
+                    var count = 0;
+                    await foreach (var item in activity.QueryActivityAsync("file", "2026-11-20T00:00:00Z",
+                                       Xunit.TestContext.Current.CancellationToken))
+                        count++;
+                    return count;
+            }
+        }
+
+        if (string.Equals(sequence, "valid", StringComparison.Ordinal))
+        {
+            (await FetchAsync()).Should().Be(3);
+            error.Should().BeNull();
+        }
+        else if (kind is "groups" or "members" or "permissions")
+        {
+            (await FetchAsync()).Should().Be(0);
+            error.Should().NotBeNull();
+            error!.IsTransient.Should().BeTrue();
+            error.RawMessage.Should().Contain("repeated page token");
+        }
+        else
+        {
+            var fetch = FetchAsync;
+            await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage("*repeated page token*");
+        }
+        handler.Requests.Count.Should().Be(string.Equals(sequence, "repeat", StringComparison.Ordinal) ? 2 : 3);
+        if (!string.Equals(kind, "activity", StringComparison.Ordinal))
+            handler.Requests[1].Should().Contain("cursor-a");
+    }
+
+    private static BaseClientService.Initializer CreateInitializer(HttpMessageHandler? handler = null)
     {
         var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
         factory.CreateHttpClient(Arg.Any<CreateHttpClientArgs>())
-            .Returns(_ => new ConfigurableHttpClient(new ConfigurableMessageHandler(new ResettingHandler())));
+            .Returns(_ => new ConfigurableHttpClient(new ConfigurableMessageHandler(handler ?? new ResettingHandler())));
         return new BaseClientService.Initializer { HttpClientFactory = factory };
     }
 
     private static void Inject<T>(T client, string field, object service) =>
         typeof(T).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(client, service);
+
+    private sealed class PageHandler(string kind, string sequence) : HttpMessageHandler
+    {
+        public List<string> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request.RequestUri!.ToString());
+            if (Requests.Count > 4) throw new InvalidOperationException("Test transport exceeded four pages.");
+            var next = Requests.Count == 1 ? "cursor-a"
+                : string.Equals(sequence, "repeat", StringComparison.Ordinal) ? "cursor-a"
+                : Requests.Count == 2 ? "cursor-b"
+                : string.Equals(sequence, "cycle", StringComparison.Ordinal) ? "cursor-a" : null;
+            var collection = kind switch
+            {
+                "accounts" => "\"users\":[{\"primaryEmail\":\"a@example.org\"}]",
+                "groups" => "\"groups\":[{\"id\":\"g\",\"email\":\"g@example.org\"}]",
+                "members" => "\"members\":[{\"id\":\"m\",\"email\":\"a@example.org\"}]",
+                "permissions" => "\"permissions\":[{\"id\":\"p\",\"type\":\"user\",\"role\":\"reader\",\"emailAddress\":\"a@example.org\"}]",
+                _ => "\"activities\":[{}]"
+            };
+            var json = "{" + collection + (next is null ? "" : ",\"nextPageToken\":" + JsonSerializer.Serialize(next)) + "}";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+        }
+    }
 
     private sealed class ResettingHandler : HttpMessageHandler
     {

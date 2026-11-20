@@ -41,6 +41,7 @@ internal sealed class WorkspaceUserDirectoryClient(
         var service = await GetDirectoryServiceAsync();
         var accounts = new List<WorkspaceUserAccount>();
         string? pageToken = null;
+        var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -53,6 +54,10 @@ internal sealed class WorkspaceUserDirectoryClient(
 
             var response = await request.ExecuteAsync(ct);
 
+            pageToken = response.NextPageToken;
+            if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                throw new InvalidOperationException("Google accounts returned a repeated page token.");
+
             if (response.UsersValue is not null)
             {
                 foreach (var user in response.UsersValue)
@@ -60,8 +65,6 @@ internal sealed class WorkspaceUserDirectoryClient(
                     accounts.Add(MapToAccount(user));
                 }
             }
-
-            pageToken = response.NextPageToken;
         } while (!string.IsNullOrEmpty(pageToken));
 
         return accounts;

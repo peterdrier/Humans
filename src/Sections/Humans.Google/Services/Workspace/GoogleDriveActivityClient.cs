@@ -80,6 +80,7 @@ internal sealed class GoogleDriveActivityClient(
         ct.ThrowIfCancellationRequested();
         var activityService = await GetActivityServiceAsync(ct);
         string? pageToken = null;
+        var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
         do
         {
@@ -93,6 +94,10 @@ internal sealed class GoogleDriveActivityClient(
 
             var response = await QueryPageAsync(activityService, request, googleItemId, ct);
 
+            pageToken = response.NextPageToken;
+            if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                throw new InvalidOperationException("Google Drive Activity returned a repeated page token.");
+
             if (response.Activities is not null)
             {
                 foreach (var activity in response.Activities)
@@ -100,8 +105,6 @@ internal sealed class GoogleDriveActivityClient(
                     yield return Map(activity);
                 }
             }
-
-            pageToken = response.NextPageToken;
         } while (!string.IsNullOrEmpty(pageToken));
     }
 

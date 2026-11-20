@@ -34,6 +34,7 @@ internal sealed class GoogleDrivePermissionsClient(
             var drive = await GetDriveServiceAsync(ct);
             var permissions = new List<DrivePermission>();
             string? pageToken = null;
+            var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
             do
             {
@@ -47,6 +48,14 @@ internal sealed class GoogleDrivePermissionsClient(
 
                 var response = await request.ExecuteAsync(ct);
 
+                pageToken = response.NextPageToken;
+                if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                {
+                    logger.LogWarning("Google Drive permissions returned a repeated page token for {FileId}.", fileId);
+                    return new DrivePermissionListResult(Permissions: null,
+                        Error: new GoogleClientError(502, "Google Drive permissions returned a repeated page token."));
+                }
+
                 if (response.Permissions is not null)
                 {
                     foreach (var p in response.Permissions)
@@ -54,8 +63,6 @@ internal sealed class GoogleDrivePermissionsClient(
                         permissions.Add(MapPermission(p));
                     }
                 }
-
-                pageToken = response.NextPageToken;
             } while (!string.IsNullOrEmpty(pageToken));
 
             return new DrivePermissionListResult(permissions, Error: null);

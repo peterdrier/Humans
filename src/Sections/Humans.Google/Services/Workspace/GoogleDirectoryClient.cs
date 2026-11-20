@@ -22,6 +22,7 @@ internal sealed class GoogleDirectoryClient(
             var service = await GetDirectoryServiceAsync(ct);
             var groups = new List<DirectoryGroup>();
             string? pageToken = null;
+            var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
             do
             {
@@ -34,6 +35,14 @@ internal sealed class GoogleDirectoryClient(
                 }
 
                 var response = await request.ExecuteAsync(ct);
+
+                pageToken = response.NextPageToken;
+                if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                {
+                    logger.LogWarning("Google domain groups returned a repeated page token.");
+                    return new DirectoryGroupListResult(Groups: null,
+                        Error: new GoogleClientError(502, "Google domain groups returned a repeated page token."));
+                }
 
                 if (response.GroupsValue is not null)
                 {
@@ -52,8 +61,6 @@ internal sealed class GoogleDirectoryClient(
                             DirectMembersCount: g.DirectMembersCount));
                     }
                 }
-
-                pageToken = response.NextPageToken;
             } while (!string.IsNullOrEmpty(pageToken));
 
             return new DirectoryGroupListResult(groups, Error: null);

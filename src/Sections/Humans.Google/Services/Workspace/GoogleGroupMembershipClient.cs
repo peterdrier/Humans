@@ -27,6 +27,7 @@ internal sealed class GoogleGroupMembershipClient(
         using var _ = logger.TimeOperation();
         var memberships = new List<GroupMembership>();
         string? pageToken = null;
+        var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
         try
         {
@@ -42,6 +43,14 @@ internal sealed class GoogleGroupMembershipClient(
 
                 var response = await request.ExecuteAsync(ct);
 
+                pageToken = response.NextPageToken;
+                if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                {
+                    logger.LogWarning("Google group memberships returned a repeated page token for {GroupId}.", groupGoogleId);
+                    return new GroupMembershipListResult(Memberships: null,
+                        Error: new GoogleClientError(502, "Google group memberships returned a repeated page token."));
+                }
+
                 if (response.MembersValue is not null)
                 {
                     foreach (var m in response.MembersValue)
@@ -51,8 +60,6 @@ internal sealed class GoogleGroupMembershipClient(
                             ResourceName: $"groups/{groupGoogleId}/memberships/{m.Email}"));
                     }
                 }
-
-                pageToken = response.NextPageToken;
             } while (!string.IsNullOrEmpty(pageToken));
 
             return new GroupMembershipListResult(memberships, Error: null);
