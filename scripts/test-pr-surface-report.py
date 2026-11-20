@@ -58,6 +58,15 @@ class InterfaceSurfaceTests(unittest.TestCase):
         self.assertEqual(self.delta(before, after)["new_interfaces"],
                          [f"IStripeService ({PATH})"])
 
+    def test_non_public_interface_helpers_do_not_add_public_surface(self):
+        before = "public interface IStripeService\n{\n    void Send();\n}"
+        for modifiers in ("private static", "static private", "internal static", "protected", "protected internal"):
+            with self.subTest(modifiers=modifiers):
+                after = before.replace("    void Send();", f"    void Send();\n    {modifiers} bool Helper() => true;\n    {modifiers} bool IsReady => true;")
+                delta = self.delta(before, after)
+                self.assertEqual(delta["added_interface_methods"], {})
+                self.assertEqual(delta["added_interface_properties"], {})
+
     def test_added_property_is_reported_alongside_methods(self):
         before = "public interface IStripeService\n{\n    Task ReadAsync();\n}"
         after = before.replace("    Task", "    bool IsConfigured { get; }\n    Task")

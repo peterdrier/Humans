@@ -314,6 +314,9 @@ def normalize_signature(signature: str) -> str:
 
 def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
     interfaces: dict[str, dict[str, object]] = {}
+    non_public_member_re = re.compile(
+        r"(?:(?:static|abstract|virtual|sealed|new|unsafe|extern|async|partial)\s+)*"
+        r"(?:private|protected|internal)\b")
     interface_re = re.compile(r"\bpublic\s+(?:(?:partial|unsafe)\s+)*interface\s+(I[A-Za-z0-9_]*)\b")
     literal_re = re.compile(r'@"(?:[^"]|"")*"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 
@@ -357,6 +360,8 @@ def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
                     masked = literal_re.sub(lambda match: " " * len(match.group()), signature)
                     body = re.search(r"=>|\{", masked)
                     declaration = signature[:body.start()].strip() if body else signature
+                    if non_public_member_re.match(declaration):
+                        continue
                     if "(" in declaration and ")" in declaration:
                         interfaces[current]["methods"].add(declaration)
                     elif re.search(r"\{\s*(?:get|set|init)\s*;", signature):
