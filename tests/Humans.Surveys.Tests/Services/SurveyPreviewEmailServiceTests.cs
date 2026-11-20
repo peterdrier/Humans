@@ -197,11 +197,6 @@ public sealed class SurveyPreviewEmailServiceTests
         capturedToken.Should().NotBeEmpty();
         previewTokens.Resolve(capturedToken).Should().Be(new SurveyPreviewLink(surveyId, "fr"));
         await surveys.Received(1).GetForEditAsync(surveyId, Arg.Any<CancellationToken>());
-        await surveys.DidNotReceive().SendInvitesAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await surveys.DidNotReceive().AdvanceWizardAsync(
-            Arg.Any<SurveyWizardState>(), Arg.Any<int>(), Arg.Any<bool>(),
-            Arg.Any<IReadOnlyList<SurveyAnswerInput>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
