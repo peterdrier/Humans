@@ -76,8 +76,7 @@ internal sealed class UserDataExport(IUserRepository repo) : IApplicationService
 
         var profileSlice = profile is null
             ? new UserDataSlice(Profile, null)
-            : new UserDataSlice(Profile, ShapeProfileForExport(profile,
-                user.State is UserState.Suspended or UserState.AdminSuspended));
+            : new UserDataSlice(Profile, ShapeProfileForExport(user, profile));
 
         // Folds keep health data on archived rows, so walk back from the survivor and export every
         // retained profile.
@@ -101,8 +100,7 @@ internal sealed class UserDataExport(IUserRepository repo) : IApplicationService
             .Select(p => new
             {
                 p.UserId,
-                Profile = ShapeProfileForExport(p,
-                    allUsers[p.UserId].State is UserState.Suspended or UserState.AdminSuspended)
+                Profile = ShapeProfileForExport(allUsers[p.UserId], p)
             }).ToList());
 
         var contactFieldSlice = new UserDataSlice(ContactFields, contactFields.Select(cf => new
@@ -152,12 +150,13 @@ internal sealed class UserDataExport(IUserRepository repo) : IApplicationService
         ];
     }
 
-    private static object ShapeProfileForExport(Profile profile, bool isSuspended) =>
+    private static object ShapeProfileForExport(User user, Profile profile) =>
         new
         {
-            profile.BurnerName,
-            profile.FirstName,
-            profile.LastName,
+            // JSON keys pinned: GDPR export stability. The names live on the users row.
+            BurnerName = user.BurnerName ?? string.Empty,
+            FirstName = user.FirstName ?? string.Empty,
+            LastName = user.LastName ?? string.Empty,
             Birthday = profile.DateOfBirth is not null
                 ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}"
                 : null,
@@ -170,7 +169,7 @@ internal sealed class UserDataExport(IUserRepository repo) : IApplicationService
             profile.ContributionInterests,
             profile.BoardNotes,
             // JSON key pinned: GDPR export stability.
-            IsSuspended = isSuspended,
+            IsSuspended = user.State is UserState.Suspended or UserState.AdminSuspended,
             profile.NoPriorBurnExperience,
             profile.EmergencyContactName,
             profile.EmergencyContactPhone,

@@ -48,6 +48,28 @@ internal sealed class HoldedContactsClient(HoldedTransport transport, ILogger<Ho
         }
     }
 
+    public async Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v2/contacts/{contactId}");
+        using var resp = await transport.SendAsync(req, ct);
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        try
+        {
+            var node = await JsonNode.ParseAsync(stream, cancellationToken: ct)
+                ?? throw new HoldedTransientException("Holded returned empty body");
+
+            return ParseContact(node, contactId);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            // The bad value belongs to the stored contact, so retrying can't help. Permanent, so callers that handle
+            // the typed exceptions degrade; a raw parse failure would abort ExpenseHoldedPublisher's whole outbox batch.
+            throw new HoldedPermanentException(
+                $"Holded contact {contactId} could not be read.", ex);
+        }
+    }
+
     public async Task DeleteContactAsync(string contactId, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/contacts/{contactId}");
@@ -100,11 +122,12 @@ internal sealed class HoldedContactsClient(HoldedTransport transport, ILogger<Ho
 
     /// <summary>Holded sends an absent sub-record as an empty array, and the string indexer throws on anything but an
     /// object, so every nested read goes through <see cref="Prop"/>.</summary>
-    private static HoldedContactDto ParseContact(JsonNode node) => new()
+    private static HoldedContactDto ParseContact(JsonNode node, string? fallbackId = null) => new()
     {
-        Id = ReadRequiredString(Prop(node, "id"), "id"),
+        Id = ReadRequiredString(Prop(node, "id") ?? JsonValue.Create(fallbackId), "id"),
         Name = Prop(node, "name")?.GetValue<string>(),
         SupplierAccountNum = ReadInt(Prop(Prop(node, "supplier_record"), "num")),
+        ClientAccountNum = ReadInt(Prop(Prop(node, "client_record"), "num")),
         TradeName = Prop(node, "trade_name")?.GetValue<string>(),
         Email = Prop(node, "email")?.GetValue<string>(),
         Phone = Prop(node, "phone")?.GetValue<string>(),

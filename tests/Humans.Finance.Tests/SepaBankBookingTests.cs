@@ -44,7 +44,7 @@ public class SepaBankBookingTests
     private const string AnaIbanMasked = "ES79****789";
     private const int Account = 40000004;
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IHoldedFeed _feed = Substitute.For<IHoldedFeed>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IHoldedService _holded = TestContacts.Holded();

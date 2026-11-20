@@ -53,4 +53,5 @@ internal sealed record OrderPaymentDto(
     string? StripePaymentIntentId,
     string? ExternalRef,
     Instant ReceivedAt,
-    string? Notes);
+    string? Notes,
+    Guid? ProductId = null);

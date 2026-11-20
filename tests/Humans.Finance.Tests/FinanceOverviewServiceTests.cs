@@ -66,7 +66,7 @@ public class FinanceOverviewServiceTests
     }
 
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly Humans.Finance.Data.IHoldedRepository _repo = Substitute.For<Humans.Finance.Data.IHoldedRepository>();
+    private readonly Humans.Finance.Data.IFinanceRepository _repo = Substitute.For<Humans.Finance.Data.IFinanceRepository>();
     private readonly IStripeMirrorService _stripe = Substitute.For<IStripeMirrorService>();
     private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
 

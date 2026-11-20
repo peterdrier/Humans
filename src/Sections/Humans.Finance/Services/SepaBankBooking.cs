@@ -17,7 +17,7 @@ using static Humans.Finance.Services.SepaBankMatching;
 namespace Humans.Finance.Services;
 
 internal sealed class SepaBankBooking(
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
     IClock clock,

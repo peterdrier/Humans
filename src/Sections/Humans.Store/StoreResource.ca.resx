@@ -98,7 +98,6 @@
   <data name="Store_ColVatId" xml:space="preserve"><value>IVA / NIF / CIF</value></data>
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Fiances retornades</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Import a reemborsar</value></data>
-  <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La factura només es pot emetre quan el saldo de la comanda és zero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Acció</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>No s’ha pogut determinar l’any de la comanda. Contacta amb l’equip de la botiga abans d’afegir productes.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Aquest producte pertany a un any diferent del de la comanda.</value></data>
@@ -133,4 +132,8 @@
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Reemborsat</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Total de la comanda (línies, IVA i fiances)</value></data>
   <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total de pagaments liquidats</value></data>
+  <data name="Store_IssueInvoiceDeposits" xml:space="preserve"><value>Fiances cobrades {0}, retornades {1}, retingudes {2}: la part retinguda es factura com a ingrés amb un {3}% d'IVA.</value></data>
+  <data name="Store_DownloadInvoice" xml:space="preserve"><value>Descarrega la factura {0}</value></data>
+  <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Fiança de</value></data>
+  <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Condonació</value></data>
 </root>

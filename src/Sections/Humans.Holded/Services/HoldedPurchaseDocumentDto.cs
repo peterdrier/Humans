@@ -1,3 +1,4 @@
+using Humans.Holded.Contracts;
 using NodaTime;
 
 namespace Humans.Holded.Services;
@@ -11,8 +12,3 @@ internal sealed record HoldedPurchaseDocumentDto
     /// answers <c>{"status":"paid"}</c> and nothing else.</summary>
     public IReadOnlyList<HoldedPaymentDetailDto> Payments { get; init; } = [];
 }
-
-/// <summary><paramref name="Date"/> is the plain <c>YYYY-MM-DD</c> the payment was posted with;
-/// <paramref name="BankId"/> is the treasury account it left.</summary>
-internal sealed record HoldedPaymentDetailDto(string Id, decimal Amount, LocalDate Date, string? BankId);
-

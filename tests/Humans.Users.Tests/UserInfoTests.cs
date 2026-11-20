@@ -271,9 +271,6 @@ public class UserInfoTests
     {
         Id = Guid.NewGuid(),
         UserId = userId,
-        BurnerName = burnerName,
-        FirstName = "First",
-        LastName = "Last",
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };

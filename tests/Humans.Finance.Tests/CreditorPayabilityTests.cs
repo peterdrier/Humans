@@ -34,7 +34,7 @@ public class CreditorPayabilityTests
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly Guid ReportId = Guid.NewGuid();
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();

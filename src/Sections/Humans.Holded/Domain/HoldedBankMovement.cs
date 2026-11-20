@@ -14,6 +14,11 @@ internal sealed class HoldedBankMovement
     /// <summary>The booking date, else the value date, as the bank feed gives it.</summary>
     public LocalDate Date { get; set; }
 
+    /// <summary><c>booking_date</c> as the instant Holded gives it, to the second. For a payment-gateway feed (Stripe) it
+    /// is the gateway object's creation time, which is what ties a feed line to its charge or refund. Null when the
+    /// line has no readable booking timestamp, and on rows synced before it was kept.</summary>
+    public Instant? BookedAt { get; set; }
+
     /// <summary>Signed euros: negative is money leaving the account.</summary>
     public decimal Amount { get; set; }
 

@@ -376,9 +376,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Loaded",
-            FirstName = "First",
-            LastName = "Last",
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         });
@@ -555,7 +552,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             });
         fakeRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult(stored));
-        fakeRepo.When(r => r.AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>()))
+        fakeRepo.When(r => r.AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<UserNames?>()))
             .Do(call => stored = call.Arg<Profile>());
 
         var service = BuildWithUserRepository(fakeRepo);
@@ -566,7 +563,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Task.Run(() => service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken)));
 #pragma warning restore VSTHRD003
 
-        await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>());
+        await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<UserNames?>());
     }
 
     [HumansFact]
@@ -578,11 +575,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         await _service.EnsureStubProfileAsync(userId, " Sparkle ", " Ada ", " Lovelace ", TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().Be("Sparkle");
-        profile.FirstName.Should().Be("Ada");
-        profile.LastName.Should().Be("Lovelace");
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeTrue();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        (user.BurnerName, user.FirstName, user.LastName).Should().Be(("Sparkle", "Ada", "Lovelace"));
         user.State.Should().Be(UserState.Active);
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
@@ -621,8 +616,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             });
         await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().BeEmpty();
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeTrue();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Bare);
         await AuditLog.Received(1).LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
@@ -635,10 +629,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansFact]
     public async Task EnsureStubProfileAsync_WithoutNames_InheritsBurnerNameAlreadySeededOnUser()
     {
-        // OAuth/import account creation seeds User.BurnerName directly,
-        // then calls EnsureStubProfileAsync with no names. The stub must inherit that
-        // BurnerName, or the Profile->User mirror in UpdateUserStateFromProfileAsync wipes
-        // it back to empty on the very same save.
+        // OAuth/import account creation seeds User.BurnerName directly, then calls
+        // EnsureStubProfileAsync with no names. The stub must not wipe it.
         var userId = Guid.NewGuid();
         var user = SeedUser(userId);
         user.BurnerName = "Seeded Burner";
@@ -646,8 +638,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().Be("Seeded Burner");
         var fresh = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         fresh.BurnerName.Should().Be("Seeded Burner");
         // FirstName/LastName are still blank, so the user stays Bare, not Active.
@@ -1017,20 +1007,18 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var fresh = await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         fresh.ProfilePictureContentType.Should().BeNull();
         fresh.ProfilePictureStorageKey.Should().BeNull();
-        fresh.FirstName.Should().Be("Deleted");
-        fresh.LastName.Should().Be("User");
+        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        (user.FirstName, user.LastName).Should().Be(("Deleted", "User"));
     }
 
     private async Task<Guid> SeedUserWithProfileAsync(Guid userId)
     {
-        SeedUser(userId);
+        var user = SeedUser(userId);
+        (user.BurnerName, user.FirstName, user.LastName) = ("Test", "First", "Last");
         var profile = new Profile
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Test",
-            FirstName = "First",
-            LastName = "Last",
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };

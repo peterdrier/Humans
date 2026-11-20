@@ -98,7 +98,6 @@
   <data name="Store_ColVatId" xml:space="preserve"><value>MwSt. / Steuer-ID</value></data>
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Zurückgegebene Kautionen</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Erstattungsbetrag</value></data>
-  <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Eine Rechnung kann nur ausgestellt werden, wenn der Saldo der Bestellung null ist.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Aktion</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>Das Jahr der Bestellung konnte nicht ermittelt werden. Kontaktiere das Store-Team, bevor du Produkte hinzufügst.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Dieses Produkt gehört zu einem anderen Jahr als die Bestellung.</value></data>
@@ -133,4 +132,8 @@
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Erstattet</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Bestellsumme (Positionen, MwSt. und Pfand)</value></data>
   <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Summe abgerechneter Zahlungen</value></data>
+  <data name="Store_IssueInvoiceDeposits" xml:space="preserve"><value>Kautionen berechnet {0}, zurückgezahlt {1}, einbehalten {2}: der einbehaltene Teil wird als Ertrag mit {3}% MwSt. berechnet.</value></data>
+  <data name="Store_DownloadInvoice" xml:space="preserve"><value>Rechnung {0} herunterladen</value></data>
+  <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Kaution für</value></data>
+  <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Abschreibung</value></data>
 </root>

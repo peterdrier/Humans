@@ -21,6 +21,6 @@ it forwards to.
 | PleoSyncStates | R/W (one row) |
 | PleoCategories | R/W (link, unlink, add from `/Pleo/Categories`; a sweep links, adds and remaps, never deletes or unlinks) |
 
-No cross-section service calls besides the audit log. Read by Finance through `IPleoService` (settled entries, wallet balance) for
+No cross-section service calls besides the audit log. Read by Finance through `IPleoService` (settled entries, wallet balance, receipt files) for
 `/Finance` and `/Finance/Pleo`. Its only outbound is `IPleoClient`, this section's read-only connector to
 `external.pleo.io` (and Pleo's receipt CDN).

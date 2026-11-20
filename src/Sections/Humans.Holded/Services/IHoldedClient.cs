@@ -79,6 +79,24 @@ internal interface IHoldedClient
     Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
+    Task<byte[]> GetSalesDocumentPdfAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
+
+    Task SendSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default);
+
+    /// <summary>As <see cref="PayPurchaseDocumentAsync"/>, on a sales document.</summary>
+    Task<string> PaySalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, decimal amount, string treasuryId, LocalDate date,
+        string? description, CancellationToken ct = default);
+
+    /// <summary>A payment on a contact outside any document; returns its id or <c>"unconfirmed:payment"</c>.</summary>
+    Task<string> CreateTreasuryPaymentAsync(
+        HoldedTreasuryPaymentKind kind, string contactId, string treasuryId, decimal amount, LocalDate date,
+        string? description, CancellationToken ct = default);
+
+    Task<HoldedContactDto> GetContactAsync(string contactId, CancellationToken ct = default);
+
     /// <summary>A contact already gone (404) is success. Holded keeps a contact's documents, so deleting one that
     /// owns any is the caller's bug.</summary>
     Task DeleteContactAsync(string contactId, CancellationToken ct = default);

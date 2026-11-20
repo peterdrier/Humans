@@ -26,7 +26,6 @@ internal sealed class ShiftSignupService(
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
     IAdminAuthorizationService adminAuthorization,
-    CachingShiftViewService viewInvalidator,
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<ShiftSignupService> logger,
@@ -106,14 +105,7 @@ internal sealed class ShiftSignupService(
 
         repo.AddRange([signup]);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateSignupCaches(localEs.Id, shiftId);
-        }
+        await repo.SaveChangesAsync();
         enrollment.Dispose();
         var shiftDate = FormatAuditDay(calendar, shift.DayOffset);
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
@@ -170,14 +162,7 @@ internal sealed class ShiftSignupService(
 
         signup.Confirm(reviewerUserId, clock);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
-        }
+        await repo.SaveChangesAsync();
         enrollment.Dispose();
         await auditLogService.LogAsync(
             ShiftsAuditActions.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
@@ -200,14 +185,7 @@ internal sealed class ShiftSignupService(
 
         signup.Refuse(reviewerUserId, clock, reason);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
-        }
+        await repo.SaveChangesAsync();
 
         await auditLogService.LogAsync(
             ShiftsAuditActions.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
@@ -259,14 +237,7 @@ internal sealed class ShiftSignupService(
         var wasConfirmed = signup.Status == SignupStatus.Confirmed;
         signup.Bail(actorUserId, clock, reason);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
-        }
+        await repo.SaveChangesAsync();
 
         await auditLogService.LogAsync(
             ShiftsAuditActions.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
@@ -316,14 +287,7 @@ internal sealed class ShiftSignupService(
 
         repo.AddRange([signup]);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateSignupCaches(calendar.Id, shiftId);
-        }
+        await repo.SaveChangesAsync();
         enrollment.Dispose();
         await auditLogService.LogAsync(
             ShiftsAuditActions.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
@@ -418,14 +382,7 @@ internal sealed class ShiftSignupService(
             voluntoldForAudit.Add((signup, shift.DayOffset));
         }
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateRangeSignupCaches(calendar.Id, rotaId);
-        }
+        await repo.SaveChangesAsync();
         enrollment.Dispose();
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
         {
@@ -466,14 +423,7 @@ internal sealed class ShiftSignupService(
 
         signup.MarkNoShow(reviewerUserId, clock);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateSignupCaches(calendar.Id, signup.ShiftId);
-        }
+        await repo.SaveChangesAsync();
 
         await auditLogService.LogAsync(
             ShiftsAuditActions.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
@@ -497,14 +447,7 @@ internal sealed class ShiftSignupService(
 
         signup.Remove(removedByUserId, clock, reason);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateSignupCaches(signup.Shift.Rota.EventSettingsId, signup.ShiftId);
-        }
+        await repo.SaveChangesAsync();
 
         await auditLogService.LogAsync(
             ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
@@ -609,14 +552,7 @@ internal sealed class ShiftSignupService(
             || (canApprove ?? await IsPrivilegedAsync(userId, rota.TeamId));
         var createdSignups = StageRangeSignups(userId, actorUserId, blockId, now, availableShifts, autoConfirm);
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateRangeSignupCaches(calendar.Id, rotaId);
-        }
+        await repo.SaveChangesAsync();
         enrollment.Dispose();
         await AuditRangeSignupsAsync(userId, actorUserId ?? userId, rota, calendar, createdSignups.SignupsForAudit, autoConfirm);
 
@@ -627,19 +563,6 @@ internal sealed class ShiftSignupService(
         }
 
         return SignupResult.Ok(createdSignups.LastSignup.Id, warning);
-    }
-
-    private void InvalidateSignupCaches(Guid eventSettingsId, Guid shiftId)
-    {
-        shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
-        viewInvalidator.InvalidateShift(shiftId);
-    }
-
-    private void InvalidateRangeSignupCaches(Guid eventSettingsId, Guid rotaId)
-    {
-        shiftMgmt.InvalidateDashboardCaches(eventSettingsId);
-        // A range touches every shift in the rota.
-        viewInvalidator.InvalidateRota(rotaId);
     }
 
     private async Task<string?> AppendEarlyEntryRangeWarningAsync(
@@ -796,14 +719,7 @@ internal sealed class ShiftSignupService(
         }
 
         var cacheSignup = approved.Count > 0 ? approved[0] : skippedAtCapacity[0];
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateRangeSignupCaches(calendar.Id, cacheSignup.Shift.RotaId);
-        }
+        await repo.SaveChangesAsync();
         enrollment.Dispose();
 
         foreach (var approvedSignup in approved)
@@ -849,14 +765,7 @@ internal sealed class ShiftSignupService(
             signup.Refuse(reviewerUserId, clock, reason);
         }
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateRangeSignupCaches(signups[0].Shift.Rota.EventSettingsId, signups[0].Shift.RotaId);
-        }
+        await repo.SaveChangesAsync();
 
         foreach (var signup in signups)
         {
@@ -907,14 +816,7 @@ internal sealed class ShiftSignupService(
             signup.Bail(actorUserId, clock, reason);
         }
 
-        try
-        {
-            await repo.SaveChangesAsync();
-        }
-        finally
-        {
-            InvalidateRangeSignupCaches(firstSignup.Shift.Rota.EventSettingsId, firstSignup.Shift.RotaId);
-        }
+        await repo.SaveChangesAsync();
 
         foreach (var signup in signups)
         {
@@ -985,30 +887,22 @@ internal sealed class ShiftSignupService(
     /// <summary>Cancels live commitments, then deletes the profile, availability, build-status and tag rows.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
     {
-        try
-        {
-            // Before cancelling, so the "Account deletion" reason survives: the kept row is shift, status and
-            // timestamps, not what a coordinator typed about the person.
-            await repo.ClearSignupStatusReasonsForUserAsync(userId, ct);
+        // Before cancelling, so the "Account deletion" reason survives: the kept row is shift, status and
+        // timestamps, not what a coordinator typed about the person.
+        await repo.ClearSignupStatusReasonsForUserAsync(userId, ct);
 
-            var cancelled = await CancelActiveSignupsForUserAsync(userId, "Account deletion", ct);
-            foreach (var (signupId, shiftId) in cancelled)
-            {
-                await auditLogService.LogAsync(
-                    ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), signupId,
-                    $"Cancelled signup (account deletion) for shift {shiftId}",
-                    jobName: nameof(ShiftSignupService));
-            }
-
-            await repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
-            await trackingRepo.DeleteVolunteerTrackingForUserAsync(userId, ct);
-            await repo.DeleteVolunteerTagPreferencesForUserAsync(userId, ct);
-        }
-        finally
+        var cancelled = await CancelActiveSignupsForUserAsync(userId, "Account deletion", ct);
+        foreach (var (signupId, shiftId) in cancelled)
         {
-            // Rota views also carry signup reasons removed by erasure.
-            viewInvalidator.InvalidateAll();
+            await auditLogService.LogAsync(
+                ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), signupId,
+                $"Cancelled signup (account deletion) for shift {shiftId}",
+                jobName: nameof(ShiftSignupService));
         }
+
+        await repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
+        await trackingRepo.DeleteVolunteerTrackingForUserAsync(userId, ct);
+        await repo.DeleteVolunteerTagPreferencesForUserAsync(userId, ct);
     }
 
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
@@ -1020,29 +914,7 @@ internal sealed class ShiftSignupService(
     public async Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default)
     {
-        var eventIds = await GetSignupEventIdsAsync([userId], ct);
-        IReadOnlyList<(Guid SignupId, Guid ShiftId)>? cancelled = null;
-        try
-        {
-            cancelled = await repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
-            return cancelled;
-        }
-        finally
-        {
-            if (cancelled is null)
-            {
-                // The save may have committed without returning its affected shift ids.
-                viewInvalidator.InvalidateAll();
-            }
-            else
-            {
-                foreach (var (_, shiftId) in cancelled)
-                    viewInvalidator.InvalidateShift(shiftId);
-            }
-            if (cancelled is null || cancelled.Count > 0)
-                foreach (var eventId in eventIds)
-                    shiftMgmt.InvalidateDashboardCaches(eventId);
-        }
+        return await repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
     }
 
     public async Task<int> DeleteAllForUsersAsync(
@@ -1050,23 +922,7 @@ internal sealed class ShiftSignupService(
         CancellationToken ct = default)
     {
         await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
-        var eventIds = await GetSignupEventIdsAsync(userIds, ct);
-        int? deleted = null;
-        try
-        {
-            deleted = await repo.DeleteAllForUsersAsync(userIds, ct);
-            return deleted.Value;
-        }
-        finally
-        {
-            // A failed acknowledgement leaves the count unknown; affected shift ids are not returned.
-            if (deleted != 0)
-            {
-                viewInvalidator.InvalidateAll();
-                foreach (var eventId in eventIds)
-                    shiftMgmt.InvalidateDashboardCaches(eventId);
-            }
-        }
+        return await repo.DeleteAllForUsersAsync(userIds, ct);
     }
 
     public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
@@ -1105,24 +961,7 @@ internal sealed class ShiftSignupService(
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
-        // Merge also rewrites reviewer/enroller identities, so failure may affect any event's activity rows.
-        IReadOnlyList<Guid> eventIds = (await repo.GetAllEventSettingsAsync(ct)).Select(e => e.Id).ToList();
-        int? movedCount = null;
-        try
-        {
-            var reassigned = await repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
-            movedCount = reassigned.Count;
-            eventIds = reassigned.EventIds;
-        }
-        finally
-        {
-            if (movedCount != 0)
-            {
-                viewInvalidator.InvalidateAll();
-                foreach (var eventId in eventIds)
-                    shiftMgmt.InvalidateDashboardCaches(eventId);
-            }
-        }
+        var movedCount = (await repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct)).Count;
 
         if (movedCount > 0)
         {
@@ -1133,11 +972,6 @@ internal sealed class ShiftSignupService(
                 targetUserId, AuditSubjectTypes.User);
         }
     }
-
-    private async Task<IReadOnlyList<Guid>> GetSignupEventIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct) =>
-        (await repo.GetForUsersAsync(userIds, ct: ct))
-            .Select(s => s.Shift.Rota.EventSettingsId).Distinct().ToList();
 
     private sealed record RangeSignupCreation(
         ShiftSignup LastSignup,

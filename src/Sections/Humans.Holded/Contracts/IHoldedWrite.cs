@@ -64,6 +64,31 @@ public interface IHoldedWrite : IApplicationService
     Task<HoldedSalesDocumentDto> ApproveSalesDocumentAsync(
         HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default);
 
+    /// <summary>Holded emails the sales document's PDF to <paramref name="emails"/>, or to its contact's addresses when
+    /// null. Not idempotent: each call sends
+    /// again.</summary>
+    [ExternalWrite]
+    Task SendSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, IReadOnlyList<string>? emails, CancellationToken ct = default);
+
+    /// <summary>Pays <paramref name="amount"/> (above zero: Holded takes no money back on a sales document) of one sales
+    /// document into <paramref name="treasuryId"/>, dated <paramref name="date"/>. Not idempotent. Returns the
+    /// payment's id for a bank-line reconcile, or an <c>unconfirmed:{documentId}</c> ref when Holded took it but the id
+    /// could not be read; it is posted either way. Throws only when nothing was posted.</summary>
+    [ExternalWrite]
+    Task<string> PaySalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, decimal amount, string treasuryId, LocalDate date,
+        string? description, CancellationToken ct = default);
+
+    /// <summary>A payment on a contact outside any document, through <paramref name="treasuryId"/>: money in
+    /// (<see cref="HoldedTreasuryPaymentKind.Collection"/>) or out (<see cref="HoldedTreasuryPaymentKind.Payment"/>).
+    /// Not idempotent. Returns its id for a bank-line reconcile, or <c>unconfirmed:payment</c> when Holded took it
+    /// without a readable id.</summary>
+    [ExternalWrite]
+    Task<string> CreateTreasuryPaymentAsync(
+        HoldedTreasuryPaymentKind kind, string contactId, string treasuryId, decimal amount, LocalDate date,
+        string? description, CancellationToken ct = default);
+
     /// <summary>Pays <paramref name="amount"/> of one purchase document from <paramref name="treasuryId"/> (Holded's
     /// default when blank), dated <paramref name="date"/>. Not idempotent. Returns the payment's ref, the one Holded id
     /// this face hands out: a bank-line reconcile has to name it. An <c>unconfirmed:{documentId}</c> ref means Holded

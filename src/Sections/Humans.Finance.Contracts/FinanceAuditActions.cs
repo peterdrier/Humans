@@ -41,8 +41,18 @@ public sealed class FinanceAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition HoldedCategoryAccountProvisioned = new("HoldedCategoryAccountProvisioned");
 
-    // One per Pleo entry posted (or possibly posted) to Holded 57200003: names the entry, both accounts and the outcome.
+    // One per Pleo entry booked (or possibly booked) into Holded as its Pleo-{Id} purchase, or finished: names the
+    // entry, the account, the amount, the receipts attached and the outcome.
     public static readonly AuditActionDefinition PleoEntryBooked = new("PleoEntryBooked");
+
+    // A Pleo receipt that arrived after its entry was booked, attached to the entry's Holded purchase.
+    public static readonly AuditActionDefinition PleoReceiptAttached = new("PleoReceiptAttached");
+
+    // A correcting journal entry for a booked Pleo entry recategorised or re-priced in Pleo since.
+    public static readonly AuditActionDefinition PleoCorrectionPosted = new("PleoCorrectionPosted");
+
+    // The Pleo booking settings (Holded contact and treasury) were changed on /Settings#finance.
+    public static readonly AuditActionDefinition FinancePleoSettingsUpdated = new("FinancePleoSettingsUpdated");
 
     // The Stripe account each 441 ledger account is compared with on /Finance was changed on /Settings#finance.
     public static readonly AuditActionDefinition FinanceStripeLedgerLinksUpdated = new("FinanceStripeLedgerLinksUpdated");

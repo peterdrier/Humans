@@ -88,8 +88,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
         {
             Id = Guid.NewGuid(),
             UserId = failedId,
-            FirstName = "Private",
-            LastName = "Name",
             EmergencyContactPhone = "Private emergency contact",
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()

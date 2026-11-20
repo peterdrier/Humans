@@ -9,5 +9,8 @@ internal enum PaymentMethod
     /// <summary>Credited back to the order by a Store admin. Positive.</summary>
     DepositReturn = 3,
     /// <summary>Sent back by hand from the Stripe dashboard and recorded by a Store admin. Negative.</summary>
-    Refund = 4
+    Refund = 4,
+    /// <summary>A shortfall the association gives up on, recorded by a FinanceAdmin with a reason. Positive: it closes
+    /// the balance like a payment, but no money moved; it goes on the invoice as a discount.</summary>
+    WriteOff = 5
 }

@@ -64,7 +64,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 | `holded_accounts` | chart-of-accounts cache with Holded's debit/credit/balance totals |
 | `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers) |
 | `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced), notes, doc + line tags, first line's booked account |
-| `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
+| `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, `BookedAt` (`booking_date` to the second: a Stripe gateway line's only match key, with the amount), signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
 | `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
 | `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `BankMovements`), plus `Usage`: the month's call count as last read (`LastCount`) and when (`LastSyncAt`); lazy-created |
 
@@ -159,11 +159,22 @@ account-number resolution stays inside this section.
 
 Id-keyed writes for callers that already store Holded's ids, one step each:
 `CreateContactAsync` / `DeleteContactAsync` (each refreshes the contact mirror; a failed refresh is
-logged, the write stands), `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachmentAsync`,
+logged, the write stands), `CreatePurchaseDocumentAsync` (optionally with a document `number`, and per line explicit
+tax keys: an empty list books the line with no tax, omitted applies the contact's default), `UploadPurchaseAttachmentAsync`,
 `EnsurePurchaseDocumentApprovedAsync`, `DeletePurchaseDocumentByIdAsync`, and for sales documents
 `FindSalesDocumentsByTagAsync` (both kinds, read live: the issuance guard), `IssueSalesDocumentAsync`
 (create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown
-number refused) and `ApproveSalesDocumentAsync`.
+number refused; `DiscountPercent` sets a whole-document discount) and `ApproveSalesDocumentAsync`.
+For the Store's one-shot booking: on `IHoldedService`, `GetSalesDocumentAsync` (live, no mirror holds sales documents:
+totals, `payments_pending`, `payments_detail`, contact and the contact's 430 account) and `GetSalesDocumentPdfAsync`; on
+`IHoldedWrite`, `SendSalesDocumentAsync` (Holded emails it;
+no addresses means the contact's), `PaySalesDocumentAsync` (same before/after `payments_detail` diff as
+`PayPurchaseDocumentAsync`, shared in `HoldedDocumentPayment`) and `CreateTreasuryPaymentAsync`
+(`POST /payments`, `collection` or `payment`, on a contact and `bank_account_id`).
+
+A 403 whose body reads "Insufficient permissions: X required" throws `HoldedPermanentException` with the message
+"Humans' Holded key lacks X; add it in Holded > Settings > API"; `HoldedKeyPermissionExceptionHandler` shows that
+message on the page the request came from instead of the error page.
 
 `IHoldedClient` is internal, so no other section can call it: reads come from the mirrors, a caller that needs fresh data
 runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`,

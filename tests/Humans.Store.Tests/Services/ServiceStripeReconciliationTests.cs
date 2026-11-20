@@ -39,7 +39,7 @@ public class ServiceStripeReconciliationTests
             .Returns(new List<Product>());
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product>());
-        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe, _holded, _holdedWrite, NullLogger<Service>.Instance);
+        _service = new Service(_repo, _audit, Substitute.For<IAuditViewerService>(), _campService, _teams, _clock, _shifts, _stripe, _holded, _holdedWrite, Substitute.For<Humans.Finance.Contracts.IFinanceService>(), NullLogger<Service>.Instance);
     }
 
     private static Order CampOrder(Guid id) => new()

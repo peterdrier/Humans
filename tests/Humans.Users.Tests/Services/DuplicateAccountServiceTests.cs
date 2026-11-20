@@ -48,9 +48,6 @@ public sealed class DuplicateAccountServiceTests
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Test",
-            FirstName = "Test",
-            LastName = "User",
             CreatedAt = Now,
             UpdatedAt = Now,
         };

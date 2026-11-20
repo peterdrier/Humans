@@ -766,9 +766,6 @@ public class VolunteerTrackingControllerTests
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = burnerName,
-            FirstName = burnerName,
-            LastName = "Test",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

@@ -13,9 +13,8 @@ internal sealed class StoreSettingsTabViewComponent(Service store) : ViewCompone
         var settings = await store.GetSettingsAsync(ct);
         return View(new StoreSettingsViewModel
         {
-            DepositLiabilityAccountNum = settings.DepositLiabilityAccountNum,
+            StripeGatewayTreasuryId = settings.StripeGatewayTreasuryId,
             SimplifiedInvoiceThresholdEur = settings.SimplifiedInvoiceThresholdEur,
-            DepositAccountChoices = await store.GetDepositAccountChoicesAsync(ct),
         });
     }
 }

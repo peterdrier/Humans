@@ -23,20 +23,13 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     {
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
-        // IShiftView source-of-truth path uses GetRotaAsync only — the inner
-        // ShiftViewService also takes signup/availability/tracking repos for
-        // GetUserAsync, which the workload service does not call. Stub them.
-        var view = new ShiftViewService(
-            repo,
-            Substitute.For<IVolunteerTrackingRepository>(),
-            NewCalendarResolver(),
-            Substitute.For<IShiftManagement>(),
-            Substitute.For<IShiftRotaRows>());
+        var rows = new ShiftManagementService(repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().Build(),
+            NewCalendarResolver(), Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => GetTeamInfosAsync());
 
-        _service = new WorkloadService(repo, view, _teamService, NewDbBackedUserService(), NewCalendarResolver());
+        _service = new WorkloadService(rows, _teamService, NewDbBackedUserService(), NewCalendarResolver());
     }
 
     private Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamInfosAsync() =>
@@ -513,7 +506,6 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         return shift;
     }
 
-    // Workload reads display name from Profile.BurnerName (not User.DisplayName).
     // Harness SeedUser doesn't create a Profile, so this test class layers one on.
     private async Task<User> SeedUserWithProfileAsync(string burnerName)
     {
@@ -523,7 +515,6 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            BurnerName = burnerName,
             CreatedAt = now,
             UpdatedAt = now,
         });

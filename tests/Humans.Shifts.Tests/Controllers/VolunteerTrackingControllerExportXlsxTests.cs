@@ -163,9 +163,6 @@ public sealed class VolunteerTrackingControllerExportXlsxTests
         {
             Id = Guid.NewGuid(),
             UserId = currentUserId,
-            BurnerName = "Actor",
-            FirstName = "Actor",
-            LastName = "Test",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };

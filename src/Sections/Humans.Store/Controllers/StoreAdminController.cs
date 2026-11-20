@@ -282,7 +282,7 @@ internal sealed class StoreAdminController(
 
         var result = ModelState.IsValid
             ? await storeService.SaveSettingsAsync(
-                new StoreSettingsDto(model.DepositLiabilityAccountNum, model.SimplifiedInvoiceThresholdEur), user.Id, ct)
+                new StoreSettingsDto(model.StripeGatewayTreasuryId, model.SimplifiedInvoiceThresholdEur), user.Id, ct)
             : AdminMutationResult.Refused("Invalid store settings.");
         if (result.Succeeded)
             SetSuccess("Store settings saved.");

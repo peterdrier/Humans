@@ -250,6 +250,7 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
             if (existing.TryGetValue(m.Id, out var cur))
             {
                 cur.Date = m.Date;
+                cur.BookedAt = m.BookedAt;
                 cur.Amount = m.Amount;
                 cur.Description = m.Description;
                 cur.Status = m.Status;

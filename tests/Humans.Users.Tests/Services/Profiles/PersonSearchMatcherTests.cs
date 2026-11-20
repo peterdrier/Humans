@@ -64,9 +64,6 @@ public class PersonSearchMatcherTests
         {
             Id = profileId,
             UserId = userId,
-            BurnerName = burnerName,
-            FirstName = firstName,
-            LastName = lastName,
             City = city,
             Bio = bio,
             Pronouns = pronouns,

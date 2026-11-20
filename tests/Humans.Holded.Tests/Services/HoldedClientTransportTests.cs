@@ -40,6 +40,18 @@ public class HoldedClientTransportTests
     }
 
     [HumansFact]
+    public async Task A_403_for_a_missing_key_permission_names_the_permission()
+    {
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.Forbidden,
+            """{"error":"Insufficient permissions: accounting:payments.write required"}""")));
+
+        var act = () => client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HoldedPermanentException>()).Which.Message
+            .Should().Be("Humans' Holded key lacks accounting:payments.write; add it in Holded > Settings > API");
+    }
+
+    [HumansFact]
     public async Task Retries_once_on_429_honoring_retry_after()
     {
         var requestCount = 0;

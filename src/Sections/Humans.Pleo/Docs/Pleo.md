@@ -157,6 +157,9 @@ DI.
 ### Public contract
 
 `IPleoService` (`Contracts/`): `GetSettledEntriesAsync(from, to)` — entries settled in a Madrid-date window, each with
-its Holded code or null and whether it has a receipt. Finance books only entries with both. `GetWalletBalanceAsync` —
-the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
-`/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.
+its Holded code or null, whether it has a receipt, its note, cardholder name and receipt ids (read from `Raw`, the entry
+as the sweep stored it). Finance books only entries with a code. `GetWalletBalanceAsync` — the wallet's current EUR
+balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the `/Finance` and
+`/Finance/Pleo` balance check. Both served from the mirror. `GetReceiptFileAsync(entryId, receiptId)` — one receipt of
+a mirrored entry, fetched live from Pleo (the only live read on the contract), null when it can't be fetched; Finance
+attaches it to the entry's Holded purchase. Everything else is internal.

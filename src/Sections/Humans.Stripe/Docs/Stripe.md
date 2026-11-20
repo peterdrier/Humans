@@ -176,6 +176,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   recording, transitioning and reconciling a payment is Store's.
 - The webhook registrar **cannot** run outside a `*.n.burn.camp` host, and **cannot** run
   at all without `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` (never set in QA or production).
+- `GetStoreChargeAsync` reads a Store payment intent's latest charge (gross EUR and `created`) with the Store key; Store matches it to Holded's Stripe gateway feed line by amount and that second. Null when the key, permission or charge is missing.
 - Refunds, payouts and chargebacks **cannot** be issued from the app; `ListStoreRefundsAsync` only reads
   ([`memory/architecture/stripe-money-out.md`](../../../../memory/architecture/stripe-money-out.md)).
 

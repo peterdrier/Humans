@@ -1,4 +1,5 @@
 using Humans.Store.Domain;
+using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 
 namespace Humans.Store.Models;
@@ -46,6 +47,20 @@ internal sealed class OrderViewModel
 
     /// <summary>Stripe dashboard page per paid Stripe payment id; filled only for refund-capable viewers.</summary>
     public IReadOnlyDictionary<Guid, string> StripeRefundUrls { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>What issuing would invoice and why it may not yet; set only for viewers who can issue.</summary>
+    public StoreInvoicePlan? InvoicePlan { get; set; }
+
+    /// <summary>The issued invoice with its booking state; null before issuance.</summary>
+    public Invoice? Invoice { get; set; }
+
+    /// <summary>The order's products that carry a deposit, for a deposit return to name.</summary>
+    public IReadOnlyList<(Guid ProductId, string Name)> DepositProducts => Order.Lines
+        .Where(l => l.EffectiveDeposit is > 0m)
+        .Select(l => (l.ProductId, l.ProductName))
+        .Distinct()
+        .ToList();
+
 
     public static OrderViewModel FromPageData(
         OrderPageData pageData,
