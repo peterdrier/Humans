@@ -104,7 +104,7 @@ Users no longer loads, caches, exports or folds these rows. Tickets reads and me
 
 ### AccountMergeRequest
 
-Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates. Admin merge, accept, dismiss and reconcile operations return internal refusal results for their request/account guards. Expected refusals retain operator feedback and log Warning with identifiers; unexpected dependency failures propagate. The fan-out, final tombstone, retry behavior and dismissal transaction retain their existing ordering.
+Tracks pending and resolved merges between duplicate accounts. `AccountMergeService` orchestrates the merge; `DuplicateAccountService` is the stateless detector that flags candidates: living accounts sharing an address across their `UserEmail` rows and the raw legacy `User.Email` column (the raw column, so an address hidden behind a newer verified row still collides). Admin merge, accept, dismiss and reconcile operations return internal refusal results for their request/account guards. Expected refusals retain operator feedback and log Warning with identifiers; unexpected dependency failures propagate. The fan-out, final tombstone, retry behavior and dismissal transaction retain their existing ordering.
 
 The pending-merge guard for email additions compares literal addresses case-insensitively, including the supplied Gmail/Googlemail alias. Only pending requests targeting that human block an addition; underscores and percent signs are ordinary email characters.
 
