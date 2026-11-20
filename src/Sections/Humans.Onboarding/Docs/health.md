@@ -57,8 +57,9 @@ Notes the table hides:
   `IOnboardingIntake` (the reports Users and Consent make, and reject) and `OnboardingResult`
   (the funnel's result vocabulary, also returned by Users' own surfaces). Nothing else. The leaf
   is a project, not a folder, because Consent calls into Onboarding and Onboarding embeds
-  Consent's signing step; a folder would close a cycle. It has zero project references and that
-  is load-bearing.
+  Consent's signing step; a folder would close a cycle. Base is its only project reference and that
+  is load-bearing. It holds `IOnboardingShiftsStep`, the one slot another section fills rather
+  than calls; its args are plain ids so the leaf names no Shifts type.
 - **`Services/`** — `OnboardingService` (shapes 3–5, an orchestrator over other sections'
   service interfaces), `OnboardingWidgetState` (shape 1) behind `IOnboardingWidgetState` with
   the step enum it returns, the session seam the step resolver needs to see the "not right now"
@@ -74,7 +75,7 @@ Notes the table hides:
   on, `OnboardingAuditActions` and `OnboardingNotificationSources`.
 
 Presentation the section does *not* own: the rota tables on the shifts step are Shifts'
-(Shifts' public `<vc:onboarding-shifts-list>`, rendered directly), the consent step's body and form
+(contributed through `IOnboardingShiftsStep`, invoked by Type), the consent step's body and form
 are Consent's (`ConsentSigningStepViewComponent`), and the person and access-matrix widgets are
 Base's.
 

@@ -1,4 +1,6 @@
 @model ShiftsStepViewModel
+@using Humans.Onboarding.Contracts
+@inject IOnboardingShiftsStep ShiftsStep
 @{
     ViewData["Title"] = Localizer["Onboarding_ShiftsTitle"].Value;
     var hasShifts = Model.EventSettings is not null && Model.Shifts.Count > 0;
@@ -72,10 +74,12 @@
             }
             else
             {
-                <vc:onboarding-shifts-list event-settings-id="@Model.EventSettings!.Id"
-                                           shifts="@Model.Shifts"
-                                           user-signup-shift-ids="@Model.UserSignupShiftIds"
-                                           user-signup-statuses="@Model.UserSignupStatuses" />
+                @* Single-contributor slot: ViewComponentSlotContractTests requires every OnboardingShiftsStepArgs
+                   property to bind to a parameter, so a renamed argument fails the build instead of a 500. *@
+                @await Component.InvokeAsync(ShiftsStep.ShiftsList, new OnboardingShiftsStepArgs(
+                    EventSettingsId: Model.EventSettings!.Id,
+                    ViewerUserId: Model.ViewerUserId,
+                    ShiftIds: Model.Shifts.Select(u => u.Shift.Id).ToList()))
             }
         </div>
     </div>

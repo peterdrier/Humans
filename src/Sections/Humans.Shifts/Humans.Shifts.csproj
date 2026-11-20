@@ -39,6 +39,8 @@
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <!-- Fills Onboarding's IOnboardingShiftsStep slot. The leaf only, which references Base alone. -->
+    <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Humans.Shifts
       type (they may name Humans.Shifts.Contracts, which is

@@ -207,10 +207,10 @@ graph LR
     Onboarding --> Consent
     Onboarding --> Issues
     Onboarding --> Settings
-    Onboarding --> Shifts
     Onboarding -.-> Email
     Onboarding -.-> Governance
     Onboarding -.-> Notifications
+    Onboarding -.-> Shifts
     Onboarding -.-> Teams
     Onboarding -.-> Users
     Pleo -.-> Finance
@@ -241,6 +241,7 @@ graph LR
     Shifts -.-> Camps
     Shifts -.-> Email
     Shifts -.-> Notifications
+    Shifts -.-> Onboarding
     Shifts -.-> Tickets
     Store --> AuditLog
     Store --> Budget

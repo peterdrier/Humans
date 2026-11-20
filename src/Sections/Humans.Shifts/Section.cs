@@ -15,6 +15,7 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
+using Humans.Onboarding.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Authorization;
 using Humans.Shifts.Contracts;
@@ -47,6 +48,7 @@ public sealed class Section :
     ISectionHelp,
     ISectionMemberDashboard,
     ISectionNav,
+    IOnboardingShiftsStep,
     ISectionPolicies,
     ISectionSettings,
     ISectionThingsToDo,
@@ -246,6 +248,8 @@ public sealed class Section :
 
     IEnumerable<MemberNavItem> ISectionNav.Items() =>
         [new("Nav_Shifts", Controller: "Shifts", Action: "Index", Policy: PolicyNames.AppAccess, Weight: 60)];
+
+    Type IOnboardingShiftsStep.ShiftsList => typeof(OnboardingShiftsListViewComponent);
 
     Type ITeamShiftsParts.Box => typeof(TeamShiftsBoxViewComponent);
 
