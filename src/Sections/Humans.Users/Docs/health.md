@@ -74,14 +74,14 @@ The shapes imply one register with one cache and one write funnel:
 - The full app is reachable only when `User.State == Active`; state is written at each
   transition and never derived on read — `src/Humans.Web/Authorization/MembershipRequiredFilter.cs:70`.
 - A verified account holds exactly one verified `IsPrimary` address — `EnsurePrimaryInvariantAsync`,
-  `src/Sections/Humans.Users/Services/UserEmailMutations.cs:209`. A verified address belongs to at
+  `src/Sections/Humans.Users/Services/UserService.cs`. A verified address belongs to at
   most one account: verifying an address another account holds verified opens a merge request
   instead — `src/Sections/Humans.Users/Services/UserEmailService.cs:132`. `user_emails.IsGoogle`
   is dropped; the Workspace identity is Google's.
 - An address is rewritten by exactly one path, the OAuth reconcile matched on
   `(Provider, ProviderKey)` — `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`.
 - Birthday carries month and day only; the year is stored as 4 —
-  `src/Sections/Humans.Users/Services/UserProfileMutations.cs:130`.
+  `src/Sections/Humans.Users/Services/UserService.cs`.
 - `MedicalConditions` is Art. 9 data and is off the cached `UserInfo`; `MedicalConditionsService` is
   its only reader. The owner edits it on `/Profile/Me/Medical`; anyone else gets it only through the
   audited reveal behind `UsersPolicies.MedicalDataViewer` — `src/Sections/Humans.Users/Controllers/ProfileViewController.cs:209`.

@@ -33,10 +33,3 @@ No repository, no DB access, no cache. `GrantsEmails` builds `EmailMessage` valu
 `GrantsResource` and `EmailSettings`; `GrantsEmailPreviews` is the `IEmailPreviewContributor`
 gallery entry over it.
 
----
-
-### GrantNotices (internal, owned by GrantService)
-
-No repository or cache. Resolves recipients through `IUserService` and sends
-the section's localized copy through Email and Notifications; issue, resend and
-revoke call it after persist and audit. Not registered in DI.

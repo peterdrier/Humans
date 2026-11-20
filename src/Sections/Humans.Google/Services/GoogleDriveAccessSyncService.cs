@@ -553,6 +553,4 @@ internal sealed class GoogleDriveAccessSyncService(
             logger.LogError(ex, "Failed to enqueue Drive removal notification for {Email} from {FolderId}", email, claim.FolderId);
         }
     }
-
-
 }

@@ -50,8 +50,7 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_senderId, Arg.Any<CancellationToken>()).Returns(senderInfo);
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(receiver, null));
         var request = MakePending(Guid.NewGuid(), "recorded@example.org");
-        var notices = new TicketTransferNotices(_ticketRepo, _userService, _emailService, _emailMessages,
-            NullLogger<TicketTransferService>.Instance);
+        var notices = _service;
 
         if (notice == TransferNotice.Requested)
             await notices.NotifyRequestedAsync(request, MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid),

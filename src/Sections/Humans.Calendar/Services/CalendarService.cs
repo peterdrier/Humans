@@ -7,6 +7,7 @@ using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Teams.Contracts;
 using NodaTime;
+using Humans.Base.Interfaces;
 
 namespace Humans.Calendar.Services;
 
@@ -22,20 +23,11 @@ internal sealed class CalendarService(
     ILogger<CalendarService> logger,
     IServiceScopeFactory scopeFactory) : ICalendarService
 {
-    private readonly CalendarMutationAudit mutationAudit = new(audit, logger);
-    private CalendarOccurrenceMutations OccurrenceMutations => new(repo, clock, mutationAudit, logger);
-    private readonly CalendarOccurrenceComposer occurrenceComposer = new(teams, scopeFactory, logger);
-
     /// <summary>Forms use an inclusive last day; storage uses an exclusive date.</summary>
     public static (LocalDate Start, LocalDate End) AllDayWindow(LocalDate startDate, LocalDate inclusiveEndDate) =>
         (startDate, inclusiveEndDate.PlusDays(1));
 
     public static LocalDate AllDayInclusiveEndDate(LocalDate exclusiveEndDate) => exclusiveEndDate.PlusDays(-1);
-
-    public Task<IReadOnlyList<CalendarOccurrence>> ComposeOccurrencesAsync(
-        IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to, DateTimeZone viewerZone,
-        Guid? teamId = null, CancellationToken ct = default) =>
-        occurrenceComposer.ComposeOccurrencesAsync(events, from, to, viewerZone, teamId, ct);
 
     public async Task<IReadOnlyList<CalendarEventInfo>> GetAllEventInfosAsync(CancellationToken ct = default)
     {
@@ -58,7 +50,7 @@ internal sealed class CalendarService(
 
         await repo.AddAsync(ev, ct);
 
-        await mutationAudit.LogCommittedMutationAsync(
+        await LogCommittedMutationAsync(
             CalendarAuditActions.CalendarEventCreated, ev.Id,
             $"Created calendar event '{ev.Title}'", createdByUserId, ev.OwningTeamId);
 
@@ -223,7 +215,7 @@ internal sealed class CalendarService(
             return CalendarEventMutationResult.Missing("Calendar event not found.");
         }
 
-        await mutationAudit.LogCommittedMutationAsync(
+        await LogCommittedMutationAsync(
             CalendarAuditActions.CalendarEventUpdated, mutated.Id,
             $"Updated calendar event '{mutated.Title}'", updatedByUserId, mutated.OwningTeamId);
 
@@ -257,15 +249,221 @@ internal sealed class CalendarService(
         var result = await repo.SoftDeleteAsync(id, now, ct);
         if (result is null) return;
 
-        await mutationAudit.LogCommittedMutationAsync(
+        await LogCommittedMutationAsync(
             CalendarAuditActions.CalendarEventDeleted, id,
             $"Deleted calendar event '{result.Value.Title}'", deletedByUserId, result.Value.OwningTeamId);
     }
 
-    public Task<bool> CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
-        OccurrenceMutations.CancelOccurrenceAsync(eventId, originalOccurrenceStartUtc, userId, ct, originalDate);
+    internal async Task LogCommittedMutationAsync(
+        AuditActionDefinition action, Guid eventId, string description, Guid actorUserId, Guid? owningTeamId = null)
+    {
+        // The mutation is committed; an audit failure must not prevent the cache refresh.
+        try
+        {
+            await audit.LogAsync(
+                action, AuditEntityTypes.CalendarEvent, eventId, description, actorUserId,
+                relatedEntityId: owningTeamId,
+                relatedEntityType: owningTeamId.HasValue ? AuditEntityTypes.Team : null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex,
+                "Audit-log write failed AFTER {AuditAction} on calendar event {EventId} by {UserId}: {Description}. Mutation was committed; reconcile audit trail manually.",
+                action, eventId, actorUserId, description);
+        }
+    }
 
-    public Task<bool> OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null) =>
-        OccurrenceMutations.OverrideOccurrenceAsync(eventId, originalOccurrenceStartUtc, dto, userId, ct, originalDate);
+    public async Task<IReadOnlyList<CalendarOccurrence>> ComposeOccurrencesAsync(
+        IReadOnlyList<CalendarEventInfo> events, Instant from, Instant to, DateTimeZone viewerZone,
+        Guid? teamId = null, CancellationToken ct = default)
+    {
+        var matched = CalendarOccurrenceExpander.FilterForWindow(
+            events,
+            from, to, teamId, viewerZone);
 
+        var teamNames = await ResolveTeamNamesAsync(matched, ct);
+        var occurrences = CalendarOccurrenceExpander.Expand(matched, from, to, teamNames, logger, viewerZone).ToList();
+
+        // Community items carry no team, so a ?teamId filter has nothing of theirs to show.
+        if (teamId is null)
+            occurrences.AddRange(await FanOutContributorItemsAsync(from, to, ct));
+
+        return occurrences;
+    }
+
+    /// <summary>
+    /// Never cached. A throwing contributor is logged and skipped so it can't take down the community calendar.
+    /// </summary>
+    private async Task<IReadOnlyList<CalendarOccurrence>> FanOutContributorItemsAsync(
+        Instant from, Instant to, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var contributors = scope.ServiceProvider.GetServices<ICalendarFeedContributor>();
+
+        var items = new List<CalendarOccurrence>();
+        foreach (var contributor in contributors)
+        {
+            try
+            {
+                var contributed = await contributor.GetPublicItemsForWindowAsync(from, to, ct);
+                var occurrences = contributed.SelectMany(item => ToOccurrences(item, from, to)).ToList();
+                items.AddRange(occurrences);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",
+                    contributor.GetType().Name, from, to);
+                continue;
+            }
+        }
+
+        return items;
+    }
+
+    private static IEnumerable<CalendarOccurrence> ToOccurrences(CalendarFeedItem item, Instant from, Instant to) =>
+        item.RecurrenceRule is null
+            ? [ToOccurrence(item, item.Start, item.End, recurring: false)]
+            : CalendarRecurrence.Occurrences(item.Start, item.End, item.RecurrenceRule, item.RecurrenceTimezone, from, to)
+                .Select(o => ToOccurrence(item, o.Start, o.End, recurring: true));
+
+    private static CalendarOccurrence ToOccurrence(CalendarFeedItem item, Instant start, Instant end, bool recurring) => new(
+        EventId: Guid.Empty,
+        OccurrenceStartUtc: start,
+        OccurrenceEndUtc: end,
+        IsAllDay: false,
+        Title: item.Summary,
+        Description: item.Description,
+        Location: item.Location,
+        LocationUrl: item.LocationUrl,
+        OwningTeamId: Guid.Empty,
+        OwningTeamName: string.Empty,
+        IsRecurring: recurring,
+        OriginalOccurrenceStartUtc: recurring ? start : null,
+        Source: item.Source,
+        Url: item.Url);
+
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
+        IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
+    {
+        if (events.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
+        var teamsById = await teams.GetTeamsAsync(ct);
+        return teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
+    }
+
+    public async Task<bool> CancelOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
+    {
+        return await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+            apply: x => x.IsCancelled = true,
+            auditAction: CalendarAuditActions.CalendarOccurrenceCancelled,
+            auditDescription: $"Cancelled occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
+            ct, originalDate);
+    }
+
+    public async Task<bool> OverrideOccurrenceAsync(Guid eventId, Instant? originalOccurrenceStartUtc, OverrideOccurrenceDto dto, Guid userId, CancellationToken ct = default, LocalDate? originalDate = null)
+    {
+        return await UpsertExceptionAsync(eventId, originalOccurrenceStartUtc, userId,
+            apply: x =>
+            {
+                x.IsCancelled = false;
+                x.OverrideStartUtc = dto.OverrideStartUtc;
+                x.OverrideEndUtc = dto.OverrideEndUtc;
+                x.OverrideStartDate = dto.OverrideStartDate;
+                x.OverrideEndDateExclusive = dto.OverrideEndDateExclusive;
+                x.OverrideTitle = dto.OverrideTitle;
+                x.OverrideDescription = dto.OverrideDescription;
+                x.OverrideLocation = dto.OverrideLocation;
+                x.OverrideLocationUrl = dto.OverrideLocationUrl;
+            },
+            auditAction: CalendarAuditActions.CalendarOccurrenceOverridden,
+            auditDescription: $"Overrode occurrence {(originalDate is { } date ? NodaTime.Text.LocalDatePattern.Iso.Format(date) : originalOccurrenceStartUtc.ToIso8601())}",
+            ct, originalDate, dto);
+    }
+
+    private async Task<bool> UpsertExceptionAsync(
+        Guid eventId, Instant? originalUtc, Guid userId,
+        Action<CalendarEventException> apply,
+        AuditActionDefinition auditAction, string auditDescription,
+        CancellationToken ct, LocalDate? originalDate, OverrideOccurrenceDto? overrideDto = null)
+    {
+        var now = clock.GetCurrentInstant();
+        var ev = await repo.GetEventByIdAsync(eventId, ct);
+        if (ev is null) return Refuse("Calendar event not found.");
+        var info = CalendarOccurrenceExpander.ToInfo(ev);
+        if (string.IsNullOrWhiteSpace(info.RecurrenceRule) ||
+            (info.IsAllDay ? originalDate is null || originalUtc is not null : originalUtc is null || originalDate is not null))
+            return Refuse("The occurrence identity must match the series' date or time type.");
+        var refusal = CalendarRecurrenceRules.GetOverrideRefusal(info, originalUtc, originalDate, overrideDto);
+        if (refusal is not null) return Refuse(refusal);
+        if (!IsOccurrenceIdentity(info, originalUtc, originalDate))
+            return Refuse("The occurrence identity is not generated by this series.");
+        var legacyStart = originalDate is null ? null : ev.Exceptions.FirstOrDefault(x =>
+            x.OriginalOccurrenceDate is null && x.OriginalOccurrenceStartUtc is { } old &&
+            old.InZone(DateTimeZoneProviders.Tzdb[ev.RecurrenceTimezone ?? "Europe/Madrid"]).Date == originalDate)?.OriginalOccurrenceStartUtc;
+
+        var repositoryRefusal = await repo.UpsertExceptionAsync(
+            eventId,
+            originalUtc ?? legacyStart,
+            createdByUserId: userId,
+            now: now,
+            apply: x =>
+            {
+                if (info.IsAllDay)
+                {
+                    var previous = info.Exceptions.FirstOrDefault(e => e.Id == x.Id);
+                    x.OverrideStartDate = previous?.OverrideStartDate;
+                    x.OverrideEndDateExclusive = previous?.OverrideEndDateExclusive;
+                    x.OverrideStartUtc = null;
+                    x.OverrideEndUtc = null;
+                }
+                apply(x);
+            },
+            ct: ct, originalDate: originalDate);
+        if (repositoryRefusal is not null) return Refuse(repositoryRefusal);
+
+        await LogCommittedMutationAsync(auditAction, eventId, auditDescription, userId);
+        return true;
+
+        bool Refuse(string reason)
+        {
+            logger.LogWarning("Calendar occurrence mutation rejected for event {EventId}, actor {UserId}: {Reason}",
+                eventId, userId, reason);
+            return false;
+        }
+    }
+
+    private bool IsOccurrenceIdentity(CalendarEventInfo info, Instant? originalUtc, LocalDate? originalDate)
+    {
+        // Existing exceptions remain editable after a recurrence-rule change.
+        if (info.Exceptions.Any(x => info.IsAllDay
+            ? x.OriginalOccurrenceDate == originalDate
+            : x.OriginalOccurrenceStartUtc == originalUtc)) return true;
+        try
+        {
+            var from = info.IsAllDay ? originalDate!.Value.AtMidnight().InUtc().ToInstant() : originalUtc!.Value;
+            var to = from.Plus(info.IsAllDay ? NodaTime.Duration.FromDays(1) : NodaTime.Duration.FromTicks(1));
+            return CalendarOccurrenceExpander.Expand([info with { Exceptions = [] }], from, to,
+                new Dictionary<Guid, string>(), logger, DateTimeZone.Utc)
+                .Any(x => info.IsAllDay
+                    ? x.OriginalOccurrenceDate == originalDate
+                    : x.OriginalOccurrenceStartUtc == originalUtc);
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
 }

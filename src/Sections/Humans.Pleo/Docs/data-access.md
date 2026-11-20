@@ -9,8 +9,7 @@ Folder: `src/Sections/Humans.Pleo/Services/` (class `Service`). **DbContext:** `
 
 ### PleoService (Scoped — class name `Service`, implements `IPleoService` + `IPleoAdminService`)
 
-Repository: `IPleoRepository`, called through `Service` and the internal `PleoMirrorSync` and `PleoMirrorReader`
-it forwards to.
+Repository: `IPleoRepository`, called only by `Service`.
 
 | Table | R/W |
 |-------|-----|

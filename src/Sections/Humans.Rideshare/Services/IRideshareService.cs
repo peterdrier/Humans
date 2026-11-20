@@ -44,7 +44,6 @@ internal interface IRideshareService : IApplicationService
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }
 
-
 /// <summary>A mutation success (optionally with a created id), access failure, or untranslated rule refusal.</summary>
 internal sealed record RideshareMutationResult(
     Guid? Id = null, RideshareRefusal? Refusal = null, RideshareAccessFailure? AccessFailure = null);

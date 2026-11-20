@@ -49,7 +49,6 @@ internal interface IGoogleAdminService : IApplicationService
         Guid actorUserId,
         CancellationToken ct = default);
 
-
     [ExternalWrite]
     Task<GroupLinkActionResult> LinkGroupToTeamAsync(
         Guid teamId, string groupPrefix,

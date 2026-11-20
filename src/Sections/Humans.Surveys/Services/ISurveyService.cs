@@ -168,7 +168,6 @@ internal interface ISurveyService : IApplicationService, ISurveyAnalysisRead
         IReadOnlyList<string> unavailableValues,
         SurveyViewer viewer,
         CancellationToken ct = default);
-
 }
 
 internal sealed record SurveyOfficialLink(string? InvitationToken, string? PublicSlug);

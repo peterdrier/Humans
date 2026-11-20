@@ -146,5 +146,4 @@ internal sealed class HoldedWrite(
         var id = await client.PostLedgerEntryAsync(date, debitAccount, creditAccount, amount, description, ct);
         return new HoldedJournalEntryOutcome(!id.StartsWith(UnconfirmedPaymentRefPrefix, StringComparison.Ordinal));
     }
-
 }

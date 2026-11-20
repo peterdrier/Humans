@@ -50,42 +50,7 @@ Cross-section calls via `ISettingsService` (active event settings),
 `IUserService`, `ICampService` (barrio names for the guide export),
 `IAuditLogService` (guide-export audit) and `IEmailService`, plus `IClock`, with the
 section's own `EventsEmails` builder supplying the message. The inner service has no
-`IMemoryCache`. CSV bulk import runs through `EventBulkImporter`.
-
-### EventGuideConfiguration (internal — constructed by EventService, not DI-registered)
-
-Uses the shared `IEventRepository` for the guide-settings singleton, categories and
-venues. Resolves event editions/timezones through `ISettingsService`; uses the same
-clock and logger as `EventService`. Owns configuration reads, projections and writes;
-the existing caching facade still owns invalidation. No cache or direct DbContext.
-
-### EventBulkImporter (internal — `IApplicationService`, constructed per import by `EventService`)
-
-Not DI-registered; shares `EventService`'s `IEventRepository`. Validates the whole CSV
-before applying changed rows to a barrio's events.
-
-| Table | R/W |
-|-------|-----|
-| Events | R/W (the barrio's existing submissions; add / save changed rows) |
-| EventCategories | R (active categories) |
-
-No cross-section calls — `IClock` and `IStringLocalizer<EventsResource>` only. No
-`IMemoryCache`.
-
-### EventPersonalData (internal — `IApplicationService`, constructed by `EventService`)
-
-Not DI-registered; shares `EventService`'s `IEventRepository`. Owns favourites, category
-preferences, personal-calendar expansion and the GDPR export projection.
-
-| Table | R/W |
-|-------|-----|
-| EventFavourites | R/W (add if absent, remove, list with events) |
-| EventPreferences | R/W (upsert category preference) |
-| Events | R (approved event by id; dashboard list; events behind favourites) |
-| EventGuideSettings | R (active guide edition) |
-
-Cross-section calls via `ISettingsService` (edition settings by id for timezone and recurrence
-expansion) and `IUserService` (merge chain on export), plus `IClock`. No `IMemoryCache`.
+`IMemoryCache`. CSV bulk import runs through `EventService`.
 
 ### CachingEventService (Singleton, `Humans.Events.Services`)
 
