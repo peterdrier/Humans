@@ -156,15 +156,18 @@ internal sealed class GoogleDriveActivityClient(
             var user = await directoryService.Users.Get(userId).ExecuteAsync(ct);
             return user?.PrimaryEmail;
         }
-        catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
+        catch (global::Google.GoogleApiException ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogDebug("Directory API could not resolve {PeopleId} (HTTP {Code})",
-                peopleId, ex.Error.Code);
+            logger.LogWarning("Directory API could not resolve {PeopleId} (HTTP {Code}): {Reason}",
+                peopleId, ex.Error?.Code ?? (int)ex.HttpStatusCode, ex.Error?.Message ?? ex.Message);
             return null;
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Error resolving {PeopleId} via Directory API", peopleId);
+            if (GoogleClientError.IsTransportError(ex) || ex is TimeoutException or OperationCanceledException)
+                logger.LogWarning("Error resolving {PeopleId} via Directory API: {Reason}", peopleId, ex.Message);
+            else
+                logger.LogError(ex, "Error resolving {PeopleId} via Directory API", peopleId);
             return null;
         }
     }
