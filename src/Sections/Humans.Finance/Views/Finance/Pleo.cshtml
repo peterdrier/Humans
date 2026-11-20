@@ -3,10 +3,9 @@
 @{
     ViewData["Title"] = "Pleo reconcile";
     var running = (bool)(ViewBag.PleoRunning ?? false) || Model.Run is { IsRunning: true };
-    var spend = Model.View.Spend;
-    var booked = spend.Where(r => r.State == PleoSpendState.Booked).ToList();
-    var ready = spend.Where(r => r.State == PleoSpendState.Ready).ToList();
-    var notReady = spend.Where(r => r.State is not (PleoSpendState.Booked or PleoSpendState.Ready)).ToList();
+    var booked = Model.View.Booked;
+    var ready = Model.View.Ready;
+    var notReady = Model.View.NotReady;
     var groups = new[]
     {
         (PleoSpendState.NoReceipt, "No receipt"),
@@ -88,20 +87,20 @@
     <div class="col-md-4">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">Already in Holded</div>
-            <div class="fs-3 fw-bold">@booked.Count · @booked.Sum(r => r.Amount).ToEuro()</div>
+            <div class="fs-3 fw-bold">@booked.Count · @booked.Total.ToEuro()</div>
         </div></div>
     </div>
     <div class="col-md-4">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">Ready to book</div>
-            <div class="fs-3 fw-bold">@ready.Count · @ready.Sum(r => r.Amount).ToEuro()</div>
-            <div class="small text-muted">Receipt attached and category mapped to a Holded account@(ready.Count > 0 ? $" · {ready[0].Date.ToDate()} → {ready[^1].Date.ToDate()}" : "")</div>
+            <div class="fs-3 fw-bold">@ready.Count · @ready.Total.ToEuro()</div>
+            <div class="small text-muted">Receipt attached and category mapped to a Holded account@(ready.Count > 0 ? $" · {ready.Rows[0].Date.ToDate()} → {ready.Rows[^1].Date.ToDate()}" : "")</div>
         </div></div>
     </div>
     <div class="col-md-4">
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">Not ready</div>
-            <div class="fs-3 fw-bold @(notReady.Count > 0 ? "text-warning" : "")">@notReady.Count · @notReady.Sum(r => r.Amount).ToEuro()</div>
+            <div class="fs-3 fw-bold @(notReady.Count > 0 ? "text-warning" : "")">@notReady.Count · @notReady.Total.ToEuro()</div>
         </div></div>
     </div>
 </div>
@@ -236,14 +235,14 @@
             <div class="list-group list-group-flush">
                 @foreach (var (state, label) in groups)
                 {
-                    var rows = notReady.Where(r => r.State == state).ToList();
+                    var summary = Model.View.ForState(state);
                     <details class="list-group-item">
-                        <summary>@label — @rows.Count@(rows.Count > 0 ? " · " + rows.Sum(r => r.Amount).ToEuro() : "")</summary>
-                        @if (rows.Count > 0)
+                        <summary>@label — @summary.Count@(summary.Count > 0 ? " · " + summary.Total.ToEuro() : "")</summary>
+                        @if (summary.Count > 0)
                         {
                             <table class="table table-sm mb-0 mt-2">
                                 <tbody>
-                                    @foreach (var r in rows)
+                                    @foreach (var r in summary.Rows)
                                     {
                                         <tr>
                                             <td>@r.Date.ToDate()</td>

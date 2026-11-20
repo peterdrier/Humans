@@ -161,7 +161,7 @@ internal sealed class PleoBooking(
     {
         var (view, chart) = await LoadAsync(ct);
         var names = chart.ToDictionary(a => a.Number, a => a.EnglishName ?? a.Name);
-        var readyByAccount = view.Spend.Where(r => r.State == PleoSpendState.Ready)
+        var readyByAccount = view.Ready.Rows
             .GroupBy(r => r.Account!.Value)
             .Select(g => new PleoAccountTotalVm(g.Key, names.GetValueOrDefault(g.Key, ""), g.Count(), g.Sum(r => r.Amount)))
             .OrderBy(a => a.AccountNum)
@@ -229,9 +229,9 @@ internal sealed class PleoBooking(
 
             var (view, _) = await LoadAsync(ct);
 
-            var booked = view.Spend.Where(r => r.State == PleoSpendState.Booked)
+            var booked = view.Booked.Rows
                 .Select(r => r.Entry.Id).ToHashSet(StringComparer.Ordinal);
-            var batch = view.Spend.Where(r => r.State == PleoSpendState.Ready).Take(limit ?? int.MaxValue).ToList();
+            var batch = view.Ready.Rows.Take(limit ?? int.MaxValue).ToList();
             run = run with { Total = batch.Count };
             state.Publish(run);
 

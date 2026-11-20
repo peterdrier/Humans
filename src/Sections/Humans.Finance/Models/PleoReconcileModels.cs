@@ -27,9 +27,23 @@ internal sealed record PleoSpendRow(
 /// <summary>A wallet load and the Sabadell → Pleo entry it was matched to, if any.</summary>
 internal sealed record PleoTopUpRow(string PleoId, LocalDate Date, decimal Amount, int? HoldedEntry);
 
-/// <summary>The classified mirror, before any display shaping.</summary>
+internal sealed record PleoSpendSummary(IReadOnlyList<PleoSpendRow> Rows)
+{
+    public int Count => Rows.Count;
+    public decimal Total => Rows.Sum(row => row.Amount);
+}
+
+/// <summary>The classified mirror, before any display shaping. Summaries retain classification order.</summary>
 internal sealed record PleoLedgerView(
-    IReadOnlyList<PleoTopUpRow> TopUps, IReadOnlyList<PleoSpendRow> Spend, IReadOnlyList<PleoDuplicate> Duplicates);
+    IReadOnlyList<PleoTopUpRow> TopUps, IReadOnlyList<PleoSpendRow> Spend, IReadOnlyList<PleoDuplicate> Duplicates)
+{
+    public PleoSpendSummary Booked => ForState(PleoSpendState.Booked);
+    public PleoSpendSummary Ready => ForState(PleoSpendState.Ready);
+    public PleoSpendSummary NotReady => new(Spend
+        .Where(row => row.State is not (PleoSpendState.Booked or PleoSpendState.Ready)).ToList());
+
+    public PleoSpendSummary ForState(PleoSpendState state) => new(Spend.Where(row => row.State == state).ToList());
+}
 
 /// <summary>A Pleo id named by more than one 57200003 entry: booked twice; delete the extra one in Holded.</summary>
 internal sealed record PleoDuplicate(string PleoId, IReadOnlyList<int> HoldedEntries);

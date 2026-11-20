@@ -88,11 +88,20 @@ public class PleoBookingTests
                 Entry("oop", -56.98m, family: "OUT_OF_POCKET"),
                 Entry("pend", -5m, status: "PENDING"),
                 Entry("buy", -20m),
+                Entry("refund", 5m, day: 11),
+                Entry("no-receipt", -12.5m, day: 12, receipt: false),
             ],
             [Line(1954, 11, 500m, 0m, "Transferencia")],
             new HashSet<int> { 1954 }, Open);
 
-        view.Spend.Select(r => r.Entry.Id).Should().Equal("buy");
+        view.Spend.Select(r => r.Entry.Id).Should().Equal("buy", "refund", "no-receipt");
+        view.Ready.Rows.Select(row => row.Entry.Id).Should().Equal("buy", "refund");
+        view.Ready.Count.Should().Be(2);
+        view.Ready.Total.Should().Be(-15m);
+        view.NotReady.Count.Should().Be(1);
+        view.NotReady.Total.Should().Be(-12.5m);
+        view.ForState(PleoSpendState.NoReceipt).Rows.Should().Equal(view.NotReady.Rows);
+        view.ForState(PleoSpendState.NoCategory).Count.Should().Be(0);
         view.Spend[0].State.Should().Be(PleoSpendState.Ready);
         view.TopUps.Should().ContainSingle().Which.HoldedEntry.Should().Be(1954);
     }
@@ -119,6 +128,10 @@ public class PleoBookingTests
         byId["amazon"].Should().Match<PleoSpendRow>(r => r.State == PleoSpendState.Booked && r.HoldedEntry == 2061);
         byId["amazon2"].State.Should().Be(PleoSpendState.Ready, "one legacy line counts for one entry");
         byId["far"].State.Should().Be(PleoSpendState.Ready, "a legacy line too far in time is not a match");
+        view.Booked.Rows.Select(row => row.Entry.Id).Should().Equal("byId", "amazon");
+        view.Booked.Total.Should().Be(-101.97m);
+        view.Ready.Rows.Select(row => row.Entry.Id).Should().Equal("amazon2", "far");
+        view.Ready.Total.Should().Be(-86.97m);
     }
 
     [HumansFact]
