@@ -160,7 +160,7 @@ public sealed class PleoSyncTests
         {
             if (boundary is SyncBoundary.AfterReplace or SyncBoundary.DetachedSave) await shutdown.CancelAsync();
         });
-        var sync = new PleoMirrorSync(repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
+        var sync = new Service(repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
         var error = await Xunit.Record.ExceptionAsync(() => sync.SyncAsync(shutdown.Token));
 
         if (boundary == SyncBoundary.AfterReplace)

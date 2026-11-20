@@ -149,10 +149,9 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 
 ## Architecture
 
-`Service` implements both interfaces and owns the category writes. It forwards the sweep to the internal
-`PleoMirrorSync` (fetch, category plan, atomic replace, audit, the sync gate and sync row) and every read to the
-internal `PleoMirrorReader` (one load of the mirror, projected per page; live receipt reads). Neither is registered in
-DI.
+`Service` implements both interfaces and owns the category writes, the sweep (fetch, category plan, atomic
+replace, audit, the sync gate and sync row) and every read (one load of the mirror, projected per page; live receipt
+reads).
 
 ### Public contract
 
