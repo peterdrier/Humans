@@ -23,17 +23,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
-    <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <!-- ICommunicationPreferenceService.GetUsersWithInboxDisabledAsync and MessageCategory. Acyclic: Email does
          not reference Notifications. -->
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
-    <!-- Tickets' contracts leaf: the meter provider surfaces a failed ticket sync to Admin. -->
-    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

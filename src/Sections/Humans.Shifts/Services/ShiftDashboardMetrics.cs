@@ -96,7 +96,7 @@ internal sealed class ShiftDashboardMetrics(
         var es = await calendarResolver.GetAsync(eventSettingsId, ct);
         if (es is null) return [];
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
+        var tz = es.TimeZone;
         var now = clock.GetCurrentInstant();
         var today = now.InZone(tz).Date;
 

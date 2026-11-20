@@ -1,15 +1,9 @@
-using Humans.Settings.Contracts;
 using NodaTime;
 
 namespace Humans.Events.Helpers;
 
 internal static class EventsTimeHelpers
 {
-    public static DateTimeZone? GetTimeZone(EventSettingsInfo? burn)
-        => burn != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId)
-            : null;
-
     public static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
         => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 

@@ -17,7 +17,7 @@ public class HoldedClientContactTests
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
-            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), FixedOrgTimeZone.Madrid);
 
     private static HoldedClient MakeContactList(string contact) =>
         Make(new StubHandler(_ => Respond(HttpStatusCode.OK,

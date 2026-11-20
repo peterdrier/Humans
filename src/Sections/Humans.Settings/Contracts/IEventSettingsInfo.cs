@@ -11,6 +11,10 @@ public interface IEventSettingsInfo
     /// <summary>IANA timezone ID.</summary>
     string TimeZoneId { get; }
 
+    /// <summary><see cref="TimeZoneId"/> resolved; UTC when the id is unknown.</summary>
+    /// <remarks><c>sealed</c> so every implementer resolves the zone the same way.</remarks>
+    public sealed DateTimeZone TimeZone => DateTimeZoneProviders.Tzdb.GetZoneOrNull(TimeZoneId) ?? DateTimeZone.Utc;
+
     /// <summary>The date gates open — DayOffset 0.</summary>
     LocalDate GateOpeningDate { get; }
 

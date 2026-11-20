@@ -315,7 +315,7 @@ public class CampControllerTests
             if (boundary is CampFormRedisplayBoundary.Settings) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Settings2026();
         });
-        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _cityPlanning.GetLegacyRegistrationInfoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (boundary is CampFormRedisplayBoundary.Info) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return (string?)"Registration info";
@@ -495,7 +495,7 @@ public class CampControllerTests
             if (abandon && cancelAfterSettings) await request.CancelAsync();
             return Settings2026();
         });
-        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _cityPlanning.GetLegacyRegistrationInfoAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return "Registration instructions";
@@ -513,6 +513,22 @@ public class CampControllerTests
         abandon = true;
         if (!cancelAfterSettings) await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("From Camps")]
+    [InlineData("")]
+    public async Task Register_ShowsTheEventsOwnRegistrationInfo_OverCityPlanningsOldCopy(string campsInfo)
+    {
+        var settings = Settings2026();
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings with
+        {
+            Events = [.. settings.Events.Select(e => e.Year == 2026 ? e with { RegistrationInfo = campsInfo } : e)],
+        });
+        _cityPlanning.GetLegacyRegistrationInfoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns("From City Planning");
+
+        (await BuildController(Guid.NewGuid()).Register()).Should().BeOfType<ViewResult>()
+            .Which.ViewData["RegistrationInfo"].Should().Be(campsInfo);
     }
 
     [HumansTheory]
@@ -1448,7 +1464,7 @@ public class CampControllerTests
         _camps.GetCampEditDataAsync(camp.Id, selected.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns(MakeEditData(camp, selected) with { HasEarlyEntryCapacity = selected.IsPublic });
         _users.GetUserInfoAsync(leadId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(leadId));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [memberId] = MakeUserInfo(memberId) });
         _shiftView.GetUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ShiftUserSummary> { [memberId] = MakeShiftUserSummary(memberId) });
@@ -1501,9 +1517,9 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampEditData?>(MakeEditData(camp, season)));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                call.ArgAt<IReadOnlyCollection<Guid>>(0).ToDictionary(id => id, MakeUserInfo)));
+                call.ArgAt<IEnumerable<Guid>>(0).ToDictionary(id => id, MakeUserInfo)));
         _authorization.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(),
                 Arg.Any<object?>(),
@@ -1601,11 +1617,6 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampInfo?>(pending));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
-                null, null, null, false, null, null,
-                Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
         _authorization.AuthorizeAsync(
@@ -1634,11 +1645,6 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampInfo?>(future));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
-                null, null, null, false, null, null,
-                Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
         // Succeed only for the loaded CampInfo resource — mirrors the real handler, which
@@ -1683,11 +1689,6 @@ public class CampControllerTests
             .Returns(Task.FromResult<CampInfo?>(fullCamp));
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
-        _cityPlanning.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CityPlanningSettingsDto?>(new CityPlanningSettingsDto(
-                Guid.NewGuid(), 2026, BarrioPlacementState.Closed, null, null, null, null, null, null, null, null, null,
-                null, null, null, false, null, null,
-                Instant.FromUtc(2026, 1, 1, 0, 0))));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
         // Succeed only for the slug-loaded camp — the year projection cannot answer the

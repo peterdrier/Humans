@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Consulter les accords</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Inscription refusée</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>Votre inscription a été examinée et n'a pas été approuvée. Si vous avez des questions, veuillez contacter l'équipe d'administration.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Motif</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Voilà ce qui se passe.</value>
   </data>

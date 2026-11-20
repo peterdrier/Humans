@@ -71,7 +71,7 @@ public class AboutControllerTests
             ct.ThrowIfCancellationRequested();
             return new Dictionary<Guid, UserInfo>();
         }
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => ReadUsersAsync(call.Arg<CancellationToken>()));
         var controller = new AboutController(users, roles, new RoleCatalog(Array.Empty<ISectionRoles>()),
             SystemClock.Instance, NullLogger<AboutController>.Instance)

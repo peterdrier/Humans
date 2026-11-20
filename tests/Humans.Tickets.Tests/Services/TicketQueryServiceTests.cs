@@ -50,7 +50,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns([]);
 
         _service = new TicketQueryService(
-            _repo,
+            FixedOrgTimeZone.Madrid, _repo,
             _transferRepo,
             _budgetService,
             _campaignService,
@@ -125,7 +125,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var vendor = Substitute.For<ITicketVendorService>();
         vendor.GetEventSummaryAsync("event", Arg.Any<CancellationToken>())
             .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
-        var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
+        var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
             _shiftManagementService, _auditLog, Clock, _participations);
         var services = new ServiceCollection();
@@ -248,7 +248,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                 break;
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
-        var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
+        var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations);
 
         if (cancel)
@@ -946,7 +946,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Rows[0].VatAmount.Should().Be(9.09m);
         result.Rows[1].MatchedUserId.Should().BeNull();
         await _userService.DidNotReceive().GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact(Timeout = 10000)]
@@ -1047,7 +1047,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         result.Rows.Should().OnlyContain(row => row.MatchedUserId == human.Id
             && string.Equals(row.TicketTypeName, "Full Week", StringComparison.Ordinal) && row.Price == TicketConstants.VipThresholdEuros);
         await _userService.DidNotReceive().GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

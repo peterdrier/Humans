@@ -41,7 +41,7 @@ public sealed class SurveyIdentityViewTests
                 new RespondentDetail(known, at, []),
                 new RespondentDetail(missing, at, []),
             ]), 2, SurveyResultsScope.Combined);
-        var results = SurveyResultsBuilder.Build(scoped);
+        var results = SurveyResultsBuilder.Build(scoped, FixedOrgTimeZone.Madrid.Zone);
         var send = new SurveySendViewModel
         {
             Id = results.SurveyId,
@@ -97,6 +97,7 @@ public sealed class SurveyIdentityViewTests
         var urls = Substitute.For<IUrlHelperFactory>();
         urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
         builder.Services.AddSingleton(urls);
+        builder.Services.AddSingleton<Humans.Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;

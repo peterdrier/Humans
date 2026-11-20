@@ -39,12 +39,12 @@ public class FinanceOverviewServiceTests
         var vat = FinanceOverviewService.VatDue(
             [Line(1, 47700000, 0m, 100m), Line(2, 47700000, 10m, 0m), Line(4, 47700000, 90m, 0m)],
             [Line(3, 47200000, 30m, 0m), Line(4, 47200000, 0m, 30m)],
-            new HashSet<int> { 4 }, from, to);
+            new HashSet<int> { 4 }, from, to, FixedOrgTimeZone.Madrid.Zone);
         vat.Should().Be(60m);
 
         var irpf = FinanceOverviewService.IrpfDue(
             [Line(5, 47510000, 0m, 50m), Line(6, 47510000, 5m, 0m), Line(7, 47510000, 40m, 0m)],
-            new HashSet<int> { 7 }, from, to);
+            new HashSet<int> { 7 }, from, to, FixedOrgTimeZone.Madrid.Zone);
         irpf.Should().Be(45m);
     }
 
@@ -84,7 +84,7 @@ public class FinanceOverviewServiceTests
             .Returns(new Dictionary<int, string> { [44100003] = "acct_old" });
         _stripe.GetEurBalancesAsync(Arg.Any<CancellationToken>())
             .Returns([new StripeAccountBalance("acct_store", 1m, 0m, Instant.FromUtc(2026, 11, 1, 0, 0))]);
-        return new FinanceOverviewService(_holded, Substitute.For<IFinanceService>(),
+        return new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, Substitute.For<IFinanceService>(),
             Substitute.For<IFinanceAdminService>(), Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             Substitute.For<IBudgetService>(), null!, Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
             _stripe, Microsoft.Extensions.Options.Options.Create(new SepaOptions()),

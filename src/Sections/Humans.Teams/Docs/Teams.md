@@ -188,7 +188,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 **Outbound** — every `ProjectReference` of `Humans.Teams.csproj` beyond Base and its own leaf:
 
 - **AuditLog:** `IAuditLogService` for every audited action in `TeamsAuditActions`, and `<vc:audit-log>` on the Members page.
-- **Notifications.Contracts:** `INotificationEmitter` for the sources in `TeamsNotificationSources`.
+- **Notifications.Contracts:** `INotificationEmitter` for the sources in `TeamsNotificationSources`; `TeamsNotificationMeters` (`INotificationMeterContributor`) pushes Admin's team-join-requests meter, read live from the in-RAM team snapshot.
 - **Users.Contracts:** `IUserService` for member display data, account resolution and the sync's person reads.
 - **Auth:** `IRoleAssignmentService` for role holders, `IAdminAuthorizationService` for actor checks.
 - **Google:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.

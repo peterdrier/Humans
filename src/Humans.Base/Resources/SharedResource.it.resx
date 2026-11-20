@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Esamina accordi</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Registrazione rifiutata</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>La Sua registrazione è stata esaminata e non è stata approvata. Per domande, contatti il team di amministrazione.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Motivo</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Ecco cosa succede.</value>
   </data>

@@ -55,8 +55,7 @@ public sealed class CachingCampServiceTests : CampsTestHarness
             repo, AuditLog, Substitute.For<Humans.Teams.Contracts.ISystemTeamSync>(),
             new InMemoryFileStorage(), Notifier,
             new Lazy<ICampRoleService>(() => Substitute.For<ICampRoleService>()),
-            new Lazy<Humans.CityPlanning.Contracts.ICityPlanningWrite>(() =>
-                Substitute.For<Humans.CityPlanning.Contracts.ICityPlanningWrite>()),
+            new Lazy<IEnumerable<ICampDeletionListener>>(() => []),
             Substitute.For<IUserService>(),
             Substitute.For<Humans.Tickets.Contracts.ITicketService>(), _settingsService,
             Clock, NullLogger<CampService>.Instance);

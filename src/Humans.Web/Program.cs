@@ -502,8 +502,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var userIdRaw = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (Guid.TryParse(userIdRaw, out var userId))
+            if (context.User.GetUserId() is { } userId)
             {
                 var users = context.RequestServices.GetRequiredService<IUserService>();
                 var user = await users.GetUserInfoAsync(userId, context.RequestAborted);
@@ -674,10 +673,11 @@ if (app.Environment.IsDevelopment())
 
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Append("X-Frame-Options", "DENY");
-    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-    context.Response.Headers.Append("Permissions-Policy", "geolocation=(), microphone=(), camera=(self)");
+    // Assigned, not appended: a status-code re-execute runs this again.
+    context.Response.Headers.XFrameOptions = "DENY";
+    context.Response.Headers.XContentTypeOptions = "nosniff";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(self)";
     await next();
 });
 

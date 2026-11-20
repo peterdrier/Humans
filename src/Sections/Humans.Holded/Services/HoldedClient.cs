@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -16,14 +17,20 @@ internal sealed class HoldedClient : IHoldedClient
 {
     private readonly HoldedTransport _transport;
     private readonly ILogger<HoldedClient> _logger;
+    private readonly IOrgTimeZone _orgTimeZone;
+
+    /// <summary>Holded's business dates carry no offset; they are read and written in the org zone.</summary>
+    private DateTimeZone Zone => _orgTimeZone.Zone;
 
     public HoldedClient(
         HttpClient http,
         IOptions<HoldedClientOptions> options,
         ILogger<HoldedClient> logger,
         IHoldedCallLog callLog,
-        IClock clock)
+        IClock clock,
+        IOrgTimeZone orgTimeZone)
     {
+        _orgTimeZone = orgTimeZone;
         _transport = new HoldedTransport(http, options, logger, callLog, clock);
         _logger = logger;
     }
@@ -217,9 +224,9 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    private static Instant ParseLedgerDate(string s) =>
+    private Instant ParseLedgerDate(string s) =>
         DateFormattingExtensions.HoldedLedgerDatePattern.Parse(s).Value
-            .AtStartOfDayInZone(MadridZone).ToInstant();
+            .AtStartOfDayInZone(Zone).ToInstant();
 
     public async Task<string> CreateContactAsync(HoldedContactInput input, CancellationToken ct = default)
     {
@@ -367,7 +374,7 @@ internal sealed class HoldedClient : IHoldedClient
         {
             contact_id = input.ContactId,
             contact_name = input.ContactName,
-            date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
+            date = LocalDatePattern.Iso.Format(input.Date.InZone(Zone).Date),
             description = input.Description,
             number = input.Number,
             notes = input.Notes,
@@ -507,17 +514,17 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    private static Instant ParseIsoDate(string s) =>
-        LocalDatePattern.Iso.Parse(s).Value.AtStartOfDayInZone(MadridZone).ToInstant();
+    private Instant ParseIsoDate(string s) =>
+        LocalDatePattern.Iso.Parse(s).Value.AtStartOfDayInZone(Zone).ToInstant();
 
-    /// <summary>Offset-less ISO (e.g. "2024-01-15T13:00:00"), read as Madrid local time like every other Holded
+    /// <summary>Offset-less ISO (e.g. "2024-01-15T13:00:00"), read as org-zone local time like every other Holded
     /// date-time.</summary>
-    private static Instant? ParseApprovedAt(string? s) =>
+    private Instant? ParseApprovedAt(string? s) =>
         string.IsNullOrEmpty(s)
             ? null
-            : LocalDateTimePattern.GeneralIso.Parse(s).Value.InZoneLeniently(MadridZone).ToInstant();
+            : LocalDateTimePattern.GeneralIso.Parse(s).Value.InZoneLeniently(Zone).ToInstant();
 
-    private static HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
+    private HoldedPurchaseDocListItemDto ParsePurchaseDoc(JsonNode? n) => new()
     {
         Id = ReadRequiredString(Prop(n, "id"), "id"),
         DocNumber = Prop(n, "document_number")?.GetValue<string>() ?? "",
@@ -712,11 +719,11 @@ internal sealed class HoldedClient : IHoldedClient
             ? d
             : null;
 
-    private static object BuildSalesDocumentPayload(HoldedSalesDocumentInput input) => new
+    private object BuildSalesDocumentPayload(HoldedSalesDocumentInput input) => new
     {
         contact_id = input.ContactId,
         contact_name = input.ContactName,
-        date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
+        date = LocalDatePattern.Iso.Format(input.Date.InZone(Zone).Date),
         description = input.Description,
         notes = input.Notes,
         tags = input.Tags,
@@ -880,7 +887,7 @@ internal sealed class HoldedClient : IHoldedClient
 
     /// <summary>A bank line has no <c>date</c> key, only <c>booking_date</c> and <c>value_date</c> (ISO 8601 with an
     /// offset). Booking is what Holded stamps on the reconciled payment and entry, so it is the date; value is the
-    /// fallback. The date part is taken as given, never shifted to Madrid: a midnight-UTC Sabadell line would move
+    /// fallback. The date part is taken as given, never shifted to the org zone: a midnight-UTC Sabadell line would move
     /// a day. Throws <c>HoldedPermanentException</c> when neither parses.</summary>
 
     private static LocalDate ParseBankMovementDate(JsonNode line)

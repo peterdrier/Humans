@@ -116,6 +116,32 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         return true;
     }
 
+    public async Task<HoldedCreditorContact?> MoveCreditorContactAsync(
+        Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var source = await ctx.HoldedCreditorContacts.FirstOrDefaultAsync(c => c.UserId == fromUserId, ct);
+        if (source is null || await ctx.HoldedCreditorContacts.AnyAsync(c => c.UserId == toUserId, ct))
+            return null;
+
+        source.UserId = toUserId;
+        source.UpdatedAt = now;
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "IX_holded_creditor_contacts_UserId"
+        })
+        {
+            // The target was bound after the check above; its binding stands.
+            return null;
+        }
+        return source;
+    }
+
     public async Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

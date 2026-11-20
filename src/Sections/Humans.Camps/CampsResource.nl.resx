@@ -340,4 +340,7 @@
   <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Dit seizoen hoort niet bij dit kamp.</value></data>
   <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Alleen een seizoen dat in afwachting of actief is, kan worden ingetrokken.</value></data>
   <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Alleen een actief seizoen kan als vol worden gemarkeerd.</value></data>
+  <data name="Camps_Meter_JoinRequest" xml:space="preserve"><value>1 Human wil zich bij je kamp aansluiten</value></data>
+  <data name="Camps_Meter_JoinRequests" xml:space="preserve"><value>{0} Humans willen zich bij je kamp aansluiten</value></data>
+  <data name="Camps_Meter_AudienceCampLeads" xml:space="preserve"><value>Barrioleiders</value></data>
 </root>

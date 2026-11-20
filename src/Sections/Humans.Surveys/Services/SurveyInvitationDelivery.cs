@@ -23,7 +23,7 @@ internal sealed class SurveyInvitationDelivery(
     SurveysEmails emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
     SurveyAudience audience,
-    ILogger<SurveyInvitationDelivery> logger) : ISurveyReminderSender, IApplicationService
+    ILogger<SurveyInvitationDelivery> logger) : ISurveyInvitations, ISurveyReminderSender
 {
     public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)
     {
@@ -154,7 +154,7 @@ internal sealed class SurveyInvitationDelivery(
         var excluded = invitations.Where(invitation => invitation.SentAt is not null || invitation.Completed)
             .Select(invitation => invitation.UserId).ToHashSet();
         if (excluded.Count == 0) return excluded;
-        foreach (var info in (await userService.GetUserInfosAsync(excluded.ToList(), ct)).Values)
+        foreach (var info in (await userService.GetUserInfosAsync(excluded, ct)).Values)
             excluded.Add(info.Id);
         return excluded;
     }
@@ -187,7 +187,7 @@ internal sealed class SurveyInvitationDelivery(
         var due = await repo.GetInvitationsDueForReminderAsync(cutoff, ct);
         if (due.Count == 0) return 0;
 
-        var userIds = due.Select(i => i.UserId).Distinct().ToList();
+        var userIds = due.Select(i => i.UserId);
         var users = await userService.GetUserInfosAsync(userIds, ct);
 
         // Loaded once per distinct survey (few open surveys at this scale). The answer window is

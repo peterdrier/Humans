@@ -100,4 +100,6 @@
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Die Erklärung konnte nicht rückgängig gemacht werden; möglicherweise hat die Ticketsynchronisierung deinen Status aktualisiert.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Dein Ticketstatus ist gerade nicht verfügbar. Bitte versuche es später noch einmal.</value></data>
   <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Begründungen dürfen höchstens 1000 Zeichen lang sein.</value></data>
+  <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Fehler bei der Ticket-Synchronisierung</value></data>
+  <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
 </root>

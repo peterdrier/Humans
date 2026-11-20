@@ -1,6 +1,7 @@
 @model Humans.Finance.Models.PleoReconcileVm
 @using Humans.Finance.Services
 @using NodaTime
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Pleo reconcile";
     var running = (bool)(ViewBag.PleoRunning ?? false) || Model.Run is { IsRunning: true };
@@ -28,7 +29,7 @@
 
 @functions {
     private static string Signed(decimal amount) => amount > 0m ? "+" + amount.ToEuro() : amount.ToEuro();
-    private static string Day(Instant at) => at.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date.ToDate();
+    private string Day(Instant at) => at.InZone(OrgTimeZone.Zone).Date.ToDate();
 }
 
 <page-header title="Pleo reconcile">

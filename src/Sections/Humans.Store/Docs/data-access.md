@@ -11,19 +11,46 @@ Folder: `src/Sections/Humans.Store/Services/` (namespace
 `store_products`, `store_orders`, `store_order_lines`, `store_payments`,
 `store_invoices`, `store_settings`.
 
-### Service (Scoped — `IApplicationService`)
+### CatalogService (Scoped — `IApplicationService`)
 
-The section's internal Store facade (`Services/Service.cs`). Repository: `IStoreRepository`.
-Implements `IStoreAccountingRead`; accounting consumers resolve the same instance.
+Products, store settings and the account pickers (`Services/CatalogService.cs`). Repository:
+`IStoreRepository`. Cross-section calls via `IHoldedService` (chart mirror for the account
+pickers and checks) and `IAuditLogService`.
 
 | Table | R/W |
 |-------|-----|
 | store_products | R/W |
+| store_settings | R/W (`GetSettingsAsync` / `SaveSettingsAsync`, the `/Settings#store` tab) |
+
+### Service (Scoped — `IApplicationService`)
+
+Orders, lines, counterparties, payments and Stripe, index, summary and accounting reads
+(`Services/Service.cs`). Repository: `IStoreRepository`. Reads the active catalog through
+`CatalogService`. Implements `IStoreAccountingRead`; accounting consumers resolve the same instance.
+
+| Table | R/W |
+|-------|-----|
+| store_products | R (pricing) |
 | store_orders | R/W |
 | store_order_lines | R/W |
 | store_payments | R/W |
+| store_invoices | R |
+| store_settings | R |
+
+### InvoiceService (Scoped — `IApplicationService`)
+
+Invoice plan, issue, Holded booking, resend and PDF (`Services/InvoiceService.cs`). Repository:
+`IStoreRepository`. Reads live prices and counterparty names through `Service`. Cross-section
+calls via `IHoldedService` / `IHoldedWrite`, `IStripeService` (charge gross when booking),
+`IFinanceService` (bank treasury) and `IAuditLogService`.
+
+| Table | R/W |
+|-------|-----|
 | store_invoices | R/W |
-| store_settings | R/W (`GetSettingsAsync` / `SaveSettingsAsync`, the `/Settings#store` tab) |
+| store_orders | R/W (issue freezes the order: `InvoiceIssued` and line snapshots, one save with the invoice) |
+| store_order_lines | R/W (snapshots) |
+| store_payments | R |
+| store_settings | R |
 
 Cross-section calls via `IAuditLogService`, `ICampService`,
 `ITeamService` (team-order counterparty surface),

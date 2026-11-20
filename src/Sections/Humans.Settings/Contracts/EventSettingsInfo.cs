@@ -23,8 +23,8 @@ public sealed record EventSettingsInfo(
     int? EarlyEntryStartOffset = null,
     bool IsOffSeason = false) : IEventSettingsInfo
 {
-    /// <summary><see cref="TimeZoneId"/> resolved; UTC when the id is unknown.</summary>
-    public DateTimeZone TimeZone => DateTimeZoneProviders.Tzdb.GetZoneOrNull(TimeZoneId) ?? DateTimeZone.Utc;
+    /// <inheritdoc cref="IEventSettingsInfo.TimeZone" />
+    public DateTimeZone TimeZone => ((IEventSettingsInfo)this).TimeZone;
 
     /// <summary>
     /// Step function: the capacity at the largest key ≤ <paramref name="dayOffset"/>, or 0 if none qualifies.

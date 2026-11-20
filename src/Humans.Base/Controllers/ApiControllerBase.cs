@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,11 +17,7 @@ public abstract class ApiControllerBase(IUserService userService) : ControllerBa
 {
     protected IUserService UserService => userService;
 
-    protected Guid? GetCurrentUserId()
-    {
-        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(raw, out var id) ? id : null;
-    }
+    protected Guid? GetCurrentUserId() => User.GetUserId();
 
     protected async Task<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
     {

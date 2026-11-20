@@ -39,7 +39,7 @@ internal sealed class EventsApiController(
         var ct = HttpContext.RequestAborted;
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var excludedSlugs = await GetExcludedSlugsAsync(ct);
@@ -75,7 +75,7 @@ internal sealed class EventsApiController(
         var ct = HttpContext.RequestAborted;
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
 
         var e = await guide.GetApprovedEventByIdAsync(id, ct);
         if (e == null) return NotFound();
@@ -124,7 +124,7 @@ internal sealed class EventsApiController(
         var ct = HttpContext.RequestAborted;
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var events = await guide.GetApprovedEventsAsync(id, null, null, null, [], ct);
@@ -210,7 +210,7 @@ internal sealed class EventsApiController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id, ct);

@@ -26,6 +26,11 @@ internal interface IFinanceRepository : IRepository
     /// it.</summary>
     Task<bool> TryInsertCreditorContactAsync(HoldedCreditorContact row, CancellationToken ct = default);
 
+    /// <summary>Rekeys <paramref name="fromUserId"/>'s binding to <paramref name="toUserId"/> in one save. Null, with
+    /// nothing written, when the source has none or the target already has its own.</summary>
+    Task<HoldedCreditorContact?> MoveCreditorContactAsync(
+        Guid fromUserId, Guid toUserId, Instant now, CancellationToken ct = default);
+
     /// <summary>Null when there was none.</summary>
     Task<HoldedCreditorContact?> DeleteCreditorContactAsync(Guid userId, CancellationToken ct = default);
 

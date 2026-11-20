@@ -7,4 +7,11 @@ internal sealed class CampEventSettings
     public Guid EventSettingsId { get; init; }
 
     public bool RegistrationOpen { get; set; }
+
+    /// <summary>
+    /// Markdown shown at the top of the Register page while this event takes registrations. Empty means an admin
+    /// cleared it; null means it was never set, so City Planning's old copy still applies until
+    /// <c>camps.registration-info-from-city-planning</c> retires.
+    /// </summary>
+    public string? RegistrationInfo { get; set; }
 }

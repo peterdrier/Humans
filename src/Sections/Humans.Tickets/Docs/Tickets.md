@@ -232,6 +232,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 Outbound (what Tickets injects; the project references are the authority — `Humans.Tickets.csproj`):
 
+- **Configuration:** `Section.Register` binds the port's `TicketVendorSettings` (`TicketVendor:*`, plus `TICKET_VENDOR_API_KEY`).
+
 - **Audit actions:** declared on `TicketsAuditActions` (`src/Sections/Humans.Tickets/TicketsAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `TicketTransferRequested`, `TicketTransferApproved`, `TicketTransferRejected`, `TicketTransferCancelled`, `TicketTransferAutoFailed`, `TicketContactsImported`, `TicketDonationsExported`, `GateTerminalPasswordSet`, `TicketAttendeesExported`, `TicketOrdersExported`, `ParticipationBackfilled`.
 - **Campaigns:** `ICampaignService.GetCodeTrackingAsync` for the Codes page; `ICampaignWrite.MarkGrantsRedeemedAsync` pushes redemptions back during sync. Discount-code *generation* is invoked from Campaigns via `ITicketDiscountCodes.GenerateAsync` (served by `TicketVendorGateway`); `/Tickets/Codes` only reports redemption status, it does not create codes.
 - **Users:** `IUserService` — `GetAllUserInfosAsync` builds the verified-email → user index (`VerifiedEmailLookup`, shared by the sync and the per-user ticket-count fallback) and hydrates reports; `GetUserInfoAsync` validates transfer recipients; transfers snapshot the recipient’s canonical `UserInfo.Email` when creating a request. `IUserWrite.MarkFakeAsync` marks the gate-terminal account as not a person on every password set, which keeps it out of Consent's review queue. `IUserEmailService` — `GetNotificationEmailsByUserIdsAsync` hydrates the who-hasn't-bought report; `FindByAddressAsync` (aliased, verified-only then all rows) drives contact-import matching. `IAccountProvisioningService.FindOrCreateUserByEmailAsync` provisions unmatched attendees; `ReplaceUnverifiedEmailAndProvisionAsync` atomically replaces unverified-address claims. Both return the matched user's id (`AccountProvisioningResult.UserId`), which import stamps on `TicketAttendee.MatchedUserId`. `IProfileEditorService.SaveProfileAsync`, `IAccountProvisioningService.CreateAccountAsync` and `IUserSignInService` (password check/set) are used only by `GateTerminalAccountSeeder`.
@@ -242,6 +244,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 - **Budget:** `IBudgetService` — `GetActiveYearAsync` + `ComputeBudgetSummary` feed the dashboard's break-even calculation. The Tickets→Budget bridge is Budget's: `Humans.Budget.Services.TicketingBudgetService` reads through `ITicketService` and writes through Budget's `IBudgetManagement`.
 - **EarlyEntry:** `IEarlyEntryService.GetForUserAsync` — the viewer's own earliest entry date on the holder-facing stub surfaces (see Invariants).
 - **Stripe:** `IStripeService.GetPaymentDetailsAsync` populates `PaymentMethod` / `PaymentMethodDetail` / `StripeFee` / `ApplicationFee` / `FeeTax` / `WithheldTax` per order. Configured via `STRIPE_TICKETS_KEY`; if `IsConfigured` is false, enrichment is skipped silently and the dashboard's fee breakdown stays empty.
+- **Notifications:** `TicketsNotificationMeters` (`INotificationMeterContributor`) pushes Admin's ticket-sync-error meter from the sync-state row.
 - **Audit:** `IAuditLogService.LogAsync` — the transfer actions above plus `TicketContactsImported` and `TicketAttendeesExported`, `TicketOrdersExported`, `TicketDonationsExported` (each personal-data CSV download; no export without a resolved actor). `<vc:audit-log>` on the transfer detail page is the AuditLog section's component.
 - **Email:** `IEmailService.SendAsync` with the section's own `TicketsEmails` builder (`TicketTransferRequested`, `TicketTransferTeamNotification`, `TicketTransferDecision`). Tickets owns this copy and its `/Email/EmailPreview` samples (peterdrier/Humans#1651), and implements Email's `ICommunicationPreferenceLock` (`TicketingPreferenceLock`) so a matched ticket holder cannot switch Ticketing mail off on the preference pages; the member-facing copy lives in `TicketsResource` in all supported cultures and renders in the recipient's supported saved language (sender and receiver via `IUserService`), falling back to English for blank, invalid or unsupported preferences; the ticket-team notice stays English.
 - **GDPR:** `TicketQueryService` implements `IUserDataContributor` — export slices `TicketOrders` and `TicketAttendeeMatches`; erasure tombstones as described under Triggers. `EventParticipationService` implements it too — export slice `EventParticipations` (year, status, source, declared and checked-in times; always a list); retained on erasure.
@@ -249,9 +252,11 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 
 Inbound (who injects `Humans.Tickets.Contracts`):
 
+- **`PolicyNames.ScannerAccess` / `PolicyNames.GateAdmit`** — registered by Tickets' `ISectionPolicies` (TicketsAdmin, Admin, Board for reads only, or the gate-terminal account by id) because every consumer depends on Tickets: Gate, Scanner, and Tickets' own onsite roster.
+
 - **`ITicketService`** (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`, `FindCurrentEventAttendeeByBarcodeAsync`, `GetParticipationsAsync`, `GetAllParticipationsAsync`; no `SurfaceBudget` pinned) — Users (profile, guest orders, account deletion hold, audiences, the admin ticket-holder tile), MailerLite audiences, Shifts (volunteer tracking), Camps (early-entry "has entered"), Surveys, Teams admin, Budget, Gate (`GateService` barcode admits), Scanner (`/Scanner/Tickets` lookup card and check-in time), Debug (user grid, membership card), Agent. Read-only.
 - **`ITicketWrite`** (`RecordParticipationAsync`) — Gate's admit records `Attended` with the check-in time. The member declaration, ticket-sync clears and the admin backfill stay internal (`IEventParticipationManagement`).
-- **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). Each vendor check-in POST creates a record, so the job always uses zero retry attempts. **`ITicketSync`** — Notifications' `NotificationMeterProvider`. The transfer-queue count behind the admin nav badge (`ITicketTransferQueue`) is internal: no cross-section caller.
+- **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). Each vendor check-in POST creates a record, so the job always uses zero retry attempts. **`ITicketSync`** — no cross-section caller (TICKETS-12). The transfer-queue count behind the admin nav badge (`ITicketTransferQueue`) is internal: no cross-section caller.
 
 ## Architecture
 
@@ -295,8 +300,8 @@ nothing in `Humans.Tickets`, in Base or in any consumer changes.
 `Section.Register` in the adapter reads the environment name out of `IConfiguration`
 (`ISection.Register` has no `IHostEnvironment`) and fails closed: anything but an exactly-Production
 environment name gets the stub, so a developer holding a real `TICKET_VENDOR_API_KEY` still cannot
-write to a live ticketing account. The port's `IOptions<TicketVendorSettings>` binding stays in
-Shell (`TicketVendorInfrastructureExtensions`) — the settings belong to the port, which `TicketSyncService` and the section's own
+write to a live ticketing account. The port's `IOptions<TicketVendorSettings>` binding lives in
+Tickets' own `Section.Register` — the settings belong to the port, which `TicketSyncService` and the section's own
 `TicketVendorHealthCheck` also read, and deleting the adapter must not take them with it.
 
 **Only `Humans.Tickets` may inject `ITicketVendorService`:** the section's services and its own

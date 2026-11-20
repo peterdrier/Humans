@@ -3,7 +3,7 @@
   src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs
   src/Sections/Humans.Tickets/Contracts/TicketVendorSettings.cs
   src/Sections/Humans.Tickets/Services/Stores/CachingTicketVendorService.cs
-  src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs
+  src/Sections/Humans.Tickets/Section.cs
   tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs
   tests/Humans.TicketTailor.Tests/**
   src/Sections/Humans.Tickets.Contracts/TicketVendorServiceKeys.cs
@@ -74,7 +74,7 @@ None — the section is a pure request/response surface. Side effects around syn
 
 ## Cross-Section Dependencies
 
-- **Tickets**: implements `Humans.Tickets.Contracts.ITicketVendorService`; reads `TicketVendorSettings` through `IOptions<>`, which Shell binds (`src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs`) so that deleting this project cannot take the port's configuration with it. The `.csproj` references `Humans.Tickets` (the owner, not a leaf) directly — sanctioned and acyclic, nobodies-collective/Humans#866 — and `Humans.Tickets.Contracts`.
+- **Tickets**: implements `Humans.Tickets.Contracts.ITicketVendorService`; reads `TicketVendorSettings` through `IOptions<>`, which Tickets' `Section.Register` binds so that deleting this project cannot take the port's configuration with it. The `.csproj` references `Humans.Tickets` (the owner, not a leaf) directly — sanctioned and acyclic, nobodies-collective/Humans#866 — and `Humans.Tickets.Contracts`.
 - **Base**: `TimeOperation`.
 
 ## Architecture

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -45,13 +46,6 @@ public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionF
             return;
         }
 
-        // Machine requests carry a Backdoor API key, not a browsing session: a JSON client cannot fill in the name form.
-        if (MembershipRequiredFilter.IsMachineRequest(user))
-        {
-            await next();
-            return;
-        }
-
         if (context.ActionDescriptor is ControllerActionDescriptor cad && MembershipRequiredFilter.IsPublicEndpoint(cad))
         {
             await next();
@@ -77,8 +71,7 @@ public sealed class NameRequiredFilter(IUserService userService) : IAsyncActionF
             return;
         }
 
-        var raw = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(raw, out var userId))
+        if (user.GetUserId() is not { } userId)
         {
             await next();
             return;

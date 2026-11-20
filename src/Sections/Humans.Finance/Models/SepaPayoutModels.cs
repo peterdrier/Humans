@@ -21,8 +21,7 @@ internal sealed record SepaPaymentFileRequest(
     IReadOnlyList<SepaTransfer> Transfers)
 {
     /// <summary>For the SEPA creation timestamp.</summary>
-    public DateTimeZone CreationTimeZone { get; init; } =
-        DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    public required DateTimeZone CreationTimeZone { get; init; }
 }
 
 internal sealed record SepaPayoutSelection(int SupplierAccountNum, decimal Amount);

@@ -41,6 +41,7 @@ internal sealed record PleoSnapshot(
 /// sent, because Holded's purchase read reports no attachments.</para>
 /// </remarks>
 internal sealed partial class PleoBooking(
+    IOrgTimeZone orgTimeZone,
     IPleoService pleo,
     IHoldedService holded,
     IHoldedWrite write,
@@ -69,7 +70,7 @@ internal sealed partial class PleoBooking(
     private const string AuditEntityType = "PleoEntry";
     private const string JobName = "pleo-booking";
 
-    private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
     private static readonly LocalDate Inception = new(2020, 1, 1);
     private static readonly SemaphoreSlim Gate = new(1, 1);
 
@@ -110,7 +111,7 @@ internal sealed partial class PleoBooking(
 
     private static bool IsExpenseAccount(int n) => n / 100000 == 629;
 
-    private static LocalDate MadridDate(Instant i) => i.InZone(Madrid).Date;
+    private static LocalDate OrgDate(Instant i, DateTimeZone zone) => i.InZone(zone).Date;
 
     // ── What is written to Holded: plain, Spanish / English ─────────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ internal sealed partial class PleoBooking(
     /// 57200003 line naming no id is never taken as booking anything: it is a top-up (a debit whose entry has a 57200001
     /// leg, paired with a Pleo load of the same amount within <see cref="MatchDays"/> days) or unattributed.
     /// </summary>
-    internal static PleoLedgerView Classify(PleoSnapshot s)
+    internal static PleoLedgerView Classify(PleoSnapshot s, DateTimeZone zone)
     {
         var open = s.Chart.Where(a => !a.Archived).Select(a => a.Number).ToHashSet();
         var names = s.Chart.ToDictionary(a => a.Number, a => a.Name);
@@ -181,11 +182,11 @@ internal sealed partial class PleoBooking(
             .OrderBy(e => e.SettledAt).ThenBy(e => e.Id, StringComparer.Ordinal)
             .Select(e =>
             {
-                var date = MadridDate(e.SettledAt);
+                var date = OrgDate(e.SettledAt, zone);
                 var amount = e.AmountEur!.Value;
                 var hit = topUpLines
-                    .Where(l => l.Debit == amount && Math.Abs(Period.Between(date, MadridDate(l.Date), PeriodUnits.Days).Days) <= MatchDays)
-                    .OrderBy(l => Math.Abs(Period.Between(date, MadridDate(l.Date), PeriodUnits.Days).Days))
+                    .Where(l => l.Debit == amount && Math.Abs(Period.Between(date, OrgDate(l.Date, zone), PeriodUnits.Days).Days) <= MatchDays)
+                    .OrderBy(l => Math.Abs(Period.Between(date, OrgDate(l.Date, zone), PeriodUnits.Days).Days))
                     .ThenBy(l => l.EntryNumber)
                     .FirstOrDefault();
                 if (hit is not null) topUpLines.Remove(hit);
@@ -200,7 +201,7 @@ internal sealed partial class PleoBooking(
             .ToList();
         var spend = spendEntries.Select(e =>
             {
-                var date = MadridDate(e.SettledAt);
+                var date = OrgDate(e.SettledAt, zone);
                 var account = AccountOf(e, open);
                 if (purchases.TryGetValue(e.Id, out var p))
                     return new PleoSpendRow(e, date, p.Complete ? PleoSpendState.Booked : PleoSpendState.Unfinished, account, p);
@@ -346,7 +347,7 @@ internal sealed partial class PleoBooking(
     public async Task<PleoReconcileVm> GetReconcileAsync(CancellationToken ct = default)
     {
         var snapshot = await LoadAsync(ct);
-        var view = Classify(snapshot);
+        var view = Classify(snapshot, OrgZone);
         var names = snapshot.Chart.ToDictionary(a => a.Number, a => a.EnglishName ?? a.Name);
         var readyByAccount = view.Spend.Where(r => r.State == PleoSpendState.Ready)
             .GroupBy(r => r.Account!.Value)
@@ -396,7 +397,7 @@ internal sealed partial class PleoBooking(
 
     private async Task<PleoSnapshot> LoadAsync(CancellationToken ct)
     {
-        var today = MadridDate(clock.GetCurrentInstant());
+        var today = OrgDate(clock.GetCurrentInstant(), OrgZone);
         var entries = await pleo.GetSettledEntriesAsync(Inception, today, ct);
         var pleoLines = await holded.GetLedgerLinesAsync(PleoTreasury, ct);
         var sabadell = (await holded.GetLedgerLinesAsync(SabadellTreasury, ct)).Select(l => l.EntryNumber).ToHashSet();
@@ -482,7 +483,7 @@ internal sealed partial class PleoBooking(
         if (!await holded.SyncAccountLedgerAsync(PleoTreasury, ct))
             return "A Holded ledger sync is running; nothing was done. Try again in a minute.";
 
-        var view = Classify(await LoadAsync(ct));
+        var view = Classify(await LoadAsync(ct), OrgZone);
         var refused = kind switch
         {
             PleoRunKind.Book => await BookRowsAsync(view, settings, limit, actor, lines, progress),
@@ -575,7 +576,7 @@ internal sealed partial class PleoBooking(
                         ContactId = settings.PleoHoldedContactId!,
                         ContactName = contactName,
                         Number = Number(e.Id),
-                        Date = row.Date.AtStartOfDayInZone(Madrid).ToInstant(),
+                        Date = row.Date.AtStartOfDayInZone(OrgZone).ToInstant(),
                         Description = DocDescription(e),
                         Notes = DocNotes(e),
                         Lines = [new HoldedPurchaseDocumentLineInput
@@ -724,7 +725,7 @@ internal sealed partial class PleoBooking(
     {
         var batch = view.Changes.Where(c => c.Corrections.Count > 0).Take(limit ?? int.MaxValue).ToList();
         progress(batch.Count);
-        var today = MadridDate(clock.GetCurrentInstant());
+        var today = OrgDate(clock.GetCurrentInstant(), OrgZone);
         foreach (var change in batch)
         {
             var e = change.Entry!;

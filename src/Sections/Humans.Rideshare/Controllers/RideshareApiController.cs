@@ -34,7 +34,7 @@ internal sealed class RideshareApiController(
         var trips = snapshot.JoinableTrips(day, dir);
         var requests = snapshot.ActiveRequests(day, dir);
         var people = await UserService.GetUserInfosAsync(
-            trips.Select(t => t.UserId).Concat(requests.Select(r => r.UserId)).Distinct().ToList(), ct);
+            trips.Select(t => t.UserId).Concat(requests.Select(r => r.UserId)), ct);
 
         var json = BoardFeatureCollection.Build(snapshot, day, dir, user.Id, people, localizer, logger);
         return Content(json, "application/geo+json");

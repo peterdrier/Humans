@@ -2,7 +2,7 @@
 
 @{
     ViewData["Title"] = Localizer["Shifts_MyShiftsTitle"].Value;
-    var tz = Model.EventSettings != null ? DateTimeZoneProviders.Tzdb[Model.EventSettings.TimeZoneId] : null;
+    var tz = Model.EventSettings?.TimeZone;
 }
 
 <div class="container py-4">

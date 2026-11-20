@@ -33,8 +33,8 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         if (includeSurvivor)
             await AddMemberAsync(workgroup.Id, survivorId, WorkgroupMemberRole.Coordinator);
         // Users' batched read retains requested keys while resolving their values.
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<IReadOnlyCollection<Guid>>()
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<Guid>>()
                 .ToDictionary(id => id, _ => survivor));
 
         await NewService().RunDailyRhythmAsync(Ct);
@@ -111,7 +111,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         }
         if (string.Equals(boundary, "Recipients", StringComparison.Ordinal))
         {
-            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(CancelLookupAsync(call.Arg<CancellationToken>())));
         }
         else if (boardNotice)

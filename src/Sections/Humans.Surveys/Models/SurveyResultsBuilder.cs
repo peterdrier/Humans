@@ -9,9 +9,7 @@ namespace Humans.Surveys.Models;
 /// <summary>Formatting only (percent, date and rating-average rounding): no business logic.</summary>
 internal static class SurveyResultsBuilder
 {
-    private static readonly DateTimeZone Zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    public static SurveyResultsViewModel Build(SurveyScopedResults scoped)
+    public static SurveyResultsViewModel Build(SurveyScopedResults scoped, DateTimeZone zone)
     {
         var view = scoped.Results;
 
@@ -30,7 +28,7 @@ internal static class SurveyResultsBuilder
             Respondents = view.IdentifiedRespondents
                 .OrderBy(respondent => respondent.SubmittedAt)
                 .ThenBy(respondent => respondent.ResponseId)
-                .Select(BuildRespondent).ToList(),
+                .Select(r => BuildRespondent(r, zone)).ToList(),
             IsEmbargoed = scoped.IsEmbargoed,
             RankedQuestions = scoped.RankedQuestions ?? new Dictionary<Guid, RankedQuestionResult>(),
             IsAsociadoVote = scoped.IsAsociadoVote,
@@ -52,15 +50,15 @@ internal static class SurveyResultsBuilder
         FreeTextAnswers = q.FreeTextAnswers,
     };
 
-    private static SurveyResultsRespondentViewModel BuildRespondent(RespondentDetail r) => new()
+    private static SurveyResultsRespondentViewModel BuildRespondent(RespondentDetail r, DateTimeZone zone) => new()
     {
         UserId = r.UserId,
-        SubmittedAt = FormatInstant(r.SubmittedAt),
+        SubmittedAt = FormatInstant(r.SubmittedAt, zone),
         Answers = r.Answers,
     };
 
-    private static string FormatInstant(Instant? instant) =>
-        instant is null ? "—" : instant.Value.ToDateTime(Zone);
+    private static string FormatInstant(Instant? instant, DateTimeZone zone) =>
+        instant is null ? "—" : instant.Value.ToDateTime(zone);
 }
 
 internal sealed class SurveyResultsViewModel

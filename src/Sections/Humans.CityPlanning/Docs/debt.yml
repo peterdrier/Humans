@@ -8,10 +8,6 @@ inbox:
     what: "CityPlanningApiController.ExportContainersGeoJson decides which containers a viewer may export in the controller (map admin, else the camp they lead this year) and builds the export payload there, while the polygon export lives in the service; its gate is not the ContainerOperationRequirement.Place rule the sibling container endpoints ask. Viewer filtering is authorization, a fact (controller-intent lens). Found by section-doctor 2026-11-20."
     review: panel
   - added: 2026-11-20
-    id: CITY-10
-    what: "CityPlanningSettingsTabViewComponent works out whether the registration info has a year to write to (active event, else an open season) beside CityPlanningService.GetRegistrationTargetYearAsync, which owns that rule; two definitions of one rule. Found by section-doctor 2026-11-20."
-    review: light
-  - added: 2026-11-20
     id: CITY-11
     what: "Which camp or season the current user leads this year is composed three times from ICampService.GetCampsForYearAsync plus CampInfo.GetLeadSeasonIdForYear: CityPlanningController.FindUserLeadCampAsync, CityPlanningController.FindUserLeadSeasonIdAsync and CityPlanningApiController.FindUserLeadCampIdAsync. Found by section-doctor 2026-11-20."
     review: light

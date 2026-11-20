@@ -100,4 +100,6 @@
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>No s'ha pogut desfer; pot ser que la sincronització d'entrades hagi actualitzat el teu estat.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>L'estat de la teva entrada no està disponible ara mateix. Torna-ho a provar més tard.</value></data>
   <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Els motius no poden superar els 1000 caràcters.</value></data>
+  <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Error de sincronització d’entrades</value></data>
+  <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>administradors</value></data>
 </root>

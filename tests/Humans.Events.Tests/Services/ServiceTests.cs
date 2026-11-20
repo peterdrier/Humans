@@ -226,7 +226,7 @@ public sealed class EventServiceTests
         _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
         _camps.GetCampsForEventAsync(burn.Id, ct).Returns(Array.Empty<CampInfo>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], null)

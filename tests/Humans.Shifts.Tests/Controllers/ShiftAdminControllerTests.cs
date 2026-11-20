@@ -156,7 +156,7 @@ public class ShiftAdminControllerTests
             Check("view", call.Arg<CancellationToken>());
             return Task.FromResult(RecipientRows(rota));
         });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Check("profiles", call.Arg<CancellationToken>());
             return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [UserId] = MakeUserInfo(UserId) });
@@ -279,7 +279,7 @@ public class ShiftAdminControllerTests
         _shiftMgmt.GetShiftByIdAsync(shift.Id, Arg.Any<CancellationToken>()).Returns(_ => ToInfo(shift));
         _rotaRows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>())
             .Returns(RecipientRows(rota));
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [UserId] = MakeUserInfo(UserId) });
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(TeamId, Arg.Any<TeamRotasAudienceFilter>(), Arg.Any<CancellationToken>())
             .Returns(new TeamRotasRecipientPreview(1, ["Coordinator"]));
@@ -302,7 +302,7 @@ public class ShiftAdminControllerTests
             case 0:
                 await _shiftMgmt.Received(1).GetRotaAsync(rota.Id, cancellation.Token);
                 await _rotaRows.Received(1).GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), cancellation.Token);
-                await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
+                await _userService.Received(1).GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), cancellation.Token);
                 break;
             case 1:
                 await _rotaMessenger.Received(1).GetTeamRotasRecipientPreviewAsync(

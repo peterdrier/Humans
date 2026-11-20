@@ -145,7 +145,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
         management.ChangeAmountAsync(program.Id, grant.Id, 1m, manager, Ct).Returns(missing);
         var (provider, http) = Host(manager, []);
         await using var services = provider;
-        var controller = new PreapprovalsAdminController(management, Users, Finance, _localizer,
+        var controller = new PreapprovalsAdminController(FixedOrgTimeZone.Madrid, management, Users, Finance, _localizer,
             services.GetRequiredService<IAuthorizationService>(), Clock, Substitute.For<ILogger<PreapprovalsAdminController>>());
         Wire(controller, http);
 
@@ -420,7 +420,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     private PreapprovalsAdminController BuildAdmin(Guid actorId, params string[] roles)
     {
         var (provider, http) = Host(actorId, roles);
-        var controller = new PreapprovalsAdminController(NewService(), Users, Finance, _localizer,
+        var controller = new PreapprovalsAdminController(FixedOrgTimeZone.Madrid, NewService(), Users, Finance, _localizer,
             provider.GetRequiredService<IAuthorizationService>(), Clock, Substitute.For<ILogger<PreapprovalsAdminController>>());
         Wire(controller, http);
         return controller;
@@ -429,7 +429,7 @@ public sealed class ControllerTests : PreapprovalsTestHarness
     private PreapprovalsController BuildMember(Guid actorId, params string[] roles)
     {
         var (provider, http) = Host(actorId, roles);
-        var controller = new PreapprovalsController(NewService(), Users, _localizer,
+        var controller = new PreapprovalsController(FixedOrgTimeZone.Madrid, NewService(), Users, _localizer,
             provider.GetRequiredService<IAuthorizationService>(), Clock, Substitute.For<ILogger<PreapprovalsController>>());
         Wire(controller, http);
         return controller;

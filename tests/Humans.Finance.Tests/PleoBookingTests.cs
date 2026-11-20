@@ -18,6 +18,7 @@ namespace Humans.Finance.Tests;
 internal static class TestPleo
 {
     public static PleoBooking Booking() => new(
+        FixedOrgTimeZone.Madrid,
         Substitute.For<IPleoService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
         Substitute.For<IFinanceRepository>(), Substitute.For<IAuditLogService>(), new PleoBookingState(),
         SystemClock.Instance, NullLogger<PleoBooking>.Instance);
@@ -97,7 +98,7 @@ public class PleoBookingTests
             .ReturnsForAnyArgs(new PleoReceiptFile([1, 2, 3], "application/pdf"));
     }
 
-    private PleoBooking Booking() => new(_pleo, _holded, _write, _repo, Substitute.For<IAuditLogService>(), _state,
+    private PleoBooking Booking() => new(FixedOrgTimeZone.Madrid, _pleo, _holded, _write, _repo, Substitute.For<IAuditLogService>(), _state,
         new FakeClock(Instant.FromUtc(2026, 11, 5, 12, 0)), NullLogger<PleoBooking>.Instance);
 
     private void GivenEntries(params PleoEntryInfo[] entries) =>
@@ -146,7 +147,7 @@ public class PleoBookingTests
 
         var view = PleoBooking.Classify(Snapshot(
             Entry("bought", -30m), Entry("half", -40m), Entry("journal", -12m, day: 1),
-            Entry("paid", -13m, day: 2), Entry("amazon", -71.97m, day: 12)));
+            Entry("paid", -13m, day: 2), Entry("amazon", -71.97m, day: 12)), Madrid);
 
         var state = view.Spend.ToDictionary(r => r.Entry.Id, r => r.State, StringComparer.Ordinal);
         state["bought"].Should().Be(PleoSpendState.Booked);
@@ -162,7 +163,7 @@ public class PleoBookingTests
     {
         var view = PleoBooking.Classify(Snapshot(
             Entry("charge", -90.27m, day: 3, category: "food"),
-            Entry("refund", 90.27m, day: 3, category: "geeks", code: "62900002")));
+            Entry("refund", 90.27m, day: 3, category: "geeks", code: "62900002")), Madrid);
 
         view.RefundOrigins.Should().ContainSingle().Which.Should().Match<PleoRefundOrigin>(o =>
             o.RefundId == "refund" && o.Charge.Id == "charge" && o.CategoryDiffers);
@@ -240,7 +241,7 @@ public class PleoBookingTests
 
         run.Lines.Should().BeEmpty();
         _created.Should().BeEmpty();
-        PleoBooking.Classify(Snapshot(Entry("lost", -10m))).Spend.Single().State.Should().Be(PleoSpendState.CheckInHolded);
+        PleoBooking.Classify(Snapshot(Entry("lost", -10m)), Madrid).Spend.Single().State.Should().Be(PleoSpendState.CheckInHolded);
     }
 
     [HumansFact]
@@ -339,7 +340,7 @@ public class PleoBookingTests
         _expenseLines.Add(Line(10, 1, -30m, 0m, "Purchase Pleo-refund", Food));
         _expenseLines.Add(Line(11, 1, 15m, 0m, "Purchase Pleo-gone", Food));
 
-        var view = PleoBooking.Classify(Snapshot(Entry("refund", 30m, code: "62900002")));
+        var view = PleoBooking.Classify(Snapshot(Entry("refund", 30m, code: "62900002")), Madrid);
 
         view.Changes.Single(c => string.Equals(c.PleoId, "refund", StringComparison.Ordinal)).Corrections.Should().ContainSingle().Which
             .Should().Match<PleoCorrection>(c => c.Debit == Food && c.Credit == Geeks && c.Amount == 30m);
@@ -353,7 +354,7 @@ public class PleoBookingTests
         _expenseLines.Add(Line(10, 1, 100m, 0m, "Purchase Pleo-zeroed", Food));
         _expenseLines.Add(Line(11, 2, 0m, 100m, "Pleo zeroed: importe cambiado / amount changed", Food));
 
-        var view = PleoBooking.Classify(Snapshot(Entry("zeroed", -20m)));
+        var view = PleoBooking.Classify(Snapshot(Entry("zeroed", -20m)), Madrid);
 
         view.Changes.Single().Corrections.Should().ContainSingle().Which.Should().Match<PleoCorrection>(c =>
             c.Debit == Food && c.Credit == PleoBooking.PleoTreasury && c.Amount == 20m);

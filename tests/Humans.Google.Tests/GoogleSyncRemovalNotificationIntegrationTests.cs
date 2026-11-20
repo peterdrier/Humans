@@ -114,7 +114,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
         _userEmailService.FindByAddressAsync(removedEmail, false, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, removedEmail)]);
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userId] = UserInfoFixtures.FromUser(user, user.UserEmails.ToList()) }));

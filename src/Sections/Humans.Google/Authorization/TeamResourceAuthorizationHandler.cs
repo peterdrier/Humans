@@ -1,5 +1,5 @@
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
-using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
@@ -29,7 +29,7 @@ internal sealed class TeamResourceAuthorizationHandler(
             return;
         }
 
-        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (context.User.GetUserId() is not { } userId)
             return;
 
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;

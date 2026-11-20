@@ -45,8 +45,8 @@ public sealed class GovernanceIndexServiceTests
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
         Users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<UserInfo>)[]);
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(call.Arg<IReadOnlyCollection<Guid>>()
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(call.Arg<IEnumerable<Guid>>().Distinct()
                 .ToDictionary(id => id, id => UserInfo.Create(
                     new User { Id = id, BurnerName = "Member", CreatedAt = clock.GetCurrentInstant() },
                     [], [], _inactive.Contains(id) ? null : UserFixtures.Profile()))));

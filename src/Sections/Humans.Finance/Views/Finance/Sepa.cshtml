@@ -1,9 +1,10 @@
 @model Humans.Finance.Models.SepaPayoutsPageVm
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "SEPA Transfers";
 
     // Generation stamps are instants; the treasurer reads them in the org's own timezone.
-    var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 <style>
@@ -49,7 +50,7 @@
 {
     <div class="alert alert-info">
         <i class="fa-solid fa-spinner fa-spin me-1"></i>@running.What, started
-        @running.StartedAt.ToDateTime(madrid). This page refreshes itself; leaving it
+        @running.StartedAt.ToDateTime(orgZone). This page refreshes itself; leaving it
         does not stop the booking.
     </div>
     <script>setTimeout(function () { location.reload(); }, 3000);</script>
@@ -58,7 +59,7 @@ else if (Model.Run is { Result: { } last } finished)
 {
     <div class="alert @(last.Succeeded ? "alert-success" : "alert-danger")">
         <strong>Last booking</strong> (@finished.What.ToLowerInvariant(),
-        @finished.StartedAt.ToDateTime(madrid)): @last.Message
+        @finished.StartedAt.ToDateTime(orgZone)): @last.Message
     </div>
 }
 
@@ -134,7 +135,7 @@ else if (Model.Run is { Result: { } last } finished)
             </button>
             <span class="d-flex align-items-center gap-3">
                 <span class="text-muted small">
-                    @file.GeneratedAt.ToDateTime(madrid) by <vc:human user-id="@file.GeneratedByUserId" />
+                    @file.GeneratedAt.ToDateTime(orgZone) by <vc:human user-id="@file.GeneratedByUserId" />
                 </span>
                 @if (file.CanCancel)
                 {
@@ -223,7 +224,7 @@ else if (Model.Run is { Result: { } last } finished)
                 @if (item.Row.WithdrawnAt is { } withdrawnAt)
                 {
                     <span class="badge text-bg-dark">Withdrawn</span>
-                    <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(item.Row.WithdrawnByUserId ?? Guid.Empty)" /></div>
+                    <div class="text-muted small">@withdrawnAt.ToDateTime(orgZone) by <vc:human user-id="@(item.Row.WithdrawnByUserId ?? Guid.Empty)" /></div>
                 }
                 else if (item.Row.BookedAt is { } bookedAt)
                 {
@@ -236,7 +237,7 @@ else if (Model.Run is { Result: { } last } finished)
                     {
                         <span class="badge text-bg-warning" title="While Holded reads the line pending, the sweep re-issues the reconcile from the recorded payment ids every two hours and stamps the row once the line reads reconciled. A line that reads partial is a human's to finish in Holded.">Reconcile pending (@item.Row.HoldedBankMovementId)</span>
                     }
-                    <div class="text-muted small">@bookedAt.ToDateTime(madrid) by
+                    <div class="text-muted small">@bookedAt.ToDateTime(orgZone) by
                         @if (item.Row.BookedByUserId is { } bookedBy)
                         {
                             <vc:human user-id="@bookedBy" />

@@ -4,7 +4,7 @@ namespace Humans.Preapprovals.Contracts;
 
 /// <summary>
 /// Nothing outside Preapprovals learns what a program is beyond its name and managers. <see cref="ClaimableToday"/>
-/// is Open with the claim deadline not yet passed (Europe/Madrid).
+/// is Open with the claim deadline not yet passed (org time zone).
 /// </summary>
 public sealed record GrantOption(
     Guid Id,

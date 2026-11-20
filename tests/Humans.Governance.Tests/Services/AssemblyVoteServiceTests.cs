@@ -112,7 +112,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             RequestAborted = request.Token,
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
-        var controller = new GovernanceVotesAdminController(users, votes,
+        var controller = new GovernanceVotesAdminController(users, votes, FixedOrgTimeZone.Madrid,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -241,7 +241,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         IReadOnlyList<AssemblyVoteListItem> ordered;
         if (admin)
         {
-            var controller = new GovernanceVotesAdminController(_fx.Users, votes,
+            var controller = new GovernanceVotesAdminController(_fx.Users, votes, FixedOrgTimeZone.Madrid,
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
@@ -1058,7 +1058,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             kind: AssemblyVoteKind.RankedChoice, options: [("a", 0), ("b", 1)]);
         var draft = _fx.DraftFor(vote, AssemblyVoteKind.RankedChoice, ["a", "b"]);
         var model = AssemblyVoteDraftFormViewModel.FromDraft(vote.Id,
-            draft with { Options = draft.Options.Reverse().ToList() });
+            draft with { Options = draft.Options.Reverse().ToList() }, FixedOrgTimeZone.Madrid.Zone);
         model.Options.Select(option => option.Key).Should().Equal("a", "b");
         model.Kind = AssemblyVoteKind.YesNo; // The default left by a failed Kind binding is itself valid.
         var actorId = Guid.NewGuid();
@@ -1068,7 +1068,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
         _fx.Users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
-        var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service,
+        var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service, FixedOrgTimeZone.Madrid,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -1130,7 +1130,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             Options = [new() { Key = "a", Label = new(StringComparer.Ordinal) { ["en"] = "A", ["es"] = "A" } },
                 new() { Key = "b", Label = new(StringComparer.Ordinal) { ["en"] = "B", ["es"] = "B" } }]
         };
-        var voteId = edit ? await _fx.Service.CreateDraftAsync(baseline.ToDraft(), actor, ct) : null;
+        var voteId = edit ? await _fx.Service.CreateDraftAsync(baseline.ToDraft(FixedOrgTimeZone.Madrid.Zone), actor, ct) : null;
         if (edit) voteId.Should().NotBeNull();
         var registrations = new ServiceCollection().AddLogging();
         registrations.AddControllers();
@@ -1142,7 +1142,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
         _fx.Users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
-        var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service,
+        var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service, FixedOrgTimeZone.Madrid,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -1470,7 +1470,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // Resolving recipients happens after the vote is already persisted Open, and Open is
         // irreversible with no retry path.
         var infos = await _fx.Users.GetUserInfosAsync([asociado], TestContext.Current.CancellationToken);
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => ResolveRecipientsAsync(call.Arg<CancellationToken>()));
 
         async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveRecipientsAsync(CancellationToken ct)
@@ -1872,7 +1872,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             repo.StampReminderSentAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
         }
         var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
-            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();
         Func<Task> action = opening ? () => effects.RetryOpenedEmailsAsync(vote, failures, shutdown.Token)
@@ -1903,7 +1903,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         repo.GetLapsedOpenVotesAsync(now, shutdown.Token).Returns(async Task<IReadOnlyList<AssemblyVote>> (_) =>
         { if (shutdownRequested) await shutdown.CancelAsync(); throw later; });
         var service = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
-            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
 
         var action = () => service.RunLapseAndReminderSweepAsync(shutdown.Token);
@@ -1994,7 +1994,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var row = await _fx.AddRosterRowAsync(vote.Id, userId, isOfficial: true, notified: false);
         var member = UserInfoFixtures.FromUser(new User { Id = userId, BurnerName = "Member", Email = address });
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [userId] = member });
 
         await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
@@ -2004,7 +2004,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .SingleAsync(entry => entry.Id == row.Id, TestContext.Current.CancellationToken))
             .NotifiedAt.Should().BeNull();
 
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [userId] = member with { IdentityEmailColumn = "member@example.org" } });
         await _fx.Service.RunLapseAndReminderSweepAsync(TestContext.Current.CancellationToken);
 
@@ -2028,10 +2028,10 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var survivorRow = await _fx.AddRosterRowAsync(vote.Id, survivor, isOfficial: false, notified: false);
         _fx.StubMergedInto(source, survivor);
         if (lookupFails)
-            _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Identity lookup unavailable")));
         var effects = new AssemblyVoteService(_fx.Repository, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
-            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
 
         await effects.AfterTransitionAsync("opening notices", vote.Id,
@@ -2491,7 +2491,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var info = (await _fx.Users.GetUserInfosAsync([member], ct))[member]
             with
         { PreferredLanguage = language };
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [member] = info }));
         var reminder = string.Equals(phase, "reminder", StringComparison.Ordinal);
@@ -2766,8 +2766,8 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         var reachedRow = await _fx.AddRosterRowAsync(reachedVote.Id, reached, isOfficial: true, notified: reminder);
         var failure = new IOException("Vote recipient discovery failed");
         var recovered = false;
-        _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
-            .Returns(call => !recovered && call.Arg<IReadOnlyCollection<Guid>>().Contains(failed)
+        _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
+            .Returns(call => !recovered && call.Arg<IEnumerable<Guid>>().Contains(failed)
                 ? ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(failure)
                 : ValueTask.FromResult(people));
         var run = () => _fx.Service.RunLapseAndReminderSweepAsync(ct);
@@ -2825,7 +2825,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             repo.GetByIdAsync(vote.Id, ct)
                 .Returns(_ => Task.FromException<AssemblyVote?>(failure), _ => Task.FromResult<AssemblyVote?>(vote));
         var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
-            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();
 

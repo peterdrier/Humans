@@ -4,13 +4,18 @@ using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
+using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 
 namespace Humans.Containers.Authorization;
 
 internal sealed class ContainerAuthorizationHandler(
-    ICampService campService, ICityPlanningService cityPlanningService, IUserService users, IHttpContextAccessor httpContextAccessor)
+    ICampService campService,
+    ICityPlanningService cityPlanningService,
+    ISettingsService settingsService,
+    IUserService users,
+    IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {
     protected override async Task HandleRequirementAsync(
@@ -40,10 +45,9 @@ internal sealed class ContainerAuthorizationHandler(
             return;
         }
 
-        // Lead check before the year's settings, so an explicit-year read only runs for a
-        // year the caller leads a camp in. No year and no active event: nothing to authorize.
-        var settings = resource.Year is null ? await cityPlanningService.GetSettingsAsync(ct) : null;
-        if ((resource.Year ?? settings?.Year) is not { } year)
+        // No year and no active event: nothing to authorize.
+        var activeYear = settingsService.GetActiveEventSettings() is { Year: > 0 } active ? active.Year : (int?)null;
+        if ((resource.Year ?? activeYear) is not { } year)
         {
             return;
         }
@@ -55,13 +59,10 @@ internal sealed class ContainerAuthorizationHandler(
             return;
         }
 
-        if (requirement.Operation == ContainerOperation.Place)
+        if (requirement.Operation == ContainerOperation.Place
+            && !await cityPlanningService.IsContainerPlacementOpenAsync(year, ct))
         {
-            settings ??= await cityPlanningService.GetSettingsAsync(ct, year: year);
-            if (settings is not { IsContainerPlacementOpen: true })
-            {
-                return;
-            }
+            return;
         }
 
         context.Succeed(requirement);

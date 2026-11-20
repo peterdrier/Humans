@@ -33,7 +33,7 @@ public class CampContactServiceTests : IDisposable
         _auditLogService = Substitute.For<IAuditLogService>();
         _notificationEmitter = Substitute.For<INotificationEmitter>();
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         _service = new CampContactService(
             _emailService,
@@ -93,7 +93,7 @@ public class CampContactServiceTests : IDisposable
     public async Task Contact_notice_uses_each_lead_language(string language)
     {
         var leadId = Guid.NewGuid();
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [leadId] = UserInfo.Create(new User { Id = leadId, PreferredLanguage = language }, [], [], null)
@@ -120,7 +120,7 @@ public class CampContactServiceTests : IDisposable
         var archivedLead = Guid.NewGuid();
         var liveLead = Guid.NewGuid();
         var person = UserInfo.Create(new User { Id = liveLead, PreferredLanguage = "es" }, [], [], null);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [archivedLead] = person, [liveLead] = person });
 
         var result = await _service.SendFacilitatedMessageAsync(
@@ -140,7 +140,7 @@ public class CampContactServiceTests : IDisposable
     [HumansFact]
     public async Task Contact_notice_failed_language_lookup_falls_back_to_English()
     {
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Lookup failed")));
         var leadId = Guid.NewGuid();
 
@@ -160,7 +160,7 @@ public class CampContactServiceTests : IDisposable
     {
         var spanishLead = Guid.NewGuid();
         var englishLead = Guid.NewGuid();
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [spanishLead] = UserInfo.Create(new User { Id = spanishLead, PreferredLanguage = "es" }, [], [], null)

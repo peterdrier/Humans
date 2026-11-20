@@ -647,7 +647,7 @@ internal sealed class ApplicationDecisionService(
             return ([], totalCount);
         }
 
-        var userIds = apps.Select(a => a.UserId).Distinct().ToList();
+        var userIds = apps.Select(a => a.UserId);
         var users = await userService.GetUserInfosAsync(userIds, ct);
 
         var rows = apps.Select(a =>

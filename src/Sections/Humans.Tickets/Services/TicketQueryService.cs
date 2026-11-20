@@ -19,6 +19,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Tickets.Services;
 
 internal sealed class TicketQueryService(
+    IOrgTimeZone orgTimeZone,
     ITicketRepository ticketRepository,
     ITicketTransferRepository ticketTransferRepository,
     IBudgetService budgetService,
@@ -138,7 +139,7 @@ internal sealed class TicketQueryService(
         var rows = new List<DonationExportRow>();
         foreach (var o in orders)
         {
-            var date = o.PurchasedAt.InZone(MadridZone).Date.ToInvariantDate();
+            var date = o.PurchasedAt.InZone(OrgZone).Date.ToInvariantDate();
             if (o.VipDonations > 0)
                 rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
             if (o.DonationAmount > 0)
@@ -593,14 +594,14 @@ internal sealed class TicketQueryService(
         };
     }
 
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     /// <summary>
-    /// Europe/Madrid, the zone the association books in, so a 00:30 UTC purchase on the 1st lands in the right month.
+    /// The org time zone, the zone the association books in, so a 00:30 UTC purchase on the 1st lands in the right month.
     /// </summary>
-    private static (int Year, int Month) MonthKey(Instant purchasedAt)
+    private (int Year, int Month) MonthKey(Instant purchasedAt)
     {
-        var d = purchasedAt.InZone(MadridZone).Date;
+        var d = purchasedAt.InZone(OrgZone).Date;
         return (d.Year, d.Month);
     }
 
@@ -835,8 +836,7 @@ internal sealed class TicketQueryService(
         if (activeEvent is null)
             return null;
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId)
-                 ?? DateTimeZone.Utc;
+        var tz = activeEvent.TimeZone;
         var postEventDate = activeEvent.GateOpeningDate
             .PlusDays(activeEvent.StrikeEndOffset + 1);
         var postEventInstant = postEventDate

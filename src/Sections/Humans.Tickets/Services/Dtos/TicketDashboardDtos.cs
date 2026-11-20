@@ -378,7 +378,7 @@ internal sealed class OrderExportRow
     public decimal VipDonations { get; init; }
 }
 
-/// <summary><see cref="Date"/> is in Europe/Madrid, the zone the monthly accountant report buckets by.</summary>
+/// <summary><see cref="Date"/> is in the org time zone, the zone the monthly accountant report buckets by.</summary>
 internal sealed record DonationExportRow(
     string Date,
     string VendorOrderId,

@@ -33,7 +33,7 @@ public class DietaryProfileTests
             .Options;
         _repo = new DietaryProfileRepository(new Factory(options));
         _sut = new DietaryProfileService(_repo, _users, new FakeClock(Now));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
 
@@ -212,7 +212,7 @@ public class DietaryProfileTests
             [archived] = SeedUser(archived, resolvesTo: withRow),
             [nothing] = SeedUser(nothing),
         };
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(infos));
         await _sut.SaveAsync(withRow, Answers(withRow), Ct);
 

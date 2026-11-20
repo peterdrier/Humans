@@ -158,7 +158,7 @@ public sealed class GdprTests : GrantsTestHarness
                 (DbContextOptions<GrantsDbContext>)Db.GetService<IDbContextOptions>())
             .AddInterceptors(probe).Options;
         var service = new GrantService(
-            new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
+            FixedOrgTimeZone.Madrid, new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
             Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
 
         if (failSecondSave)

@@ -61,7 +61,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
         RoleAssignments.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
 
@@ -78,6 +78,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             Audit,
             Translation,
             Clock,
+            FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
     }
 
@@ -100,7 +101,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
                 State = UserState.Active
             }));
 
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map));
 
     }
@@ -116,9 +117,9 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         var resolved = TombstoneInfo(survivor, null) with { MergedUserIds = [source] };
         var map = new Dictionary<Guid, UserInfo> { [source] = resolved, [survivor] = resolved };
 
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                ((IReadOnlyCollection<Guid>)call[0])
+                (((IEnumerable<Guid>)call[0]))
                     .Where(map.ContainsKey)
                     .ToDictionary(id => id, id => map[id])));
         Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

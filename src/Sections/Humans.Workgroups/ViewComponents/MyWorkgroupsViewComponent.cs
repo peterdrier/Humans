@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Workgroups.Services;
 using Humans.Users.Contracts;
@@ -14,7 +15,7 @@ internal sealed class MyWorkgroupsViewComponent(IWorkgroupService workgroups, IC
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (UserClaimsPrincipal.GetUserId() is not { } userId)
             return Content(string.Empty);
 
         var user = await users.GetUserInfoAsync(userId, HttpContext.RequestAborted);

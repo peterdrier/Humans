@@ -437,7 +437,7 @@ internal sealed class ShiftsController(
 
             var absStart = s.AbsoluteStart;
             var absEnd = s.AbsoluteEnd;
-            var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
+            var tz = sEs.TimeZone;
             var localStart = absStart.InZone(tz).LocalDateTime;
             var localEnd = absEnd.InZone(tz).LocalDateTime;
             items.Add(new UserSignupConflictItem(

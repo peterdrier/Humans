@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Overeenkomsten bekijken</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Aanmelding afgewezen</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>Je aanmelding is beoordeeld en niet goedgekeurd. Heb je vragen, neem dan contact op met het beheerteam.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Reden</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Dit is er gaande.</value>
   </data>

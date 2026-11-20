@@ -73,6 +73,10 @@ internal interface ICampManagement : ICampService, IApplicationService, IEarlyEn
     /// <inheritdoc cref="OpenSeasonAsync"/>
     Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>Blank clears it. Audited when the text changes.</summary>
+    Task SetRegistrationInfoAsync(
+        Guid eventSettingsId, string? registrationInfo, Guid actorUserId, CancellationToken cancellationToken = default);
+
     Task SetNameLockDateAsync(Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default);
 
     /// <summary>Idempotent — returns existing row's id with an <c>Already*</c> outcome if one exists.</summary>

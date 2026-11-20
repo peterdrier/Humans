@@ -72,7 +72,7 @@ internal sealed class ExpenseHoldedBookingService(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct)
     {
         var members = await userService.GetUserInfosAsync(
-            reports.Select(r => r.SubmitterUserId).ToHashSet(), ct);
+            reports.Select(r => r.SubmitterUserId), ct);
         return id => members.GetValueOrDefault(id)?.Id ?? id;
     }
 }

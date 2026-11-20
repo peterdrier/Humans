@@ -108,7 +108,7 @@ CityPlanningSettings
 ├── IsContainerPlacementOpen: bool
 ├── ContainerPlacementOpenedAt: Instant?
 ├── ContainerPlacementClosedAt: Instant?
-├── RegistrationInfo: string? (admin-editable markdown shown at the top of /Barrios/Register)
+├── RegistrationInfo: string? (unused: Camps owns the Register page text; read only by Camps' copy-over data migration)
 ├── LimitZoneGeoJson: string? (GeoJSON FeatureCollection — site boundary)
 ├── OfficialZonesGeoJson: string? (GeoJSON FeatureCollection — named overlay zones)
 └── UpdatedAt: Instant
@@ -221,7 +221,7 @@ Full-screen map with a sidebar listing placed/unplaced containers. Containers ar
 | Restore polygon version | Map admin |
 | Export barrio GeoJSON | Map admin |
 | Admin panel (zone uploads, exports, containers) | Map admin |
-| Placement override, placement schedule, registration info (`/Settings#city-planning`) | Map admin |
+| Placement override, placement schedule (`/Settings#city-planning`) | Map admin |
 | View container placement map | Map admin, or barrio lead + `IsContainerPlacementOpen` |
 | Manage containers (create/edit/delete/image) | Map admin (all), barrio lead (own camp) |
 | Place / remove containers on map, edit placement notes/sketch | Map admin (all), barrio lead (own camp) + `IsContainerPlacementOpen` — enforced by `ContainerOperationRequirement.Place` |
@@ -237,7 +237,7 @@ Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampsAdmin`, **or** m
 |-------|-------------|
 | `GET /CityPlanning` | Read-only overview map |
 | `GET /CityPlanning/BarrioMap` | Barrio placement map |
-| `GET /CityPlanning/BarrioMap/Admin` | Admin settings panel — zone uploads, exports, container admin; placement override, schedule, and registration info live on `/Settings#city-planning` |
+| `GET /CityPlanning/BarrioMap/Admin` | Admin settings panel — zone uploads, exports, container admin; placement override and schedule live on `/Settings#city-planning` |
 | `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Force barrio placement open — override (posted from `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Force barrio placement closed — override (posted from `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/FollowPlacementSchedule` | Clear the override; follow the schedule (posted from `/Settings#city-planning`) |
@@ -250,7 +250,6 @@ Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampsAdmin`, **or** m
 | `POST /CityPlanning/BarrioMap/Admin/UploadOfficialZones` | Upload official zones GeoJSON |
 | `GET /CityPlanning/BarrioMap/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
-| `POST /CityPlanning/BarrioMap/Admin/UpdateRegistrationInfo` | Set the barrio registration page's markdown (posted from `/Settings#city-planning`) |
 | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` | Admin container list |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/Barrios/{campId}/Create` | Create container for a camp (admin) |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/{id}/Edit` | Edit container |

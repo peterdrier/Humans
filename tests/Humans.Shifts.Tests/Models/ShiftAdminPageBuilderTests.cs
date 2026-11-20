@@ -65,7 +65,7 @@ public sealed class ShiftAdminPageBuilderTests
         _shiftManagement.GetShiftProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((ShiftVolunteerProfileInfo?)null);
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -90,7 +90,7 @@ public sealed class ShiftAdminPageBuilderTests
         await _shiftManagement.Received(1).GetRotasByDepartmentAsync(Department.Id, Event.Id, cancellation.Token);
         await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
             Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, cancellation.Token);
-        await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
+        await _userService.Received(1).GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), cancellation.Token);
         await _shiftManagement.Received(1).GetShiftProfileAsync(userId, cancellation.Token);
         await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
         await _shiftManagement.Received(1).GetTagsAsync(ct: cancellation.Token);

@@ -525,4 +525,6 @@
   <data name="Teams_Notification_ReviewRequest" xml:space="preserve"><value>Esamina richiesta</value></data>
   <data name="Teams_Notification_ViewMembers" xml:space="preserve"><value>Visualizza membri</value></data>
   <data name="Teams_Notification_Someone" xml:space="preserve"><value>Qualcuno</value></data>
+  <data name="Teams_Meter_JoinRequestsPending" xml:space="preserve"><value>Richieste di adesione ai team in sospeso</value></data>
+  <data name="Teams_Meter_AudienceAdmin" xml:space="preserve"><value>amministratori</value></data>
 </root>

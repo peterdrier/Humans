@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,11 +12,7 @@ public abstract class HumansControllerBase(IUserService userService) : Controlle
 {
     protected IUserService UserService => userService;
 
-    protected Guid? GetCurrentUserId()
-    {
-        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(raw, out var id) ? id : null;
-    }
+    protected Guid? GetCurrentUserId() => User.GetUserId();
 
     protected bool IsAuthenticated()
     {

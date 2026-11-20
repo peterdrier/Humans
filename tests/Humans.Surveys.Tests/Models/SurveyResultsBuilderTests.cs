@@ -25,7 +25,7 @@ public sealed class SurveyResultsBuilderTests
                 new RespondentDetail(Guid.NewGuid(), null, []) { ResponseId = Guid.NewGuid() },
             ]);
 
-        var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 4, SurveyResultsScope.Combined));
+        var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 4, SurveyResultsScope.Combined), FixedOrgTimeZone.Madrid.Zone);
 
         model.Respondents.Select(respondent => respondent.UserId).Should().Equal(
             results.IdentifiedRespondents[3].UserId, results.IdentifiedRespondents[2].UserId,
@@ -52,7 +52,7 @@ public sealed class SurveyResultsBuilderTests
                 ], [], null, []) { PageNumber = 1, Order = 1 },
             ], []);
 
-        var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 2, SurveyResultsScope.Combined));
+        var model = SurveyResultsBuilder.Build(new SurveyScopedResults(results, 2, SurveyResultsScope.Combined), FixedOrgTimeZone.Madrid.Zone);
 
         model.Questions.Select(question => question.Prompt).Should().Equal("Earlier", "Rating", "Unanswered");
         model.Questions[0].OptionCounts.Select(option => option.Value).Should().Equal("yes", "no", "maybe");

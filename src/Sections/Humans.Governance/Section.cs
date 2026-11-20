@@ -45,8 +45,12 @@ public sealed class Section :
     ISectionHelp,
     ISectionJobs,
     ISectionMemberDashboard,
-    ISectionThingsToDo
+    ISectionThingsToDo,
+    IUserPart
 {
+    IEnumerable<UserPart> IUserPart.Parts() =>
+        [new(UserPartSlots.DashboardHeading, typeof(MembershipTierBadgeViewComponent))];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, GovernanceAuditActions>();
@@ -231,7 +235,7 @@ public sealed class Section :
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
     {
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (user.GetUserId() is not { } userId)
         {
             return [];
         }

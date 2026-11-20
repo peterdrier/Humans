@@ -39,7 +39,7 @@ public class SepaWithdrawTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
 
     private Service MakeService() => new(
-        _repo, Substitute.For<IBudgetService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
+        FixedOrgTimeZone.Madrid, _repo, Substitute.For<IBudgetService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
         Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(FixedNow),
         _audit, _users, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
@@ -47,7 +47,7 @@ public class SepaWithdrawTests
 
     public SepaWithdrawTests()
     {
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [UserId] = new(
@@ -157,7 +157,7 @@ public class SepaWithdrawTests
     {
         Seed();
         var members = await _users.GetUserInfosAsync([UserId], TestContext.Current.CancellationToken);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [UserId] = members[UserId] with { IdentityEmailColumn = null } });
 
         var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);

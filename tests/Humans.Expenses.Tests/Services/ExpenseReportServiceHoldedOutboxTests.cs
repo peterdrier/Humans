@@ -45,6 +45,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly FakeClock _clock;
     private readonly ExpenseReportService _sut;
+    private readonly ExpenseReviewService _review;
     private readonly ExpenseReportBackgroundProcessor _backgroundProcessor;
 
     private static readonly Instant Now = Instant.FromUtc(2026, 5, 10, 12, 0);
@@ -86,7 +87,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(_category);
 
         var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = MinimalUserInfo(submitter) }));
 
@@ -100,23 +101,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
             .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 }]));
 
-        _sut = new ExpenseReportService(
-            _repo,
-            _fileStorage,
-            _budgetService,
-            Substitute.For<ITeamService>(),
-            _userService,
-            Substitute.For<IEmailService>(),
-            TestExpensesEmails.Create(),
-            _auditLog, Substitute.For<IAuditViewerService>(),
-            _holdedService,
-            _finance,
-            Substitute.For<IFinanceWrite>(),
-            Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(),
-            Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(),
-            _clock,
-            Substitute.For<ILogger<ExpenseReportService>>(),
-            Options.Create(new TravelReimbursementConfig()));
+        _sut = new ExpenseReportService(_repo, _fileStorage, _budgetService, _userService, _auditLog, Substitute.For<IAuditViewerService>(), _holdedService, _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, Substitute.For<ILogger<ExpenseReportService>>(), Options.Create(new TravelReimbursementConfig()));
+        _review = new ExpenseReviewService(_repo, _sut, _budgetService, Substitute.For<ITeamService>(), _userService, Substitute.For<IEmailService>(), TestExpensesEmails.Create(), _auditLog, Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, NullLogger<ExpenseReviewService>.Instance);
         _backgroundProcessor = new ExpenseReportBackgroundProcessor(
             _repo, _fileStorage, _userService, _holdedService, _holdedWrite, _finance, _financeWrite, _auditLog, _clock,
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
@@ -155,7 +141,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     {
         // The creditor binding sits on the survivor, so the booking has to name them too.
         var survivor = new User { Id = Guid.NewGuid(), DisplayName = "Alice Smith" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = MinimalUserInfo(survivor) with { MergedUserIds = [SubmitterId] } }));
         var report = MakeReport();
@@ -1503,7 +1489,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var failed = Guid.NewGuid();
         _repo.GetFailedOutboxReportIdsAsync(Arg.Any<CancellationToken>()).Returns([failed]);
 
-        var ids = await _sut.GetFailedHoldedPushReportIdsAsync(TestContext.Current.CancellationToken);
+        var ids = await _review.GetFailedHoldedPushReportIdsAsync(TestContext.Current.CancellationToken);
 
         ids.Should().BeEquivalentTo([failed]);
         await _repo.Received(1).GetFailedOutboxReportIdsAsync(TestContext.Current.CancellationToken);
@@ -1516,7 +1502,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var actorId = Guid.NewGuid();
         _repo.RequeueOutboxForReportAsync(reportId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await _sut.RequeueHoldedPushWithResultAsync(
+        var result = await _review.RequeueHoldedPushWithResultAsync(
             reportId, actorId, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
@@ -1531,7 +1517,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var reportId = Guid.NewGuid();
         _repo.RequeueOutboxForReportAsync(reportId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _sut.RequeueHoldedPushWithResultAsync(
+        var result = await _review.RequeueHoldedPushWithResultAsync(
             reportId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();

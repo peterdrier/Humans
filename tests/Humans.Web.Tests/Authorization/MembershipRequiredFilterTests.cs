@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
 using Humans.Web.Extensions;
-using Humans.Backdoor.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Constants;
 using Humans.Web.Authorization;
@@ -403,14 +402,14 @@ public class MembershipRequiredFilterTests
     }
 
     /// <summary>
-    /// A Backdoor API key skips claims transformation, so it carries no state claim; the gate must not redirect a
-    /// JSON client to onboarding.
+    /// A Backdoor API key skips claims transformation, so it carries no state claim. Its controllers are
+    /// <c>[AllowAnonymous]</c>, which is what keeps the gate from redirecting a JSON client to onboarding.
     /// </summary>
     [HumansFact]
-    public async Task Backdoor_key_principal_reaches_a_non_exempt_controller_without_a_state_claim()
+    public async Task Backdoor_key_principal_reaches_a_backdoor_controller_without_a_state_claim()
     {
         var (result, nextCalled) = await RunAsync(
-            "Home", "Index", state: null, authenticationType: BackdoorAuthentication.SchemeName);
+            "BackdoorNotifications", "Get", state: null, authenticationType: "BackdoorApiKey");
 
         Assert.True(nextCalled, "Machine requests must not be routed to onboarding");
         Assert.Null(result);

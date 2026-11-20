@@ -61,9 +61,13 @@ is left to repair the page says so and nothing else in the section depends on it
 - **One aggregate, one repository.** Order (with its lines and payments), Product, and Invoice
   are one section's data behind one `IStoreRepository` over one `StoreDbContext`. Nothing else
   reads `store_*`.
-- **One service.** `Service` owns Store writes, payment workflows, issuance's Holded pipeline,
-  index, catalog, order projection, year summary and accounting reads, and implements
-  `IStoreAccountingRead` itself; the summary and the accounting reads share pricing.
+- **Three services, one job each.** `CatalogService` owns products, store settings and the
+  account pickers. `Service` owns orders, lines, counterparties, payments and Stripe, the index,
+  order projection, year summary and accounting reads, and implements `IStoreAccountingRead`
+  itself; the summary and the accounting reads share its pricing. `InvoiceService` owns issuing,
+  booking, resending and printing invoices; it reads prices and counterparties from `Service`,
+  and its issue save also freezes the order (`InvoiceIssued` plus line snapshots), so two
+  services write `store_orders`. No cache holds orders, so that is safe.
 - **Pricing lives in exactly one pure function.** `BalanceCalculator.Compute(order, currentPrices)`
   answers "what does this order cost" everywhere. Any second place that adds a line up is a
   defect. The year-wide views (summary, accounting export) share one year-loading step so their
@@ -94,11 +98,11 @@ is left to repair the page says so and nothing else in the section depends on it
 - At most one team order per department per year, departments only —
   `Services/Service.cs:495` and `Services/Service.cs:501`.
 - Camp orders run `Open → InvoiceIssued`, one way — the only writer of the state is
-  `Service.CommitInvoiceAsync`, behind the open-only guard at
-  `Services/Service.cs`.
+  `InvoiceService.CommitInvoiceAsync`, behind the open-only guard at
+  `Services/InvoiceService.cs`.
 - An `Open` order is priced at the live catalog, an `InvoiceIssued` one at its frozen line
   snapshots — `Services/BalanceCalculator.cs:57`. Issuance rewrites the snapshots from the live
-  price first — `Services/Service.cs`.
+  price first — `Services/InvoiceService.cs`.
 - Lines change only while `Open` (`Services/Service.cs:538`, `Services/Service.cs:590`), and for
   everyone but a store admin only up to the product's `OrderableUntil`
   (`Authorization/OrderAuthorizationHandler.cs:212`).
@@ -113,14 +117,14 @@ is left to repair the page says so and nothing else in the section depends on it
   `Services/Service.cs:791`; a refund is stored negative and needs a reference —
   `Services/Service.cs:769`.
 - Issuance is idempotent locally and remotely: the open-only guard runs before any Holded call
-  (`Services/Service.cs`), Holded is searched by tag first
-  (`Services/Service.cs`), and adoption is refused when totals differ
-  (`Services/Service.cs`).
+  (`Services/InvoiceService.cs`), Holded is searched by tag first
+  (`Services/InvoiceService.cs`), and adoption is refused when totals differ
+  (`Services/InvoiceService.cs`).
 - A new document is issued only on a zero balance and is approved before anything is written
-  locally (`Services/Service.cs`). Every line's revenue account must exist in Holded's
-  chart, kept deposits included (`Service.BuildInvoiceLinesAsync`).
+  locally (`Services/InvoiceService.cs`). Every line's revenue account must exist in Holded's
+  chart, kept deposits included (`InvoiceService.BuildInvoiceLinesAsync`).
 - A counterparty-less order above the simplified-invoice ceiling is refused —
-  `Services/Service.cs`.
+  `Services/InvoiceService.cs`.
 - Returned deposits never reach the invoice; kept deposits are income at 21% — `Services/StoreInvoicePlan.cs`.
 - The accounting export selects orders by their persisted year, never through the counterparty,
   so an order whose camp or team has since gone still exports — `Data/Repository.cs:155`.

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
@@ -41,7 +42,7 @@ public sealed class ProfileCardViewComponent(
 
         if (viewMode == ProfileCardViewMode.Public)
         {
-            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
+            if (UserClaimsPrincipal.GetUserId() is not { } viewerId)
                 return Content(string.Empty);
             var viewer = await userService.GetUserInfoAsync(viewerId, ct);
             if (viewer is null) return Content(string.Empty);

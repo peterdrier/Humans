@@ -4,6 +4,7 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Controllers;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -32,7 +33,7 @@ public sealed class ContainerControllerTests
         var camps = Substitute.For<ICampService>();
         var containers = Substitute.For<IContainerService>();
         var controller = new ContainerController(
-            camps, containers, Substitute.For<ICityPlanningService>(),
+            camps, containers, Substitute.For<ICityPlanningService>(), Substitute.For<ISettingsService>(),
             Substitute.For<IAuthorizationService>(), users,
             Substitute.For<IStringLocalizer<ContainersResource>>(), NullLogger<ContainerController>.Instance)
         {
