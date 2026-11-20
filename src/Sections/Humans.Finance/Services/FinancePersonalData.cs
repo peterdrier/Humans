@@ -8,18 +8,18 @@ using Humans.Finance.Models;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
-using static Humans.Finance.Services.HoldedCreditorReader;
+using static Humans.Finance.Services.CreditorReader;
 
 namespace Humans.Finance.Services;
 
 internal sealed class FinancePersonalData(
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IUserService users,
-    HoldedCreditorReader creditorReader,
-    HoldedCreditorBindings creditorBindings,
+    CreditorReader creditorReader,
+    CreditorBindings creditorBindings,
     ILogger<Service> logger) : IApplicationService
 {
-    internal const string HoldedCreditorAccount = HoldedCreditorBindings.HoldedCreditorAccount;
+    internal const string HoldedCreditorAccount = CreditorBindings.HoldedCreditorAccount;
     internal const string AdditionalHoldedCreditorAccounts = "AdditionalHoldedCreditorAccounts";
     internal const string SepaPayouts = "SepaPayouts";
     internal const string CreditorLedger = "CreditorLedger";

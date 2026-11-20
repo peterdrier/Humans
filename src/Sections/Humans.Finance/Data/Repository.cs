@@ -7,7 +7,7 @@ using NodaTime;
 namespace Humans.Finance.Data;
 
 internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
-    : IHoldedRepository
+    : IFinanceRepository
 {
     public async Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default)
     {

@@ -7,12 +7,12 @@ using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using NodaTime;
-using static Humans.Finance.Services.HoldedCreditorBindings;
+using static Humans.Finance.Services.CreditorBindings;
 
 namespace Humans.Finance.Services;
 
-internal sealed class HoldedCreditorReader(
-    IHoldedRepository repo,
+internal sealed class CreditorReader(
+    IFinanceRepository repo,
     IHoldedService holded,
     IExpenseHoldedBookingService expenses,
     SepaBankBooking booking,

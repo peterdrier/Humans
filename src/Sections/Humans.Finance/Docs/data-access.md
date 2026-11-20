@@ -6,7 +6,7 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 `Humans.Finance.Services`). **DbContext:**
 `FinanceDbContext`.
 `Repository` (`src/Sections/Humans.Finance/Data/Repository.cs`, implements
-`IHoldedRepository`) injects `IDbContextFactory<FinanceDbContext>` directly
+`IFinanceRepository`) injects `IDbContextFactory<FinanceDbContext>` directly
 — a distinct context from `ExpensesDbContext` and from
 `HoldedDbContext`. Owns
 `HoldedCategoryMap`, `HoldedCreditorContacts`,
@@ -32,7 +32,7 @@ collision guard).
 
 ### SepaBankBooking (section-internal)
 
-Composed by `Service` using `IHoldedRepository`, `IHoldedService`, `IHoldedWrite`, `IClock`,
+Composed by `Service` using `IFinanceRepository`, `IHoldedService`, `IHoldedWrite`, `IClock`,
 a singleton `TrackedCache<string, Dictionary<string, int>>` for sweep failure
 counts, `IAuditLogService` and `IOptions<SepaOptions>`. Owns the manual
 and scheduled bank-booking workflow: reads creditor bindings and payout rows,
@@ -40,9 +40,9 @@ updates booking/payment-reference/reconciliation columns on `SepaPayoutTransfers
 and calls Holded through its contract. Its shared booking gate covers all entry
 points. No provisioning, Budget or email dependency.
 
-### HoldedCategoryAccounts (section-internal, composed by `Service`)
+### CategoryAccounts (section-internal, composed by `Service`)
 
-Repository: `IHoldedRepository` (shared with its owner). Provisions Holded expense accounts for
+Repository: `IFinanceRepository` (shared with its owner). Provisions Holded expense accounts for
 the active budget year's categories and records the mapping; not DI-registered.
 
 | Table | R/W |
@@ -62,7 +62,7 @@ orders' gross revenue for the runway). Injected by `FinanceController` only.
 
 ### FinanceOverviewService (Scoped, section-internal)
 
-Reads and replaces `finance_stripe_ledger_links` through `IHoldedRepository` (`GetStripeLedgerLinksAsync`,
+Reads and replaces `finance_stripe_ledger_links` through `IFinanceRepository` (`GetStripeLedgerLinksAsync`,
 `ReplaceStripeLedgerLinksAsync`) for the Finance settings tab; no cache. Composes `/Finance` from the Holded ledger
 mirror through `IHoldedService` (`GetLedgerSyncedAtAsync`, `GetAccountBalancesAsync`, `GetChartAsync`,
 `GetLedgerLinesAsync` for the 472/477/4751 tax accounts), this section's own `IFinanceService`
@@ -79,7 +79,7 @@ contact and purchase-document mirrors; refreshes the purchase mirror and 5720000
 `CreatePurchaseDocumentAsync`, `EnsurePurchaseDocumentApprovedAsync`, `PayPurchaseDocumentAsync`,
 `UploadPurchaseAttachmentAsync`, `EnsureExpenseAccountAsync` (only for its Holded id) and `PostJournalEntryAsync`. Reads
 and writes `finance_settings`, `finance_pleo_booking_claims` and `finance_pleo_receipt_uploads` through
-`IHoldedRepository`. `PleoBookingState` holds the current/last run; `PleoBookingRunner` runs `RunAsync` in its own
+`IFinanceRepository`. `PleoBookingState` holds the current/last run; `PleoBookingRunner` runs `RunAsync` in its own
 scope off the request. Injected by `FinanceController` and `FinanceSettingsTabViewComponent`.
 
 ### SepaBookingRunner (Singleton, section-internal)
@@ -90,7 +90,7 @@ run for the page. Injected by `FinanceController` only.
 
 ### Service (Scoped)
 
-Repository: `IHoldedRepository`.
+Repository: `IFinanceRepository`.
 
 | Table | R/W |
 |-------|-----|

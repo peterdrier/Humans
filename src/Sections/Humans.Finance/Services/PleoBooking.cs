@@ -44,7 +44,7 @@ internal sealed partial class PleoBooking(
     IPleoService pleo,
     IHoldedService holded,
     IHoldedWrite write,
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IAuditLogService audit,
     PleoBookingState state,
     IClock clock,

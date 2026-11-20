@@ -11,8 +11,8 @@ using NodaTime;
 
 namespace Humans.Finance.Services;
 
-internal sealed class HoldedCategoryAccounts(
-    IHoldedRepository repo,
+internal sealed class CategoryAccounts(
+    IFinanceRepository repo,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
     IBudgetService budget,

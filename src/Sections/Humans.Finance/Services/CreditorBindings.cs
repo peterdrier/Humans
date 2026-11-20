@@ -10,8 +10,8 @@ using NodaTime;
 
 namespace Humans.Finance.Services;
 
-internal sealed class HoldedCreditorBindings(
-    IHoldedRepository repo,
+internal sealed class CreditorBindings(
+    IFinanceRepository repo,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
     IClock clock,

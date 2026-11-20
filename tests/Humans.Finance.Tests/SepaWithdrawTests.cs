@@ -32,7 +32,7 @@ public class SepaWithdrawTests
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly Guid Actor = Guid.NewGuid();
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();

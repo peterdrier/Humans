@@ -27,7 +27,7 @@ internal sealed class FinanceOverviewService(
     IPleoService pleo,
     IStripeMirrorService stripe,
     IOptions<SepaOptions> sepa,
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IAuditLogService audit,
     IClock clock) : IApplicationService
 {
