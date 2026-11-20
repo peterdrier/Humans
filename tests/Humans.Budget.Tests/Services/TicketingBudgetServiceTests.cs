@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Humans.Budget.Jobs;
 using Humans.Testing;
 using Microsoft.Extensions.Logging;
@@ -28,6 +30,20 @@ public class TicketingBudgetServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 11, 9, 0)); // Wed 11 Mar 2026
 
     private readonly Guid _yearId = Guid.NewGuid();
+
+    [HumansFact]
+    public void Section_registration_resolves_the_ticketing_job_through_scoped_DI()
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddScoped<ITicketingBudgetService>(_ => Substitute.For<ITicketingBudgetService>());
+        services.AddScoped<IBudgetService>(_ => _budgetService);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<TicketingBudgetSyncJob>().Should().NotBeNull();
+    }
 
     public TicketingBudgetServiceTests()
     {
