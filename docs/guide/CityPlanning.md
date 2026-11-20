@@ -6,6 +6,8 @@
   src/Sections/Humans.CityPlanning/Views/**
   src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/**
   src/Humans.Base/Authorization/RoleChecks.cs
+  src/Sections/Humans.Camps.Contracts/CampsRoles.cs
+  src/Sections/Humans.Containers/Authorization/ContainerAuthorizationHandler.cs
 -->
 <!-- freshness:flag-on-change
   Map view, polygon edit/save/restore flow, placement-phase toggle, overlay uploads, GeoJSON export, and City Planning team admin access. Review when map views, controllers, or entities change.
@@ -26,7 +28,7 @@ These entities back this section: `CityPlanningSettings` (per-year singleton, co
 - **Overview map** (`/CityPlanning`) — authenticated humans view the live full-screen map, with layer toggles for containers and barrio zones and a measuring tool. Read-only.
 - **Barrio map** (`/CityPlanning/BarrioMap`) — where placements are actually drawn and edited. Linked from the overview map for camp leads while placement is Open or in its adjustments-only window, and for map admins at any time.
 - **Container map** (`/CityPlanning/ContainerMap/{year}`) — where containers are placed. Containers have their **own** placement phase, separate from barrio placement: unless you are a map admin, you can only open this page while container placement is open and you lead a camp.
-- **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Camps Admin or City Planning team members) upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`, and that is also where container placement is opened and closed. Forcing barrio placement open or closed, setting the barrio placement schedule, and editing the barrio registration-page markdown live on `/Settings#city-planning`.
+- **Admin panel** (`/CityPlanning/BarrioMap/Admin`) — map admins (Admins, Camps Admins or City Planning team members) upload overlays, export and import GeoJSON. Container admin lives under `/CityPlanning/BarrioMap/Admin/Containers/{year}`, and that is also where container placement is opened and closed. Forcing barrio placement open or closed, setting the barrio placement schedule, and editing the barrio registration-page markdown live on `/Settings#city-planning`.
 
 Each map is its own full-screen view. On the barrio map, editing, polygon history and the placement-phase card are surfaced through panels inside it. The separate Admin panel is where overlay zones are uploaded.
 
