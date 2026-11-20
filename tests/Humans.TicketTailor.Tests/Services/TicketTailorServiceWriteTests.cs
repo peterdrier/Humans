@@ -11,6 +11,41 @@ namespace Humans.TicketTailor.Tests.Services;
 
 public class TicketTailorServiceWriteTests
 {
+    [HumansTheory]
+    [InlineData("void")]
+    [InlineData("issue")]
+    [InlineData("discount")]
+    public async Task UnreadableWriteResponse_UsesOperationFailureContractWithoutRetry(string operation)
+    {
+        var handler = new RecordingHttpHandler();
+        var content = handler.EnqueueResponse(HttpStatusCode.OK, "unexpected response");
+        var service = TicketTailorTestHost.CreateService(handler);
+        var ct = TestContext.Current.CancellationToken;
+        Func<Task> write = operation switch
+        {
+            "void" => () => service.VoidIssuedTicketAsync("tt_1", true, ct),
+            "issue" => () => service.IssueTicketAsync(new IssueTicketRequest(
+                EventId: null, TicketTypeId: null, HoldId: "hold_1",
+                FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null), ct),
+            _ => () => service.GenerateDiscountCodesAsync(
+                new DiscountCodeSpec(1, DiscountType.Percentage, 25m, null), ct)
+        };
+
+        if (string.Equals(operation, "discount", StringComparison.Ordinal))
+        {
+            var failure = await write.Should().ThrowExactlyAsync<HttpRequestException>();
+            failure.Which.InnerException.Should().BeOfType<System.Text.Json.JsonException>();
+        }
+        else
+        {
+            var failure = await write.Should().ThrowExactlyAsync<TicketVendorWriteException>();
+            failure.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+            failure.Which.InnerException.Should().BeOfType<System.Text.Json.JsonException>();
+        }
+        handler.RequestCount.Should().Be(1);
+        content.WasDisposed.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task VoidIssuedTicketAsync_VoidToHold_True_PostsCorrectFormBody()
     {

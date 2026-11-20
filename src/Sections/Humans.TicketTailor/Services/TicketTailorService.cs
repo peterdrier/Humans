@@ -249,7 +249,15 @@ internal sealed class TicketTailorService : ITicketVendorService
             using var response = await _httpClient.PostAsync($"{BaseUrl}/discounts", form, ct);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<TtDiscountCode>(JsonOptions, ct);
+            TtDiscountCode? result;
+            try
+            {
+                result = await response.Content.ReadFromJsonAsync<TtDiscountCode>(JsonOptions, ct);
+            }
+            catch (JsonException ex)
+            {
+                throw new HttpRequestException("TicketTailor discount response could not be read.", ex);
+            }
             if (string.IsNullOrWhiteSpace(result?.Code))
                 throw new HttpRequestException("TicketTailor discount response is missing required code.");
             codes.Add(result.Code);
@@ -315,7 +323,16 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (!response.IsSuccessStatusCode)
                 throw await BuildVendorWriteExceptionAsync(response, "void", vendorTicketId, ct);
 
-            var body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
+            TtVoidResponse? body;
+            try
+            {
+                body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
+            }
+            catch (JsonException ex)
+            {
+                throw new TicketVendorWriteException(
+                    "TicketTailor void response could not be read.", TicketVendorFailureKind.Transient, ex);
+            }
             return new VoidIssuedTicketResult(
                 VendorTicketId: body?.Id ?? vendorTicketId,
                 HoldId: body?.HoldId);
@@ -368,8 +385,18 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (!response.IsSuccessStatusCode)
                 throw await BuildVendorWriteExceptionAsync(response, "issue", request.FullName, ct);
 
-            var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
-                ?? throw new TicketVendorWriteException(
+            TtIssuedTicket? body;
+            try
+            {
+                body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct);
+            }
+            catch (JsonException ex)
+            {
+                throw new TicketVendorWriteException(
+                    "TicketTailor issue response could not be read.", TicketVendorFailureKind.Transient, ex);
+            }
+            if (body is null)
+                throw new TicketVendorWriteException(
                     "TicketTailor issue returned 2xx with empty body",
                     TicketVendorFailureKind.Transient);
 
