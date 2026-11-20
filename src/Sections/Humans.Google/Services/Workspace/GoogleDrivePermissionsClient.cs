@@ -29,9 +29,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var permissions = new List<DrivePermission>();
             string? pageToken = null;
             var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
@@ -75,6 +75,11 @@ internal sealed class GoogleDrivePermissionsClient(
             return new DrivePermissionListResult(
                 Permissions: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error listing permissions for {FileId}: {Reason}", fileId, ex.Message);
+            return new DrivePermissionListResult(Permissions: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 
@@ -187,9 +192,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var request = drive.Files.Get(fileId);
             request.SupportsAllDrives = true;
             request.Fields = FileFields;
@@ -211,6 +216,11 @@ internal sealed class GoogleDrivePermissionsClient(
             return new DriveFileMetadataResult(
                 File: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error reading file {FileId}: {Reason}", fileId, ex.Message);
+            return new DriveFileMetadataResult(File: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 
@@ -247,9 +257,9 @@ internal sealed class GoogleDrivePermissionsClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var drive = await GetDriveServiceAsync(ct);
         try
         {
-            var drive = await GetDriveServiceAsync(ct);
             var info = await drive.Drives.Get(driveId).ExecuteAsync(ct);
             return new SharedDriveMetadataResult(
                 new SharedDriveMetadata(info.Id, info.Name),
@@ -263,6 +273,11 @@ internal sealed class GoogleDrivePermissionsClient(
             return new SharedDriveMetadataResult(
                 Drive: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error reading Shared Drive {DriveId}: {Reason}", driveId, ex.Message);
+            return new SharedDriveMetadataResult(Drive: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 

@@ -17,9 +17,9 @@ internal sealed class GoogleDirectoryClient(
     public async Task<DirectoryGroupListResult> ListDomainGroupsAsync(CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var service = await GetDirectoryServiceAsync(ct);
         try
         {
-            var service = await GetDirectoryServiceAsync(ct);
             var groups = new List<DirectoryGroup>();
             string? pageToken = null;
             var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
@@ -73,6 +73,11 @@ internal sealed class GoogleDirectoryClient(
             return new DirectoryGroupListResult(
                 Groups: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error listing domain groups: {Reason}", ex.Message);
+            return new DirectoryGroupListResult(Groups: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 

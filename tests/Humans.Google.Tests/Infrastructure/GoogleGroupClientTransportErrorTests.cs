@@ -148,6 +148,85 @@ public sealed class GoogleGroupClientTransportErrorTests
             handler.Requests[1].Should().Contain("cursor-a");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("groups", "http")]
+    [Xunit.InlineData("groups", "io")]
+    [Xunit.InlineData("groups", "cancel")]
+    [Xunit.InlineData("groups", "credentials")]
+    [Xunit.InlineData("permissions", "http")]
+    [Xunit.InlineData("permissions", "io")]
+    [Xunit.InlineData("permissions", "cancel")]
+    [Xunit.InlineData("permissions", "credentials")]
+    [Xunit.InlineData("file", "http")]
+    [Xunit.InlineData("file", "io")]
+    [Xunit.InlineData("file", "cancel")]
+    [Xunit.InlineData("file", "credentials")]
+    [Xunit.InlineData("drive", "http")]
+    [Xunit.InlineData("drive", "io")]
+    [Xunit.InlineData("drive", "cancel")]
+    [Xunit.InlineData("drive", "credentials")]
+    public async Task Structured_reads_keep_transport_failures_separate_from_cancellation_and_credentials(string kind, string failure)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        if (failure is "cancel") await cancellation.CancelAsync();
+        using var handler = new ResettingHandler(failure is "io");
+        var initializer = CreateInitializer(handler);
+        using BaseClientService sdk = kind is "groups" ? new DirectoryService(initializer) : new DriveService(initializer);
+        var settings = Options.Create(new GoogleWorkspaceSettings
+        {
+            Domain = "example.org",
+            ServiceAccountKeyPath = $"/tmp/debt98-missing-{Guid.NewGuid():N}/credentials.json",
+        });
+        var groupLogger = new Humans.Testing.CapturingLogger<GoogleDirectoryClient>();
+        var driveLogger = new Humans.Testing.CapturingLogger<GoogleDrivePermissionsClient>();
+
+        async Task<GoogleClientError?> FetchAsync()
+        {
+            if (kind is "groups")
+            {
+                var client = new GoogleDirectoryClient(settings, groupLogger);
+                if (failure is not "credentials") Inject(client, "_directoryService", sdk);
+                var result = await client.ListDomainGroupsAsync(cancellation.Token);
+                result.Groups.Should().BeNull();
+                return result.Error;
+            }
+            var drive = new GoogleDrivePermissionsClient(settings, driveLogger);
+            if (failure is not "credentials") Inject(drive, "_driveService", sdk);
+            if (kind is "permissions")
+            {
+                var result = await drive.ListPermissionsAsync("file", cancellation.Token);
+                result.Permissions.Should().BeNull();
+                return result.Error;
+            }
+            if (kind is "file")
+            {
+                var result = await drive.GetFileAsync("file", cancellation.Token);
+                result.File.Should().BeNull();
+                return result.Error;
+            }
+            var sharedDrive = await drive.GetSharedDriveAsync("drive", cancellation.Token);
+            sharedDrive.Drive.Should().BeNull();
+            return sharedDrive.Error;
+        }
+
+        var fetch = FetchAsync;
+        if (failure is "cancel") await fetch.Should().ThrowAsync<OperationCanceledException>();
+        else if (failure is "credentials") await fetch.Should().ThrowAsync<IOException>();
+        else
+        {
+            var error = await fetch();
+            error.Should().NotBeNull();
+            error.StatusCode.Should().Be(0);
+            var logs = groupLogger.Entries.Select(entry => (entry.Level, entry.Exception, entry.Message))
+                .Concat(driveLogger.Entries.Select(entry => (entry.Level, entry.Exception, entry.Message)));
+            var warning = logs.Where(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning)
+                .Should().ContainSingle().Subject;
+            warning.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+            warning.Exception.Should().BeNull();
+            warning.Message.Should().Contain(error.RawMessage!);
+        }
+    }
+
     private static BaseClientService.Initializer CreateInitializer(HttpMessageHandler? handler = null)
     {
         var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
@@ -187,10 +266,11 @@ public sealed class GoogleGroupClientTransportErrorTests
         }
     }
 
-    private sealed class ResettingHandler : HttpMessageHandler
+    private sealed class ResettingHandler(bool streamOnly = false) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            throw new HttpRequestException("An error occurred while sending the request.",
-                new IOException("Unable to read data from the transport connection: Connection reset by peer."));
+            throw (streamOnly ? new IOException("Connection reset by peer.")
+                : new HttpRequestException("An error occurred while sending the request.",
+                new IOException("Unable to read data from the transport connection: Connection reset by peer.")));
     }
 }
