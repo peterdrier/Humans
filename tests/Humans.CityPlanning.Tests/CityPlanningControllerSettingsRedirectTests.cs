@@ -101,15 +101,6 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
     }
 
-    [HumansFact]
-    public async Task UpdateRegistrationInfo_SavesAndRedirectsToTheSettingsPageCityPlanningTab()
-    {
-        var result = await _controller.UpdateRegistrationInfo("Bring water.", TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
-        (await _service.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("Bring water.");
-    }
-
     [HumansTheory]
     [InlineData(nameof(CityPlanningController.FollowPlacementSchedule))]
     [InlineData(nameof(CityPlanningController.UpdatePlacementSchedule))]

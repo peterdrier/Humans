@@ -1473,8 +1473,14 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return [.. (await _settingsService.GetAllEventSettingsAsync(cancellationToken))
             .Where(e => e.Status != EventSettingsStatus.Deleted)
             .OrderByDescending(e => e.GateOpeningDate)
-            .Select(e => new CampEventRegistration(e.Id, e.EventName, e.Year,
-                rows.TryGetValue(e.Id, out var row) && row.RegistrationOpen))];
+            .Select(e =>
+            {
+                var row = rows.GetValueOrDefault(e.Id);
+                return new CampEventRegistration(e.Id, e.EventName, e.Year, row?.RegistrationOpen == true)
+                {
+                    RegistrationInfo = row?.RegistrationInfo,
+                };
+            })];
     }
 
     public Task OpenSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
@@ -1482,6 +1488,26 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         SetRegistrationOpenAsync(eventSettingsId, open: false, actorUserId, cancellationToken);
+
+    public async Task SetRegistrationInfoAsync(
+        Guid eventSettingsId, string? registrationInfo, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var target = (await GetRegistrationByEventAsync(cancellationToken))
+            .FirstOrDefault(r => r.EventSettingsId == eventSettingsId)
+            ?? throw new InvalidOperationException($"Event {eventSettingsId} not found.");
+        // Empty, not null: a cleared event must not fall back to City Planning's old copy.
+        var trimmed = registrationInfo?.Trim() ?? string.Empty;
+        // Complete the save and audit together even if the caller stops waiting.
+        if (await _repo.SetRegistrationInfoAsync(eventSettingsId, trimmed, CancellationToken.None))
+        {
+            await _auditLog.LogAsync(
+                CampsAuditActions.CampRegistrationInfoUpdated, nameof(CampEventSettings), eventSettingsId,
+                trimmed.Length == 0
+                    ? $"Cleared the registration info for {target.EventName}"
+                    : $"Updated the registration info for {target.EventName}",
+                actorUserId);
+        }
+    }
 
     private async Task SetRegistrationOpenAsync(
         Guid eventSettingsId, bool open, Guid actorUserId, CancellationToken cancellationToken)

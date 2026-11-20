@@ -110,6 +110,27 @@ internal sealed class CampAdminController(
         return Redirect("/Settings#barrios");
     }
 
+    [HttpPost("RegistrationInfo/{eventSettingsId:guid}")]
+    [Authorize(Policy = CampsPolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegistrationInfo(Guid eventSettingsId, string? registrationInfo)
+    {
+        var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            await campService.SetRegistrationInfoAsync(eventSettingsId, registrationInfo, user.Id);
+            SetSuccess("Registration info saved.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to save registration info for event {EventSettingsId}", eventSettingsId);
+            SetError($"Failed to save registration info: {ex.Message}");
+        }
+        return Redirect("/Settings#barrios");
+    }
+
     [HttpPost("CloseSeason/{eventSettingsId:guid}")]
     [Authorize(Policy = CampsPolicies.Manage)]
     [ValidateAntiForgeryToken]

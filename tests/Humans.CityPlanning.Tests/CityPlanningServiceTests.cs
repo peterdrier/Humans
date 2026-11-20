@@ -401,27 +401,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_AuditsAgainstTheOpenSeasonRow()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027]));
-        var userId = NewUserId();
-
-        await _sut.UpdateRegistrationInfoAsync("Bring water.", userId, TestContext.Current.CancellationToken);
-
-        var row = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(s => s.Year == 2027, TestContext.Current.CancellationToken);
-        await _auditLog.Received(1).LogAsync(
-            CityPlanningAuditActions.CityPlanningRegistrationInfoUpdated,
-            nameof(CityPlanningSettings),
-            row.Id,
-            Arg.Any<string>(),
-            userId,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
-    }
-
-    [HumansFact]
     public async Task ContainerPlacementToggles_WriteTheirOwnAuditActions()
     {
         await SeedMapSettingsAsync();
@@ -749,16 +728,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetRegistrationInfoAsync_NoRow_WritesNothing()
-    {
-        SetupCampSettings(publicYear: 2026);
-
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
-
-        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
-    }
-
-    [HumansFact]
     public async Task GetSettingsAsync_YearFollowsTheActiveEvent_NotCampsPublicYear()
     {
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -1068,65 +1037,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var updated = await CityPlanningDb.CityPlanningSettings.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         updated.OfficialZonesGeoJson.Should().BeNull();
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotTheActiveEventYear()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027]));
-
-        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", NewUserId(), TestContext.Current.CancellationToken);
-
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(TestContext.Current.CancellationToken);
-        settings.Year.Should().Be(2028);
-        settings.RegistrationInfo.Should().Be("Read this before you register.");
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_FallsBackToTheActiveEventYear_WhenNoOpenSeasons()
-    {
-        SetupCampSettings();
-
-        await _sut.UpdateRegistrationInfoAsync("Blurb", NewUserId(), TestContext.Current.CancellationToken);
-
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(TestContext.Current.CancellationToken);
-        settings.Year.Should().Be(2026);
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_TrimsInput_AndStoresNullForBlank()
-    {
-        SetupCampSettings();
-
-        await _sut.UpdateRegistrationInfoAsync("  padded  ", NewUserId(), TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("padded");
-
-        await _sut.UpdateRegistrationInfoAsync("   ", NewUserId(), TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetRegistrationInfoAsync_ReadsTheSameYearTheWriteUsed()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027]));
-
-        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", NewUserId(), TestContext.Current.CancellationToken);
-
-        // A row keyed to the active event's year must not shadow the open-season one.
-        CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
-        {
-            Year = 2026,
-            RegistrationInfo = "Stale public-year blurb",
-            UpdatedAt = Clock.GetCurrentInstant()
-        });
-        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken))
-            .Should().Be("Open-season blurb");
     }
 
     private void SetupExistingCampSeason(Guid seasonId, int year) =>

@@ -37,6 +37,7 @@ public sealed class Section :
     ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionChrome,
+    ISectionDataMigrations,
     ISectionHelp,
     ISectionNav,
     ISectionPolicies,
@@ -147,6 +148,45 @@ public sealed class Section :
             new("Compliance", "CampCompliance", "Compliance", null, null, "fa-solid fa-clipboard-check", CampsPolicies.Compliance, Weight: 20)
         ])
     ];
+
+    internal const string RegistrationInfoCopyKey = "camps.registration-info-from-city-planning";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(RegistrationInfoCopyKey, "Camps",
+            "Copy each event's Register page info from City Planning's settings onto the Camps event row",
+            "City Planning's registration_info column and the Register page fallback that reads it",
+            RegistrationInfoCopyStatusAsync, ApplyRegistrationInfoCopyAsync),
+    ];
+
+    private static async Task<IReadOnlyList<(CampEventRegistration Event, string Info)>> PendingRegistrationInfoCopiesAsync(
+        IServiceProvider sp, CancellationToken ct)
+    {
+        var cityPlanning = sp.GetRequiredService<ICityPlanningService>();
+        var pending = new List<(CampEventRegistration, string)>();
+        foreach (var ev in await sp.GetRequiredService<ICampManagement>().GetRegistrationByEventAsync(ct))
+        {
+            if (ev.RegistrationInfo is not null) continue;
+            if (await cityPlanning.GetLegacyRegistrationInfoAsync(ev.Year, ct) is { } info
+                && !string.IsNullOrWhiteSpace(info))
+                pending.Add((ev, info));
+        }
+        return pending;
+    }
+
+    private static async Task<DataMigrationStatus> RegistrationInfoCopyStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["Event", "Registration info from City Planning"],
+            [.. (await PendingRegistrationInfoCopiesAsync(sp, ct))
+                .Select(p => (IReadOnlyList<string>)[p.Event.EventName, p.Info])]);
+
+    private static async Task<int> ApplyRegistrationInfoCopyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
+    {
+        var camps = sp.GetRequiredService<ICampManagement>();
+        var pending = await PendingRegistrationInfoCopiesAsync(sp, ct);
+        foreach (var (ev, info) in pending)
+            await camps.SetRegistrationInfoAsync(ev.EventSettingsId, info, actorUserId, ct);
+        return pending.Count;
+    }
 
     IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => Entries;
 

@@ -315,7 +315,7 @@ public class CampControllerTests
             if (boundary is CampFormRedisplayBoundary.Settings) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Settings2026();
         });
-        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _cityPlanning.GetLegacyRegistrationInfoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (boundary is CampFormRedisplayBoundary.Info) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return (string?)"Registration info";
@@ -495,7 +495,7 @@ public class CampControllerTests
             if (abandon && cancelAfterSettings) await request.CancelAsync();
             return Settings2026();
         });
-        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _cityPlanning.GetLegacyRegistrationInfoAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return "Registration instructions";
@@ -513,6 +513,22 @@ public class CampControllerTests
         abandon = true;
         if (!cancelAfterSettings) await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [InlineData("From Camps")]
+    [InlineData("")]
+    public async Task Register_ShowsTheEventsOwnRegistrationInfo_OverCityPlanningsOldCopy(string campsInfo)
+    {
+        var settings = Settings2026();
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings with
+        {
+            Events = [.. settings.Events.Select(e => e.Year == 2026 ? e with { RegistrationInfo = campsInfo } : e)],
+        });
+        _cityPlanning.GetLegacyRegistrationInfoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns("From City Planning");
+
+        (await BuildController(Guid.NewGuid()).Register()).Should().BeOfType<ViewResult>()
+            .Which.ViewData["RegistrationInfo"].Should().Be(campsInfo);
     }
 
     [HumansTheory]
