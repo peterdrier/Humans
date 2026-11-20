@@ -143,23 +143,21 @@ internal sealed class ExpensesController(
             SetError(GetErrorMessage(result.Error) is { } reason
                 ? $"{localizer["Expenses_Flash_CreateFailed"]} {reason}"
                 : localizer["Expenses_Flash_CreateFailed"].Value);
-            model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user);
-            return View(model);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating draft expense report for user {UserId}", submitterUserId);
             SetError(localizer["Expenses_Flash_CreateFailed"]);
-            model.Accounts = await BuildAccountOptionsAsync();
-            await PopulateGrantOptionsAsync(model, user);
-            return View(model);
         }
+
+        model.Accounts = await BuildAccountOptionsAsync(HttpContext.RequestAborted);
+        await PopulateGrantOptionsAsync(model, user, HttpContext.RequestAborted);
+        return View(model);
     }
 
     /// <summary>The viewer's claimable grants, plus the preselected one when it is somebody else's (an admin filing on
     /// their behalf).</summary>
-    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, UserInfo viewer, CancellationToken ct = default)
+    private async Task PopulateGrantOptionsAsync(ExpenseNewViewModel model, UserInfo viewer, CancellationToken ct)
     {
         var grants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct)).OrderBy(g => g.ClaimBy).ToList();
         if (model.PreapprovalGrantId is { } wanted && grants.All(g => g.Id != wanted)
@@ -897,7 +895,7 @@ internal sealed class ExpensesController(
     /// <summary>Budget-category accounts first. The service refuses a cross-year rebooking, so one list serves the new
     /// form, the edit form and the approval override.</summary>
     private async Task<IReadOnlyList<ExpenseAccountOption>> BuildAccountOptionsAsync(
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
         var accounts = await finance.ListExpenseAccountsAsync(activeOnly: true, ct);
         return accounts
