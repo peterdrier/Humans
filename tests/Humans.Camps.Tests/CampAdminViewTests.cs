@@ -1,4 +1,5 @@
 using System.Text.Encodings.Web;
+using AngleSharp.Html.Parser;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
 using Microsoft.AspNetCore.Builder;
@@ -40,6 +41,26 @@ public class CampAdminViewTests
 
         html.Should().Contain(HtmlEncoder.Default.Encode(prefix + (fits ? "😀" : "") + "..."));
         camp.BlurbShort.Should().Be(prefix + "😀tail");
+    }
+
+    [HumansFact]
+    public async Task SummaryFooterAndEarlyEntryCard_ShareActiveEventTotals()
+    {
+        var model = new CampAdminViewModel
+        {
+            AllCampSummaries =
+            [
+                new() { Name = "A", Slug = "a", MemberCount = 3, JoinedMemberCount = 2, EeGrantedCount = 3, EeSlotCount = 4 },
+                new() { Name = "B", Slug = "b", MemberCount = 5, JoinedMemberCount = 4, EeGrantedCount = 8, EeSlotCount = 6 },
+            ]
+        };
+
+        var html = await RenderAsync("Index", model);
+        var document = await new HtmlParser().ParseDocumentAsync(html, Xunit.TestContext.Current.CancellationToken);
+        var footer = document.QuerySelectorAll("tfoot td").Select(cell => cell.TextContent.Trim()).ToList();
+
+        footer.Should().Equal("Totals", "", "8", "6", "", "", "", "11 / 10", "");
+        document.Body!.TextContent.Should().Contain("11 granted").And.Contain("10 configured slots").And.Contain("over cap");
     }
 
     private static async Task<string> RenderAsync(string page, object model)

@@ -262,6 +262,8 @@ Admin season opening, name-lock-date changes and EE slot-cap updates require the
 - The camp detail page carries two read-only cards with **different sources**, both built in `CampController.PopulateDetailCardsAsync`. **Roles** projects `CampRoleAssignment` via `ICampRoleService.BuildPanelAsync` (`canManage: false`) — the same data as `/Edit/Members`, so the two pages can never disagree about role assignments. **Roster** is a separate `CampMember` projection off `season.ActiveMembers`. They can legitimately disagree — an Active member holding no role appears on the Roster and not in Roles — so don't treat either as a view of the other.
 - Card visibility keys off `CanSeeFullCamp` (an Active member of the **displayed** season — not the open-season membership VM, which would wrongly hide the roster on Pending/closed seasons — or CampsAdmin/Admin). Anonymous viewers get neither card (`PopulateDetailCardsAsync` returns early with no signed-in user). A signed-in non-member gets the Roles card **retitled "Leads"** and filtered to the Lead role's filled assignees only (`_CampRolesCard.cshtml`), and no Roster. Full-camp viewers get every active role plus open slots, and the localized Roster card.
 
+The admin summary projection supplies total reported members, joined members, granted early-entry passes and configured early-entry slots from its active-event summary rows. The table footer and early-entry card share these totals; reported membership remains distinct from members who joined in-app.
+
 ## Negative Access Rules
 
 - Regular humans **cannot** edit camps they do not lead.

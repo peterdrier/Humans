@@ -264,6 +264,10 @@ internal sealed class CampAdminViewModel
     public IReadOnlyList<CampEventRegistration> Events { get; set; } = [];
     public IReadOnlyDictionary<Guid, NodaTime.LocalDate?> NameLockDates { get; set; } = new Dictionary<Guid, NodaTime.LocalDate?>();
     public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = [];
+    public int TotalReportedMembers => AllCampSummaries.Sum(camp => camp.MemberCount);
+    public int TotalJoinedMembers => AllCampSummaries.Sum(camp => camp.JoinedMemberCount);
+    public int TotalEeGranted => AllCampSummaries.Sum(camp => camp.EeGrantedCount);
+    public int TotalEeSlots => AllCampSummaries.Sum(camp => camp.EeSlotCount);
     /// <summary>The "Seed system roles" admin card renders only when this is true.</summary>
     public bool HasMissingSpecialRoles { get; set; }
 }
