@@ -140,7 +140,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   the others still sweep. A failed diagnostic save logs its exception and account ID without stopping healthy
   accounts or replacing caller cancellation; the sync gate is still released. The shared transaction, payout
   and automatic-payout breakdown pager requires an explicit boolean `has_more` in the raw response; the SDK's
-  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list.
+  default `false` cannot complete a sweep when the field is missing. Only an explicit `false` completes a list. Every list item requires a nonblank ID. Full transaction records additionally require type, status, currency, reporting category, integer amount/fee/net and creation/availability timestamps; full payout records require currency, status, integer amount and creation/arrival timestamps, plus an explicit automatic flag. Missing fields fail the fetch rather than accepting SDK defaults. Payout-breakdown reads consume and validate IDs only; optional metadata remains optional.
   The pager also fails closed on `has_more` on an empty page or a 500-page cap. One sweep at a time: an in-process gate shared by
   the job and Sync now.
 - Account startup saves are covered by account failure handling, so one failed `Running` save does not stop
