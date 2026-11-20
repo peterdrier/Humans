@@ -14,7 +14,6 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />

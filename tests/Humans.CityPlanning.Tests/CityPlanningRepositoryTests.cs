@@ -136,7 +136,6 @@ public sealed class CityPlanningRepositoryTests : CityPlanningTestBase
             a, """{}""", 100.0, userId, "Saved", Clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
         var historyA = (await _repo.GetHistoryForCampSeasonAsync(a, Xunit.TestContext.Current.CancellationToken)).Single();
 
-        // Wrong campSeasonId should not return the row.
         var result = await _repo.GetHistoryEntryAsync(b, historyA.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();

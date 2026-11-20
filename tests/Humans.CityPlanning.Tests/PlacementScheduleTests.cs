@@ -156,8 +156,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
         (await StateAsync()).Should().Be(BarrioPlacementState.Closed);
     }
 
-    // The migration keeps the old IsPlacementOpen column as the override, so a row an admin had
-    // closed or opened by hand reads exactly as before until someone chooses Follow schedule.
+    // A stored override reads as forced open/closed until Follow schedule clears it.
     [HumansFact]
     public async Task GetSettingsAsync_ForcedOpenWithNoSchedule_IsOpen_AsTheOldFlagWas()
     {

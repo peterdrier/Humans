@@ -507,8 +507,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before
-    // the write: re-read after it, an abort mid-write committed the change unaudited.
+    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before the write.
     [HumansFact]
     public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
     {

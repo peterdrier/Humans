@@ -1,4 +1,3 @@
-// Sidebar DOM management for the container placement map.
 // Renders containers grouped by barrio, split into Unplaced / Placed sections.
 
 import { CONFIG } from './config.js';
@@ -6,8 +5,8 @@ import { CONFIG } from './config.js';
 const unplacedEl = document.getElementById('sidebar-unplaced');
 const placedEl   = document.getElementById('sidebar-placed');
 
-let _containers     = [];    // current container data array
-let _activeId       = null;  // currently active container ID
+let _containers     = [];
+let _activeId       = null;
 let _filterCampId   = null;  // if set, sidebar only shows this barrio's containers
 let _onActivate  = null;  // callback(container) when user clicks an unplaced card
 let _onClear     = null;  // callback(container) when user clicks "Clear placement"
@@ -24,30 +23,25 @@ export function initSidebar(onActivate, onClear, onSelect, onLocate, onInfo, fil
     _filterCampId  = filterCampId;
 }
 
-/** Replace the container list and re-render. */
 export function setContainers(containers) {
     _containers = containers;
     render();
 }
 
-/** Mark a container as having been successfully placed (moves card to Placed). */
 export function markPlaced(_id) {
     _activeId = null;
     render();
 }
 
-/** Mark a container as unplaced (moves card back to Unplaced). */
 export function markUnplaced(_id) {
     render();
 }
 
-/** Highlight the active card (currently being placed). */
 export function setActiveId(id) {
     _activeId = id;
     render();
 }
 
-/** Scroll the placed section to show a specific container card. */
 export function scrollToPlaced(id) {
     const card = placedEl.querySelector(`[data-id="${id}"]`);
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
