@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Base;
 using Humans.Base.Authorization;
@@ -64,7 +65,7 @@ public sealed class Section :
 
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
     {
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (user.GetUserId() is not { } userId)
             return [];
 
         var profile = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId, ct);

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +25,7 @@ public class LanguageController(IUserWrite userService) : Controller
             new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), IsEssential = true });
 
         if (User.Identity?.IsAuthenticated == true
-            && Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            && User.GetUserId() is { } userId)
         {
             await userService.SetPreferredLanguageAsync(userId, culture, ct);
         }

@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
 using System.Globalization;
 using System.Security.Claims;
@@ -327,7 +328,7 @@ public sealed class Section :
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
     {
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (user.GetUserId() is not { } userId)
         {
             return [];
         }

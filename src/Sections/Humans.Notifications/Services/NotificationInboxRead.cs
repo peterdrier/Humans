@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Notifications.Contracts;
 
@@ -11,7 +12,7 @@ internal sealed class NotificationInboxRead(
         ClaimsPrincipal user, CancellationToken ct = default)
     {
         IReadOnlyList<UnreadNotificationDto> notifications = [];
-        if (Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (user.GetUserId() is { } userId)
         {
             var result = await inbox.GetInboxAsync(userId, search: null, filter: "all", tab: "unread", ct);
             notifications = result.NeedsAttention
