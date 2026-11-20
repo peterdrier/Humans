@@ -26,7 +26,7 @@ internal sealed class TeamMembersPageBuilder(
             .Take(pageSize)
             .ToList();
 
-        var pagedMemberInfos = await userService.GetUserInfosAsync(pagedMembers.Select(m => m.UserId).ToList(), ct);
+        var pagedMemberInfos = await userService.GetUserInfosAsync(pagedMembers.Select(m => m.UserId), ct);
 
         var members = pagedMembers
             .Select(m =>

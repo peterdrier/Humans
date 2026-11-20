@@ -120,9 +120,7 @@ internal sealed class SystemTeamSyncJob(
         }
 
         var affectedUserIds = shouldBeCoordinator.Select(tm => tm.UserId)
-            .Concat(shouldBeMember.Select(tm => tm.UserId))
-            .Distinct()
-            .ToList();
+            .Concat(shouldBeMember.Select(tm => tm.UserId));
         var userNamesById = await userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
 
         var plannedChanges = shouldBeCoordinator
@@ -449,7 +447,7 @@ internal sealed class SystemTeamSyncJob(
 
         var now = clock.GetCurrentInstant();
 
-        var affectedUserIds = toAdd.Concat(toRemove).ToList();
+        var affectedUserIds = toAdd.Concat(toRemove);
         var usersById = await userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
         var userNames = usersById.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName);
 

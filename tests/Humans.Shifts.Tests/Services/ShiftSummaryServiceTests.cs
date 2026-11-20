@@ -89,10 +89,10 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
                 return Task.FromResult(team is null ? null : ToTeamInfo(team));
             });
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                var ids = ci.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids
                     .Where(_names.ContainsKey)
                     .ToDictionary(id => id, id => UserFixtures.MakeUserInfo(id, displayName: _names[id]));

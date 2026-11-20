@@ -954,7 +954,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
         var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 // UserInfo.Create inline rather than linking Base's UserInfoStubHelpers: this
@@ -986,7 +986,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         // User service returns empty dictionary — user was deleted.
         _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<IEnumerable<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 

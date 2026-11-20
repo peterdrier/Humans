@@ -87,9 +87,9 @@ public abstract class AuthTestHarness : IDisposable
             .Returns(call => new ValueTask<UserInfo?>(
                 _users.TryGetValue(call.Arg<Guid>(), out var info) ? info : null));
 
-        svc.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        svc.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                call.Arg<IReadOnlyCollection<Guid>>()
+                call.Arg<IEnumerable<Guid>>()
                     .Distinct()
                     .Where(_users.ContainsKey)
                     .ToDictionary(id => id, id => _users[id])));

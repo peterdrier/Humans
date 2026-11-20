@@ -42,10 +42,10 @@ public abstract class PreapprovalsTestHarness : IDisposable
         Users = Substitute.For<IUserService>();
         Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(_users.GetValueOrDefault(call.Arg<Guid>())));
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                var ids = call.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids.Distinct()
                     .Where(_users.ContainsKey)
                     .ToDictionary(id => id, id => _users[id]);

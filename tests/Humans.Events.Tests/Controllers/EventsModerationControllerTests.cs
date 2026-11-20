@@ -267,7 +267,7 @@ public sealed class EventsModerationControllerTests
         _camps.GetCampsForEventAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
         _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
         _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [submitterId] = UserInfoFor(submitterId) });
 
         var controller = BuildController(moderatorId, pending.Id);
@@ -284,7 +284,7 @@ public sealed class EventsModerationControllerTests
         await _guide.Received(1).GetEventStatusCountsAsync(request.Token);
         await _guide.Received(1).GetEventsByStatusAsync(EventStatus.Pending, request.Token);
         await _camps.Received(1).GetCampsForEventAsync(settings.Id, request.Token);
-        await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await _users.DidNotReceive().GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

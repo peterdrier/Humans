@@ -741,7 +741,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var onHeld = ReviewRow(held.Id) with { CreatedAt = now.Minus(Duration.FromDays(1)) };
         var plain = ReviewRow(null) with { SubmittedAt = now };
         _reports.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([onRevoked, onHeld, plain]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         _finance.ListExpenseAccountsAsync(activeOnly: false, Arg.Any<CancellationToken>()).Returns([]);
         PutGrant(revoked);

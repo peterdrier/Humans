@@ -86,7 +86,7 @@ internal sealed class Service(
             ledger[account] = await holded.GetLedgerLinesAsync(account, ct);
 
         var transfers = await repo.GetSepaPayoutTransferRowsAsync(ct);
-        var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId).ToHashSet(), ct);
+        var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId), ct);
         return ExpenseRecon.Build(
             year, syncedAt, expected, accountByUser, ledger, transfers,
             id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
@@ -3034,7 +3034,7 @@ internal sealed class Service(
     public async Task SendPayoutEmailsAsync(IReadOnlyList<SepaPayoutTransfer> transfers)
     {
         var ct = CancellationToken.None;
-        var userIds = transfers.Select(t => t.UserId).Distinct().ToList();
+        var userIds = transfers.Select(t => t.UserId);
         IReadOnlyDictionary<Guid, UserInfo> infos;
         try
         {

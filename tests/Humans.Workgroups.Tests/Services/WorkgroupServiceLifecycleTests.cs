@@ -41,9 +41,9 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             [survivorId] = survivor,
             [otherId] = other
         };
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                call.Arg<IReadOnlyCollection<Guid>>().Where(people.ContainsKey).ToDictionary(id => id, id => people[id])));
+                call.Arg<IEnumerable<Guid>>().Where(people.ContainsKey).ToDictionary(id => id, id => people[id])));
         var group = await SeedWorkgroupAsync(
             status: audience == NoticeAudience.Coordinators ? WorkgroupStatus.Dormant : WorkgroupStatus.Applied,
             coordinatorUserId: firstAlias);
@@ -156,7 +156,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             var lookups = 0;
             var coordinator = group.Members.Single().UserId;
             var person = await Users.GetUserInfoAsync(coordinator, Ct);
-            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(_ => ++lookups == 1
                     ? throw new IOException("Recipient lookup failed")
                     : new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(

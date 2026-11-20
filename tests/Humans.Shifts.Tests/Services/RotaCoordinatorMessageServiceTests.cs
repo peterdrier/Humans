@@ -254,7 +254,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA, userB);
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
                 [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Usera", language),
@@ -392,11 +392,11 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         // sender + withEmail have addresses; noEmail's UserInfo has an empty email.
         // Need to make sender resolvable too.
-        _userService.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(sender)), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(c => c.Contains(sender)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = MakeUserInfoWithEmail(sender, "sender@example.com", "Sender") }));
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(withEmail) || c.Contains(noEmail)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(withEmail) || c.Contains(noEmail)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -629,7 +629,7 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         StubUsers(sender, userA);
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>
             {
                 [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Usera", language),
@@ -793,7 +793,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota1, rota2]);
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA) && c.Contains(userB)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA) && c.Contains(userB)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -902,7 +902,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         _repo.GetRotasAsync(es.Id, Arg.Any<IReadOnlyCollection<Guid>>(), RotaReadShape.View, Arg.Any<CancellationToken>())
             .Returns([rota]);
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
+            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA)), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [userA] = MakeUserInfoWithEmail(userA, "a@example.com", "Alice") }));
 
@@ -1094,13 +1094,13 @@ public sealed class RotaCoordinatorMessageServiceTests
         }
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => c.Count == 1 && c.Contains(sender)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Distinct().Count() == 1 && c.Contains(sender)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = senderInfo }));
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(c => recipients.All(c.Contains)),
+            Arg.Is<IEnumerable<Guid>>(c => recipients.All(c.Contains)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(recipientInfos));
     }

@@ -86,7 +86,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(_category);
 
         var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = MinimalUserInfo(submitter) }));
 
@@ -155,7 +155,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     {
         // The creditor binding sits on the survivor, so the booking has to name them too.
         var survivor = new User { Id = Guid.NewGuid(), DisplayName = "Alice Smith" };
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [SubmitterId] = MinimalUserInfo(survivor) with { MergedUserIds = [SubmitterId] } }));
         var report = MakeReport();

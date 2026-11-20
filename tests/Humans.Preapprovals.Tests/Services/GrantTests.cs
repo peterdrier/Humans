@@ -187,9 +187,9 @@ public sealed class GrantTests : PreapprovalsTestHarness
         var survivor = SeedUser("Ana", language: "ca", mergedIds: [archived]);
         var person = (await Users.GetUserInfoAsync(survivor, Ct))!;
         Users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(person);
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                call.Arg<IReadOnlyCollection<Guid>>().Distinct()
+                call.Arg<IEnumerable<Guid>>().Distinct()
                     .Where(id => id == archived || id == survivor).ToDictionary(id => id, _ => person)));
         var program = await SeedProgramAsync(managers: managerNotice ? [archived, survivor] : []);
         var service = NewService();

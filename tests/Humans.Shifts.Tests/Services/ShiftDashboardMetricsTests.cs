@@ -1182,7 +1182,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
             int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
 
         public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+            IEnumerable<Guid> userIds, CancellationToken ct = default)
         {
             var snapshot = (await GetAllUserInfosAsync(ct)).ToDictionary(u => u.Id);
             var dict = new Dictionary<Guid, UserInfo>();

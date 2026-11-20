@@ -2180,7 +2180,7 @@ public class UserEmailServiceTests
                 ? [new UserEmail { UserId = id, Email = address!, IsVerified = true, IsPrimary = true }]
                 : []);
         _userService.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [id] = user }));
 
@@ -2226,7 +2226,7 @@ public class UserEmailServiceTests
         var archived = Guid.NewGuid();
         var survivor = Guid.NewGuid();
         _userService.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
                 {

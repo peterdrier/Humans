@@ -45,7 +45,7 @@ public class ShiftVolunteerSearchBuilderTests
 
         _userService.SearchUsersAsync("ann", Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([new HumanSearchResult(_candidateId, Guid.NewGuid(), "Ann", null, "Name", null, null, 100)]);
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         _tracking.GetAvailableForDayAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
     }

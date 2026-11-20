@@ -49,7 +49,7 @@ internal sealed class GoogleSyncOutboxProcessor(
             return;
         }
 
-        var userIds = pendingEvents.Select(e => e.UserId).Distinct().ToList();
+        var userIds = pendingEvents.Select(e => e.UserId);
         var teamIds = pendingEvents.Select(e => e.TeamId).Distinct().ToList();
         var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
         var userEmailLookup = users.ToDictionary(

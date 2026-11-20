@@ -49,7 +49,7 @@ public class BackdoorFinanceControllerTests
     {
         // Sane default so name-resolution helpers never NRE on an unstubbed lookup; individual
         // tests override when the resolved name itself matters.
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         _auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.ExpenseReportView)
             .Returns(AuthorizationResult.Failed());
@@ -151,7 +151,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(allowed.Id.ToString()).And.Contain(current.Id.ToString()).And.Contain(managed.Id.ToString())
             .And.NotContain(denied.Id.ToString()).And.NotContain(historical.Id.ToString());
         await _users.DidNotReceive().GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(denied.SubmitterUserId) || ids.Contains(historical.SubmitterUserId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(denied.SubmitterUserId) || ids.Contains(historical.SubmitterUserId)),
             Arg.Any<CancellationToken>());
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }

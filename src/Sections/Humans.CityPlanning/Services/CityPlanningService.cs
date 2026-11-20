@@ -431,7 +431,7 @@ internal sealed class CityPlanningService(
             return [];
         }
 
-        var userIds = rows.Select(r => r.ModifiedByUserId).Distinct().ToList();
+        var userIds = rows.Select(r => r.ModifiedByUserId);
         var users = await userService.GetUserInfosAsync(userIds, cancellationToken);
 
         return rows.Select(h =>

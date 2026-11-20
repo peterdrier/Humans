@@ -70,7 +70,7 @@ public class CreditorPayabilityTests
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocInfo>()));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
     }
 

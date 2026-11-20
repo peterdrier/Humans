@@ -99,7 +99,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
             categories: ["Scope"], opensAt: now - Duration.FromDays(1), closesAt: now - Duration.FromHours(1));
         var comment = await AddCommentAsync(document.Id, authorUserId: actor);
         var people = await Users.GetUserInfosAsync([actor], Ct);
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(c =>
             {
                 c.Arg<CancellationToken>().ThrowIfCancellationRequested();

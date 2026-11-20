@@ -68,7 +68,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         foreach (var id in new[] { source, live, other })
             users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(id == other
                 ? UserInfo.Create(new User { Id = other, PreferredLanguage = "es" }, [], [], null) : liveInfo);
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [source] = liveInfo });
         var team = new Team { Id = Guid.NewGuid(), Name = "Team", Slug = "team" };
         foreach (var id in new[] { source, live, other })
@@ -1642,7 +1642,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(call => LookupUserAsync(call.Arg<CancellationToken>()));
         _userService.GetUserInfosAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(user.Id)), Arg.Any<CancellationToken>())
+                Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -1966,7 +1966,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             _teamResourceService.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<IReadOnlyList<GoogleResourceSnapshot>>(new IOException("Email resource lookup unavailable")));
         if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
-            _userService.GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
+            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Profile lookup unavailable")));
 
         await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct);
@@ -1983,7 +1983,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                     && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
                 Arg.Any<CancellationToken>());
         await _userService.Received(1).GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -3084,7 +3084,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             ProfilePictureUrl = "/updated-photo.png",
         });
         // Users keys its merge-resolved read by the requested id, even when the value is a survivor.
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = replacement });
 
         var after = read switch

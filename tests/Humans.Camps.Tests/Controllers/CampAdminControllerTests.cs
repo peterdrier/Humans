@@ -86,7 +86,7 @@ public class CampAdminControllerTests
         var camps = Substitute.For<ICampManagement>();
         camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, []));
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
         var audit = Substitute.For<IAuditLogService>();
         using var request = new CancellationTokenSource();
@@ -111,7 +111,7 @@ public class CampAdminControllerTests
         Assert.Empty(camps.ReceivedCalls());
         Assert.Empty(audit.ReceivedCalls());
         await users.Received(1).GetUserInfoAsync(actorId, request.Token);
-        await users.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await users.DidNotReceive().GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -165,7 +165,7 @@ public class CampAdminControllerTests
         var eventId = Guid.NewGuid();
         camps.GetSettingsAsync(ct).Returns(new CampSettingsInfo(2026, []) { ActiveEventSettingsId = eventId });
         camps.GetCampsForEventAsync(eventId, ct).Returns(new List<CampInfo> { camp, noSeason });
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [leadId] = MakeUser(leadId) with { BurnerName = "Lead", IdentityEmailColumn = "lead@example.org" }
@@ -381,7 +381,7 @@ public class CampAdminControllerTests
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return [];
         });
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             if (string.Equals(boundary, "users", StringComparison.Ordinal))
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
