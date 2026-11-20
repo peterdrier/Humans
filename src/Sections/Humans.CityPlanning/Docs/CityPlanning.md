@@ -12,6 +12,14 @@
 
 # City Planning — Section Invariants
 
+City Planning shows everyone where things sit on the festival site, and lets the people responsible for a piece of it move that piece. Barrio leads draw their camp's footprint during a scheduled window and place their containers while container placement is open; organisers (Admins, Camps Admins and the City Planning team) do both for anyone at any time, publish the site boundary and the official zones, and hand the data out as GeoJSON.
+
+Good looks like: a lead finds their camp, draws it, sees conflicts before saving, and nobody loses a version (every save is kept and restorable). The schedule opens and closes itself; no one has to remember to press a button.
+
+Deliberate choices: overlap and out-of-bounds checks are advisory and client-side; GeoJSON is stored as text, never queried; history is append-only; container placement stays a manual open/close flag.
+
+Out of scope: snapping to boundaries (designed, nobodies-collective/Humans#523), container placement history, a generic map-feature model (declined, nobodies-collective/Humans#521).
+
 Membership-based authorization resolves the session's account through Users before checking the City Planning team or camp leadership. Merged sessions use the surviving account's memberships; a missing account is denied. Request cancellation applies to this identity lookup and the subsequent authorization reads. Existing admin-role bypasses remain in effect.
 
 API polygon and container writes, and lead-scoped container exports, resolve the current account through Users before checking access or recording an actor. A merged session uses the surviving account ID; an unresolved account returns 401 before any write.
