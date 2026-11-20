@@ -19,7 +19,7 @@ public class HoldedClientTreasuryTests
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             logger ?? NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
-            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), FixedOrgTimeZone.Madrid);
 
     [HumansFact]
     public async Task ListBankMovementsAsync_RequestsTheAccountsFeed_WithTheWindow()

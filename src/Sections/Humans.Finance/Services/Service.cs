@@ -90,7 +90,7 @@ internal sealed class Service(
         var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId).ToHashSet(), ct);
         return ExpenseRecon.Build(
             year, syncedAt, expected, accountByUser, ledger, transfers,
-            id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
+            id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString(), OrgZone);
     }
 
     public Task RunSepaBookingSweepAsync(CancellationToken ct = default) => RunAsync(ct);
@@ -1560,7 +1560,7 @@ internal sealed class Service(
     /// <see cref="GenerationSlackDays"/> further back (<see cref="FeedFrom"/>).</summary>
     internal const int FeedWindowDays = 90;
 
-    /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
+    /// <summary>The bank can value-date a day early, and the feed's dates are org-zone days.</summary>
     private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
 
     /// <summary>Without the bank-feed read, which only serves <c>/Finance/Sepa</c>'s own "book this" button.</summary>

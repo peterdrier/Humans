@@ -9,12 +9,12 @@ internal sealed record HoldedExpenseAccountDto
 }
 
 /// <summary>From GET v2/ledger-entries. <c>account</c> is the 8-digit ledger number, not a Holded id;
-/// amounts are euros. <c>date</c> arrives as DD/MM/YYYY and is parsed to Madrid midnight.</summary>
+/// amounts are euros. <c>date</c> arrives as DD/MM/YYYY and is parsed to org-zone midnight.</summary>
 internal sealed record HoldedLedgerLineDto
 {
     public required int EntryNumber { get; init; }
     public required int Line { get; init; }
-    public required Instant Date { get; init; }        // `date` (dd/MM/yyyy, Madrid midnight)
+    public required Instant Date { get; init; }        // `date` (dd/MM/yyyy, org-zone midnight)
     public required int AccountNum { get; init; }      // `account`
     public required decimal Debit { get; init; }
     public required decimal Credit { get; init; }
@@ -58,7 +58,7 @@ internal sealed record HoldedPurchaseDocListItemDto
     public required string ContactName { get; init; }
     /// <summary>The doc's internal description; null when blank.</summary>
     public string? Description { get; init; }
-    public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, Madrid midnight)
+    public required Instant Date { get; init; }        // doc `date` (ISO yyyy-MM-dd, org-zone midnight)
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }

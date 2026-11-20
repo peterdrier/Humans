@@ -33,7 +33,7 @@ public sealed class HoldedPublicReadsTests
         var callLog = Substitute.For<IHoldedCallLog>();
         callLog.DrainAll().Returns([]);
         _service = new Service(_repo, _client, callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
     }
 
     private static Instant Day(int month, int day) =>

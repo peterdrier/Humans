@@ -15,7 +15,7 @@ namespace Humans.Preapprovals.Services;
 /// <summary>
 /// Every state change is a person's action (or Expenses' on their behalf). Deadline reminders have a separate owner.
 /// </summary>
-/// <remarks>"Today" is the Europe/Madrid date, the zone the association books in.</remarks>
+/// <remarks>"Today" is the date in the org time zone, the zone the association books in.</remarks>
 internal sealed partial class PreapprovalService(
     IOrgTimeZone orgTimeZone,
     IPreapprovalRepository repository,

@@ -26,7 +26,8 @@ cycles and of which one is active.
   (absent means Europe/Madrid), applies to every event. `EventSettingsInfo.TimeZoneId`
   is filled from it on every read.
   The same zone is the organisation's zone for every org-local date (money, votes,
-  surveys, sign-in links): Base's `IOrgTimeZone`, served from the settings cache.
+  surveys, sign-in links, and the dates Humans reads from and writes to Holded): Base's
+  `IOrgTimeZone`, served from the settings cache.
   Never hardcode a zone id.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
   Other sections store the id, so a cycle ends by going `Inactive`; nothing sets

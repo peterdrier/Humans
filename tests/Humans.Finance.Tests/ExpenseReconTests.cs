@@ -74,7 +74,7 @@ public class ExpenseReconTests
         ExpenseRecon.Build(year, SyncedAt, lines, accounts ?? Accounts,
             ledger.GroupBy(l => l.AccountNum)
                 .ToDictionary(g => g.Key, g => (IReadOnlyList<HoldedLedgerLineInfo>)g.ToList()),
-            transfers, id => id == Alice ? "Alice" : "Bob");
+            transfers, id => id == Alice ? "Alice" : "Bob", FixedOrgTimeZone.Madrid.Zone);
 
     [HumansFact]
     public void LineMatchesItsLedgerPurchase_WhateverTheStoredDocIdPointsAt()
