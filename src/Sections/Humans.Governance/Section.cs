@@ -45,8 +45,12 @@ public sealed class Section :
     ISectionHelp,
     ISectionJobs,
     ISectionMemberDashboard,
-    ISectionThingsToDo
+    ISectionThingsToDo,
+    IUserPart
 {
+    IEnumerable<UserPart> IUserPart.Parts() =>
+        [new(UserPartSlots.DashboardHeading, typeof(MembershipTierBadgeViewComponent))];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, GovernanceAuditActions>();

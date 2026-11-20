@@ -19,7 +19,8 @@ internal static class SectionCatalogBuilder
 {
     internal static ISectionCatalog Build(
         IReadOnlyList<(string Name, Assembly Assembly, ISection Section)> shipped,
-        IReadOnlyList<ISectionAnnotations> annotators)
+        IReadOnlyList<ISectionAnnotations> annotators,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> unmetDependencies)
     {
         var graph = SectionActivation.DependencyGraph([.. shipped.Select(s => s.Assembly)]);
 
@@ -28,7 +29,7 @@ internal static class SectionCatalogBuilder
             .ToLookup(a => a.Section, StringComparer.OrdinalIgnoreCase);
 
         var sections = shipped
-            .Select(s => Describe(s, graph, annotations))
+            .Select(s => Describe(s, graph, annotations, unmetDependencies))
             .ToList();
 
         var names = sections.Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -65,7 +66,8 @@ internal static class SectionCatalogBuilder
     private static SectionInfo Describe(
         (string Name, Assembly Assembly, ISection Section) shipped,
         IReadOnlyDictionary<string, IReadOnlyList<string>> graph,
-        ILookup<string, SectionAnnotation> annotations)
+        ILookup<string, SectionAnnotation> annotations,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> unmetDependencies)
     {
         var contracts = TryLoadContracts(shipped.Assembly);
         var own = shipped.Assembly.GetTypes();
@@ -74,6 +76,7 @@ internal static class SectionCatalogBuilder
         return new SectionInfo(shipped.Name, shipped.Section.IsActive)
         {
             DependsOn = graph[shipped.Name],
+            ConsumedWhileInactiveBy = unmetDependencies.GetValueOrDefault(shipped.Name) ?? [],
             Seams = [.. own
                 .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(ISectionContribution).IsAssignableFrom(t))
                 .SelectMany(t => t.GetInterfaces())

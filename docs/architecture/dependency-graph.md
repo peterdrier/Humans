@@ -122,6 +122,7 @@ graph LR
     Consent -.-> Governance
     Consent -.-> Notifications
     Consent -.-> Onboarding
+    Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
     Containers -.-> Camps

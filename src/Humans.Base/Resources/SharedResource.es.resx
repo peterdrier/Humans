@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Revisar acuerdos</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Registro rechazado</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>Su registro ha sido revisado y no fue aprobado. Si tiene preguntas, contacte al equipo de administración.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Motivo</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Esto es lo que pasa.</value>
   </data>

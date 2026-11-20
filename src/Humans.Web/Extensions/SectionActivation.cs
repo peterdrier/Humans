@@ -3,8 +3,8 @@ using System.Reflection;
 namespace Humans.Web.Extensions;
 
 /// <summary>
-/// The dependency guard behind <c>ISection.IsActive</c>: a section this deployment does not run must be one nothing
-/// running consumes.
+/// The dependency check behind <c>ISection.IsActive</c>: a section this deployment does not run should be one nothing
+/// running consumes. A breach is reported, not refused.
 /// </summary>
 /// <remarks>
 /// No section name is written down anywhere in Shell. The graph is derived from real
@@ -33,7 +33,7 @@ internal static class SectionActivation
     /// The sections Shell itself consumes, read the same way as a section's own edges.
     /// Shell always runs — <c>HomeController</c> names <c>IUserService</c> — so these are
     /// dependencies no section-to-section edge records, and deactivating one composes an
-    /// app that fails per request instead of at startup.
+    /// app that fails per request.
     /// </summary>
     internal static IReadOnlyList<string> ShellDependencies(
         IReadOnlyList<Assembly> discovered,
@@ -41,38 +41,35 @@ internal static class SectionActivation
         ConsumedSections(shell, SectionNames(discovered));
 
     /// <summary>
-    /// Fails startup when a deactivated section is consumed by Shell or by a section this
-    /// deployment runs. Transitivity needs no extra pass: every active section is checked,
-    /// so a chain breaks at whichever link is missing.
+    /// Each deactivated section that Shell or a section this deployment runs still consumes, mapped to those consumers.
+    /// Transitivity needs no extra pass: every active section is checked, so a chain breaks at whichever link is
+    /// missing.
     /// </summary>
-    /// <exception cref="InvalidOperationException">A consumed section is deactivated.</exception>
-    internal static void ThrowOnUnmetDependencies(
+    /// <remarks>
+    /// Reported, never thrown (<c>no-startup-guards</c>): the app boots, the deactivated section's routes 404, and
+    /// whatever injects its services fails at that request. Boot logs it and <c>/Debug/Sections</c> shows it.
+    /// </remarks>
+    internal static IReadOnlyDictionary<string, IReadOnlyList<string>> UnmetDependencies(
         IReadOnlyList<Assembly> discovered,
         Assembly shell,
         IReadOnlySet<string> active)
     {
         var graph = DependencyGraph(discovered);
 
-        var consumers = active
+        return active
             .Select(section => (Consumer: section, Consumed: graph[section]))
             .Append((
                 Consumer: SectionDiscoveryExtensions.SectionName(shell),
-                Consumed: ShellDependencies(discovered, shell)));
-
-        var unmet = consumers
+                Consumed: ShellDependencies(discovered, shell)))
             .SelectMany(x => x.Consumed.Where(dependency => !active.Contains(dependency))
                 .Select(dependency => (Dependency: dependency, Dependent: x.Consumer)))
             .GroupBy(x => x.Dependency, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(g => g.Key, StringComparer.Ordinal)
-            .Select(g => $"{g.Key} (consumed by {string.Join(", ", g.Select(x => x.Dependent).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal))})")
-            .ToList();
-
-        if (unmet.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"Section(s) with IsActive false are consumed by sections this deployment runs: {string.Join("; ", unmet)}. "
-                + "Reactivate them, or deactivate the sections that depend on them.");
-        }
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<string>)[.. g.Select(x => x.Dependent)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Order(StringComparer.Ordinal)],
+                StringComparer.OrdinalIgnoreCase);
     }
 
     private static HashSet<string> SectionNames(IReadOnlyList<Assembly> discovered) =>
