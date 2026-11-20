@@ -26,7 +26,7 @@ internal sealed class EventsDashboardController(IEventManagement guide, ICampSer
     {
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
 
         var allEvents = await guide.GetAllEventsForDashboardAsync(ct);
         var statusCounts = await guide.GetEventStatusCountsAsync(ct);

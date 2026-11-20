@@ -50,7 +50,7 @@ internal sealed class ShiftSignupSelection(
 
             if (targetStart < existingEnd && targetEnd > existingStart)
             {
-                var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
+                var tz = existingEs.TimeZone;
                 var dateStr = existingStart.InZone(tz).ToDateTimeUnspecified().ToMonthDayTime();
 
                 if (teamNames is null)

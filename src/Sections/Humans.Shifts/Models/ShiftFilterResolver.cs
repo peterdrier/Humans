@@ -74,7 +74,7 @@ internal static class ShiftFilterResolver
             {
                 (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
             }
-            var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+            var zone = eventSettings.TimeZone;
             _ = rangeStart.AtStartOfDayInZone(zone).ToInstant();
             _ = rangeEnd.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
             return (rangeStart, rangeEnd);

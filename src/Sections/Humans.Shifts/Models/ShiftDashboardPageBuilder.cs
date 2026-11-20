@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using NodaTime;
@@ -133,8 +134,8 @@ internal sealed class ShiftDashboardPageBuilder(
 
     private BuildDayCountdown BuildCountdown(BurnSettingsInfo eventSettings)
     {
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) ?? DateTimeZone.Utc;
-        var todayLocal = clock.GetCurrentInstant().InZone(tz).Date;
+        var tz = eventSettings.TimeZone;
+        var todayLocal = clock.TodayIn(tz);
         var (firstBuildDay, _) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Build, eventSettings);
         var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
 

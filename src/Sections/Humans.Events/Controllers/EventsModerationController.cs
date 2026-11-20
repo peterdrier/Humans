@@ -224,7 +224,7 @@ internal sealed class EventsModerationController(
         CancellationToken ct = default, Guid? eventSettingsId = null)
     {
         var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync(ct), ct, eventSettingsId);
-        return (eventSettings, GetTimeZone(eventSettings));
+        return (eventSettings, eventSettings?.TimeZone);
     }
 
     private async Task<string?> ResolveCampNameAsync(Guid campId, EventSettingsInfo eventSettings, CancellationToken ct = default)

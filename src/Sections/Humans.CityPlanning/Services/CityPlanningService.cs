@@ -410,8 +410,7 @@ internal sealed class CityPlanningService(
         if (scheduleAnchor is null || opensOn is not { } opens)
             return BarrioPlacementState.Closed;
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(scheduleAnchor.TimeZoneId) ?? DateTimeZone.Utc;
-        var today = clock.GetCurrentInstant().InZone(zone).Date;
+        var today = clock.TodayIn(scheduleAnchor.TimeZone);
 
         if (today < opens)
             return BarrioPlacementState.Closed;

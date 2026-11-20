@@ -14,14 +14,11 @@ internal static class EventsLookupHelpers
     /// <summary>One option per day from gate opening to <see cref="EventSettingsInfo.EventEndOffset"/>.</summary>
     public static List<EventDayOptionViewModel> BuildEventDayOptions(EventSettingsInfo burn)
     {
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         var days = new List<EventDayOptionViewModel>();
         for (var offset = 0; offset <= burn.EventEndOffset; offset++)
         {
             var date = burn.GateOpeningDate.PlusDays(offset);
-            var dt = tz != null
-                ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
-                : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
+            var dt = date.AtStartOfDayInZone(burn.TimeZone).ToDateTimeUnspecified();
             days.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,

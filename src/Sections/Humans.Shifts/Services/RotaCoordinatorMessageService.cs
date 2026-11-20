@@ -337,7 +337,7 @@ internal sealed class RotaCoordinatorMessageService(
         IReadOnlyList<ActiveSignup> userSignups,
         BurnSettingsInfo eventSettings)
     {
-        var tz = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+        var tz = eventSettings.TimeZone;
         return userSignups
             .Select(s => new
             {

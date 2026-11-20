@@ -238,7 +238,7 @@ internal sealed partial class ShiftRepository
         // rows load and overlap is checked in memory; a shift can span days, so a DayOffset buffer would miss work.
         var settings = calendar;
 
-        var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
+        var zone = settings.TimeZone;
         var rangeStartUtc = startDate.AtStartOfDayInZone(zone).ToInstant();
         var rangeEndUtcExclusive = endDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
 
