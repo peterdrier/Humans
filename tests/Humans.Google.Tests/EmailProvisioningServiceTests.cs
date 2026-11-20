@@ -254,8 +254,7 @@ public class EmailProvisioningServiceTests
             .Returns(call =>
             {
                 issuedPassword = call.ArgAt<string>(3);
-                return new WorkspaceUserAccount("person@nobodies.team", "Person", "Test", false,
-                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
+                return Task.CompletedTask;
             });
         f.Audit.LogAsync(GoogleAuditActions.WorkspaceAccountProvisioned,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),
@@ -437,9 +436,7 @@ public class EmailProvisioningServiceTests
         f.WorkspaceUserService.ProvisionAccountAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new WorkspaceUserAccount(
-                "bob@nobodies.team", "Person", "Test", false,
-                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
+            .Returns(Task.CompletedTask);
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bob", userId);
 
@@ -517,9 +514,7 @@ public class EmailProvisioningServiceTests
         f.WorkspaceUserService.ProvisionAccountAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new WorkspaceUserAccount(
-                "bob@nobodies.team", "Person", "Test", false,
-                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
+            .Returns(Task.CompletedTask);
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bob", userId, teamId);
 

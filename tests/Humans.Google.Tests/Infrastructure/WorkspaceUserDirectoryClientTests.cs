@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net;
 using System.Reflection;
 using System.Text;
@@ -50,6 +51,25 @@ public sealed class WorkspaceUserDirectoryClientTests
         account.LastLoginTime.Should().BeNull();
     }
 
+    [HumansTheory]
+    [InlineData("creationTime")]
+    [InlineData("lastLoginTime")]
+    public async Task ProvisionAccountAsync_DoesNotParseUnusedResponseTimestampsAfterCreation(string timestamp)
+    {
+        using var handler = new ResponseHandler(JsonSerializer.Serialize(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["primaryEmail"] = "new@nobodies.team",
+            [timestamp] = "unreadable-timestamp"
+        }));
+        using var directory = CreateDirectory(handler);
+        var client = CreateClient(directory);
+        var create = () => client.ProvisionAccountAsync(
+            "new@nobodies.team", "New", "Member", "one-time-password", null, TestContext.Current.CancellationToken);
+
+        await create.Should().NotThrowAsync();
+        handler.Methods.Should().Equal(HttpMethod.Post);
+    }
+
     private static DirectoryService CreateDirectory(ResponseHandler handler)
     {
         var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
@@ -70,10 +90,15 @@ public sealed class WorkspaceUserDirectoryClientTests
 
     private sealed class ResponseHandler(string json) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        public List<HttpMethod> Methods { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Methods.Add(request.Method);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json"),
             });
+        }
     }
 }

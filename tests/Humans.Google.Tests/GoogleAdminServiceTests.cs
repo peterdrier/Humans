@@ -295,8 +295,7 @@ public class GoogleAdminServiceTests
         _workspaceUserService.ProvisionAccountAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new WorkspaceUserAccount("test@nobodies.team", "Test", "User", false,
-                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
+            .Returns(Task.CompletedTask);
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             prefix, "Test", "User", _actorUserId, Xunit.TestContext.Current.CancellationToken);
@@ -330,8 +329,7 @@ public class GoogleAdminServiceTests
             {
                 if (workspaceFails) throw new InvalidOperationException("Workspace unavailable");
                 issuedPassword = call.ArgAt<string>(3);
-                return new WorkspaceUserAccount("person@nobodies.team", "Person", "Test", false,
-                    DateTime.UtcNow, null, IsEnrolledIn2Sv: false);
+                return Task.CompletedTask;
             });
         _auditLogService.LogAsync(GoogleAuditActions.WorkspaceAccountProvisioned,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(),

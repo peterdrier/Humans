@@ -88,7 +88,7 @@ internal sealed class WorkspaceUserDirectoryClient(
         return user is null ? null : MapToAccount(user);
     }
 
-    public async Task<WorkspaceUserAccount> ProvisionAccountAsync(
+    public async Task ProvisionAccountAsync(
         string primaryEmail,
         string firstName,
         string lastName,
@@ -118,8 +118,7 @@ internal sealed class WorkspaceUserDirectoryClient(
             newUser.RecoveryEmail = recoveryEmail;
         }
 
-        var created = await service.Users.Insert(newUser).ExecuteAsync(ct);
-        return MapToAccount(created);
+        await service.Users.Insert(newUser).ExecuteAsync(ct);
     }
 
     public async Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default)
