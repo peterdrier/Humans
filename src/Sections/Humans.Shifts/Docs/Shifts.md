@@ -179,7 +179,7 @@ Selected routes:
 | Route | Purpose |
 |---|---|
 | `GET /Shifts` | Browse shifts (department/date/period/tag filters) |
-| `GET /Shifts/Mine` | Volunteer's own signups |
+| `GET /Shifts/Mine` | Volunteer's own signups; range summaries reuse translated single-day/multi-day date-and-count templates in every supported culture |
 | `POST /Shifts/ToggleDay` | Per-day instant signup/bail on the browse page (AJAX, returns the re-rendered row); if the active event has disappeared, redirects to browse via `204` + `X-Redirect` without mutating signups |
 | `POST /Shifts/Bail` | Single bail |
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |

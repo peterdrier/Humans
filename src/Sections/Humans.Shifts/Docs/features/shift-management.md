@@ -93,7 +93,7 @@ Browse signup display ordering is shared by the browse page, row refresh, onboar
 **So that** I can manage my schedule
 
 **Acceptance Criteria:**
-- View upcoming, pending, and past shifts on /Shifts/Mine
+- View upcoming, pending, and past shifts on /Shifts/Mine; upcoming range blocks use the shared localized single-day or multi-day summary, including dates and day count
 - Bail from confirmed or pending signups. A stale request for a Refused, Cancelled or NoShow signup returns localized refusal feedback without changing its history.
 - Range bail via `BailRangeAsync` — bails all signups sharing a `SignupBlockId` (build/strike date-range signups)
 - Build shift bail blocked after EE close for non-privileged users
