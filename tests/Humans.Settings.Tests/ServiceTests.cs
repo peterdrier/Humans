@@ -44,7 +44,10 @@ public sealed class ServiceTests
 
     private readonly CachingSettingsService _cache;
 
-    private Service BuildSut() => new(_repository, _auditLog, [_listenerOne, _listenerTwo], _cache, _clock,
+    private readonly Humans.Base.Interfaces.ISectionCatalog _sectionCatalog =
+        Substitute.For<Humans.Base.Interfaces.ISectionCatalog>();
+
+    private Service BuildSut() => new(_repository, _auditLog, _sectionCatalog, [_listenerOne, _listenerTwo], _cache, _clock,
         Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
     [HumansFact]
@@ -161,7 +164,7 @@ public sealed class ServiceTests
         var writeOptions = new DbContextOptionsBuilder<SettingsDbContext>(options)
             .AddInterceptors(new LostSettingsSaveAcknowledgement(failure, failedSave)).Options;
         var service = new Service(new Repository(new TestDbContextFactory<SettingsDbContext>(writeOptions)),
-            _auditLog, [_listenerOne, _listenerTwo], _cache, _clock,
+            _auditLog, _sectionCatalog, [_listenerOne, _listenerTwo], _cache, _clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
         var draft = MakeDto(next.Id, EventSettingsStatus.Inactive) with
         { GateOpeningDate = next.GateOpeningDate, EventName = "Revised" };
@@ -559,6 +562,45 @@ public sealed class ServiceTests
 
         await _repository.Received(1).UpsertEventSettingsAsync(
             Arg.Is<EventSettings>(e => e.EarlyEntryStartOffset == -7), Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_RefusesASectionThatCannotBeSwitchedOff()
+    {
+        _sectionCatalog.Sections.Returns([
+            new Humans.Base.Interfaces.SectionInfo("Cantina", IsActive: true) { CanBeSwitchedOff = true },
+            new Humans.Base.Interfaces.SectionInfo("Settings", IsActive: true),
+        ]);
+
+        var result = await BuildSut().SaveEventSettingsAsync(
+            MakeDto(Guid.NewGuid(), EventSettingsStatus.Inactive) with { SwitchedOffSections = ["Cantina", "Settings", "Typo"] },
+            Actor, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Be("These sections cannot be switched off: Settings, Typo.");
+        await _repository.DidNotReceive().UpsertEventSettingsAsync(
+            Arg.Any<EventSettings>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SaveEventSettingsAsync_StoresSwitchedOffSectionsAndAuditsThem()
+    {
+        _sectionCatalog.Sections.Returns([
+            new Humans.Base.Interfaces.SectionInfo("Cantina", IsActive: true) { CanBeSwitchedOff = true },
+        ]);
+        var id = Guid.NewGuid();
+
+        await BuildSut().SaveEventSettingsAsync(
+            MakeDto(id, EventSettingsStatus.Inactive) with { SwitchedOffSections = ["Cantina"] },
+            Actor, TestContext.Current.CancellationToken);
+
+        await _repository.Received(1).UpsertEventSettingsAsync(
+            Arg.Is<EventSettings>(e => e.SwitchedOffSections!.SequenceEqual(new[] { "Cantina" })),
+            Now, Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, id,
+            Arg.Is<string>(d => d.Contains("sections switched off: Cantina")),
+            Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

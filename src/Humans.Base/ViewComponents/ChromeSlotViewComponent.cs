@@ -18,8 +18,8 @@ public sealed class ChromeSlotViewComponent(
     IEnumerable<ISectionMemberDashboard> dashboard) : ViewComponent
 {
     public IViewComponentResult Invoke(string name) =>
-        View(chrome.SelectMany(c => c.Components())
-            .Concat(dashboard.SelectMany(c => c.Components()))
+        View(chrome.SwitchedOn(HttpContext).SelectMany(c => c.Components())
+            .Concat(dashboard.SwitchedOn(HttpContext).SelectMany(c => c.Components()))
             .Where(c => string.Equals(c.Slot, name, StringComparison.Ordinal))
             .OrderBy(c => c.Weight)
             .ToList());

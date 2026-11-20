@@ -31,7 +31,7 @@ internal static class AdminNavItems
         if (items.TryGetValue(RequestKey, out var cached) && cached is IReadOnlyList<AdminSidebarGroupViewModel> known)
             return known;
 
-        var groups = AdminNavComposition.Compose(navContributors);
+        var groups = AdminNavComposition.Compose(navContributors.SwitchedOn(component.HttpContext));
         var location = AdminNavComposition.Locate(groups,
             (string?)component.RouteData.Values["controller"], (string?)component.RouteData.Values["action"],
             component.ViewData[AdminNavComposition.ParentKey] as string, component.RouteData.Values);

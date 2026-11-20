@@ -11,7 +11,7 @@ public sealed class CampPartsViewComponent(
     public IViewComponentResult Invoke(Guid campId)
     {
         var parts = new List<CampPart>();
-        foreach (var contributor in contributors)
+        foreach (var contributor in Humans.Base.Interfaces.SectionSwitchboard.SwitchedOn(contributors, HttpContext))
         {
             try
             {

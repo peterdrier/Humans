@@ -36,6 +36,12 @@ internal sealed class EventSettings : IEventSettingsInfo
     /// </summary>
     public bool? IsOffSeason { get; set; }
 
+    /// <summary>
+    /// Section names an admin switched off for this event (<c>ISectionSwitches</c>). Null reads as none, and is what
+    /// a new column on an existing table has to allow.
+    /// </summary>
+    public List<string>? SwitchedOffSections { get; set; }
+
     /// <summary>Step function: DayOffset → cumulative EE headcount allowed from that day.</summary>
     public Dictionary<int, int> EarlyEntryCapacity { get; set; } = new();
 

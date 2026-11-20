@@ -24,7 +24,7 @@ with `DateFormattingExtensions.Iso8601InstantPattern`, using the shared seconds-
   in `SettingKeys`; values are strings, parsed by the caller.
 - **EventSettings** is one event cycle's app-wide values: name, public year,
   gate-opening date, build/event/strike offsets, early-entry window and capacity,
-  off-season flag. Crosses the boundary as `EventSettingsInfo`.
+  off-season flag, switched-off sections. Crosses the boundary as `EventSettingsInfo`.
 - **The event timezone is global.** One `settings_system_values` key, `Event:TimeZoneId`
   (absent means Europe/Madrid), applies to every event. `EventSettingsInfo.TimeZoneId`
   is filled from it on every read.
@@ -96,6 +96,7 @@ with `DateFormattingExtensions.Iso8601InstantPattern`, using the shared seconds-
 | EarlyEntryStartOffset | int?, nullable | Negative day offset from `GateOpeningDate`; null until configured. Validated `BuildStartOffset ≤ value < 0`. Resolved date = `GateOpeningDate.PlusDays(offset)`. Camps' `IEarlyEntryProvider` reads it via `ISettingsService`. |
 | Status | EventSettingsStatus | |
 | IsOffSeason | bool | Admin-set "this cycle is wrapped" switch, a checkbox on the event form. Tickets' and Shifts' member-dashboard cards hide behind it. Deriving it from `StrikeEndOffset` is deferred to the settings revamp. |
+| SwitchedOffSections | JSON `List<string>`, nullable | Section names switched off while this event is active; null is none. Read by everything else through `ISectionSwitches` ([section-activation](../../../../docs/features/global/section-activation.md#per-event-switches)). |
 | CreatedAt / UpdatedAt | Instant | Stamped by the repository upsert |
 
 **Indexes / constraints:** PKs only — every row rule below is service-enforced
@@ -110,7 +111,7 @@ named by `SectionMigrationsHistory.TableFor`.
 |-------|--------------|
 | Any section (code) | Read/write `settings_system_values` keys and read the timezone via `ISettingsService`; read `settings_events` via `GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | Any authenticated member | Views the active event's values, read-only, on the `/Settings#event` tab |
-| Admin | Edits event rows, starts a new cycle, makes an event active and sets the timezone, from the `/Settings#event` tab, and sets the retention period from the admin-only `/Settings#retention` tab (both post to `SettingsAdminController`) |
+| Admin | Edits event rows (including which sections are switched off for the event), starts a new cycle, makes an event active and sets the timezone, from the `/Settings#event` tab, and sets the retention period from the admin-only `/Settings#retention` tab (both post to `SettingsAdminController`) |
 
 `SettingsAdminController` is `PolicyNames.AdminOnly`, class-level (pinned in
 `tests/Humans.Settings.Tests/SettingsArchitectureTests.cs`; per-route detail in
@@ -133,6 +134,12 @@ named by `SectionMigrationsHistory.TableFor`.
   `BuildStartOffset ≤ EarlyEntryStartOffset < 0`, enforced in
   `Service.SaveEventSettingsAsync` (`ServiceTests`); null (not yet configured)
   always passes.
+- **Only a switchable section can be switched off.** A save naming a section
+  that is unknown, deactivated, or declares `ISection.CanBeSwitchedOff` false
+  (Settings itself among them, so the form that undoes a switch stays reachable)
+  is refused before any write (`ServiceTests`). The list applies only while its
+  event is the active one; `SectionSwitches` caches the active event's list and
+  every event-settings write flushes it.
 - **Calendar dates must be representable.** Admin saves and seeded activation
   reject gate/offset combinations whose dates, or the following day, fall outside
   BCL date support, before any write.

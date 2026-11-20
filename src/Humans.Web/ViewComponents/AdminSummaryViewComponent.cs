@@ -21,6 +21,7 @@ public sealed class AdminSummaryViewComponent(
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var tiles = tileContributors
+            .SwitchedOn(HttpContext)
             .SelectMany(c => c.Tiles())
             .Concat(PresenceTiles())
             .OrderBy(t => t.Weight)

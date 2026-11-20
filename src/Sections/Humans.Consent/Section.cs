@@ -53,6 +53,8 @@ public sealed class Section :
             FormerNames: ["ConsentCoordinator"]),
     ];
 
+    public bool CanBeSwitchedOff => false;
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>

@@ -23,6 +23,9 @@ public sealed record SectionAnnotation(string Section, string Facet, string? Det
 /// </summary>
 public sealed record SectionInfo(string Name, bool IsActive)
 {
+    /// <summary><see cref="ISection.CanBeSwitchedOff"/>, and only ever true for an active section.</summary>
+    public bool CanBeSwitchedOff { get; init; }
+
     /// <summary>Sections this one consumes, from its real assembly references.</summary>
     public IReadOnlyList<string> DependsOn { get; init; } = [];
 

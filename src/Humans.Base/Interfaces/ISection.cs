@@ -23,6 +23,12 @@ public interface ISection
     bool IsActive => true;
 
     /// <summary>
+    /// Whether an admin may switch this section off for an event (<see cref="ISectionSwitches"/>). A section the app
+    /// cannot be used without (sign-in, a member's own account, consent, Settings itself) overrides this to false.
+    /// </summary>
+    bool CanBeSwitchedOff => true;
+
+    /// <summary>
     /// Registers the section's repositories, services, jobs, options and authorization handlers. Its authorization
     /// <em>policies</em> register through <see cref="ISectionPolicies"/>; only cross-section policies stay in Shell.
     /// </summary>

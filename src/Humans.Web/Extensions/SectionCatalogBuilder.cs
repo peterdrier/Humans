@@ -75,6 +75,7 @@ internal static class SectionCatalogBuilder
 
         return new SectionInfo(shipped.Name, shipped.Section.IsActive)
         {
+            CanBeSwitchedOff = shipped.Section is { IsActive: true, CanBeSwitchedOff: true },
             DependsOn = graph[shipped.Name],
             ConsumedWhileInactiveBy = unmetDependencies.GetValueOrDefault(shipped.Name) ?? [],
             Seams = [.. own

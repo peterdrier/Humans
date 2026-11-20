@@ -18,7 +18,7 @@ public class ThingsToDoViewComponent(
     {
         var entries = new List<ThingsToDoEntry>();
 
-        foreach (var contributor in contributors)
+        foreach (var contributor in contributors.SwitchedOn(HttpContext))
         {
             try
             {
