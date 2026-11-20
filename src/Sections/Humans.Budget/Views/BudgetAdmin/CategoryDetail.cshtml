@@ -2,8 +2,8 @@
 @{
     ViewData["Title"] = $"Finance - {Model.Name}";
     var teams = ViewBag.Teams as IEnumerable<dynamic> ?? [];
-    var lineItemTotal = Model.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
-    var unallocated = Model.AllocatedAmount - lineItemTotal;
+    var lineItemTotal = Model.LineItemTotal;
+    var unallocated = Model.UnallocatedAmount;
     var group = Model.BudgetGroup;
     var year = group?.BudgetYear;
 

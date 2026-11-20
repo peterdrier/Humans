@@ -134,8 +134,7 @@
 @foreach (var group in year.Groups.OrderBy(g => g.SortOrder))
 {
     var groupId = group.Id.ToString("N");
-    var allGroupLineItems = group.Categories.SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).ToList();
-    var groupActual = allGroupLineItems.Sum(li => li.Amount);
+    var groupActual = group.Categories.Sum(c => c.LineItemTotal);
     var groupBudget = group.Categories.Sum(c => c.AllocatedAmount);
     // A mixed group (Ticketing: revenue and fees) has no single direction, so its header shows signed
     // nets and a neutral variance label; a one-direction group shows magnitudes like its categories do.
@@ -144,7 +143,7 @@
     // Each category's variance is positive when favourable, so the group's is their sum.
     var groupRemaining = group.Categories.Sum(c =>
     {
-        var actual = c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
+        var actual = c.LineItemTotal;
         return c.AllocatedAmount < 0 ? Math.Abs(c.AllocatedAmount) - Math.Abs(actual) : actual - c.AllocatedAmount;
     });
     var groupHolded = group.Categories.Sum(c =>
@@ -366,8 +365,7 @@
                     @foreach (var cat in group.Categories.OrderBy(c => c.SortOrder))
                     {
                         var catId = cat.Id.ToString("N");
-                        var catLineItems = cat.LineItems.Where(li => !li.IsCashflowOnly).ToList();
-                        var catActual = catLineItems.Sum(li => li.Amount);
+                        var catActual = cat.LineItemTotal;
                         var catBudget = cat.AllocatedAmount;
 
                         var isExpenseBudget = catBudget < 0;
