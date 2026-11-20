@@ -10,7 +10,9 @@ using Microsoft.Extensions.Configuration;
 
 namespace Humans.Consent.Controllers;
 
+// A member's own data export and deletion request: owed to them even where consent tracking is switched off.
 [Authorize]
+[StaysOnWhenSectionIsOff]
 internal sealed class MyDataController(
     IUserService userService,
     IConsentManagement consentService,

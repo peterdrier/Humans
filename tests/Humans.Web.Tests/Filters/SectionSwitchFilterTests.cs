@@ -77,10 +77,24 @@ public class SectionSwitchFilterTests
         ISection[] essential =
         [
             new Humans.Auth.Section(), new Humans.Users.Section(), new Humans.Settings.Section(),
-            new Humans.Consent.Section(), new Humans.Gdpr.Section(), new Humans.Onboarding.Section(),
+            new Humans.Gdpr.Section(), new Humans.Onboarding.Section(),
         ];
 
         essential.Should().OnlyContain(section => !section.CanBeSwitchedOff);
         ((ISection)new Humans.Teams.Section()).CanBeSwitchedOff.Should().BeTrue();
+        ((ISection)new Humans.Consent.Section()).CanBeSwitchedOff.Should().BeTrue();
+    }
+
+    /// <summary>Consent can be switched off, but a member's own data export and deletion request cannot go with it.</summary>
+    [HumansFact]
+    public async Task AControllerMarkedToStayOn_AnswersWhileItsSectionIsOff()
+    {
+        var consent = typeof(Humans.Consent.Section).Assembly;
+        var myData = consent.GetTypes().Single(t => string.Equals(t.Name, "MyDataController", StringComparison.Ordinal)).GetTypeInfo();
+        var reviewQueue = consent.GetTypes()
+            .Single(t => string.Equals(t.Name, "ConsentReviewQueueController", StringComparison.Ordinal)).GetTypeInfo();
+
+        (await RunAsync(myData, "Consent")).RanAction.Should().BeTrue();
+        (await RunAsync(reviewQueue, "Consent")).Context.Result.Should().BeOfType<NotFoundResult>();
     }
 }

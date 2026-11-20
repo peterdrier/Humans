@@ -1,3 +1,4 @@
+using Humans.Base.Attributes;
 using Microsoft.AspNetCore.Http;
 
 namespace Humans.Base.Interfaces;
@@ -43,10 +44,14 @@ public static class SectionSwitchboard
 
     /// <summary>
     /// The section a type ships in, from its assembly name (<c>Humans.Cantina</c> is <c>Cantina</c>). A type outside
-    /// any section (Shell, Base) yields a name no section has, so it is never switched off.
+    /// any section (Shell, Base) yields a name no section has, so it is never switched off; so does one marked
+    /// <see cref="StaysOnWhenSectionIsOffAttribute"/>.
     /// </summary>
     public static string SectionNameOf(Type type)
     {
+        if (type.IsDefined(typeof(StaysOnWhenSectionIsOffAttribute), inherit: false))
+            return type.FullName ?? type.Name;
+
         var assemblyName = type.Assembly.GetName().Name ?? string.Empty;
         return assemblyName.StartsWith("Humans.", StringComparison.Ordinal)
             ? assemblyName["Humans.".Length..]

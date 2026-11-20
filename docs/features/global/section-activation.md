@@ -146,9 +146,17 @@ names the section it links into. Two attributes cover what the link leaves behin
 
 **What cannot be switched off.** A section the app cannot be used without overrides
 `ISection.CanBeSwitchedOff` to false: sign-in (Auth), a member's own account
-(Users), Consent, Gdpr, Onboarding, and Settings itself, which holds the form that
-undoes a switch. The save refuses any other name that is not an active, switchable
-section.
+(Users), Gdpr, Onboarding (the name gate and the onboarding page the membership
+filters redirect into), and Settings itself, which holds the form that undoes a
+switch. The save refuses any other name that is not an active, switchable section.
+
+**A controller that stays on.** `[StaysOnWhenSectionIsOff]` exempts one controller
+from its section's switch: it keeps answering and keeps its links. Consent can be
+switched off (its review queue, legal documents and signing pages go), but its
+`MyDataController`, a member's own data export and deletion request, carries the
+attribute. Switching Consent off while legal documents still require signing leaves
+new members unable to sign them, so they are never admitted: an organisation does
+that only when it requires none.
 
 **What it does not cover.**
 
