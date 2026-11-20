@@ -59,29 +59,29 @@ public sealed class GoogleGroupClientTransportErrorTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("accounts", "repeat")]
-    [Xunit.InlineData("accounts", "cycle")]
-    [Xunit.InlineData("accounts", "valid")]
-    [Xunit.InlineData("groups", "repeat")]
-    [Xunit.InlineData("groups", "cycle")]
-    [Xunit.InlineData("groups", "valid")]
-    [Xunit.InlineData("members", "repeat")]
-    [Xunit.InlineData("members", "cycle")]
-    [Xunit.InlineData("members", "valid")]
-    [Xunit.InlineData("permissions", "repeat")]
-    [Xunit.InlineData("permissions", "cycle")]
-    [Xunit.InlineData("permissions", "valid")]
-    [Xunit.InlineData("activity", "repeat")]
-    [Xunit.InlineData("activity", "cycle")]
-    [Xunit.InlineData("activity", "valid")]
-    public async Task Paginated_reads_reject_repeated_tokens_without_completing_a_partial_list(string kind, string sequence)
+    [Xunit.InlineData(GooglePagedRead.Accounts, PageTokenSequence.Repeat)]
+    [Xunit.InlineData(GooglePagedRead.Accounts, PageTokenSequence.Cycle)]
+    [Xunit.InlineData(GooglePagedRead.Accounts, PageTokenSequence.Valid)]
+    [Xunit.InlineData(GooglePagedRead.Groups, PageTokenSequence.Repeat)]
+    [Xunit.InlineData(GooglePagedRead.Groups, PageTokenSequence.Cycle)]
+    [Xunit.InlineData(GooglePagedRead.Groups, PageTokenSequence.Valid)]
+    [Xunit.InlineData(GooglePagedRead.Members, PageTokenSequence.Repeat)]
+    [Xunit.InlineData(GooglePagedRead.Members, PageTokenSequence.Cycle)]
+    [Xunit.InlineData(GooglePagedRead.Members, PageTokenSequence.Valid)]
+    [Xunit.InlineData(GooglePagedRead.Permissions, PageTokenSequence.Repeat)]
+    [Xunit.InlineData(GooglePagedRead.Permissions, PageTokenSequence.Cycle)]
+    [Xunit.InlineData(GooglePagedRead.Permissions, PageTokenSequence.Valid)]
+    [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Repeat)]
+    [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Cycle)]
+    [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Valid)]
+    public async Task Paginated_reads_reject_repeated_tokens_without_completing_a_partial_list(GooglePagedRead kind, PageTokenSequence sequence)
     {
         using var handler = new PageHandler(kind, sequence);
         var initializer = CreateInitializer(handler);
         using BaseClientService sdk = kind switch
         {
-            "permissions" => new DriveService(initializer),
-            "activity" => new DriveActivityService(initializer),
+            GooglePagedRead.Permissions => new DriveService(initializer),
+            GooglePagedRead.Activity => new DriveActivityService(initializer),
             _ => new DirectoryService(initializer)
         };
         var settings = Options.Create(new GoogleWorkspaceSettings());
@@ -90,25 +90,25 @@ public sealed class GoogleGroupClientTransportErrorTests
         {
             switch (kind)
             {
-                case "accounts":
+                case GooglePagedRead.Accounts:
                     var accounts = new WorkspaceUserDirectoryClient(settings, NullLogger<WorkspaceUserDirectoryClient>.Instance);
                     Inject(accounts, "_directoryService", sdk);
                     return (await accounts.ListAccountsAsync(Xunit.TestContext.Current.CancellationToken)).Count;
-                case "groups":
+                case GooglePagedRead.Groups:
                     var groups = new GoogleDirectoryClient(settings, NullLogger<GoogleDirectoryClient>.Instance);
                     Inject(groups, "_directoryService", sdk);
                     var groupResult = await groups.ListDomainGroupsAsync(Xunit.TestContext.Current.CancellationToken);
                     error = groupResult.Error;
                     if (error is not null) groupResult.Groups.Should().BeNull();
                     return groupResult.Groups?.Count ?? 0;
-                case "members":
+                case GooglePagedRead.Members:
                     var members = new GoogleGroupMembershipClient(settings, NullLogger<GoogleGroupMembershipClient>.Instance);
                     Inject(members, "_directoryService", sdk);
                     var memberResult = await members.ListMembershipsAsync("group", Xunit.TestContext.Current.CancellationToken);
                     error = memberResult.Error;
                     if (error is not null) memberResult.Memberships.Should().BeNull();
                     return memberResult.Memberships?.Count ?? 0;
-                case "permissions":
+                case GooglePagedRead.Permissions:
                     var permissions = new GoogleDrivePermissionsClient(settings, NullLogger<GoogleDrivePermissionsClient>.Instance);
                     Inject(permissions, "_driveService", sdk);
                     var permissionResult = await permissions.ListPermissionsAsync("file", Xunit.TestContext.Current.CancellationToken);
@@ -126,12 +126,12 @@ public sealed class GoogleGroupClientTransportErrorTests
             }
         }
 
-        if (string.Equals(sequence, "valid", StringComparison.Ordinal))
+        if (sequence is PageTokenSequence.Valid)
         {
             (await FetchAsync()).Should().Be(3);
             error.Should().BeNull();
         }
-        else if (kind is "groups" or "members" or "permissions")
+        else if (kind is GooglePagedRead.Groups or GooglePagedRead.Members or GooglePagedRead.Permissions)
         {
             (await FetchAsync()).Should().Be(0);
             error.Should().NotBeNull();
@@ -143,55 +143,55 @@ public sealed class GoogleGroupClientTransportErrorTests
             var fetch = FetchAsync;
             await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage("*repeated page token*");
         }
-        handler.Requests.Count.Should().Be(string.Equals(sequence, "repeat", StringComparison.Ordinal) ? 2 : 3);
-        if (!string.Equals(kind, "activity", StringComparison.Ordinal))
+        handler.Requests.Count.Should().Be(sequence is PageTokenSequence.Repeat ? 2 : 3);
+        if (kind is not GooglePagedRead.Activity)
             handler.Requests[1].Should().Contain("cursor-a");
     }
 
     [HumansTheory]
-    [Xunit.InlineData("groups", "http")]
-    [Xunit.InlineData("groups", "io")]
-    [Xunit.InlineData("groups", "cancel")]
-    [Xunit.InlineData("groups", "credentials")]
-    [Xunit.InlineData("permissions", "http")]
-    [Xunit.InlineData("permissions", "io")]
-    [Xunit.InlineData("permissions", "cancel")]
-    [Xunit.InlineData("permissions", "credentials")]
-    [Xunit.InlineData("file", "http")]
-    [Xunit.InlineData("file", "io")]
-    [Xunit.InlineData("file", "cancel")]
-    [Xunit.InlineData("file", "credentials")]
-    [Xunit.InlineData("drive", "http")]
-    [Xunit.InlineData("drive", "io")]
-    [Xunit.InlineData("drive", "cancel")]
-    [Xunit.InlineData("drive", "credentials")]
-    [Xunit.InlineData("create", "http")]
-    [Xunit.InlineData("create", "io")]
-    [Xunit.InlineData("create", "cancel")]
-    [Xunit.InlineData("create", "credentials")]
-    [Xunit.InlineData("update", "http")]
-    [Xunit.InlineData("update", "io")]
-    [Xunit.InlineData("update", "cancel")]
-    [Xunit.InlineData("update", "credentials")]
-    [Xunit.InlineData("delete", "http")]
-    [Xunit.InlineData("delete", "io")]
-    [Xunit.InlineData("delete", "cancel")]
-    [Xunit.InlineData("delete", "credentials")]
-    [Xunit.InlineData("inherit", "http")]
-    [Xunit.InlineData("inherit", "io")]
-    [Xunit.InlineData("inherit", "cancel")]
-    [Xunit.InlineData("inherit", "credentials")]
-    [Xunit.InlineData("folder", "http")]
-    [Xunit.InlineData("folder", "io")]
-    [Xunit.InlineData("folder", "cancel")]
-    [Xunit.InlineData("folder", "credentials")]
-    public async Task Structured_calls_keep_transport_failures_separate_from_cancellation_and_credentials(string kind, string failure)
+    [Xunit.InlineData(GoogleStructuredCall.Groups, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Groups, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Groups, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Groups, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.Permissions, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Permissions, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Permissions, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Permissions, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.File, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.File, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.File, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.File, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.Drive, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Drive, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Drive, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Drive, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.Create, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Create, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Create, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Create, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.Update, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Update, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Update, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Update, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.Delete, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Delete, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Delete, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Delete, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.Inherit, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Inherit, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Inherit, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Inherit, GoogleCallFailure.Credentials)]
+    [Xunit.InlineData(GoogleStructuredCall.Folder, GoogleCallFailure.Http)]
+    [Xunit.InlineData(GoogleStructuredCall.Folder, GoogleCallFailure.Io)]
+    [Xunit.InlineData(GoogleStructuredCall.Folder, GoogleCallFailure.Cancel)]
+    [Xunit.InlineData(GoogleStructuredCall.Folder, GoogleCallFailure.Credentials)]
+    public async Task Structured_calls_keep_transport_failures_separate_from_cancellation_and_credentials(GoogleStructuredCall kind, GoogleCallFailure failure)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
-        if (failure is "cancel") await cancellation.CancelAsync();
-        using var handler = new ResettingHandler(failure is "io");
+        if (failure is GoogleCallFailure.Cancel) await cancellation.CancelAsync();
+        using var handler = new ResettingHandler(failure is GoogleCallFailure.Io);
         var initializer = CreateInitializer(handler);
-        using BaseClientService sdk = kind is "groups" ? new DirectoryService(initializer) : new DriveService(initializer);
+        using BaseClientService sdk = kind is GoogleStructuredCall.Groups ? new DirectoryService(initializer) : new DriveService(initializer);
         var settings = Options.Create(new GoogleWorkspaceSettings
         {
             Domain = "example.org",
@@ -202,45 +202,45 @@ public sealed class GoogleGroupClientTransportErrorTests
 
         async Task<GoogleClientError?> FetchAsync()
         {
-            if (kind is "groups")
+            if (kind is GoogleStructuredCall.Groups)
             {
                 var client = new GoogleDirectoryClient(settings, groupLogger);
-                if (failure is not "credentials") Inject(client, "_directoryService", sdk);
+                if (failure is not GoogleCallFailure.Credentials) Inject(client, "_directoryService", sdk);
                 var result = await client.ListDomainGroupsAsync(cancellation.Token);
                 result.Groups.Should().BeNull();
                 return result.Error;
             }
             var drive = new GoogleDrivePermissionsClient(settings, driveLogger);
-            if (failure is not "credentials") Inject(drive, "_driveService", sdk);
-            if (kind is "create")
+            if (failure is not GoogleCallFailure.Credentials) Inject(drive, "_driveService", sdk);
+            if (kind is GoogleStructuredCall.Create)
             {
                 var result = await drive.CreatePermissionAsync("file", "person@example.org", "reader", cancellation.Token);
                 result.Outcome.Should().Be(DrivePermissionCreateOutcome.Failed);
                 return result.Error;
             }
-            if (kind is "update")
+            if (kind is GoogleStructuredCall.Update)
                 return await drive.UpdatePermissionAsync("file", "permission", "reader", cancellation.Token);
-            if (kind is "delete")
+            if (kind is GoogleStructuredCall.Delete)
             {
                 var result = await drive.DeletePermissionAsync("file", "permission", cancellation.Token);
                 result.Outcome.Should().Be(DrivePermissionDeleteOutcome.Failed);
                 return result.Error;
             }
-            if (kind is "inherit")
+            if (kind is GoogleStructuredCall.Inherit)
                 return await drive.SetInheritedPermissionsDisabledAsync("file", true, cancellation.Token);
-            if (kind is "folder")
+            if (kind is GoogleStructuredCall.Folder)
             {
                 var result = await drive.CreateFolderAsync("parent", "Folder", cancellation.Token);
                 result.FolderId.Should().BeNull();
                 return result.Error;
             }
-            if (kind is "permissions")
+            if (kind is GoogleStructuredCall.Permissions)
             {
                 var result = await drive.ListPermissionsAsync("file", cancellation.Token);
                 result.Permissions.Should().BeNull();
                 return result.Error;
             }
-            if (kind is "file")
+            if (kind is GoogleStructuredCall.File)
             {
                 var result = await drive.GetFileAsync("file", cancellation.Token);
                 result.File.Should().BeNull();
@@ -252,8 +252,8 @@ public sealed class GoogleGroupClientTransportErrorTests
         }
 
         var fetch = FetchAsync;
-        if (failure is "cancel") await fetch.Should().ThrowAsync<OperationCanceledException>();
-        else if (failure is "credentials") await fetch.Should().ThrowAsync<IOException>();
+        if (failure is GoogleCallFailure.Cancel) await fetch.Should().ThrowAsync<OperationCanceledException>();
+        else if (failure is GoogleCallFailure.Credentials) await fetch.Should().ThrowAsync<IOException>();
         else
         {
             var error = await fetch();
@@ -270,14 +270,14 @@ public sealed class GoogleGroupClientTransportErrorTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("create-group")]
-    [Xunit.InlineData("lookup-group")]
-    [Xunit.InlineData("read-settings")]
-    [Xunit.InlineData("write-settings")]
-    [Xunit.InlineData("list-members")]
-    [Xunit.InlineData("create-member")]
-    [Xunit.InlineData("delete-member")]
-    public async Task Group_calls_propagate_credential_file_failures(string operation)
+    [Xunit.InlineData(GoogleGroupCredentialOperation.CreateGroup)]
+    [Xunit.InlineData(GoogleGroupCredentialOperation.LookupGroup)]
+    [Xunit.InlineData(GoogleGroupCredentialOperation.ReadSettings)]
+    [Xunit.InlineData(GoogleGroupCredentialOperation.WriteSettings)]
+    [Xunit.InlineData(GoogleGroupCredentialOperation.ListMembers)]
+    [Xunit.InlineData(GoogleGroupCredentialOperation.CreateMember)]
+    [Xunit.InlineData(GoogleGroupCredentialOperation.DeleteMember)]
+    public async Task Group_calls_propagate_credential_file_failures(GoogleGroupCredentialOperation operation)
     {
         var settings = Options.Create(new GoogleWorkspaceSettings
         {
@@ -288,12 +288,12 @@ public sealed class GoogleGroupClientTransportErrorTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         Task FetchAsync() => operation switch
         {
-            "create-group" => provisioning.CreateGroupAsync("team@example.org", "Team", "Description", ct),
-            "lookup-group" => provisioning.LookupGroupIdAsync("team@example.org", ct),
-            "read-settings" => provisioning.GetGroupSettingsAsync("team@example.org", ct),
-            "write-settings" => provisioning.UpdateGroupSettingsAsync("team@example.org", Humans.Google.Services.GroupSettingsPolicy.BuildExpected(new Humans.Google.Contracts.GoogleWorkspaceGroupOptions()), ct),
-            "list-members" => membership.ListMembershipsAsync("group", ct),
-            "create-member" => membership.CreateMembershipAsync("group", "person@example.org", ct),
+            GoogleGroupCredentialOperation.CreateGroup => provisioning.CreateGroupAsync("team@example.org", "Team", "Description", ct),
+            GoogleGroupCredentialOperation.LookupGroup => provisioning.LookupGroupIdAsync("team@example.org", ct),
+            GoogleGroupCredentialOperation.ReadSettings => provisioning.GetGroupSettingsAsync("team@example.org", ct),
+            GoogleGroupCredentialOperation.WriteSettings => provisioning.UpdateGroupSettingsAsync("team@example.org", Humans.Google.Services.GroupSettingsPolicy.BuildExpected(new Humans.Google.Contracts.GoogleWorkspaceGroupOptions()), ct),
+            GoogleGroupCredentialOperation.ListMembers => membership.ListMembershipsAsync("group", ct),
+            GoogleGroupCredentialOperation.CreateMember => membership.CreateMembershipAsync("group", "person@example.org", ct),
             _ => membership.DeleteMembershipAsync("groups/group/memberships/person@example.org", ct),
         };
 
@@ -324,7 +324,7 @@ public sealed class GoogleGroupClientTransportErrorTests
     private static void Inject<T>(T client, string field, object service) =>
         typeof(T).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(client, service);
 
-    private sealed class PageHandler(string kind, string sequence) : HttpMessageHandler
+    private sealed class PageHandler(GooglePagedRead kind, PageTokenSequence sequence) : HttpMessageHandler
     {
         public List<string> Requests { get; } = [];
 
@@ -333,15 +333,15 @@ public sealed class GoogleGroupClientTransportErrorTests
             Requests.Add(request.RequestUri!.ToString());
             if (Requests.Count > 4) throw new InvalidOperationException("Test transport exceeded four pages.");
             var next = Requests.Count == 1 ? "cursor-a"
-                : string.Equals(sequence, "repeat", StringComparison.Ordinal) ? "cursor-a"
+                : sequence is PageTokenSequence.Repeat ? "cursor-a"
                 : Requests.Count == 2 ? "cursor-b"
-                : string.Equals(sequence, "cycle", StringComparison.Ordinal) ? "cursor-a" : null;
+                : sequence is PageTokenSequence.Cycle ? "cursor-a" : null;
             var collection = kind switch
             {
-                "accounts" => "\"users\":[{\"primaryEmail\":\"a@example.org\"}]",
-                "groups" => "\"groups\":[{\"id\":\"g\",\"email\":\"g@example.org\"}]",
-                "members" => "\"members\":[{\"id\":\"m\",\"email\":\"a@example.org\"}]",
-                "permissions" => "\"permissions\":[{\"id\":\"p\",\"type\":\"user\",\"role\":\"reader\",\"emailAddress\":\"a@example.org\"}]",
+                GooglePagedRead.Accounts => "\"users\":[{\"primaryEmail\":\"a@example.org\"}]",
+                GooglePagedRead.Groups => "\"groups\":[{\"id\":\"g\",\"email\":\"g@example.org\"}]",
+                GooglePagedRead.Members => "\"members\":[{\"id\":\"m\",\"email\":\"a@example.org\"}]",
+                GooglePagedRead.Permissions => "\"permissions\":[{\"id\":\"p\",\"type\":\"user\",\"role\":\"reader\",\"emailAddress\":\"a@example.org\"}]",
                 _ => "\"activities\":[{}]"
             };
             var json = "{" + collection + (next is null ? "" : ",\"nextPageToken\":" + JsonSerializer.Serialize(next)) + "}";
@@ -360,3 +360,13 @@ public sealed class GoogleGroupClientTransportErrorTests
                 new IOException("Unable to read data from the transport connection: Connection reset by peer.")));
     }
 }
+
+public enum GooglePagedRead { Accounts, Groups, Members, Permissions, Activity }
+
+public enum PageTokenSequence { Repeat, Cycle, Valid }
+
+public enum GoogleStructuredCall { Groups, Permissions, File, Drive, Create, Update, Delete, Inherit, Folder }
+
+public enum GoogleCallFailure { Http, Io, Cancel, Credentials }
+
+public enum GoogleGroupCredentialOperation { CreateGroup, LookupGroup, ReadSettings, WriteSettings, ListMembers, CreateMember, DeleteMember }

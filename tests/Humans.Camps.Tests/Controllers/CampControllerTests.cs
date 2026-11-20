@@ -291,13 +291,13 @@ public class CampControllerTests
     }
 
     [HumansTheory]
-    [InlineData("refused-registration", "settings")]
-    [InlineData("refused-registration", "info")]
-    [InlineData("failed-registration", "settings")]
-    [InlineData("failed-registration", "info")]
-    [InlineData("invalid-edit", "edit-data")]
-    [InlineData("refused-edit", "edit-data")]
-    public async Task FormRedisplays_RetainRequestCancellation(string path, string boundary)
+    [InlineData(CampFormRedisplayPath.RefusedRegistration, CampFormRedisplayBoundary.Settings)]
+    [InlineData(CampFormRedisplayPath.RefusedRegistration, CampFormRedisplayBoundary.Info)]
+    [InlineData(CampFormRedisplayPath.FailedRegistration, CampFormRedisplayBoundary.Settings)]
+    [InlineData(CampFormRedisplayPath.FailedRegistration, CampFormRedisplayBoundary.Info)]
+    [InlineData(CampFormRedisplayPath.InvalidEdit, CampFormRedisplayBoundary.EditData)]
+    [InlineData(CampFormRedisplayPath.RefusedEdit, CampFormRedisplayBoundary.EditData)]
+    public async Task FormRedisplays_RetainRequestCancellation(CampFormRedisplayPath path, CampFormRedisplayBoundary boundary)
     {
         using var request = new CancellationTokenSource();
         var actor = Guid.NewGuid();
@@ -312,19 +312,19 @@ public class CampControllerTests
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (string.Equals(boundary, "settings", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (boundary is CampFormRedisplayBoundary.Settings) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Settings2026();
         });
         _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (string.Equals(boundary, "info", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            if (boundary is CampFormRedisplayBoundary.Info) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return (string?)"Registration info";
         });
         _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
             .ReturnsForAnyArgs(async _ =>
             {
                 await request.CancelAsync();
-                if (string.Equals(path, "failed-registration", StringComparison.Ordinal)) throw new DbUpdateException("Registration save failed");
+                if (path is CampFormRedisplayPath.FailedRegistration) throw new DbUpdateException("Registration save failed");
                 return new CampWriteResult<Camp>(null, "Refused");
             });
         _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actor).Returns(CampUpdateResult.Failure("Refused"));
@@ -336,12 +336,12 @@ public class CampControllerTests
         });
         var controller = BuildController(actor);
         controller.HttpContext.RequestAborted = request.Token;
-        var edit = path.EndsWith("edit", StringComparison.Ordinal);
+        var edit = path is CampFormRedisplayPath.InvalidEdit or CampFormRedisplayPath.RefusedEdit;
         CampRegisterViewModel model = edit ? new CampEditViewModel { SeasonId = season.Id } : new CampRegisterViewModel();
         model.Name = "Alpha";
         model.ContactEmail = "alpha@example.test";
         model.ContactPhone = "+34600000000";
-        if (string.Equals(path, "invalid-edit", StringComparison.Ordinal)) controller.ModelState.AddModelError("Name", "Invalid");
+        if (path is CampFormRedisplayPath.InvalidEdit) controller.ModelState.AddModelError("Name", "Invalid");
         Func<Task<IActionResult>> render = edit
             ? () => controller.Edit(camp.Slug, (CampEditViewModel)model)
             : () => controller.Register(model);
@@ -1942,3 +1942,7 @@ public class CampControllerTests
             [],
             UserFixtures.Profile());
 }
+
+public enum CampFormRedisplayPath { RefusedRegistration, FailedRegistration, InvalidEdit, RefusedEdit }
+
+public enum CampFormRedisplayBoundary { Settings, Info, EditData }

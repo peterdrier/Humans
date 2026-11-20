@@ -1,5 +1,4 @@
 using Humans.Events.Services.Dtos;
-using Humans.Events.Models;
 using Humans.Settings.Contracts;
 using Humans.Events.Domain;
 using NodaTime;
@@ -102,7 +101,7 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 
-    Task<EventsDashboardViewModel> GetDashboardAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
     /// <summary>Audits the expanded row count and recipient.</summary>
     Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default);
 }

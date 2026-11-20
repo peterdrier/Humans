@@ -129,7 +129,7 @@
                                     case ExpenseLineType.Invoice:
                                         <span class="badge bg-primary">@Localizer["Expenses_Invoice"]</span>
                                         <a asp-action="LineProofs" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
-                                           class="badge rounded-pill text-decoration-none @(r.ProofTotalFor(line.Id) >= line.Amount ? "bg-success" : "bg-secondary")">
+                                           class="badge rounded-pill text-decoration-none @(proofs.Sum(x => x.Amount) >= line.Amount ? "bg-success" : "bg-secondary")">
                                             @(proofs.Count == 1
                                                 ? Localizer["Expenses_ProofCountSingular"]
                                                 : Localizer["Expenses_ProofCountPlural", proofs.Count])

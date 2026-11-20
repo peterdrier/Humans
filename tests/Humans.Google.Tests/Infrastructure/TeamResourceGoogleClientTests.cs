@@ -129,33 +129,33 @@ public sealed class TeamResourceGoogleClientTests
     }
 
     [HumansTheory]
-    [InlineData("link", null)]
-    [InlineData("link", "folders/123")]
-    [InlineData("link", "groups/")]
-    [InlineData("link", "groups/ ")]
-    [InlineData("link", "groups/a/b")]
-    [InlineData("link", "groups/abc123")]
-    [InlineData("lookup", null)]
-    [InlineData("lookup", "folders/123")]
-    [InlineData("lookup", "groups/")]
-    [InlineData("lookup", "groups/ ")]
-    [InlineData("lookup", "groups/a/b")]
-    [InlineData("lookup", "groups/abc123")]
-    [InlineData("create", null)]
-    [InlineData("create", "folders/123")]
-    [InlineData("create", "groups/")]
-    [InlineData("create", "groups/ ")]
-    [InlineData("create", "groups/a/b")]
-    [InlineData("create", "groups/abc123")]
-    public async Task Group_reads_and_creation_require_a_usable_resource_name(string path, string? resourceName)
+    [InlineData(GroupResourceNamePath.Link, null)]
+    [InlineData(GroupResourceNamePath.Link, "folders/123")]
+    [InlineData(GroupResourceNamePath.Link, "groups/")]
+    [InlineData(GroupResourceNamePath.Link, "groups/ ")]
+    [InlineData(GroupResourceNamePath.Link, "groups/a/b")]
+    [InlineData(GroupResourceNamePath.Link, "groups/abc123")]
+    [InlineData(GroupResourceNamePath.Lookup, null)]
+    [InlineData(GroupResourceNamePath.Lookup, "folders/123")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/ ")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/a/b")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/abc123")]
+    [InlineData(GroupResourceNamePath.Create, null)]
+    [InlineData(GroupResourceNamePath.Create, "folders/123")]
+    [InlineData(GroupResourceNamePath.Create, "groups/")]
+    [InlineData(GroupResourceNamePath.Create, "groups/ ")]
+    [InlineData(GroupResourceNamePath.Create, "groups/a/b")]
+    [InlineData(GroupResourceNamePath.Create, "groups/abc123")]
+    public async Task Group_reads_and_creation_require_a_usable_resource_name(GroupResourceNamePath path, string? resourceName)
     {
-        var creating = string.Equals(path, "create", StringComparison.Ordinal);
+        var creating = path is GroupResourceNamePath.Create;
         using var handler = new GroupHandler("crew@nobodies.team", resourceName, creating);
         using var sdk = new CloudIdentityService(CreateInitializer(handler));
         GoogleClientError? error;
         string? id;
         var valid = string.Equals(resourceName, "groups/abc123", StringComparison.Ordinal);
-        if (string.Equals(path, "link", StringComparison.Ordinal))
+        if (path is GroupResourceNamePath.Link)
         {
             var result = await CreateClient(sdk).LookupGroupAsync("crew@nobodies.team", TestContext.Current.CancellationToken);
             error = result.Error;
@@ -191,7 +191,7 @@ public sealed class TeamResourceGoogleClientTests
             id.Should().BeNull();
             error.Should().NotBeNull();
         }
-        handler.Calls.Should().Be(valid && string.Equals(path, "link", StringComparison.Ordinal) ? 2 : 1);
+        handler.Calls.Should().Be(valid && path is GroupResourceNamePath.Link ? 2 : 1);
     }
 
     private static BaseClientService.Initializer CreateInitializer(HttpMessageHandler handler)
@@ -250,3 +250,5 @@ public sealed class TeamResourceGoogleClientTests
         }
     }
 }
+
+public enum GroupResourceNamePath { Link, Lookup, Create }

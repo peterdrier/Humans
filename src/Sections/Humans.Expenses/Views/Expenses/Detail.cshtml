@@ -232,7 +232,7 @@
                                             <td>@{ await AttachmentCell(proof); }</td>
                                         </tr>
                                     }
-                                    var proofTotal = r.ProofTotalFor(line.Id);
+                                    var proofTotal = proofs.Sum(x => x.Amount);
                                     <tr class="small">
                                         <td></td>
                                         <td class="ps-4 text-muted" colspan="2">

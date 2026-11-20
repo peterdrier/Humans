@@ -12,10 +12,10 @@ namespace Humans.TicketTailor.Tests.Services;
 public class TicketTailorServiceWriteTests
 {
     [HumansTheory]
-    [InlineData("void")]
-    [InlineData("issue")]
-    [InlineData("discount")]
-    public async Task UnreadableWriteResponse_UsesOperationFailureContractWithoutRetry(string operation)
+    [InlineData(TicketTailorUnreadableWrite.Void)]
+    [InlineData(TicketTailorUnreadableWrite.Issue)]
+    [InlineData(TicketTailorUnreadableWrite.Discount)]
+    public async Task UnreadableWriteResponse_UsesOperationFailureContractWithoutRetry(TicketTailorUnreadableWrite operation)
     {
         var handler = new RecordingHttpHandler();
         var content = handler.EnqueueResponse(HttpStatusCode.OK, "unexpected response");
@@ -23,15 +23,15 @@ public class TicketTailorServiceWriteTests
         var ct = TestContext.Current.CancellationToken;
         Func<Task> write = operation switch
         {
-            "void" => () => service.VoidIssuedTicketAsync("tt_1", true, ct),
-            "issue" => () => service.IssueTicketAsync(new IssueTicketRequest(
+            TicketTailorUnreadableWrite.Void => () => service.VoidIssuedTicketAsync("tt_1", true, ct),
+            TicketTailorUnreadableWrite.Issue => () => service.IssueTicketAsync(new IssueTicketRequest(
                 EventId: null, TicketTypeId: null, HoldId: "hold_1",
                 FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null), ct),
             _ => () => service.GenerateDiscountCodesAsync(
                 new DiscountCodeSpec(1, DiscountType.Percentage, 25m, null), ct)
         };
 
-        if (string.Equals(operation, "discount", StringComparison.Ordinal))
+        if (operation is TicketTailorUnreadableWrite.Discount)
         {
             var failure = await write.Should().ThrowExactlyAsync<HttpRequestException>();
             failure.Which.InnerException.Should().BeOfType<System.Text.Json.JsonException>();
@@ -513,3 +513,5 @@ public class TicketTailorServiceWriteTests
         handler.RequestCount.Should().Be(1);
     }
 }
+
+public enum TicketTailorUnreadableWrite { Void, Issue, Discount }

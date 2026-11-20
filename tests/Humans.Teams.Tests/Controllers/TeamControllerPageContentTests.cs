@@ -945,11 +945,11 @@ public class TeamControllerPageContentTests
     }
 
     [HumansTheory]
-    [InlineData("create-refused")]
-    [InlineData("create-failed")]
-    [InlineData("edit-refused")]
-    [InlineData("edit-reactivation")]
-    public async Task ParentPickerRedisplay_CancelsReadsWithoutReportingACreationFailure(string path)
+    [InlineData(TeamParentPickerPath.CreateRefused)]
+    [InlineData(TeamParentPickerPath.CreateFailed)]
+    [InlineData(TeamParentPickerPath.EditRefused)]
+    [InlineData(TeamParentPickerPath.EditReactivation)]
+    public async Task ParentPickerRedisplay_CancelsReadsWithoutReportingACreationFailure(TeamParentPickerPath path)
     {
         using var request = new CancellationTokenSource();
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
@@ -958,11 +958,11 @@ public class TeamControllerPageContentTests
         var failure = new IOException("Team write unavailable");
         var teamId = Guid.NewGuid();
         var team = new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" };
-        var result = string.Equals(path, "edit-reactivation", StringComparison.Ordinal)
+        var result = path is TeamParentPickerPath.EditReactivation
             ? new TeamUpdateResult(team, GroupWarning: "Confirm reactivation", InactiveGroupResourceId: Guid.NewGuid())
             : new TeamUpdateResult(ErrorMessage: "Refused");
         teams.CreateTeamWithGoogleGroupAsync("", null, false).ReturnsForAnyArgs(
-            string.Equals(path, "create-failed", StringComparison.Ordinal)
+            path is TeamParentPickerPath.CreateFailed
                 ? Task.FromException<TeamUpdateResult>(failure)
                 : Task.FromResult(result));
         teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false).ReturnsForAnyArgs(result);
@@ -984,15 +984,17 @@ public class TeamControllerPageContentTests
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
         };
-        Func<Task<IActionResult>> save = path.StartsWith("create", StringComparison.Ordinal)
+        Func<Task<IActionResult>> save = path is TeamParentPickerPath.CreateRefused or TeamParentPickerPath.CreateFailed
             ? () => controller.CreateTeam(new CreateTeamViewModel { Name = "Alpha" })
             : () => controller.EditTeam(teamId, new EditTeamViewModel { Id = teamId, Name = "Alpha" });
 
         await save.Should().ThrowAsync<OperationCanceledException>();
         await teams.Received(1).GetTeamsAsync(request.Token);
-        if (string.Equals(path, "create-failed", StringComparison.Ordinal))
+        if (path is TeamParentPickerPath.CreateFailed)
             logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, failure));
         else
             logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
     }
 }
+
+public enum TeamParentPickerPath { CreateRefused, CreateFailed, EditRefused, EditReactivation }

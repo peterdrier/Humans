@@ -41,25 +41,25 @@ public sealed class HoldedBankMovementSyncTests
             .Returns(lines.ToList());
 
     [HumansTheory]
-    [InlineData("transient")]
-    [InlineData("permanent")]
-    [InlineData("fault")]
-    [InlineData("shutdown")]
-    [InlineData("other-cancellation")]
-    public async Task Sync_ClassifiesFailures_AndPreservesTheOriginalException(string kind)
+    [InlineData(BankSyncFailure.Transient)]
+    [InlineData(BankSyncFailure.Permanent)]
+    [InlineData(BankSyncFailure.Fault)]
+    [InlineData(BankSyncFailure.Shutdown)]
+    [InlineData(BankSyncFailure.OtherCancellation)]
+    public async Task Sync_ClassifiesFailures_AndPreservesTheOriginalException(BankSyncFailure kind)
     {
         using var request = new CancellationTokenSource();
         Exception failure = kind switch
         {
-            "transient" => new HoldedTransientException("Bank feed unavailable"),
-            "permanent" => new HoldedPermanentException(403, null, "Bank feed forbidden"),
-            "shutdown" => new OperationCanceledException(request.Token),
-            "other-cancellation" => new OperationCanceledException("Dependency canceled"),
+            BankSyncFailure.Transient => new HoldedTransientException("Bank feed unavailable"),
+            BankSyncFailure.Permanent => new HoldedPermanentException(403, null, "Bank feed forbidden"),
+            BankSyncFailure.Shutdown => new OperationCanceledException(request.Token),
+            BankSyncFailure.OtherCancellation => new OperationCanceledException("Dependency canceled"),
             _ => new IOException("Bank mirror unavailable"),
         };
         async Task<IReadOnlyList<HoldedBankMovementDto>> FailAsync()
         {
-            if (string.Equals(kind, "shutdown", StringComparison.Ordinal)) await request.CancelAsync();
+            if (kind is BankSyncFailure.Shutdown) await request.CancelAsync();
             throw failure;
         }
         _client.ListBankMovementsAsync("t1", Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), request.Token,
@@ -69,10 +69,10 @@ public sealed class HoldedBankMovementSyncTests
 
         (await Record.ExceptionAsync(sync)).Should().BeSameAs(failure);
         var log = _logger.Entries.Should().ContainSingle().Subject;
-        var expected = kind is "transient" or "permanent" or "shutdown";
+        var expected = kind is BankSyncFailure.Transient or BankSyncFailure.Permanent or BankSyncFailure.Shutdown;
         log.Level.Should().Be(expected ? LogLevel.Warning : LogLevel.Error);
         log.Exception.Should().BeSameAs(expected ? null : failure);
-        if (kind is "transient" or "permanent") log.Message.Should().Contain(failure.Message);
+        if (kind is BankSyncFailure.Transient or BankSyncFailure.Permanent) log.Message.Should().Contain(failure.Message);
     }
 
     [HumansFact]
@@ -94,3 +94,5 @@ public sealed class HoldedBankMovementSyncTests
         mirror.Movements.Select(m => (m.Id, m.Status)).Should().BeEquivalentTo([("b", "reconciled"), ("c", "pending")]);
     }
 }
+
+public enum BankSyncFailure { Transient, Permanent, Fault, Shutdown, OtherCancellation }

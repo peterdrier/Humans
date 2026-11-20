@@ -170,16 +170,16 @@ public sealed class AnthropicClientTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("api")]
-    [Xunit.InlineData("sse")]
-    [Xunit.InlineData("transport")]
-    [Xunit.InlineData("unexpected")]
-    public async Task StreamAsync_ClassifiesFailuresAndKeepsTheErrorFinalizer(string failureKind)
+    [Xunit.InlineData(ProviderFailureKind.Api)]
+    [Xunit.InlineData(ProviderFailureKind.Sse)]
+    [Xunit.InlineData(ProviderFailureKind.Transport)]
+    [Xunit.InlineData(ProviderFailureKind.Unexpected)]
+    public async Task StreamAsync_ClassifiesFailuresAndKeepsTheErrorFinalizer(ProviderFailureKind failureKind)
     {
         Exception? failure = failureKind switch
         {
-            "transport" => new HttpRequestException("Provider unavailable"),
-            "unexpected" => new InvalidOperationException("Unexpected handler failure"),
+            ProviderFailureKind.Transport => new HttpRequestException("Provider unavailable"),
+            ProviderFailureKind.Unexpected => new InvalidOperationException("Unexpected handler failure"),
             _ => null,
         };
         using var http = new HttpClient(new FailedResponseHandler(failureKind, failure));
@@ -197,11 +197,11 @@ public sealed class AnthropicClientTests
         tokens.Single(token => token.Finalizer != null).Finalizer!.StopReason.Should().Be("error");
         var entry = logger.Entries.Where(entry => entry.Level >= Microsoft.Extensions.Logging.LogLevel.Warning)
             .Should().ContainSingle().Subject;
-        entry.Level.Should().Be(failureKind is "unexpected"
+        entry.Level.Should().Be(failureKind is ProviderFailureKind.Unexpected
             ? Microsoft.Extensions.Logging.LogLevel.Error : Microsoft.Extensions.Logging.LogLevel.Warning);
-        if (failureKind is "unexpected") entry.Exception.Should().BeSameAs(failure);
+        if (failureKind is ProviderFailureKind.Unexpected) entry.Exception.Should().BeSameAs(failure);
         else entry.Exception.Should().BeNull();
-        entry.Message.Should().Contain(failureKind is "unexpected" ? "failed" : "Provider unavailable");
+        entry.Message.Should().Contain(failureKind is ProviderFailureKind.Unexpected ? "failed" : "Provider unavailable");
     }
 
     [HumansFact]
@@ -229,10 +229,10 @@ public sealed class AnthropicClientTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("complete")]
-    [Xunit.InlineData("failure")]
-    [Xunit.InlineData("cancelled")]
-    public async Task ListModelsAsync_ReadsEveryPageOrPropagatesTheLaterFailure(string outcome)
+    [Xunit.InlineData(ModelPagesOutcome.Complete)]
+    [Xunit.InlineData(ModelPagesOutcome.Failure)]
+    [Xunit.InlineData(ModelPagesOutcome.Cancelled)]
+    public async Task ListModelsAsync_ReadsEveryPageOrPropagatesTheLaterFailure(ModelPagesOutcome outcome)
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
         var handler = new ModelPagesHandler(outcome, cancellation);
@@ -241,9 +241,9 @@ public sealed class AnthropicClientTests
         var adapter = new ClientAdapter(provider, NullLogger<ClientAdapter>.Instance);
         var read = () => adapter.ListModelsAsync(cancellation.Token);
 
-        if (outcome is "failure")
+        if (outcome is ModelPagesOutcome.Failure)
             await read.Should().ThrowAsync<HttpRequestException>();
-        else if (outcome is "cancelled")
+        else if (outcome is ModelPagesOutcome.Cancelled)
             await read.Should().ThrowAsync<OperationCanceledException>();
         else
         {
@@ -258,18 +258,18 @@ public sealed class AnthropicClientTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false, "api")]
-    [Xunit.InlineData(true, "api")]
-    [Xunit.InlineData(false, "transport")]
-    [Xunit.InlineData(true, "transport")]
-    [Xunit.InlineData(false, "unexpected")]
-    [Xunit.InlineData(true, "unexpected")]
-    public async Task Optional_reads_normalize_provider_failures_without_hiding_unexpected_errors(bool models, string kind)
+    [Xunit.InlineData(false, ProviderFailureKind.Api)]
+    [Xunit.InlineData(true, ProviderFailureKind.Api)]
+    [Xunit.InlineData(false, ProviderFailureKind.Transport)]
+    [Xunit.InlineData(true, ProviderFailureKind.Transport)]
+    [Xunit.InlineData(false, ProviderFailureKind.Unexpected)]
+    [Xunit.InlineData(true, ProviderFailureKind.Unexpected)]
+    public async Task Optional_reads_normalize_provider_failures_without_hiding_unexpected_errors(bool models, ProviderFailureKind kind)
     {
         Exception? failure = kind switch
         {
-            "transport" => new HttpRequestException("Provider unavailable"),
-            "unexpected" => new InvalidOperationException("Unexpected handler failure"),
+            ProviderFailureKind.Transport => new HttpRequestException("Provider unavailable"),
+            ProviderFailureKind.Unexpected => new InvalidOperationException("Unexpected handler failure"),
             _ => null,
         };
         using var http = new HttpClient(new FailedResponseHandler(kind, failure));
@@ -279,12 +279,12 @@ public sealed class AnthropicClientTests
         Task ReadAsync() => models ? adapter.ListModelsAsync(ct) : adapter.CountTokensAsync("test-model", "Text", ct);
         var read = ReadAsync;
 
-        if (kind is "api") await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*Provider unavailable*");
-        else if (kind is "transport") await read.Should().ThrowAsync<IOException>().WithMessage("*Provider unavailable*");
+        if (kind is ProviderFailureKind.Api) await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*Provider unavailable*");
+        else if (kind is ProviderFailureKind.Transport) await read.Should().ThrowAsync<IOException>().WithMessage("*Provider unavailable*");
         else (await read.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
-    private sealed class ModelPagesHandler(string outcome, CancellationTokenSource cancellation) : HttpMessageHandler
+    private sealed class ModelPagesHandler(ModelPagesOutcome outcome, CancellationTokenSource cancellation) : HttpMessageHandler
     {
         public List<string> Queries { get; } = [];
 
@@ -292,12 +292,12 @@ public sealed class AnthropicClientTests
         {
             Queries.Add(request.RequestUri!.Query);
             var first = Queries.Count == 1;
-            if (!first && outcome is "cancelled")
+            if (!first && outcome is ModelPagesOutcome.Cancelled)
             {
                 await cancellation.CancelAsync();
                 return await Task.FromCanceled<HttpResponseMessage>(cancellationToken);
             }
-            var failed = !first && outcome is "failure";
+            var failed = !first && outcome is ModelPagesOutcome.Failure;
             var body = failed ? "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Later page unavailable\"}}"
                 : first
                     ? "{\"data\":[{\"id\":\"model-new\",\"display_name\":\"New model\",\"created_at\":\"2026-01-02T00:00:00Z\",\"type\":\"model\"}],\"has_more\":true,\"first_id\":\"model-new\",\"last_id\":\"model-new\"}"
@@ -310,18 +310,18 @@ public sealed class AnthropicClientTests
         }
     }
 
-    private sealed class FailedResponseHandler(string kind, Exception? failure) : HttpMessageHandler
+    private sealed class FailedResponseHandler(ProviderFailureKind kind, Exception? failure) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (failure is not null) return Task.FromException<HttpResponseMessage>(failure);
-            return Task.FromResult(new HttpResponseMessage(kind is "api" ? HttpStatusCode.TooManyRequests : HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(kind is ProviderFailureKind.Api ? HttpStatusCode.TooManyRequests : HttpStatusCode.OK)
             {
                 RequestMessage = request,
-                Content = new StringContent(kind is "api"
+                Content = new StringContent(kind is ProviderFailureKind.Api
                     ? "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Provider unavailable\"}}"
                     : "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Provider unavailable\"}}\n\n",
-                    Encoding.UTF8, kind is "api" ? "application/json" : "text/event-stream"),
+                    Encoding.UTF8, kind is ProviderFailureKind.Api ? "application/json" : "text/event-stream"),
             });
         }
     }
@@ -342,3 +342,7 @@ public sealed class AnthropicClientTests
         }
     }
 }
+
+public enum ProviderFailureKind { Api, Sse, Transport, Unexpected }
+
+public enum ModelPagesOutcome { Complete, Failure, Cancelled }

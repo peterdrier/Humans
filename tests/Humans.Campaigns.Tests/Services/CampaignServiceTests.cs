@@ -104,17 +104,17 @@ public sealed class CampaignServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Create")]
-    [Xunit.InlineData("Edit")]
-    [Xunit.InlineData("Import")]
-    [Xunit.InlineData("Generate")]
-    [Xunit.InlineData("Activate")]
-    [Xunit.InlineData("Complete")]
-    [Xunit.InlineData("Wave")]
-    [Xunit.InlineData("Resend")]
-    [Xunit.InlineData("ResendGrant")]
-    [Xunit.InlineData("EditRefusal")]
-    public async Task MutationReads_StopAbandonedRequestsBeforeWrites(string operation)
+    [Xunit.InlineData(CampaignMutationRead.Create)]
+    [Xunit.InlineData(CampaignMutationRead.Edit)]
+    [Xunit.InlineData(CampaignMutationRead.Import)]
+    [Xunit.InlineData(CampaignMutationRead.Generate)]
+    [Xunit.InlineData(CampaignMutationRead.Activate)]
+    [Xunit.InlineData(CampaignMutationRead.Complete)]
+    [Xunit.InlineData(CampaignMutationRead.Wave)]
+    [Xunit.InlineData(CampaignMutationRead.Resend)]
+    [Xunit.InlineData(CampaignMutationRead.ResendGrant)]
+    [Xunit.InlineData(CampaignMutationRead.EditRefusal)]
+    public async Task MutationReads_StopAbandonedRequestsBeforeWrites(CampaignMutationRead operation)
     {
         using var request = new CancellationTokenSource();
         var users = Substitute.For<IUserService>();
@@ -128,7 +128,7 @@ public sealed class CampaignServiceTests
         }
         users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (operation is not ("ResendGrant" or "EditRefusal")) Read(call.Arg<CancellationToken>());
+            if (operation is not (CampaignMutationRead.ResendGrant or CampaignMutationRead.EditRefusal)) Read(call.Arg<CancellationToken>());
             return SeedUser(_actorId);
         });
         repository.GetCampaignIdForGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -160,21 +160,21 @@ public sealed class CampaignServiceTests
         {
             _ = operation switch
             {
-                "Create" => await controller.Create("Title", null, "Subject", "Body", null),
-                "Edit" => await controller.Edit(id, "Title", null, "Subject", "Body", null),
-                "EditRefusal" => await controller.Edit(id, string.Empty, null, "Subject", "Body", null),
-                "Import" => await controller.ImportCodes(id, null),
-                "Generate" => await controller.GenerateCodes(id, 1, "percentage", 10),
-                "Activate" => await controller.Activate(id),
-                "Complete" => await controller.Complete(id),
-                "Wave" => await controller.SendWave(id, Guid.NewGuid()),
+                CampaignMutationRead.Create => await controller.Create("Title", null, "Subject", "Body", null),
+                CampaignMutationRead.Edit => await controller.Edit(id, "Title", null, "Subject", "Body", null),
+                CampaignMutationRead.EditRefusal => await controller.Edit(id, string.Empty, null, "Subject", "Body", null),
+                CampaignMutationRead.Import => await controller.ImportCodes(id, null),
+                CampaignMutationRead.Generate => await controller.GenerateCodes(id, 1, "percentage", 10),
+                CampaignMutationRead.Activate => await controller.Activate(id),
+                CampaignMutationRead.Complete => await controller.Complete(id),
+                CampaignMutationRead.Wave => await controller.SendWave(id, Guid.NewGuid()),
                 _ => await controller.Resend(id),
             };
         };
 
         await run.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
-        if (operation is "ResendGrant" or "EditRefusal")
+        if (operation is CampaignMutationRead.ResendGrant or CampaignMutationRead.EditRefusal)
             repository.ReceivedCalls().Should().ContainSingle();
         else
             repository.ReceivedCalls().Should().BeEmpty();
@@ -1507,3 +1507,5 @@ public sealed class CampaignServiceTests
 
     private void ClearAllTrackers() => CampaignsDb.ChangeTracker.Clear();
 }
+
+public enum CampaignMutationRead { Create, Edit, Import, Generate, Activate, Complete, Wave, Resend, ResendGrant, EditRefusal }

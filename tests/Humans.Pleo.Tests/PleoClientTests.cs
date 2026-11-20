@@ -139,23 +139,23 @@ public sealed class PleoClientTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("accounts", "{}")]
-    [Xunit.InlineData("accounts", "{\"id\":null}")]
-    [Xunit.InlineData("categories", "{}")]
-    [Xunit.InlineData("categories", "{\"id\":\"\"}")]
-    [Xunit.InlineData("employees", "{}")]
-    [Xunit.InlineData("employees", "{\"id\":\" \"}")]
-    [Xunit.InlineData("receipts", "{}")]
-    [Xunit.InlineData("receipts", "{\"id\":\"\"}")]
-    public async Task Typed_reads_reject_items_without_usable_identities(string consumer, string item)
+    [Xunit.InlineData(PleoTypedRead.Accounts, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Accounts, "{\"id\":null}")]
+    [Xunit.InlineData(PleoTypedRead.Categories, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Categories, "{\"id\":\"\"}")]
+    [Xunit.InlineData(PleoTypedRead.Employees, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Employees, "{\"id\":\" \"}")]
+    [Xunit.InlineData(PleoTypedRead.Receipts, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Receipts, "{\"id\":\"\"}")]
+    public async Task Typed_reads_reject_items_without_usable_identities(PleoTypedRead consumer, string item)
     {
         var client = Make(_ => Json(Page(item, false, null)));
         var ct = Xunit.TestContext.Current.CancellationToken;
         Func<Task> action = () => consumer switch
         {
-            "accounts" => client.SearchAccountsAsync(ct),
-            "categories" => client.SearchCategoriesAsync(ct),
-            "employees" => client.ListEmployeesAsync(ct),
+            PleoTypedRead.Accounts => client.SearchAccountsAsync(ct),
+            PleoTypedRead.Categories => client.SearchCategoriesAsync(ct),
+            PleoTypedRead.Employees => client.ListEmployeesAsync(ct),
             _ => client.ListReceiptsAsync("entry", ct),
         };
 
@@ -294,3 +294,5 @@ public sealed class PleoClientTests
             Task.FromResult(respond(request));
     }
 }
+
+public enum PleoTypedRead { Accounts, Categories, Employees, Receipts }

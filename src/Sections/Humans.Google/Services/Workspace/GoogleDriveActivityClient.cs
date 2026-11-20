@@ -164,6 +164,12 @@ internal sealed class GoogleDriveActivityClient(
             }
             return user.PrimaryEmail;
         }
+        catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403 && !ct.IsCancellationRequested)
+        {
+            // External or deleted actors are routine here, not a problem worth a warning.
+            logger.LogDebug("Directory API could not resolve {PeopleId} (HTTP {Code})", peopleId, ex.Error.Code);
+            return null;
+        }
         catch (global::Google.GoogleApiException ex) when (!ct.IsCancellationRequested)
         {
             logger.LogWarning("Directory API could not resolve {PeopleId} (HTTP {Code}): {Reason}",

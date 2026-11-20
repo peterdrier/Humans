@@ -52,29 +52,29 @@ public sealed class GoogleDriveActivityClientTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("403")]
-    [Xunit.InlineData("404")]
-    [Xunit.InlineData("503")]
-    [Xunit.InlineData("http")]
-    [Xunit.InlineData("io")]
-    [Xunit.InlineData("timeout")]
-    [Xunit.InlineData("cancelled")]
-    [Xunit.InlineData("unexpected")]
-    [Xunit.InlineData("caller")]
-    public async Task Person_resolution_classifies_failures_and_preserves_caller_cancellation(string failureKind)
+    [Xunit.InlineData(DirectoryPersonFailure.Forbidden)]
+    [Xunit.InlineData(DirectoryPersonFailure.NotFound)]
+    [Xunit.InlineData(DirectoryPersonFailure.ServiceUnavailable)]
+    [Xunit.InlineData(DirectoryPersonFailure.Http)]
+    [Xunit.InlineData(DirectoryPersonFailure.Io)]
+    [Xunit.InlineData(DirectoryPersonFailure.Timeout)]
+    [Xunit.InlineData(DirectoryPersonFailure.Cancelled)]
+    [Xunit.InlineData(DirectoryPersonFailure.Unexpected)]
+    [Xunit.InlineData(DirectoryPersonFailure.Caller)]
+    public async Task Person_resolution_classifies_failures_and_preserves_caller_cancellation(DirectoryPersonFailure failureKind)
     {
         using var request = new CancellationTokenSource();
         Exception failure = failureKind switch
         {
-            "403" or "404" or "503" => new global::Google.GoogleApiException("directory", "Directory refused")
+            DirectoryPersonFailure.Forbidden or DirectoryPersonFailure.NotFound or DirectoryPersonFailure.ServiceUnavailable => new global::Google.GoogleApiException("directory", "Directory refused")
             {
                 Error = new global::Google.Apis.Requests.RequestError
-                    { Code = int.Parse(failureKind, System.Globalization.CultureInfo.InvariantCulture), Message = "Directory refused" }
+                    { Code = failureKind switch { DirectoryPersonFailure.Forbidden => 403, DirectoryPersonFailure.NotFound => 404, _ => 503 }, Message = "Directory refused" }
             },
-            "http" => new HttpRequestException("Connection reset"),
-            "io" => new IOException("Response stream failed"),
-            "timeout" => new TimeoutException("Directory timed out"),
-            "cancelled" or "caller" => new TaskCanceledException("Directory request cancelled"),
+            DirectoryPersonFailure.Http => new HttpRequestException("Connection reset"),
+            DirectoryPersonFailure.Io => new IOException("Response stream failed"),
+            DirectoryPersonFailure.Timeout => new TimeoutException("Directory timed out"),
+            DirectoryPersonFailure.Cancelled or DirectoryPersonFailure.Caller => new TaskCanceledException("Directory request cancelled"),
             _ => new InvalidOperationException("Unexpected directory failure")
         };
         using var handler = new SequenceHandler { Failure = failure };
@@ -87,12 +87,12 @@ public sealed class GoogleDriveActivityClientTests
         var client = new GoogleDriveActivityClient(Options.Create(new GoogleWorkspaceSettings()), logger);
         typeof(GoogleDriveActivityClient).GetField("_directoryService", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(client, directory);
-        if (string.Equals(failureKind, "caller", StringComparison.Ordinal))
+        if (failureKind is DirectoryPersonFailure.Caller)
             await request.CancelAsync();
 
         var resolve = () => client.TryResolvePersonEmailAsync("people/123", request.Token);
 
-        if (string.Equals(failureKind, "caller", StringComparison.Ordinal))
+        if (failureKind is DirectoryPersonFailure.Caller)
         {
             (await resolve.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
             handler.Calls.Should().Be(0);
@@ -103,14 +103,18 @@ public sealed class GoogleDriveActivityClientTests
             (await resolve()).Should().BeNull();
             var entry = logger.Entries.Should().ContainSingle(entry =>
                 entry.Message.Contains("people/123", StringComparison.Ordinal)).Subject;
-            var unexpected = string.Equals(failureKind, "unexpected", StringComparison.Ordinal);
-            entry.Level.Should().Be(unexpected ? Microsoft.Extensions.Logging.LogLevel.Error : Microsoft.Extensions.Logging.LogLevel.Warning);
+            var unexpected = failureKind is DirectoryPersonFailure.Unexpected;
+            var routine = failureKind is DirectoryPersonFailure.Forbidden or DirectoryPersonFailure.NotFound;
+            entry.Level.Should().Be(unexpected ? Microsoft.Extensions.Logging.LogLevel.Error
+                : routine ? Microsoft.Extensions.Logging.LogLevel.Debug
+                : Microsoft.Extensions.Logging.LogLevel.Warning);
             if (unexpected)
                 entry.Exception.Should().BeSameAs(failure);
             else
             {
                 entry.Exception.Should().BeNull();
-                entry.Message.Should().Contain(failureKind is "403" or "404" or "503" ? "Directory refused" : failure.Message);
+                if (!routine)
+                    entry.Message.Should().Contain(failureKind is DirectoryPersonFailure.ServiceUnavailable ? "Directory refused" : failure.Message);
             }
         }
     }
@@ -198,3 +202,5 @@ public sealed class GoogleDriveActivityClientTests
         }
     }
 }
+
+public enum DirectoryPersonFailure { Forbidden, NotFound, ServiceUnavailable, Http, Io, Timeout, Cancelled, Unexpected, Caller }

@@ -167,7 +167,7 @@ internal sealed class ExpenseLineProofsViewModel
     public required ExpenseLineDto InvoiceLine { get; init; }
     public required IReadOnlyList<ExpenseLineDto> Proofs { get; init; }
     public required bool CanEditLines { get; init; }
-    public decimal ProofTotal => Report.ProofTotalFor(InvoiceLine.Id);
+    public decimal ProofTotal => Proofs.Sum(p => p.Amount);
 }
 
 internal sealed class AddLineInputModel

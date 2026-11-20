@@ -84,23 +84,23 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansTheory]
-    [InlineData("recovery", true)]
-    [InlineData("totals", true)]
-    [InlineData("payments", true)]
-    [InlineData("dates", true)]
-    [InlineData("recent", true)]
-    [InlineData("budget", true)]
-    [InlineData("vendor", true)]
-    [InlineData("vendor", false)]
-    public async Task Dashboard_preserves_request_cancellation_through_all_reads(string boundary, bool requested)
+    [InlineData(TicketDashboardRead.Recovery, true)]
+    [InlineData(TicketDashboardRead.Totals, true)]
+    [InlineData(TicketDashboardRead.Payments, true)]
+    [InlineData(TicketDashboardRead.Dates, true)]
+    [InlineData(TicketDashboardRead.Recent, true)]
+    [InlineData(TicketDashboardRead.Budget, true)]
+    [InlineData(TicketDashboardRead.Vendor, true)]
+    [InlineData(TicketDashboardRead.Vendor, false)]
+    public async Task Dashboard_preserves_request_cancellation_through_all_reads(TicketDashboardRead boundary, bool requested)
     {
         using var request = new CancellationTokenSource();
         var repository = Substitute.For<ITicketRepository>();
         var seen = new List<CancellationToken>();
-        async Task<T> ReadAsync<T>(string stage, CancellationToken ct, T value)
+        async Task<T> ReadAsync<T>(TicketDashboardRead stage, CancellationToken ct, T value)
         {
             seen.Add(ct);
-            if (string.Equals(stage, boundary, StringComparison.Ordinal))
+            if (stage == boundary)
             {
                 if (!requested) throw new TaskCanceledException("Vendor timeout");
                 await request.CancelAsync();
@@ -110,21 +110,21 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         }
         repository.ResetStaleRunningStateAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync<TicketSyncState?>("recovery", call.Arg<CancellationToken>(), null));
+            .Returns(call => ReadAsync<TicketSyncState?>(TicketDashboardRead.Recovery, call.Arg<CancellationToken>(), null));
         repository.GetDashboardTotalsAsync(Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync("totals", call.Arg<CancellationToken>(),
+            .Returns(call => ReadAsync(TicketDashboardRead.Totals, call.Arg<CancellationToken>(),
                 new TicketDashboardTotals { TicketsSold = 1, GrossRevenue = 10m }));
         repository.GetPaidOrderPaymentMethodsAsync(Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync<IReadOnlyList<PaidOrderPaymentMethodRow>>("payments", call.Arg<CancellationToken>(), []));
+            .Returns(call => ReadAsync<IReadOnlyList<PaidOrderPaymentMethodRow>>(TicketDashboardRead.Payments, call.Arg<CancellationToken>(), []));
         repository.GetOrderDateAttendeeCountsAsync(Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync<IReadOnlyList<OrderDateAndCount>>("dates", call.Arg<CancellationToken>(), []));
+            .Returns(call => ReadAsync<IReadOnlyList<OrderDateAndCount>>(TicketDashboardRead.Dates, call.Arg<CancellationToken>(), []));
         repository.GetRecentOrdersAsync(10, Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync<IReadOnlyList<RecentOrder>>("recent", call.Arg<CancellationToken>(), []));
+            .Returns(call => ReadAsync<IReadOnlyList<RecentOrder>>(TicketDashboardRead.Recent, call.Arg<CancellationToken>(), []));
         _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync<BudgetYearDetail?>("budget", call.Arg<CancellationToken>(), null));
+            .Returns(call => ReadAsync<BudgetYearDetail?>(TicketDashboardRead.Budget, call.Arg<CancellationToken>(), null));
         var vendor = Substitute.For<ITicketVendorService>();
         vendor.GetEventSummaryAsync("event", Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync("vendor", call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
+            .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
         var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
             _shiftManagementService, _auditLog, Clock, _participations);
@@ -1621,3 +1621,5 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
                     TeamMemberRole.Member, Instant.FromUtc(2026, 1, 1, 0, 0)))
                 .ToList());
 }
+
+public enum TicketDashboardRead { Recovery, Totals, Payments, Dates, Recent, Budget, Vendor }

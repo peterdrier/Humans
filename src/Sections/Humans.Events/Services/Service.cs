@@ -8,8 +8,6 @@ using Humans.Gdpr.Contracts;
 using Humans.Calendar.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Events.Domain;
-using Humans.Events.Models;
-using static Humans.Events.Helpers.EventsTimeHelpers;
 using NodaTime;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
@@ -249,86 +247,11 @@ internal sealed class EventService(
         string? submitterEditUrl = null, CancellationToken ct = default) =>
         authoring.ApplyModerationAsync(eventId, actorUserId, actionType, reason, submitterEditUrl, ct);
 
-    public async Task<EventsDashboardViewModel> GetDashboardAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
-        var eventSettings = guideEventId is { } id
-            ? await settingsService.GetEventSettingsByIdAsync(id, ct) : null;
-        var tz = GetTimeZone(eventSettings);
-        var allEvents = (await repo.GetAllEventsForDashboardAsync(ct))
-            .Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
-        var statusCounts = allEvents.GroupBy(e => e.Status).ToDictionary(g => g.Key, g => g.Count());
-
-        var model = new EventsDashboardViewModel
-        {
-            EventSettingsId = eventSettings?.Id,
-            TotalCount = allEvents.Count,
-            PendingCount = statusCounts.GetValueOrDefault(EventStatus.Pending),
-            ApprovedCount = statusCounts.GetValueOrDefault(EventStatus.Approved),
-            RejectedCount = statusCounts.GetValueOrDefault(EventStatus.Rejected),
-            ResubmitRequestedCount = statusCounts.GetValueOrDefault(EventStatus.ResubmitRequested),
-            WithdrawnCount = statusCounts.GetValueOrDefault(EventStatus.Withdrawn)
-        };
-
-        var approvedEvents = allEvents.Where(e => e.Status == EventStatus.Approved).ToList();
-        var gateOpeningDate = eventSettings?.GateOpeningDate;
-        var eventEndOffset = eventSettings?.EventEndOffset ?? 0;
-
-        if (gateOpeningDate != null)
-        {
-            var dayCounts = new Dictionary<int, int>();
-            for (var d = 0; d <= eventEndOffset; d++)
-                dayCounts[d] = 0;
-
-            foreach (var e in approvedEvents)
-            {
-                foreach (var occ in e.GetOccurrenceInstants(gateOpeningDate, tz))
-                {
-                    var dayOffset = ComputeDayOffset(occ, gateOpeningDate.Value, tz);
-                    if (dayCounts.ContainsKey(dayOffset))
-                        dayCounts[dayOffset]++;
-                }
-            }
-
-            model.CoverageByDay = dayCounts
-                .Select(kv => new DayCoverageRow
-                {
-                    Date = gateOpeningDate.Value.PlusDays(kv.Key),
-                    ApprovedCount = kv.Value
-                }).ToList();
-        }
-
-        var categories = await GetActiveCategoriesAsync(ct);
-        model.CoverageByCategory = categories.Select(cat =>
-        {
-            var catEvents = allEvents.Where(e => e.CategoryId == cat.Id).ToList();
-            return new CategoryCoverageRow
-            {
-                CategoryName = cat.Name,
-                DisplayOrder = cat.DisplayOrder,
-                SubmittedCount = catEvents.Count,
-                ApprovedCount = catEvents.Count(e => e.Status == EventStatus.Approved),
-                PendingCount = catEvents.Count(e => e.Status == EventStatus.Pending),
-                RejectedCount = catEvents.Count(e => e.Status == EventStatus.Rejected)
-            };
-        }).ToList();
-
-        var campEvents = allEvents.Where(e => e.CampId.HasValue).ToList();
-        model.TopCamps = campEvents
-            .GroupBy(e => e.CampId!.Value)
-            .Select(g =>
-            {
-                return new CampSubmissionRow
-                {
-                    CampId = g.Key,
-                    SubmittedCount = g.Count(),
-                    ApprovedCount = g.Count(e => e.Status == EventStatus.Approved),
-                    PendingCount = g.Count(e => e.Status == EventStatus.Pending)
-                };
-            })
-            .ToList();
-
-        return model;
+        var events = await repo.GetAllEventsForDashboardAsync(ct);
+        return events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
     }
 
     public Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default) =>

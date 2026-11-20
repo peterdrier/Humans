@@ -1016,6 +1016,23 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
     }
 
     [HumansFact]
+    public async Task SyncAllDocumentsAsync_AttributesPublishedVersionToTheScheduledSync()
+    {
+        StubActiveUser();
+        var document = await SeedDocumentAsync("Privacy", folderPath: "privacy/", currentCommitSha: "old-sha");
+        StubGitHubFolder("privacy/", "es-content", "sha-1", "Initial commit");
+
+        await _service.SyncAllDocumentsAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await using var verifyCtx = await LegalDbFactory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        var version = await verifyCtx.DocumentVersions
+            .AsNoTracking()
+            .SingleAsync(v => v.LegalDocumentId == document.Id, Xunit.TestContext.Current.CancellationToken);
+        await _audit.Received(1).LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", document.Id,
+            Arg.Any<string>(), nameof(LegalDocumentSyncService), version.Id, "DocumentVersion");
+    }
+
+    [HumansFact]
     public async Task SyncLegalDocumentAsync_ShaChanged_CreatesReConsentVersion_AndEmitsReConsentRequired()
     {
         StubActiveUser();

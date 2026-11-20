@@ -56,9 +56,8 @@ internal sealed class Service(
             catalog = await GetActiveCatalogAsync(order.Year, ct);
         }
 
-        // A pending async payment is excluded from BalanceEur, so without this the full balance stays payable a second
-        // time while the mandate settles: a double charge.
-
+        // A pending async payment is excluded from BalanceEur, so without the HasPendingSettlement guard the full
+        // balance stays payable a second time while the mandate settles: a double charge.
         return new OrderPageData(
             order,
             catalog,

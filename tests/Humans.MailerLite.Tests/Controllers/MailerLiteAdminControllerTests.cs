@@ -274,22 +274,22 @@ public class MailerLiteAdminControllerTests
     }
 
     [HumansTheory]
-    [InlineData("summary", false)]
-    [InlineData("groups", false)]
-    [InlineData("drift", false)]
-    [InlineData("summary", true)]
-    [InlineData("groups", true)]
-    [InlineData("drift", true)]
-    public async Task Index_TimeoutKeepsLocalCounts_ButCallerCancellationPropagates(string boundary, bool callerCanceled)
+    [InlineData(MailerLiteIndexBoundary.Summary, false)]
+    [InlineData(MailerLiteIndexBoundary.Groups, false)]
+    [InlineData(MailerLiteIndexBoundary.Drift, false)]
+    [InlineData(MailerLiteIndexBoundary.Summary, true)]
+    [InlineData(MailerLiteIndexBoundary.Groups, true)]
+    [InlineData(MailerLiteIndexBoundary.Drift, true)]
+    public async Task Index_TimeoutKeepsLocalCounts_ButCallerCancellationPropagates(MailerLiteIndexBoundary boundary, bool callerCanceled)
     {
         using var request = new CancellationTokenSource();
         if (callerCanceled) await request.CancelAsync();
         var timeout = new TaskCanceledException("MailerLite read timed out", null, request.Token);
         _mlService.GetAccountSummaryAsync(request.Token).Returns(new MailerLiteAccountSummary(1, 0, 0, 0, 0));
         _mlService.ListGroupsAsync(request.Token).Returns(Array.Empty<MailerLiteGroup>());
-        if (string.Equals(boundary, "summary", StringComparison.Ordinal))
+        if (boundary is MailerLiteIndexBoundary.Summary)
             _mlService.GetAccountSummaryAsync(request.Token).ThrowsAsync(timeout);
-        else if (string.Equals(boundary, "groups", StringComparison.Ordinal))
+        else if (boundary is MailerLiteIndexBoundary.Groups)
             _mlService.ListGroupsAsync(request.Token).ThrowsAsync(timeout);
         else
             _importService.ComputeDriftAsync(request.Token).ThrowsAsync(timeout);
@@ -513,3 +513,5 @@ public class MailerLiteAdminControllerTests
             profile: null);
     }
 }
+
+public enum MailerLiteIndexBoundary { Summary, Groups, Drift }

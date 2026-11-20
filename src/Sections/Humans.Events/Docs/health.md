@@ -96,7 +96,7 @@ Behavioural facts stated so a violation is recognisable, each with the line that
 - **No camp-scoped moderation.** Moderation authority is global (EventsAdmin/Admin); barrio leads
   submit, they do not decide.
 - **No cache for the moderation queue.** It needs a live pending count the approved-only cache
-  cannot answer, so `GetDashboardAsync` stays direct-DB.
+  cannot answer, so `GetAllEventsForDashboardAsync` stays direct-DB.
 - **No CSV injection escaping on the bulk template.** It is a round-trip data file; escaping would
   come back as data.
 

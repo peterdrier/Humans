@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Humans.Events.Services.Dtos;
-using Humans.Events.Models;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces.Caching;
@@ -382,9 +381,9 @@ internal sealed class CachingEventService(
             return outcome;
         }, ct);
 
-    public Task<EventsDashboardViewModel> GetDashboardAsync(CancellationToken ct = default) =>
+    public Task<IReadOnlyList<EventInfo>> GetAllEventsForDashboardAsync(CancellationToken ct = default) =>
         // Stays on the database: the approved-only cache cannot answer pending/rejected counts.
-        WithInnerAsync(inner => inner.GetDashboardAsync(ct));
+        WithInnerAsync(inner => inner.GetAllEventsForDashboardAsync(ct));
 
     public Task<byte[]> GetApprovedEventsForExportAsync(Guid actorUserId, CancellationToken ct = default) =>
         // Every CSV disclosure must audit, including repeated downloads of unchanged data.
