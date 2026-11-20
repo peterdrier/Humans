@@ -65,14 +65,18 @@ internal interface IGoogleAdminService : IApplicationService
 
 internal sealed record WorkspaceAccountListResult(
     IReadOnlyList<WorkspaceAccountInfo> Accounts,
-    int TotalAccounts,
-    int ActiveAccounts,
-    int SuspendedAccounts,
-    int LinkedAccounts,
-    int UnlinkedAccounts,
-    int NotPrimaryCount,
-    int MissingTwoFactorCount,
-    string? ErrorMessage = null);
+    string? ErrorMessage = null)
+{
+    public int TotalAccounts => Accounts.Count;
+    public int ActiveAccounts => Accounts.Count(account => !account.IsSuspended);
+    public int SuspendedAccounts => Accounts.Count(account => account.IsSuspended);
+    public int LinkedAccounts => Accounts.Count(account => account.MatchedUserId.HasValue);
+    public int UnlinkedAccounts => TotalAccounts - LinkedAccounts;
+    public int NotPrimaryCount => Accounts.Count(account => account.MatchedUserId.HasValue && !account.IsUsedAsPrimary);
+
+    /// <summary>Suspended accounts cannot sign in, so their missing 2FA is excluded.</summary>
+    public int MissingTwoFactorCount => Accounts.Count(account => !account.IsSuspended && !account.IsEnrolledIn2Sv);
+}
 
 internal sealed record WorkspaceAccountInfo(
     string PrimaryEmail,

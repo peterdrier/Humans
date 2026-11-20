@@ -141,8 +141,10 @@ public class GoogleAdminServiceTests
         args[3].Should().BeSameAs(callerAborted ? null : failure);
     }
 
-    [HumansFact]
-    public async Task GetWorkspaceAccountListAsync_ReturnsAccountsWithMatchedUsers()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task GetWorkspaceAccountListAsync_ReturnsAccountsWithMatchedUsers(bool isPrimary)
     {
         var userId = Guid.NewGuid();
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
@@ -160,7 +162,7 @@ public class GoogleAdminServiceTests
                 new UserEmailMatch(
                     "alice@nobodies.team",
                     userId,
-                    IsPrimary: true,
+                    IsPrimary: isPrimary,
                     IsVerified: true,
                     UpdatedAt: SystemClock.Instance.GetCurrentInstant())
             ]);
@@ -185,7 +187,8 @@ public class GoogleAdminServiceTests
         var alice = result.Accounts.Single(a =>
             string.Equals(a.PrimaryEmail, "alice@nobodies.team", StringComparison.OrdinalIgnoreCase));
         alice.MatchedUserId.Should().Be(userId);
-        alice.IsUsedAsPrimary.Should().BeTrue();
+        alice.IsUsedAsPrimary.Should().Be(isPrimary);
+        result.NotPrimaryCount.Should().Be(isPrimary ? 0 : 1);
         alice.RecoveryEmail.Should().Be("alice.personal@example.com");
 
         var bob = result.Accounts.Single(a =>
