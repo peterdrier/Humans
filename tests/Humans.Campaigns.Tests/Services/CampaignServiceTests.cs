@@ -113,7 +113,8 @@ public sealed class CampaignServiceTests
     [Xunit.InlineData("Wave")]
     [Xunit.InlineData("Resend")]
     [Xunit.InlineData("ResendGrant")]
-    public async Task MutationPreflightReads_StopAbandonedRequestsBeforeWrites(string operation)
+    [Xunit.InlineData("EditRefusal")]
+    public async Task MutationReads_StopAbandonedRequestsBeforeWrites(string operation)
     {
         using var request = new CancellationTokenSource();
         var users = Substitute.For<IUserService>();
@@ -127,13 +128,18 @@ public sealed class CampaignServiceTests
         }
         users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (!string.Equals(operation, "ResendGrant", StringComparison.Ordinal)) Read(call.Arg<CancellationToken>());
+            if (operation is not ("ResendGrant" or "EditRefusal")) Read(call.Arg<CancellationToken>());
             return SeedUser(_actorId);
         });
         repository.GetCampaignIdForGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(call.Arg<CancellationToken>());
             return (Guid?)Guid.NewGuid();
+        });
+        repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(call.Arg<CancellationToken>());
+            return (Campaign?)null;
         });
         var service = new CampaignServiceImpl(repository, Substitute.For<ITeamService>(), users,
             _notifications, _emailService, _emailMessages, _ticketDiscountCodes, Clock, _audit,
@@ -156,6 +162,7 @@ public sealed class CampaignServiceTests
             {
                 "Create" => await controller.Create("Title", null, "Subject", "Body", null),
                 "Edit" => await controller.Edit(id, "Title", null, "Subject", "Body", null),
+                "EditRefusal" => await controller.Edit(id, string.Empty, null, "Subject", "Body", null),
                 "Import" => await controller.ImportCodes(id, null),
                 "Generate" => await controller.GenerateCodes(id, 1, "percentage", 10),
                 "Activate" => await controller.Activate(id),
@@ -167,7 +174,7 @@ public sealed class CampaignServiceTests
 
         await run.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
-        if (string.Equals(operation, "ResendGrant", StringComparison.Ordinal))
+        if (operation is "ResendGrant" or "EditRefusal")
             repository.ReceivedCalls().Should().ContainSingle();
         else
             repository.ReceivedCalls().Should().BeEmpty();
