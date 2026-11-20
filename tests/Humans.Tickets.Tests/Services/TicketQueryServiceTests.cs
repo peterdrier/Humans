@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Humans.Tickets.Services.Stores;
 using Humans.Governance.Contracts;
 using Humans.Tickets.Models;
 using Humans.Tickets.Controllers;
@@ -79,6 +81,80 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         _campaignService.GetCodeTrackingAsync(Arg.Any<CancellationToken>())
             .Returns(new CampaignCodeTrackingData([], []));
+    }
+
+    [HumansTheory]
+    [InlineData("recovery", true)]
+    [InlineData("totals", true)]
+    [InlineData("payments", true)]
+    [InlineData("dates", true)]
+    [InlineData("recent", true)]
+    [InlineData("budget", true)]
+    [InlineData("vendor", true)]
+    [InlineData("vendor", false)]
+    public async Task Dashboard_preserves_request_cancellation_through_all_reads(string boundary, bool requested)
+    {
+        using var request = new CancellationTokenSource();
+        var repository = Substitute.For<ITicketRepository>();
+        var seen = new List<CancellationToken>();
+        async Task<T> ReadAsync<T>(string stage, CancellationToken ct, T value)
+        {
+            seen.Add(ct);
+            if (string.Equals(stage, boundary, StringComparison.Ordinal))
+            {
+                if (!requested) throw new TaskCanceledException("Vendor timeout");
+                await request.CancelAsync();
+                ct.ThrowIfCancellationRequested();
+            }
+            return value;
+        }
+        repository.ResetStaleRunningStateAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<TicketSyncState?>("recovery", call.Arg<CancellationToken>(), null));
+        repository.GetDashboardTotalsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync("totals", call.Arg<CancellationToken>(),
+                new TicketDashboardTotals { TicketsSold = 1, GrossRevenue = 10m }));
+        repository.GetPaidOrderPaymentMethodsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<IReadOnlyList<PaidOrderPaymentMethodRow>>("payments", call.Arg<CancellationToken>(), []));
+        repository.GetOrderDateAttendeeCountsAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<IReadOnlyList<OrderDateAndCount>>("dates", call.Arg<CancellationToken>(), []));
+        repository.GetRecentOrdersAsync(10, Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<IReadOnlyList<RecentOrder>>("recent", call.Arg<CancellationToken>(), []));
+        _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync<BudgetYearDetail?>("budget", call.Arg<CancellationToken>(), null));
+        var vendor = Substitute.For<ITicketVendorService>();
+        vendor.GetEventSummaryAsync("event", Arg.Any<CancellationToken>())
+            .Returns(call => ReadAsync("vendor", call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
+        var service = new TicketQueryService(repository, _transferRepo, _budgetService, _campaignService,
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
+            _shiftManagementService, _auditLog, Clock, _participations);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ITicketManagement>(CachingTicketQueryService.InnerServiceKey, (_, _) => service);
+        await using var provider = services.BuildServiceProvider();
+        var decorator = new CachingTicketQueryService(provider.GetRequiredService<IServiceScopeFactory>(),
+            Clock, NullLogger<CachingTicketQueryService>.Instance);
+        var logger = new Humans.Testing.CapturingLogger<TicketDashboardPageBuilder>();
+        var dashboard = new TicketDashboardPageBuilder(vendor,
+            Options.Create(new TicketVendorSettings { EventId = "event", ApiKey = "key" }), decorator, logger);
+        var controller = new TicketController(decorator, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, _userService, NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } }
+        };
+        var load = () => controller.Index();
+
+        if (requested)
+        {
+            (await load.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
+            logger.Entries.Should().BeEmpty();
+        }
+        else
+        {
+            var result = (await load()).Should().BeOfType<ViewResult>().Subject;
+            result.Model.Should().BeOfType<TicketDashboardViewModel>().Which.TotalCapacity.Should().Be(0);
+            logger.Entries.Should().ContainSingle();
+        }
+        seen.Should().OnlyContain(ct => ct == request.Token);
     }
 
     [HumansTheory]

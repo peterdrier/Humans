@@ -29,7 +29,7 @@ internal sealed class TicketController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        return View(await dashboardPageBuilder.BuildAsync(FinanceRoles.IsFinanceAdmin(User)));
+        return View(await dashboardPageBuilder.BuildAsync(FinanceRoles.IsFinanceAdmin(User), HttpContext.RequestAborted));
     }
 
     [HttpGet("Orders")]
