@@ -69,7 +69,7 @@ public sealed class StoreControllerRecordPaymentTests
         var service = _service = new Service(
             _repo, _audit, Substitute.For<IAuditViewerService>(), camps, teams, clock, settings,
             Substitute.For<IStripeService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
-            NullLogger<Service>.Instance);
+            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), NullLogger<Service>.Instance);
 
         var users = identityUsers ?? Substitute.For<IUserService>();
         if (identityUsers is null)
@@ -154,7 +154,7 @@ public sealed class StoreControllerRecordPaymentTests
         {
             "pay" => controller.Pay(_order.Id, 10m, request.Token),
             "invoice" or "invoice-order" => controller.IssueInvoice(_order.Id),
-            "record-payment" => controller.RecordPayment(_order.Id, PaymentMethod.DepositReturn, 10m, null, null, null, request.Token),
+            "record-payment" => controller.RecordPayment(_order.Id, PaymentMethod.DepositReturn, 10m, null, null, null, null, request.Token),
             "delete-payment" => controller.DeletePayment(_order.Id, Guid.NewGuid(), request.Token),
             "create" => controller.Create(_order.CampSeasonId!.Value, request.Token),
             "create-team" => controller.CreateTeamOrder(Guid.NewGuid(), request.Token),
@@ -224,7 +224,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
-            _order.Id, Enum.Parse<PaymentMethod>(methodName), 10m, "re_123", null, new LocalDate(2026, 6, 24),
+            _order.Id, Enum.Parse<PaymentMethod>(methodName), 10m, "re_123", null, new LocalDate(2026, 6, 24), null,
             TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
@@ -252,7 +252,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(role);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.Refund, 10m, "re_123", null, null, TestContext.Current.CancellationToken);
+            _order.Id, PaymentMethod.Refund, 10m, "re_123", null, null, null, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).AddPaymentAsync(
@@ -279,7 +279,7 @@ public sealed class StoreControllerRecordPaymentTests
         var controller = BuildController(role);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.BankTransfer, 7216.71m, " 6a3b8e7cbd5b6f5ec40cbb87 ", null, new LocalDate(2026, 6, 24),
+            _order.Id, PaymentMethod.BankTransfer, 7216.71m, " 6a3b8e7cbd5b6f5ec40cbb87 ", null, new LocalDate(2026, 6, 24), null,
             TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
@@ -300,18 +300,19 @@ public sealed class StoreControllerRecordPaymentTests
     [HumansFact]
     public async Task StoreAdmin_can_still_record_a_deposit_return()
     {
+        var productId = Guid.NewGuid();
         _order.Lines =
         [
             new OrderLine
             {
-                Id = Guid.NewGuid(), OrderId = _order.Id, ProductId = Guid.NewGuid(), Qty = 1,
+                Id = Guid.NewGuid(), OrderId = _order.Id, ProductId = productId, Qty = 1,
                 UnitPriceSnapshot = 5m, VatRateSnapshot = 21m, DepositAmountSnapshot = 30m,
             },
         ];
         var controller = BuildController(StoreRoles.StoreAdmin);
 
         var result = await controller.RecordPayment(
-            _order.Id, PaymentMethod.DepositReturn, 30m, null, null, null, TestContext.Current.CancellationToken);
+            _order.Id, PaymentMethod.DepositReturn, 30m, null, null, null, productId, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>();
         await _repo.Received(1).AddPaymentAsync(
@@ -414,7 +415,7 @@ public sealed class StoreControllerRecordPaymentTests
         {
             _ = operation switch
             {
-                "record" => await controller.RecordPayment(_order.Id, PaymentMethod.Refund, 10m, "refund-ref", null, null,
+                "record" => await controller.RecordPayment(_order.Id, PaymentMethod.Refund, 10m, "refund-ref", null, null, null,
                     TestContext.Current.CancellationToken),
                 "payment-delete" => await controller.DeletePayment(_order.Id, payment.Id, TestContext.Current.CancellationToken),
                 _ => await controller.Delete(_order.Id, TestContext.Current.CancellationToken)

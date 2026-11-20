@@ -106,7 +106,6 @@
   <data name="Store_ColVatId" xml:space="preserve"><value>Btw-nummer / fiscaal nummer</value></data>
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Teruggegeven borg</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Terug te betalen bedrag</value></data>
-  <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Een factuur kan alleen worden aangemaakt als het saldo van de bestelling nul is.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Actie</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>Het besteljaar kon niet worden bepaald. Neem contact op met het winkelteam voordat je producten toevoegt.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Dit product hoort bij een ander jaar dan de bestelling.</value></data>
@@ -141,4 +140,8 @@
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Terugbetaald</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Ordertotaal (regels, btw en statiegeld)</value></data>
   <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Totaal verwerkte betalingen</value></data>
+  <data name="Store_IssueInvoiceDeposits" xml:space="preserve"><value>Borg berekend {0}, terugbetaald {1}, ingehouden {2}: het ingehouden deel wordt gefactureerd als opbrengst met {3}% btw.</value></data>
+  <data name="Store_DownloadInvoice" xml:space="preserve"><value>Factuur {0} downloaden</value></data>
+  <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Borg voor</value></data>
+  <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Afschrijving</value></data>
 </root>

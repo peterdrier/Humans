@@ -248,6 +248,7 @@ internal sealed class HoldedMirrorSync(
                         TreasuryAccountId = treasuryAccountId,
                         Id = m.Id,
                         Date = m.Date,
+                        BookedAt = m.BookedAt,
                         Amount = m.Amount,
                         Description = m.Description,
                         Status = m.Status,
