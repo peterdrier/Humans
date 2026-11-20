@@ -62,7 +62,7 @@ internal sealed class GoogleDrivePermissionsClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error listing permissions for {FileId}: Code={Code} Message={Message}",
                 fileId, ex.Error?.Code, ex.Error?.Message);
             return new DrivePermissionListResult(
@@ -228,7 +228,7 @@ internal sealed class GoogleDrivePermissionsClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error setting inheritedPermissionsDisabled={Disabled} on {FileId}: Code={Code} Message={Message}",
                 disabled, fileId, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
@@ -283,7 +283,7 @@ internal sealed class GoogleDrivePermissionsClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error creating folder '{Name}' under {ParentFolderId}: Code={Code} Message={Message}",
                 name, parentFolderId, ex.Error?.Code, ex.Error?.Message);
             return new DriveFolderCreateResult(

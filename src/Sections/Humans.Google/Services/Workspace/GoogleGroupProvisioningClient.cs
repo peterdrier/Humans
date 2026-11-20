@@ -88,7 +88,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error creating group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupCreateResult(
@@ -97,7 +97,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error creating group {Email}", groupEmail);
+            logger.LogWarning("Transport error creating group {Email}: {Reason}", groupEmail, ex.Message);
             return new GroupCreateResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -127,7 +127,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error looking up group {Email}", groupEmail);
+            logger.LogWarning("Transport error looking up group {Email}: {Reason}", groupEmail, ex.Message);
             return new GroupLookupIdResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -147,7 +147,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error reading settings for group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupSettingsGetResult(
@@ -156,7 +156,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error reading settings for group {Email}", groupEmail);
+            logger.LogWarning("Transport error reading settings for group {Email}: {Reason}", groupEmail, ex.Message);
             return new GroupSettingsGetResult(Settings: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -177,14 +177,14 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error updating settings for group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error updating settings for group {Email}", groupEmail);
+            logger.LogWarning("Transport error updating settings for group {Email}: {Reason}", groupEmail, ex.Message);
             return new GoogleClientError(0, ex.Message);
         }
     }

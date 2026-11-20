@@ -6,7 +6,6 @@ using Google.Apis.Http;
 using Google.Apis.Services;
 using Humans.Base.Configuration;
 using Humans.Google.Services.Workspace;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -19,28 +18,38 @@ public sealed class GoogleGroupClientTransportErrorTests
     public async Task LookupGroupIdAsync_TransportError_ReturnsStructuredError()
     {
         using var cloudIdentity = new CloudIdentityService(ResettingInitializer());
+        var logger = new Humans.Testing.CapturingLogger<GoogleGroupProvisioningClient>();
         var client = new GoogleGroupProvisioningClient(
-            Options.Create(new GoogleWorkspaceSettings()), NullLogger<GoogleGroupProvisioningClient>.Instance);
+            Options.Create(new GoogleWorkspaceSettings()), logger);
         Inject(client, "_cloudIdentityService", cloudIdentity);
 
         var result = await client.LookupGroupIdAsync("team@nobodies.team", Xunit.TestContext.Current.CancellationToken);
 
         result.GroupNumericId.Should().BeNull();
         result.Error!.StatusCode.Should().Be(0);
+        var warning = logger.Entries.Should().ContainSingle().Subject;
+        warning.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+        warning.Exception.Should().BeNull();
+        warning.Message.Should().Contain("An error occurred while sending the request.");
     }
 
     [HumansFact]
     public async Task ListMembershipsAsync_TransportError_ReturnsStructuredError()
     {
         using var directory = new DirectoryService(ResettingInitializer());
+        var logger = new Humans.Testing.CapturingLogger<GoogleGroupMembershipClient>();
         var client = new GoogleGroupMembershipClient(
-            Options.Create(new GoogleWorkspaceSettings()), NullLogger<GoogleGroupMembershipClient>.Instance);
+            Options.Create(new GoogleWorkspaceSettings()), logger);
         Inject(client, "_directoryService", directory);
 
         var result = await client.ListMembershipsAsync("group-1", Xunit.TestContext.Current.CancellationToken);
 
         result.Memberships.Should().BeNull();
         result.Error!.StatusCode.Should().Be(0);
+        var warning = logger.Entries.Should().ContainSingle().Subject;
+        warning.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+        warning.Exception.Should().BeNull();
+        warning.Message.Should().Contain("An error occurred while sending the request.");
     }
 
     private static BaseClientService.Initializer ResettingInitializer()

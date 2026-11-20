@@ -60,7 +60,7 @@ internal sealed class GoogleDirectoryClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error listing domain groups: Code={Code} Message={Message}",
                 ex.Error?.Code, ex.Error?.Message);
             return new DirectoryGroupListResult(

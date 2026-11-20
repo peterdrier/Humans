@@ -52,7 +52,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex, "Google API error looking up Drive item {ItemId}: Code={Code} Message={Message}",
+            logger.LogWarning("Google API error looking up Drive item {ItemId}: Code={Code} Message={Message}",
                 itemId, ex.Error?.Code, ex.Error?.Message);
             return new DriveLookupResult(
                 Item: null,
@@ -60,7 +60,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error looking up Drive item {ItemId}", itemId);
+            logger.LogWarning("Transport error looking up Drive item {ItemId}: {Reason}", itemId, ex.Message);
             return new DriveLookupResult(Item: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -99,7 +99,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex, "Google API error looking up Group {GroupEmail}: Code={Code} Message={Message}",
+            logger.LogWarning("Google API error looking up Group {GroupEmail}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupLookupResult(
                 Group: null,
@@ -107,7 +107,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error looking up Group {GroupEmail}", groupEmail);
+            logger.LogWarning("Transport error looking up Group {GroupEmail}: {Reason}", groupEmail, ex.Message);
             return new GroupLookupResult(Group: null, Error: new GoogleClientError(0, ex.Message));
         }
     }

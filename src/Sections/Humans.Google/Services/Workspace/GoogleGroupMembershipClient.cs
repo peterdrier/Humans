@@ -59,7 +59,7 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error listing memberships for group {GroupId}: Code={Code} Message={Message}",
                 groupGoogleId, ex.Error?.Code, ex.Error?.Message);
             return new GroupMembershipListResult(
@@ -68,7 +68,7 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error listing memberships for group {GroupId}", groupGoogleId);
+            logger.LogWarning("Transport error listing memberships for group {GroupId}: {Reason}", groupGoogleId, ex.Message);
             return new GroupMembershipListResult(Memberships: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -105,7 +105,7 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error adding {Email} to group {GroupId}: Code={Code} Message={Message}",
                 memberEmail, groupGoogleId, ex.Error?.Code, ex.Error?.Message);
             return new GroupMembershipMutationResult(
@@ -114,7 +114,7 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error adding {Email} to group {GroupId}", memberEmail, groupGoogleId);
+            logger.LogWarning("Transport error adding {Email} to group {GroupId}: {Reason}", memberEmail, groupGoogleId, ex.Message);
             return new GroupMembershipMutationResult(
                 GroupMembershipMutationOutcome.Failed, Error: new GoogleClientError(0, ex.Message));
         }
@@ -147,14 +147,14 @@ internal sealed class GoogleGroupMembershipClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error deleting membership {Name}: Code={Code} Message={Message}",
                 membershipResourceName, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error deleting membership {Name}", membershipResourceName);
+            logger.LogWarning("Transport error deleting membership {Name}: {Reason}", membershipResourceName, ex.Message);
             return new GoogleClientError(0, ex.Message);
         }
     }
