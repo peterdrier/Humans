@@ -100,6 +100,7 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   on every page; only `false` completes the dataset. Missing, null or mistyped metadata fails instead of
   returning a prefix. A body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
   cap also throws, so a short fetch can never delete rows.
+- The primary balance requires a nonblank currency and explicit current, available and pending-debit minor-unit values. Explicit zero and foreign currencies remain valid mirror data; an incomplete balance fails before mirror replacement.
 - Account, category, cardholder and receipt items require a nonblank string id. Malformed identities fail their read as `PleoPermanentException` before returning typed rows. Required mirror reads retain the previous snapshot; categories retain their optional-failure policy.
 - Entries without an id or family are skipped and counted on the sync row. A provided `transactionValue` or `totalBillValue` must contain both a nonblank currency and a minor-unit value; incomplete money objects fail the sweep before mirror replacement and record a sync error. Optional money objects may be absent, and explicit zero amounts remain valid. List/detail views omit the original-currency figure when no currency was supplied.
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and

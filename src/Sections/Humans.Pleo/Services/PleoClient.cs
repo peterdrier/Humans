@@ -82,8 +82,11 @@ internal sealed class PleoClient : IPleoClient
                 throw new PleoPermanentException($"Pleo balance: no primary account among {accounts.Count}.");
             var balance = primary.GetProperty("balance");
             var current = balance.GetProperty("current");
+            var currency = current.GetProperty("currency").GetString();
+            if (string.IsNullOrWhiteSpace(currency))
+                throw new PleoPermanentException("Pleo balance: primary account currency is missing.");
             return new PleoBalanceWire(
-                current.GetProperty("currency").GetString() ?? "",
+                currency,
                 current.GetProperty("value").GetInt64(),
                 balance.GetProperty("available").GetProperty("value").GetInt64(),
                 balance.GetProperty("pendingDebits").GetProperty("value").GetInt64());
