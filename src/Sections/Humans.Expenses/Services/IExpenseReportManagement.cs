@@ -13,9 +13,6 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
-        Guid coordinatorUserId, CancellationToken ct = default);
-
     /// <summary>All statuses.</summary>
     Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default);
 
@@ -123,6 +120,30 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
     Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default);
 
+    Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        string origin, string destination, decimal km,
+        CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> AddPerDiemLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        PerDiemKind kind, int days, string? note,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// What a report books to from the account picked: a budget-category account also carries its
+    /// category and year. <paramref name="pinnedYearId"/> keeps a submitted report in its own year.
+    /// </summary>
+    Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
+        int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct);
+}
+
+/// <summary>Coordinator and finance decisions on submitted reports, and the Holded push re-queue.</summary>
+internal interface IExpenseReview : IApplicationService
+{
+    Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
+        Guid coordinatorUserId, CancellationToken ct = default);
+
     /// <summary>A null cap uses the grant ceiling on pre-approved reports and leaves other reports uncapped. The caller authorizes the reviewer.</summary>
     /// <remarks><paramref name="auditReviewerLabel"/> records review context in audit text only.</remarks>
     Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
@@ -167,16 +188,6 @@ internal interface IExpenseReportManagement : IExpenseReportService, IApplicatio
 
     Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
         Guid reportId, Guid actorUserId, string reason,
-        CancellationToken ct = default);
-
-    Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
-        Guid reportId, Guid submitterUserId,
-        string origin, string destination, decimal km,
-        CancellationToken ct = default);
-
-    Task<ExpenseMutationResult> AddPerDiemLineWithResultAsync(
-        Guid reportId, Guid submitterUserId,
-        PerDiemKind kind, int days, string? note,
         CancellationToken ct = default);
 
     /// <summary>

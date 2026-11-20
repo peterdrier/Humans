@@ -36,6 +36,7 @@ public sealed class Section :
         services.AddScoped<ExpenseReportService>();
         services.AddScoped<IExpenseReportManagement>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpenseReportService>());
+        services.AddScoped<IExpenseReview, ExpenseReviewService>();
         services.AddScoped<IExpenseReportBackgroundProcessor, ExpenseReportBackgroundProcessor>();
         // Takes nothing from Finance, so Finance can depend on it while ExpenseReportService depends on Finance.
         services.AddScoped<IExpenseHoldedBookingService, ExpenseHoldedBookingService>();
