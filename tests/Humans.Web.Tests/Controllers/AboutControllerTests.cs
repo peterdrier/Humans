@@ -4,6 +4,9 @@ using Humans.Users.Contracts;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -14,6 +17,36 @@ namespace Humans.Web.Tests.Controllers;
 
 public class AboutControllerTests
 {
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Index_UnavailableStatisticsKeepThePageUsable(bool failLookup, bool accessDenied)
+    {
+        Exception failure = accessDenied
+            ? new UnauthorizedAccessException("Statistics file cannot be read")
+            : new IOException("Statistics file unavailable");
+        var file = Substitute.For<IFileInfo>();
+        file.Exists.Returns(true);
+        file.CreateReadStream().Returns(_ => throw failure);
+        var files = Substitute.For<IFileProvider>();
+        files.GetFileInfo("data/dev-stats.json").Returns(_ => failLookup ? throw failure : file);
+        var environment = Substitute.For<IWebHostEnvironment>();
+        environment.WebRootFileProvider.Returns(files);
+        var logger = Substitute.For<ILogger<AboutController>>();
+        var controller = new AboutController(Substitute.For<IUserService>(), Substitute.For<IRoleAssignmentService>(),
+            new RoleCatalog(Array.Empty<ISectionRoles>()), SystemClock.Instance, logger);
+
+        var view = Assert.IsType<ViewResult>(controller.Index(environment));
+
+        Assert.Null(view.Model);
+        var log = Assert.Single(logger.ReceivedCalls(),
+            call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
+        Assert.Equal(LogLevel.Error, log[0]);
+        Assert.Same(failure, log[3]);
+    }
+
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]

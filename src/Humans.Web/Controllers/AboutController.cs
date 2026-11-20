@@ -25,25 +25,25 @@ public class AboutController(
     {
         // Committed snapshot, not a live API: demo must work on playa connectivity.
         DevStatsViewModel? stats = null;
-        var file = env.WebRootFileProvider.GetFileInfo("data/dev-stats.json");
-        if (file.Exists)
+        try
         {
-            try
+            var file = env.WebRootFileProvider.GetFileInfo("data/dev-stats.json");
+            if (file.Exists)
             {
                 using var stream = file.CreateReadStream();
                 stats = System.Text.Json.JsonSerializer.Deserialize<DevStatsViewModel>(
                     stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
-            catch (System.Text.Json.JsonException ex)
-            {
-                logger.LogError(ex, "Failed to parse dev-stats.json");
-                stats = null;
-            }
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(ex, "Failed to read dev-stats.json");
+            stats = null;
+        }
 
-            if (stats?.Contributors is null)
-            {
-                stats = null;
-            }
+        if (stats?.Contributors is null)
+        {
+            stats = null;
         }
         return View(stats);
     }
