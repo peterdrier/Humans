@@ -29,20 +29,25 @@ internal sealed class DuplicateAccountService(
         // Tombstones must stay absent: a merged account keeps its legacy User.Email column, so it
         // would re-collide with its own survivor and the pair would reappear forever.
         var users = allInfos
-            .Where(u => !string.IsNullOrEmpty(u.Email))
+            .Where(u => !string.IsNullOrEmpty(u.IdentityEmailColumn) || u.UserEmails.Count > 0)
             .ToList();
 
         var emailToUsers = new Dictionary<string, List<(Guid UserId, string Source)>>(StringComparer.Ordinal);
 
         foreach (var u in users)
         {
-            var normalized = EmailNormalization.NormalizeForComparison(u.Email!);
-            if (!emailToUsers.TryGetValue(normalized, out var list))
+            // The raw column, not the resolved Email: once a user has another verified row, the resolved
+            // value hides a legacy address that has since been verified on a second account.
+            if (!string.IsNullOrEmpty(u.IdentityEmailColumn))
             {
-                list = [];
-                emailToUsers[normalized] = list;
+                var normalized = EmailNormalization.NormalizeForComparison(u.IdentityEmailColumn);
+                if (!emailToUsers.TryGetValue(normalized, out var list))
+                {
+                    list = [];
+                    emailToUsers[normalized] = list;
+                }
+                list.Add((u.Id, $"User.Email ({u.IdentityEmailColumn})"));
             }
-            list.Add((u.Id, $"User.Email ({u.Email})"));
 
             foreach (var ue in u.UserEmails)
             {
