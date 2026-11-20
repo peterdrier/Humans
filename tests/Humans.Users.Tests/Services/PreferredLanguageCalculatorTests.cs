@@ -71,7 +71,7 @@ public class PreferredLanguageCalculatorTests
         },
         userEmails: [],
         externalLogins: [],
-        profile: new Profile { UserId = id, BurnerName = "U", FirstName = "F", LastName = "L" },
+        profile: new Profile { UserId = id },
         contactFields: [],
         profileLanguages: [],
         volunteerHistory: []);

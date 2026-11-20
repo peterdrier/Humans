@@ -280,7 +280,6 @@ public class ProfileViewControllerPopoverTests
         {
             Id = Guid.NewGuid(),
             UserId = id,
-            BurnerName = displayName,
         };
         var emails = new List<UserEmail>
         {

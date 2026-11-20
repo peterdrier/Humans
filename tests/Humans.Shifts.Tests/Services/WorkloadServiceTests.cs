@@ -513,7 +513,6 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         return shift;
     }
 
-    // Workload reads display name from Profile.BurnerName (not User.DisplayName).
     // Harness SeedUser doesn't create a Profile, so this test class layers one on.
     private async Task<User> SeedUserWithProfileAsync(string burnerName)
     {
@@ -523,7 +522,6 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            BurnerName = burnerName,
             CreatedAt = now,
             UpdatedAt = now,
         });

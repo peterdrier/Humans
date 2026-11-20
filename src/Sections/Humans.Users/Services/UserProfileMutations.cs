@@ -50,8 +50,8 @@ internal sealed class UserProfileMutations(
             return false;
         }
 
-        // OAuth/import creation seeds User.BurnerName before any Profile exists; inherit it, or
-        // the Profile->User mirror below would wipe it. User legal names can't be set yet.
+        // OAuth/import creation seeds User.BurnerName before any Profile exists; keep it when the
+        // caller gives none.
         var user = await repo.GetByIdAsync(userId, ct);
         var resolvedBurnerName = burnerName ?? user?.BurnerName;
 
@@ -62,14 +62,15 @@ internal sealed class UserProfileMutations(
             UserId = userId,
             CreatedAt = now,
             UpdatedAt = now,
-            BurnerName = (resolvedBurnerName ?? string.Empty).Trim(),
-            FirstName = (firstName ?? string.Empty).Trim(),
-            LastName = (lastName ?? string.Empty).Trim(),
         };
+        var names = new UserNames(
+            (resolvedBurnerName ?? string.Empty).Trim(),
+            (firstName ?? string.Empty).Trim(),
+            (lastName ?? string.Empty).Trim());
 
         // Seeded names (magic-link signup) promote straight to Active; import/OAuth stubs carry no
         // legal names and stay Bare. The repository derives User.State.
-        await repo.AddAsync(profile, ct);
+        await repo.AddAsync(profile, ct, names);
         if (actorUserId.HasValue)
             await audit.LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
                 "Created missing profile.", actorUserId.Value);
@@ -103,9 +104,6 @@ internal sealed class UserProfileMutations(
         var previousPictureKey = ProfilePictureKeys.Resolve(
             profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
 
-        profile.BurnerName = command.BurnerName;
-        profile.FirstName = command.FirstName;
-        profile.LastName = command.LastName;
         profile.City = command.City;
         profile.CountryCode = command.CountryCode;
         profile.Latitude = command.Latitude;
@@ -177,7 +175,8 @@ internal sealed class UserProfileMutations(
             profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
         try
         {
-            await repo.UpdateAsync(profile, ct, volunteerHistory);
+            await repo.UpdateAsync(profile, ct, volunteerHistory,
+                new UserNames(command.BurnerName, command.FirstName, command.LastName));
             return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
         }
         finally

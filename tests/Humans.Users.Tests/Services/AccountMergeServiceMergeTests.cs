@@ -146,8 +146,8 @@ public class AccountMergeServiceMergeTests
         var ct = TestContext.Current.CancellationToken;
         var source = new User { Id = Guid.NewGuid(), BurnerName = "Source" };
         var target = new User { Id = Guid.NewGuid(), BurnerName = "Target" };
-        var sourceProfile = new Profile { Id = Guid.NewGuid(), UserId = source.Id, FirstName = "Source", LastName = "Human" };
-        var targetProfile = new Profile { Id = Guid.NewGuid(), UserId = target.Id, FirstName = "Target", LastName = "Human" };
+        var sourceProfile = new Profile { Id = Guid.NewGuid(), UserId = source.Id };
+        var targetProfile = new Profile { Id = Guid.NewGuid(), UserId = target.Id };
         var field = new ContactField
         {
             Id = Guid.NewGuid(),

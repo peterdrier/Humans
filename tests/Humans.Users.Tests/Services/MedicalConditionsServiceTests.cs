@@ -156,7 +156,7 @@ public class MedicalConditionsServiceTests
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(UserInfoFixtures.FromUser(new User { Id = id, PreferredLanguage = "en" }));
         _repo.GetByUserIdReadOnlyAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new Profile { UserId = id, BurnerName = "B", MedicalConditions = medical });
+            .Returns(new Profile { UserId = id, MedicalConditions = medical });
         return id;
     }
 }

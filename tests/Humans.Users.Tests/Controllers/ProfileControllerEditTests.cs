@@ -270,7 +270,7 @@ public class ProfileControllerEditTests
             Visibility = ContactFieldVisibility.BoardOnly
         };
         var info = UserInfoFactory.Create(new User { Id = _userId, PreferredLanguage = "en" }, [], [],
-            new Profile { Id = _profileId, UserId = _userId, FirstName = "First", LastName = "Last" }, [legacy], [], []);
+            new Profile { Id = _profileId, UserId = _userId }, [legacy], [], []);
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(info));
         var model = MakeValidModel();
         model.ContactFields = [new() { Id = Guid.NewGuid(), Value = "untrusted@example.org" }];
@@ -415,7 +415,7 @@ public class ProfileControllerEditTests
     [InlineData(UserState.Active, true, true)]
     public async Task Edit_Get_SetupModeFollowsAccountStateAndPreview(UserState state, bool preview, bool initialSetup)
     {
-        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }) with { State = state };
+        var info = BuildUserInfo(new Profile { UserId = _userId }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
 
         var result = await _controller.Edit(preview);
@@ -435,7 +435,7 @@ public class ProfileControllerEditTests
     [InlineData(UserState.Bare, true, true)]
     public async Task Edit_Post_RedisplayRestoresTrustedPresentationAndSetupMode(UserState state, bool serviceRefusal, bool hasPicture)
     {
-        var info = BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner", ProfilePictureContentType = hasPicture ? "image/png" : null }) with { State = state };
+        var info = BuildUserInfo(new Profile { UserId = _userId, ProfilePictureContentType = hasPicture ? "image/png" : null }) with { State = state };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(info);
         if (serviceRefusal)
             _profileEditorService.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>())
@@ -520,7 +520,7 @@ public class ProfileControllerEditTests
     public async Task Medical_Get_ShowsOnlyTheSignedInMembersOwnConditions()
     {
         _userRepository.GetByUserIdReadOnlyAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { UserId = _userId, BurnerName = "Burner", MedicalConditions = "Epilepsy" });
+            .Returns(new Profile { UserId = _userId, MedicalConditions = "Epilepsy" });
 
         var result = await _controller.Medical(CancellationToken.None);
 
@@ -536,7 +536,7 @@ public class ProfileControllerEditTests
     public async Task Medical_Post_SavesTheTrimmedConditions_ForTheSignedInMemberOnly(string posted, string? saved)
     {
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }));
+            .Returns(BuildUserInfo(new Profile { UserId = _userId }));
 
         var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = posted });
 
@@ -548,7 +548,7 @@ public class ProfileControllerEditTests
     public async Task Medical_Post_InvalidModel_DoesNotSave_AndReRendersForTheSignedInMember()
     {
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(new Profile { UserId = _userId, BurnerName = "Burner" }));
+            .Returns(BuildUserInfo(new Profile { UserId = _userId }));
         _controller.ModelState.AddModelError(nameof(MedicalViewModel.MedicalConditions), "Validation_MaxLength");
 
         var result = await _controller.Medical(new MedicalViewModel { MedicalConditions = "x", UserId = Guid.NewGuid() });

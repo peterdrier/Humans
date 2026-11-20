@@ -102,6 +102,9 @@ public static class MergeFixtureExtensions
             // Identity's CreateAsync needs a unique Email/UserName; real addresses attach as UserEmail rows.
             Email = $"merge-{userId:N}@example.test",
             UserName = $"merge-{userId:N}@example.test",
+            BurnerName = displayNameTag,
+            FirstName = displayNameTag,
+            LastName = "Test",
             CreatedAt = now,
         };
 
@@ -117,9 +120,6 @@ public static class MergeFixtureExtensions
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = displayNameTag,
-            FirstName = displayNameTag,
-            LastName = "Test",
             CreatedAt = now,
             UpdatedAt = now,
         };
