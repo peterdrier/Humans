@@ -76,10 +76,12 @@ public class AccountController(
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        var result = await signIn.ExternalLoginSignInAsync(info);
-
-        // Already signed in means this callback links a Google account, not a sign-in.
+        // Already signed in means this callback links a Google account, not a sign-in —
+        // skip ExternalLoginSignInAsync so Identity cannot overwrite the session cookie with another account.
         var wasAuthenticated = IsAuthenticated();
+        var result = wasAuthenticated
+            ? Microsoft.AspNetCore.Identity.SignInResult.Failed
+            : await signIn.ExternalLoginSignInAsync(info);
 
         // Deliberately not passing HttpContext.RequestAborted: a client disconnect
         // mid-provisioning would abort past the rollback and strand a half-built
