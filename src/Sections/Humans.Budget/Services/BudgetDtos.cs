@@ -46,19 +46,6 @@ internal sealed record BudgetAuditLogSnapshot(
 
 internal sealed record EnsureTicketingGroupResult(bool Created, string Message);
 
-/// <summary>One completed ISO week of ticket sales.</summary>
-internal sealed record TicketingWeeklyActuals(
-    LocalDate Monday,
-    LocalDate Sunday,
-    string WeekLabel,
-    int TicketCount,
-    decimal Revenue,
-    decimal StripeFees,
-    decimal TicketTailorFees,
-    decimal StripeFeeTax,
-    decimal StripeFeesTaxUnknown,
-    decimal StripeFeesUntaxed);
-
 internal sealed record TicketingProjectionUpdateCommand(
     Guid BudgetGroupId,
     Guid BudgetYearId,

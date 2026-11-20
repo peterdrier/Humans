@@ -1,5 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
+using Humans.Budget.Data;
 using Humans.Tickets.Contracts;
 using NodaTime;
 
@@ -38,7 +39,7 @@ internal sealed class TicketingBudgetService(
 
             // Canonical English descriptions whatever the operator's UI language: BudgetRepository matches existing
             // actuals rows by description.
-            List<TicketingWeeklyActuals> weeklyActuals;
+            List<TicketingWeeklyActualsInput> weeklyActuals;
             using (new CultureScope("en"))
             {
                 weeklyActuals = orders
@@ -50,9 +51,8 @@ internal sealed class TicketingBudgetService(
                     {
                         var monday = g.Key;
                         var sunday = monday.PlusDays(6);
-                        return new TicketingWeeklyActuals(
+                        return new TicketingWeeklyActualsInput(
                             Monday: monday,
-                            Sunday: sunday,
                             WeekLabel: $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}",
                             TicketCount: g.Sum(o => o.Attendees.Count(a =>
                                 a.Status == TicketAttendeeStatus.Valid ||

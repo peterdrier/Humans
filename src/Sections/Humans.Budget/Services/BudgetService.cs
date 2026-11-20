@@ -289,28 +289,15 @@ internal sealed class BudgetService(
     // The repository materializes projected weeks, so they never lag one sync behind.
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
-        IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         Guid? actorUserId,
         CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var today = now.InUtc().Date;
 
-        var actualsInputs = weeklyActuals
-            .Select(w => new TicketingWeeklyActualsInput(
-                WeekLabel: w.WeekLabel,
-                Monday: w.Monday,
-                TicketCount: w.TicketCount,
-                Revenue: w.Revenue,
-                StripeFees: w.StripeFees,
-                TicketTailorFees: w.TicketTailorFees,
-                StripeFeeTax: w.StripeFeeTax,
-                StripeFeesTaxUnknown: w.StripeFeesTaxUnknown,
-                StripeFeesUntaxed: w.StripeFeesUntaxed))
-            .ToList();
-
         var changed = await repository.SyncTicketingActualsAsync(
-            budgetYearId, actualsInputs, today, actorUserId, now, ct);
+            budgetYearId, weeklyActuals, today, actorUserId, now, ct);
 
         logger.LogInformation(
             "Ticketing budget sync: {Created} line items created/updated for {Weeks} actual weeks + projections",

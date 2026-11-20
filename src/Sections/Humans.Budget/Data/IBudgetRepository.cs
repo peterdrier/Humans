@@ -237,6 +237,7 @@ internal sealed record TicketingProjectionUpdate(
     decimal StripeFeeFixed,
     decimal TicketTailorFeePercent);
 
+/// <summary>One completed ISO week, shared by ticket aggregation and persistence.</summary>
 internal sealed record TicketingWeeklyActualsInput(
     string WeekLabel,
     LocalDate Monday,

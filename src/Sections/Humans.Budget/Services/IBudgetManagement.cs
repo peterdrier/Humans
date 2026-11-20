@@ -30,7 +30,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     /// </summary>
     Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
-        IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         Guid? actorUserId,
         CancellationToken ct = default);
 

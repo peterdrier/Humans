@@ -1743,10 +1743,9 @@ public sealed class BudgetServiceTests
     {
         var (_, projectionId, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
 
-        var actuals = new List<TicketingWeeklyActuals>
+        var actuals = new List<TicketingWeeklyActualsInput>
         {
             new(Monday: new LocalDate(2026, 3, 2),
-                Sunday: new LocalDate(2026, 3, 8),
                 WeekLabel: "Mar 2–Mar 8",
                 TicketCount: 10,
                 Revenue: 500m,
@@ -1784,8 +1783,8 @@ public sealed class BudgetServiceTests
         var ct = TestContext.Current.CancellationToken;
         // One week holding all three classes: 12.10 of unknown tax (pre-capture orders),
         // 6 captured untaxed, 10 captured taxed with 2.10 fee VAT.
-        var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 1000m,
+        var week = new TicketingWeeklyActualsInput(
+            "Mar 2–Mar 8", new LocalDate(2026, 3, 2), 10, 1000m,
             StripeFees: 28.10m, TicketTailorFees: 5m, StripeFeeTax: 2.10m,
             StripeFeesTaxUnknown: 12.10m, StripeFeesUntaxed: 6m);
 
@@ -1819,8 +1818,8 @@ public sealed class BudgetServiceTests
     {
         var (_, _, _, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
-        var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 500m,
+        var week = new TicketingWeeklyActualsInput(
+            "Mar 2–Mar 8", new LocalDate(2026, 3, 2), 10, 500m,
             StripeFees: 10m, TicketTailorFees: 0m, StripeFeeTax: 0m,
             StripeFeesTaxUnknown: 10m, StripeFeesUntaxed: 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
@@ -1842,15 +1841,14 @@ public sealed class BudgetServiceTests
     {
         var (_, _, _, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
-        var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 10, 500m, 15m, 5m, 0m, 15m, 0m);
+        var week = new TicketingWeeklyActualsInput(
+            "Mar 2–Mar 8", new LocalDate(2026, 3, 2), 10, 500m, 15m, 5m, 0m, 15m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         var corrected = week with { StripeFees = 0m, TicketTailorFees = 0m, StripeFeesTaxUnknown = 0m };
         var nextWeek = corrected with
         {
             Monday = new LocalDate(2026, 3, 9),
-            Sunday = new LocalDate(2026, 3, 15),
             WeekLabel = "Mar 9–Mar 15"
         };
         await _service.SyncTicketingActualsAsync(_yearId, [corrected, nextWeek], actorUserId: null, ct);
@@ -1869,14 +1867,14 @@ public sealed class BudgetServiceTests
     {
         var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
-        var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m, 0m, 15m, 0m);
+        var week = new TicketingWeeklyActualsInput(
+            "Mar 2–Mar 8", new LocalDate(2026, 3, 2), 3, 150m, 15m, 5m, 0m, 15m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         // All of the week's orders were refunded: it no longer appears in the input, which now
         // holds only a later week.
-        var laterWeek = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 9), new LocalDate(2026, 3, 15), "Mar 9–Mar 15", 1, 50m, 0m, 0m, 0m, 0m, 0m);
+        var laterWeek = new TicketingWeeklyActualsInput(
+            "Mar 9–Mar 15", new LocalDate(2026, 3, 9), 1, 50m, 0m, 0m, 0m, 0m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [laterWeek], actorUserId: null, ct);
 
         await using var ctx = await BudgetDbFactory.CreateDbContextAsync(ct);
@@ -1895,8 +1893,8 @@ public sealed class BudgetServiceTests
         var (_, _, revenueCatId, _) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
         // Fully-discounted week: 3 tickets, 0 revenue.
-        var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 0m, 0m, 0m, 0m, 0m, 0m);
+        var week = new TicketingWeeklyActualsInput(
+            "Mar 2–Mar 8", new LocalDate(2026, 3, 2), 3, 0m, 0m, 0m, 0m, 0m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         await _service.SyncTicketingActualsAsync(_yearId, [], actorUserId: null, ct);
@@ -1915,8 +1913,8 @@ public sealed class BudgetServiceTests
     {
         var (_, _, revenueCatId, feesCatId) = await SeedTicketingYearAsync();
         var ct = TestContext.Current.CancellationToken;
-        var week = new TicketingWeeklyActuals(
-            new LocalDate(2026, 3, 2), new LocalDate(2026, 3, 8), "Mar 2–Mar 8", 3, 150m, 15m, 5m, 0m, 15m, 0m);
+        var week = new TicketingWeeklyActualsInput(
+            "Mar 2–Mar 8", new LocalDate(2026, 3, 2), 3, 150m, 15m, 5m, 0m, 15m, 0m);
         await _service.SyncTicketingActualsAsync(_yearId, [week], actorUserId: null, ct);
 
         // Every order of the week was refunded: empty input zeroes the stored week.
@@ -1936,10 +1934,9 @@ public sealed class BudgetServiceTests
     {
         await SeedTicketingYearAsync();
 
-        var actuals = new List<TicketingWeeklyActuals>
+        var actuals = new List<TicketingWeeklyActualsInput>
         {
             new(Monday: new LocalDate(2026, 3, 2),
-                Sunday: new LocalDate(2026, 3, 8),
                 WeekLabel: "Mar 2–Mar 8",
                 TicketCount: 10,
                 Revenue: 500m,
@@ -2072,7 +2069,7 @@ public sealed class BudgetServiceTests
 
         var result = await _service.SyncTicketingActualsAsync(
             _yearId,
-            new List<TicketingWeeklyActuals>(), actorUserId: null, TestContext.Current.CancellationToken);
+            new List<TicketingWeeklyActualsInput>(), actorUserId: null, TestContext.Current.CancellationToken);
 
         result.Should().Be(0);
     }
@@ -2245,10 +2242,9 @@ public sealed class BudgetServiceTests
             averageTicketPrice: 100m,
             dailySalesRate: 5m);
 
-        var actuals = new List<TicketingWeeklyActuals>
+        var actuals = new List<TicketingWeeklyActualsInput>
         {
             new(Monday: new LocalDate(2026, 3, 16),
-                Sunday: new LocalDate(2026, 3, 22),
                 WeekLabel: "Mar 16–Mar 22",
                 TicketCount: 20,
                 Revenue: 1000m,
@@ -2332,10 +2328,9 @@ public sealed class BudgetServiceTests
             await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        var actuals = new List<TicketingWeeklyActuals>
+        var actuals = new List<TicketingWeeklyActualsInput>
         {
             new(Monday: new LocalDate(2026, 3, 16),
-                Sunday: new LocalDate(2026, 3, 22),
                 WeekLabel: "Mar 16-Mar 22",
                 TicketCount: 20,
                 Revenue: 1000m,
