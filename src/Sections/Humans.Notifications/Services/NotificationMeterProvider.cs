@@ -65,7 +65,22 @@ internal sealed class NotificationMeterProvider(
         if (viewerId is { } contributorViewerId)
         {
             foreach (var contributor in contributors)
-                meters.AddRange(await contributor.GetMetersAsync(user, contributorViewerId, cancellationToken));
+            {
+                try
+                {
+                    var contributed = await contributor.GetMetersAsync(user, contributorViewerId, cancellationToken);
+                    meters.AddRange(contributed.ToList());
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Notification meter contributor {Contributor} failed for user {UserId}; its meters are skipped",
+                        contributor.GetType().Name, contributorViewerId);
+                }
+            }
         }
 
         if (isAdmin && counts.PendingDeletions > 0)
