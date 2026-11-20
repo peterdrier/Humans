@@ -207,10 +207,10 @@ internal sealed class UserEmailService(
         // No auto-promote: the admin picks the new primary deliberately.
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailPrimaryCleared,
-            nameof(User), userId,
+            AuditSubjectTypes.User, userId,
             $"Cleared primary flag from {row.Email}",
             actorUserId,
-            relatedEntityId: row.Id, relatedEntityType: nameof(UserEmail));
+            relatedEntityId: row.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
         return true;
     }
@@ -234,10 +234,10 @@ internal sealed class UserEmailService(
             const string description = "Orphan UserEmail row deleted by EmailProblems action";
             if (actorUserId is { } actor)
                 await auditLogService.LogAsync(UsersAuditActions.OrphanUserEmailDeleted,
-                    nameof(UserEmail), emailId, description, actor);
+                    AuditSubjectTypes.UserEmail, emailId, description, actor);
             else
                 await auditLogService.LogAsync(UsersAuditActions.OrphanUserEmailDeleted,
-                    nameof(UserEmail), emailId, description, nameof(UserEmailService));
+                    AuditSubjectTypes.UserEmail, emailId, description, nameof(UserEmailService));
         }
         return removed;
     }
@@ -314,12 +314,12 @@ internal sealed class UserEmailService(
 
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailUnlinked,
-            nameof(User), userId,
+            AuditSubjectTypes.User, userId,
             row is null
                 ? $"Unlinked orphan {provider} login (no matching UserEmail row)"
                 : $"Unlinked {provider} (key {ShortProviderKeyHash(providerKey)}) from {row.Email}",
             actorUserId,
-            relatedEntityId: row?.Id, relatedEntityType: row is null ? null : nameof(UserEmail));
+            relatedEntityId: row?.Id, relatedEntityType: row is null ? null : AuditSubjectTypes.UserEmail);
 
         return new(true);
     }
@@ -327,10 +327,10 @@ internal sealed class UserEmailService(
     private Task LogEmailChangeAsync(AuditActionDefinition action, Guid userId, Guid emailId,
         string description, Guid? actorUserId) =>
         actorUserId is { } actor
-            ? auditLogService.LogAsync(action, nameof(User), userId, description, actor,
-                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail))
-            : auditLogService.LogAsync(action, nameof(User), userId, description, nameof(UserEmailService),
-                relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
+            ? auditLogService.LogAsync(action, AuditSubjectTypes.User, userId, description, actor,
+                relatedEntityId: emailId, relatedEntityType: AuditSubjectTypes.UserEmail)
+            : auditLogService.LogAsync(action, AuditSubjectTypes.User, userId, description, nameof(UserEmailService),
+                relatedEntityId: emailId, relatedEntityType: AuditSubjectTypes.UserEmail);
 
     internal static bool CanUnlink(int verifiedEmailCount, bool removesVerifiedEmail) =>
         verifiedEmailCount - (removesVerifiedEmail ? 1 : 0) >= 1;
@@ -611,10 +611,10 @@ internal sealed class UserEmailService(
 
             await auditLogService.LogAsync(
                 UsersAuditActions.OAuthRenameCollisionBlocked,
-                nameof(User), userId,
+                AuditSubjectTypes.User, userId,
                 blockedDescription,
                 actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+                relatedEntityId: blocker.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
             return new OAuthReconcileResult(
                 ReconcileOutcome.CrossUserBlocked,
@@ -771,10 +771,10 @@ internal sealed class UserEmailService(
 
             await auditLogService.LogAsync(
                 UsersAuditActions.OAuthRenameCollision,
-                nameof(User), userId,
+                AuditSubjectTypes.User, userId,
                 collisionDiagnostic!,
                 actorUserId: userId,
-                relatedEntityId: blocker!.Id, relatedEntityType: nameof(UserEmail));
+                relatedEntityId: blocker!.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
             var displacedAuditDescription =
                 $"Row `{blocker.Email}` deleted by OAuth callback for user {userId} " +
@@ -784,10 +784,10 @@ internal sealed class UserEmailService(
                     : string.Empty);
             await auditLogService.LogAsync(
                 UsersAuditActions.UserEmailDisplacedByOAuthRename,
-                nameof(User), blocker.UserId,
+                AuditSubjectTypes.User, blocker.UserId,
                 displacedAuditDescription,
                 actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+                relatedEntityId: blocker.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
             return new OAuthReconcileResult(
                 ReconcileOutcome.CrossUserDisplaced,
@@ -801,10 +801,10 @@ internal sealed class UserEmailService(
 
         await auditLogService.LogAsync(
             signingAction,
-            nameof(User), userId,
+            AuditSubjectTypes.User, userId,
             signingDescription,
             actorUserId: userId,
-            relatedEntityId: affectedRowId, relatedEntityType: nameof(UserEmail));
+            relatedEntityId: affectedRowId, relatedEntityType: AuditSubjectTypes.UserEmail);
 
         return new OAuthReconcileResult(
             outcome,
@@ -906,11 +906,11 @@ internal sealed class UserEmailService(
         cancellationToken = CancellationToken.None;
         var description = $"Added pending email {email} (conflict: {addResult.IsConflict})";
         if (actorUserId is { } actor)
-            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, nameof(User), userId,
-                description, actor, relatedEntityId: addResult.EmailId, relatedEntityType: nameof(UserEmail));
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, AuditSubjectTypes.User, userId,
+                description, actor, relatedEntityId: addResult.EmailId, relatedEntityType: AuditSubjectTypes.UserEmail);
         else
-            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, nameof(User), userId,
-                description, nameof(UserEmailService), relatedEntityId: addResult.EmailId, relatedEntityType: nameof(UserEmail));
+            await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, AuditSubjectTypes.User, userId,
+                description, nameof(UserEmailService), relatedEntityId: addResult.EmailId, relatedEntityType: AuditSubjectTypes.UserEmail);
 
         var token = await userManager.GenerateUserTokenAsync(
             user,
@@ -1009,10 +1009,10 @@ internal sealed class UserEmailService(
 
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailManuallyVerified,
-            nameof(User), userId,
+            AuditSubjectTypes.User, userId,
             $"Admin manually verified email {pendingEmail.Email}",
             actorUserId,
-            relatedEntityId: pendingEmail.Id, relatedEntityType: nameof(UserEmail));
+            relatedEntityId: pendingEmail.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }

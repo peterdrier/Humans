@@ -95,7 +95,7 @@ internal sealed class AccountDeletionService(
         }
 
         await auditLogService.LogAsync(
-            UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            UsersAuditActions.MembershipsRevokedOnDeletionRequest, AuditSubjectTypes.User, userId,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
             userId);
 
@@ -179,12 +179,12 @@ internal sealed class AccountDeletionService(
         if (actorId is Guid actor)
         {
             await auditLogService.LogAsync(
-                UsersAuditActions.AccountPurged, nameof(User), userId, description, actor);
+                UsersAuditActions.AccountPurged, AuditSubjectTypes.User, userId, description, actor);
         }
         else
         {
             await auditLogService.LogAsync(
-                UsersAuditActions.AccountPurged, nameof(User), userId, description,
+                UsersAuditActions.AccountPurged, AuditSubjectTypes.User, userId, description,
                 jobName: nameof(AccountDeletionService));
         }
 

@@ -91,7 +91,7 @@ internal sealed class EmailProblemsService(
                     continue;
             }
             await audit.LogAsync(
-                UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), info.Id,
+                UsersAuditActions.LegacyIdentityEmailBackfilled, AuditSubjectTypes.User, info.Id,
                 $"Backfilled verified UserEmail row from legacy User.Email column: {legacy}",
                 actorUserId);
             backfilled.Add((info.Id, legacy));
