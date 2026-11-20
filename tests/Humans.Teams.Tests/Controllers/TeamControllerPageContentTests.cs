@@ -875,9 +875,9 @@ public class TeamControllerPageContentTests
             Guid.NewGuid(), "Test", "Test", null, "test", true, false, false,
             SystemTeamType.None, Instant.FromUtc(2026, 1, 1, 0, 0), true, false,
             null, [], null, null, null);
-        var coordinator = new TeamPageMemberSummary(Guid.NewGuid(), "Coordinator", null, null, TeamMemberRole.Coordinator, null);
-        var zeta = new TeamPageMemberSummary(Guid.NewGuid(), "zeta", null, null, TeamMemberRole.Member, null);
-        var alpha = new TeamPageMemberSummary(Guid.NewGuid(), "Alpha", null, null, TeamMemberRole.Member, null);
+        var coordinator = new TeamPageMemberSummary(Guid.NewGuid(), "Coordinator", TeamMemberRole.Coordinator);
+        var zeta = new TeamPageMemberSummary(Guid.NewGuid(), "zeta", TeamMemberRole.Member);
+        var alpha = new TeamPageMemberSummary(Guid.NewGuid(), "Alpha", TeamMemberRole.Member);
         var children = new[]
         {
             new TeamPageTeamLink(Guid.NewGuid(), "zeta", "zeta"),

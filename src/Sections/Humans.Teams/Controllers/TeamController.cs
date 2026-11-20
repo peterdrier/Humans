@@ -188,9 +188,7 @@ internal sealed class TeamController(
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        Email = member.Email ?? string.Empty,
         Role = member.Role,
-        JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
     };
 

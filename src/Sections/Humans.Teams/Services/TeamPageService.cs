@@ -86,21 +86,11 @@ internal sealed class TeamPageService(
             return null;
         }
 
-        var visibleMembers = detail.IsAuthenticated
+        var members = detail.IsAuthenticated
             ? detail.Members
             : detail.Team.ShowCoordinatorsOnPublicPage
                 ? detail.Members.Where(m => m.Role == TeamMemberRole.Coordinator).ToList()
                 : [];
-
-        var members = visibleMembers
-            .Select(member => new TeamPageMemberSummary(
-                member.UserId,
-                member.DisplayName,
-                detail.IsAuthenticated ? member.Email : null,
-                member.ProfilePictureUrl,
-                member.Role,
-                detail.IsAuthenticated ? member.JoinedAt : null))
-            .ToList();
 
         var resources = detail.IsAuthenticated
             ? (await teamResourceService.GetTeamResourcesAsync(detail.Team.Id, cancellationToken))
@@ -235,7 +225,7 @@ internal sealed class TeamPageService(
 
             var coordinators = team.Members
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .Select(MapTeamDetailMemberSummary)
+                .Select(MapTeamPageMemberSummary)
                 .ToList();
 
             return new TeamDetailResult(
@@ -279,7 +269,7 @@ internal sealed class TeamPageService(
         return new TeamDetailResult(
             Team: MapTeamSummary(team, parent?.IsHidden == true && !canSeeHiddenTeams ? null : parent),
             Members: team.Members
-                .Select(MapTeamDetailMemberSummary)
+                .Select(MapTeamPageMemberSummary)
                 .ToList(),
             ChildTeams: EnumerateChildren(team, teamsById)
                 .Where(c => c.IsActive && (!c.IsHidden || canSeeHiddenTeams))
@@ -333,14 +323,11 @@ internal sealed class TeamPageService(
     private static TeamPageTeamLink MapTeamLink(TeamInfo team) =>
         new(team.Id, team.Name, team.Slug);
 
-    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMemberInfo member) =>
+    private static TeamPageMemberSummary MapTeamPageMemberSummary(TeamMemberInfo member) =>
         new(
             UserId: member.UserId,
             DisplayName: member.DisplayName,
-            Email: member.Email,
-            ProfilePictureUrl: member.ProfilePictureUrl,
-            Role: member.Role,
-            JoinedAt: member.JoinedAt);
+            Role: member.Role);
 
     /// <summary>Other child-team members are deduplicated across child teams.</summary>
     private async Task<(IReadOnlyList<TeamPageChildTeamMemberSummary> Leads, IReadOnlyList<TeamPageChildTeamMemberSummary> Members)>
