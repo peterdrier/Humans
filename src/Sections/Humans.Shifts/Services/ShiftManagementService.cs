@@ -8,7 +8,6 @@ using Humans.Base.Constants;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;
 using Humans.Base.Enums;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Shifts.Data;
@@ -27,25 +26,21 @@ internal sealed class ShiftManagementService(
     IAuditLogService auditLogService,
     IAdminAuthorizationService adminAuthorization,
     IServiceProvider serviceProvider,
-    IMemoryCache cache,
-    CachingShiftViewService viewInvalidator,
     EventCalendarResolver calendarResolver,
     IClock clock,
     ILogger<ShiftManagementService> logger) : IShiftManagement, IShiftRotaRows, IUserMerge
 {
-    private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
     private ShiftRotaManagement Rotas => new(
-        repo, auditLogService, serviceProvider, calendarResolver, shiftSettings, viewInvalidator, clock);
+        repo, auditLogService, serviceProvider, calendarResolver, shiftSettings, clock);
     private readonly ShiftEventSettings shiftSettings = new(repo, auditLogService, clock);
-    private readonly ShiftScheduling scheduling = new(repo, calendarResolver, viewInvalidator, clock);
-    private readonly ShiftDeletion deletion = new(repo, auditLogService, viewInvalidator, logger);
+    private readonly ShiftScheduling scheduling = new(repo, calendarResolver, clock);
+    private readonly ShiftDeletion deletion = new(repo, auditLogService, logger);
     private readonly ShiftVolunteerProfiles volunteerProfiles = new(repo, clock, logger);
     private readonly ShiftDashboardMetrics dashboardMetrics = new(repo, calendarResolver, serviceProvider, clock);
     private readonly ShiftCoordinatorActivity coordinatorActivity = new(calendarResolver, serviceProvider);
     private readonly ShiftCoverageReports coverageReports = new(calendarResolver, serviceProvider);
     private readonly ShiftCampSummary campSummary = new(serviceProvider);
     private readonly ShiftBrowseReader browseReader = new(calendarResolver, serviceProvider, clock);
-    private const string OverallCoverageCacheKey = "dashboard-overall-coverage";
 
     private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
     private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
@@ -69,27 +64,12 @@ internal sealed class ShiftManagementService(
     public async Task SaveKnobsAsync(
         Guid eventSettingsId, bool isShiftBrowsingOpen, BuildSubPeriodStarts subPeriods, Guid actorUserId)
     {
-        try
-        {
-            await shiftSettings.SaveKnobsAsync(eventSettingsId, isShiftBrowsingOpen, subPeriods, actorUserId);
-        }
-        finally
-        {
-            EvictDashboardCaches(eventSettingsId);
-            viewInvalidator.InvalidateAll();
-        }
+        await shiftSettings.SaveKnobsAsync(eventSettingsId, isShiftBrowsingOpen, subPeriods, actorUserId);
     }
 
     public async Task SetShiftBrowsingOpenAsync(Guid eventSettingsId, bool isOpen)
     {
-        try
-        {
-            await shiftSettings.SetShiftBrowsingOpenAsync(eventSettingsId, isOpen);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateAll();
-        }
+        await shiftSettings.SetShiftBrowsingOpenAsync(eventSettingsId, isOpen);
     }
 
     public Task<Guid> CreateRotaAsync(CreateRotaInput input, IReadOnlyList<Guid>? tagIds = null) =>
@@ -100,15 +80,7 @@ internal sealed class ShiftManagementService(
         CancellationToken cancellationToken = default)
     {
         await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
-        try
-        {
-            return await repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
-        }
-        finally
-        {
-            EvictDashboardCaches(eventSettingsId);
-            viewInvalidator.InvalidateAll();
-        }
+        return await repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
     }
 
     public Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null) =>
@@ -280,71 +252,16 @@ internal sealed class ShiftManagementService(
             .ToList();
     }
 
-    internal static string OverviewCacheKey(Guid eventId, ShiftPeriod? period) =>
-        $"dashboard-overview:{eventId}:{period?.ToString() ?? "all"}";
-    internal static string CoordinatorActivityCacheKey(Guid eventId, ShiftPeriod? period) =>
-        $"dashboard-coordinator-activity:{eventId}:{period?.ToString() ?? "all"}";
-    internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
-        $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
+    public Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
+        dashboardMetrics.ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod, ct);
 
-    public void InvalidateDashboardCaches(Guid eventSettingsId) => EvictDashboardCaches(eventSettingsId);
+    public Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
+        coordinatorActivity.ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
 
-    private void EvictDashboardCaches(Guid eventSettingsId)
-    {
-        var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
-        foreach (var period in periods)
-        {
-            cache.Remove(OverviewCacheKey(eventSettingsId, period));
-            cache.Remove(CoordinatorActivityCacheKey(eventSettingsId, period));
-            foreach (var window in Enum.GetValues<TrendWindow>())
-                cache.Remove(TrendsCacheKey(eventSettingsId, window, period));
-        }
-        cache.Remove(OverallCoverageCacheKey);
-    }
-
-    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
-    {
-        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
-        if (subPeriod is not null)
-            return await dashboardMetrics.ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod, ct);
-
-        var cached = await cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId, period), async entry =>
-        {
-            entry.SlidingExpiration = DashboardCacheTtl;
-            return await dashboardMetrics.ComputeDashboardOverviewAsync(eventSettingsId, period, subPeriod: null, ct);
-        });
-        return cached!;
-    }
-
-    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
-    {
-        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
-        if (subPeriod is not null)
-            return await coordinatorActivity.ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod, ct);
-
-        var cached = await cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId, period), async entry =>
-        {
-            entry.SlidingExpiration = DashboardCacheTtl;
-            return await coordinatorActivity.ComputeCoordinatorActivityAsync(eventSettingsId, period, subPeriod: null, ct);
-        });
-        return cached!;
-    }
-
-    public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
+    public Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
-        BuildSubPeriod? subPeriod = null, CancellationToken ct = default)
-    {
-        // Sub-periods would fan the cache key out 4x, so only the base period is cached.
-        if (subPeriod is not null)
-            return await dashboardMetrics.ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod, ct);
-
-        var cached = await cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window, period), async entry =>
-        {
-            entry.SlidingExpiration = DashboardCacheTtl;
-            return await dashboardMetrics.ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod: null, ct);
-        });
-        return cached!;
-    }
+        BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
+        dashboardMetrics.ComputeDashboardTrendsAsync(eventSettingsId, window, period, subPeriod, ct);
 
     public Task<IReadOnlyList<DailyDepartmentStaffing>> GetDailyDepartmentStaffingAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
@@ -354,16 +271,8 @@ internal sealed class ShiftManagementService(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>
         coverageReports.GetCoverageHeatmapAsync(eventSettingsId, period, subPeriod, ct);
 
-    // Two /Admin components call this on every render; cached so one render costs one set of reads.
-    public async Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default)
-    {
-        var cached = await cache.GetOrCreateAsync(OverallCoverageCacheKey, async entry =>
-        {
-            entry.SlidingExpiration = DashboardCacheTtl;
-            return await coverageReports.ComputeOverallCoverageAsync(ct);
-        });
-        return cached;
-    }
+    public Task<(int Filled, int Total, double Ratio)> GetOverallCoverageAsync(CancellationToken ct = default) =>
+        coverageReports.ComputeOverallCoverageAsync(ct);
 
     public Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null, CancellationToken ct = default) =>

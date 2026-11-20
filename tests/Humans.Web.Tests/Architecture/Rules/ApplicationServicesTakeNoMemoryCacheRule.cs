@@ -15,7 +15,6 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         SectionType("Humans.Camps.Services.CampContactService"),
         SectionType("Humans.Consent.Services.LegalDocumentService"),
         SectionType("Humans.Notifications.Services.NotificationMeterProvider"),
-        SectionType("Humans.Shifts.Services.ShiftManagementService"),
         // Nav-badge counts: each wraps a real query and evicts its own key. AdminDashboardService is not here: its
         // reads are already served by CachingUserService.
         SectionType("Humans.Governance.Services.ApplicationDecisionService"),  // ApplicationDecisionService.VotingBadgeCacheKey(userId)

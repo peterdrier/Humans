@@ -10,7 +10,6 @@ namespace Humans.Shifts.Services;
 internal sealed class ShiftDeletion(
     IShiftManagementRepository repo,
     IAuditLogService auditLogService,
-    CachingShiftViewService viewInvalidator,
     ILogger<ShiftManagementService> logger) : IApplicationService
 {
     internal async Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId)
@@ -28,14 +27,7 @@ internal sealed class ShiftDeletion(
         // Captured before the cascade, for the audit after it commits.
         var removedSignups = rota.Shifts.SelectMany(s => s.ShiftSignups).ToList();
 
-        try
-        {
-            await repo.DeleteRotaCascadeAsync(rotaId);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateRota(rotaId);
-        }
+        await repo.DeleteRotaCascadeAsync(rotaId);
         await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId, $"rota '{rota.Name}' was deleted");
         return new ShiftDeletionResult();
     }
@@ -52,15 +44,7 @@ internal sealed class ShiftDeletion(
         var rotaId = shift.RotaId;
         var removedSignups = shift.ShiftSignups.ToList();
 
-        try
-        {
-            await repo.DeleteShiftCascadeAsync(shiftId);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateShift(shiftId);
-            viewInvalidator.InvalidateRota(rotaId);
-        }
+        await repo.DeleteShiftCascadeAsync(shiftId);
         await AuditDeletedPendingSignupsAsync(removedSignups, actorUserId,
             $"shift in '{shift.Rota.Name}' on day {shift.DayOffset} was deleted");
         return new ShiftDeletionResult();

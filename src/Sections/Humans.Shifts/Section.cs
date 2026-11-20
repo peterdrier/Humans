@@ -82,6 +82,7 @@ public sealed class Section :
         services.AddKeyedScoped<ShiftSignupService>(inner);
         services.AddKeyedScoped<IShiftSignupService>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftSignupService>(k));
         services.AddKeyedScoped<IUserMerge>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftSignupService>(k));
+        services.AddKeyedScoped<IShiftRowView, ShiftViewService>(inner);
         // Read-only, so it needs no cache refresh.
         services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredKeyedService<ShiftSignupService>(inner));
 
@@ -94,6 +95,8 @@ public sealed class Section :
         services.AddSingleton<IShiftSignupService>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignups>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignupSeeding>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftService>());
@@ -115,24 +118,11 @@ public sealed class Section :
             sp.GetRequiredService<VolunteerTrackingExportService>());
         services.AddScoped<VolunteerTrackingXlsxBuilder>();
 
-        // Singleton decorator over a keyed-Scoped inner.
-        services.AddKeyedScoped<IShiftRowView, ShiftViewService>(CachingShiftViewService.InnerServiceKey);
-        services.AddSingleton<CachingShiftViewService>();
-        services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftViewService>());
-        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
-        // Settings fans out over this after an event-settings save; the same instance answers.
-        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingShiftViewService>());
-
-        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
-
-        // StartAsync is a no-op; hosted for symmetry with the sibling caches.
-        services.AddHostedService(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
         services.AddScoped<ShiftVolunteerSearchBuilder>();
 
-        // No cache of its own; invalidation rides on CachingShiftViewService.
         services.AddScoped<IWorkloadService, WorkloadService>();
 
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();

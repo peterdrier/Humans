@@ -3,14 +3,14 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Data;
+using Humans.Shifts.Helpers;
 using Humans.Users.Contracts;
 
 namespace Humans.Shifts.Services;
 
-/// <summary>No cache of its own: reads go through the cached row view, whose eviction covers mutations.</summary>
+/// <summary>No cache of its own: reads the cached rota rows.</summary>
 internal sealed class WorkloadService(
-    IShiftManagementRepository repo,
-    IShiftRowView view,
+    IShiftRotaRows rotaRows,
     ITeamService teamService,
     IUserService userService,
     EventCalendarResolver calendarResolver) : IWorkloadService
@@ -22,15 +22,8 @@ internal sealed class WorkloadService(
         var calendar = await calendarResolver.GetActiveAsync(ct);
         if (calendar is null) return null;
 
-        // Reuses the event-shift query for the rota ids rather than add an interface method.
-        var shiftStubs = await repo.GetEventShiftsAsync(new ShiftEventQuery(calendar.Id), ct);
-        var rotaIds = shiftStubs.Select(s => s.RotaId).Distinct().ToList();
         // Unfiltered: the workload view is admin-only and needs hidden rotas.
-        var views = await view.GetRotasAsync(rotaIds, ct).ConfigureAwait(false);
-        var entries = views.Values
-            .Where(v => v.Rota is not null)
-            .SelectMany(v => v.Shifts.Select(s => (Rota: v.Rota!, Shift: s)))
-            .ToList();
+        var entries = await rotaRows.GetEventShiftsAsync(new ShiftEventQuery(calendar.Id), ct);
 
         var allTeams = await teamService.GetTeamsAsync(ct);
         var teamLookup = entries
@@ -54,23 +47,23 @@ internal sealed class WorkloadService(
             ByDepartment: byDepartment);
     }
 
-    private static decimal HoursOf(Shift shift) =>
-        shift.IsAllDay ? AllDayShiftHours : (decimal)shift.Duration.TotalHours;
+    private static decimal HoursOf(ShiftInfo shift) =>
+        shift.IsAllDay ? AllDayShiftHours : (decimal)shift.DurationHours;
 
     private static (int PlannedSlots, int FilledSlots, int Pending, decimal PlannedHours, decimal FilledHours)
-        SumShiftWorkload(IEnumerable<Shift> shifts)
+        SumShiftWorkload(IEnumerable<EventShift> shifts)
     {
         (int PlannedSlots, int FilledSlots, int Pending, decimal PlannedHours, decimal FilledHours) totals = default;
         checked
         {
             foreach (var shift in shifts)
             {
-                var hours = HoursOf(shift);
-                var filled = Math.Min(shift.ShiftSignups.Count(s => s.Status == SignupStatus.Confirmed), shift.MaxVolunteers);
-                totals.PlannedSlots += shift.MaxVolunteers;
+                var hours = HoursOf(shift.Shift);
+                var filled = Math.Min(shift.ConfirmedCount, shift.Shift.MaxVolunteers);
+                totals.PlannedSlots += shift.Shift.MaxVolunteers;
                 totals.FilledSlots += filled;
-                totals.Pending += shift.ShiftSignups.Count(s => s.Status == SignupStatus.Pending);
-                totals.PlannedHours += hours * shift.MaxVolunteers;
+                totals.Pending += shift.Signups.Count(s => s.Status == SignupStatus.Pending);
+                totals.PlannedHours += hours * shift.Shift.MaxVolunteers;
                 totals.FilledHours += hours * filled;
             }
         }
@@ -79,14 +72,14 @@ internal sealed class WorkloadService(
 
     // Unsorted; the controller orders for display.
     private static List<WorkloadByRotaRow> BuildByRota(
-        IReadOnlyList<(Rota Rota, Shift Shift)> entries,
+        IReadOnlyList<EventShift> entries,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup) =>
         entries
             .GroupBy(e => e.Rota.Id)
             .Select(g =>
             {
                 var rota = g.First().Rota;
-                var totals = SumShiftWorkload(g.Select(e => e.Shift));
+                var totals = SumShiftWorkload(g);
                 var teamName = teamLookup.TryGetValue(rota.TeamId, out var team) ? team.Name : "(unknown)";
                 return new WorkloadByRotaRow(
                     RotaId: rota.Id,
@@ -103,7 +96,7 @@ internal sealed class WorkloadService(
             .ToList();
 
     private static List<WorkloadByDepartmentRow> BuildByDepartment(
-        IReadOnlyList<(Rota Rota, Shift Shift)> entries,
+        IReadOnlyList<EventShift> entries,
         IReadOnlyDictionary<Guid, TeamInfo> teamLookup,
         IReadOnlyDictionary<Guid, RoleDeptHours> roleDeptHours)
     {
@@ -111,7 +104,7 @@ internal sealed class WorkloadService(
             .GroupBy(e => e.Rota.TeamId)
             .ToDictionary(g => g.Key, g =>
             {
-                var totals = SumShiftWorkload(g.Select(e => e.Shift));
+                var totals = SumShiftWorkload(g);
                 var (teamName, teamSlug) = teamLookup.TryGetValue(g.Key, out var team)
                     ? (team.Name, team.Slug)
                     : ("(unknown)", string.Empty);
@@ -153,18 +146,18 @@ internal sealed class WorkloadService(
     }
 
     private async Task<List<WorkloadByPersonRow>> BuildByPersonAsync(
-        IReadOnlyList<(Rota Rota, Shift Shift)> entries,
+        IReadOnlyList<EventShift> entries,
         BurnSettingsInfo es,
         IReadOnlyDictionary<Guid, RolePersonHours> rolePersonHours,
         CancellationToken ct)
     {
         // Pending is a count only, so queued work doesn't inflate burnout.
         var perUser = new Dictionary<Guid, (int Confirmed, int Pending, decimal YearRound, decimal Build, decimal Event, decimal Strike)>();
-        foreach (var (_, shift) in entries)
+        foreach (var shift in entries)
         {
-            var hours = HoursOf(shift);
-            var period = shift.GetShiftPeriod(es);
-            foreach (var signup in shift.ShiftSignups)
+            var hours = HoursOf(shift.Shift);
+            var period = shift.Shift.GetShiftPeriod(es);
+            foreach (var signup in shift.Signups)
             {
                 if (signup.Status is not (SignupStatus.Confirmed or SignupStatus.Pending))
                     continue;

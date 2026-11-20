@@ -76,8 +76,8 @@ The shapes imply:
   bail/remove that drops a shift below `MinVolunteers` raises a coverage-gap notification.
 - Shifts holds no health data; medical conditions are Users', food answers Cantina's.
 - Deleting a rota or shift with a Confirmed signup is refused; pending signups are Cancelled.
-- Every mutation evicts the per-user / per-rota view cache and, for signups, the dashboard
-  aggregates.
+- Every mutation reloads the touched rotas in the rota cache; dashboards and user views read
+  those rows, so nothing else needs evicting.
 
 ## 5. Seams
 
@@ -94,11 +94,8 @@ The shapes imply:
 
 - **No `Team.HexColor` column** — export colours derive from the team id (`TeamPalette`).
 - **No per-shift `IsCancelled`** — cancellation is a signup state plus cascade delete.
-- **No caching decorator over `ShiftManagementService`** — it holds two small caches (auth
-  60 s, dashboard 5 min) directly; a decorator would have to know the invalidation keys anyway.
-  The one decorator in the section is `CachingShiftViewService` over `IShiftView`/`IShiftRowView`.
-- **No dashboard cache key fan-out for sub-period** — sub-period filtered calls bypass the
-  cache by design.
+- **One cache** — `CachingShiftService`'s rota rows. Dashboards and user views are computed
+  from them per request; there is no second cache to keep in step.
 - **No analytics-service split this run** — it is the right direction but a structural move
   across 2 k lines with no behaviour change to pin it; it needs Peter's go and its own PR.
 - **No `IShiftSignupService` read/write split** — the leaf `IShiftSignups` already is the
@@ -107,9 +104,8 @@ The shapes imply:
 
 ## Load-bearing weirdness
 
-- `IShiftView` is a **singleton** over a keyed-scoped inner and implements `IHostedService`
-  with no-op start/stop for symmetry with the sibling caches — the registration looks
-  redundant and is not.
+- `IShiftView` and `IShiftRowView` resolve to the **singleton** `CachingShiftService`, which
+  opens a scope per call to reach the keyed-scoped `ShiftViewService`.
 - `GetRotaAsync` on the read leaf applies **no visibility filter**: the id comes from a
   filtered search and the destination page enforces access.
 - `ExportXlsx` writes **no** audit entry on purpose (burner names only).

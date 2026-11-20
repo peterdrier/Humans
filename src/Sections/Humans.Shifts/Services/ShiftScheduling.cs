@@ -11,7 +11,6 @@ namespace Humans.Shifts.Services;
 internal sealed class ShiftScheduling(
     IShiftManagementRepository repo,
     EventCalendarResolver calendarResolver,
-    CachingShiftViewService viewInvalidator,
     IClock clock) : IApplicationService
 {
     internal async Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input)
@@ -76,14 +75,7 @@ internal sealed class ShiftScheduling(
 
         if (toInsert.Count > 0)
         {
-            try
-            {
-                await repo.AddShiftsAsync(toInsert);
-            }
-            finally
-            {
-                viewInvalidator.InvalidateRota(input.RotaId);
-            }
+            await repo.AddShiftsAsync(toInsert);
         }
 
         return ShiftGenerationResult.Success($"Created {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
@@ -146,14 +138,7 @@ internal sealed class ShiftScheduling(
 
         if (toInsert.Count > 0)
         {
-            try
-            {
-                await repo.AddShiftsAsync(toInsert);
-            }
-            finally
-            {
-                viewInvalidator.InvalidateRota(input.RotaId);
-            }
+            await repo.AddShiftsAsync(toInsert);
         }
 
         return ShiftGenerationResult.Success($"Generated {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
@@ -196,14 +181,7 @@ internal sealed class ShiftScheduling(
         if (GetShiftScheduleRefusal(shift.DayOffset, shift.StartTime, shift.Duration, shift.IsAllDay, es) is { } scheduleRefusal)
             return ShiftMutationResult.Failure(scheduleRefusal);
 
-        try
-        {
-            await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateRota(input.RotaId);
-        }
+        await repo.SaveShiftAsync(shift, EntityMutationMode.Add);
         return ShiftMutationResult.Success("Shift created.", shift.Id);
     }
 
@@ -302,14 +280,7 @@ internal sealed class ShiftScheduling(
         shift.AdminOnly = input.AdminOnly;
         shift.UpdatedAt = clock.GetCurrentInstant();
 
-        try
-        {
-            await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
-        }
-        finally
-        {
-            viewInvalidator.InvalidateShift(shift.Id);
-        }
+        await repo.SaveShiftAsync(shift, EntityMutationMode.Update);
         return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 
