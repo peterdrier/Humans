@@ -57,7 +57,6 @@
                     <tbody>
                         @foreach (var week in Model.WeeklySales)
                         {
-                            var net = week.GrossRevenue - week.VatAmount - week.Donations - week.VipDonations;
                             <tr>
                                 <td>@week.WeekLabel</td>
                                 <td class="text-end">@week.OrderCount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
@@ -66,7 +65,7 @@
                                 <td class="text-end">@week.Donations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                                 <td class="text-end">@week.VipDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                                 <td class="text-end">@week.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                                <td class="text-end">@net.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@week.NetTicketRevenue.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
                     </tbody>
@@ -76,7 +75,7 @@
                             var weeklyTotalDonations = Model.WeeklySales.Sum(w => w.Donations);
                             var weeklyTotalVipDonations = Model.WeeklySales.Sum(w => w.VipDonations);
                             var weeklyTotalVat = Model.WeeklySales.Sum(w => w.VatAmount);
-                            var weeklyTotalNet = weeklyTotalGross - weeklyTotalVat - weeklyTotalDonations - weeklyTotalVipDonations;
+                            var weeklyTotalNet = Model.WeeklySales.Sum(w => w.NetTicketRevenue);
                         }
                         <tr class="fw-bold">
                             <td>Total</td>
@@ -217,7 +216,6 @@
                     <tbody>
                         @foreach (var q in Model.QuarterlySales)
                         {
-                            var net = q.GrossRevenue - q.VatAmount - q.Donations - q.VipDonations;
                             <tr>
                                 <td>@q.QuarterLabel</td>
                                 <td class="text-end">@q.OrderCount.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)</td>
@@ -226,7 +224,7 @@
                                 <td class="text-end">@q.Donations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                                 <td class="text-end">@q.VipDonations.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                                 <td class="text-end">@q.VatAmount.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
-                                <td class="text-end">@net.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
+                                <td class="text-end">@q.NetTicketRevenue.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture)</td>
                             </tr>
                         }
                     </tbody>
@@ -236,7 +234,7 @@
                             var totalDonations = Model.QuarterlySales.Sum(q => q.Donations);
                             var totalVipDonations = Model.QuarterlySales.Sum(q => q.VipDonations);
                             var totalVat = Model.QuarterlySales.Sum(q => q.VatAmount);
-                            var totalNet = totalGross - totalVat - totalDonations - totalVipDonations;
+                            var totalNet = Model.QuarterlySales.Sum(q => q.NetTicketRevenue);
                         }
                         <tr class="fw-bold">
                             <td>Total</td>

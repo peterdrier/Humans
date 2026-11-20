@@ -403,6 +403,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         weekly.VatAmount.Should().Be(9.09m);
         weekly.TicketsSold.Should().Be(1);
         weekly.VipDonations.Should().Be(0m);
+        weekly.NetTicketRevenue.Should().Be(90.91m);
+        result.QuarterlySales.Single().NetTicketRevenue.Should().Be(90.91m);
     }
 
     [HumansFact]

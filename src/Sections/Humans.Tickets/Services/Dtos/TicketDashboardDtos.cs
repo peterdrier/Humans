@@ -65,29 +65,28 @@ internal sealed class TicketSalesAggregates
     public List<DiscountCampaignAggregate> ByDiscountCampaign { get; init; } = [];
 }
 
-internal sealed class WeeklySalesAggregate
+internal abstract class PeriodSalesAggregate
 {
-    public LocalDate WeekStart { get; init; }
-    public string WeekLabel { get; init; } = string.Empty;
     public int TicketsSold { get; init; }
     public decimal GrossRevenue { get; init; }
     public int OrderCount { get; init; }
     public decimal Donations { get; init; }
     public decimal VatAmount { get; init; }
     public decimal VipDonations { get; init; }
+    public decimal NetTicketRevenue => GrossRevenue - VatAmount - Donations - VipDonations;
 }
 
-internal sealed class QuarterlySalesAggregate
+internal sealed class WeeklySalesAggregate : PeriodSalesAggregate
+{
+    public LocalDate WeekStart { get; init; }
+    public string WeekLabel { get; init; } = string.Empty;
+}
+
+internal sealed class QuarterlySalesAggregate : PeriodSalesAggregate
 {
     public string QuarterLabel { get; init; } = string.Empty;
     public int Year { get; init; }
     public int Quarter { get; init; }
-    public int TicketsSold { get; init; }
-    public decimal GrossRevenue { get; init; }
-    public int OrderCount { get; init; }
-    public decimal Donations { get; init; }
-    public decimal VatAmount { get; init; }
-    public decimal VipDonations { get; init; }
 }
 
 /// <summary>
