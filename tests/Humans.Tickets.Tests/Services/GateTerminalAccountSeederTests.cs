@@ -49,6 +49,34 @@ public sealed class GateTerminalAccountSeederTests : TicketsTestHarness
             .Returns(new ProfileEditResult(true));
     }
 
+    [HumansFact]
+    public async Task StatusController_CancelsTheUserLookupBeforeReadingCredentials()
+    {
+        using var request = new CancellationTokenSource();
+        await request.CancelAsync();
+        _accounts.GetUserInfoAsync(SystemUserIds.GateTerminal, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = SystemUserIds.GateTerminal }, [], [], null));
+        });
+        var controller = new TicketsGateAdminController(_accounts, NewService())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { RequestAborted = request.Token }
+            }
+        };
+
+        var error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Index());
+
+        Assert.Equal(request.Token, error.CancellationToken);
+        Assert.Empty(_signIn.ReceivedCalls());
+        Assert.Empty(_provisioning.ReceivedCalls());
+        Assert.Empty(_userWrite.ReceivedCalls());
+        Assert.Empty(_audit.ReceivedCalls());
+    }
+
     [HumansTheory]
     [InlineData(AccountScenario.Merged)]
     [InlineData(AccountScenario.Missing)]
