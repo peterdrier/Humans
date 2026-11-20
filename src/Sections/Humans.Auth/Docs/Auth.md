@@ -110,7 +110,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 | EventsAdmin | Events | Approve, reject, and request edits on event guide submissions |
 | CantinaAdmin | Cantina | Read-only cantina weekly/daily roster (on-site cohort, dietary breakdown, allergy/intolerance rollups); sees dietary preferences but never medical conditions — excluded at the DTO boundary |
 | ConsentCoordinator | Consent | Safety gate for onboarding consent checks |
-| ShiftsAdmin | Shifts (was `VolunteerCoordinator`) | Facilitation contact for onboarding; read-only access to onboarding review queue |
+| ShiftsAdmin | Shifts (was `VolunteerCoordinator`) | Facilitation contact for onboarding |
 | RideshareAdmin | Rideshare | Rideshare settings (event's destination + travel windows), season statistics, and the operational day roster; confers nothing outside Rideshare |
 | GrantsAdmin | Grants | Creates grant programs, names their managers, and issues, revokes and resends on any program; confers nothing outside Grants |
 | SurveysAdmin | Surveys | Approves or rejects submitted surveys, edits any survey, opens and closes them, sends invitations and downloads results; confers nothing outside Surveys |

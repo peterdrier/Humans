@@ -26,6 +26,8 @@
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <!-- The shifts step renders Shifts' <vc:onboarding-shifts-list>. Shifts references no Onboarding project. -->
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!--

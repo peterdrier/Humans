@@ -38,7 +38,7 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 |------------|-------|-------|-------------------|---------------------|
 | Requires `UserState == Active` access gate | Yes | Yes | Yes | Yes |
 | Access Admin area | Yes | Yes | No | No |
-| Access Consent review queue | Yes | Yes | Yes | Yes (read-only) |
+| Access Consent review queue | Yes | Yes | Yes | No |
 | Clear/Flag consent checks | Yes | Yes | Yes | No |
 | Vote on tier applications | Yes | No | No | No |
 | Assign roles | No | Yes | No | No |
@@ -111,7 +111,7 @@ Coordinator roles do not bypass the global access filter. A coordinator must hav
 ```
 
 With action-level restrictions:
-- **View queue/details**: All four roles (`ReviewQueueAccess` = ConsentCoordinator, ShiftsAdmin, Board, Admin)
+- **View queue/details**: `ReviewQueueAccess` = ConsentCoordinator, Board, Admin. ShiftsAdmin has no access.
 - **Clear/Flag consent check, reject signup**: Board, Admin, ConsentCoordinator only (`PolicyNames.ConsentCoordinatorBoardOrAdmin`)
 - **Vote on tier applications**: Board only (separate Board Voting dashboard)
 

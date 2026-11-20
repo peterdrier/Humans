@@ -1,6 +1,7 @@
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Shifts.Services;
 
 namespace Humans.Shifts.ViewComponents;
@@ -8,8 +9,10 @@ namespace Humans.Shifts.ViewComponents;
 /// <summary>
 /// The caller has already filtered <c>shifts</c> to the selected priority pill. Takes the event by id because the
 /// rota partials need this section's own <see cref="BurnSettingsInfo"/>.
+/// Public so Onboarding's shifts step can render it as <c>&lt;vc:onboarding-shifts-list&gt;</c>; a public constructor
+/// can't take the internal <see cref="IBurnSettingsService"/>, so it resolves it per invocation.
 /// </summary>
-internal sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnSettings) : ViewComponent
+public sealed class OnboardingShiftsListViewComponent(IServiceProvider services) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
         Guid eventSettingsId,
@@ -17,7 +20,7 @@ internal sealed class OnboardingShiftsListViewComponent(IBurnSettingsService bur
         HashSet<Guid> userSignupShiftIds,
         Dictionary<Guid, SignupStatus> userSignupStatuses)
     {
-        var eventSettings = await burnSettings.GetByIdAsync(eventSettingsId, HttpContext.RequestAborted);
+        var eventSettings = await services.GetRequiredService<IBurnSettingsService>().GetByIdAsync(eventSettingsId, HttpContext.RequestAborted);
         if (eventSettings is null)
             return Content(string.Empty);
 

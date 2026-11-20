@@ -41,7 +41,7 @@ public sealed class OnboardingShiftsListViewComponentTests
 
     public OnboardingShiftsListViewComponentTests()
     {
-        _sut = new OnboardingShiftsListViewComponent(_burnSettings)
+        _sut = new OnboardingShiftsListViewComponent(new ServiceLocatorBuilder().With(_burnSettings).Build())
         {
             ViewComponentContext = new ViewComponentContext
             {

@@ -59,9 +59,6 @@ Notes the table hides:
   is a project, not a folder, because Consent calls into Onboarding and Onboarding embeds
   Consent's signing step; a folder would close a cycle. It has zero project references and that
   is load-bearing.
-- **`Contracts/` (folder)** — the one seam another section fills rather than calls:
-  `IOnboardingShiftsStep`, which Shifts contributes. It names Shifts types, so it cannot sit on
-  the leaf.
 - **`Services/`** — `OnboardingService` (shapes 3–5, an orchestrator over other sections'
   service interfaces), `OnboardingWidgetState` (shape 1) behind `IOnboardingWidgetState` with
   the step enum it returns, the session seam the step resolver needs to see the "not right now"
@@ -77,7 +74,7 @@ Notes the table hides:
   on, `OnboardingAuditActions` and `OnboardingNotificationSources`.
 
 Presentation the section does *not* own: the rota tables on the shifts step are Shifts'
-(contributed through `IOnboardingShiftsStep`, invoked by Type), the consent step's body and form
+(Shifts' public `<vc:onboarding-shifts-list>`, rendered directly), the consent step's body and form
 are Consent's (`ConsentSigningStepViewComponent`), and the person and access-matrix widgets are
 Base's.
 
