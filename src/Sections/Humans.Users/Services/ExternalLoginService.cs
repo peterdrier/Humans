@@ -19,13 +19,14 @@ internal sealed class ExternalLoginService(
         ExternalLoginAttempt attempt,
         CancellationToken ct = default)
     {
-        if (attempt.ProviderSignInSucceeded)
-            return await CompleteKnownLoginAsync(attempt, ct);
-
-        // Link-while-signed-in must precede lockout/email-match/create — otherwise a fresh OAuth email spawns a duplicate.
+        // Link-while-signed-in must precede known-login/lockout/email-match/create — otherwise
+        // an authenticated link either switches sessions or spawns a duplicate.
         var currentUserLink = await TryLinkToCurrentUserAsync(attempt, ct);
         if (currentUserLink is not null)
             return currentUserLink;
+
+        if (attempt.ProviderSignInSucceeded)
+            return await CompleteKnownLoginAsync(attempt, ct);
 
         if (attempt.ProviderSignInLockedOut)
         {
@@ -72,7 +73,13 @@ internal sealed class ExternalLoginService(
 
         var currentUser = await userManager.FindByIdAsync(currentUserId.ToString());
         if (currentUser is null)
-            return null;
+        {
+            logger.LogWarning(
+                "Refused to link {Provider} login: authenticated user {UserId} not found",
+                attempt.Login.LoginProvider,
+                currentUserId);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+        }
 
         if (UserStateEvaluator.IsTombstone(currentUser))
         {
@@ -80,14 +87,36 @@ internal sealed class ExternalLoginService(
             return new ExternalLoginCompletionResult(ExternalLoginOutcome.LockedOut);
         }
 
+        var existingOwner = await userManager.FindByLoginAsync(
+            attempt.Login.LoginProvider,
+            attempt.Login.ProviderKey);
+        if (existingOwner is not null)
+        {
+            if (existingOwner.Id != currentUser.Id)
+            {
+                logger.LogWarning(
+                    "Refused to link {Provider} login to authenticated user {UserId}: already linked to user {ExistingOwnerId}",
+                    attempt.Login.LoginProvider,
+                    currentUser.Id,
+                    existingOwner.Id);
+                return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+            }
+
+            await FinishCurrentUserLinkAsync(currentUser.Id, attempt, ct);
+
+            logger.LogInformation(
+                "{Provider} login already linked to currently-authenticated user {UserId}; reconciled",
+                attempt.Login.LoginProvider,
+                currentUser.Id);
+
+            // Their session already exists — no cookie to re-issue.
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn);
+        }
+
         var addLinkResult = await userManager.AddLoginAsync(currentUser, attempt.Login);
         if (addLinkResult.Succeeded)
         {
-            await userService.RecordLoginAsync(currentUser.Id, ct);
-            await TryEnsureStubProfileAsync(currentUser.Id, actorUserId: currentUser.Id, ct);
-
-            if (!string.IsNullOrEmpty(attempt.Email))
-                await TryReconcileAsync(currentUser.Id, attempt, ct);
+            await FinishCurrentUserLinkAsync(currentUser.Id, attempt, ct);
 
             logger.LogInformation(
                 "Linked {Provider} login to currently-authenticated user {UserId}",
@@ -105,6 +134,13 @@ internal sealed class ExternalLoginService(
             string.Join(", ", addLinkResult.Errors.Select(e => e.Description)));
 
         return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+    }
+
+    private async Task FinishCurrentUserLinkAsync(Guid userId, ExternalLoginAttempt attempt, CancellationToken ct)
+    {
+        await userService.RecordLoginAsync(userId, ct);
+        await TryEnsureStubProfileAsync(userId, actorUserId: userId, ct);
+        await TryReconcileAsync(userId, attempt, ct);
     }
 
     private async Task<ExternalLoginCompletionResult?> TryRelinkLockedOutAsync(

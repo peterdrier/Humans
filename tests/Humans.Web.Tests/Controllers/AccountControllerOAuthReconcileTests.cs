@@ -1,5 +1,6 @@
 using Humans.Users.Services;
 using Humans.Auth.Contracts;
+using Humans.Base.Constants;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
@@ -255,8 +256,6 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(newEmail, emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
-            .Returns(SignInResult.Failed);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString())
@@ -276,6 +275,8 @@ public class AccountControllerOAuthReconcileTests
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
+        await _signInManager.DidNotReceiveWithAnyArgs()
+            .ExternalLoginSignInAsync(default!, default!, default, default);
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             currentUserId, Provider, ProviderKey, newEmail,
@@ -288,6 +289,85 @@ public class AccountControllerOAuthReconcileTests
             Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
 
         // ...and linking is not a sign-in, so the dashboard tally doesn't move.
+        _loginMethods.Google.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task AlreadyAuthenticatedLink_LoginOwnedByAnotherUser_NeverCallsExternalSignInAndFlashesLinkFailed()
+    {
+        var userAId = Guid.NewGuid();
+        var userA = new User { Id = userAId, State = UserState.Active };
+        var userB = new User { Id = Guid.NewGuid(), State = UserState.Active };
+        var info = MakeInfo("userb@google.test", emailVerified: true);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        // Even if Identity would succeed for User B, authenticated link must never call ExternalLoginSignInAsync.
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
+            .Returns(SignInResult.Success);
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userAId.ToString())],
+            authenticationType: "TestAuth"));
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+        _controller.Url.IsLocalUrl("/Profile/Me/Emails").Returns(true);
+
+        _userManager.FindByIdAsync(userAId.ToString()).Returns(userA);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(userB);
+
+        var result = await _controller.ExternalLoginCallback(returnUrl: "/Profile/Me/Emails", remoteError: null);
+
+        result.Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be("/Profile/Me/Emails");
+        _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("EmailGrid_LinkFailed");
+        await _signInManager.DidNotReceiveWithAnyArgs()
+            .ExternalLoginSignInAsync(default!, default!, default, default);
+        await _signInManager.DidNotReceive().SignInAsync(
+            Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
+        await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
+        await _userEmailService.DidNotReceiveWithAnyArgs()
+            .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default, default);
+        _loginMethods.Google.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task AlreadyAuthenticatedLink_LoginAlreadyOwnedByCurrentUser_ReconcilesWithoutAddLoginOrCookieSwitch()
+    {
+        var userAId = Guid.NewGuid();
+        var userA = new User { Id = userAId, State = UserState.Active };
+        var info = MakeInfo("usera@google.test", emailVerified: true);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
+            .Returns(SignInResult.Success);
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userAId.ToString())],
+            authenticationType: "TestAuth"));
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+        _controller.Url.IsLocalUrl("/Profile/Me/Emails").Returns(true);
+
+        _userManager.FindByIdAsync(userAId.ToString()).Returns(userA);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(userA);
+
+        var result = await _controller.ExternalLoginCallback(returnUrl: "/Profile/Me/Emails", remoteError: null);
+
+        result.Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be("/Profile/Me/Emails");
+        _controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
+        await _signInManager.DidNotReceiveWithAnyArgs()
+            .ExternalLoginSignInAsync(default!, default!, default, default);
+        await _signInManager.DidNotReceive().SignInAsync(
+            Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
+        await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
+        await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
+            userAId, Provider, ProviderKey, "usera@google.test",
+            claimEmailVerified: true, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordLoginAsync(userAId, Arg.Any<CancellationToken>());
         _loginMethods.Google.Should().Be(0);
     }
 
