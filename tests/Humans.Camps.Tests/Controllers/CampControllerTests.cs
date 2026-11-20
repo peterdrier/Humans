@@ -8,6 +8,7 @@ using Humans.Base.Enums;
 using Humans.Base.Constants;
 using Humans.Base;
 using Humans.Base.Extensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -287,6 +288,65 @@ public class CampControllerTests
             data.SoundZone.Should().BeNull();
             data.ElectricalGrid.Should().BeNull();
         }
+    }
+
+    [HumansTheory]
+    [InlineData("refused-registration", "settings")]
+    [InlineData("refused-registration", "info")]
+    [InlineData("failed-registration", "settings")]
+    [InlineData("failed-registration", "info")]
+    [InlineData("invalid-edit", "edit-data")]
+    [InlineData("refused-edit", "edit-data")]
+    public async Task FormRedisplays_RetainRequestCancellation(string path, string boundary)
+    {
+        using var request = new CancellationTokenSource();
+        var actor = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha", CampSeasonStatus.Active, actor);
+        var season = camp.Seasons.Single();
+        _users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actor));
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _campsLocalizer[Arg.Any<string>(), Arg.Any<object[]>()]
+            .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "settings", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return Settings2026();
+        });
+        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (string.Equals(boundary, "info", StringComparison.Ordinal)) call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (string?)"Registration info";
+        });
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
+            .ReturnsForAnyArgs(async _ =>
+            {
+                await request.CancelAsync();
+                if (string.Equals(path, "failed-registration", StringComparison.Ordinal)) throw new DbUpdateException("Registration save failed");
+                return new CampWriteResult<Camp>(null, "Refused");
+            });
+        _camps.UpdateCampAsync(Arg.Any<CampUpdateInput>(), actor).Returns(CampUpdateResult.Failure("Refused"));
+        _camps.GetCampEditDataAsync(camp.Id, season.EventSettingsId, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (CampEditData?)MakeEditData(camp, season);
+        });
+        var controller = BuildController(actor);
+        controller.HttpContext.RequestAborted = request.Token;
+        var edit = path.EndsWith("edit", StringComparison.Ordinal);
+        CampRegisterViewModel model = edit ? new CampEditViewModel { SeasonId = season.Id } : new CampRegisterViewModel();
+        model.Name = "Alpha";
+        model.ContactEmail = "alpha@example.test";
+        model.ContactPhone = "+34600000000";
+        if (string.Equals(path, "invalid-edit", StringComparison.Ordinal)) controller.ModelState.AddModelError("Name", "Invalid");
+        Func<Task<IActionResult>> render = edit
+            ? () => controller.Edit(camp.Slug, (CampEditViewModel)model)
+            : () => controller.Register(model);
+
+        await render.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]
