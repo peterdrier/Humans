@@ -61,6 +61,7 @@ public sealed class Section :
 
         services.AddSingleton<IAuditActionContributor, ConsentAuditActions>();
         services.AddSingleton<INotificationSourceContributor, ConsentNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, ConsentNotificationMeters>();
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
 
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();

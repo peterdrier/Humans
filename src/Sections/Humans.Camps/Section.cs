@@ -58,6 +58,7 @@ public sealed class Section :
     {
         services.AddSingleton<IAuditActionContributor, CampsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, CampsNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, CampsNotificationMeters>();
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
 
         services.AddSingleton<ICampRepository, CampRepository>();

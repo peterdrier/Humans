@@ -799,4 +799,6 @@
     <value>Seleziona i tag che corrispondono al tipo di lavoro che ti piace. I turni corrispondenti saranno evidenziati con una stella.</value>
   </data>
   <data name="Users_Status_Board" xml:space="preserve"><value>Consiglio</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminazioni di account in sospeso</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>amministratori</value></data>
 </root>

@@ -99,7 +99,7 @@ Prerequisite for final disable acceptance: packages 1 to 6 remove the domain dep
 
 ### 8. Finish crosscut and connector ownership
 
-- [ ] Remove domain orchestration from generic crosscuts and provider infrastructure. Audit `NotificationMeterProvider`, `HumansMetricsService` (push model, nobodies-collective/Humans#580), Campaigns callbacks in `EmailOutboxProcessor`, `HoldedNightlySync`, and Teams' Google-specific event construction.
+- [ ] Remove domain orchestration from generic crosscuts and provider infrastructure. Audit `HumansMetricsService` (push model, nobodies-collective/Humans#580), Campaigns callbacks in `EmailOutboxProcessor`, `HoldedNightlySync`, and Teams' Google-specific event construction.
 - [ ] Put each workflow in its domain owner or a table-free orchestrator, using narrow contracts. Each cache owner evicts its own cache (design-rules.md, *Section caching pattern*). `CachingTeamService.GetTeamDirectoryAsync` resolves `IRoleAssignmentService` sideways, violating [`decorators-talk-only-to-inner`](../../memory/architecture/decorators-talk-only-to-inner.md) today; it is ledgered in Teams' `Docs/debt.yml` so the sweep reaches it before this package does.
 
 Done when removing an optional integration or campaign domain leaves generic notifications/email and required member operations usable. Preserve delivery/retry and synchronization behavior; no new orchestration layer without a concrete need.

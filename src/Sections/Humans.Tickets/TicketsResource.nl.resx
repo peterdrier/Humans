@@ -100,4 +100,6 @@
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Ongedaan maken is mislukt — je status is mogelijk bijgewerkt door de ticketsynchronisatie.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Je ticketstatus is op dit moment niet beschikbaar. Probeer het later opnieuw.</value></data>
   <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Redenen mogen niet langer zijn dan 1.000 tekens.</value></data>
+  <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Fout bij ticketsynchronisatie</value></data>
+  <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>Beheerders</value></data>
 </root>

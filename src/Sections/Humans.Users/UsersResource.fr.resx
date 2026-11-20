@@ -799,4 +799,6 @@
     <value>Sélectionnez les tags correspondant au type de travail que vous aimez. Les quarts correspondants seront mis en valeur avec une étoile.</value>
   </data>
   <data name="Users_Status_Board" xml:space="preserve"><value>Conseil</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Suppressions de comptes en attente</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>administrateurs</value></data>
 </root>

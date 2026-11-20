@@ -373,4 +373,9 @@
   </data>
   <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Prüfen</value></data>
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>{0} auswählen</value></data>
+  <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Ausstehende Einwilligungsprüfungen</value></data>
+  <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Ausstehende Anmeldeprofile</value></data>
+  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>Einwilligungskoordination</value></data>
+  <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>den Vorstand</value></data>
+  <data name="Consent_Meter_AudienceShiftsAdmin" xml:space="preserve"><value>Schicht-Admins</value></data>
 </root>

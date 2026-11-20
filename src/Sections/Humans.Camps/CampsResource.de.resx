@@ -340,4 +340,7 @@
   <data name="Camps_Flash_SeasonWrongCamp" xml:space="preserve"><value>Diese Saison gehört nicht zu diesem Camp.</value></data>
   <data name="Camps_Flash_SeasonWithdrawRequiresOpen" xml:space="preserve"><value>Nur eine ausstehende oder aktive Saison kann zurückgezogen werden.</value></data>
   <data name="Camps_Flash_SeasonFullRequiresActive" xml:space="preserve"><value>Nur eine aktive Saison kann als voll markiert werden.</value></data>
+  <data name="Camps_Meter_JoinRequest" xml:space="preserve"><value>1 Person möchte deinem Camp beitreten</value></data>
+  <data name="Camps_Meter_JoinRequests" xml:space="preserve"><value>{0} Personen möchten deinem Camp beitreten</value></data>
+  <data name="Camps_Meter_AudienceCampLeads" xml:space="preserve"><value>Barrio-Leitung</value></data>
 </root>

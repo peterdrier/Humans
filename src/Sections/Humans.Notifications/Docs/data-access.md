@@ -51,18 +51,8 @@ Cross-section calls via `IUserService`. Implements `IUserDataContributor`.
 
 ### NotificationMeterProvider (Scoped)
 
-No repository. Pure read-aggregation over owning services.
-
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `NotificationMeters` (`CountsCacheKey`) | 2 min | yes | yes | none (TTL only; team join-request count is read live from `ITeamService`) |
-
-Cross-section calls via `IUserService`, `IGoogleSyncService`,
-`ITeamService`, `ITicketSync`,
-`IConsentService`, `ICampService`, plus every `INotificationMeterContributor`. **No direct DB access** — every counter fans out
-through an owning-service interface call. The per-lead camp join-request
-count is not cached here: it reads Camps' in-RAM `CampInfo` projection,
-which Camps evicts on its own writes.
+No repository and no cache. Collects every registered `INotificationMeterContributor`'s meters for the
+viewer, highest priority first; each section computes and caches its own counts.
 
 ### NotificationInboxRead (Scoped)
 

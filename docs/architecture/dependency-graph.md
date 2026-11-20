@@ -122,6 +122,7 @@ graph LR
     Consent -.-> Governance
     Consent -.-> Notifications
     Consent -.-> Onboarding
+    Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
     Containers -.-> Camps
@@ -203,13 +204,7 @@ graph LR
     Monitor --> Google
     Monitor --> Settings
     Notifications --> Auth
-    Notifications --> Consent
-    Notifications --> Google
-    Notifications -.-> Camps
     Notifications -.-> Email
-    Notifications -.-> Shifts
-    Notifications -.-> Teams
-    Notifications -.-> Tickets
     Onboarding --> Consent
     Onboarding --> Issues
     Onboarding --> Settings
@@ -292,6 +287,7 @@ graph LR
     Tickets -.-> Email
     Tickets -.-> Finance
     Tickets -.-> Governance
+    Tickets -.-> Notifications
     Tickets -.-> Teams
     Tickets -.-> Users
     Users --> AuditLog

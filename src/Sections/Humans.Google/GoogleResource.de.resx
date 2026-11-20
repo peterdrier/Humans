@@ -154,4 +154,6 @@
   <data name="Google_TeamResources_ResourceSynced" xml:space="preserve"><value>Ressourcenberechtigungen erfolgreich synchronisiert.</value></data>
   <data name="Google_TeamResources_ResourceSyncFailed" xml:space="preserve"><value>Synchronisierung der Ressourcenberechtigungen fehlgeschlagen: {0}</value><comment>{0} = error message</comment></data>
   <data name="Google_TeamResources_ServiceAccount" xml:space="preserve"><value>Dienstkonto: {0}</value><comment>{0} = service account email</comment></data>
+  <data name="Google_Meter_FailedSyncEvents" xml:space="preserve"><value>Fehlgeschlagene Google-Synchronisierungen</value></data>
+  <data name="Google_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
 </root>
