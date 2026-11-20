@@ -50,7 +50,7 @@ public class CreditorMergeTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private Service MakeService() => new(
-        new Repository(_factory), Substitute.For<IBudgetService>(), TestContacts.Holded(), _write,
+        FixedOrgTimeZone.Madrid, new Repository(_factory), Substitute.For<IBudgetService>(), TestContacts.Holded(), _write,
         Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(Now), _audit, _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>(
