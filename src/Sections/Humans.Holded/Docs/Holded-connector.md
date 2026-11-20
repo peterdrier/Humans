@@ -47,7 +47,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 ## Invariants
 
 - Contact creation accepts no custom user id: Holded v2 cannot write it. Finance keeps the user-to-contact binding locally.
-- Connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata; consumers use document totals, the draft flag and bank reconciliation status.
+- Purchase detail reads parse only approval time, notes and payment details. Identity, document number, totals, balances and tags come from the list mirror where needed; unused detail metadata cannot fail approval, note sync or payment-reference reads. Other connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata.
 - Every HTTP send goes through `HoldedTransport`, which owns Bearer authorization, retry, the
   cursor page walk, the call-meter record and the timed-operation log. The metered endpoint name is
   the operation's method name.

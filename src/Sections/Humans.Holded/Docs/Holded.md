@@ -193,6 +193,7 @@ it wrote.
   never anchor on the newest cached line); full sweep (inception → today) on cold cache or the
   Full sync button. Reconciliation catches anything older, so correctness does not depend on
   window width — the window is a quota choice.
+- Purchase detail responses expose only approval time, notes and payment details internally; totals, balances and tags are read from the list endpoint for the mirror, not parsed again from unused detail fields.
 - Purchase-document sync is a full pull with replace semantics (Holded's purchase list has no
   reliable incremental key). Notes need one GET per doc: only docs the mirror has no notes for,
   newest first, at most 50 a run; a transient failure ends that run's fetching and never fails the

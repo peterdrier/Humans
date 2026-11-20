@@ -88,8 +88,8 @@ public sealed class HoldedWriteTests
     public async Task EnsurePurchaseDocumentApproved_approves_only_a_draft()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        _client.GetPurchaseDocumentAsync("d1", Arg.Any<CancellationToken>()).Returns(Doc("d1", approvedAt: Now));
-        _client.GetPurchaseDocumentAsync("d2", Arg.Any<CancellationToken>()).Returns(Doc("d2", approvedAt: null));
+        _client.GetPurchaseDocumentAsync("d1", Arg.Any<CancellationToken>()).Returns(Doc(approvedAt: Now));
+        _client.GetPurchaseDocumentAsync("d2", Arg.Any<CancellationToken>()).Returns(Doc(approvedAt: null));
 
         await _write.EnsurePurchaseDocumentApprovedAsync("d1", ct);
         await _write.EnsurePurchaseDocumentApprovedAsync("d2", ct);
@@ -109,15 +109,8 @@ public sealed class HoldedWriteTests
         await _holded.Received(1).SyncContactsAsync(Arg.Any<CancellationToken>());
     }
 
-    private static HoldedPurchaseDocumentDto Doc(string id, Instant? approvedAt) => new()
+    private static HoldedPurchaseDocumentDto Doc(Instant? approvedAt) => new()
     {
-        Id = id,
-        DocNumber = id,
-        Subtotal = 0,
-        Tax = 0,
-        Total = 0,
-        PaymentsTotal = 0,
-        PaymentsPending = 0,
         ApprovedAt = approvedAt,
     };
 }
