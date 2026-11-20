@@ -50,16 +50,40 @@ internal sealed class FinanceController(
     [HttpPost("Pleo/Book")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public IActionResult BookPleo([BindRequired] string batch)
+    public IActionResult BookPleo([BindRequired] string batch) => StartPleoRun(PleoRunKind.Book, batch);
+
+    [HttpPost("Pleo/Receipts")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public IActionResult AttachPleoReceipts() => StartPleoRun(PleoRunKind.Receipts, "all");
+
+    [HttpPost("Pleo/Corrections")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public IActionResult CorrectPleo([BindRequired] string batch) => StartPleoRun(PleoRunKind.Corrections, batch);
+
+    private IActionResult StartPleoRun(PleoRunKind kind, string batch)
     {
         if (GetCurrentUserId() is not { } actorUserId) return Challenge();
         int? limit = batch switch { "1" => 1, "10" => 10, "50" => 50, "all" => null, _ => 0 };
         if (!ModelState.IsValid || limit == 0) return BadRequest();
-        if (pleoRunner.TryStart(limit, actorUserId))
-            SetSuccess("Booking started.");
+        if (pleoRunner.TryStart(kind, limit, actorUserId))
+            SetSuccess("Started.");
         else
-            SetError("A booking run is already going; nothing more was started.");
+            SetError("A Pleo run is already going; nothing more was started.");
         return RedirectToAction(nameof(Pleo));
+    }
+
+    /// <summary>Posted from the Finance tab on /Settings.</summary>
+    [HttpPost("PleoSettings")]
+    [Authorize(Policy = FinancePolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SavePleoSettings(string? contactId, string? treasuryId)
+    {
+        if (GetCurrentUserId() is not { } actorUserId) return Challenge();
+        await pleoBooking.SaveSettingsAsync(contactId, treasuryId, actorUserId, HttpContext.RequestAborted);
+        SetSuccess("Pleo settings saved.");
+        return Redirect("/Settings#finance");
     }
 
     /// <summary>Posted from the Finance tab on /Settings.</summary>

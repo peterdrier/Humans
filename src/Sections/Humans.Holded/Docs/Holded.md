@@ -172,7 +172,8 @@ is safe to repeat, and returns an outcome, never a Holded id.
 
 Id-keyed writes for callers that already store Holded's ids, one step each:
 `CreateContactAsync` / `DeleteContactAsync` (each refreshes the contact mirror; a failed refresh is
-logged, the write stands), `CreatePurchaseDocumentAsync`, `UploadPurchaseAttachmentAsync`,
+logged, the write stands), `CreatePurchaseDocumentAsync` (optionally with a document `number`, and per line explicit
+tax keys: an empty list books the line with no tax, omitted applies the contact's default), `UploadPurchaseAttachmentAsync`,
 `EnsurePurchaseDocumentApprovedAsync`, `DeletePurchaseDocumentByIdAsync`, and for sales documents
 `FindSalesDocumentsByTagAsync` (both kinds, read live: the issuance guard), `IssueSalesDocumentAsync`
 (create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown

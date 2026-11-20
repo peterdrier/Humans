@@ -20,7 +20,7 @@ the settled entries and the balance from here to book them. Nothing is ever writ
 | S2 — does it add up | "Does the mirror match Pleo's balance, and what blocks booking?" | `GET /Pleo` |
 | S3 — look at entries | "Which entries are these, and what does this one's receipt show?" | `GET /Pleo/Entries`, `GET /Pleo/Entries/{id}`, `GET /Pleo/Entries/{id}/Receipts/{receiptId}` |
 | S4 — map categories | "Which ledger account does this spending category book to?" | `GET /Pleo/Categories`, `POST /Pleo/Categories/Link`, `Unlink`, `Add` |
-| S5 — read for booking | "What settled in this window, and what is the wallet balance?" | `IPleoService` (Finance) |
+| S5 — read for booking | "What settled in this window, what is the wallet balance, and give me this receipt" | `IPleoService` (Finance) |
 
 S2, S3, S5 and the read half of S4 are one load of the whole mirror (`PleoMirrorReader`) projected
 per page; nothing is queried selectively. S1 is the only writer of the cache tables, S4's POSTs the
@@ -31,7 +31,7 @@ only hand writer of `pleo_categories`.
 ```
 Humans.Pleo/
   Section.cs              DI, config keys, admin nav, the nightly job
-  Contracts/              IPleoService + its two records (S5)
+  Contracts/              IPleoService + its three records (S5)
   Controllers/            S1 button, S2, S3, S4; ordering of every list
   Services/
     Service               IPleoService + IPleoAdminService; category writes; forwards the rest
