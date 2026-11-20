@@ -50,7 +50,7 @@ internal sealed record FinanceAccountLineVm(
 internal sealed record FinanceAccountSourceVm(
     decimal? Balance, string ReconcileUrl, string? Unknown = null, Instant? ReadAt = null, decimal? Pending = null);
 
-/// <summary>Bank lines of the last <see cref="Services.SepaBankBooking.FeedWindowDays"/> days that Holded has not fully
+/// <summary>Bank lines of the last <see cref="Services.Service.FeedWindowDays"/> days that Holded has not fully
 /// reconciled, as of <see cref="SyncedAt"/>. Both null when the feed has never been mirrored.</summary>
 internal sealed record FinanceBankFeedVm(int? Unreconciled, Instant? SyncedAt);
 

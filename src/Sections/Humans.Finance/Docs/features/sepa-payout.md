@@ -65,8 +65,8 @@ longer needs a redeploy.
    **invariantly** rather than through model binding, which would use the request culture and read
    `12.34` as `1234` under a comma-decimal locale. An unparseable or non-positive cap refuses the
    whole batch before any selection is looked at.
-4. `Service.GenerateSepaPayoutAsync` forwards the posted cap to `SepaPayoutGeneration` (the config
-   key is only the screen's prefill default), which re-derives payability server-side and checks each amount against the
+4. `Service.GenerateSepaPayoutAsync` takes the posted cap (the config
+   key is only the screen's prefill default), re-derives payability server-side and checks each amount against the
    balance, refreshes the Holded contact mirror (`SyncContactsAsync`; a failed or skipped refresh
    refuses the payout, so an IBAN fixed in Holded today is the one paid), resolves the payee's name
    and unmasked IBAN from it **keyed on the binding's `HoldedContactId`**, and mints one `SepaPayoutTransfer` per row,
@@ -263,8 +263,7 @@ reconcile ref.
 
 ## The sweep
 
-The section-internal `SepaBankBooking` owns the shared manual booking and sweep logic;
-`Service` keeps the existing entry points and delegates to it. The sweep’s
+`Service` owns the shared manual booking and sweep logic. The sweep’s
 consecutive failure counts share a singleton `TrackedCache` across scopes.
 
 Selection reads retain the job token, with shutdown checkpoints before reconciliation groups and
