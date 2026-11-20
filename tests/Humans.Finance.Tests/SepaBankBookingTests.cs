@@ -1740,6 +1740,12 @@ public class SepaBankBookingTests
         var (rows, _, unmatched, _, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
         var result = await service.BookSepaFileMatchesAsync(MatchedFileId, Guid.NewGuid());
 
+        var file = new SepaPayoutFileVm(MatchedFileId, "f.xml", FixedNow, Guid.Empty,
+            rows.Where(row => row.FileId == MatchedFileId).Select(row => new SepaTransferVm(row, "Member")).ToList(), null);
+        file.UnbookedCount.Should().Be(2);
+        file.MatchedUnbookedCount.Should().Be(1);
+        file.AllUnbookedMatched.Should().BeFalse();
+
         rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
         rows.Single(r => r.TransferId == OtherTransferId).CanBook.Should().BeFalse();
         unmatched.Should().ContainSingle().Which.Reason.Should().Contain("2 unbooked transfers are for");
@@ -1763,6 +1769,15 @@ public class SepaBankBookingTests
 
         var (rows, _, unmatched, _, _) = await service.GetSepaPayoutsAsync(ct: TestContext.Current.CancellationToken);
         var result = await service.BookSepaFileMatchesAsync(MatchedFileId, actor);
+
+        var file = new SepaPayoutFileVm(MatchedFileId, "f.xml", FixedNow, Guid.Empty,
+            rows.Where(row => row.FileId == MatchedFileId).Select(row => new SepaTransferVm(row, "Member")).ToList(), null);
+        file.WithdrawnCount.Should().Be(1);
+        file.UnbookedCount.Should().Be(1);
+        file.SummaryTransferCount.Should().Be(1);
+        file.SummaryTotal.Should().Be(30m);
+        file.IsCancelled.Should().BeFalse();
+        file.AllUnbookedMatched.Should().BeTrue();
 
         rows.Single(r => r.TransferId == TransferId).CanBook.Should().BeTrue();
         rows.Single(r => r.TransferId == OtherTransferId).CanBook.Should().BeFalse();
