@@ -8,6 +8,8 @@
   src/Sections/Humans.Containers/Contracts/ContainerOperationRequirement.cs
   src/Sections/Humans.CityPlanning/Services/CityPlanningHub.cs
   src/Humans.Base/Authorization/RoleChecks.cs
+  src/Sections/Humans.Camps.Contracts/CampsRoles.cs
+  src/Sections/Humans.Containers/Domain/ContainerImage.cs
 -->
 <!-- freshness:flag-on-change
   Polygon entities, container entity, MVC/API/SignalR routes, sound-zone color encoding, or map-admin authorization may have shifted.
@@ -44,8 +46,8 @@ City Planning organizes the physical layout of the event site across these phase
 - **US-38.7: View Polygon History** — Full version history per polygon; map admins can restore any past version
 - **US-38.8: Real-Time Collaborative View** — Remote cursors visible live; polygon saves broadcast to all connected clients via SignalR
 - **US-38.9: Placement Phase Card** — Shows the Open / Adjustments only / Closed badge and a help modal with the schedule's calendar dates (opening day, last day to place, last day to adjust), also on the Camp Details page
-- **US-38.10: Admin — Override the Placement Window** — From `/Settings#city-planning`, Force open / Force closed override the schedule; Follow schedule clears the override. Each is audited and timestamped (peterdrier/Humans#2102)
-- **US-38.11: Admin — Set the Placement Schedule** — From `/Settings#city-planning`, set day offsets from the active event's gate opening (opens, closes, changeable until); the tab shows each one's calendar date and the current effective state. The schedule drives placement automatically — no button press needed (peterdrier/Humans#2102)
+- **US-38.10: Admin — Override the Placement Window** — From `/Settings#city-planning`, Force open / Force closed override the schedule; Follow schedule clears the override. Each is audited and timestamped
+- **US-38.11: Admin — Set the Placement Schedule** — From `/Settings#city-planning`, set day offsets from the active event's gate opening (opens, closes, changeable until); the tab shows each one's calendar date and the current effective state. The schedule drives placement automatically — no button press needed
 - **US-38.12: Admin — Upload/Delete Limit Zone** — GeoJSON boundary for allowed placement area; rendered as dashed colored outline (color-coded by sound zone); download/delete supported
 - **US-38.13: Admin — Upload/Delete Official Zones** — Read-only named overlay (dark gray, labeled); each Feature requires a `name` property; download/delete supported
 - **US-38.14: Admin — Export All Placements** — Download all polygons as a GeoJSON FeatureCollection
@@ -56,7 +58,7 @@ City Planning organizes the physical layout of the event site across these phase
 ### Containers
 - **US-38.17: Manage Containers (admin)** — Map admins create, edit, and delete containers for the whole event year via `/CityPlanning/BarrioMap/Admin/Containers/{year}`. Each container has a name, description, and optional photos.
 - **US-38.18: Manage Containers (barrio lead)** — Barrio leads manage the containers owned by their camp via `/Camp/{slug}/Containers`. Same fields; scoped to own camp. Containers persist year-over-year; per-year placements are separate.
-- **US-38.19: Container Photos** — Each container has a photo gallery — images can be uploaded, added to, and deleted. Stored on the filesystem with DB fallback.
+- **US-38.19: Container Photos** — Each container has a photo gallery — images can be uploaded, added to, and deleted. Stored on the filesystem.
 - **US-38.20: Placed Badge** — Container list views show a "Placed" badge next to containers that have a location set.
 - **US-38.21: Export Containers as GeoJSON** — Map admins can download all placed containers for the year as a GeoJSON FeatureCollection. Barrio leads download only their own camp's containers.
 - **US-38.22: Place Containers on Map** — During the container placement phase, barrio leads (own containers) and map admins (all containers) place containers on the map by dragging from the sidebar. Containers are represented as rotatable rectangles with configurable dimensions.
@@ -116,7 +118,7 @@ CityPlanningSettings
 ```
 Container
 ├── Id: Guid
-├── CampId: Guid (FK → camps.Id, non-nullable)
+├── CampId: Guid (bare camp id, no FK; non-nullable)
 ├── Name: string
 ├── Description: string?
 ├── ImageStoragePath: string?
@@ -124,6 +126,18 @@ Container
 ├── ImageFileName: string?
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant
+```
+
+### ContainerImage
+```
+ContainerImage
+├── Id: Guid
+├── ContainerId: Guid
+├── StoragePath: string
+├── ContentType: string
+├── FileName: string
+├── SortOrder: int
+└── CreatedAt: Instant
 ```
 
 ### ContainerPlacement
@@ -268,7 +282,7 @@ Map admin = the `CityPlanningMapAdmin` policy: `Admin` or `CampsAdmin`, **or** m
 
 ## Related Features
 
-- [City Planning section invariants](../CityPlanning.md) — current data model, routing, and architecture status (the section became its own project in G5, nobodies-collective/Humans#866)
+- [City Planning section invariants](../CityPlanning.md) — current data model, routing, and architecture status
 - [Camps](../../../Humans.Camps/Docs/features/Camps-feature.md) — `CampSeason` is the anchor entity; placement requires an approved camp season for the current year
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — All map routes require authentication
 - [Administration](../../../../../docs/features/global/administration.md) — Admin role gates map admin actions

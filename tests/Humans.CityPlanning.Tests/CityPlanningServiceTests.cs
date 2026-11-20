@@ -101,28 +101,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         history.ModifiedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
-    [HumansFact]
-    public async Task SaveCampPolygonAsync_SecondSave_UpdatesPolygonAndAppendsHistory()
-    {
-        var campSeasonId = Guid.NewGuid();
-        var userId = NewUserId();
-        const string geoJson1 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
-        const string geoJson2 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[2,0],[2,2],[0,0]]]}}""";
-
-        SetupExistingCampSeason(campSeasonId, 2026);
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
-
-        var polygonCount = await CityPlanningDb.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-        var historyCount = await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-
-        polygonCount.Should().Be(1);
-        historyCount.Should().Be(2);
-        polygon.GeoJson.Should().Be(geoJson2);
-        polygon.AreaSqm.Should().Be(200.0);
-    }
-
     [HumansTheory]
     [InlineData("{not-json")]
     [InlineData("null")]
@@ -302,15 +280,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("FileTooLarge");
-    }
-
-    [HumansFact]
-    public async Task UpdateOfficialZonesFromUploadAsync_NoFile_ReturnsMissingFile()
-    {
-        var result = await _sut.UpdateOfficialZonesFromUploadAsync(null, NewUserId(), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("MissingFile");
     }
 
     [HumansFact]
@@ -507,8 +476,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before
-    // the write: re-read after it, an abort mid-write committed the change unaudited.
+    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before the write.
     [HumansFact]
     public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
     {

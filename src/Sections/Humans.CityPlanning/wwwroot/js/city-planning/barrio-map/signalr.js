@@ -1,4 +1,3 @@
-// SignalR hub connection and real-time event handlers.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
 import { buildCampPolygonFeatures, invalidateParsedFeature } from './geometry.js';
