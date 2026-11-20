@@ -68,7 +68,6 @@ internal sealed class HoldedAccountingClient(HoldedTransport transport, ILogger<
             {
                 Id = ReadRequiredString(Prop(n, "id"), "id"),
                 AccountNum = ReadRequiredInt(Prop(n, "account_num"), "account_num"),
-                Name = Prop(n, "name")?.GetValue<string>() ?? "",
             }).ToList();
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException

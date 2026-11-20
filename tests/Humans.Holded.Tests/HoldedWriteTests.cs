@@ -35,7 +35,7 @@ public sealed class HoldedWriteTests
         await _repo.UpsertAccountsAsync([new HoldedAccount { Number = 62900128, HoldedId = "a", Name = "Camp" }], Now, ct);
         // Made in Holded's UI since the last sync: in the live list, not in the mirror.
         _client.ListExpenseAccountsAsync(Arg.Any<CancellationToken>()).Returns(
-            [new HoldedExpenseAccountDto { Id = "c", AccountNum = 62900130, Name = "Sound" }]);
+            [new HoldedExpenseAccountDto { Id = "c", AccountNum = 62900130 }]);
         _client.CreateExpenseAccountAsync(62900129, "Art", Arg.Any<CancellationToken>()).Returns("b");
 
         (await _write.EnsureExpenseAccountAsync(62900128, "Camp", ct)).Should().Be(new HoldedExpenseAccountOutcome("a", false));

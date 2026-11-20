@@ -6,7 +6,6 @@ internal sealed record HoldedExpenseAccountDto
 {
     public required string Id { get; init; }
     public required int AccountNum { get; init; }
-    public required string Name { get; init; }
 }
 
 /// <summary>From GET v2/ledger-entries. <c>account</c> is the 8-digit ledger number, not a Holded id;

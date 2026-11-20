@@ -149,7 +149,8 @@ account-number resolution stays inside this section.
 
 - `EnsureExpenseAccountAsync` — chart mirror by number, else Holded's live `expenses-accounts` list,
   else POST; the chart mirror is refreshed whenever it lacked the number. Returns the account's Holded
-  id (what a caller that books to it stores) and whether it was created.
+  id (what a caller that books to it stores) and whether it was created. The live expense-account list
+  reads only id and number; creation uses the caller's name, never a name from that list.
 - `PostJournalEntryAsync` — the client's ledger-entry post behind the face; not idempotent, the
   outcome says whether Holded confirmed it.
 - `PayPurchaseDocumentAsync` / `ReconcileBankMovementAsync` — the client's treasury payment and

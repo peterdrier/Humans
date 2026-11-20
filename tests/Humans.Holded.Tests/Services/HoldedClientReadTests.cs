@@ -24,9 +24,9 @@ public class HoldedClientReadTests
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
     [HumansFact]
-    public async Task ListExpenseAccounts_parses_num_and_name()
+    public async Task ListExpenseAccounts_reads_identity_without_parsing_unused_name()
     {
-        var json = """{"items":[{"id":"a1","name":"Otros servicios","account_num":62900000.0,"archived":false}],"cursor":null,"has_more":false}""";
+        var json = """{"items":[{"id":"a1","name":42,"account_num":62900000.0,"archived":false}],"cursor":null,"has_more":false}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, json));
 
         var client = Make(handler);
@@ -34,7 +34,6 @@ public class HoldedClientReadTests
 
         accounts.Should().HaveCount(1);
         accounts[0].Id.Should().Be("a1");
-        accounts[0].Name.Should().Be("Otros servicios");
         accounts[0].AccountNum.Should().Be(62900000);
     }
 
