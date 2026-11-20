@@ -26,6 +26,7 @@ using System.Text;
 namespace Humans.Finance.Services;
 
 internal sealed class Service(
+    IOrgTimeZone orgTimeZone,
     IFinanceRepository repo,
     IBudgetService budget,
     IHoldedService holded,
@@ -92,7 +93,7 @@ internal sealed class Service(
         var members = await users.GetUserInfosAsync(expected.Select(l => l.CreditorUserId).ToHashSet(), ct);
         return ExpenseRecon.Build(
             year, syncedAt, expected, accountByUser, ledger, transfers,
-            id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString());
+            id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString(), OrgZone);
     }
 
     public Task RunSepaBookingSweepAsync(CancellationToken ct = default) => RunAsync(ct);
@@ -927,7 +928,7 @@ internal sealed class Service(
     internal const string ContactListUnavailable =
         "The Holded contact mirror has never synced, so no member's creditor account is known. Run Sync now on "
         + "/Holded.";
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
     public async Task<CreditorStatus?> GetCreditorStatusAsync(
         int? supplierAccountNum, CancellationToken ct = default)
@@ -948,7 +949,7 @@ internal sealed class Service(
             OwedToMember: Math.Max(0m, -balance),
             LastPaymentDate: payments.Count == 0
                 ? null
-                : payments.Max(l => l.Date).InZone(MadridZone).Date,
+                : payments.Max(l => l.Date).InZone(OrgZone).Date,
             TotalPaid: payments.Sum(l => l.Debit));
     }
 
@@ -1636,7 +1637,7 @@ internal sealed class Service(
     /// <see cref="GenerationSlackDays"/> further back (<see cref="FeedFrom"/>).</summary>
     internal const int FeedWindowDays = 90;
 
-    /// <summary>The bank can value-date a day early, and the feed's dates are Madrid days.</summary>
+    /// <summary>The bank can value-date a day early, and the feed's dates are org-zone days.</summary>
     private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
 
     /// <summary>Without the bank-feed read, which only serves <c>/Finance/Sepa</c>'s own "book this" button.</summary>
@@ -1861,7 +1862,7 @@ internal sealed class Service(
         var unbooked = rows.Where(r => r.BookedAt is null).ToList();
         // The sweep runs every two hours, so exactly one run a day lands in this band. That run reads the whole window
         // whatever is open, so /Finance's count of unreconciled Sabadell lines is at most a day behind.
-        var nightRun = clock.GetCurrentInstant().InZone(MadridZone).Hour is 3 or 4;
+        var nightRun = clock.GetCurrentInstant().InZone(OrgZone).Hour is 3 or 4;
         if (pending.Count == 0 && unbooked.Count == 0 && !nightRun) return;
 
         // Every reconcile-pending row's bank line must lie inside the window read. A pending row's lower bound is its
@@ -2690,7 +2691,7 @@ internal sealed class Service(
         {
             var onDay = lines
                 .Where(l => string.Equals(l.Type, "payment", StringComparison.Ordinal)
-                            && l.Date.InZone(MadridZone).Date == lineDate)
+                            && l.Date.InZone(OrgZone).Date == lineDate)
                 .ToList();
             if (onDay.Count != priorRefs.Count)
                 return $"Holded's ledger shows {onDay.Count} document payment(s) on creditor account {account} dated "
@@ -2883,7 +2884,7 @@ internal sealed class Service(
         return null;
     }
 
-    private LocalDate Today() => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    private LocalDate Today() => clock.GetCurrentInstant().InZone(OrgZone).Date;
 
     /// <summary>The oldest non-stale file's first payable day under <paramref name="tolerance"/>, so every line
     /// <see cref="UnbookedMatches"/> could accept is read.</summary>
@@ -3097,11 +3098,11 @@ internal sealed class Service(
         FileDate(row).PlusDays(-GenerationSlackDays);
 
     /// <summary>In the organisation's zone: what a bank line's date is measured against.</summary>
-    internal LocalDate FileDate(SepaPayoutTransferRow row) => row.GeneratedAt.InZone(MadridZone).Date;
+    internal LocalDate FileDate(SepaPayoutTransferRow row) => row.GeneratedAt.InZone(OrgZone).Date;
 
     /// <summary>Generated before the feed's window, so no line can book it: a human's job in Holded.</summary>
     public bool IsStale(SepaPayoutTransferRow row) =>
-        row.GeneratedAt.InZone(MadridZone).Date < clock.GetCurrentInstant().InZone(MadridZone).Date.PlusDays(-FeedWindowDays);
+        row.GeneratedAt.InZone(OrgZone).Date < clock.GetCurrentInstant().InZone(OrgZone).Date.PlusDays(-FeedWindowDays);
 
     /// <summary>
     /// After the save: an outbox row is a promise of money. Sent at generation, when the treasurer hands the file to
@@ -3201,7 +3202,7 @@ internal sealed class Service(
         // The stamp is minute-resolution, and the name is what ties a file on the treasurer's disk to its row, so the
         // file id's first 8 hex characters keep two batches in one minute apart.
         var fileName = $"{FileSlug(sepa.Value.CreditorName!)}-"
-                     + $"{now.InZone(MadridZone).ToDateTimeUnspecified().ToFileTimestamp()}-"
+                     + $"{now.InZone(OrgZone).ToDateTimeUnspecified().ToFileTimestamp()}-"
                      + $"{fileId.ToString("N")[..8]}.xml";
 
         await repo.AddSepaPayoutAsync(new SepaPayoutFile
@@ -3316,14 +3317,15 @@ internal sealed class Service(
         var request = new SepaPaymentFileRequest(
             MsgId: "M" + fileId.ToString("N"),
             CreatedAt: now,
-            RequestedExecutionDate: now.InZone(MadridZone).Date,
+            RequestedExecutionDate: now.InZone(OrgZone).Date,
             Debtor: new SepaDebtor(
                 sepa.Value.CreditorName!, sepa.Value.CreditorIban!,
                 sepa.Value.CreditorBic, sepa.Value.CreditorIdentifier!),
             MaxAmountPerTransfer: maxPerTransfer,
             Transfers: transfers
                 .Select(t => new SepaTransfer(t.CreditorName, t.Iban, t.Amount, t.SupplierAccountNum))
-                .ToList());
+                .ToList())
+        { CreationTimeZone = OrgZone };
 
         string xml;
         try

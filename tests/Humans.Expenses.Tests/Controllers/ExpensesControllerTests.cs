@@ -75,7 +75,7 @@ public sealed class ExpensesControllerTests
         };
         var controller = new ExpensesController(users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
-            TestClock, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
+            TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -134,7 +134,7 @@ public sealed class ExpensesControllerTests
             .Returns(AuthorizationResult.Failed());
         var controller = new ExpensesController(users, reports, review,
             Substitute.For<IBudgetService>(), Substitute.For<IFinanceService>(),
-            Substitute.For<IPreapprovalService>(), authorization, TestClock,
+            Substitute.For<IPreapprovalService>(), authorization, TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
             ControllerContext = new ControllerContext
@@ -245,7 +245,7 @@ public sealed class ExpensesControllerTests
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new ExpensesController(users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
-            TestClock, NullLogger<ExpensesController>.Instance, localizer)
+            TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -305,7 +305,7 @@ public sealed class ExpensesControllerTests
         };
         var controller = new ExpensesController(users, reports, review,
             Substitute.For<IBudgetService>(), Substitute.For<IFinanceService>(),
-            Substitute.For<IPreapprovalService>(), Substitute.For<IAuthorizationService>(), TestClock,
+            Substitute.For<IPreapprovalService>(), Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
@@ -372,7 +372,7 @@ public sealed class ExpensesControllerTests
         };
         var controller = new ExpensesController(users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
-            authorization, TestClock, NullLogger<ExpensesController>.Instance, localizer)
+            authorization, TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -421,7 +421,7 @@ public sealed class ExpensesControllerTests
         };
         var controller = new ExpensesController(users, reports, review, budget,
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
-            Substitute.For<IAuthorizationService>(), TestClock,
+            Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
             ControllerContext = new ControllerContext { HttpContext = context },
@@ -483,7 +483,7 @@ public sealed class ExpensesControllerTests
         };
         var controller = new ExpensesController(users, reports, review, budget,
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
-            Substitute.For<IAuthorizationService>(), TestClock,
+            Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },

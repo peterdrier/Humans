@@ -15,7 +15,7 @@ internal sealed class PreapprovalProgram
     public int HoldedAccountNumber { get; set; }
     public string HoldedAccountId { get; set; } = "";
     public bool AcceptsApplications { get; set; }
-    /// <summary>Europe/Madrid, end of day.</summary>
+    /// <summary>End of day in the org time zone.</summary>
     public LocalDate ClaimBy { get; set; }
     public ProgramStatus Status { get; set; }
     public Guid CreatedByUserId { get; set; }

@@ -32,7 +32,8 @@ public class SepaPaymentFileBuilderTests
             RequestedExecutionDate: new LocalDate(2026, 8, 25),
             Debtor: Org(),
             MaxAmountPerTransfer: 50m,
-            Transfers: transfers);
+            Transfers: transfers)
+        { CreationTimeZone = FixedOrgTimeZone.Madrid.Zone };
 
     private static SepaTransfer Ana(decimal amount = 12.34m, string? name = null, int account = 40000004) =>
         new(name ?? "Ana Ruiz", AnaIban, amount, account);

@@ -234,7 +234,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 [new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test"))
         };
         return new ExpensesController(_users, _reports, _review, _budget, _finance, _preapprovals,
-            _authorization, TestClock, logger ?? NullLogger<ExpensesController>.Instance, _localizer)
+            _authorization, TestClock, FixedOrgTimeZone.Madrid, logger ?? NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())

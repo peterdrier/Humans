@@ -16,7 +16,7 @@ internal static class AssemblyVotePresentation
     /// what statutes Art. 8.6 requires.
     /// </summary>
     internal static string BuildActa(
-        AssemblyVote vote, AssemblyVoteResult result, string? closedByName)
+        AssemblyVote vote, AssemblyVoteResult result, string? closedByName, DateTimeZone orgZone)
     {
         var acta = new StringBuilder();
         var official = result.Official;
@@ -77,7 +77,7 @@ internal static class AssemblyVotePresentation
         acta.AppendLine(vote.ClosedAt is { } closedAt
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"Closed at: {ClosingLocal(closedAt)} (Europe/Madrid)")
+                $"Closed at: {ClosingLocal(closedAt, orgZone)} ({orgZone.Id})")
             : "Closed at: not recorded.");
         // The spec lists "who closed it" among the acta's contents, and this is the summary
         // the Secretary files: "an administrator" names nobody.
@@ -97,12 +97,6 @@ internal static class AssemblyVotePresentation
     /// The closing time in the association's own timezone, still unformatted: Email renders it
     /// under each recipient's culture, so the zone is decided here and the wording there.
     /// </summary>
-    internal static LocalDateTime ClosingLocal(Instant closesAt) =>
-        closesAt.InZone(MadridZone).LocalDateTime;
-
-    /// <summary>
-    /// Closing times are announced to the electorate in the association's own timezone; a
-    /// UTC instant in an email would be a different deadline to every reader.
-    /// </summary>
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    internal static LocalDateTime ClosingLocal(Instant closesAt, DateTimeZone orgZone) =>
+        closesAt.InZone(orgZone).LocalDateTime;
 }

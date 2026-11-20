@@ -78,6 +78,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             Audit,
             Translation,
             Clock,
+            FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
     }
 

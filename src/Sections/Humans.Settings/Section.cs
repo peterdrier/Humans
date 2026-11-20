@@ -29,6 +29,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
         services.AddSingleton<ISettingsWriteService>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<ISettingsService>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<IEventSettingsSeeding>(sp => sp.GetRequiredService<CachingSettingsService>());
+        services.AddSingleton<IOrgTimeZone>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingSettingsService>());
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<CachingSettingsService>());
     }

@@ -50,7 +50,7 @@ public sealed class PleoSyncTests
             [new PleoEmployeeWire("emp-1", "Zak", "Bulpitt ", "NCA003", false)]);
         _client.GetBalanceAsync(Arg.Any<CancellationToken>()).Returns(new PleoBalanceWire("EUR", 1_000_000, 990_000, 0));
 
-        _service = new Service(_repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit,
+        _service = new Service(FixedOrgTimeZone.Madrid, _repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit,
             _logger);
     }
 
@@ -160,7 +160,7 @@ public sealed class PleoSyncTests
         {
             if (boundary is SyncBoundary.AfterReplace or SyncBoundary.DetachedSave) await shutdown.CancelAsync();
         });
-        var sync = new Service(repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
+        var sync = new Service(FixedOrgTimeZone.Madrid, repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
         var error = await Xunit.Record.ExceptionAsync(() => sync.SyncAsync(shutdown.Token));
 
         if (boundary == SyncBoundary.AfterReplace)
@@ -324,7 +324,7 @@ public sealed class PleoSyncTests
             throw failure;
         });
         var logger = new CapturingLogger<Service>();
-        var service = new Service(repository, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit, logger);
+        var service = new Service(FixedOrgTimeZone.Madrid, repository, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit, logger);
 
         var observed = await Xunit.Record.ExceptionAsync(() => service.SyncAsync(cancellation.Token));
 

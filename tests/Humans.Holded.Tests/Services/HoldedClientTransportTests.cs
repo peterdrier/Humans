@@ -18,7 +18,7 @@ public class HoldedClientTransportTests
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             NullLogger<HoldedClient>.Instance,
             log ?? new HoldedCallLog(),
-            clock ?? new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+            clock ?? new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), FixedOrgTimeZone.Madrid);
 
     [HumansFact]
     public async Task Sends_bearer_authorization_header()

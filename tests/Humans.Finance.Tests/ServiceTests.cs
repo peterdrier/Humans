@@ -106,6 +106,7 @@ public class HoldedFinanceServiceTests
     }
 
     private Service MakeService(FinanceEmails? emailTemplates = null) => new(
+        FixedOrgTimeZone.Madrid,
         _repo,
         _budget,
         _holded,
@@ -121,7 +122,7 @@ public class HoldedFinanceServiceTests
 
     /// <summary>Same service, with a logger the test can read back.</summary>
     private Service MakeService(ILogger<Service> logger) => new(
-        _repo, _budget, _holded, _write, _expenses, _clock, _audit,
+        FixedOrgTimeZone.Madrid, _repo, _budget, _holded, _write, _expenses, _clock, _audit,
         _users, _emailService, TestFinanceEmails.Create(), Options.Create(_sepa), _bookingState,
         Substitute.For<IPaymentDetailsManagement>(), logger);
 
@@ -161,10 +162,10 @@ public class HoldedFinanceServiceTests
             return Array.Empty<HoldedLedgerLineInfo>();
         });
         var service = MakeService();
-        var controller = new FinanceController(_users, service, service, _holded,
+        var controller = new FinanceController(FixedOrgTimeZone.Madrid, _users, service, service, _holded,
             Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
-            new FinanceOverviewService(_holded, service, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, service, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
                 Microsoft.Extensions.Options.Options.Create(new SepaOptions()),

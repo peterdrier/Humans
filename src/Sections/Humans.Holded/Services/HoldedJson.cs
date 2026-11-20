@@ -17,8 +17,6 @@ internal static class HoldedJson
     internal static readonly JsonSerializerOptions OmitNulls =
         new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
-    // Holded's business-date zone: dates without an offset are read and written as Madrid dates.
-    internal static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
 
     /// <summary>Null when <paramref name="node"/> is not an object. The raw indexer throws there, which on a list
     /// read costs the whole page rather than one field.</summary>

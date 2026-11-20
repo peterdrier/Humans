@@ -1,8 +1,9 @@
 @model AssemblyVoteAdminListViewModel
 @using NodaTime
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Assembly Votes";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 @* Admin routes are localization-exempt — plain English literals throughout. *@
@@ -20,7 +21,7 @@
                         <th>Title</th>
                         <th>Status</th>
                         <th>Kind</th>
-                        <th>Closes at (Madrid)</th>
+                        <th>Closes at (@orgZone.Id)</th>
                         <th>Closed at</th>
                         <th>Roster / Ballots</th>
                         <th></th>
@@ -40,8 +41,8 @@
                             <td>@vote.Title</td>
                             <td><span class="badge @EnumBadgeMap.For(vote.Status)">@vote.Status</span></td>
                             <td>@vote.Kind</td>
-                            <td>@vote.ClosesAt.ToDateTime(madrid)</td>
-                            <td>@(vote.ClosedAt.HasValue ? vote.ClosedAt.Value.ToDateTime(madrid) : "—")</td>
+                            <td>@vote.ClosesAt.ToDateTime(orgZone)</td>
+                            <td>@(vote.ClosedAt.HasValue ? vote.ClosedAt.Value.ToDateTime(orgZone) : "—")</td>
                             <td>
                                 <span title="Official roster / cast">O: @p.OfficialCast/@p.OfficialRoster</span>
                                 @if (p.IndicativeRoster > 0)
@@ -93,7 +94,7 @@
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="VoteId" value="@vote.Id" />
                                         <div class="col-auto">
-                                            <label class="form-label small mb-0">New closing time (Europe/Madrid)</label>
+                                            <label class="form-label small mb-0">New closing time (@orgZone.Id)</label>
                                             <input type="datetime-local" name="NewClosesAt" class="form-control form-control-sm" required />
                                         </div>
                                         <div class="col-auto">

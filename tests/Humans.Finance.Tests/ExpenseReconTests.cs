@@ -74,7 +74,7 @@ public class ExpenseReconTests
         ExpenseRecon.Build(year, SyncedAt, lines, accounts ?? Accounts,
             ledger.GroupBy(l => l.AccountNum)
                 .ToDictionary(g => g.Key, g => (IReadOnlyList<HoldedLedgerLineInfo>)g.ToList()),
-            transfers, id => id == Alice ? "Alice" : "Bob");
+            transfers, id => id == Alice ? "Alice" : "Bob", FixedOrgTimeZone.Madrid.Zone);
 
     [HumansFact]
     public void LineMatchesItsLedgerPurchase_WhateverTheStoredDocIdPointsAt()
@@ -254,7 +254,7 @@ public class ExpenseReconTests
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private Service MakeService() => new(
-        _repo, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
+        FixedOrgTimeZone.Madrid, _repo, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
         Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
