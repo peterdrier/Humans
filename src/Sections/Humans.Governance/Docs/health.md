@@ -133,23 +133,23 @@ Each cites the line that enforces it.
 
 - A draft is invisible to members: the list omits it and the detail read answers null for it,
   so knowing a draft's id is not a way to read its motion early
-  (`Services/AssemblyVoteMemberWorkflow.cs:34`, `:63`).
+  (`Services/AssemblyVoteService.cs`, `:63`).
 - Content is immutable once Open. The draft write refuses a non-draft, and the open refuses a
-  draft edited while its roster was being built (`Services/AssemblyVoteDrafts.cs:80`,
+  draft edited while its roster was being built (`Services/AssemblyVoteService.cs`,
   `Data/AssemblyVoteRepository.cs:189`).
 - The electorate is written exactly once, at open, in the same unit of work as the transition
   (`Data/AssemblyVoteRepository.cs:199`), and is never recomputed. A person reachable through
   more than one source gets one row, official if any source is official
-  (`Services/AssemblyVoteRosterBuilder.cs:60`).
+  (`Services/AssemblyVoteService.cs`).
 - Only official roster rows contribute to the official result; an indicative audience is
-  tallied separately and never merged (`Services/AssemblyVoteResultReader.cs:26`).
+  tallied separately and never merged (`Services/AssemblyVoteService.cs`).
 - A ballot is accepted only while the vote is Open and its deadline has not passed, and only
   from the roster row that entitles the submitter. Checked once before the write
-  (`Services/AssemblyVoteMemberWorkflow.cs:139`) and again under the vote row's lock
+  (`Services/AssemblyVoteService.cs`) and again under the vote row's lock
   (`Data/AssemblyVoteRepository.cs:308`), so a ballot accepted after the count began is
   impossible rather than unlikely.
 - A ballot's audit entry names the actor and the vote, never the choice, and never the ballot
-  row (`Services/AssemblyVoteMemberWorkflow.cs:162`).
+  row (`Services/AssemblyVoteService.cs`).
 - The embargo: the only reads that return anything derived from ballot content are the stored
   result after close, the audited peek, and the audited post-close ballot list
   (`Services/AssemblyVoteService.cs:84`, `:189`, `:234`; the contract is stated at
@@ -159,17 +159,17 @@ Each cites the line that enforces it.
 - Individual ballots are disclosed for a Closed vote only; a Cancelled vote's are not
   (`Services/AssemblyVoteService.cs:234`).
 - The result is computed once and stored, and the close persists the closed status *before* it
-  reads any ballot (`Services/AssemblyVoteSettlement.cs:134`, `:169`).
+  reads any ballot (`Services/AssemblyVoteService.cs`, `:169`).
 - A vote whose deadline has passed is closed for every purpose, whether or not the hourly job
   has run: every read and write settles the state first
-  (`Services/AssemblyVoteSettlement.cs:49`).
+  (`Services/AssemblyVoteService.cs`).
 - Closed and Cancelled are terminal, enforced at the write: every vote-row write names the
   state it read and applies under that row's lock only while the row is still in it
   (`Data/AssemblyVoteRepository.cs:55`, lock at `:103`).
 - The announced deadline of an open vote only ever moves later
   (`Data/AssemblyVoteRepository.cs:60`).
 - A ranked draft carrying a two-thirds threshold is rejected: instant runoff has no defined
-  two-thirds rule (`Services/AssemblyVoteDrafts.cs:210`).
+  two-thirds rule (`Services/AssemblyVoteService.cs`).
 - YesNo: Simple passes when for beats against and ties when level; TwoThirds passes at
   `ceil(2/3 × (for + against))`. Abstentions are in neither base
   (`Services/AssemblyVoteCounting.cs:47`).

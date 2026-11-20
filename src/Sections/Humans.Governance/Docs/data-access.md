@@ -134,7 +134,7 @@ which is what makes the live stats safe to show to everyone.
 
 Not a service and not in the `IApplicationService` inventory: a pure
 static counting function over ballot values with no clock, no repository
-and no DI. `AssemblyVoteResultReader` calls it once per close and `AssemblyVoteSettlement` stores the
+and no DI. `AssemblyVoteService` calls it once per close and stores the
 output.
 
 ### GovernanceMetricsService (Hosted, `PolledGaugeService`)
@@ -168,75 +168,6 @@ for `/Email/EmailPreview`. No DB access, no cache.
 
 ---
 
+### AssemblyVote static helpers
 
-
-### ApplicationReader (internal, owned by ApplicationDecisionService)
-
-Repository: `IApplicationRepository`. Reads application member/admin/Board views,
-pending snapshots and summary counts; enriches through the existing Users and Auth
-role-assignment contracts. Owns shared vote/history projection. No writes, cache
-or separate DI registration; badge caching remains in the decision service.
-
-### AssemblyVoteDrafts (internal, owned by AssemblyVoteService)
-
-Repository: `IAssemblyVoteRepository`. Owns draft authoring and its existing
-state/revision guards; uses the existing translation contract, clock and logger.
-Shares bounded-text and safe-URL policy with the service. No legal-vote transitions,
-cache or separate DI registration.
-
-### ApplicationDecisionNotices (internal, owned by ApplicationDecisionService)
-
-No repository. Sends the approval, rejection and withdrawal email and in-app
-notification for a decided `Application` through `IUserService`, `IEmailService`,
-`INotificationEmitter` and the `GovernanceEmails` builder, localised to the applicant's
-language. Not DI-registered — the decision service constructs it. No DB access, no cache.
-
-### AssemblyVoteDataExport (internal, owned by AssemblyVoteService)
-
-Repository: `IAssemblyVoteRepository`. Builds the member's GDPR export slices
-(`AssemblyVotes`, `AssemblyVoteActions`) behind `AssemblyVoteService`'s
-`IUserDataContributor`; resolves the merge chain through `IUserService`. Read-only. Not
-DI-registered. No cache.
-
-| Table | R/W |
-|-------|-----|
-| AssemblyVoteRosterEntries | R (`GetVotingRecordForUserAsync`) |
-| AssemblyVotes | R (voting record; votes the user created or peeked at via `GetActorRecordForUserAsync`) |
-| AssemblyBallots | R |
-| AssemblyBallotHistories | R (revisions included with the ballot) |
-| AssemblyVotePeeks | R (`GetActorRecordForUserAsync`) |
-
-### AssemblyVoteEffects (internal, owned by AssemblyVoteService)
-
-Repository: `IAssemblyVoteRepository`. Owns the notification side of the vote lifecycle:
-open and close notices, the pre-close reminder sweep, and the roster `NotifiedAt` /
-`ReminderSentAt` stamps. Not DI-registered. No cache.
-
-| Table | R/W |
-|-------|-----|
-| AssemblyVotes | R (`GetByIdAsync`, `GetOpenVotesClosingBetweenAsync`) |
-| AssemblyVoteOptions | R (loaded with the vote) |
-| AssemblyVoteRosterEntries | R/W (roster reads; `StampNotifiedAsync`, `StampReminderSentAsync` write the stamps) |
-| AssemblyBallots | R (`GetBallotForRosterAsync`, reminder filter) |
-
-Cross-section calls via `IUserService`, `IEmailService`, `INotificationEmitter`,
-`INotificationAutoResolve`, `IAuditLogService`, `IClock`, and the section's `GovernanceEmails`.
-
-### Other AssemblyVote collaborators (internal, owned by AssemblyVoteService)
-
-None is DI-registered; the service constructs each from its own dependencies. None
-caches. Their table access is the `AssemblyVoteService` block above, split by job:
-
-- `AssemblyVoteRosterBuilder`: reads the electorate at open (`IApplicationRepository`
-  active approved tiers, `IRoleAssignmentService` Board holders, `ITeamService`
-  Volunteers members, `IUserService` account state). No writes of its own.
-- `AssemblyVoteAdministration`: open, stop, extend and cancel; writes `AssemblyVotes`
-  and, at open, `AssemblyVoteRosterEntries` through `IAssemblyVoteRepository`.
-- `AssemblyVoteSettlement`: settles a lapsed vote and owns the single close path,
-  writing the stored result on `AssemblyVotes`.
-- `AssemblyVoteMemberWorkflow`: the member list and detail reads, `EffectiveRosterAsync`,
-  and ballot casting (`AssemblyBallots`, `AssemblyBallotHistories` through the locked
-  upsert).
-- `AssemblyVoteResultReader`: computes the tally through `AssemblyVoteCounting`, and reads
-  the disclosure rows and the peek list. Read-only.
 - `AssemblyVotePresentation`: static; builds the acta text. No data access.
