@@ -63,7 +63,9 @@ internal sealed class TicketTailorService : ITicketVendorService
                 if (!string.Equals(order.Currency?.Code, "eur", StringComparison.OrdinalIgnoreCase))
                     throw new HttpRequestException($"TicketTailor order {order.Id} does not declare EUR currency.");
 
-                var purchasedAt = Instant.FromUnixTimeSeconds(order.CreatedAt);
+                var createdAt = order.CreatedAt
+                    ?? throw new HttpRequestException($"TicketTailor order {order.Id} is missing required created_at.");
+                var purchasedAt = ReadTimestamp(createdAt, $"order {order.Id} created_at");
                 var buyer = order.BuyerDetails;
 
                 var discountCode = ExtractDiscountCode(order.LineItems);
@@ -407,10 +409,22 @@ internal sealed class TicketTailorService : ITicketVendorService
                 .Min();
 
             if (earliest > 0)
-                result.Add(new VendorCheckInDto(group.Key, Instant.FromUnixTimeSeconds(earliest)));
+                result.Add(new VendorCheckInDto(group.Key, ReadTimestamp(earliest, $"check-in for ticket {group.Key}")));
         }
 
         return result;
+    }
+
+    private static Instant ReadTimestamp(long seconds, string context)
+    {
+        try
+        {
+            return Instant.FromUnixTimeSeconds(seconds);
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            throw new HttpRequestException($"TicketTailor {context} has an out-of-range timestamp.", ex);
+        }
     }
 
     /// <summary>The code is in a gift_card line item's description, in parentheses: "NCA Contributor Discount (DISC25-OPGYT8-004)".</summary>
@@ -508,7 +522,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         int? Total,
         TtCurrency? Currency,
         string? Status,
-        long CreatedAt,
+        long? CreatedAt,
         List<TtLineItem>? LineItems,
         string? TxnId);
 
