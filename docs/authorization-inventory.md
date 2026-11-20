@@ -278,7 +278,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Grants | `GrantsPolicies.Read`, `GrantsPolicies.Manage`; `GrantPrograms` — section-local in `GrantProgramsPolicy` |
 | Preapprovals | `PreapprovalsManage`, `PreapprovalsAccess` — section-local in `PreapprovalsPolicies` |
 | Rideshare | `RidesharePolicies.Read`, `RidesharePolicies.Manage` |
-| Shifts | `ShiftsPolicies.Read`, `ShiftsPolicies.Manage`, `ShiftsPolicies.ManageVolunteers`, `ShiftsPolicies.DepartmentRead`, `ShiftsPolicies.PrivilegedSignupApprover` (`Read` also gates the Early Entry roster) |
+| Shifts | `ShiftsPolicies.Read`, `ShiftsPolicies.Manage`, `ShiftsPolicies.ManageVolunteers`, `ShiftsPolicies.DepartmentRead`, `ShiftsPolicies.PrivilegedSignupApprover` |
 | Store | `StorePolicies.Read`, `StorePolicies.Manage` |
 | Teams | `TeamsPolicies.Read`, `TeamsPolicies.Manage` |
 | Tickets | `TicketsPolicies.Read`, `TicketsPolicies.Manage` (also gate Campaigns' detail page and code generation, and the Gate admin pages) |
@@ -318,7 +318,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `StorePolicies.Manage` | StoreAdmin, FinanceAdmin, Admin | Catalog changes and payment repairs; also `StoreRoles.CanAdministerStore` |
 | `ReviewQueueAccess` | ConsentCoordinator, ShiftsAdmin, Board, Admin | Untouched until the review queue is retired |
 | `ConsentCoordinatorBoardOrAdmin` | ConsentCoordinator, Board, Admin | Same |
-| `ShiftsPolicies.Read` | ShiftsAdmin, ShiftsNoInfo, Board, Admin | Volunteer tracking, workload, post-event stats, Early Entry roster |
+| `ShiftsPolicies.Read` | ShiftsAdmin, ShiftsNoInfo, Board, Admin | Volunteer tracking, workload, post-event stats |
 | `ShiftsPolicies.Manage` | ShiftsAdmin, ShiftsNoInfo, Admin | Voluntell from the dashboard, the volunteer-tracking export |
 | `ShiftsPolicies.ManageVolunteers` | ShiftsAdmin, Admin | Rota moves and the volunteer-tracking grid; also `ShiftsRoles.IsVolunteerManager` |
 | `ShiftsPolicies.DepartmentRead` | `ShiftsPolicies.Read` OR any team coordinator | Composite (`IsAnyTeamManagerOrCoordinatorHandler`); the dashboard and shift summaries |
@@ -339,7 +339,7 @@ The per-object handlers (team admin pages, Google team resources, member email e
 - `UsersPolicies.MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether the medical reveal is offered within pages the user already has access to (the member's profile page, `/Profile/{id}`); the text itself comes only from Users' audited `POST /Profile/{id}/Medical/Reveal`.
 - Operator tooling (`/Debug/*`, `/Backdoor`, `/Agent/Admin/*`, Hangfire) is `BoardOrAdmin` to read; every state-changing POST there is `AdminOnly`.
 - `GateAdmit` is `ScannerAccess` minus Board (same assertion, `admitsBoard: false`): the durable gate write surface (`/Gate/Decision`, `/Gate/Claim` POST, `/Gate/ClaimPin`, `/Gate/EndShift`) never rides on the read-only Scanner gate. The supervisor roles that may authorize an override are Admin and TicketsAdmin. Supervisor overrides inside `Decision` are a second factor on top of the policy — the shared `Gate:SupervisorPin`, not an identity check (see §4).
-- `AnyAdminRole` gates the admin-shell entry point (`/Admin`). Sidebar items inside the shell are filtered per-item by `AdminSidebarViewComponent` against each item's policy. The role list is derived from the sections' `ISectionRoles` through Auth's `RoleCatalog` (every role with `OpensAdminShell`), so a new section role joins without a Shell edit; `EarlyEntryAdmin` opts out.
+- `AnyAdminRole` gates the admin-shell entry point (`/Admin`). Sidebar items inside the shell are filtered per-item by `AdminSidebarViewComponent` against each item's policy. The role list is derived from the sections' `ISectionRoles` through Auth's `RoleCatalog` (every role with `OpensAdminShell`), so a new section role joins without a Shell edit.
 - Object-relative policies (coordinator of specific team, camp lead of specific camp, camp-event submitter, budget category for coordinator's department, manageable role for UsersAdmin, expense reports, store orders, containers, issues, user-email edits, agent rate-limit) are implemented as resource-based authorization handlers — see §6.
 
 ---
