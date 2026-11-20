@@ -76,6 +76,8 @@ internal sealed record EventInfo(
 {
     public Guid? EventSettingsId { get; init; }
 
+    public IReadOnlyList<CampEventOverlap> DuplicateCandidates { get; init; } = [];
+
     // Project defensively: Category may be null and EventVenue / moderation history unloaded.
     internal static EventInfo FromEvent(Event e) => new(
         Id: e.Id,

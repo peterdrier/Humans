@@ -90,7 +90,6 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
     Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
-    Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
     // Also emails the submitter the outcome; a null submitterEditUrl opts out. Refuses when a reason is missing or
     // the event is not pending.
     Task<ModerationOutcome> ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);

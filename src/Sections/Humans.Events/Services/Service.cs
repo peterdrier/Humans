@@ -225,8 +225,19 @@ internal sealed class EventService(
     public async Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
-        var events = await repo.GetEventsByStatusAsync(status, ct);
-        return events.Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
+        var events = (await repo.GetEventsByStatusAsync(status, ct))
+            .Where(e => e.IsInEvent(guideEventId)).Select(EventInfo.FromEvent).ToList();
+        if (!events.Any(e => e.CampId is not null)) return events;
+
+        var context = guideEventId is { } id
+            ? await settingsService.GetEventSettingsByIdAsync(id, ct) : null;
+        var candidates = await repo.GetActiveCampEventsAsync(guideEventId, ct);
+        var zone = Helpers.EventsTimeHelpers.GetTimeZone(context);
+        return events.Select(e => e with
+        {
+            DuplicateCandidates = EventConflictDetector.FindCampDuplicateCandidates(
+                e, candidates, context?.GateOpeningDate, zone)
+        }).ToList();
     }
 
     public async Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
@@ -234,9 +245,6 @@ internal sealed class EventService(
         var guideEvent = await repo.GetEventWithDetailsAsync(eventId, ct);
         return guideEvent is null ? null : EventInfo.FromEvent(guideEvent);
     }
-
-    public async Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default)
-        => await repo.GetActiveCampEventsAsync(await GetGuideEventIdAsync(ct), ct);
 
     public Task<ModerationOutcome> ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,

@@ -368,9 +368,6 @@ internal sealed class CachingEventService(
     public Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetEventForModerationAsync(eventId, ct));
 
-    public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetCampEventsForOverlapAsync(ct));
-
     public Task<ModerationOutcome> ApplyModerationAsync(
         Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason,
         string? submitterEditUrl = null, CancellationToken ct = default) =>
