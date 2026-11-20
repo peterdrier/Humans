@@ -12,6 +12,14 @@
 
 # City Planning — Section Invariants
 
+City Planning shows everyone where things sit on the festival site, and lets the people responsible for a piece of it move that piece. Barrio leads draw their camp's footprint during a scheduled window and place their containers while container placement is open; organisers (Admins, Camps Admins and the City Planning team) do both for anyone at any time, publish the site boundary and the official zones, and hand the data out as GeoJSON.
+
+Good looks like: a lead finds their camp, draws it, sees conflicts before saving, and nobody loses a version (every save is kept and restorable). The schedule opens and closes itself; no one has to remember to press a button.
+
+Deliberate choices: overlap and out-of-bounds checks are advisory and client-side; GeoJSON is stored as text, never queried; history is append-only; container placement stays a manual open/close flag.
+
+Out of scope: snapping to boundaries (designed, nobodies-collective/Humans#523), container placement history, a generic map-feature model (declined, nobodies-collective/Humans#521).
+
 Membership-based authorization resolves the session's account through Users before checking the City Planning team or camp leadership. Merged sessions use the surviving account's memberships; a missing account is denied. Request cancellation applies to this identity lookup and the subsequent authorization reads. Existing admin-role bypasses remain in effect.
 
 API polygon and container writes, and lead-scoped container exports, resolve the current account through Users before checking access or recording an actor. A merged session uses the surviving account ID; an unresolved account returns 401 before any write.
@@ -40,13 +48,13 @@ Per-year singleton controlling the placement phase and map overlays. The current
 |----------|------|-------|
 | Id | Guid | PK |
 | Year | int | Season year (unique) |
-| PlacementOverride | bool? | Manual override of the barrio schedule: null = follow it, true = forced open, false = forced closed. Stored in the column that held the old manual `IsPlacementOpen` flag, so pre-#2102 rows read as forced open/closed |
+| PlacementOverride | bool? | Manual override of the barrio schedule: null = follow it, true = forced open, false = forced closed. |
 | OpenedAt | Instant? | When an admin last forced barrio placement open |
 | ClosedAt | Instant? | When an admin last forced barrio placement closed |
 | PlacementOpensOffset | int? | First open day, in days from the active event's gate opening (negative = before) |
 | PlacementClosesOffset | int? | Last open day (inclusive), days from gate opening |
 | PlacementChangeableUntilOffset | int? | Last day (inclusive) a lead may still adjust an existing polygon after the window closes |
-| IsContainerPlacementOpen | bool | Whether barrio leads can manage their containers |
+| IsContainerPlacementOpen | bool | Whether barrio leads can place, annotate or clear their containers' placements |
 | ContainerPlacementOpenedAt | Instant? | When container placement was last opened |
 | ContainerPlacementClosedAt | Instant? | When container placement was last closed |
 | RegistrationInfo | text? | Admin-editable markdown shown at the top of `/Barrios/Register`. Null/empty = hidden. Keyed to the highest open season year (falling back to the active event's year), not to the active event's year like the other fields. |
@@ -101,7 +109,7 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 
 | Route | Purpose |
 |-------|---------|
-| `/CityPlanning/BarrioMap/Admin` | Upload limit zone and official zones, containers, export/import — placement override, placement schedule, and registration info moved to `/Settings#city-planning` (peterdrier/Humans#1634) |
+| `/CityPlanning/BarrioMap/Admin` | Upload limit zone and official zones, containers, export/import . Placement override, placement schedule and registration info are on `/Settings#city-planning` |
 | `/CityPlanning/BarrioMap/Admin/Containers/{year}` | Org-level + all-barrio container admin: CRUD, image management, container placement phase toggle |
 | `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Force barrio placement open — manual override (redirects to `/Settings#city-planning`) |
 | `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Force barrio placement closed — manual override (redirects to `/Settings#city-planning`) |
@@ -157,7 +165,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 | Any authenticated human | View the map and all placed barrios |
 | Camp lead (own camp, placement Open) | Draw or edit their own camp's polygon |
 | Camp lead (own camp, placement Changeable) | Edit their own camp's existing polygon — not draw a new one |
-| Camp lead (own camp, container placement open) | Add/edit/delete their own camp's containers |
+| Camp lead (own camp, container placement open) | Place, annotate or clear their own camp's container placements |
 | City-planning team member (team slug: `city-planning`) | Full admin access always (any polygon, containers, settings, exports) |
 | CampsAdmin role | Full admin access always |
 
@@ -168,12 +176,12 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
 - Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules.md, *Append-only entities*).
-- Barrio placement has one effective state, computed on every read by `CityPlanningService` (peterdrier/Humans#2102): the manual override when set (true = Open, false = Closed); otherwise the schedule, by today's date in the active event's time zone (`EventSettingsInfo.TimeZoneId`) against `GateOpeningDate` + offset — **Open** from the opening day through the closing day, **Changeable** through the changeable-until day, then **Closed**. No opening day, no active event, or a row for another year than the active event's means Closed unless forced open. No job flips anything: the date decides at read time.
+- Barrio placement has one effective state, computed on every read by `CityPlanningService`: the manual override when set (true = Open, false = Closed); otherwise the schedule, by today's date in the active event's time zone (`EventSettingsInfo.TimeZoneId`) against `GateOpeningDate` + offset — **Open** from the opening day through the closing day, **Changeable** through the changeable-until day, then **Closed**. No opening day, no active event, or a row for another year than the active event's means Closed unless forced open. No job flips anything: the date decides at read time.
 - Camp leads can create or edit their own camp's polygon only while placement is Open, and only edit one that already exists while it is Changeable. City-planning team members and CampsAdmin are exempt. Lead authority comes from the specific camp season being edited; leadership in another season of the same camp grants no access.
 - The schedule's days must run open ≤ close ≤ changeable-until, within 366 days of gate opening, and a changeable-until day needs a closing day; anything else is refused without a write or an audit entry.
-- Camp leads can only add/edit/delete their camp's containers when container placement is open. City-planning team members and CampsAdmin are exempt.
+- Camp leads can only place, annotate or clear their camp's container placements when container placement is open; container CRUD is not phase-gated. City-planning team members and CampsAdmin are exempt.
 - City planning's current year is the active event's year. With no active event there is no current year: the map pages (index, barrio map, container map), the admin page and the state API answer 404, the `/Settings#city-planning` tab says so in place of the placement cards — the registration-info card stays while a season is open, since that copy is keyed to the open season — the Camps details page shows placement as closed, and a settings write throws.
-- Settings reads are side-effect free (peterdrier/Humans#2102): `GetSettingsAsync` and `GetRegistrationInfoAsync` never write. A year with no row reads as the defaults (closed, no dates, no zones) with `Id = Guid.Empty`; the row is created by the first admin write (`GetOrCreateSettingsAsync` on the write paths only).
+- Settings reads are side-effect free: `GetSettingsAsync` and `GetRegistrationInfoAsync` never write. A year with no row reads as the defaults (closed, no dates, no zones) with `Id = Guid.Empty`; the row is created by the first admin write (`GetOrCreateSettingsAsync` on the write paths only).
 - SignalR broadcasts polygon updates to all connected clients in real time.
 - Container-placement save, notes, and clear share one response handler: transport failures and malformed save/notes JSON use the existing localized failure message; HTTP failures retain localized prefixes, status codes and server details. Clear accepts an empty successful response; invalid-placement GeoJSON errors are localized in all supported cultures. Containers validates placement geometry before writing; the API localizes its typed refusal as HTTP 422.
 - Member-facing container map centering and notes buttons have localized titles and accessible names; the notes modal close button reuses the localized shared label.
@@ -183,7 +191,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Limit zone and official zones are stored as GeoJSON on CityPlanningSettings; out-of-bounds and overlap detection is client-side.
 - GeoJSON is stored in **`text`** columns (`CampPolygon.GeoJson`, `CampPolygonHistory.GeoJson`, `CityPlanningSettings.LimitZoneGeoJson` / `OfficialZonesGeoJson`), deliberately **not `jsonb`** — the app never queries inside the JSON structure; it round-trips whole FeatureCollections to the MapLibre client, so `jsonb`'s parse/index overhead buys nothing. (Contrast sibling Camp columns `Links` / `Vibes`, which use `jsonb`.)
 - No caching decorator; `CampPolygonHistory` is append-only — see the Architecture test note below.
-- Every settings write that takes a `userId` — the barrio override (forced open, forced closed, cleared), the barrio schedule, the container phase, the zone uploads and the zone deletes — appends an `AuditLog` entry naming that actor, after the save, and a request aborted mid-write does not drop it — the row id is resolved before the save, and the save itself runs on `CancellationToken.None`, so nothing cancellable sits between the committing write and the token-less `LogAsync`. The settings row records *when* a value changed; the audit log is the only record of *who*. A rejected upload never reaches the row and writes no entry. `UpdatePlacementDatesAsync` and `UpdateRegistrationInfoAsync` audit the same way (`CityPlanningPlacementDatesUpdated`, `CityPlanningRegistrationInfoUpdated`); the registration-info entry names the highest-open-season row it wrote, not the active event year's. Rejected date input writes nothing.
+- Every settings write that takes a `userId` — the barrio override (forced open, forced closed, cleared), the barrio schedule, the container phase, the zone uploads and the zone deletes — appends an `AuditLog` entry naming that actor, after the save, and a request aborted mid-write does not drop it — the row id is resolved before the save, and the save itself runs on `CancellationToken.None`, so nothing cancellable sits between the committing write and the token-less `LogAsync`. The settings row records *when* a value changed; the audit log is the only record of *who*. A rejected upload never reaches the row and writes no entry. `UpdatePlacementScheduleAsync` and `UpdateRegistrationInfoAsync` audit the same way (`CityPlanningPlacementDatesUpdated`, `CityPlanningRegistrationInfoUpdated`); the registration-info entry names the highest-open-season row it wrote, not the active event year's. A rejected schedule writes nothing.
 - The city-planning team slug is lower-cased on **both** sides before comparing — the configured `CityPlanningTeamSlug` and the stored `Team.Slug` / `Team.CustomSlug` — so case never decides the map-admin exemption. A blank configured slug matches nothing.
 
 ## Negative Access Rules
@@ -192,7 +200,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 - Regular humans **cannot** edit polygons for camps they do not lead.
 - Camp leads **cannot** edit their polygon when barrio placement is Closed, and **cannot** create one while it is Changeable.
-- Camp leads **cannot** add/edit/delete their containers when container placement is closed.
+- Camp leads **cannot** place, annotate or clear their container placements when container placement is closed.
 - Non-admin humans **cannot** access the admin panel (zone uploads, container management and its placement-phase toggle, export/import; barrio placement toggle lives on `/Settings#city-planning`).
 
 ## Triggers
@@ -216,11 +224,9 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 ## Architecture
 
-The internal `CityPlanningReader` owns camp-map enrichment, history, settings and placement-state projections, edit-permission reads, registration-target resolution and GeoJSON export. `CityPlanningService` delegates those reads and retains geometry/settings mutations and audit sequencing. Both reuse the same event-year resolution; active-event anchoring, time-zone evaluation, team and lead checks, read order and cancellation are unchanged. No public contract or DI registration is added.
-
 **Owning services:** `CityPlanningService` (`Humans.CityPlanning.Services`)
 **Owned tables:** `city_settings`, `city_camp_polygons`, `city_camp_polygon_history`
-**Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22). Own project since G5 (nobodies-collective/Humans#866).
+**Status:** (A) Migrated; own project (`Humans.CityPlanning`).
 
 - `CityPlanningService` lives in `Humans.CityPlanning.Services` and never imports `Microsoft.EntityFrameworkCore` — the repository is the only EF consumer. `CityPlanningArchitectureTests` pins the API controller's route prefix only, not this EF boundary.
 - `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.CityPlanning.Data`) is the only code path that touches this section's tables via `CityPlanningDbContext`.
@@ -231,7 +237,7 @@ The internal `CityPlanningReader` owns camp-map enrichment, history, settings an
 - **Upload pipeline.** `UpdateLimitZoneFromUploadAsync` / `UpdateOfficialZonesFromUploadAsync` accept `IFormFile?` directly — file read, 10 MB size limit and GeoJSON validation all live in the service — and return `GeoJsonUploadResult`. Both share one read/validate/write pipeline, disposing the upload stream before persistence and retaining their distinct settings mutations and audit actions. Their routes, and the placement-image API route, allow 11 MB to cover multipart overhead without allowing the server default to buffer a larger upload. `UpdatePlacementScheduleAsync` accepts the three nullable day offsets, validates their order and range itself, and returns `PlacementScheduleUpdateResult`; that validation is not the controller's.
 - **Reads and writes take different repository paths.** Reads use `GetSettingsAsync` (null when absent, never writes); writes use `GetOrCreateSettingsAsync` / `MutateSettingsAsync`, which create the row with no override and no schedule when absent.
 - **`UpdatePlacementScheduleAsync` and `ClearPlacementOverrideAsync` are off the contract.** They live only on the concrete `CityPlanningService`, which the controller injects; they are on neither `ICityPlanningWrite` nor `ICityPlanningService`. Cross-section readers (Camps' Details page, Containers) see the effective state and the schedule's calendar dates on `CityPlanningSettingsDto` (`PlacementState`, `PlacementOverride`, the `*Offset` and `*On` fields).
-- **Container placement stays manual.** Its open/close is a plain flag (`IsContainerPlacementOpen`) with no schedule; #2102 scheduled only barrio placement.
+- **Container placement stays manual.** Its open/close is a plain flag (`IsContainerPlacementOpen`) with no schedule; only barrio placement is scheduled.
 - Index, barrio-map, and container-map GETs propagate request cancellation from the initial member lookup through their existing data reads.
 - **Cross-section reads** route through `ICampService`, `ITeamService`, and `IUserService`. History rows carry no cross-domain navigation: `CampPolygonHistories` stores `ModifiedByUserId` only, and the service resolves names through a batched `IUserService.GetUserInfosAsync` lookup.
 - **Architecture test** — `tests/Humans.CityPlanning.Tests/CityPlanningArchitectureTests.cs` enforces one thing: the API controller's route prefix stays `api/city-planning` (the city-planning JavaScript hard-codes this URL). The non-decorator shape and append-only repository surface above are documentation, not assertions: a test that a section *lacks* something is forbidden by [`no-tests-for-absences`](../../../../memory/architecture/no-tests-for-absences.md). The page controller's routes and the `Views/_ViewImports.cshtml` set are exercised by `CityPlanningPageRenderTests`, which lives in `tests/Humans.Integration.Tests` and runs as a PR check ([`integration-tests-are-not-ci-tests`](../../../../memory/process/integration-tests-are-not-ci-tests.md)). The browser check for those routes is `tests/e2e/tests/city-planning.spec.ts`, which loads the map screens (and their deny paths) against the deployed QA site; `e2e-qa.yml` runs it daily against QA, so it catches a broken route or a missing `_ViewImports` line within a day of the merge, not on the PR.

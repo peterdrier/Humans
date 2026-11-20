@@ -27,7 +27,7 @@
         @if (item.BankFeed is { } feed)
         {
             <span class="@(feed.Unreconciled is null ? "text-danger" : feed.Unreconciled > 0 ? "text-warning fw-bold" : "text-success")"
-                  title="Bank lines of the last @Humans.Finance.Services.SepaBankBooking.FeedWindowDays days not reconciled in Holded. Bank feed read @(feed.SyncedAt?.ToDateTime() ?? "never").">@(feed.Unreconciled?.ToString(invariant) ?? "unknown")</span>
+                  title="Bank lines of the last @Humans.Finance.Services.Service.FeedWindowDays days not reconciled in Holded. Bank feed read @(feed.SyncedAt?.ToDateTime() ?? "never").">@(feed.Unreconciled?.ToString(invariant) ?? "unknown")</span>
         }
     </text>;
     var cashTable = ledger is null ? null : TableModel.For(ledger.CashAccounts)

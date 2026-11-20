@@ -1,6 +1,4 @@
-// MapLibre layer setup for the container placement map.
 // addBackgroundLayers mirrors the read-only styling from city-planning/barrio-map/layers.js.
-// addContainerLayers adds container-specific sources and layers.
 import { addOfficialZonesLayers } from '../shared/official-zones-layer.js';
 import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from '../shared/sound-zone-colors.js';
 
@@ -82,7 +80,6 @@ export function addContainerLayers(map) {
         paint: { 'fill-color': colorUnselected, 'fill-opacity': 0.75 },
     });
 
-    // Active container (separate source)
     map.addLayer({
         id: 'containers-active-fill', type: 'fill', source: 'container-active',
         paint: { 'fill-color': colorActive, 'fill-opacity': 0.9 },
@@ -137,9 +134,6 @@ export function updateContainerSource(map, containers, activeId) {
     map.getSource('containers').setData({ type: 'FeatureCollection', features });
 }
 
-/**
- * Updates the 'container-active' source to show the given feature (or clears it).
- */
 export function updateActiveSource(map, feature) {
     const data = feature
         ? { type: 'FeatureCollection', features: [feature] }

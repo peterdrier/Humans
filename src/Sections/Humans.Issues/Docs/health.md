@@ -52,10 +52,10 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   (`CanHandle`).
 - **`Data/`** — `IssuesDbContext` + the one repository. Repository projections are repo-local
   tuples/records; no service-layer DTO travels down into `Data/`.
-- **`Services/`** — `IssuesService` coordinates submission and field mutations. `IssueReader`
+- **`Services/`** — `IssuesService` coordinates submission and field mutations. `IssuesService`
   owns viewer-scoped reads, thread assembly and badge counts; its shared visibility and
-  identity helpers also gate comments and mutations. `IssueDataLifecycle` owns retention
-  and GDPR, and `IssueNotices` owns delivery. Both doors use the same visibility rules:
+  identity helpers also gate comments and mutations. `IssuesService` owns retention
+  and GDPR, and `IssuesService` owns delivery. Both doors use the same visibility rules:
   out-of-reach answers exactly what gone answers.
 - **`Controllers/` + `Models/` + `Views/`** — one controller, one page (list + inline detail),
   one submit form, one widget modal. View models carry only what a `.cshtml` renders. Every

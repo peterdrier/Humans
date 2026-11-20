@@ -806,4 +806,5 @@
   <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
     <value>Selecteer tags die passen bij het soort werk dat je leuk vindt. Bijpassende diensten worden gemarkeerd met een ster.</value>
   </data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Bestuur</value></data>
 </root>

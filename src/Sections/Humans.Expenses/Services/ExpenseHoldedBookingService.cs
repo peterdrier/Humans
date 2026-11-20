@@ -25,8 +25,8 @@ internal sealed class ExpenseHoldedBookingService(
                     creditors(report.SubmitterUserId),
                     report.HoldedContactId,
                     a.Line.HoldedDocId!,
-                    ExpenseHoldedPublisher.DocDescription(a.Line.Description),
-                    ExpenseHoldedPublisher.DocNotes(report.Id),
+                    ExpenseReportBackgroundProcessor.DocDescription(a.Line.Description),
+                    ExpenseReportBackgroundProcessor.DocNotes(report.Id),
                     a.Booked)))
             .ToList();
     }
@@ -45,9 +45,9 @@ internal sealed class ExpenseHoldedBookingService(
             var outboxEvent = outbox.GetValueOrDefault(report.Id);
             ExpenseHoldedReconLine Line(Guid? lineId, string? docId, string description, decimal booked) => new(
                 report.Id, lineId, report.Status, creditors(report.SubmitterUserId), report.HoldedContactId, docId,
-                description, ExpenseHoldedPublisher.DocNotes(report.Id), booked,
+                description, ExpenseReportBackgroundProcessor.DocNotes(report.Id), booked,
                 report.SubmittedAt ?? report.CreatedAt,
-                ExpenseHoldedTimelineReader.ResolveSyncState(outboxEvent, configured),
+                ExpenseReportService.ResolveSyncState(outboxEvent, configured),
                 outboxEvent?.ProcessedAt);
 
             // A legacy push wrote one document for the whole payable and left the lines unlinked.
@@ -61,7 +61,7 @@ internal sealed class ExpenseHoldedBookingService(
                 .Where(a => a.Booked > 0m && (approved || a.Line.HoldedDocId is not null))
                 .Select(a => Line(
                     a.Line.Id, a.Line.HoldedDocId,
-                    ExpenseHoldedPublisher.DocDescription(a.Line.Description), a.Booked)));
+                    ExpenseReportBackgroundProcessor.DocDescription(a.Line.Description), a.Booked)));
         }
         return lines;
     }

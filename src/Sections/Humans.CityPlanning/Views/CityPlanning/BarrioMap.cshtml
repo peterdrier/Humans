@@ -54,7 +54,6 @@
          data-preview="@SharedLocalizer["Common_Preview"].Value"
          data-history="@Localizer["CityPlanning_HistoryButton"].Value"></div>
 
-    <!-- Placement phase card -->
     <div class="position-absolute top-0 start-0 m-3">
         <div class="card shadow-sm">
             <div class="card-body py-2 px-3 d-flex flex-column align-items-center gap-1">
@@ -86,7 +85,6 @@
         </div>
     </div>
 
-    <!-- Top-right controls -->
     <div class="position-absolute top-0 end-0 m-3 city-map-controls">
         @await Html.PartialAsync("_MeasurePanel", new CityPlanningMeasurePanelViewModel
         {
@@ -96,7 +94,6 @@
         })
     </div>
 
-    <!-- Toolbars -->
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
         @if (isPlacementOpen || isPlacementChangeable || isMapAdmin)
         {

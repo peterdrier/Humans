@@ -813,4 +813,6 @@
   </data>
   <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Solicitudes pendientes de tu voto</value></data>
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
+  <data name="Governance_Status_Board" xml:space="preserve"><value>Junta</value></data>
+  <data name="Governance_MemberSince" xml:space="preserve"><value>Miembro desde</value></data>
 </root>

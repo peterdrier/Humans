@@ -105,5 +105,4 @@ internal static class AssemblyVotePresentation
     /// UTC instant in an email would be a different deadline to every reader.
     /// </summary>
     private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
 }

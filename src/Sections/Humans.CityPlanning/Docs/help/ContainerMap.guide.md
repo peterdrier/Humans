@@ -25,6 +25,10 @@ Click **Clear placement** on a placed card and confirm the prompt. The container
 
 Click the pin icon on a placed card to fly the map to that container's position.
 
+### Placement Notes and Sketch
+
+On a placed container, open its notes (the notes button on the placed card) to add a note and attach a sketch image. A barrio lead can do this while container placement is open; a Map Admin can at any time. To remove the sketch, tick the remove option and save.
+
 ### Measure Tool
 
 Click the **Measure** button (ruler icon) to enter measurement mode, then click two points on the map to record a distance. Measure mode exits automatically once a measurement is recorded — click **Measure** again to add another. **Right-click** an existing measurement to delete it. Use the trash button next to **Measure** to clear all measurements at once.

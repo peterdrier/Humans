@@ -798,4 +798,5 @@
   <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
     <value>Wähle Tags aus, die zur Art von Arbeit passen, die du magst. Passende Schichten werden mit einem Stern markiert.</value>
   </data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Vorstand</value></data>
 </root>

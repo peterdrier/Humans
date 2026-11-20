@@ -314,7 +314,7 @@ else if (Model.Run is { Result: { } last } finished)
 
             </text>;
             Func<SepaTransferVm, IHtmlContent> withdrawCell = @<text>
-                @if (Humans.Finance.Services.SepaBankBooking.WithdrawRefusal(item.Row) is { } cannotWithdraw)
+                @if (Humans.Finance.Services.Service.WithdrawRefusal(item.Row) is { } cannotWithdraw)
                 {
                     @if (!item.Row.IsWithdrawn)
                     {

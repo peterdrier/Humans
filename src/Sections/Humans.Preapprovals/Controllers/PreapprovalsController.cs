@@ -21,7 +21,7 @@ internal sealed class PreapprovalsController(
     IClock clock,
     ILogger<PreapprovalsController> logger) : HumansControllerBase(users)
 {
-    private LocalDate Today => clock.GetCurrentInstant().InZone(PreapprovalReader.MadridZone).Date;
+    private LocalDate Today => clock.GetCurrentInstant().InZone(PreapprovalService.MadridZone).Date;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

@@ -12,6 +12,7 @@ internal static class ProfileSummaryViewModelBuilder
         UserInfo info,
         IReadOnlyList<TeamMembership> memberships,
         MembershipTier tier,
+        bool isBoardMember,
         CampUserInfo? camp = null)
     {
         ArgumentNullException.ThrowIfNull(info);
@@ -30,6 +31,7 @@ internal static class ProfileSummaryViewModelBuilder
             Email = info.Email,
             PreferredLanguage = info.PreferredLanguage,
             MembershipTier = tier.ToString(),
+            IsBoardMember = isBoardMember,
             MembershipStatus = info.IsSuspended ? "Suspended"
                 : info.State == UserState.Active ? "Active" : "Pending",
             City = profile.City,

@@ -76,7 +76,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
             await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupUpdateDueNotified,
                 AuditEntityTypes.Workgroup, group.Id,
                 Arg.Is<string>(description => description.Contains("1 coordinator", StringComparison.Ordinal)),
-                WorkgroupRhythm.WorkgroupRhythmJobName);
+                WorkgroupService.WorkgroupRhythmJobName);
         }
         else
         {
@@ -150,7 +150,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
 
         await AuditLog.Received(1).LogAsync(
             WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
-            Arg.Any<string>(), WorkgroupRhythm.WorkgroupRhythmJobName);
+            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
         await Notifications.Received(1).SendAsync(
             WorkgroupsNotificationSources.WorkgroupReportingDue, Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(ids => ids.Contains(workgroup.Members.Single().UserId)),
@@ -171,7 +171,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         // put the nudge off by scheduling something three months out.
         await AuditLog.Received(1).LogAsync(
             WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
-            Arg.Any<string>(), WorkgroupRhythm.WorkgroupRhythmJobName);
+            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
     }
 
     [HumansFact]
@@ -198,7 +198,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         // Board's decision, taken on the Board's own reading of the register.
         await AuditLog.Received(1).LogAsync(
             WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
-            Arg.Any<string>(), WorkgroupRhythm.WorkgroupRhythmJobName);
+            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
 
         await using var ctx = OpenContext();
         var reloaded = await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct);
@@ -217,7 +217,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
 
         await AuditLog.Received(1).LogAsync(
             WorkgroupsAuditActions.WorkgroupApplicationOverdue, AuditEntityTypes.Workgroup, workgroup.Id,
-            Arg.Any<string>(), WorkgroupRhythm.WorkgroupRhythmJobName);
+            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
 
         await using var ctx = OpenContext();
         (await ctx.Workgroups.SingleAsync(w => w.Id == workgroup.Id, Ct)).Status.Should().Be(WorkgroupStatus.Applied);
@@ -256,7 +256,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         await act.Should().NotThrowAsync();
         await AuditLog.Received(1).LogAsync(
             WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, alsoQuiet.Id,
-            Arg.Any<string>(), WorkgroupRhythm.WorkgroupRhythmJobName);
+            Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
     }
 
     [HumansFact]

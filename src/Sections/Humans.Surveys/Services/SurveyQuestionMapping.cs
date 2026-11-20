@@ -13,7 +13,6 @@ internal static class SurveyQuestionMapping
                 settings.AllowReject,
                 settings.OfficialMethod.ToString());
 
-
     internal static IReadOnlyList<QuestionInput> ToQuestionInputs(Survey survey)
         => survey.Questions
             .OrderBy(question => question.PageNumber)

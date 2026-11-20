@@ -197,7 +197,6 @@ export function renderMap(onCampPolygonClick) {
   map.on('mouseleave', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = isMeasuring() ? 'crosshair' : ''; });
   map.on('mouseleave', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = isMeasuring() ? 'crosshair' : ''; });
 
-  // Bring draw layers and warning overlays above our polygon layers
   map.getStyle().layers
     .filter(l => l.id.startsWith('gl-draw-'))
     .forEach(l => map.moveLayer(l.id));
@@ -206,7 +205,6 @@ export function renderMap(onCampPolygonClick) {
   map.moveLayer('draw-edge-labels');
   map.moveLayer('draw-label');
 
-  // Bring measure layers above everything else
   ['measure-line', 'measure-preview-line', 'measure-label', 'measure-points-stroke', 'measure-points']
     .forEach(id => { if (map.getLayer(id)) map.moveLayer(id); });
 }

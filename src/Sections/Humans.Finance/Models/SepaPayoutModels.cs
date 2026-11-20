@@ -109,7 +109,7 @@ internal sealed record SepaPayoutFileVm(
         }
     }
 
-    public bool CanCancel => SepaBankBooking.CancelFileRefusal(Transfers.Select(transfer => transfer.Row).ToList()) is null;
+    public bool CanCancel => Service.CancelFileRefusal(Transfers.Select(transfer => transfer.Row).ToList()) is null;
 }
 
 /// <summary>
