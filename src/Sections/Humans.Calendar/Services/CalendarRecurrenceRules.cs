@@ -231,5 +231,4 @@ internal static class CalendarRecurrenceRules
         }
         return null;
     }
-
 }

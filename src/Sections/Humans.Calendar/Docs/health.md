@@ -100,9 +100,9 @@ Stated so a violation is recognisable.
    renders only that (`Views/Shared/Components/UserCalendar/Default.cshtml:10`).
 4. Every mutation writes an audit entry naming the actor. Entry-level mutations also name
    the owning team (`Services/CalendarService.cs:90`); occurrence-level ones do not
-   (`Services/CalendarOccurrenceMutations.cs`).
+   (`Services/CalendarService.cs`).
 5. A failed audit write never rolls back or hides a committed change, and never passes
-   silently (`Services/CalendarMutationAudit.cs`).
+   silently (`Services/CalendarService.cs`).
 6. On a timed entry, `RecurrenceRule` and `RecurrenceTimezone` are both set or both null —
    never one (`Domain/CalendarEvent.cs:54`). An all-day series carries a rule and no zone:
    its dates do not convert.
