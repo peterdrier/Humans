@@ -1,7 +1,6 @@
 using System.Globalization;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces.Caching;
-using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -39,8 +38,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     private readonly Lazy<ICampRoleService> _campRoleService;
 
-    // Lazy: CityPlanningService injects ICampService, closing the cycle.
-    private readonly Lazy<ICityPlanningWrite> _cityPlanningService;
+    // Lazy: a listener may inject ICampService, closing the cycle.
+    private readonly Lazy<IEnumerable<ICampDeletionListener>> _deletionListeners;
 
     private readonly INotificationEmitter _notificationEmitter;
 
@@ -51,7 +50,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         IFileStorage fileStorage,
         INotificationEmitter notificationEmitter,
         Lazy<ICampRoleService> campRoleService,
-        Lazy<ICityPlanningWrite> cityPlanningService,
+        Lazy<IEnumerable<ICampDeletionListener>> deletionListeners,
         IUserService userService,
         ITicketService tickets,
         ISettingsService settingsService,
@@ -59,7 +58,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         ILogger<CampService> logger)
     {
         _notificationEmitter = notificationEmitter;
-        _cityPlanningService = cityPlanningService;
+        _deletionListeners = deletionListeners;
         _campRoleService = campRoleService;
         _tickets = tickets;
         _logger = logger;
@@ -1676,9 +1675,9 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var camp = await _repo.GetByIdAsync(campId, cancellationToken);
         if (camp is null) return new(false, "Camp not found.");
 
-        // CityPlanning keys polygon history on CampSeasonId; clear it through its service before deleting. Both writes
-        // share one ambient transaction so a failure in either can't leave a live camp with its polygon history gone.
-        // A SaveCampPolygonAsync landing between cleanup and commit still orphans a row: an accepted trade.
+        // Other sections key rows on CampSeasonId; listeners clear them before the delete, inside one ambient
+        // transaction so a failure in either can't leave a live camp with its dependent rows gone. A listener write
+        // landing between cleanup and commit still orphans a row: an accepted trade.
         var seasonIds = camp.Seasons.Select(s => s.Id).ToList();
         IReadOnlyList<string>? deletedImagePaths = null;
         var attempted = false;
@@ -1691,12 +1690,13 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             {
                 if (seasonIds.Count > 0)
                 {
-                    var removed = await _cityPlanningService.Value
-                        .DeleteCampPolygonsForSeasonsAsync(seasonIds, cancellationToken);
+                    var removed = 0;
+                    foreach (var listener in _deletionListeners.Value)
+                        removed += await listener.CampSeasonsDeletingAsync(seasonIds, cancellationToken);
                     if (removed > 0)
                     {
                         _logger.LogInformation(
-                            "Deleted {Rows} city-planning polygon/history rows for {Seasons} seasons of camp {CampId}",
+                            "Deleted {Rows} dependent rows for {Seasons} seasons of camp {CampId}",
                             removed, seasonIds.Count, campId);
                     }
                 }

@@ -40,7 +40,7 @@ structural item below follows from this table.
 | **Bulk-load barrios** | Here is the surveyor's file — match it to camps and apply it. | `wwwroot/js/city-planning/barrio-map/admin-import.js` on the admin page: reads `GET …/state`, matches features to camps by name or slug, then `PUT`s each match |
 | **Curate containers** | Which containers exist for which barrio? | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` plus its Create/Edit/Delete posts (entity owned by Containers) |
 | **Hand the data out** | Give me this as a file. | `GET /api/city-planning/export.geojson`, `GET /api/city-planning/containers/{year}/export.geojson` |
-| **Tell other sections** | Is placement open? Is this user an organiser? | `ICityPlanningService` + `ICityPlanningWrite`; the `CityPlanningMapAdmin` policy |
+| **Tell other sections** | Is placement open? Is this user an organiser? | `ICityPlanningService`; `ICampDeletionListener`; the placement box on the camp page (`ICampPart`); the `CityPlanningMapAdmin` policy |
 | **Watch each other work** | Who else is on the barrio map right now? | `CityPlanningHub` at `/hubs/city-planning` (cursors + polygon broadcast), barrio map only |
 | **Explain itself to the Shell** | Where is the section, what does it mean, who can do what? | `ISectionNav`, `ISectionAdminNav`, `ISectionSettings`, `ISectionHelp` over `Docs/help/`, `ISectionAccessMatrix`, `ISectionConfiguration`, the `IIssueQueueOwner` queue key |
 
@@ -171,9 +171,9 @@ touching these callers are shaped by them.
   breaks is with Containers: `Humans.CityPlanning` references `Humans.Containers` outright, so
   Containers can reach `ICityPlanningService` only through the leaf. `Humans.Camps` is not
   the reason — it already references `Humans.CityPlanning` itself.
-- **`Lazy<ICityPlanningWrite>` is registered by `Humans.Camps`, not by this section.** That
-  is a separate, *runtime* cycle — `CampService → ICityPlanningWrite → ICampService`, hit
-  on the camp-delete path — and the lazy belongs with the consumer, not the producer.
+- **Camps resolves `ICampDeletionListener` lazily.** `CampService → ICampDeletionListener →
+  ICampService` is a *runtime* cycle hit on the camp-delete path; the lazy lives in Camps,
+  which does not know City Planning is a listener.
 - **Out-of-bounds and overlap detection is client-side only.** The server stores whatever
   parses. This is a deliberate scale call, not an oversight.
 - **Bulk import writes through the same PUT the map uses.** `admin-import.js` matches

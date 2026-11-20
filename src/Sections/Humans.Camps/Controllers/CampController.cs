@@ -87,7 +87,6 @@ internal sealed class CampController(
             return NotFound();
 
         var membership = ResolveCurrentUserMembershipState(camp, currentUser, settings.ActiveEventSettingsId);
-        await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(
             camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
@@ -122,7 +121,6 @@ internal sealed class CampController(
         if (season.Status is not (CampSeasonStatus.Active or CampSeasonStatus.Full) && !isLead && !isCampAdmin)
             return NotFound();
         var membership = ResolveCurrentUserMembershipState(camp, currentUser, settings.ActiveEventSettingsId);
-        await PopulateCityPlanningViewBagAsync(currentUser, ct);
 
         var vm = MapCampDetailViewModel(
             camp, season, isLead, isCampAdmin, membership, settings.ActiveEventSettingsId,
@@ -1070,22 +1068,6 @@ internal sealed class CampController(
             slug,
             eventSettingsId = camp.Seasons.First(s => s.Id == assignment.CampSeasonId).EventSettingsId
         });
-    }
-
-    private async Task PopulateCityPlanningViewBagAsync(UserInfo? currentUser, CancellationToken cancellationToken)
-    {
-        if (currentUser is null)
-        {
-            return;
-        }
-
-        ViewBag.IsCityPlanningTeamMember =
-            await cityPlanningService.IsCityPlanningTeamMemberAsync(currentUser.Id, cancellationToken);
-
-        // Null when no event is active: placement reads as closed, with no scheduled dates.
-        var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
-        ViewBag.PlacementState = settings?.PlacementState ?? BarrioPlacementState.Closed;
-        ViewBag.PlacementSchedule = (settings?.PlacementOpensOn, settings?.PlacementClosesOn, settings?.PlacementChangeableUntilOn);
     }
 
     private static CampSeasonData MapToSeasonData(CampRegisterViewModel model)
