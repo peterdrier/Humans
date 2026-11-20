@@ -11,6 +11,8 @@
 
 Departments and sub-teams, their members, join requests, named role slots, team pages, early-entry grants, and the system teams computed from other sections' facts.
 
+Team create/edit form redisplays use request cancellation for parent-team picker reads, including write refusals, creation failures and group-reactivation confirmation. Creation redisplay reads run outside the write-error handler so abandoned reads do not produce a creation-error message. Team mutations and post-write diagnostic reads retain their independent cancellation boundaries.
+
 ## Concepts
 
 - A **Department** is a team with no parent. A **Sub-Team** sits under exactly one department; only one level of nesting is allowed.

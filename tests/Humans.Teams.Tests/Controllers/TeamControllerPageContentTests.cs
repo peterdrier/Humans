@@ -943,4 +943,56 @@ public class TeamControllerPageContentTests
         model.PageContentHtml.Should().Contain("https://secure.example/photo");
         model.PageContentHtml.Should().Contain("type=\"checkbox\"").And.Contain("checked").And.Contain("disabled");
     }
+
+    [HumansTheory]
+    [InlineData("create-refused")]
+    [InlineData("create-failed")]
+    [InlineData("edit-refused")]
+    [InlineData("edit-reactivation")]
+    public async Task ParentPickerRedisplay_CancelsReadsWithoutReportingACreationFailure(string path)
+    {
+        using var request = new CancellationTokenSource();
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var teams = Substitute.For<ITeamManagementService>();
+        var logger = new Humans.Testing.CapturingLogger<TeamController>();
+        var failure = new IOException("Team write unavailable");
+        var teamId = Guid.NewGuid();
+        var team = new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" };
+        var result = string.Equals(path, "edit-reactivation", StringComparison.Ordinal)
+            ? new TeamUpdateResult(team, GroupWarning: "Confirm reactivation", InactiveGroupResourceId: Guid.NewGuid())
+            : new TeamUpdateResult(ErrorMessage: "Refused");
+        teams.CreateTeamWithGoogleGroupAsync("", null, false).ReturnsForAnyArgs(
+            string.Equals(path, "create-failed", StringComparison.Ordinal)
+                ? Task.FromException<TeamUpdateResult>(failure)
+                : Task.FromResult(result));
+        teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false).ReturnsForAnyArgs(result);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>();
+        });
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext { RequestServices = services, RequestAborted = request.Token };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), auth, logger)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        Func<Task<IActionResult>> save = path.StartsWith("create", StringComparison.Ordinal)
+            ? () => controller.CreateTeam(new CreateTeamViewModel { Name = "Alpha" })
+            : () => controller.EditTeam(teamId, new EditTeamViewModel { Id = teamId, Name = "Alpha" });
+
+        await save.Should().ThrowAsync<OperationCanceledException>();
+        await teams.Received(1).GetTeamsAsync(request.Token);
+        if (string.Equals(path, "create-failed", StringComparison.Ordinal))
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, failure));
+        else
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+    }
 }
