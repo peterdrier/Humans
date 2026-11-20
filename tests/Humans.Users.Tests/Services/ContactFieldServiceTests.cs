@@ -57,6 +57,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -86,6 +87,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 611111111",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -385,6 +387,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = type,
                 Value = "Contact value",
                 Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -396,6 +399,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Other,
             CustomLabel = "My custom label",
             Value = "Custom value",
@@ -476,6 +480,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -507,6 +512,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -535,6 +541,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = default,
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -565,6 +572,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             {
                 Id = legacyId,
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = default,
                 Value = "legacy@example.org",
                 Visibility = ContactFieldVisibility.BoardOnly,
@@ -575,6 +583,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             {
                 Id = signalId,
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Signal,
                 Value = "signal-handle",
                 Visibility = ContactFieldVisibility.MyTeams,
@@ -608,6 +617,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = default,
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -618,6 +628,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "old-number",
             Visibility = ContactFieldVisibility.MyTeams,
@@ -628,6 +639,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = otherProfile.Id,
+            UserId = otherProfile.UserId,
             FieldType = default,
             Value = "other@example.org",
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -668,6 +680,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -678,8 +691,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(ct);
         var inner = new UserRepository(DbFactory, Clock);
         var repository = Substitute.For<IUserRepository>();
-        repository.GetByProfileIdForMutationAsync(profile.Id, Arg.Any<CancellationToken>())
-            .Returns(c => inner.GetByProfileIdForMutationAsync(profile.Id, c.Arg<CancellationToken>()));
         repository.BatchSaveAsync(Arg.Any<IReadOnlyList<ContactField>>(),
                 Arg.Any<IReadOnlyList<ContactField>>(), Arg.Any<IReadOnlyList<ContactField>>(),
                 Arg.Any<CancellationToken>())
@@ -774,6 +785,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Phone,
                 Value = "+34 612345678",
                 Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -785,6 +797,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Signal,
                 Value = "+1234567890",
                 Visibility = ContactFieldVisibility.MyTeams,
@@ -796,6 +809,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Telegram,
                 Value = "@coordcontact",
                 Visibility = ContactFieldVisibility.CoordinatorsAndBoard,
@@ -807,6 +821,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Phone,
                 Value = "+9876543210",
                 Visibility = ContactFieldVisibility.BoardOnly,

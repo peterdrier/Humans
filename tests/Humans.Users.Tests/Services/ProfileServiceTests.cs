@@ -716,11 +716,13 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     public async Task SaveProfileLanguages_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var profileId = await SeedUserWithProfileAsync(Guid.NewGuid());
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId);
         Db.ProfileLanguages.Add(new ProfileLanguage
         {
             Id = Guid.NewGuid(),
             ProfileId = profileId,
+            UserId = userId,
             LanguageCode = "es",
             Proficiency = LanguageProficiency.Native,
         });
@@ -798,6 +800,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             ProfileId = profileId,
+            UserId = userId,
             Date = new LocalDate(2025, 7, 1),
             EventName = "Existing history",
             CreatedAt = Clock.GetCurrentInstant(),
@@ -829,6 +832,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profileId,
+                UserId = userId,
                 Date = new LocalDate(2025, 7, 1),
                 EventName = "Original history",
                 CreatedAt = Clock.GetCurrentInstant(),

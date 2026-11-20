@@ -78,6 +78,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
             {
                 Id = keepId,
                 ProfileId = profileId,
+                UserId = user.Id,
                 Date = new LocalDate(2024, 3, 1),
                 EventName = "Keep me",
                 Description = "Old desc",
@@ -88,6 +89,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
             {
                 Id = removeId,
                 ProfileId = profileId,
+                UserId = user.Id,
                 Date = new LocalDate(2024, 4, 1),
                 EventName = "Remove me",
                 Description = null,
@@ -147,6 +149,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         {
             Id = entryId,
             ProfileId = profileId,
+            UserId = user.Id,
             Date = new LocalDate(2024, 3, 1),
             EventName = "Keep me",
             Description = "unchanged",
@@ -188,6 +191,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         {
             Id = entryId,
             ProfileId = profileId,
+            UserId = user.Id,
             Date = new LocalDate(2024, 3, 1),
             EventName = "Original Name",
             Description = "desc",
@@ -319,35 +323,13 @@ public sealed class UserRepositoryProfileTests : IDisposable
         await _dbContext.SaveChangesAsync(ct);
         _dbContext.ChangeTracker.Clear();
 
-        await _repo.ReplaceLanguagesAsync(profile.Id,
-            [new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, LanguageCode = "es" }], ct);
+        await _repo.ReplaceLanguagesAsync(user.Id,
+            [new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, UserId = user.Id, LanguageCode = "es" }], ct);
         var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, ct);
         await _repo.UpdateAsync(detached, ct, [new CVEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)]);
 
         (await _dbContext.ProfileLanguages.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);
         (await _dbContext.VolunteerHistoryEntries.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);
-    }
-
-    [HumansFact]
-    public async Task FillProfileChildUserIdsAsync_StampsOnlyRowsWithoutAUser()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var user = await SeedUserAsync(UserState.Active);
-        var profile = NewProfile(user.Id);
-        _dbContext.Profiles.Add(profile);
-        _dbContext.ProfileLanguages.Add(new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, LanguageCode = "es" });
-        _dbContext.ProfileLanguages.Add(new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, UserId = user.Id, LanguageCode = "en" });
-        _dbContext.ContactFields.Add(new ContactField { Id = Guid.NewGuid(), ProfileId = profile.Id, Value = "x" });
-        await _dbContext.SaveChangesAsync(ct);
-        _dbContext.ChangeTracker.Clear();
-
-        (await _repo.GetProfileChildRowsWithoutUserAsync(ct)).Should().ContainSingle()
-            .Which.Should().Be(new ProfileChildRowsWithoutUser(user.Id, ContactFields: 1, Languages: 1, VolunteerHistory: 0));
-
-        (await _repo.FillProfileChildUserIdsAsync(ct)).Should().Be(2);
-
-        (await _repo.GetProfileChildRowsWithoutUserAsync(ct)).Should().BeEmpty();
-        (await _dbContext.ContactFields.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(user.Id);
     }
 
     private async Task<User> SeedUserAsync(UserState state = UserState.Bare)
