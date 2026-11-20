@@ -149,9 +149,7 @@ internal sealed class ApplicationReader(
             ApplicationId: a.Id,
             UserId: a.UserId,
             MembershipTier: a.MembershipTier,
-            ApplicationMotivation: a.Motivation,
             SubmittedAt: a.SubmittedAt,
-            Status: a.Status,
             Votes: ProjectBoardVotes(a))).ToList();
 
         var boardMemberIds = await roleAssignmentService.GetActiveUserIdsInRoleAsync(
@@ -172,7 +170,6 @@ internal sealed class ApplicationReader(
             return null;
 
         var applicantInfo = await userService.GetUserInfoAsync(application.UserId, ct);
-        var profile = applicantInfo?.Profile;
 
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
@@ -180,7 +177,6 @@ internal sealed class ApplicationReader(
             FirstName: applicantInfo?.FirstName ?? string.Empty,
             LastName: applicantInfo?.LastName ?? string.Empty,
             MembershipTier: application.MembershipTier,
-            Status: application.Status,
             Motivation: application.Motivation,
             AdditionalInfo: application.AdditionalInfo,
             SignificantContribution: application.SignificantContribution,

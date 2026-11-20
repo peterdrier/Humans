@@ -175,6 +175,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 ## Invariants
 
+- Consent registers the external `github` health check for the legal-document repository in `GitHubSettings`. It reports repository access, authentication and rate limits; it does not probe Guide's source. Configured probes observe the framework timeout/abort token, and caller cancellation propagates without logging an availability failure or starting an already-canceled request.
+
 - A replacement consent-snapshot reload cannot publish across an intervening cache mutation. The affected alias is evicted for source retry, so an older reload cannot overwrite a newer signature refresh or restore an evicted snapshot.
 
 - Review notes and rejection reasons are limited to 4,000 Unicode characters before any review write or audit. Oversized text that would be written returns `ReviewTextTooLong`; existing rejection preconditions retain precedence, and valid text is stored without truncation. The operator queue shows the limit and specific refusal feedback.
@@ -341,3 +343,5 @@ Re-consent reminders select active-assignment users with unsigned required conse
 Internal `LegalDocumentAdministration` owns GitHub-folder normalization, create-with-initial-sync, edit/archive and version-summary updates. `LegalDocumentSyncService` retains its entry points; single-document lookup belongs to the existing publication owner and is shared by direct and initial sync. Team guards, option snapshot, regex behavior, refusals, audit/fan-out order, cache invalidation after uncertain writes and cancellation are unchanged. Bulk publication and document reads retain their owners. No public contract or DI registration is added.
 
 Internal `ConsentReader` owns dashboard/review composition, consent counts and version sets, bulk merge-chain/maps, required-document rows and pending document names. It reuses the existing repositories, legal-document service, Users contract, membership-calculator resolution, clock and logger. The contributor reuses its chain lookup. Archived-id resolution, overlapping-input handling, canonical Spanish review refusal, effective-version selection, ordering and cancellation are unchanged. `ConsentService` retains signing, cache eviction, post-commit suspension cleanup, review forwarding and GDPR retention; no contract, DI registration or cache topology changes.
+
+- Legal-document management exposes only consumed reads: required versions, active required documents and individual versions. Scheduled sync keeps its own active-document repository read; single-document publication goes through the existing actor-attributed admin operation.

@@ -65,7 +65,22 @@ internal sealed class NotificationMeterProvider(
         if (viewerId is { } contributorViewerId)
         {
             foreach (var contributor in contributors)
-                meters.AddRange(await contributor.GetMetersAsync(user, contributorViewerId, cancellationToken));
+            {
+                try
+                {
+                    var contributed = await contributor.GetMetersAsync(user, contributorViewerId, cancellationToken);
+                    meters.AddRange(contributed.ToList());
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Notification meter contributor {Contributor} failed for user {UserId}; its meters are skipped",
+                        contributor.GetType().Name, contributorViewerId);
+                }
+            }
         }
 
         if (isAdmin && counts.PendingDeletions > 0)
@@ -235,17 +250,20 @@ internal sealed class NotificationMeterProvider(
 
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {
-        var allUserInfos = await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false);
-        var reviews = await consentService.GetConsentReviewsAsync(cancellationToken);
-        var consentReviewsPending = allUserInfos.Count(u =>
-            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u));
+        var allUserInfos = await ReadMeterSourceAsync(
+            () => userService.GetAllUserInfosAsync(cancellationToken), "users", cancellationToken);
+        var reviews = allUserInfos is null ? null : await ReadMeterSourceAsync(
+            () => consentService.GetConsentReviewsAsync(cancellationToken), "consent reviews", cancellationToken);
+        var consentReviewsPending = allUserInfos is not null && reviews is not null
+            ? allUserInfos.Count(u =>
+                (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u))
+            : 0;
 
-        var pendingDeletions = allUserInfos
-            .Count(u => u.DeletionRequestedAt != null);
-
-        var failedSyncEvents = await googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
-
-        var ticketSyncError = await ticketSyncService.IsInErrorStateAsync(cancellationToken);
+        var pendingDeletions = allUserInfos?.Count(u => u.DeletionRequestedAt != null) ?? 0;
+        var failedSyncEvents = await ReadMeterSourceAsync(
+            () => googleSyncService.GetFailedSyncEventCountAsync(cancellationToken), "Google sync failures", cancellationToken);
+        var ticketSyncError = await ReadMeterSourceAsync(
+            () => ticketSyncService.IsInErrorStateAsync(cancellationToken), "ticket sync state", cancellationToken);
 
         return new MeterCounts
         {
@@ -254,6 +272,23 @@ internal sealed class NotificationMeterProvider(
             FailedSyncEvents = failedSyncEvents,
             TicketSyncError = ticketSyncError,
         };
+    }
+
+    private async Task<T?> ReadMeterSourceAsync<T>(Func<Task<T>> read, string source, CancellationToken ct)
+    {
+        try
+        {
+            return await read().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to compute notification meter counts from {Source}", source);
+            return default;
+        }
     }
 
     private sealed class MeterCounts

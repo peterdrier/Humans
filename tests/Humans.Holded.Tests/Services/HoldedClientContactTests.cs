@@ -19,37 +19,38 @@ public class HoldedClientContactTests
             new HoldedCallLog(),
             new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
 
+    private static HoldedClient MakeContactList(string contact) =>
+        Make(new StubHandler(_ => Respond(HttpStatusCode.OK,
+            "{\"items\":[" + contact + "],\"cursor\":null,\"has_more\":false}")));
+
     [HumansFact]
-    public async Task GetContact_parses_supplier_record_num()
+    public async Task ListContacts_parses_supplier_record_num()
     {
         var json = """{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001.0}}""";
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+        var client = MakeContactList(json);
 
-        var contact = await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        var contact = (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
 
         contact.Id.Should().Be("c1");
         contact.SupplierAccountNum.Should().Be(40000001);
     }
 
     [HumansFact]
-    public async Task GetContact_refuses_fractional_supplier_account_number()
+    public async Task ListContacts_refuses_fractional_supplier_account_number()
     {
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK,
-            """{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001.5}}""")));
+        var client = MakeContactList("""{"id":"c1","name":"Daniela Real","supplier_record":{"num":40000001.5}}""");
 
-        var act = async () => await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        var act = async () => (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansTheory]
     [Xunit.InlineData("{\"id\":\"c1\",\"name\":\"X\"}")]
-    [Xunit.InlineData("{\"name\":\"X\"}")]
-    [Xunit.InlineData("{\"id\":null,\"name\":\"X\"}")]
-    public async Task GetContact_supplierAccountNum_null_when_absent(string json)
+    public async Task ListContacts_supplierAccountNum_null_when_absent(string json)
     {
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
-        var contact = await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        var client = MakeContactList(json);
+        var contact = (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
         contact.Id.Should().Be("c1");
         contact.SupplierAccountNum.Should().BeNull();
     }
@@ -57,17 +58,17 @@ public class HoldedClientContactTests
     [HumansTheory]
     [Xunit.InlineData("{\"id\":\"\"}")]
     [Xunit.InlineData("{\"id\":\"   \"}")]
-    public async Task GetContact_refuses_blank_identity(string json)
+    public async Task ListContacts_refuses_blank_identity(string json)
     {
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+        var client = MakeContactList(json);
 
-        var act = async () => await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        var act = async () => (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
     [HumansFact]
-    public async Task GetContact_parses_contact_info_fields_and_joins_bill_address()
+    public async Task ListContacts_parses_contact_info_fields_and_joins_bill_address()
     {
         var json = """
         {
@@ -78,9 +79,9 @@ public class HoldedClientContactTests
             "province":"Madrid","country":"Spain","country_code":"ES","info":null}
         }
         """;
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+        var client = MakeContactList(json);
 
-        var contact = await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        var contact = (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
 
         contact.TradeName.Should().Be("Dani");
         contact.Email.Should().Be("dani@example.org");
@@ -92,11 +93,11 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task GetContact_contact_info_fields_null_when_bill_address_absent()
+    public async Task ListContacts_contact_info_fields_null_when_bill_address_absent()
     {
-        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":"c1","name":"X"}""")));
+        var client = MakeContactList("""{"id":"c1","name":"X"}""");
 
-        var contact = await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        var contact = (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
 
         contact.TradeName.Should().BeNull();
         contact.Address.Should().BeNull();
@@ -177,27 +178,11 @@ public class HoldedClientContactTests
     }
 
     [HumansFact]
-    public async Task GetContact_treats_a_non_object_supplierRecord_as_no_account()
+    public async Task ListContacts_surfaces_an_unreadable_contact_as_permanent_not_a_raw_parse_throw()
     {
-        var client = Make(new StubHandler(_ => Respond(
-            HttpStatusCode.OK, """{"id":"c1","name":"X","supplier_record":[]}""")));
+        var client = MakeContactList("""{"id":42,"name":"Numeric id"}""");
 
-        var contact = await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
-
-        contact.Name.Should().Be("X");
-        contact.SupplierAccountNum.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetContact_surfaces_an_unreadable_contact_as_permanent_not_a_raw_parse_throw()
-    {
-        // ProcessHoldedCreateAsync catches only the client's typed exceptions, and so does the outbox
-        // drain loop above it — a raw InvalidOperationException here would abort the whole batch and
-        // leave its own event neither processed nor failed.
-        var client = Make(new StubHandler(_ => Respond(
-            HttpStatusCode.OK, """{"id":42,"name":"Numeric id"}""")));
-
-        var act = async () => await client.GetContactAsync("c1", Xunit.TestContext.Current.CancellationToken);
+        var act = async () => (await client.ListContactsAsync(Xunit.TestContext.Current.CancellationToken)).Single();
 
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }

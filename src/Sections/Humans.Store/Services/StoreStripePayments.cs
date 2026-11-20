@@ -52,7 +52,7 @@ internal sealed class StoreStripePayments(
             errorKey = "Store_PaymentAboveCheckoutLimit";
             maximumAmount = MaximumCheckoutAmountEur;
         }
-        else if (order.Payments.Any(p => p.Status == PaymentStatus.Pending && p.AmountEur > 0))
+        else if (order.HasPendingSettlement)
             errorKey = "Store_PaymentPending";
 
         if (errorKey is not null)

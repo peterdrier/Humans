@@ -16,35 +16,35 @@ internal sealed class CampImageGallery(
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const int MaxImageFileNameLength = 256;
 
-    public async Task<CampImageUploadResult> UploadImageAsync(
+    public async Task<CampUpdateResult> UploadImageAsync(
         Guid campId, Stream fileStream, string fileName, string contentType, long length,
         Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var imageCount = await repo.CountImagesAsync(campId, cancellationToken);
         if (imageCount >= 5)
         {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageCount");
+            return CampUpdateResult.Failure("Camps_Validation_ImageCount");
         }
 
         if (!AllowedImageContentTypes.Contains(contentType))
         {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageType");
+            return CampUpdateResult.Failure("Camps_Validation_ImageType");
         }
 
         if (length > 10 * 1024 * 1024)
         {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageSize");
+            return CampUpdateResult.Failure("Camps_Validation_ImageSize");
         }
 
         // Security: extension whitelist prevents image/jpeg + .html (static middleware would serve as HTML).
         fileName = DisplayFileName(fileName);
         if (fileName.Length > MaxImageFileNameLength)
-            return CampImageUploadResult.Failure("Camps_Validation_ImageFilenameLength");
+            return CampUpdateResult.Failure("Camps_Validation_ImageFilenameLength");
 
         var ext = Path.GetExtension(fileName);
         if (!AllowedImageExtensions.Contains(ext))
         {
-            return CampImageUploadResult.Failure("Camps_Validation_ImageExtension");
+            return CampUpdateResult.Failure("Camps_Validation_ImageExtension");
         }
         var storageKey = $"uploads/camps/{campId}/{Guid.NewGuid()}{ext}";
         await fileStorage.SaveAsync(storageKey, fileStream, cancellationToken);
@@ -84,7 +84,7 @@ internal sealed class CampImageGallery(
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        return CampImageUploadResult.Success(image);
+        return CampUpdateResult.Success();
     }
 
     private static string DisplayFileName(string fileName) => fileName.Split('/', '\\').Last();

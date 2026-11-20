@@ -14,7 +14,7 @@ namespace Humans.Gate.Jobs;
 /// at-least-once delivery can still re-run an orphaned job; at this scale that cosmetic duplicate is accepted.
 /// </remarks>
 [AutomaticRetry(Attempts = 0)]
-public sealed class GateVendorCheckInJob(
+internal sealed class GateVendorCheckInJob(
     ITicketVendorMirror vendor,
     IConfiguration configuration,
     ILogger<GateVendorCheckInJob> logger)

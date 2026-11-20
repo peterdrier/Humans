@@ -27,9 +27,9 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
         try
         {
-            var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var group = new SdkGroup
             {
                 GroupKey = new EntityKey { Id = groupEmail },
@@ -73,7 +73,9 @@ internal sealed class GoogleGroupProvisioningClient(
             // "groups/{id}" — strip the prefix to get the numeric id.
             if (!operation.Response.TryGetValue("name", out var nameObj) ||
                 nameObj is not string resourceName ||
-                !resourceName.StartsWith("groups/", StringComparison.Ordinal))
+                !resourceName.StartsWith("groups/", StringComparison.Ordinal) ||
+                resourceName.Length <= "groups/".Length ||
+                resourceName["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c)))
             {
                 logger.LogWarning(
                     "Cloud Identity groups.create response for {Email} missing or malformed 'name' field",
@@ -88,7 +90,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error creating group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupCreateResult(
@@ -97,7 +99,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error creating group {Email}", groupEmail);
+            logger.LogWarning("Transport error creating group {Email}: {Reason}", groupEmail, ex.Message);
             return new GroupCreateResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -107,13 +109,22 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
         try
         {
-            var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var lookup = cloudIdentity.Groups.Lookup();
             lookup.GroupKeyId = groupEmail;
             var response = await lookup.ExecuteAsync(ct);
-            var numericId = response.Name["groups/".Length..];
+            var resourceName = response.Name;
+            if (string.IsNullOrEmpty(resourceName) ||
+                !resourceName.StartsWith("groups/", StringComparison.Ordinal) ||
+                resourceName.Length <= "groups/".Length ||
+                resourceName["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c)))
+            {
+                logger.LogWarning("Cloud Identity group lookup returned a malformed resource name for {Email}", groupEmail);
+                return new GroupLookupIdResult(null, new GoogleClientError(502, "Group lookup returned a malformed resource name."));
+            }
+            var numericId = resourceName["groups/".Length..];
             return new GroupLookupIdResult(numericId, Error: null);
         }
         catch (global::Google.GoogleApiException ex)
@@ -127,7 +138,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error looking up group {Email}", groupEmail);
+            logger.LogWarning("Transport error looking up group {Email}: {Reason}", groupEmail, ex.Message);
             return new GroupLookupIdResult(GroupNumericId: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -137,9 +148,9 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
         try
         {
-            var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
             var request = groupsSettings.Groups.Get(groupEmail);
             request.Alt = SdkGroupSettingsBaseServiceRequest.AltEnum.Json;
             var actual = await request.ExecuteAsync(ct);
@@ -147,7 +158,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error reading settings for group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupSettingsGetResult(
@@ -156,7 +167,7 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error reading settings for group {Email}", groupEmail);
+            logger.LogWarning("Transport error reading settings for group {Email}: {Reason}", groupEmail, ex.Message);
             return new GroupSettingsGetResult(Settings: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -167,9 +178,9 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
         try
         {
-            var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
             var sdkSettings = BuildSdkSettings(expected);
             var request = groupsSettings.Groups.Update(sdkSettings, groupEmail);
             await request.ExecuteAsync(ct);
@@ -177,14 +188,14 @@ internal sealed class GoogleGroupProvisioningClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error updating settings for group {Email}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error updating settings for group {Email}", groupEmail);
+            logger.LogWarning("Transport error updating settings for group {Email}: {Reason}", groupEmail, ex.Message);
             return new GoogleClientError(0, ex.Message);
         }
     }

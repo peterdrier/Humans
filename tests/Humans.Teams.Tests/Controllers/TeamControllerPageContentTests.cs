@@ -875,9 +875,9 @@ public class TeamControllerPageContentTests
             Guid.NewGuid(), "Test", "Test", null, "test", true, false, false,
             SystemTeamType.None, Instant.FromUtc(2026, 1, 1, 0, 0), true, false,
             null, [], null, null, null);
-        var coordinator = new TeamPageMemberSummary(Guid.NewGuid(), "Coordinator", null, null, TeamMemberRole.Coordinator, null);
-        var zeta = new TeamPageMemberSummary(Guid.NewGuid(), "zeta", null, null, TeamMemberRole.Member, null);
-        var alpha = new TeamPageMemberSummary(Guid.NewGuid(), "Alpha", null, null, TeamMemberRole.Member, null);
+        var coordinator = new TeamPageMemberSummary(Guid.NewGuid(), "Coordinator", TeamMemberRole.Coordinator);
+        var zeta = new TeamPageMemberSummary(Guid.NewGuid(), "zeta", TeamMemberRole.Member);
+        var alpha = new TeamPageMemberSummary(Guid.NewGuid(), "Alpha", TeamMemberRole.Member);
         var children = new[]
         {
             new TeamPageTeamLink(Guid.NewGuid(), "zeta", "zeta"),
@@ -943,4 +943,58 @@ public class TeamControllerPageContentTests
         model.PageContentHtml.Should().Contain("https://secure.example/photo");
         model.PageContentHtml.Should().Contain("type=\"checkbox\"").And.Contain("checked").And.Contain("disabled");
     }
+
+    [HumansTheory]
+    [InlineData(TeamParentPickerPath.CreateRefused)]
+    [InlineData(TeamParentPickerPath.CreateFailed)]
+    [InlineData(TeamParentPickerPath.EditRefused)]
+    [InlineData(TeamParentPickerPath.EditReactivation)]
+    public async Task ParentPickerRedisplay_CancelsReadsWithoutReportingACreationFailure(TeamParentPickerPath path)
+    {
+        using var request = new CancellationTokenSource();
+        using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+        var teams = Substitute.For<ITeamManagementService>();
+        var logger = new Humans.Testing.CapturingLogger<TeamController>();
+        var failure = new IOException("Team write unavailable");
+        var teamId = Guid.NewGuid();
+        var team = new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" };
+        var result = path is TeamParentPickerPath.EditReactivation
+            ? new TeamUpdateResult(team, GroupWarning: "Confirm reactivation", InactiveGroupResourceId: Guid.NewGuid())
+            : new TeamUpdateResult(ErrorMessage: "Refused");
+        teams.CreateTeamWithGoogleGroupAsync("", null, false).ReturnsForAnyArgs(
+            path is TeamParentPickerPath.CreateFailed
+                ? Task.FromException<TeamUpdateResult>(failure)
+                : Task.FromResult(result));
+        teams.UpdateTeamWithGoogleGroupAsync(teamId, "", null, false, false).ReturnsForAnyArgs(result);
+        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return (IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>();
+        });
+        var auth = Substitute.For<IAuthorizationService>();
+        auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Success());
+        var http = new DefaultHttpContext { RequestServices = services, RequestAborted = request.Token };
+        var controller = new TeamController(
+            teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
+            Substitute.For<ITeamResourceService>(), services.GetRequiredService<IStringLocalizer<TeamsResource>>(),
+            services.GetRequiredService<IStringLocalizer<SharedResource>>(), auth, logger)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        Func<Task<IActionResult>> save = path is TeamParentPickerPath.CreateRefused or TeamParentPickerPath.CreateFailed
+            ? () => controller.CreateTeam(new CreateTeamViewModel { Name = "Alpha" })
+            : () => controller.EditTeam(teamId, new EditTeamViewModel { Id = teamId, Name = "Alpha" });
+
+        await save.Should().ThrowAsync<OperationCanceledException>();
+        await teams.Received(1).GetTeamsAsync(request.Token);
+        if (path is TeamParentPickerPath.CreateFailed)
+            logger.Entries.Should().ContainSingle(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, failure));
+        else
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+    }
 }
+
+public enum TeamParentPickerPath { CreateRefused, CreateFailed, EditRefused, EditReactivation }

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Stripe.Services;
 using NSubstitute;
@@ -59,6 +60,46 @@ public sealed class StripeMirrorClientTests
         if (query.Contains("payout=po_1", StringComparison.Ordinal))
             return List(false, """{"id":"txn_c","object":"balance_transaction"}""", """{"id":"txn_p","object":"balance_transaction"}""");
         return query.Contains("starting_after=txn_c", StringComparison.Ordinal) ? List(false, Payout) : List(true, Charge);
+    }
+
+    public enum MirrorList { Transactions, Payouts }
+
+    [HumansTheory]
+    [Xunit.InlineData(MirrorList.Transactions, "id")]
+    [Xunit.InlineData(MirrorList.Transactions, "type")]
+    [Xunit.InlineData(MirrorList.Transactions, "status")]
+    [Xunit.InlineData(MirrorList.Transactions, "currency")]
+    [Xunit.InlineData(MirrorList.Transactions, "reporting_category")]
+    [Xunit.InlineData(MirrorList.Transactions, "amount")]
+    [Xunit.InlineData(MirrorList.Transactions, "fee")]
+    [Xunit.InlineData(MirrorList.Transactions, "net")]
+    [Xunit.InlineData(MirrorList.Transactions, "created")]
+    [Xunit.InlineData(MirrorList.Transactions, "available_on")]
+    [Xunit.InlineData(MirrorList.Payouts, "id")]
+    [Xunit.InlineData(MirrorList.Payouts, "currency")]
+    [Xunit.InlineData(MirrorList.Payouts, "status")]
+    [Xunit.InlineData(MirrorList.Payouts, "amount")]
+    [Xunit.InlineData(MirrorList.Payouts, "created")]
+    [Xunit.InlineData(MirrorList.Payouts, "arrival_date")]
+    [Xunit.InlineData(MirrorList.Payouts, "automatic")]
+    public async Task Incomplete_mirror_records_do_not_become_SDK_defaults(MirrorList list, string field)
+    {
+        Respond(request =>
+        {
+            var payload = Route(request);
+            var path = list == MirrorList.Payouts ? "/payouts" : "/balance_transactions";
+            if (!request.Uri.AbsolutePath.EndsWith(path, StringComparison.Ordinal)
+                || request.Uri.Query.Contains("payout=", StringComparison.Ordinal)) return payload;
+            var body = JsonNode.Parse(payload)!.AsObject();
+            body["has_more"] = false;
+            body["data"]!.AsArray()[0]!.AsObject().Remove(field);
+            return body.ToJsonString();
+        });
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage($"*{field}*");
     }
 
     [HumansFact]

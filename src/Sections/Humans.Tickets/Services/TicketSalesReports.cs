@@ -15,7 +15,7 @@ internal sealed class TicketSalesReports(
     IBudgetService budgetService,
     IClock clock) : IApplicationService
 {
-    public async Task<TicketDashboardStats> GetDashboardStatsAsync()
+    public async Task<TicketDashboardStats> GetDashboardStatsAsync(CancellationToken ct = default)
     {
         // Crash recovery: a sync stuck in Running for 30 minutes resets.
         var now = clock.GetCurrentInstant();
@@ -23,9 +23,9 @@ internal sealed class TicketSalesReports(
         var syncState = await ticketRepository.ResetStaleRunningStateAsync(
             olderThan: staleThreshold,
             now: now,
-            errorMessage: "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.");
+            errorMessage: "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.", ct);
 
-        var totals = await ticketRepository.GetDashboardTotalsAsync();
+        var totals = await ticketRepository.GetDashboardTotalsAsync(ct);
 
         var revenue = totals.GrossRevenue;
         var totalStripeFees = totals.TotalStripeFees;
@@ -36,7 +36,7 @@ internal sealed class TicketSalesReports(
         var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = totals.UnmatchedOrderCount;
 
-        var feeData = await ticketRepository.GetPaidOrderPaymentMethodsAsync();
+        var feeData = await ticketRepository.GetPaidOrderPaymentMethodsAsync(ct);
 
         var feesByMethod = feeData
             .GroupBy(
@@ -58,7 +58,7 @@ internal sealed class TicketSalesReports(
             })
             .ToList();
 
-        var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync();
+        var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync(ct);
 
         var salesByDate = orderDates
             .GroupBy(o => o.PurchasedAt.InUtc().Date)
@@ -90,7 +90,7 @@ internal sealed class TicketSalesReports(
             }
         }
 
-        var recentOrders = await ticketRepository.GetRecentOrdersAsync(count: 10);
+        var recentOrders = await ticketRepository.GetRecentOrdersAsync(count: 10, ct);
 
         return new TicketDashboardStats
         {
@@ -117,12 +117,12 @@ internal sealed class TicketSalesReports(
         decimal grossRevenue,
         string currency,
         bool canAccessFinance,
-        int fallbackTarget)
+        int fallbackTarget, CancellationToken ct = default)
     {
         if (ticketsSold <= 0 || grossRevenue <= 0)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
 
-        var activeBudgetYear = await budgetService.GetActiveYearAsync();
+        var activeBudgetYear = await budgetService.GetActiveYearAsync(ct);
         if (activeBudgetYear is null)
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
 
@@ -371,7 +371,6 @@ internal sealed class TicketSalesReports(
                     CreatedAt = c.CreatedAt,
                     CodesGranted = c.TotalGrants,
                     CodesUsed = usage.Used,
-                    AverageDiscount = usage.Used > 0 ? Math.Round(usage.Total / usage.Used, 2) : 0m,
                     TotalDiscount = usage.Total,
                 };
             })
@@ -388,7 +387,6 @@ internal sealed class TicketSalesReports(
                 CampaignTitle = "No campaign (vendor codes)",
                 CodesGranted = null,
                 CodesUsed = unattributed.Count,
-                AverageDiscount = Math.Round(total / unattributed.Count, 2),
                 TotalDiscount = total,
             });
         }

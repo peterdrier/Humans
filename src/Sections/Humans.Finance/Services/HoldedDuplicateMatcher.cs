@@ -13,8 +13,8 @@ internal static class HoldedDuplicateMatcher
 {
     internal sealed record Match(
         ExpenseHoldedBooking Booking,
-        HoldedPurchaseDocListItemDto Kept,
-        IReadOnlyList<HoldedPurchaseDocListItemDto> Duplicates);
+        HoldedPurchaseDocInfo Kept,
+        IReadOnlyList<HoldedPurchaseDocInfo> Duplicates);
 
     /// <summary><paramref name="twinsByName"/> holds the contacts a same-named twin may be, keyed by trimmed name
     /// (case-insensitive); <paramref name="nameOf"/> names any contact.</summary>
@@ -48,7 +48,7 @@ internal static class HoldedDuplicateMatcher
 
     /// <summary>The list-level rule. A false positive only refuses a payout; a delete needs the notes confirmed
     /// first.</summary>
-    internal static bool Matches(ExpenseHoldedBooking booking, HoldedPurchaseDocListItemDto doc) =>
+    internal static bool Matches(ExpenseHoldedBooking booking, HoldedPurchaseDocInfo doc) =>
         string.Equals(doc.Description, booking.Description, StringComparison.Ordinal)
         && doc.Total == booking.BookedAmount;
 
@@ -56,7 +56,7 @@ internal static class HoldedDuplicateMatcher
     /// kept document is not in <paramref name="docs"/> are skipped: nothing to keep, nothing duplicated.</summary>
     internal static IReadOnlyList<Match> Find(
         IReadOnlyList<ExpenseHoldedBooking> bookings,
-        IReadOnlyList<HoldedPurchaseDocListItemDto> docs,
+        IReadOnlyList<HoldedPurchaseDocInfo> docs,
         IReadOnlyDictionary<Guid, IReadOnlySet<string>> contactsByUser) =>
         Find(bookings, docs, contactsByUser, Matches);
 
@@ -64,9 +64,9 @@ internal static class HoldedDuplicateMatcher
     /// goes to the line whose notes it carries, not the first line with the same description and total.</summary>
     internal static IReadOnlyList<Match> Find(
         IReadOnlyList<ExpenseHoldedBooking> bookings,
-        IReadOnlyList<HoldedPurchaseDocListItemDto> docs,
+        IReadOnlyList<HoldedPurchaseDocInfo> docs,
         IReadOnlyDictionary<Guid, IReadOnlySet<string>> contactsByUser,
-        Func<ExpenseHoldedBooking, HoldedPurchaseDocListItemDto, bool> isDuplicate)
+        Func<ExpenseHoldedBooking, HoldedPurchaseDocInfo, bool> isDuplicate)
     {
         var docById = docs.GroupBy(d => d.Id, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);

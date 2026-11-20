@@ -212,18 +212,19 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         _lastFetchedAt = clock.GetCurrentInstant();
     }
 
-    private static MailerLiteAccountSummary SummarizeSubscribers(IReadOnlyList<MailerLiteSubscriber> subscribers)
+    private MailerLiteAccountSummary SummarizeSubscribers(IReadOnlyList<MailerLiteSubscriber> subscribers)
     {
         int active = 0, unsub = 0, unc = 0, bnc = 0, jnk = 0;
         foreach (var subscriber in subscribers)
         {
-            switch (subscriber.Status)
+            switch (subscriber.Status.ToUpperInvariant())
             {
-                case "active": active++; break;
-                case "unsubscribed": unsub++; break;
-                case "unconfirmed": unc++; break;
-                case "bounced": bnc++; break;
-                case "junk": jnk++; break;
+                case "ACTIVE": active++; break;
+                case "UNSUBSCRIBED": unsub++; break;
+                case "UNCONFIRMED": unc++; break;
+                case "BOUNCED": bnc++; break;
+                case "JUNK": jnk++; break;
+                default: logger.SwitchDefaultWarn(subscriber.Status); break;
             }
         }
         return new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);

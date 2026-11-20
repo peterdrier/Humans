@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Humans.Budget.Jobs;
 using Humans.Testing;
 using Microsoft.Extensions.Logging;
@@ -5,6 +7,7 @@ using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
+using Humans.Budget.Data;
 using Humans.Budget.Services;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,6 +31,20 @@ public class TicketingBudgetServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 11, 9, 0)); // Wed 11 Mar 2026
 
     private readonly Guid _yearId = Guid.NewGuid();
+
+    [HumansFact]
+    public void Section_registration_resolves_the_ticketing_job_through_scoped_DI()
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().Build());
+        services.AddLogging();
+        services.AddScoped<ITicketingBudgetService>(_ => Substitute.For<ITicketingBudgetService>());
+        services.AddScoped<IBudgetService>(_ => _budgetService);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<TicketingBudgetSyncJob>().Should().NotBeNull();
+    }
 
     public TicketingBudgetServiceTests()
     {
@@ -120,7 +137,7 @@ public class TicketingBudgetServiceTests
             Read(SyncBoundary.Orders, call.Arg<CancellationToken>());
             return (IReadOnlyList<TicketOrderInfo>)[BuildOrder(Instant.FromUtc(2026, 3, 2, 8, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid)];
         });
-        _budgetService.SyncTicketingActualsAsync(_yearId, Arg.Any<IReadOnlyList<TicketingWeeklyActuals>>(), null,
+        _budgetService.SyncTicketingActualsAsync(_yearId, Arg.Any<IReadOnlyList<TicketingWeeklyActualsInput>>(), null,
             Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncBoundary.Save, call.Arg<CancellationToken>());
@@ -186,10 +203,10 @@ public class TicketingBudgetServiceTests
                     TicketAttendeeStatus.Valid),
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);
@@ -204,7 +221,6 @@ public class TicketingBudgetServiceTests
 
         var week = capturedActuals![0];
         week.Monday.Should().Be(new LocalDate(2026, 3, 2));
-        week.Sunday.Should().Be(new LocalDate(2026, 3, 8));
         week.TicketCount.Should().Be(3);
         week.Revenue.Should().Be(150m);
         week.StripeFees.Should().Be(3.5m);
@@ -222,10 +238,10 @@ public class TicketingBudgetServiceTests
                 BuildOrder(Instant.FromUtc(2026, 3, 2, 8, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid),
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);
@@ -261,10 +277,10 @@ public class TicketingBudgetServiceTests
                     TicketAttendeeStatus.CheckedIn),
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);
@@ -291,10 +307,10 @@ public class TicketingBudgetServiceTests
                 BuildOrder(purchasedAt, 50m, stripeFee: 1m, applicationFee: 0.2m, TicketAttendeeStatus.Valid),
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(2);
@@ -323,10 +339,10 @@ public class TicketingBudgetServiceTests
                     with { FeeTax = 0m },
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);
@@ -353,10 +369,10 @@ public class TicketingBudgetServiceTests
                 BuildOrder(inCurrentWeek, 75m, 2m, 0.5m, TicketAttendeeStatus.Valid),
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(0);
@@ -396,10 +412,10 @@ public class TicketingBudgetServiceTests
                     TicketPaymentStatus.Refunded, TicketAttendeeStatus.Valid),
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(0);
@@ -431,10 +447,10 @@ public class TicketingBudgetServiceTests
                 BuildOrder(purchasedAt, 999m, 10m, 5m, TicketAttendeeStatus.Valid) with { IsCurrentEvent = false },
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);
@@ -457,10 +473,10 @@ public class TicketingBudgetServiceTests
                 BuildOrder(purchasedAt, 999m, 10m, 5m, TicketAttendeeStatus.Valid) with { VendorEventId = "event-2025", IsCurrentEvent = true },
             });
 
-        List<TicketingWeeklyActuals>? capturedActuals = null;
+        List<TicketingWeeklyActualsInput>? capturedActuals = null;
         _budgetService.SyncTicketingActualsAsync(
                 Arg.Any<Guid>(),
-                Arg.Do<IReadOnlyList<TicketingWeeklyActuals>>(a => capturedActuals = a.ToList()),
+                Arg.Do<IReadOnlyList<TicketingWeeklyActualsInput>>(a => capturedActuals = a.ToList()),
                 Arg.Any<Guid?>(),
                 Arg.Any<CancellationToken>())
             .Returns(1);

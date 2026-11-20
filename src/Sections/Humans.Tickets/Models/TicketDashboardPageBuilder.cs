@@ -12,20 +12,20 @@ internal sealed class TicketDashboardPageBuilder(
 {
     private readonly TicketVendorSettings _settings = settings.Value;
 
-    public async Task<TicketDashboardViewModel> BuildAsync(bool canAccessFinance)
+    public async Task<TicketDashboardViewModel> BuildAsync(bool canAccessFinance, CancellationToken ct)
     {
         if (!_settings.IsConfigured)
             return new TicketDashboardViewModel { IsConfigured = false };
 
-        var stats = await ticketQueryService.GetDashboardStatsAsync();
+        var stats = await ticketQueryService.GetDashboardStatsAsync(ct);
         var currency = stats.RecentOrders.FirstOrDefault()?.Currency ?? "EUR";
         var breakEven = await ticketQueryService.CalculateBreakEvenAsync(
             stats.TicketsSold,
             stats.Revenue,
             currency,
             canAccessFinance,
-            _settings.BreakEvenTarget);
-        var totalCapacity = await LoadTotalCapacityAsync();
+            _settings.BreakEvenTarget, ct);
+        var totalCapacity = await LoadTotalCapacityAsync(ct);
 
         return new TicketDashboardViewModel
         {
@@ -53,14 +53,14 @@ internal sealed class TicketDashboardPageBuilder(
         };
     }
 
-    private async Task<int> LoadTotalCapacityAsync()
+    private async Task<int> LoadTotalCapacityAsync(CancellationToken ct)
     {
         try
         {
-            var summary = await vendorService.GetEventSummaryAsync(_settings.EventId);
+            var summary = await vendorService.GetEventSummaryAsync(_settings.EventId, ct);
             return summary?.TotalCapacity ?? 0;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Could not fetch event summary from vendor");
             return 0;

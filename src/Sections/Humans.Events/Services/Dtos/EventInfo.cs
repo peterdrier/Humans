@@ -76,6 +76,8 @@ internal sealed record EventInfo(
 {
     public Guid? EventSettingsId { get; init; }
 
+    public IReadOnlyList<CampEventOverlap> DuplicateCandidates { get; init; } = [];
+
     // Project defensively: Category may be null and EventVenue / moderation history unloaded.
     internal static EventInfo FromEvent(Event e) => new(
         Id: e.Id,
@@ -161,8 +163,15 @@ internal sealed record EventFavouriteInfo(
     EventInfo Event);
 
 /// <summary>Unordered: consumers choose the display order.</summary>
-internal sealed record CampSubmissionsSummary(
+internal sealed record EventSubmissionsSummary(
     int SubmittedCount,
     int ApprovedCount,
     int PendingCount,
-    IReadOnlyList<EventInfo> Events);
+    IReadOnlyList<EventInfo> Events)
+{
+    public static EventSubmissionsSummary From(IReadOnlyList<EventInfo> events) => new(
+        events.Count,
+        events.Count(e => e.Status == EventStatus.Approved),
+        events.Count(e => e.Status == EventStatus.Pending),
+        events);
+}

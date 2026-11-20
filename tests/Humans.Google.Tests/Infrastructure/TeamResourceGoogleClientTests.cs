@@ -128,6 +128,72 @@ public sealed class TeamResourceGoogleClientTests
         await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
+    [HumansTheory]
+    [InlineData(GroupResourceNamePath.Link, null)]
+    [InlineData(GroupResourceNamePath.Link, "folders/123")]
+    [InlineData(GroupResourceNamePath.Link, "groups/")]
+    [InlineData(GroupResourceNamePath.Link, "groups/ ")]
+    [InlineData(GroupResourceNamePath.Link, "groups/a/b")]
+    [InlineData(GroupResourceNamePath.Link, "groups/abc123")]
+    [InlineData(GroupResourceNamePath.Lookup, null)]
+    [InlineData(GroupResourceNamePath.Lookup, "folders/123")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/ ")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/a/b")]
+    [InlineData(GroupResourceNamePath.Lookup, "groups/abc123")]
+    [InlineData(GroupResourceNamePath.Create, null)]
+    [InlineData(GroupResourceNamePath.Create, "folders/123")]
+    [InlineData(GroupResourceNamePath.Create, "groups/")]
+    [InlineData(GroupResourceNamePath.Create, "groups/ ")]
+    [InlineData(GroupResourceNamePath.Create, "groups/a/b")]
+    [InlineData(GroupResourceNamePath.Create, "groups/abc123")]
+    public async Task Group_reads_and_creation_require_a_usable_resource_name(GroupResourceNamePath path, string? resourceName)
+    {
+        var creating = path is GroupResourceNamePath.Create;
+        using var handler = new GroupHandler("crew@nobodies.team", resourceName, creating);
+        using var sdk = new CloudIdentityService(CreateInitializer(handler));
+        GoogleClientError? error;
+        string? id;
+        var valid = string.Equals(resourceName, "groups/abc123", StringComparison.Ordinal);
+        if (path is GroupResourceNamePath.Link)
+        {
+            var result = await CreateClient(sdk).LookupGroupAsync("crew@nobodies.team", TestContext.Current.CancellationToken);
+            error = result.Error;
+            id = result.Group?.NumericId;
+        }
+        else
+        {
+            var client = new GoogleGroupProvisioningClient(Options.Create(new GoogleWorkspaceSettings()),
+                NullLogger<GoogleGroupProvisioningClient>.Instance);
+            typeof(GoogleGroupProvisioningClient).GetField("_cloudIdentityService", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(client, sdk);
+            if (creating)
+            {
+                var result = await client.CreateGroupAsync("crew@nobodies.team", "Crew", "Crew group", TestContext.Current.CancellationToken);
+                error = result.Error;
+                id = result.GroupNumericId;
+            }
+            else
+            {
+                var result = await client.LookupGroupIdAsync("crew@nobodies.team", TestContext.Current.CancellationToken);
+                error = result.Error;
+                id = result.GroupNumericId;
+            }
+        }
+
+        if (valid)
+        {
+            error.Should().BeNull();
+            id.Should().Be("abc123");
+        }
+        else
+        {
+            id.Should().BeNull();
+            error.Should().NotBeNull();
+        }
+        handler.Calls.Should().Be(valid && path is GroupResourceNamePath.Link ? 2 : 1);
+    }
+
     private static BaseClientService.Initializer CreateInitializer(HttpMessageHandler handler)
     {
         var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
@@ -165,13 +231,18 @@ public sealed class TeamResourceGoogleClientTests
         }
     }
 
-    private sealed class GroupHandler(string? resolvedEmail) : HttpMessageHandler
+    private sealed class GroupHandler(string? resolvedEmail, string? resourceName = "groups/12345", bool creating = false) : HttpMessageHandler
     {
+        public int Calls { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var json = request.RequestUri!.AbsolutePath.EndsWith("/groups:lookup", StringComparison.Ordinal)
-                ? "{\"name\":\"groups/12345\"}"
-                : JsonSerializer.Serialize(new { name = "groups/12345", groupKey = new { id = resolvedEmail }, displayName = "Crew" });
+            Calls++;
+            var json = creating
+                ? JsonSerializer.Serialize(new { done = true, response = new { name = resourceName } })
+                : request.RequestUri!.AbsolutePath.EndsWith("/groups:lookup", StringComparison.Ordinal)
+                    ? JsonSerializer.Serialize(new { name = resourceName })
+                    : JsonSerializer.Serialize(new { name = resourceName, groupKey = new { id = resolvedEmail }, displayName = "Crew" });
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
@@ -179,3 +250,5 @@ public sealed class TeamResourceGoogleClientTests
         }
     }
 }
+
+public enum GroupResourceNamePath { Link, Lookup, Create }

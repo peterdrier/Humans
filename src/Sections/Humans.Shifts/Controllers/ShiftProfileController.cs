@@ -65,7 +65,7 @@ internal sealed class ShiftProfileController(
             if (!await shiftProfiles.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds))
             {
                 SetError(shiftsLocalizer["Shifts_TagPreferencesInvalid"].Value);
-                await PopulateCatalogAsync(model);
+                await PopulateCatalogAsync(model, HttpContext.RequestAborted);
                 return View(model);
             }
 
@@ -85,7 +85,7 @@ internal sealed class ShiftProfileController(
         {
             logger.LogError(ex, "Failed to save shift info for user");
             SetError(shiftsLocalizer["Shifts_ShiftProfile_SaveFailed"].Value);
-            await PopulateCatalogAsync(model);
+            await PopulateCatalogAsync(model, HttpContext.RequestAborted);
             return View(model);
         }
     }
@@ -97,7 +97,7 @@ internal sealed class ShiftProfileController(
         model.EditableShiftTagIds = summary.TagPreferences.Select(t => t.ShiftTagId).ToList();
     }
 
-    private async Task PopulateCatalogAsync(ShiftInfoViewModel model, CancellationToken ct = default) =>
+    private async Task PopulateCatalogAsync(ShiftInfoViewModel model, CancellationToken ct) =>
         model.AllShiftTags = (await shiftProfiles.GetTagsAsync(ct: ct))
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();

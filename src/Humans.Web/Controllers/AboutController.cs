@@ -25,25 +25,25 @@ public class AboutController(
     {
         // Committed snapshot, not a live API: demo must work on playa connectivity.
         DevStatsViewModel? stats = null;
-        var file = env.WebRootFileProvider.GetFileInfo("data/dev-stats.json");
-        if (file.Exists)
+        try
         {
-            try
+            var file = env.WebRootFileProvider.GetFileInfo("data/dev-stats.json");
+            if (file.Exists)
             {
                 using var stream = file.CreateReadStream();
                 stats = System.Text.Json.JsonSerializer.Deserialize<DevStatsViewModel>(
                     stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
-            catch (System.Text.Json.JsonException ex)
-            {
-                logger.LogError(ex, "Failed to parse dev-stats.json");
-                stats = null;
-            }
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(ex, "Failed to read dev-stats.json");
+            stats = null;
+        }
 
-            if (stats?.Contributors is null)
-            {
-                stats = null;
-            }
+        if (stats?.Contributors is null)
+        {
+            stats = null;
         }
         return View(stats);
     }
@@ -52,16 +52,17 @@ public class AboutController(
     [HttpGet("Staff")]
     public async Task<IActionResult> Staff()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
             var now = clock.GetCurrentInstant();
 
             // Load all active role assignments with user data — small user base, fits in memory
             var (assignments, _) = await roleAssignmentService.GetFilteredAsync(
-                roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
+                roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now, ct);
 
             var assigneeInfos = await _userService.GetUserInfosAsync(
-                assignments.Select(ra => ra.UserId).Distinct().ToList());
+                assignments.Select(ra => ra.UserId).Distinct().ToList(), ct);
 
             // Board first, Admin last, the section roles between them by title.
             var roleDefinitions = catalog.Roles
@@ -88,7 +89,6 @@ public class AboutController(
                 {
                     roleSections.Add(new StaffRoleSectionViewModel
                     {
-                        RoleName = roleDef.Name,
                         DisplayTitle = roleDef.Title,
                         Blurb = roleDef.Blurb,
                         Icon = roleDef.Icon,
@@ -103,6 +103,10 @@ public class AboutController(
             };
 
             return View(viewModel);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

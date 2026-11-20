@@ -5,6 +5,7 @@ using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
+using Humans.Holded.Services;
 using Humans.Holded.Data;
 using Humans.Holded.Jobs;
 using Microsoft.Extensions.Configuration;
@@ -75,6 +76,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {
         configuration.GetOptionalSetting(registry, "Holded:BaseUrl", "Holded");
+        configuration.GetOptionalSetting(registry, "Holded:MonthlyCallBudget", "Holded");
         registry.RegisterEnvironmentVariable("HOLDED_API_KEY_V2", "Holded", isSensitive: true,
             importance: ConfigurationImportance.Recommended);
     }

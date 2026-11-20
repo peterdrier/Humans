@@ -188,9 +188,7 @@ internal sealed class TeamController(
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        Email = member.Email ?? string.Empty,
         Role = member.Role,
-        JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
     };
 
@@ -553,24 +551,26 @@ internal sealed class TeamController(
                     ModelState.AddModelError("GoogleGroupPrefix", reason);
                 else
                     SetError(reason);
-                await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-                return View(model);
             }
-            var currentUser = await GetCurrentUserInfoAsync();
-            logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
+            else
+            {
+                var currentUser = await GetCurrentUserInfoAsync();
+                logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, result.Team!.Id, result.Team.Name);
 
-            SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
-            if (result.GroupWarning is not null)
-                SetError(result.GroupWarning);
-            return RedirectToAction(nameof(Summary));
+                SetSuccess(string.Format(sharedLocalizer["Admin_TeamCreated"].Value, result.Team.Name));
+                if (result.GroupWarning is not null)
+                    SetError(result.GroupWarning);
+                return RedirectToAction(nameof(Summary));
+            }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating team");
             ModelState.AddModelError("", sharedLocalizer["Admin_TeamCreateError"].Value);
-            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
-            return View(model);
         }
+
+        await PopulateEligibleParentsAsync(model, excludeTeamId: null, HttpContext.RequestAborted);
+        return View(model);
     }
 
     [HttpGet("{id:guid}/Edit")]
@@ -644,7 +644,7 @@ internal sealed class TeamController(
             };
             logger.LogWarning("Failed to update team {TeamId}: {Reason}", id, reason);
             ModelState.AddModelError(field, reason);
-            await PopulateEligibleParentsAsync(model, id);
+            await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }
         if (result.InactiveGroupResourceId is { } inactiveGroupResourceId)
@@ -657,7 +657,7 @@ internal sealed class TeamController(
             ModelState.Remove(nameof(model.ConfirmGroupReactivation));
             ModelState.Remove(nameof(model.InactiveGroupResourceId));
             ModelState.AddModelError(nameof(model.GoogleGroupPrefix), result.GroupWarning!);
-            await PopulateEligibleParentsAsync(model, id);
+            await PopulateEligibleParentsAsync(model, id, HttpContext.RequestAborted);
             return View(model);
         }
         var currentUser = await GetCurrentUserInfoAsync();
@@ -728,7 +728,7 @@ internal sealed class TeamController(
             .ToList();
     }
 
-    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId, CancellationToken ct = default)
+    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId, CancellationToken ct)
     {
         model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, ct);
     }

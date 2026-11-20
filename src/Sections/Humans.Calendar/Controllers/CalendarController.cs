@@ -235,7 +235,7 @@ internal sealed class CalendarController : HumansControllerBase
         var owningTeam = await _teams.GetTeamAsync(ev.OwningTeamId, ct);
         var owningTeamName = owningTeam?.Name ?? string.Empty;
 
-        return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, CanEdit: true, zone.Id));
+        return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, zone.Id));
     }
 
     [HttpGet("Event/Create")]

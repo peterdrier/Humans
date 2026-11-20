@@ -5,7 +5,7 @@ using Humans.Notifications.Contracts;
 namespace Humans.Notifications.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class CleanupNotificationsJob(
+internal sealed class CleanupNotificationsJob(
     INotificationRetention notifications,
     IHumansMetrics metrics,
     ILogger<CleanupNotificationsJob> logger) : IRecurringJob

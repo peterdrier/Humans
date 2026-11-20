@@ -4,10 +4,10 @@ using Octokit;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 
-namespace Humans.Guide.Health;
+namespace Humans.Consent.Health;
 
 /// <summary>
-/// Checks <see cref="GitHubSettings"/>, the legal-documents repo, not the guide's source (<c>GuideSettings</c>).
+/// Checks the legal-document repository configured through <see cref="GitHubSettings"/>.
 /// </summary>
 internal sealed class GitHubHealthCheck(IOptions<GitHubSettings> settings, ILogger<GitHubHealthCheck> logger) : IHealthCheck
 {

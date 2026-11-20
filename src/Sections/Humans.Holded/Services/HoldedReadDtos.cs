@@ -1,23 +1,16 @@
 using NodaTime;
 
-namespace Humans.Holded.Contracts;
+namespace Humans.Holded.Services;
 
-public sealed record HoldedExpenseAccountDto
+internal sealed record HoldedExpenseAccountDto
 {
     public required string Id { get; init; }
     public required int AccountNum { get; init; }
-    public required string Name { get; init; }
-}
-
-public sealed record HoldedPurchaseLineDto
-{
-    public string? AccountId { get; init; }            // line `account` (Holded account id)
-    public IReadOnlyList<string> Tags { get; init; } = [];
 }
 
 /// <summary>From GET v2/ledger-entries. <c>account</c> is the 8-digit ledger number, not a Holded id;
 /// amounts are euros. <c>date</c> arrives as DD/MM/YYYY and is parsed to Madrid midnight.</summary>
-public sealed record HoldedLedgerLineDto
+internal sealed record HoldedLedgerLineDto
 {
     public required int EntryNumber { get; init; }
     public required int Line { get; init; }
@@ -33,7 +26,7 @@ public sealed record HoldedLedgerLineDto
     public bool Checked { get; init; }
 }
 
-public sealed record HoldedAccountDto
+internal sealed record HoldedAccountDto
 {
     public required string Id { get; init; }
     public required int Number { get; init; }
@@ -45,13 +38,19 @@ public sealed record HoldedAccountDto
     public bool Archived { get; init; }
 }
 
-public sealed record HoldedUsageDto
+internal sealed record HoldedUsageDto
 {
     public required string Period { get; init; }         // "2026-08"
     public required long Usage { get; init; }
 }
 
-public sealed record HoldedPurchaseDocListItemDto
+internal sealed record HoldedPurchaseLineDto
+{
+    public string? AccountId { get; init; }            // line `account` (Holded account id)
+    public IReadOnlyList<string> Tags { get; init; } = [];
+}
+
+internal sealed record HoldedPurchaseDocListItemDto
 {
     public required string Id { get; init; }
     public required string DocNumber { get; init; }

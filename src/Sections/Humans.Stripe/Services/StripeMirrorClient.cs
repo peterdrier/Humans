@@ -61,11 +61,13 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             var options = new BalanceTransactionListOptions { Limit = PageLimit, StartingAfter = after };
             options.AddExpand("data.source");
             return transactionService.ListAsync(options, Request(), ct);
-        }, t => t.Id, "balance transactions");
+        }, t => t.Id, "balance transactions", item => RequireMirrorFields(item, "balance transaction",
+            ["type", "status", "currency", "reporting_category"], ["amount", "fee", "net", "created", "available_on"]));
 
         var payouts = await AllPagesAsync(
             after => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = PageLimit, StartingAfter = after }, Request(), ct),
-            p => p.Id, "payouts");
+            p => p.Id, "payouts", item => RequireMirrorFields(item, "payout",
+                ["currency", "status"], ["amount", "created", "arrival_date"], ["automatic"]));
 
         // Stripe links transactions only to reconcilable automatic payouts; asking for a split payout's secondary part
         // (reconciliation_status not_applicable) is a 400. A paid payout wins over a failed one listing the same row.
@@ -89,7 +91,8 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
     }
 
     private static async Task<List<T>> AllPagesAsync<T>(
-        Func<string?, Task<StripeList<T>>> page, Func<T, string> id, string what)
+        Func<string?, Task<StripeList<T>>> page, Func<T, string> id, string what,
+        Action<JsonElement>? validateItem = null)
     {
         var items = new List<T>();
         string? after = null;
@@ -102,12 +105,38 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             if (!body.RootElement.TryGetProperty("has_more", out var more)
                 || more.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
                 throw new InvalidOperationException($"Stripe {what}: a page without a boolean has_more.");
+            if (!body.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException($"Stripe {what}: a page without a data array.");
+            foreach (var item in data.EnumerateArray())
+            {
+                RequireMirrorFields(item, what, ["id"], []);
+                validateItem?.Invoke(item);
+            }
             items.AddRange(list.Data);
             if (more.ValueKind == JsonValueKind.False) return items;
             if (list.Data.Count == 0) throw new InvalidOperationException($"Stripe {what}: has_more on an empty page.");
             after = id(list.Data[^1]);
         }
         throw new InvalidOperationException($"Stripe {what}: hit the {PageSafetyCap}-page safety cap.");
+    }
+
+    private static void RequireMirrorFields(
+        JsonElement item, string what, IReadOnlyList<string> textFields, IReadOnlyList<string> integerFields,
+        IReadOnlyList<string>? booleanFields = null)
+    {
+        if (item.ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException($"Stripe {what}: expected an object.");
+        foreach (var field in textFields)
+            if (!item.TryGetProperty(field, out var value) || value.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(value.GetString()))
+                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+        foreach (var field in integerFields)
+            if (!item.TryGetProperty(field, out var value) || value.ValueKind != JsonValueKind.Number
+                || !value.TryGetInt64(out _))
+                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
+        foreach (var field in booleanFields ?? [])
+            if (!item.TryGetProperty(field, out var value) || value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new InvalidOperationException($"Stripe {what}: missing or invalid {field}.");
     }
 
     internal static StripeBalanceTransaction ToTransaction(string accountId, BalanceTransaction t, string? payoutId)

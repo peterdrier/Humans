@@ -451,7 +451,7 @@ internal sealed class RideshareService(
     private static TripView ToView(RideshareTrip t) => new(
         t.Id, t.UserId, t.Direction, t.MemberPlaceLabel, t.MemberLatitude, t.MemberLongitude,
         ParseWaypoints(t.WaypointsJson), t.RouteGeoJson, t.DepartureDate, t.ExpectedDurationDays, t.OvernightPlan,
-        t.VehicleType, t.SeatsOffered, RideshareInterestMutations.SeatsRemaining(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
+        t.VehicleType, t.SeatsOffered, RideshareInterestMutations.AcceptedSeats(t), t.LuggageCapacity, t.CapacityNote, t.Restrictions,
         t.WillingToDetour, t.CostSharing, t.CostNote, t.LinkedTripId, t.Status, t.CreatedAt);
 
     // Matched only by a ride that fits the request: same direction, travelling on its date.

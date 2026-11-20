@@ -2,8 +2,6 @@
 @model TransferPlan
 @{
     ViewData["Title"] = "Team transfers";
-    var ready = Model.Rows.Where(r => r.State == TransferState.Ready).ToList();
-    var blocked = Model.Rows.Where(r => r.State != TransferState.Ready).ToList();
 }
 
 @functions {
@@ -32,21 +30,21 @@
 <div class="card mb-4">
     <div class="card-body d-flex flex-wrap align-items-center gap-3">
         <div>
-            <span class="badge bg-success">@ready.Count ready · @ready.Sum(r => r.Amount).ToEuro()</span>
-            @if (blocked.Count > 0)
+            <span class="badge bg-success">@Model.Ready.Count ready · @Model.ReadyAmount.ToEuro()</span>
+            @if (Model.BlockedCount > 0)
             {
-                <span class="badge bg-warning text-dark">@blocked.Count blocked · @blocked.Sum(r => r.Amount).ToEuro()</span>
+                <span class="badge bg-warning text-dark">@Model.BlockedCount blocked · @Model.BlockedAmount.ToEuro()</span>
             }
         </div>
         <div class="small text-muted">Months closed through @(Model.LastClosedMonth?.ToString("yyyy-MM", CultureInfo.InvariantCulture) ?? "—")</div>
-        @if (ready.Count > 0)
+        @if (Model.Ready.Count > 0)
         {
             <form authorize-policy="@StorePolicies.Manage" asp-action="BookTransfers" method="post" class="ms-auto">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="year" value="@Model.Year" />
                 <button type="submit" class="btn btn-primary"
-                        data-confirm="Post @ready.Count journal entr@(ready.Count == 1 ? "y" : "ies") (@ready.Sum(r => r.Amount).ToEuro()) to Holded?">
-                    <i class="fa-solid fa-book me-1"></i>Book @ready.Count in Holded
+                        data-confirm="Post @Model.Ready.Count journal entr@(Model.Ready.Count == 1 ? "y" : "ies") (@Model.ReadyAmount.ToEuro()) to Holded?">
+                    <i class="fa-solid fa-book me-1"></i>Book @Model.Ready.Count in Holded
                 </button>
             </form>
         }
@@ -63,11 +61,11 @@ else
         .Column("Month", r => r.Date.ToDate(), c => c.Css("text-nowrap"))
         .Column("Team", r => r.TeamName)
         .Column("Product", r => r.ProductName)
-        .Column("Debit", r => r.State == TransferState.Ready ? r.Sides.Debit.ToString(CultureInfo.InvariantCulture) : "—", c => c.Code())
-        .Column("Credit", r => r.State == TransferState.Ready ? r.Sides.Credit.ToString(CultureInfo.InvariantCulture) : "—", c => c.Code())
+        .Column("Debit", r => r.IsReady ? r.Sides.Debit.ToString(CultureInfo.InvariantCulture) : "—", c => c.Code())
+        .Column("Credit", r => r.IsReady ? r.Sides.Credit.ToString(CultureInfo.InvariantCulture) : "—", c => c.Code())
         .Column("Amount", r => r.Amount, c => c.Currency().End())
         .Column("State", r => StateLabel(r.State))
-        .RowCss(r => r.State == TransferState.Ready ? null : "table-warning")
+        .RowCss(r => r.IsReady ? null : "table-warning")
         .Build();
     <div class="card">
         <partial name="_Table" model="table" />

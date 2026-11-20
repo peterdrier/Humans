@@ -14,6 +14,8 @@ internal sealed record FinanceOverviewVm(
     FinanceIncomeVm? Income,
     IReadOnlyList<FinanceSepaTransferVm> SepaInProgress)
 {
+    public decimal SepaInProgressTotal => SepaInProgress.Sum(transfer => transfer.Amount);
+
     /// <summary>Cash plus what others owe us, less what we owe. Null until every part is known.</summary>
     public decimal? NetPosition => Ledger is { } l && Owed.Total is { } owed
         ? l.CashTotal + l.ReceivablesTotal - owed

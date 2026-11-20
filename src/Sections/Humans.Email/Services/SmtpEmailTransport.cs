@@ -12,6 +12,8 @@ internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogg
 {
     private readonly EmailSettings _settings = settings.Value;
 
+    internal Func<ISmtpClient> CreateClient { get; init; } = static () => new SmtpClient();
+
     public async Task SendAsync(
         string recipientEmail,
         string? recipientName,
@@ -65,7 +67,7 @@ internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogg
                 : "nobodies.team";
             message.MessageId = $"{Guid.NewGuid()}@{fromDomain}";
 
-            using var client = new SmtpClient();
+            using var client = CreateClient();
 
             await client.ConnectAsync(
                 _settings.SmtpHost,
@@ -79,7 +81,20 @@ internal sealed class SmtpEmailTransport(IOptions<EmailSettings> settings, ILogg
             }
 
             await client.SendAsync(message, cancellationToken);
-            await client.DisconnectAsync(true, cancellationToken);
+            try
+            {
+                await client.DisconnectAsync(true, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // SMTP already accepted the message; a failed QUIT must not make the outbox resend it.
+                if (redact)
+                    logger.LogWarning("SMTP disconnect failed after accepting email {TemplateName}: {ExceptionType}",
+                        templateName, ex.GetType().Name);
+                else
+                    logger.LogWarning(ex, "SMTP disconnect failed after accepting email to {Recipient}: {Subject}",
+                        recipientEmail, subject);
+            }
 
             if (redact)
                 logger.LogInformation("Email sent: {TemplateName}", templateName);

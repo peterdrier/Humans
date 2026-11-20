@@ -7,8 +7,8 @@
         .Where(g => !g.IsTicketingGroup || Model.IsFinanceAdmin)
         .OrderBy(g => g.SortOrder)
         .ToList();
-    var totalAllocated = groups.SelectMany(g => g.Categories).Sum(c => c.AllocatedAmount);
-    var totalLineItems = groups.SelectMany(g => g.Categories).SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
+    var totalAllocated = groups.Sum(group => group.AllocatedAmount);
+    var totalLineItems = groups.Sum(group => group.LineItemTotal);
     var unallocated = totalAllocated - totalLineItems;
 }
 
@@ -70,7 +70,7 @@
 
 @foreach (var group in groups)
 {
-    var groupAllocated = group.Categories.Sum(c => c.AllocatedAmount);
+    var groupAllocated = group.AllocatedAmount;
     var collapseId = $"group-{group.Id.ToString("N")}";
 
     <div class="card mb-3">
@@ -101,7 +101,7 @@
                         }
                     </text>;
                     Func<BudgetCategoryDetail, IHtmlContent> unallocatedCell = @<text>
-                        @{ var cellUnallocated = item.AllocatedAmount - item.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount); }
+                        @{ var cellUnallocated = item.UnallocatedAmount; }
                         <span class="@(cellUnallocated < 0 ? "text-danger" : "")">
                             @cellUnallocated.ToEuro()
                         </span>
@@ -128,7 +128,7 @@
                     var groupTable = TableModel.For(group.Categories.OrderBy(c => c.SortOrder).ToList())
                         .Template(Localizer["Budget_ColCategory"].Value, categoryNameCell)
                         .Column(Localizer["Budget_Allocated"].Value, c => c.AllocatedAmount, c => c.Currency().End())
-                        .Column(Localizer["Budget_ColLineItems"].Value, c => c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount), c => c.Currency().End())
+                        .Column(Localizer["Budget_ColLineItems"].Value, c => c.LineItemTotal, c => c.Currency().End())
                         .Template(Localizer["Budget_Unallocated"].Value, unallocatedCell, c => c.End())
                         .Template(Localizer["Budget_ColType"].Value, expenditureTypeCell)
                         .Template("", actionsCell, c => c.NoSort().End())

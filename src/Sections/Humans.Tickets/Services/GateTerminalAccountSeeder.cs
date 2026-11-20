@@ -23,9 +23,9 @@ internal sealed class GateTerminalAccountSeeder(
     IClock clock,
     ILogger<GateTerminalAccountSeeder> logger)
 {
-    public async Task<GateTerminalStatus> GetStatusAsync()
+    public async Task<GateTerminalStatus> GetStatusAsync(CancellationToken ct)
     {
-        var user = await userService.GetUserInfoAsync(SystemUserIds.GateTerminal);
+        var user = await userService.GetUserInfoAsync(SystemUserIds.GateTerminal, ct);
         if (user is null)
             return new GateTerminalStatus(false, false, null);
 

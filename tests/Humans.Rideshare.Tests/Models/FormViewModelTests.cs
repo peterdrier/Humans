@@ -133,7 +133,7 @@ public sealed class FormViewModelTests
     {
         var trip = new TripView(Guid.NewGuid(), Guid.NewGuid(), RideshareDirection.Outbound, "Paris", 48.85, 2.35,
             [new Waypoint("Lyon", 45.76, 4.84), new Waypoint("Bordeaux", 44.84, -0.58)], null,
-            July3, 2, "Camping", VehicleType.Van, 4, 4, LuggageSize.Lots, "roof box", "no dogs", true,
+            July3, 2, "Camping", VehicleType.Van, 4, 0, LuggageSize.Lots, "roof box", "no dogs", true,
             CostSharing.Other, "20€", null, TripStatus.Active, Now);
 
         var form = OfferFormViewModel.FromTrip(trip);

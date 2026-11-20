@@ -77,6 +77,24 @@ public class MailerLiteAdminControllerAudienceSyncTests
         ctrl.TempData["Banner"]!.ToString().Should().Contain("sync failed");
     }
 
+    [HumansFact]
+    public async Task SyncAll_SummarizesCompletedAudiencesAndReportsFailures()
+    {
+        _audienceSync.SyncAllAsync(Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(
+        [
+            new AudienceSyncResult("a", "ga", "A", 100, 0, 1, 2, 0, 3, 4),
+            new AudienceSyncResult("b", "gb", "B", 100, 0, 5, 6, 0, 7, 8),
+        ]);
+        var controller = BuildSut([
+            Substitute.For<IMailerLiteAudience>(), Substitute.For<IMailerLiteAudience>(), Substitute.For<IMailerLiteAudience>()]);
+
+        var result = await controller.SyncAll();
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        controller.TempData["Banner"].Should().Be(
+            "Push All: 2/3 audiences synced — 6 created, 8 newly assigned, 10 unassigned, 12 errors. 1 audience(s) failed — see logs.");
+    }
+
     private MailerLiteAdminController BuildSut(IEnumerable<IMailerLiteAudience> audiences)
     {
         var ctrl = new MailerLiteAdminController(

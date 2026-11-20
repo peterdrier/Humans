@@ -48,7 +48,7 @@ internal sealed class ProfileEmailsController(
         if (user is null)
             return NotFound();
 
-        var viewModel = await BuildEmailsViewModelAsync(user, ct: HttpContext.RequestAborted);
+        var viewModel = await BuildEmailsViewModelAsync(user, HttpContext.RequestAborted);
         return View(viewModel);
     }
 
@@ -65,7 +65,7 @@ internal sealed class ProfileEmailsController(
         {
             if (string.IsNullOrWhiteSpace(model.NewEmail))
                 ModelState.AddModelError(nameof(model.NewEmail), localizer["Users_Profile_EnterEmail"].Value);
-            return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
+            return View(nameof(Emails), await BuildEmailsViewModelAsync(user, HttpContext.RequestAborted));
         }
 
         // Verification can send mail; a browser disconnect must not interrupt the workflow.
@@ -73,7 +73,7 @@ internal sealed class ProfileEmailsController(
         if (result.ErrorKey is { } errorKey)
         {
             ModelState.AddModelError(nameof(model.NewEmail), LocalizeEmailRefusal(errorKey));
-            return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
+            return View(nameof(Emails), await BuildEmailsViewModelAsync(user, HttpContext.RequestAborted));
         }
 
         logger.LogInformation(
@@ -363,7 +363,7 @@ internal sealed class ProfileEmailsController(
         if (resolved is not null && resolved.Id != id)
             return RedirectToAction(nameof(AdminEmails), new { id = resolved.Id });
 
-        var viewModel = await BuildEmailsViewModelAsync(targetUser, isAdminContext: true, ct);
+        var viewModel = await BuildEmailsViewModelAsync(targetUser, ct, isAdminContext: true);
         return View("Emails", viewModel);
     }
 
@@ -615,7 +615,7 @@ internal sealed class ProfileEmailsController(
     }
 
     private Task<EmailsViewModel> BuildEmailsViewModelAsync(
-        User user, bool isAdminContext = false, CancellationToken ct = default) =>
+        User user, CancellationToken ct, bool isAdminContext = false) =>
         emailsViewModelBuilder.BuildAsync(user, isAdminContext, User.IsInRole(RoleNames.Admin), ct);
 
 }

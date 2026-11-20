@@ -11,6 +11,41 @@ namespace Humans.TicketTailor.Tests.Services;
 
 public class TicketTailorServiceWriteTests
 {
+    [HumansTheory]
+    [InlineData(TicketTailorUnreadableWrite.Void)]
+    [InlineData(TicketTailorUnreadableWrite.Issue)]
+    [InlineData(TicketTailorUnreadableWrite.Discount)]
+    public async Task UnreadableWriteResponse_UsesOperationFailureContractWithoutRetry(TicketTailorUnreadableWrite operation)
+    {
+        var handler = new RecordingHttpHandler();
+        var content = handler.EnqueueResponse(HttpStatusCode.OK, "unexpected response");
+        var service = TicketTailorTestHost.CreateService(handler);
+        var ct = TestContext.Current.CancellationToken;
+        Func<Task> write = operation switch
+        {
+            TicketTailorUnreadableWrite.Void => () => service.VoidIssuedTicketAsync("tt_1", true, ct),
+            TicketTailorUnreadableWrite.Issue => () => service.IssueTicketAsync(new IssueTicketRequest(
+                EventId: null, TicketTypeId: null, HoldId: "hold_1",
+                FullName: "Test User", Email: null, SendEmail: false, ExternalReference: null), ct),
+            _ => () => service.GenerateDiscountCodesAsync(
+                new DiscountCodeSpec(1, DiscountType.Percentage, 25m, null), ct)
+        };
+
+        if (operation is TicketTailorUnreadableWrite.Discount)
+        {
+            var failure = await write.Should().ThrowExactlyAsync<HttpRequestException>();
+            failure.Which.InnerException.Should().BeOfType<System.Text.Json.JsonException>();
+        }
+        else
+        {
+            var failure = await write.Should().ThrowExactlyAsync<TicketVendorWriteException>();
+            failure.Which.Kind.Should().Be(TicketVendorFailureKind.Transient);
+            failure.Which.InnerException.Should().BeOfType<System.Text.Json.JsonException>();
+        }
+        handler.RequestCount.Should().Be(1);
+        content.WasDisposed.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task VoidIssuedTicketAsync_VoidToHold_True_PostsCorrectFormBody()
     {
@@ -478,3 +513,5 @@ public class TicketTailorServiceWriteTests
         handler.RequestCount.Should().Be(1);
     }
 }
+
+public enum TicketTailorUnreadableWrite { Void, Issue, Discount }

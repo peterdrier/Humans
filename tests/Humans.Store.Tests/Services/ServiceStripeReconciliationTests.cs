@@ -177,6 +177,7 @@ public class ServiceStripeReconciliationTests
 
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 
+        report.IsReconciled.Should().BeTrue();
         report.WebhookConfigured.Should().BeFalse();
         report.CheckoutConfigured.Should().BeTrue();
         report.StripeQueried.Should().BeTrue();
@@ -197,6 +198,7 @@ public class ServiceStripeReconciliationTests
         var report = await _service.GetStripeReconciliationAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.StripeQueried.Should().BeFalse();
+        report.IsReconciled.Should().BeFalse();
         report.Orphans.Should().BeEmpty(); // recorded payment is NOT false-flagged as an orphan
         report.Rows.Should().BeEmpty();
     }

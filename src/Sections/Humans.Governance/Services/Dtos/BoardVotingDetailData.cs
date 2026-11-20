@@ -9,7 +9,6 @@ internal sealed record BoardVotingDetailData(
     string FirstName,
     string LastName,
     MembershipTier MembershipTier,
-    ApplicationStatus Status,
     string Motivation,
     string? AdditionalInfo,
     string? SignificantContribution,

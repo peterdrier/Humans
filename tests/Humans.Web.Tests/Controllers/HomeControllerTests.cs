@@ -65,6 +65,39 @@ public class HomeControllerTests
             .Returns(review ?? ConsentReviewInfo.None(userId));
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Index_CallerCancellationStopsUserAndConsentReads(bool atConsentRead)
+    {
+        using var request = new CancellationTokenSource();
+        var userId = Guid.NewGuid();
+        var user = UserInfo.Create(new User { Id = userId }, [], [], null);
+        async ValueTask<UserInfo?> ReadUserAsync(CancellationToken ct)
+        {
+            if (!atConsentRead)
+            {
+                await request.CancelAsync();
+                ct.ThrowIfCancellationRequested();
+            }
+            return user;
+        }
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => ReadUserAsync(call.Arg<CancellationToken>()));
+        _consentService.GetConsentReviewAsync(userId, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await request.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return ConsentReviewInfo.None(userId);
+        });
+        var controller = BuildSut(Authenticated(userId));
+        controller.HttpContext.RequestAborted = request.Token;
+
+        var error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Index());
+
+        Assert.Equal(request.Token, error.CancellationToken);
+    }
+
     [HumansFact]
     public async Task Index_Dashboard_ShowsConsentsRecordedRejectionAndReason()
     {

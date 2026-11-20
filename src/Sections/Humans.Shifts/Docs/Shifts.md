@@ -179,7 +179,7 @@ Selected routes:
 | Route | Purpose |
 |---|---|
 | `GET /Shifts` | Browse shifts (department/date/period/tag filters) |
-| `GET /Shifts/Mine` | Volunteer's own signups |
+| `GET /Shifts/Mine` | Volunteer's own signups; range summaries reuse translated single-day/multi-day date-and-count templates in every supported culture |
 | `POST /Shifts/ToggleDay` | Per-day instant signup/bail on the browse page (AJAX, returns the re-rendered row); if the active event has disappeared, redirects to browse via `204` + `X-Redirect` without mutating signups |
 | `POST /Shifts/Bail` | Single bail |
 | `POST /Shifts/BailRange` | Range bail (by SignupBlockId) |
@@ -275,7 +275,7 @@ Operator build/strike staffing and event-shift generation reject malformed numer
 - Department shift-management, email-preview and volunteer/tag search GETs retain request cancellation through viewer and department authorization and their rota, profile, consent, availability, signup, team and tag reads plus staffing charts. Caller-cancelled volunteer searches propagate cancellation without a failure response or log. Department mutation preflight reads, ownership probes, email previews and invalid edit-form redisplays retain request cancellation. Ownership-probe service reads pass that token to the repository. Mutation and email-queue calls retain their existing detached tokens. Department-page badges and names reuse the same loaded user dictionary.
 - Member shift-browser tag and team reads retain request cancellation.
 - Browse reads return scored shifts without display ordering. The browse page and onboarding component order by urgency before grouping, preserving equal-score rota ties and equal-time shift ties; the gallery orders by date/time, then urgency. Urgent recommendations retain their service ordering for period-diverse top-N selection.
-- Remaining member mutations, coordinator volunteer-tracking edits and dashboard assignments retain request cancellation while resolving their actor. Shift-profile preflight account/profile/catalog reads and the settings active-event lookup also cancel; shift-profile cancellation propagates without a save-failure banner. Existing mutation tokens and post-failure catalog reloads are unchanged.
+- Remaining member mutations, coordinator volunteer-tracking edits and dashboard assignments retain request cancellation while resolving their actor. Shift-profile preflight account/profile/catalog reads, catalog reloads after tag refusal or profile-save failure, and the settings active-event lookup also cancel. Requested cancellation propagates; a reload does not turn it into an additional save failure. Existing mutation tokens are unchanged.
 - Global rota search retains caller cancellation for both GUID lookups and text queries.
 - The My Shifts bail-lock check retains request cancellation through its role and department-coordinator reads.
 

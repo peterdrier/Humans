@@ -138,6 +138,73 @@ public sealed class PleoClientTests
         await action.Should().ThrowAsync<PleoPermanentException>().WithMessage("*expected a JSON object*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(PleoTypedRead.Accounts, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Accounts, "{\"id\":null}")]
+    [Xunit.InlineData(PleoTypedRead.Categories, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Categories, "{\"id\":\"\"}")]
+    [Xunit.InlineData(PleoTypedRead.Employees, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Employees, "{\"id\":\" \"}")]
+    [Xunit.InlineData(PleoTypedRead.Receipts, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Receipts, "{\"id\":\"\"}")]
+    public async Task Typed_reads_reject_items_without_usable_identities(PleoTypedRead consumer, string item)
+    {
+        var client = Make(_ => Json(Page(item, false, null)));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> action = () => consumer switch
+        {
+            PleoTypedRead.Accounts => client.SearchAccountsAsync(ct),
+            PleoTypedRead.Categories => client.SearchCategoriesAsync(ct),
+            PleoTypedRead.Employees => client.ListEmployeesAsync(ct),
+            _ => client.ListReceiptsAsync("entry", ct),
+        };
+
+        await action.Should().ThrowAsync<PleoPermanentException>();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" ")]
+    public async Task Balance_rejects_a_missing_currency_instead_of_replacing_the_reading(string? currency)
+    {
+        var body = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            data = new
+            {
+                accounts = new[] { new
+                {
+                    isPrimary = true,
+                    balance = new
+                    {
+                        current = new { currency, value = 0 },
+                        available = new { value = 0 },
+                        pendingDebits = new { value = 0 },
+                    },
+                } },
+            },
+        });
+        var client = Make(_ => Json(body));
+
+        var act = () => client.GetBalanceAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<PleoPermanentException>();
+    }
+
+    [HumansFact]
+    public async Task Balance_preserves_explicit_zero_and_a_foreign_currency()
+    {
+        var client = Make(_ => Json("""
+            {"data":{"accounts":[{"isPrimary":true,"balance":{
+              "current":{"currency":"USD","value":0},"available":{"value":0},"pendingDebits":{"value":0}
+            }}]}}
+            """));
+
+        var balance = await client.GetBalanceAsync(Xunit.TestContext.Current.CancellationToken);
+
+        balance.Should().Be(new PleoBalanceWire("USD", 0, 0, 0));
+    }
+
     [HumansFact]
     public async Task Sends_basic_auth_with_the_key_and_an_empty_password()
     {
@@ -227,3 +294,5 @@ public sealed class PleoClientTests
             Task.FromResult(respond(request));
     }
 }
+
+public enum PleoTypedRead { Accounts, Categories, Employees, Receipts }

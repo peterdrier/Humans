@@ -51,6 +51,110 @@ public sealed class GoogleDriveActivityClientTests
         delays.Should().BeEmpty();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(DirectoryPersonFailure.Forbidden)]
+    [Xunit.InlineData(DirectoryPersonFailure.NotFound)]
+    [Xunit.InlineData(DirectoryPersonFailure.ServiceUnavailable)]
+    [Xunit.InlineData(DirectoryPersonFailure.Http)]
+    [Xunit.InlineData(DirectoryPersonFailure.Io)]
+    [Xunit.InlineData(DirectoryPersonFailure.Timeout)]
+    [Xunit.InlineData(DirectoryPersonFailure.Cancelled)]
+    [Xunit.InlineData(DirectoryPersonFailure.Unexpected)]
+    [Xunit.InlineData(DirectoryPersonFailure.Caller)]
+    public async Task Person_resolution_classifies_failures_and_preserves_caller_cancellation(DirectoryPersonFailure failureKind)
+    {
+        using var request = new CancellationTokenSource();
+        Exception failure = failureKind switch
+        {
+            DirectoryPersonFailure.Forbidden or DirectoryPersonFailure.NotFound or DirectoryPersonFailure.ServiceUnavailable => new global::Google.GoogleApiException("directory", "Directory refused")
+            {
+                Error = new global::Google.Apis.Requests.RequestError
+                { Code = failureKind switch { DirectoryPersonFailure.Forbidden => 403, DirectoryPersonFailure.NotFound => 404, _ => 503 }, Message = "Directory refused" }
+            },
+            DirectoryPersonFailure.Http => new HttpRequestException("Connection reset"),
+            DirectoryPersonFailure.Io => new IOException("Response stream failed"),
+            DirectoryPersonFailure.Timeout => new TimeoutException("Directory timed out"),
+            DirectoryPersonFailure.Cancelled or DirectoryPersonFailure.Caller => new TaskCanceledException("Directory request cancelled"),
+            _ => new InvalidOperationException("Unexpected directory failure")
+        };
+        using var handler = new SequenceHandler { Failure = failure };
+        var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
+        factory.CreateHttpClient(Arg.Any<CreateHttpClientArgs>())
+            .Returns(new ConfigurableHttpClient(new ConfigurableMessageHandler(handler)));
+        using var directory = new global::Google.Apis.Admin.Directory.directory_v1.DirectoryService(
+            new BaseClientService.Initializer { HttpClientFactory = factory });
+        var logger = new Humans.Testing.CapturingLogger<GoogleDriveActivityClient>();
+        var client = new GoogleDriveActivityClient(Options.Create(new GoogleWorkspaceSettings()), logger);
+        typeof(GoogleDriveActivityClient).GetField("_directoryService", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(client, directory);
+        if (failureKind is DirectoryPersonFailure.Caller)
+            await request.CancelAsync();
+
+        var resolve = () => client.TryResolvePersonEmailAsync("people/123", request.Token);
+
+        if (failureKind is DirectoryPersonFailure.Caller)
+        {
+            (await resolve.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(request.Token);
+            handler.Calls.Should().Be(0);
+            logger.Entries.Should().NotContain(entry => entry.Message.Contains("people/123", StringComparison.Ordinal));
+        }
+        else
+        {
+            (await resolve()).Should().BeNull();
+            var entry = logger.Entries.Should().ContainSingle(entry =>
+                entry.Message.Contains("people/123", StringComparison.Ordinal)).Subject;
+            var unexpected = failureKind is DirectoryPersonFailure.Unexpected;
+            var routine = failureKind is DirectoryPersonFailure.Forbidden or DirectoryPersonFailure.NotFound;
+            entry.Level.Should().Be(unexpected ? Microsoft.Extensions.Logging.LogLevel.Error
+                : routine ? Microsoft.Extensions.Logging.LogLevel.Debug
+                : Microsoft.Extensions.Logging.LogLevel.Warning);
+            if (unexpected)
+                entry.Exception.Should().BeSameAs(failure);
+            else
+            {
+                entry.Exception.Should().BeNull();
+                if (!routine)
+                    entry.Message.Should().Contain(failureKind is DirectoryPersonFailure.ServiceUnavailable ? "Directory refused" : failure.Message);
+            }
+        }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData("  ")]
+    [Xunit.InlineData("member@nobodies.team")]
+    public async Task Person_resolution_returns_null_for_unusable_email_addresses(string? email)
+    {
+        using var handler = new SequenceHandler((HttpStatusCode.OK, System.Text.Json.JsonSerializer.Serialize(new { primaryEmail = email })));
+        var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
+        factory.CreateHttpClient(Arg.Any<CreateHttpClientArgs>())
+            .Returns(new ConfigurableHttpClient(new ConfigurableMessageHandler(handler)));
+        using var directory = new global::Google.Apis.Admin.Directory.directory_v1.DirectoryService(
+            new BaseClientService.Initializer { HttpClientFactory = factory });
+        var logger = new Humans.Testing.CapturingLogger<GoogleDriveActivityClient>();
+        var client = new GoogleDriveActivityClient(Options.Create(new GoogleWorkspaceSettings()), logger);
+        typeof(GoogleDriveActivityClient).GetField("_directoryService", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(client, directory);
+
+        var result = await client.TryResolvePersonEmailAsync("people/123", Xunit.TestContext.Current.CancellationToken);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            result.Should().BeNull();
+            var entry = logger.Entries.Should().ContainSingle(entry =>
+                entry.Message.Contains("people/123", StringComparison.Ordinal)).Subject;
+            entry.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+            entry.Exception.Should().BeNull();
+        }
+        else
+        {
+            result.Should().Be(email);
+            logger.Entries.Should().NotContain(entry => entry.Message.Contains("people/123", StringComparison.Ordinal));
+        }
+        handler.Calls.Should().Be(1);
+    }
+
     private static async Task<List<DriveActivityEvent>> QueryAllAsync(GoogleDriveActivityClient client)
     {
         var events = new List<DriveActivityEvent>();
@@ -81,9 +185,15 @@ public sealed class GoogleDriveActivityClientTests
     private sealed class SequenceHandler(params (HttpStatusCode Status, string Json)[] responses) : HttpMessageHandler
     {
         public int Calls { get; private set; }
+        public Exception? Failure { get; init; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (Failure is not null)
+            {
+                Calls++;
+                throw Failure;
+            }
             var (status, json) = responses[Math.Min(Calls++, responses.Length - 1)];
             return Task.FromResult(new HttpResponseMessage(status)
             {
@@ -92,3 +202,5 @@ public sealed class GoogleDriveActivityClientTests
         }
     }
 }
+
+public enum DirectoryPersonFailure { Forbidden, NotFound, ServiceUnavailable, Http, Io, Timeout, Cancelled, Unexpected, Caller }

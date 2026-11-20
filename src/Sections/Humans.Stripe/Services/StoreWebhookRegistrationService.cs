@@ -10,7 +10,7 @@ using Stripe;
 
 namespace Humans.Stripe.Services;
 
-/// <summary>Production uses a dashboard-configured webhook. Failures log warnings and never block boot.</summary>
+/// <summary>Production uses a dashboard-configured webhook. Registration failures are logged and never block boot.</summary>
 internal sealed class StoreWebhookRegistrationService(
     IOptions<StripeSettings> settings,
     IOptions<GitHubSettings> githubSettings,
@@ -113,9 +113,9 @@ internal sealed class StoreWebhookRegistrationService(
         }
         catch (StripeException ex)
         {
-            logger.LogWarning(ex,
-                "Stripe webhook auto-registration failed. Code: {Code}",
-                ex.StripeError?.Code);
+            logger.LogWarning(
+                "Stripe webhook auto-registration failed. Code: {Code}: {Reason}",
+                ex.StripeError?.Code, ex.Message);
         }
         catch (OperationCanceledException)
         {
@@ -124,7 +124,7 @@ internal sealed class StoreWebhookRegistrationService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Stripe webhook auto-registration failed unexpectedly.");
+            logger.LogError(ex, "Stripe webhook auto-registration failed unexpectedly.");
         }
     }
 
@@ -170,12 +170,15 @@ internal sealed class StoreWebhookRegistrationService(
                     "Deleted Stripe webhook {EndpointId} for closed PR #{PrId} ({Url}).",
                     endpoint.Id, prId, endpoint.Url);
             }
-            catch (StripeException ex)
+            catch (StripeException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 // Another PR's registrar may have raced ahead; a 404 is fine.
-                logger.LogDebug(ex,
-                    "Could not delete webhook {EndpointId} during sweep — likely already gone.",
-                    endpoint.Id);
+                logger.LogDebug("Webhook {EndpointId} was already deleted during sweep.", endpoint.Id);
+            }
+            catch (StripeException ex)
+            {
+                logger.LogWarning("Could not delete webhook {EndpointId} during sweep: {Code} {Reason}",
+                    endpoint.Id, ex.StripeError?.Code, ex.Message);
             }
         }
 
@@ -221,9 +224,14 @@ internal sealed class StoreWebhookRegistrationService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Cross-PR webhook sweep skipped: failed to list open PRs from {Owner}/{Repo}.",
-                stripe.WebhookCleanupGitHubOwner, stripe.WebhookCleanupGitHubRepository);
+            if (ex is ApiException or HttpRequestException)
+                logger.LogWarning(
+                    "Cross-PR webhook sweep skipped: failed to list open PRs from {Owner}/{Repo}: {Reason}",
+                    stripe.WebhookCleanupGitHubOwner, stripe.WebhookCleanupGitHubRepository, ex.Message);
+            else
+                logger.LogError(ex,
+                    "Cross-PR webhook sweep skipped: failed to list open PRs from {Owner}/{Repo}.",
+                    stripe.WebhookCleanupGitHubOwner, stripe.WebhookCleanupGitHubRepository);
             return null;
         }
     }

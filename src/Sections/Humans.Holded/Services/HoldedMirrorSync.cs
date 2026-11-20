@@ -268,8 +268,12 @@ internal sealed class HoldedMirrorSync(
             }
             catch (Exception ex)
             {
-                // The caller gets the exception and decides; a stuck-date line is routine for the SEPA sweep.
-                logger.LogWarning(ex, "Holded bank-feed sync failed");
+                if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                    logger.LogWarning("Holded bank-feed sync cancelled by the caller");
+                else if (ex is HoldedApiException)
+                    logger.LogWarning("Holded bank-feed sync failed: {Reason}", ex.Message);
+                else
+                    logger.LogError(ex, "Holded bank-feed sync failed");
                 await PersistSyncFailureAsync(state, ex);
                 throw;
             }
@@ -367,14 +371,14 @@ internal sealed class HoldedMirrorSync(
             catch (HoldedTransientException ex)
             {
                 failed++;
-                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
+                logger.LogWarning("Holded purchase document {DocId} could not be read for its notes: {Reason}", doc.Id, ex.Message);
                 break;
             }
             catch (Exception ex) when (ex is HoldedPermanentException or System.Text.Json.JsonException
                                            or InvalidOperationException)
             {
                 failed++;
-                logger.LogDebug(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
+                logger.LogError(ex, "Holded purchase document {DocId} could not be read for its notes", doc.Id);
             }
         }
 
@@ -541,7 +545,7 @@ internal sealed class HoldedMirrorSync(
         }
         catch (HoldedApiException ex)
         {
-            logger.LogWarning(ex, "Holded usage refresh failed");
+            logger.LogWarning("Holded usage refresh failed: {Reason}", ex.Message);
             await PersistSyncFailureAsync(state, ex);
             return false;
         }
