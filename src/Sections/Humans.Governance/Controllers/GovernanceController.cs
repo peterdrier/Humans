@@ -45,6 +45,9 @@ internal sealed class GovernanceController(
             ApplicationStatusBadgeClass = data.ApplicationStatus is { } status ? EnumBadgeMap.For(status) : "bg-secondary",
             CanApply = data.CanApply,
             IsApprovedColaborador = data.IsApprovedColaborador,
+            CurrentTier = data.CurrentTier,
+            IsBoardMember = data.BoardMemberIds.Contains(user.Id),
+            MemberSince = data.MemberSince?.ToDateTimeUtc(),
             ColaboradorCount = data.ColaboradorCount,
             AsociadoCount = data.AsociadoCount,
             BoardMemberIds = data.BoardMemberIds
