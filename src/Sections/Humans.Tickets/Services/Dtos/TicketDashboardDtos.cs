@@ -145,7 +145,7 @@ internal sealed class DiscountCampaignAggregate
 
     public int CodesUsed { get; init; }
 
-    public decimal AverageDiscount { get; init; }
+    public decimal AverageDiscount => CodesUsed > 0 ? Math.Round(TotalDiscount / CodesUsed, 2) : 0m;
     public decimal TotalDiscount { get; init; }
 }
 

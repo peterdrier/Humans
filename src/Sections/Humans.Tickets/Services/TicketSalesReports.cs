@@ -371,7 +371,6 @@ internal sealed class TicketSalesReports(
                     CreatedAt = c.CreatedAt,
                     CodesGranted = c.TotalGrants,
                     CodesUsed = usage.Used,
-                    AverageDiscount = usage.Used > 0 ? Math.Round(usage.Total / usage.Used, 2) : 0m,
                     TotalDiscount = usage.Total,
                 };
             })
@@ -388,7 +387,6 @@ internal sealed class TicketSalesReports(
                 CampaignTitle = "No campaign (vendor codes)",
                 CodesGranted = null,
                 CodesUsed = unattributed.Count,
-                AverageDiscount = Math.Round(total / unattributed.Count, 2),
                 TotalDiscount = total,
             });
         }
