@@ -273,6 +273,46 @@ public class MailerLiteAdminControllerTests
         Assert.Equal(7, vm.HumansMailerLiteContacts);
     }
 
+    [HumansTheory]
+    [InlineData("summary", false)]
+    [InlineData("groups", false)]
+    [InlineData("drift", false)]
+    [InlineData("summary", true)]
+    [InlineData("groups", true)]
+    [InlineData("drift", true)]
+    public async Task Index_TimeoutKeepsLocalCounts_ButCallerCancellationPropagates(string boundary, bool callerCanceled)
+    {
+        using var request = new CancellationTokenSource();
+        if (callerCanceled) await request.CancelAsync();
+        var timeout = new TaskCanceledException("MailerLite read timed out", null, request.Token);
+        _mlService.GetAccountSummaryAsync(request.Token).Returns(new MailerLiteAccountSummary(1, 0, 0, 0, 0));
+        _mlService.ListGroupsAsync(request.Token).Returns(Array.Empty<MailerLiteGroup>());
+        if (string.Equals(boundary, "summary", StringComparison.Ordinal))
+            _mlService.GetAccountSummaryAsync(request.Token).ThrowsAsync(timeout);
+        else if (string.Equals(boundary, "groups", StringComparison.Ordinal))
+            _mlService.ListGroupsAsync(request.Token).ThrowsAsync(timeout);
+        else
+            _importService.ComputeDriftAsync(request.Token).ThrowsAsync(timeout);
+        _userService.GetAllUserInfosAsync(request.Token).Returns(Array.Empty<UserInfo>());
+        _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, false, request.Token).Returns(7);
+        _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, true, request.Token).Returns(3);
+        _audienceSync.ComputeAllStatsAsync(request.Token).Returns(Array.Empty<AudienceStats>());
+        var ctrl = BuildSut();
+        Func<Task<IActionResult>> read = () => ctrl.Index(request.Token);
+
+        if (callerCanceled)
+            (await Record.ExceptionAsync(read)).Should().BeSameAs(timeout);
+        else
+        {
+            var view = (await read()).Should().BeOfType<ViewResult>().Subject;
+            var model = view.Model.Should().BeOfType<MailerLiteDashboardViewModel>().Subject;
+            model.MlError.Should().Contain("timed out");
+            model.HumansMarketingOptedIn.Should().Be(7);
+            model.HumansMarketingOptedOut.Should().Be(3);
+            model.Drift.Should().BeNull();
+        }
+    }
+
     [HumansFact]
     public async Task Refresh_CallsRefreshAsync_AndRedirectsToIndex()
     {

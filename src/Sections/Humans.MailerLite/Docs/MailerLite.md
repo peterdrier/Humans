@@ -55,7 +55,7 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
-- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
+- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Dashboard summary/group/drift timeouts render the existing unavailable-state error while preserving local counts; requested cancellation propagates. Dashboard audience-statistics HTTP warnings retain status and reason without an exception stack. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
 
 - Import commits reject binding errors with HTTP 400 and a Warning before rebuilding or applying a plan, so a malformed numeric limit cannot become an unlimited import. A valid blank limit still applies the whole plan; positive limits retain their existing per-outcome throttle.
 

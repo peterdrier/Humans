@@ -45,6 +45,11 @@ internal sealed class MailerLiteAdminController(
             logger.LogWarning("MailerLite API call failed: {StatusCode} {Message}", ex.StatusCode, ex.Message);
             mlError = FormatMailerLiteError(ex);
         }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning("MailerLite dashboard API read timed out");
+            mlError = "MailerLite request timed out. Try again shortly.";
+        }
 
         var mlContacts = (await _users.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Count(u => u.ContactSource == ContactSource.MailerLite);
@@ -60,7 +65,7 @@ internal sealed class MailerLiteAdminController(
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Audience stats failed");
+            logger.LogWarning("Audience stats failed: {StatusCode} {Reason}", ex.StatusCode, ex.Message);
             audienceRows = [];
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
