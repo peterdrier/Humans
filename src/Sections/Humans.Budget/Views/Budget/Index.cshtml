@@ -7,8 +7,8 @@
         .Where(g => !g.IsTicketingGroup || Model.IsFinanceAdmin)
         .OrderBy(g => g.SortOrder)
         .ToList();
-    var totalAllocated = groups.SelectMany(g => g.Categories).Sum(c => c.AllocatedAmount);
-    var totalLineItems = groups.SelectMany(g => g.Categories).Sum(c => c.LineItemTotal);
+    var totalAllocated = groups.Sum(group => group.AllocatedAmount);
+    var totalLineItems = groups.Sum(group => group.LineItemTotal);
     var unallocated = totalAllocated - totalLineItems;
 }
 
@@ -70,7 +70,7 @@
 
 @foreach (var group in groups)
 {
-    var groupAllocated = group.Categories.Sum(c => c.AllocatedAmount);
+    var groupAllocated = group.AllocatedAmount;
     var collapseId = $"group-{group.Id.ToString("N")}";
 
     <div class="card mb-3">

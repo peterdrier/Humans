@@ -43,7 +43,12 @@ public sealed record BudgetGroupDetail(
     bool IsDepartmentGroup,
     bool IsTicketingGroup,
     TicketingProjectionSnapshot? TicketingProjection,
-    IReadOnlyList<BudgetCategoryDetail> Categories);
+    IReadOnlyList<BudgetCategoryDetail> Categories)
+{
+    internal decimal AllocatedAmount => Categories.Sum(category => category.AllocatedAmount);
+    internal decimal LineItemTotal => Categories.Sum(category => category.LineItemTotal);
+    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+}
 
 public sealed record BudgetCategoryDetail(
     Guid Id,

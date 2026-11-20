@@ -88,7 +88,7 @@ internal static class BudgetSummaryCalculator
             {
                 Name = string.Format(CultureInfo.CurrentCulture,
                     Resources.GetString("Budget_GroupBuffer", CultureInfo.CurrentUICulture)!, g.Name),
-                Raw = g.Categories.Sum(c => c.UnallocatedAmount)
+                Raw = g.UnallocatedAmount
             })
             .Where(b => b.Raw != 0)
             .ToList();

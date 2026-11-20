@@ -134,8 +134,8 @@
 @foreach (var group in year.Groups.OrderBy(g => g.SortOrder))
 {
     var groupId = group.Id.ToString("N");
-    var groupActual = group.Categories.Sum(c => c.LineItemTotal);
-    var groupBudget = group.Categories.Sum(c => c.AllocatedAmount);
+    var groupActual = group.LineItemTotal;
+    var groupBudget = group.AllocatedAmount;
     // A mixed group (Ticketing: revenue and fees) has no single direction, so its header shows signed
     // nets and a neutral variance label; a one-direction group shows magnitudes like its categories do.
     var groupMixed = group.Categories.Any(c => c.AllocatedAmount < 0) && group.Categories.Any(c => c.AllocatedAmount > 0);
