@@ -27,9 +27,9 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
         try
         {
-            var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var group = new SdkGroup
             {
                 GroupKey = new EntityKey { Id = groupEmail },
@@ -109,9 +109,9 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
         try
         {
-            var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var lookup = cloudIdentity.Groups.Lookup();
             lookup.GroupKeyId = groupEmail;
             var response = await lookup.ExecuteAsync(ct);
@@ -148,9 +148,9 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
         try
         {
-            var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
             var request = groupsSettings.Groups.Get(groupEmail);
             request.Alt = SdkGroupSettingsBaseServiceRequest.AltEnum.Json;
             var actual = await request.ExecuteAsync(ct);
@@ -178,9 +178,9 @@ internal sealed class GoogleGroupProvisioningClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
         try
         {
-            var groupsSettings = await GetGroupsSettingsServiceAsync(ct);
             var sdkSettings = BuildSdkSettings(expected);
             var request = groupsSettings.Groups.Update(sdkSettings, groupEmail);
             await request.ExecuteAsync(ct);

@@ -29,9 +29,9 @@ internal sealed class GoogleGroupMembershipClient(
         string? pageToken = null;
         var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
+        var directory = await GetDirectoryServiceAsync(ct);
         try
         {
-            var directory = await GetDirectoryServiceAsync(ct);
             do
             {
                 var request = directory.Members.List(groupGoogleId);
@@ -86,9 +86,9 @@ internal sealed class GoogleGroupMembershipClient(
         CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var directory = await GetDirectoryServiceAsync(ct);
         try
         {
-            var directory = await GetDirectoryServiceAsync(ct);
             var member = new Member
             {
                 Email = memberEmail,
@@ -146,9 +146,9 @@ internal sealed class GoogleGroupMembershipClient(
         var groupKey = parts[1];
         var memberKey = parts[3];
 
+        var directory = await GetDirectoryServiceAsync(ct);
         try
         {
-            var directory = await GetDirectoryServiceAsync(ct);
             await directory.Members.Delete(groupKey, memberKey).ExecuteAsync(ct);
             return null;
         }

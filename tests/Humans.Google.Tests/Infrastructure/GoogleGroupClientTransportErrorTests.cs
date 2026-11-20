@@ -269,6 +269,50 @@ public sealed class GoogleGroupClientTransportErrorTests
         }
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("create-group")]
+    [Xunit.InlineData("lookup-group")]
+    [Xunit.InlineData("read-settings")]
+    [Xunit.InlineData("write-settings")]
+    [Xunit.InlineData("list-members")]
+    [Xunit.InlineData("create-member")]
+    [Xunit.InlineData("delete-member")]
+    public async Task Group_calls_propagate_credential_file_failures(string operation)
+    {
+        var settings = Options.Create(new GoogleWorkspaceSettings
+        {
+            ServiceAccountKeyPath = $"/tmp/debt100-missing-{Guid.NewGuid():N}/credentials.json",
+        });
+        var provisioning = new GoogleGroupProvisioningClient(settings, NullLogger<GoogleGroupProvisioningClient>.Instance);
+        var membership = new GoogleGroupMembershipClient(settings, NullLogger<GoogleGroupMembershipClient>.Instance);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Task FetchAsync() => operation switch
+        {
+            "create-group" => provisioning.CreateGroupAsync("team@example.org", "Team", "Description", ct),
+            "lookup-group" => provisioning.LookupGroupIdAsync("team@example.org", ct),
+            "read-settings" => provisioning.GetGroupSettingsAsync("team@example.org", ct),
+            "write-settings" => provisioning.UpdateGroupSettingsAsync("team@example.org", Humans.Google.Services.GroupSettingsPolicy.BuildExpected(new Humans.Google.Contracts.GoogleWorkspaceGroupOptions()), ct),
+            "list-members" => membership.ListMembershipsAsync("group", ct),
+            "create-member" => membership.CreateMembershipAsync("group", "person@example.org", ct),
+            _ => membership.DeleteMembershipAsync("groups/group/memberships/person@example.org", ct),
+        };
+
+        var fetch = FetchAsync;
+        await fetch.Should().ThrowAsync<IOException>();
+    }
+
+    [HumansFact]
+    public async Task DeleteMembershipAsync_refuses_malformed_names_before_loading_credentials()
+    {
+        var client = new GoogleGroupMembershipClient(Options.Create(new GoogleWorkspaceSettings()),
+            NullLogger<GoogleGroupMembershipClient>.Instance);
+
+        var error = await client.DeleteMembershipAsync("malformed", Xunit.TestContext.Current.CancellationToken);
+
+        error.Should().NotBeNull();
+        error.RawMessage.Should().Contain("Malformed membership resource name");
+    }
+
     private static BaseClientService.Initializer CreateInitializer(HttpMessageHandler? handler = null)
     {
         var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
