@@ -104,7 +104,7 @@ events — erasure edits a cached row's Host name, the merge fold its submitter)
 `IEventService` (approved events / guide settings / favourite ids) is
 registered as a forward to this singleton so cross-section consumers (the
 camp detail and profile pages' events card, `EventsCardViewComponent`) read from the
-cache. The moderator-only `GetAllEventsForDashboardAsync` passes through
+cache. The moderator-only `GetDashboardAsync` passes through
 to the inner service (needs a fresh pending count; the cache only holds
 approved events). Only the event projection is surfaced on
 `/Debug/CacheStats`.

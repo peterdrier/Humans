@@ -52,6 +52,63 @@ public sealed class EventServiceTests
         _service = new EventService(_repo, _burnSettings, _userService, _camps, _audit, _emailService, _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
     }
 
+    [HumansFact]
+    public async Task Dashboard_CountsTheConfiguredEditionAndExpandsApprovedOccurrences()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var burn = BurnFixtures.Burn(year: 2026);
+        var zone = DateTimeZoneProviders.Tzdb[burn.TimeZoneId];
+        var first = new EventCategory { Id = Guid.NewGuid(), Name = "First", DisplayOrder = 2 };
+        var empty = new EventCategory { Id = Guid.NewGuid(), Name = "Empty", DisplayOrder = 1 };
+        _repo.Categories.AddRange([first, empty]);
+        _repo.Settings = new EventGuideSettings { EventSettingsId = burn.Id };
+        _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
+        var camp = Guid.NewGuid();
+        var otherCamp = Guid.NewGuid();
+        var start = burn.GateOpeningDate.At(new LocalTime(10, 0)).InZoneLeniently(zone).ToInstant();
+        _repo.Events.AddRange([
+            new Event { Id = Guid.NewGuid(), EventSettingsId = burn.Id, CampId = camp, CategoryId = first.Id,
+                Status = EventStatus.Approved, StartAt = start, DurationMinutes = 60, IsRecurring = true, RecurrenceDays = "0,2" },
+            new Event { Id = Guid.NewGuid(), EventSettingsId = burn.Id, CampId = camp, CategoryId = first.Id,
+                Status = EventStatus.Pending, StartAt = start, DurationMinutes = 60 },
+            new Event { Id = Guid.NewGuid(), EventSettingsId = burn.Id, CampId = otherCamp, CategoryId = first.Id,
+                Status = EventStatus.Rejected, StartAt = start, DurationMinutes = 60 },
+            new Event { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), CampId = camp, CategoryId = first.Id,
+                Status = EventStatus.Approved, StartAt = start, DurationMinutes = 60 }
+        ]);
+        _camps.GetCampsForEventAsync(burn.Id, ct).Returns(Array.Empty<CampInfo>());
+
+        var controller = new EventsDashboardController(_service, _camps, _userService);
+        var model = (await controller.Index(ct)).Should().BeOfType<ViewResult>().Which.Model
+            .Should().BeOfType<EventsDashboardViewModel>().Which;
+
+        model.TotalCount.Should().Be(3);
+        model.ApprovedCount.Should().Be(1);
+        model.PendingCount.Should().Be(1);
+        model.RejectedCount.Should().Be(1);
+        model.CoverageByDay.Should().HaveCount(burn.EventEndOffset + 1);
+        model.CoverageByDay.Where(d => d.ApprovedCount > 0).Select(d => d.Date)
+            .Should().Equal(burn.GateOpeningDate, burn.GateOpeningDate.PlusDays(2));
+        model.CoverageByDay.First().DayLabel.Should().Be(burn.GateOpeningDate.ToWeekdayDayMonth());
+        model.CoverageByCategory.Select(c => c.CategoryName).Should().Equal("Empty", "First");
+        model.CoverageByCategory.First().SubmittedCount.Should().Be(0);
+        model.CoverageByCategory.Last().SubmittedCount.Should().Be(3);
+        model.TopCamps.Select(c => c.CampId).Should().Equal(camp, otherCamp);
+        model.TopCamps.First().SubmittedCount.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task Dashboard_WithoutEditionContextKeepsCountsButHasNoDayCoverage()
+    {
+        _repo.Events.Add(new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved });
+
+        var model = await _service.GetDashboardAsync(TestContext.Current.CancellationToken);
+
+        model.TotalCount.Should().Be(1);
+        model.ApprovedCount.Should().Be(1);
+        model.CoverageByDay.Should().BeEmpty();
+    }
+
     [HumansTheory]
     [InlineData(true, false, "2", null, 0, 2, true, 2)]
     [InlineData(false, true, null, "2", 2, 0, true, 2)]
