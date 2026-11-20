@@ -69,10 +69,14 @@ public sealed class EventServiceTests
         var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
         var pending = new Event
         {
-            Id = Guid.NewGuid(), CampId = Guid.NewGuid(), EventSettingsId = hasSettings ? settings.Id : null,
-            Status = EventStatus.Pending, DurationMinutes = 60,
+            Id = Guid.NewGuid(),
+            CampId = Guid.NewGuid(),
+            EventSettingsId = hasSettings ? settings.Id : null,
+            Status = EventStatus.Pending,
+            DurationMinutes = 60,
             StartAt = gate.PlusDays(queuedStartDay).At(new LocalTime(10, 0)).InZoneLeniently(zone).ToInstant(),
-            IsRecurring = queuedRecurring, RecurrenceDays = queuedDays
+            IsRecurring = queuedRecurring,
+            RecurrenceDays = queuedDays
         };
         _repo.Events.Add(pending);
         var other = new CampEventOverlap(Guid.NewGuid(), pending.CampId, "Other",
@@ -1948,7 +1952,10 @@ public sealed class EventServiceTests
         foreach (var status in statuses)
             _repo.Events.Add(new Event
             {
-                Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = editionId, Status = status
+                Id = Guid.NewGuid(),
+                SubmitterUserId = userId,
+                EventSettingsId = editionId,
+                Status = status
             });
         _repo.Events.AddRange([
             new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = Guid.NewGuid(), Status = EventStatus.Approved },

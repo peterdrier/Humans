@@ -296,7 +296,8 @@ public class NotificationMeterProviderTests : IDisposable
     {
         var people = MakeNeedsConsentReview(1).Append(UserInfoFixtures.FromUser(new User
         {
-            Id = Guid.NewGuid(), DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
+            Id = Guid.NewGuid(),
+            DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
         })).ToList();
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(people);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(3);

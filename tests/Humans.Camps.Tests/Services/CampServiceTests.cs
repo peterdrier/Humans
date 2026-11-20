@@ -883,8 +883,12 @@ public sealed class CampServiceTests : CampsTestHarness
         foreach (var status in new[] { CampMemberStatus.Active, CampMemberStatus.Pending, CampMemberStatus.Removed })
             CampsDb.CampMembers.Add(new CampMember
             {
-                Id = Guid.NewGuid(), CampSeasonId = season.Id, UserId = Guid.NewGuid(),
-                Status = status, HasEarlyEntry = true, RequestedAt = Clock.GetCurrentInstant(),
+                Id = Guid.NewGuid(),
+                CampSeasonId = season.Id,
+                UserId = Guid.NewGuid(),
+                Status = status,
+                HasEarlyEntry = true,
+                RequestedAt = Clock.GetCurrentInstant(),
             });
 
         CampsDb.CampImages.Add(new CampImage

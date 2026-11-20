@@ -69,7 +69,7 @@ public sealed class GoogleDriveActivityClientTests
             DirectoryPersonFailure.Forbidden or DirectoryPersonFailure.NotFound or DirectoryPersonFailure.ServiceUnavailable => new global::Google.GoogleApiException("directory", "Directory refused")
             {
                 Error = new global::Google.Apis.Requests.RequestError
-                    { Code = failureKind switch { DirectoryPersonFailure.Forbidden => 403, DirectoryPersonFailure.NotFound => 404, _ => 503 }, Message = "Directory refused" }
+                { Code = failureKind switch { DirectoryPersonFailure.Forbidden => 403, DirectoryPersonFailure.NotFound => 404, _ => 503 }, Message = "Directory refused" }
             },
             DirectoryPersonFailure.Http => new HttpRequestException("Connection reset"),
             DirectoryPersonFailure.Io => new IOException("Response stream failed"),
