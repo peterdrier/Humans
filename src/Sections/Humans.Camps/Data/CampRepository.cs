@@ -435,6 +435,28 @@ internal sealed partial class CampRepository : ICampRepository
         return true;
     }
 
+    public async Task<bool> SetRegistrationInfoAsync(Guid eventSettingsId, string? registrationInfo, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var row = await ctx.CampEventSettings.FindAsync([eventSettingsId], ct);
+        if (row is null)
+        {
+            if (registrationInfo is null) return false;
+            ctx.CampEventSettings.Add(new CampEventSettings { EventSettingsId = eventSettingsId, RegistrationInfo = registrationInfo });
+        }
+        else if (string.Equals(row.RegistrationInfo, registrationInfo, StringComparison.Ordinal))
+        {
+            return false;
+        }
+        else
+        {
+            row.RegistrationInfo = registrationInfo;
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<CampMemberInsertResult> RequestMembershipAsync(
         Guid campSeasonId, Guid userId, Instant requestedAt, CancellationToken ct = default)
     {

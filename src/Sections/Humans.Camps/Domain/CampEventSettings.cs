@@ -7,4 +7,7 @@ internal sealed class CampEventSettings
     public Guid EventSettingsId { get; init; }
 
     public bool RegistrationOpen { get; set; }
+
+    /// <summary>Markdown shown at the top of the Register page while this event takes registrations.</summary>
+    public string? RegistrationInfo { get; set; }
 }

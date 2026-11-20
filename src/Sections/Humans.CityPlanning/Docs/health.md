@@ -36,19 +36,18 @@ structural item below follows from this table.
 | **Claim a barrio** | Where is my camp, and what was it before? | `GET /CityPlanning/BarrioMap`, `PUT /api/city-planning/camp-polygons/{campSeasonId}`, `GET …/history`, `POST …/restore/{historyId}` |
 | **Place a container** | Where does this box go, and what should it look like? | `GET /CityPlanning/ContainerMap/{year}`, `PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `PUT …/notes` |
 | **Run the phases** | Is placement open, when, and who may act now? | The `/Settings#city-planning` tab (`CityPlanningSettingsTabViewComponent`) posting to `OpenPlacement`, `ClosePlacement`, `FollowPlacementSchedule` (the override) and `UpdatePlacementSchedule` (the day-offset schedule); container phase posts `OpenContainerPlacement` / `CloseContainerPlacement` from the containers page; `ICityPlanningService.GetSettingsAsync` |
-| **Write the registration blurb** | What do barrio leads read before they register? | `UpdateRegistrationInfo` on the settings tab **and** on Camps' own admin page (`CampAdminController.UpdateRegistrationInfo`), both through `CityPlanningService.UpdateRegistrationInfoAsync` (section-internal); read by `GetRegistrationInfoAsync` |
 | **Publish the ground truth** | What is the boundary and what are the named zones? | `GET /CityPlanning/BarrioMap/Admin`, the upload, download and delete posts for the limit zone and the official zones |
 | **Bulk-load barrios** | Here is the surveyor's file — match it to camps and apply it. | `wwwroot/js/city-planning/barrio-map/admin-import.js` on the admin page: reads `GET …/state`, matches features to camps by name or slug, then `PUT`s each match |
 | **Curate containers** | Which containers exist for which barrio? | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` plus its Create/Edit/Delete posts (entity owned by Containers) |
 | **Hand the data out** | Give me this as a file. | `GET /api/city-planning/export.geojson`, `GET /api/city-planning/containers/{year}/export.geojson` |
-| **Tell other sections** | Is placement open? Is this user an organiser? What's the registration blurb? | `ICityPlanningService` + `ICityPlanningWrite`; the `CityPlanningMapAdmin` policy |
+| **Tell other sections** | Is placement open? Is this user an organiser? | `ICityPlanningService` + `ICityPlanningWrite`; the `CityPlanningMapAdmin` policy |
 | **Watch each other work** | Who else is on the barrio map right now? | `CityPlanningHub` at `/hubs/city-planning` (cursors + polygon broadcast), barrio map only |
 | **Explain itself to the Shell** | Where is the section, what does it mean, who can do what? | `ISectionNav`, `ISectionAdminNav`, `ISectionSettings`, `ISectionHelp` over `Docs/help/`, `ISectionAccessMatrix`, `ISectionConfiguration`, the `IIssueQueueOwner` queue key |
 
 *Curate containers* and half of *place a container* are City Planning URLs over an entity
 Containers owns; that is deliberate (placement is a planning concern) and is the section's one
-standing width cost. *Write the registration blurb* has two front doors in two sections for one
-field — the one shape here with a duplicated pipeline.
+standing width cost. Camps owns the Register page's blurb; City Planning keeps only the old copy
+that `GetLegacyRegistrationInfoAsync` serves to Camps' data migration until it retires.
 
 ## 3. Structure
 
@@ -115,8 +114,7 @@ Stated so a violation is recognisable:
 8. The current year is the active event's (`ISettingsService`); with no active event the pages
    404 and writes throw (`Services/CityPlanningService.cs:32`). Reads never create the settings
    row — a missing row reads as closed defaults (`Services/CityPlanningService.cs:499`) — and the
-   first admin write creates it. `RegistrationInfo` is keyed to the highest open season year
-   instead, falling back to the active event's year (`Services/CityPlanningService.cs:515`).
+   first admin write creates it.
 9. Every polygon save and restore broadcasts `CampPolygonUpdated` to every connected client; a
    broadcast failure is logged and never fails the save
    (`Controllers/CityPlanningApiController.cs:153`).
@@ -176,8 +174,6 @@ touching these callers are shaped by them.
 - **`Lazy<ICityPlanningWrite>` is registered by `Humans.Camps`, not by this section.** That
   is a separate, *runtime* cycle — `CampService → ICityPlanningWrite → ICampService`, hit
   on the camp-delete path — and the lazy belongs with the consumer, not the producer.
-- **`RegistrationInfo` is keyed differently from every other settings field** (highest open
-  season, not the active event's year) because the Register page it feeds targets the open season.
 - **Out-of-bounds and overlap detection is client-side only.** The server stores whatever
   parses. This is a deliberate scale call, not an oversight.
 - **Bulk import writes through the same PUT the map uses.** `admin-import.js` matches

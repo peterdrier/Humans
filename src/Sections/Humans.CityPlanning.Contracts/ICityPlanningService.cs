@@ -11,8 +11,12 @@ public interface ICityPlanningService : IApplicationService
     /// </summary>
     Task<CityPlanningSettingsDto?> GetSettingsAsync(CancellationToken cancellationToken = default, int? year = null);
 
-    /// <summary>Keyed to the highest open season, else the active event's year. Never writes.</summary>
-    Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// The registration info City Planning stored for <paramref name="year"/> before Camps took it over. Read only
+    /// by Camps' <c>camps.registration-info-from-city-planning</c> data migration and its Register page fallback;
+    /// both go in that migration's retirement PR.
+    /// </summary>
+    Task<string?> GetLegacyRegistrationInfoAsync(int year, CancellationToken cancellationToken = default);
 
     Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 }

@@ -161,6 +161,9 @@ internal partial interface ICampRepository : IRepository
     /// <summary>Upserts the event's row. Returns true if the stored state changed (a new row counts as a change).</summary>
     Task<bool> SetRegistrationOpenAsync(Guid eventSettingsId, bool open, CancellationToken ct = default);
 
+    /// <summary>Upserts the event's row. Returns true if the stored text changed.</summary>
+    Task<bool> SetRegistrationInfoAsync(Guid eventSettingsId, string? registrationInfo, CancellationToken ct = default);
+
     /// <summary>
     /// Idempotent insert of a Pending membership row. Handles the 23505
     /// unique-violation race on (CampSeasonId, UserId) by returning the

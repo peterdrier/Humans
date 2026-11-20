@@ -18,7 +18,7 @@ namespace Humans.Camps.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -81,6 +81,9 @@ namespace Humans.Camps.Data.Migrations
                 {
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("RegistrationInfo")
+                        .HasColumnType("text");
 
                     b.Property<bool>("RegistrationOpen")
                         .HasColumnType("boolean");

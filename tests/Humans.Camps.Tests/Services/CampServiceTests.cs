@@ -1090,6 +1090,29 @@ public sealed class CampServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task SetRegistrationInfoAsync_TrimsStoresAndAudits_BlankClears()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SeedSettingsAsync();
+        var (_, e2027) = StubTwoEvents();
+        var actorId = Guid.NewGuid();
+
+        await _service.SetRegistrationInfoAsync(e2027.Id, "  Bring water.  ", actorId, ct);
+        await _service.SetRegistrationInfoAsync(e2027.Id, "Bring water.", actorId, ct);
+
+        (await _service.GetRegistrationByEventAsync(ct)).Single(r => r.EventSettingsId == e2027.Id)
+            .RegistrationInfo.Should().Be("Bring water.");
+        await AuditLog.Received(1).LogAsync(
+            CampsAuditActions.CampRegistrationInfoUpdated, nameof(CampEventSettings), e2027.Id,
+            Arg.Is<string>(d => d.Contains(e2027.EventName)), actorId, Arg.Any<Guid?>(), Arg.Any<string?>());
+
+        await _service.SetRegistrationInfoAsync(e2027.Id, "   ", actorId, ct);
+
+        (await _service.GetRegistrationByEventAsync(ct)).Single(r => r.EventSettingsId == e2027.Id)
+            .RegistrationInfo.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Registration_AnEventCreatedLaterInALegacyOpenYear_StartsClosed()
     {
         var ct = TestContext.Current.CancellationToken;

@@ -264,23 +264,6 @@ internal sealed class CityPlanningService(
         offset is { } days ? days.ToString("+0;-0;0", CultureInfo.InvariantCulture) : "unset";
 
 
-    public async Task UpdateRegistrationInfoAsync(
-        string? registrationInfo, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var targetYear = await GetRegistrationTargetYearAsync(cancellationToken)
-            ?? throw new InvalidOperationException("No open season and no active event: registration info has no year to write to.");
-        var trimmed = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
-        var now = clock.GetCurrentInstant();
-        // Same ordering as MutateSettingsAndAuditAsync, but keyed to the registration target year.
-        var settings = await repo.GetOrCreateSettingsAsync(targetYear, now, cancellationToken);
-        await repo.MutateSettingsAsync(
-            targetYear, s => s.RegistrationInfo = trimmed, now, CancellationToken.None);
-        await auditLog.LogAsync(
-            CityPlanningAuditActions.CityPlanningRegistrationInfoUpdated, nameof(CityPlanningSettings), settings.Id,
-            trimmed is null ? $"Cleared the {targetYear} registration info" : $"Updated the {targetYear} registration info",
-            userId);
-    }
-
     /// <summary>The active event's year. Null when no event is active.</summary>
     private int? GetCurrentYear() =>
         settingsService.GetActiveEventSettings() is { Year: > 0 } activeEvent
@@ -500,22 +483,8 @@ internal sealed class CityPlanningService(
         return ToDto(settings, activeEvent?.Year == settingsYear ? activeEvent : null);
     }
 
-    public async Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default)
-    {
-        if (await GetRegistrationTargetYearAsync(cancellationToken) is not { } targetYear)
-            return null;
-
-        return (await repo.GetSettingsAsync(targetYear, cancellationToken))?.RegistrationInfo;
-    }
-
-    // The Register page targets the highest open season, else the active event's year.
-    private async Task<int?> GetRegistrationTargetYearAsync(CancellationToken ct)
-    {
-        var campSettings = await campService.GetSettingsAsync(ct);
-        return campSettings.OpenSeasons.Count > 0
-            ? campSettings.OpenSeasons.Max()
-            : GetCurrentYear();
-    }
+    public async Task<string?> GetLegacyRegistrationInfoAsync(int year, CancellationToken cancellationToken = default) =>
+        (await repo.GetSettingsAsync(year, cancellationToken))?.RegistrationInfo;
 
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {

@@ -52,16 +52,16 @@ internal sealed class CampController(
     }
 
     /// <summary>New camps register for the open event with the latest gate opening; null when none is open.</summary>
-    private async Task<CampEventRegistration?> PopulateRegisterSeasonYearAsync(CancellationToken ct = default)
+    private async Task<CampEventRegistration?> PopulateRegisterSeasonAsync(CancellationToken ct = default)
     {
         var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.FirstOrDefault();
         ViewData["SeasonYear"] = registrationEvent?.Year ?? 0;
+        ViewData["RegistrationInfo"] = registrationEvent is null
+            ? null
+            // The City Planning fallback goes in the retirement PR of camps.registration-info-from-city-planning.
+            : registrationEvent.RegistrationInfo
+              ?? await cityPlanningService.GetLegacyRegistrationInfoAsync(registrationEvent.Year, ct);
         return registrationEvent;
-    }
-
-    private async Task PopulateRegistrationInfoAsync(CancellationToken ct = default)
-    {
-        ViewData["RegistrationInfo"] = await cityPlanningService.GetRegistrationInfoAsync(ct);
     }
 
     [AllowAnonymous]
@@ -247,13 +247,11 @@ internal sealed class CampController(
     [HttpGet("Register")]
     public async Task<IActionResult> Register()
     {
-        if (await PopulateRegisterSeasonYearAsync(HttpContext.RequestAborted) is null)
+        if (await PopulateRegisterSeasonAsync(HttpContext.RequestAborted) is null)
         {
             SetError(campsLocalizer["Camps_Flash_RegistrationClosed"].Value);
             return RedirectToAction(nameof(Index));
         }
-
-        await PopulateRegistrationInfoAsync(HttpContext.RequestAborted);
         return View(new CampRegisterViewModel());
     }
 
@@ -267,8 +265,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
-            await PopulateRegisterSeasonYearAsync(ct);
-            await PopulateRegistrationInfoAsync(ct);
+            await PopulateRegisterSeasonAsync(ct);
             return View(model);
         }
 
@@ -313,8 +310,7 @@ internal sealed class CampController(
                 logger.LogWarning("Camp registration refused for user {UserId}, event {EventSettingsId}: {ErrorKey}",
                     user.Id, registrationEvent.EventSettingsId, key);
                 ModelState.AddModelError(string.Empty, campsLocalizer[key, model.Name].Value);
-                await PopulateRegisterSeasonYearAsync();
-                await PopulateRegistrationInfoAsync();
+                await PopulateRegisterSeasonAsync();
                 return View(model);
             }
             SetSuccess(campsLocalizer["Camps_Flash_RegistrationPendingReview"].Value);
@@ -325,8 +321,7 @@ internal sealed class CampController(
             logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in event {EventSettingsId}",
                 user.Id, registrationEvent.EventSettingsId);
             ModelState.AddModelError(string.Empty, campsLocalizer["Camps_Flash_RegistrationFailed"].Value);
-            await PopulateRegisterSeasonYearAsync();
-            await PopulateRegistrationInfoAsync();
+            await PopulateRegisterSeasonAsync();
             return View(model);
         }
     }

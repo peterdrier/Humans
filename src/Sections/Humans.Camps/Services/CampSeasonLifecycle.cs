@@ -301,8 +301,14 @@ internal sealed class CampSeasonLifecycle(
         return [.. (await settingsService.GetAllEventSettingsAsync(cancellationToken))
             .Where(e => e.Status != EventSettingsStatus.Deleted)
             .OrderByDescending(e => e.GateOpeningDate)
-            .Select(e => new CampEventRegistration(e.Id, e.EventName, e.Year,
-                rows.TryGetValue(e.Id, out var row) && row.RegistrationOpen))];
+            .Select(e =>
+            {
+                var row = rows.GetValueOrDefault(e.Id);
+                return new CampEventRegistration(e.Id, e.EventName, e.Year, row?.RegistrationOpen == true)
+                {
+                    RegistrationInfo = row?.RegistrationInfo,
+                };
+            })];
     }
 
     public Task OpenSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>

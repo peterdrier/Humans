@@ -31,6 +31,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     private readonly CampDetails _details;
     private readonly CampDeletion _deletion;
     private readonly ISettingsService _settingsService;
+    private readonly IAuditLogService _auditLog;
     private readonly IClock _clock;
 
     public CampService(
@@ -48,6 +49,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         ILogger<CampService> logger)
     {
         _repo = repo;
+        _auditLog = auditLog;
         _readProjection = new CampReadProjection(repo, settingsService, clock);
         _dataLifecycle = new CampDataLifecycle(repo, userService, systemTeamSync);
         _imageGallery = new CampImageGallery(repo, fileStorage, clock, auditLog, logger);
@@ -259,6 +261,25 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
 
     public Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         _seasons.CloseSeasonAsync(eventSettingsId, actorUserId, cancellationToken);
+
+    public async Task SetRegistrationInfoAsync(
+        Guid eventSettingsId, string? registrationInfo, Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var target = (await GetRegistrationByEventAsync(cancellationToken))
+            .FirstOrDefault(r => r.EventSettingsId == eventSettingsId)
+            ?? throw new InvalidOperationException($"Event {eventSettingsId} not found.");
+        var trimmed = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
+        // Complete the save and audit together even if the caller stops waiting.
+        if (await _repo.SetRegistrationInfoAsync(eventSettingsId, trimmed, CancellationToken.None))
+        {
+            await _auditLog.LogAsync(
+                CampsAuditActions.CampRegistrationInfoUpdated, nameof(CampEventSettings), eventSettingsId,
+                trimmed is null
+                    ? $"Cleared the registration info for {target.EventName}"
+                    : $"Updated the registration info for {target.EventName}",
+                actorUserId);
+        }
+    }
 
     public Task SetNameLockDateAsync(
         Guid eventSettingsId, LocalDate lockDate, Guid actorUserId, CancellationToken cancellationToken = default) =>

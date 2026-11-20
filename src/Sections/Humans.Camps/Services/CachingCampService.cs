@@ -361,6 +361,14 @@ internal sealed class CachingCampService(
             await InvalidateSettingsAsync(cancellationToken);
         });
 
+    public Task SetRegistrationInfoAsync(
+        Guid eventSettingsId, string? registrationInfo, Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(async () =>
+        {
+            await WithInnerAsync(inner => inner.SetRegistrationInfoAsync(eventSettingsId, registrationInfo, actorUserId, cancellationToken));
+            await InvalidateSettingsAsync(cancellationToken);
+        });
+
     public Task CloseSeasonAsync(Guid eventSettingsId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(async () =>
         {

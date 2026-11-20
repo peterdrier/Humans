@@ -435,7 +435,7 @@ public class CampControllerTests
             if (abandon && cancelAfterSettings) await request.CancelAsync();
             return Settings2026();
         });
-        _cityPlanning.GetRegistrationInfoAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        _cityPlanning.GetLegacyRegistrationInfoAsync(2026, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return "Registration instructions";
@@ -453,6 +453,20 @@ public class CampControllerTests
         abandon = true;
         if (!cancelAfterSettings) await request.CancelAsync();
         await load.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
+    public async Task Register_ShowsTheEventsOwnRegistrationInfo_OverCityPlanningsOldCopy()
+    {
+        var settings = Settings2026();
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings with
+        {
+            Events = [.. settings.Events.Select(e => e.Year == 2026 ? e with { RegistrationInfo = "From Camps" } : e)],
+        });
+        _cityPlanning.GetLegacyRegistrationInfoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns("From City Planning");
+
+        (await BuildController(Guid.NewGuid()).Register()).Should().BeOfType<ViewResult>()
+            .Which.ViewData["RegistrationInfo"].Should().Be("From Camps");
     }
 
     [HumansTheory]

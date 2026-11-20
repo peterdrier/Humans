@@ -29,7 +29,11 @@ public sealed record CampSettingsInfo(
 }
 
 /// <summary>A Settings event and whether camp registration is open for it.</summary>
-public sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen);
+public sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen)
+{
+    /// <summary>Markdown shown at the top of the Register page while this event takes registrations.</summary>
+    public string? RegistrationInfo { get; init; }
+}
 
 /// <summary>
 /// One per camp in the cached projection; year-keyed reads filter it rather than caching separately.
