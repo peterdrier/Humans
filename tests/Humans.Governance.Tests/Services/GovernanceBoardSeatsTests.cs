@@ -23,7 +23,17 @@ public sealed class GovernanceBoardSeatsTests
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IRoleAssignmentWrite _write = Substitute.For<IRoleAssignmentWrite>();
 
-    private GovernanceBoardSeats Seats() => new(_roles, _write, new FakeClock(Now));
+    private readonly IUserService _users = Substitute.For<IUserService>();
+
+    private GovernanceBoardSeats Seats() => new(_roles, _write, _users, new FakeClock(Now));
+
+    [HumansFact]
+    public async Task Add_refuses_an_unknown_account()
+    {
+        (await Seats().AddAsync(Guid.NewGuid(), Guid.NewGuid())).ErrorKey.Should().Be(GovernanceBoardSeats.InactiveAccount);
+
+        _write.ReceivedCalls().Should().BeEmpty();
+    }
 
     private static RoleAssignmentSummarySnapshot Row(Guid userId, string role, Instant? validTo = null) =>
         new(Guid.NewGuid(), userId, null, "Member", role, Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), null, Now);

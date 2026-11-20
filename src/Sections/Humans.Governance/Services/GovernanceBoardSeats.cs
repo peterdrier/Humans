@@ -1,6 +1,7 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
+using Humans.Users.Contracts;
 using NodaTime;
 
 namespace Humans.Governance.Services;
@@ -12,10 +13,16 @@ namespace Humans.Governance.Services;
 internal sealed class GovernanceBoardSeats(
     IRoleAssignmentService roles,
     IRoleAssignmentWrite roleWrite,
+    IUserService users,
     IClock clock) : IApplicationService
 {
+    public const string InactiveAccount = nameof(InactiveAccount);
+
+    /// <summary>Only an active account can take a seat; anything else fails with <see cref="InactiveAccount"/>.</summary>
     public async Task<RoleAssignmentResult> AddAsync(Guid userId, Guid actorUserId, CancellationToken ct = default) =>
-        await roleWrite.AssignRoleAsync(userId, RoleNames.Board, actorUserId, notes: null, ct);
+        await users.GetUserInfoAsync(userId, ct) is { IsActive: true } member
+            ? await roleWrite.AssignRoleAsync(member.Id, RoleNames.Board, actorUserId, notes: null, ct)
+            : new RoleAssignmentResult(false, InactiveAccount);
 
     public async Task<RoleAssignmentResult> EndAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {

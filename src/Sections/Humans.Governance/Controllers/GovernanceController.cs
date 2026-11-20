@@ -90,14 +90,15 @@ internal sealed class GovernanceController(
         var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null || !await MayManageBoardAsync())
             return Forbid();
-        if (await UserService.GetUserInfoAsync(userId, ct) is not { IsActive: true } member)
+        var result = await boardSeats.AddAsync(userId, actor.Id, ct);
+        if (string.Equals(result.ErrorKey, GovernanceBoardSeats.InactiveAccount, StringComparison.Ordinal))
             return NotFound();
 
-        var result = await boardSeats.AddAsync(member.Id, actor.Id, ct);
+        var member = await UserService.GetUserInfoAsync(userId, ct);
         if (result.Success)
-            SetSuccess(localizer["Governance_BoardMemberAdded", member.BurnerName].Value);
+            SetSuccess(localizer["Governance_BoardMemberAdded", member?.BurnerName ?? string.Empty].Value);
         else
-            SetError(localizer["Governance_BoardMemberAlreadyOn", member.BurnerName].Value);
+            SetError(localizer["Governance_BoardMemberAlreadyOn", member?.BurnerName ?? string.Empty].Value);
         return RedirectToAction(nameof(Body), new { body = nameof(GovernanceBody.Board) });
     }
 
