@@ -40,3 +40,19 @@ else
         <button type="submit" class="btn btn-primary mt-3">Save links</button>
     </form>
 }
+
+<h5 class="mt-5">Pleo booking</h5>
+<p class="text-muted">Every Pleo charge and refund is booked as a purchase on this Holded contact and paid from this Holded treasury (57200003). Leave either blank to switch booking off.</p>
+<form method="post" asp-controller="Finance" asp-action="SavePleoSettings">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label for="pleoContactId" class="form-label">Holded contact id ("Pleo card purchases")</label>
+            <input id="pleoContactId" name="contactId" class="form-control font-monospace" value="@Model.PleoContactId" maxlength="64" />
+        </div>
+        <div class="col-md-6">
+            <label for="pleoTreasuryId" class="form-label">Holded treasury id (Pleo, 57200003)</label>
+            <input id="pleoTreasuryId" name="treasuryId" class="form-control font-monospace" value="@Model.PleoTreasuryId" maxlength="64" />
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Save Pleo settings</button>
+</form>

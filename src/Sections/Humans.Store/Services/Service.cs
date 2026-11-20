@@ -3,6 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
+using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
@@ -27,6 +28,7 @@ internal sealed class Service(
     IStripeService stripeService,
     IHoldedService holded,
     IHoldedWrite holdedWrite,
+    IFinanceService finance,
     ILogger<Service> logger) : IApplicationService
 {
     private readonly StoreOrderAdministration orderAdministration = new(repo, audit, clock, logger);
@@ -91,9 +93,6 @@ internal sealed class Service(
 
     public Task<ProductAccountChoices> GetAccountChoicesAsync(CancellationToken ct = default) =>
         productCatalog.GetAccountChoicesAsync(ct);
-
-    public Task<IReadOnlyList<AccountChoice>> GetDepositAccountChoicesAsync(CancellationToken ct = default) =>
-        productCatalog.GetDepositAccountChoicesAsync(ct);
 
     public Task<StoreSettingsDto> GetSettingsAsync(CancellationToken ct = default) =>
         productCatalog.GetSettingsAsync(ct);
@@ -334,9 +333,10 @@ internal sealed class Service(
         string? notes,
         LocalDate? valueDate,
         Guid actorUserId,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        Guid? productId = null) =>
         orderAdministration.RecordAdminPaymentAsync(
-            orderId, method, amountEur, externalRef, notes, valueDate, actorUserId, orderReader, ct);
+            orderId, method, amountEur, externalRef, notes, valueDate, productId, actorUserId, orderReader, ct);
 
     /// <summary>
     /// Hard delete of a payment recorded in error. The row is gone for good, so the audit entry carries everything
@@ -365,11 +365,59 @@ internal sealed class Service(
     public Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default) =>
         stripePayments.HandleStripeCheckoutWebhookEventAsync(evt, ct);
 
-    /// <summary>Issues or recovers the billable order's invoice and freezes its prices.</summary>
+    /// <summary>Issues and approves the invoice, then books the order's money onto it in Holded at once. A refused
+    /// issuance books nothing; a booking that waits or stops leaves the invoice issued, with the reason on the order.</summary>
     [ExternalWrite]
-    public Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default) =>
-        new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, orderReader, logger)
+    public async Task<AdminMutationResult> IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var result = await new StoreInvoiceIssuer(repo, audit, clock, holded, holdedWrite, orderReader, logger)
             .IssueAsync(orderId, actorUserId, ct);
+        if (result.Succeeded) await Booking().BookAsync(orderId, actorUserId, CancellationToken.None);
+        return result;
+    }
+
+    /// <summary>What issuing would invoice, and why it may not yet; null for an order that can't be invoiced at all.</summary>
+    public async Task<StoreInvoicePlan?> GetInvoicePlanAsync(Guid orderId, CancellationToken ct = default)
+    {
+        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        if (order is null || order.TeamId is not null || order.State != OrderState.Open || order.Lines.Count == 0)
+            return null;
+        var totals = BalanceCalculator.Compute(order, await orderReader.LoadCurrentPricesAsync(order.Year, ct));
+        var products = await repo.GetProductsByIdsAsync(order.Lines.Select(l => l.ProductId).Distinct().ToList(), ct);
+        var names = order.Lines.Select(l => l.ProductId).Distinct().ToDictionary(
+            id => id, id => products.FirstOrDefault(p => p.Id == id)?.Name ?? "(unknown product)");
+        return StoreInvoicePlan.Build(order, totals, names);
+    }
+
+    /// <summary>The order's invoice and its booking state; null before issuance.</summary>
+    public async Task<Invoice?> GetInvoiceAsync(Guid orderId, CancellationToken ct = default) =>
+        (await repo.GetInvoicesForOrdersAsync([orderId], ct)).SingleOrDefault();
+
+    [ExternalWrite]
+    public Task<InvoiceBookingState> BookInvoiceAsync(Guid orderId, Guid actorUserId) =>
+        Booking().BookAsync(orderId, actorUserId, CancellationToken.None);
+
+    [ExternalWrite]
+    public async Task<AdminMutationResult> ResendInvoiceAsync(Guid orderId, Guid actorUserId)
+    {
+        var order = await repo.GetOrderByIdAsync(orderId, CancellationToken.None);
+        var invoice = await GetInvoiceAsync(orderId, CancellationToken.None);
+        if (order is null || invoice is null) return AdminMutationResult.Refused("This order has no invoice yet.");
+        return await Booking().SendAsync(order, invoice, actorUserId, CancellationToken.None);
+    }
+
+    /// <summary>The invoice's PDF, rendered by Holded on request; Humans keeps no copy.</summary>
+    public async Task<(byte[] Pdf, string DocNumber)?> GetInvoicePdfAsync(Guid orderId, CancellationToken ct = default)
+    {
+        var invoice = await GetInvoiceAsync(orderId, ct);
+        if (invoice is null) return null;
+        var pdf = await holded.GetSalesDocumentPdfAsync(
+            StoreInvoiceBooking.DocumentKind(invoice), invoice.HoldedDocId, ct);
+        return (pdf, invoice.HoldedDocNumber);
+    }
+
+    private StoreInvoiceBooking Booking() =>
+        new(repo, audit, clock, holded, holdedWrite, stripeService, finance, logger);
 
     public Task<SummaryDto> GetStoreSummaryAsync(int year, CancellationToken ct = default) =>
         orderReader.GetStoreSummaryAsync(year, ct);

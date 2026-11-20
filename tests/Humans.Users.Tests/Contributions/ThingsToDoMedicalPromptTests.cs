@@ -139,7 +139,7 @@ public class ThingsToDoMedicalPromptTests
         _volunteerIds.Add(userId);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId));
         _repo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { UserId = userId, BurnerName = "Test", MedicalConditions = medical });
+            .Returns(new Profile { UserId = userId, MedicalConditions = medical });
         _cantina.GetDietaryProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns(dietary is null && !declined
                 ? null
@@ -156,7 +156,7 @@ public class ThingsToDoMedicalPromptTests
         user: new User { Id = userId, DisplayName = "Test", PreferredLanguage = "en" },
         userEmails: [],
         externalLogins: [],
-        profile: new Profile { UserId = userId, BurnerName = "Test" },
+        profile: new Profile { UserId = userId },
         contactFields: [],
         profileLanguages: [],
         volunteerHistory: []);

@@ -176,10 +176,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         save.Succeeded.Should().BeTrue();
         save.ProfileId.Should().NotBeNull().And.NotBe(Guid.Empty);
-        var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().Be("Flame");
-        profile.FirstName.Should().Be("Jane");
-        profile.LastName.Should().Be("Doe");
+        (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
+        (user.BurnerName, user.FirstName, user.LastName).Should().Be(("Flame", "Jane", "Doe"));
     }
 
     /// <summary>
@@ -222,9 +221,9 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await _editor.SaveProfileAsync(userId, request, ct: Xunit.TestContext.Current.CancellationToken);
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().Be("NewName");
-        profile.FirstName.Should().Be("Updated");
         profile.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
+        var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
+        (user.BurnerName, user.FirstName).Should().Be(("NewName", "Updated"));
     }
 
     [HumansFact]
@@ -426,7 +425,8 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var existing = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct);
         var repo = Substitute.For<IUserRepository>();
         repo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
-        repo.UpdateAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>())
+        repo.UpdateAsync(
+                Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<UserNames?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         repo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Could not verify the committed picture"));
@@ -455,7 +455,8 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var failingRepo = Substitute.For<IUserRepository>();
         failingRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
         failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", (string?)null));
-        failingRepo.UpdateAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>())
+        failingRepo.UpdateAsync(
+                Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<UserNames?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
             failingRepo,
@@ -496,7 +497,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("User name save failed");
         var saved = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct);
-        saved.BurnerName.Should().Be("OldName");
         saved.ProfilePictureStorageKey.Should().BeNull();
         _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(PicKey(profileId, "image/png"));
         _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
@@ -961,9 +961,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "OldName",
-            FirstName = "Old",
-            LastName = "User",
             CreatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1),
             UpdatedAt = Clock.GetCurrentInstant() - Duration.FromDays(1)
         };

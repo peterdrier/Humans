@@ -10,7 +10,9 @@ Folder: `src/Sections/Humans.Finance/Services/` (namespace
 — a distinct context from `ExpensesDbContext` and from
 `HoldedDbContext`. Owns
 `HoldedCategoryMap`, `HoldedCreditorContacts`,
-`HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `StripeLedgerLinks` (`finance_stripe_ledger_links`). `HoldedExpenseDocs` and
+`HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `StripeLedgerLinks` (`finance_stripe_ledger_links`),
+`Settings` (`finance_settings`), `PleoBookingClaims` (`finance_pleo_booking_claims`), `PleoReceiptUploads`
+(`finance_pleo_receipt_uploads`). `HoldedExpenseDocs` and
 `HoldedDocSyncStates` are still mapped but unread and unwritten since the purchase-document mirror
 moved to Holded; dropping them is its own PR (`destructive-drops-need-approval`).
 `PaymentDetailsRepository` (`Data/PaymentDetailsRepository.cs`, implements
@@ -70,13 +72,15 @@ mirror through `IHoldedService` (`GetLedgerSyncedAtAsync`, `GetAccountBalancesAs
 
 ### PleoBooking (Scoped, section-internal) · PleoBookingState, PleoBookingRunner (Singleton)
 
-No repository, no tables, no cache. Orchestrates Pleo → Holded: reads
-`IPleoService.GetSettledEntriesAsync` / `GetWalletBalanceAsync`, the 57200003
-and 57200001 lines, balances and chart through `IHoldedService`, re-pulls 57200003
-with `IHoldedService.SyncAccountLedgerAsync` before and after a run, and posts
-through `IHoldedWrite.PostJournalEntryAsync`. `PleoBookingState` holds the
-current/last run; `PleoBookingRunner` runs `BookAsync` in its own scope off the
-request. Injected by `FinanceController` only.
+Orchestrates Pleo → Holded; no cache. Reads `IPleoService.GetSettledEntriesAsync` / `GetWalletBalanceAsync` /
+`GetReceiptFileAsync`, and from `IHoldedService` the 57200003, 57200001 and 629 ledger lines, balances, chart,
+contact and purchase-document mirrors; refreshes the purchase mirror and 57200003 (`SyncPurchaseDocumentsAsync`,
+`SyncAccountLedgerAsync`, `SyncLedgerAsync` for corrections) before and after a run. Writes through `IHoldedWrite`:
+`CreatePurchaseDocumentAsync`, `EnsurePurchaseDocumentApprovedAsync`, `PayPurchaseDocumentAsync`,
+`UploadPurchaseAttachmentAsync`, `EnsureExpenseAccountAsync` (only for its Holded id) and `PostJournalEntryAsync`. Reads
+and writes `finance_settings`, `finance_pleo_booking_claims` and `finance_pleo_receipt_uploads` through
+`IHoldedRepository`. `PleoBookingState` holds the current/last run; `PleoBookingRunner` runs `RunAsync` in its own
+scope off the request. Injected by `FinanceController` and `FinanceSettingsTabViewComponent`.
 
 ### SepaBookingRunner (Singleton, section-internal)
 

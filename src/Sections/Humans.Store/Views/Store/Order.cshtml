@@ -41,18 +41,23 @@
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-info text-dark fs-6">@Localizer.EnumDisplay(order.CounterpartyType)</span>
         <span class="badge bg-secondary fs-6">@Localizer.EnumDisplay(order.State)</span>
-        @if (Model.CanIssueInvoice)
+        @if (Model.CanIssueInvoice && Model.InvoicePlan is { } plan)
         {
-            <form asp-action="IssueInvoice" asp-route-id="@order.Id" method="post" class="mb-0">
+            var issueConfirm = Localizer["Store_IssueInvoiceConfirm"].Value
+                + (plan.DepositsChargedEur > 0m
+                    ? " " + Localizer["Store_IssueInvoiceDeposits", plan.DepositsChargedEur.ToEuro(), plan.DepositsReturnedEur.ToEuro(),
+                        plan.KeptDepositsEur.ToEuro(), StoreInvoicePlan.KeptDepositVatRate.ToString("0", System.Globalization.CultureInfo.InvariantCulture)].Value
+                    : string.Empty);
+            <form asp-action="IssueInvoice" asp-route-id="@order.Id" method="post" class="mb-0" data-submit-once>
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-sm btn-outline-primary"
-                        data-confirm="@Localizer["Store_IssueInvoiceConfirm"].Value">
+                <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@(plan.Refusal is not null)"
+                        data-confirm="@issueConfirm">
                     <i class="fa-solid fa-file-invoice me-1"></i> @Localizer["Store_IssueInvoice"]
                 </button>
             </form>
-            @if (order.BalanceEur != 0)
+            @if (plan.Refusal is { } reason)
             {
-                <small class="text-muted">@Localizer["Store_IssueInvoiceNeedsZeroBalance"]</small>
+                <small class="text-muted">@reason</small>
             }
         }
         @if (Model.CanDelete)
@@ -67,6 +72,49 @@
         }
     </div>
 </page-header>
+
+@if (Model.Invoice is { } invoice)
+{
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <a asp-action="InvoicePdf" asp-route-id="@order.Id" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-file-pdf me-1"></i> @Localizer["Store_DownloadInvoice", invoice.HoldedDocNumber]
+        </a>
+        @if (Model.CanRecordFinancePayment)
+        {
+            @* FinanceAdmin-only controls: plain strings. *@
+            var bookingState = invoice.BookingState ?? InvoiceBookingState.NotBooked;
+            <span class="badge @(bookingState == InvoiceBookingState.Booked ? "bg-success" : bookingState is InvoiceBookingState.Stopped or InvoiceBookingState.NeedsReview ? "bg-danger" : "bg-warning text-dark")">
+                @(bookingState switch
+                {
+                    InvoiceBookingState.Booked => "Booked in Holded",
+                    InvoiceBookingState.WaitingForFeed => "Waiting for Stripe feed",
+                    InvoiceBookingState.Stopped => "Booking stopped",
+                    InvoiceBookingState.NeedsReview => "Finish in Holded by hand",
+                    _ => "Not booked",
+                })
+            </span>
+            @if (bookingState is not (InvoiceBookingState.Booked or InvoiceBookingState.NeedsReview))
+            {
+                <form asp-action="BookInvoice" asp-route-id="@order.Id" method="post" class="mb-0" data-submit-once>
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-rotate me-1"></i> Retry</button>
+                </form>
+            }
+            <form asp-action="ResendInvoice" asp-route-id="@order.Id" method="post" class="mb-0" data-submit-once>
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-outline-secondary"
+                        data-confirm="Email this invoice to @(order.CounterpartyEmail ?? "the invoice contact") again?">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Resend invoice
+                </button>
+            </form>
+            <small class="text-muted">@(invoice.SentAt is { } sentAt ? $"Sent {sentAt.ToMonthDayTime()}" : "Not sent yet")</small>
+        }
+    </div>
+    @if (Model.CanRecordFinancePayment && invoice.BookingNote is { } bookingNote)
+    {
+        <div class="alert alert-warning py-2">@bookingNote</div>
+    }
+}
 
 
 @if (!isTeamOrder)
@@ -207,7 +255,16 @@ else
     @if (order.Payments.Any())
     {
         Func<OrderPaymentDto, IHtmlContent> methodCell =
-            @<text><span class="badge bg-secondary">@Localizer.EnumDisplay(item.Method)</span></text>;
+            @<text><span class="badge bg-secondary">@Localizer.EnumDisplay(item.Method)</span>
+                @if (item.ProductId is { } depositProductId && order.Lines.FirstOrDefault(l => l.ProductId == depositProductId) is { } depositLine)
+                {
+                    <span class="small">@depositLine.ProductName</span>
+                }
+                @if (item.Method == PaymentMethod.WriteOff && item.Notes is { } writeOffReason)
+                {
+                    <div class="small text-muted">@writeOffReason</div>
+                }
+            </text>;
         Func<OrderPaymentDto, IHtmlContent> statusCell = p => StatusBadge(p);
         @* Refund in Stripe is FinanceAdmin-only and Delete admin-only: plain strings. Humans never issues refunds;
            the person does it on stripe.com. *@
@@ -325,6 +382,19 @@ else
                             }
                         </select>
                     </div>
+                    @if (Model.DepositProducts.Count > 0)
+                    {
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1" for="recordProduct">@Localizer["Store_RecordPaymentProduct"]</label>
+                            <select id="recordProduct" name="productId" class="form-select form-select-sm">
+                                <option value=""></option>
+                                @foreach (var (productId, productName) in Model.DepositProducts)
+                                {
+                                    <option value="@productId">@productName</option>
+                                }
+                            </select>
+                        </div>
+                    }
                     <div class="col-6 col-md-2">
                         <label class="form-label small mb-1" for="recordAmount">@Localizer["Store_RecordPaymentAmount"]</label>
                         <input id="recordAmount" type="number" name="amountEur" class="form-control form-control-sm" min="0.01" step="0.01" required />
@@ -344,6 +414,33 @@ else
                     </div>
                     <div class="col-md-1">
                         <button type="submit" class="btn btn-sm btn-outline-primary w-100">@Localizer["Store_RecordPaymentSubmit"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (Model.CanRecordFinancePayment && order.State == OrderState.Open && order.BalanceEur > 0)
+    {
+        @* FinanceAdmin-only: plain strings. *@
+        <div class="card mb-4">
+            <div class="card-header">Write off shortfall</div>
+            <div class="card-body">
+                <form asp-action="RecordPayment" asp-route-id="@order.Id" method="post" class="row g-2 align-items-end" data-submit-once>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="method" value="@PaymentMethod.WriteOff" />
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small mb-1" for="writeOffAmount">Amount (EUR)</label>
+                        <input id="writeOffAmount" type="number" name="amountEur" class="form-control form-control-sm" min="0.01" step="0.01" required
+                               value="@order.BalanceEur.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small mb-1" for="writeOffReason">Reason</label>
+                        <input id="writeOffReason" type="text" name="notes" class="form-control form-control-sm" maxlength="1000" required />
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-outline-danger w-100"
+                                data-confirm="Write off this amount? It goes on the invoice as a discount.">Write off</button>
                     </div>
                 </form>
             </div>

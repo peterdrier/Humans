@@ -92,7 +92,7 @@ public sealed class ProfileShiftsViewComponentTests
         user: new User { Id = userId, DisplayName = "Viewer", PreferredLanguage = "en" },
         userEmails: [],
         externalLogins: [],
-        profile: new Profile { UserId = userId, BurnerName = "Viewer" },
+        profile: new Profile { UserId = userId },
         contactFields: [],
         profileLanguages: [],
         volunteerHistory: []);

@@ -1,3 +1,4 @@
+using Humans.Pleo.Contracts;
 using System.Text.Json;
 
 namespace Humans.Pleo.Services;
@@ -64,4 +65,3 @@ internal sealed record PleoBalanceWire(string Currency, long Current, long Avail
 
 internal sealed record PleoReceiptWire(string Id, string? MimeType, string? Url);
 
-internal sealed record PleoReceiptFile(byte[] Content, string ContentType);

@@ -69,8 +69,19 @@ internal sealed class PleoMirrorReader(
         return m.Entries
             .Where(e => e.SettledAt is { } s && s >= start && s < end)
             .Select(e => new PleoEntryInfo(e.Id, e.Family, e.SubFamily, e.Status, e.SettledAt!.Value, e.Currency,
-                e.Minors, e.AmountEur, e.MerchantName, e.EmployeeId, e.CategoryId, m.HoldedCodeOf(e), e.ReceiptCount > 0))
+                e.Minors, e.AmountEur, e.MerchantName, e.EmployeeId, e.CategoryId, m.HoldedCodeOf(e), e.ReceiptCount > 0,
+                e.Note, e.EmployeeId is null ? null : m.CardholderOf(e), ReceiptIdsOf(e)))
             .ToList();
+    }
+
+    /// <summary>From <see cref="PleoEntry.Raw"/>, the entry as the sweep read it: no column holds the ids.</summary>
+    internal static IReadOnlyList<string> ReceiptIdsOf(PleoEntry e)
+    {
+        if (e.ReceiptCount == 0) return [];
+        using var raw = JsonDocument.Parse(e.Raw);
+        return raw.RootElement.TryGetProperty("receiptIds", out var ids) && ids.ValueKind == JsonValueKind.Array
+            ? ids.EnumerateArray().Where(i => i.ValueKind == JsonValueKind.String).Select(i => i.GetString()!).ToList()
+            : [];
     }
 
     internal async Task<PleoWalletBalance?> GetWalletBalanceAsync(CancellationToken ct = default) =>

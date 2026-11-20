@@ -29,6 +29,19 @@ internal sealed class Service(
 
     public bool IsConfigured => client.IsConfigured;
 
+    public async Task<HoldedSalesDocumentDto> GetSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
+    {
+        var document = await client.GetSalesDocumentAsync(kind, documentId, ct);
+        if (document.ContactId is null) return document;
+        var contact = await client.GetContactAsync(document.ContactId, ct);
+        return document with { ContactAccountNum = contact.ClientAccountNum };
+    }
+
+    public Task<byte[]> GetSalesDocumentPdfAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
+        client.GetSalesDocumentPdfAsync(kind, documentId, ct);
+
     public async Task<IReadOnlyList<HoldedLedgerLineInfo>> GetLedgerLinesAsync(
         int accountNum, CancellationToken ct = default)
     {
@@ -148,6 +161,7 @@ internal sealed class Service(
             {
                 Id = m.Id,
                 Date = m.Date,
+                BookedAt = m.BookedAt,
                 Amount = m.Amount,
                 Description = m.Description,
                 Status = m.Status,

@@ -23,6 +23,24 @@ namespace Humans.Finance.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Humans.Finance.Domain.FinanceSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PleoHoldedContactId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PleoHoldedTreasuryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("finance_settings", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Finance.Domain.HoldedCategoryMap", b =>
                 {
                     b.Property<Guid>("Id")
@@ -274,6 +292,41 @@ namespace Humans.Finance.Data.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("finance_payment_details", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Finance.Domain.PleoBookingClaim", b =>
+                {
+                    b.Property<string>("PleoEntryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PleoEntryId");
+
+                    b.ToTable("finance_pleo_booking_claims", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Finance.Domain.PleoReceiptUpload", b =>
+                {
+                    b.Property<string>("PleoEntryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ReceiptId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PleoEntryId", "ReceiptId");
+
+                    b.ToTable("finance_pleo_receipt_uploads", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Finance.Domain.SepaPayoutFile", b =>
