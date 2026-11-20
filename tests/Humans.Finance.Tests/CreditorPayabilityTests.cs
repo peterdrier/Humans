@@ -68,7 +68,7 @@ public class CreditorPayabilityTests
             new() { UserId = UserId, HoldedContactId = "c1", SupplierAccountNum = Account, Source = CreditorContactSource.Auto },
         });
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
-        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocListItemDto>()));
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocInfo>()));
         _expenses.GetHoldedBookingsAsync(Arg.Any<CancellationToken>()).Returns(new List<ExpenseHoldedBooking>());
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
@@ -78,20 +78,8 @@ public class CreditorPayabilityTests
         new(Guid.NewGuid(), Guid.NewGuid(), "m929.xml", generatedAt ?? FixedNow, Guid.NewGuid(), UserId, Account, "c1",
             "Paul Vivien", "ES79****789", 4800m, bookedAt, null, null, null, null, null, null, WithdrawnAt: withdrawnAt);
 
-    private static HoldedPurchaseDocListItemDto Doc(string id, decimal total, decimal? pending = null) => new()
-    {
-        Id = id,
-        DocNumber = id,
-        ContactId = "c1",
-        ContactName = "Paul Vivien",
-        Description = "ER: Van hire",
-        Date = FixedNow,
-        Subtotal = total,
-        Tax = 0m,
-        Total = total,
-        PaymentsPending = pending ?? total,
-        IsDraft = false,
-    };
+    private static HoldedPurchaseDocInfo Doc(string id, decimal total, decimal? pending = null) => new HoldedPurchaseDocInfo(
+        id, id, "Paul Vivien", "c1", "ER: Van hire", FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, total, 0m, total, "eur", true, null, [], null, "", pending ?? total);
 
     private static ExpenseHoldedBooking Booking(string docId, Guid? lineId = null) =>
         new(ReportId, lineId ?? Guid.NewGuid(), UserId, "c1", docId, "ER: Van hire", $"Expense report {ReportId}", 4800m);

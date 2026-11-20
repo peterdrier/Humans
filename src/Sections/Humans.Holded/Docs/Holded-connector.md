@@ -122,8 +122,8 @@ usage) and `HoldedWrite`. Outbound: none — the connector owns no tables and no
 
 **Owning surface:** `IHoldedClient`, its impl `HoldedClient` and the `IHoldedCallLog` singleton are
 `internal` in `Humans.Holded/Services/`, so the compiler stops any other section from calling Holded. Connector-only DTOs and `HoldedClientOptions` are internal beside the client in `Services/`.
-The DTOs carried by `IHoldedService` and `IHoldedWrite`, the purchase-list shapes consumed by
-Finance, and typed exceptions remain public in `Contracts/`. All of it is registered by this
+The DTOs carried by `IHoldedService` and `IHoldedWrite` and typed exceptions remain public in
+`Contracts/`. Finance uses the purchase mirror directly, never a connector list shape. All of it is registered by this
 section's `Section.cs`.
 
 `HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over

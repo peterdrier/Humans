@@ -268,6 +268,9 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- Creditor open-document counts, SEPA payment selection and duplicate review consume Holded's `HoldedPurchaseDocInfo` mirror directly. Approval and nullable payment state are preserved; FIFO uses the mirrored accounting date and document id. No conversion back to connector payloads or midnight instants occurs.
+
+
 - Handled Holded read failures for creditor/duplicate planning and the SEPA page or sweep retain Warning logs with their reason, without exception stacks. Existing unavailable-data, omitted-balance and no-write fallbacks remain. Handled SEPA reconciliation refusals, chunk retries and verification failures also retain Warning and their reasons without exception stacks; an unverified reconciliation stays pending.
 
 - Provisioning, SEPA generation/booking/withdrawal (including whole-file cancellation), duplicate removal, creditor binding changes and IBAN reveals resolve the acting account through Users before calling the service. Merged sessions use the surviving actor ID; missing accounts retain the action's Challenge/Forbid response and perform no operation. Account reads observe request cancellation, while each service call retains its existing cancellation boundary.

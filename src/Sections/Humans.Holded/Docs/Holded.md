@@ -278,7 +278,7 @@ it wrote.
 ## Architecture
 
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`, `HoldedContactMirror`, `HoldedBankMovementMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the DTOs both carry. The connector itself, `IHoldedClient`, its options and connector-only response DTOs are internal in `Services/` (see [`Holded-connector.md`](Holded-connector.md))
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`, `HoldedContactMirror`, `HoldedBankMovementMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the DTOs both carry. Purchase-list and line DTOs stay inside the connector; Finance consumes `HoldedPurchaseDocInfo` directly. The connector itself, `IHoldedClient`, its options and connector-only response DTOs are internal in `Services/` (see [`Holded-connector.md`](Holded-connector.md))
 
 **Inside:** `Service` serves the reads and the admin screen and forwards each sync to `HoldedMirrorSync`,
 which owns the gates, replacement, reconciliation, failure state and call-log drain. `HoldedAccountReader`

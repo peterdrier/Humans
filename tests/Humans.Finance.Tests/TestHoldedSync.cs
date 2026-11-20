@@ -10,7 +10,7 @@ public interface IHoldedFeed
 {
     bool IsConfigured { get; }
 
-    Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<HoldedPurchaseDocInfo>> ListPurchaseDocumentsAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<HoldedLedgerLineInfo>> ListLedgerEntriesAsync(
         LocalDate from, LocalDate to, int? accountNum = null, CancellationToken ct = default);

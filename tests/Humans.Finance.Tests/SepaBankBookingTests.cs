@@ -2600,21 +2600,10 @@ public class SepaBankBookingTests
                 Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(lines.ToList());
 
-    private static HoldedPurchaseDocListItemDto Doc(
+    private static HoldedPurchaseDocInfo Doc(
         string id, decimal pending, int day, string contactId = "c1") =>
-        new()
-        {
-            Id = id,
-            DocNumber = id.ToUpperInvariant(),
-            ContactId = contactId,
-            ContactName = "Ana Ruiz",
-            Date = Instant.FromUtc(2026, 4, 1, 0, 0) + Duration.FromDays(day - 1),
-            Subtotal = pending,
-            Tax = 0m,
-            Total = pending,
-            PaymentsPending = pending,
-            IsDraft = false,
-        };
+        new HoldedPurchaseDocInfo(
+            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, 1, 0, 0) + Duration.FromDays(day - 1)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, 0m, pending, "eur", true, null, [], null, "", pending);
 
     /// <summary>Document-payment lines on the creditor account dated the bank line, in the ledger mirror.</summary>
     private void SeedPaymentLines(params decimal[] amounts) =>
@@ -2623,6 +2612,6 @@ public class SepaBankBookingTests
                 100 + i, 1, Account, LineDate.AtMidnight().InZoneLeniently(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant(), "payment", null, a, 0m))
             .ToArray());
 
-    private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
+    private void SeedOpenDocs(params HoldedPurchaseDocInfo[] docs) =>
         _feed.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
 }

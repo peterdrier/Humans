@@ -93,7 +93,7 @@ Structural facts the layout should make obvious:
 - **Connector-only DTOs do not belong in `Contracts/`.** The usage, expense-account, purchase
   detail, account, ledger-line and payment-detail DTOs and `HoldedClientOptions` are internal
   in `Services/`. Finance tests seed account and ledger mirrors through the public read models.
-  Purchase-list and purchase-line DTOs remain public because Finance consumes them.
+  Purchase-list and purchase-line DTOs are internal too; Finance consumes `HoldedPurchaseDocInfo` directly.
 - **`Models/HoldedAdminModels.cs` stays internal.** One escaped type makes the screen a contract.
 
 ## 4. Invariants

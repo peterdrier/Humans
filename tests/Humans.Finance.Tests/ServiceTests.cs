@@ -1285,7 +1285,7 @@ public class HoldedFinanceServiceTests
             new() { UserId = cat, HoldedContactId = "c-cat", SupplierAccountNum = 40000006, Source = CreditorContactSource.Manual },
             new() { UserId = Guid.NewGuid(), HoldedContactId = "c-cat2", SupplierAccountNum = 40000006, Source = CreditorContactSource.Auto },
         });
-        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocListItemDto>
+        _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(TestPurchaseMirror.Of(new List<HoldedPurchaseDocInfo>
         {
             OpenDoc("a1", "c-ana", 10m), OpenDoc("a2", "c-ana", 20m),
             OpenDoc("a3", "c-ana", 0m),                   // paid off
@@ -1303,19 +1303,8 @@ public class HoldedFinanceServiceTests
         rows.Single(r => r.SupplierAccountNum == 40000007).OpenDocumentCount.Should().BeNull("unbound");
         await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
 
-        static HoldedPurchaseDocListItemDto OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new()
-        {
-            Id = id,
-            DocNumber = id,
-            ContactId = contactId,
-            ContactName = "x",
-            Date = FixedNow,
-            Subtotal = 10m,
-            Tax = 0m,
-            Total = 10m,
-            PaymentsPending = pending,
-            IsDraft = draft,
-        };
+        static HoldedPurchaseDocInfo OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new HoldedPurchaseDocInfo(
+            id, id, "x", contactId, null, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, 10m, 0m, 10m, "eur", draft == false, null, [], null, "", pending);
     }
 
     [HumansFact]
@@ -2884,23 +2873,12 @@ public class HoldedFinanceServiceTests
     }
 
     /// <summary>An approved Holded purchase document on contact "c1" with something still owed.</summary>
-    private static HoldedPurchaseDocListItemDto Doc(
+    private static HoldedPurchaseDocInfo Doc(
         string id, decimal pending, int dayOfMonth, string contactId = "c1", bool? draft = false) =>
-        new()
-        {
-            Id = id,
-            DocNumber = id.ToUpperInvariant(),
-            ContactId = contactId,
-            ContactName = "Ana Ruiz",
-            Date = Instant.FromUtc(2026, 4, dayOfMonth, 0, 0),
-            Subtotal = pending,
-            Tax = 0m,
-            Total = pending,
-            PaymentsPending = pending,
-            IsDraft = draft,
-        };
+        new HoldedPurchaseDocInfo(
+            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, dayOfMonth, 0, 0)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, 0m, pending, "eur", draft == false, null, [], null, "", pending);
 
-    private void SeedOpenDocs(params HoldedPurchaseDocListItemDto[] docs) =>
+    private void SeedOpenDocs(params HoldedPurchaseDocInfo[] docs) =>
         _feed.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
 
     private void SeedPaymentIds(params string[] ids)

@@ -41,11 +41,8 @@ internal sealed class HoldedDuplicateReview(
         var mirror = await holded.GetPurchaseDocumentsAsync(ct);
         if (mirror.LastSyncAt is null)
             return new HoldedDuplicatesVm([], [], PurchaseMirrorUnavailable);
-        var docs = mirror.Docs.Select(ToListItem).ToList();
-        var notesById = mirror.Docs.ToDictionary(d => d.Id, d => d.Notes, StringComparer.Ordinal);
-        var paymentsUnknown = mirror.Docs.Where(d => d.PaymentsPending is null).Select(d => d.Id)
-            .ToHashSet(StringComparer.Ordinal);
-        string? Refusal(HoldedPurchaseDocListItemDto d) => paymentsUnknown.Contains(d.Id)
+        var docs = mirror.Docs;
+        string? Refusal(HoldedPurchaseDocInfo d) => d.PaymentsPending is null
             ? "its payments are not mirrored yet — sync Holded and look again"
             : DeleteRefusal(d);
         // Without it the same-named sibling contacts go unseen, so the plan would look complete while missing them.
@@ -62,14 +59,14 @@ internal sealed class HoldedDuplicateReview(
         var verified = HoldedDuplicateMatcher.Find(bookings, docs, contactsByUser,
             (b, d) => HoldedDuplicateMatcher.Matches(b, d)
                       && Refusal(d) is null
-                      && notesById.GetValueOrDefault(d.Id) is { } notes
+                      && d.Notes is { } notes
                       && string.Equals(notes, b.Notes, StringComparison.Ordinal));
         var deletableIds = verified.SelectMany(m => m.Duplicates.Select(d => d.Id)).ToHashSet(StringComparer.Ordinal);
         var byRef = (IEqualityComparer<ExpenseHoldedBooking>)ReferenceEqualityComparer.Instance;
         var candidateByBooking = candidates.ToDictionary(m => m.Booking, byRef);
         var verifiedByBooking = verified.ToDictionary(m => m.Booking, byRef);
 
-        var matched = new List<(ExpenseHoldedBooking Booking, HoldedPurchaseDocListItemDto Kept, HoldedDuplicateLine Line)>();
+        var matched = new List<(ExpenseHoldedBooking Booking, HoldedPurchaseDocInfo Kept, HoldedDuplicateLine Line)>();
         foreach (var linked in bookings)
         {
             var named = candidateByBooking.GetValueOrDefault(linked);
@@ -79,7 +76,7 @@ internal sealed class HoldedDuplicateReview(
             var refused = (named?.Duplicates ?? [])
                 .Where(d => !deletableIds.Contains(d.Id))
                 .Select(d => new HoldedDuplicateRefusal(d.Id, d.Total, Refusal(d)
-                    ?? (notesById.GetValueOrDefault(d.Id) is null
+                    ?? (d.Notes is null
                         ? "its notes are not mirrored yet — the next sync reads them"
                         : "notes do not match the push — judge it by hand")))
                 .ToList();
@@ -129,12 +126,12 @@ internal sealed class HoldedDuplicateReview(
 
     /// <summary>Holded refuses to delete a document carrying a payment (a reconciled bank line counts), and a draft
     /// reports no <c>payments_pending</c>, so it reads as paid too.</summary>
-    private static string? DeleteRefusal(HoldedPurchaseDocListItemDto d)
+    private static string? DeleteRefusal(HoldedPurchaseDocInfo d)
     {
         if (d.PaymentsPending >= d.Total) return null;
-        return d.IsDraft == true
+        return !d.IsApproved
             ? "still a draft in Holded — delete it by hand"
-            : $"has a payment on it ({Euros(d.Total - d.PaymentsPending)} of {Euros(d.Total)} paid) — settle it in Holded by hand";
+            : $"has a payment on it ({Euros(d.Total - d.PaymentsPending.GetValueOrDefault())} of {Euros(d.Total)} paid) — settle it in Holded by hand";
     }
 
     internal async Task<HoldedDuplicateApplyResult> RemoveHoldedDuplicatesAsync(Guid actorUserId)
