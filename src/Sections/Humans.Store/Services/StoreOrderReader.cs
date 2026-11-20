@@ -160,7 +160,7 @@ internal sealed class StoreOrderReader(
 
         var payments = o.Payments
             .Select(p => new OrderPaymentDto(
-                p.Id, p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes))
+                p.Id, p.AmountEur, p.Method, p.Status, p.StripePaymentIntentId, p.ExternalRef, p.ReceivedAt, p.Notes, p.ProductId))
             .ToList();
 
         var counterpartyType = o.TeamId is not null
@@ -184,7 +184,7 @@ internal sealed class StoreOrderReader(
             balance.LinesSubtotalEur, balance.VatTotalEur, balance.DepositTotalEur,
             balance.PaymentsTotalEur, balance.BalanceEur,
             o.CreatedAt)
-        { HasCheckoutAttempt = o.HasCheckoutAttempt };
+        { HasCheckoutAttempt = o.HasCheckoutAttempt, TotalDueEur = balance.TotalDueEur };
     }
 
     public async Task<string> ResolveCounterpartyDisplayNameAsync(Order o, CancellationToken ct)

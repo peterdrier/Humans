@@ -50,6 +50,10 @@ public interface IFinanceService : IApplicationService
     /// <summary>Active and archived rows: what each budget category is actually booked to today.</summary>
     Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default);
 
+    /// <summary>The Holded treasury account of the association's bank (Sabadell), the one SEPA payouts leave from;
+    /// null when unset. Other sections book their bank money on it.</summary>
+    string? BankTreasuryAccountId { get; }
+
     /// <summary>The rows <c>/Finance/Sepa</c> renders, without the candidate-line halves that need the bank
     /// feed. <c>UnavailableReason</c> is set when missing configuration turns booking off for the whole screen.</summary>
     Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>

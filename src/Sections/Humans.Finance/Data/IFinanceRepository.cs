@@ -68,4 +68,21 @@ internal interface IFinanceRepository : IRepository
 
     /// <summary>One save: the stored links become exactly <paramref name="links"/>.</summary>
     Task ReplaceStripeLedgerLinksAsync(IReadOnlyDictionary<int, string> links, CancellationToken ct = default);
+
+    /// <summary>The settings row, or defaults (all unset) before the first save.</summary>
+    Task<FinanceSettings> GetSettingsAsync(CancellationToken ct = default);
+
+    Task SaveSettingsAsync(FinanceSettings settings, CancellationToken ct = default);
+
+    Task<IReadOnlySet<string>> GetPleoBookingClaimsAsync(CancellationToken ct = default);
+
+    /// <summary>False, nothing written, when the entry is already claimed.</summary>
+    Task<bool> TryClaimPleoBookingAsync(string pleoEntryId, Instant at, CancellationToken ct = default);
+
+    /// <summary>For a create Holded refused outright: nothing was created, so the entry may be tried again.</summary>
+    Task ReleasePleoBookingClaimAsync(string pleoEntryId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<PleoReceiptUpload>> GetPleoReceiptUploadsAsync(CancellationToken ct = default);
+
+    Task AddPleoReceiptUploadAsync(PleoReceiptUpload row, CancellationToken ct = default);
 }

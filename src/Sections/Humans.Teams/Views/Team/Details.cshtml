@@ -86,7 +86,7 @@
                             @Localizer["Teams_TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToDate()
                             @if (Model.PageContentUpdatedByUserId is { } editorId)
                             {
-                                <text> &mdash; </text><vc:human user-id="@editorId" link="None" />
+                                <text> &mdash; </text><vc:human user-id="@editorId" />
                             }
                         </small>
                     }
@@ -173,7 +173,6 @@
                                     {
                                         <vc:human user-id="@member.UserId"
                                                   layout="Card" size="128"
-                                                  link="None"
                                                   popover-public="true"
                                                   css-class="border border-primary border-3"
                                                   bg-color="bg-primary" />

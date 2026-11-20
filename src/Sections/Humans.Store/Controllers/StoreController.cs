@@ -15,6 +15,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 
 using Humans.Users.Contracts;
+using Humans.Holded.Contracts;
 
 namespace Humans.Store.Controllers;
 
@@ -91,14 +92,15 @@ internal sealed class StoreController(
             canDeletePayment,
             catalog.OrderBy(p => p.Name, StringComparer.Ordinal).ToList(),
             removableLineIds);
+        if (model.CanIssueInvoice)
+            model.InvoicePlan = await storeService.GetInvoicePlanAsync(order.Id, ct);
+        if (order.IssuedInvoiceId is not null)
+            model.Invoice = await storeService.GetInvoiceAsync(order.Id, ct);
         if (canRecordFinancePayment)
         {
-            model.StripeRefundLinks = order.Payments
+            model.StripeRefundUrls = order.Payments
                 .Where(p => p.Method == PaymentMethod.Stripe && p.Status == PaymentStatus.Paid && p.StripePaymentIntentId is not null)
-                .OrderBy(p => p.ReceivedAt)
-                .Select(p => new StripeRefundLink(p.StripePaymentIntentId!, p.AmountEur,
-                    storeService.StripePaymentDashboardUrl(p.StripePaymentIntentId!)))
-                .ToList();
+                .ToDictionary(p => p.Id, p => storeService.StripePaymentDashboardUrl(p.StripePaymentIntentId!));
         }
         return View(model);
     }
@@ -200,6 +202,12 @@ internal sealed class StoreController(
             if (result.Succeeded) SetSuccess(localizer["Store_InvoiceIssued"].Value);
             else SetError(result.Refusal ?? localizer["Store_InvoiceFailed"].Value);
         }
+        catch (HoldedPermanentException ex) when (ex.StatusCode == 403)
+        {
+            // The key lacks a scope: the message names it and where to add it.
+            logger.LogWarning("Holded refused invoice issuance for order {OrderId}: {Message}", id, ex.Message);
+            SetError(ex.Message);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Holded invoice issuance failed for order {OrderId}", id);
@@ -208,23 +216,71 @@ internal sealed class StoreController(
         return RedirectToAction(nameof(Order), new { id });
     }
 
+    /// <summary>Books the invoiced order's money in Holded again: after "waiting for the feed", or after a stop a person
+    /// has looked at. FinanceAdmin-only control: plain strings.</summary>
+    [HttpPost("Order/{id:guid}/BookInvoice")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookInvoice(Guid id)
+    {
+        var (errorResult, user, order) = await RequireOrderAsync(id, HttpContext.RequestAborted);
+        if (errorResult is not null) return errorResult;
+        if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
+            return Forbid();
+        if (order.IssuedInvoiceId is null) return NotFound();
+
+        var state = await storeService.BookInvoiceAsync(id, user.Id);
+        if (state == InvoiceBookingState.Booked) SetSuccess("The invoice is booked in Holded.");
+        else SetError("The invoice is not booked yet; see the invoice box for why.");
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    /// <summary>Holded emails the invoice to the camp again. FinanceAdmin-only control: plain strings.</summary>
+    [HttpPost("Order/{id:guid}/ResendInvoice")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResendInvoice(Guid id)
+    {
+        var (errorResult, user, order) = await RequireOrderAsync(id, HttpContext.RequestAborted);
+        if (errorResult is not null) return errorResult;
+        if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
+            return Forbid();
+
+        var result = await storeService.ResendInvoiceAsync(id, user.Id);
+        if (result.Succeeded) SetSuccess("The invoice was sent again.");
+        else SetError(result.Refusal!);
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    /// <summary>Anyone who can see the order can download its invoice; Holded renders it on request.</summary>
+    [HttpGet("Order/{id:guid}/Invoice")]
+    public async Task<IActionResult> InvoicePdf(Guid id, CancellationToken ct)
+    {
+        var (errorResult, _, order) = await RequireOrderAsync(id, ct);
+        if (errorResult is not null) return errorResult;
+        if (!(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.View)).Succeeded)
+            return Forbid();
+
+        var pdf = await storeService.GetInvoicePdfAsync(id, ct);
+        if (pdf is not { } file) return NotFound();
+        return File(file.Pdf, "application/pdf", $"{file.DocNumber}.pdf");
+    }
+
     [HttpPost("Order/{id:guid}/RecordPayment")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordPayment(
         Guid id, PaymentMethod method, decimal amountEur, string? externalRef, string? notes, LocalDate? valueDate,
-        CancellationToken ct)
+        Guid? productId, CancellationToken ct)
     {
         var (errorResult, user, order) = await RequireOrderAsync(id, ct);
         if (errorResult is not null) return errorResult;
 
         var auth = await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordPayment);
         if (!auth.Succeeded) return Forbid();
-        if (method is PaymentMethod.Refund or PaymentMethod.BankTransfer
+        if (method is PaymentMethod.Refund or PaymentMethod.BankTransfer or PaymentMethod.WriteOff
             && !(await authService.AuthorizeAsync(User, order, OrderOperationRequirement.RecordFinancePayment)).Succeeded)
             return Forbid();
 
         var result = await storeService.RecordAdminPaymentAsync(
-            id, method, amountEur, externalRef, notes, valueDate, user.Id, CancellationToken.None);
+            id, method, amountEur, externalRef, notes, valueDate, user.Id, CancellationToken.None, productId);
         if (result.Succeeded) SetSuccess(localizer["Store_PaymentRecorded"].Value);
         else SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });

@@ -38,7 +38,7 @@ public class HumanNameLocalizationTests
             },
         };
 
-        var result = (ViewViewComponentResult)await component.InvokeAsync(userId, link: HumanLink.None);
+        var result = (ViewViewComponentResult)await component.InvokeAsync(userId, link: HumanLink.InsideControl);
 
         ((HumanViewModel)result.ViewData!.Model!).ProfilePictureUrl.Should().Be(fallbackPictureUrl);
     }
@@ -65,15 +65,15 @@ public class HumanNameLocalizationTests
 
         foreach (var id in new[] { Guid.Empty, userId })
         {
-            var result = (ViewViewComponentResult)await component.InvokeAsync(id, link: HumanLink.None);
+            var result = (ViewViewComponentResult)await component.InvokeAsync(id, link: HumanLink.InsideControl);
             ((HumanViewModel)result.ViewData!.Model!).DisplayName.Should().Be(expected);
         }
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(nameless);
-        var emptyName = (ViewViewComponentResult)await component.InvokeAsync(userId, link: HumanLink.None);
+        var emptyName = (ViewViewComponentResult)await component.InvokeAsync(userId, link: HumanLink.InsideControl);
         ((HumanViewModel)emptyName.ViewData!.Model!).DisplayName.Should().Be(expected);
 
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(nameless with { BurnerName = "Unknown" });
-        var realName = (ViewViewComponentResult)await component.InvokeAsync(userId, link: HumanLink.None);
+        var realName = (ViewViewComponentResult)await component.InvokeAsync(userId, link: HumanLink.InsideControl);
         ((HumanViewModel)realName.ViewData!.Model!).DisplayName.Should().Be("Unknown");
     }
 }

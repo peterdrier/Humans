@@ -65,7 +65,7 @@ Repository: `IStoreRepository`.
 | Table | R/W |
 |-------|-----|
 | store_products | R (`GetProductsByIdsAsync` — includes inactive products; each line's Holded revenue account) |
-| store_settings | R (`GetSettingsAsync` — deposit liability account, simplified invoice limit) |
+| store_settings | R (`GetSettingsAsync` — Stripe gateway treasury, simplified invoice limit) |
 | store_invoices | W (`SaveIssuedInvoiceAsync`) |
 | store_orders | W (`SaveIssuedInvoiceAsync` — frozen `InvoiceIssued` row) |
 | store_order_lines | W (repriced line snapshots, same save) |
@@ -73,7 +73,7 @@ Repository: `IStoreRepository`.
 Cross-section calls via `IHoldedService` / `IHoldedWrite` (the section's only outbound Holded write) and
 `IAuditLogService`, plus `IClock` and the shared
 `StoreOrderReader`. Issuance reprices the order's line snapshots from the live catalog,
-builds one Holded line per order line (plus a tax-0 line per deposit), creates **and
+builds one Holded line per order line (plus one 21% line per product's kept deposit), creates **and
 approves** the document, then writes `store_invoices` and the frozen `store_orders` row in
 a single `SaveIssuedInvoiceAsync` — one `SaveChanges`, because an order must never be
 `InvoiceIssued` without its invoice row. No `IMemoryCache`.

@@ -21,6 +21,7 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
             contact_name = input.ContactName,
             date = LocalDatePattern.Iso.Format(input.Date.InZone(MadridZone).Date),
             description = input.Description,
+            number = input.Number,
             notes = input.Notes,
             // No tags on the write side: items[].account books the doc to the right department directly.
             items = input.Lines.Select(l => new
@@ -29,6 +30,7 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
                 units = 1,
                 price = l.Amount,
                 account = l.AccountId,
+                taxes = l.Taxes,
             })
         };
 
@@ -109,34 +111,6 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         }
     }
 
-    /// <summary>Shape: <c>{"id","amount":"17.00","date":"2026-10-16","bank_id"}</c>. Absent or non-array reads as no
-    /// payments. An unreadable entry is dropped rather than failing the document: it could never match in
-    /// <see cref="PayPurchaseDocumentAsync"/>, which then returns the <c>unconfirmed:</c> sentinel, as intended.</summary>
-    private static IReadOnlyList<HoldedPaymentDetailDto> ReadPaymentsDetail(JsonNode? node)
-    {
-        if (node is not JsonArray arr) return [];
-        var list = new List<HoldedPaymentDetailDto>();
-        foreach (var item in arr)
-        {
-            try
-            {
-                var id = Prop(item, "id")?.GetValue<string>();
-                if (string.IsNullOrWhiteSpace(id)) continue;
-                list.Add(new HoldedPaymentDetailDto(
-                    id,
-                    ReadDecimalV2(Prop(item, "amount")),
-                    LocalDatePattern.Iso.Parse(Prop(item, "date")?.GetValue<string>() ?? "").Value,
-                    Prop(item, "bank_id")?.GetValue<string>()));
-            }
-            catch (Exception ex) when (ex is JsonException or InvalidOperationException
-                or FormatException or OverflowException or UnparsableValueException)
-            {
-                // A GUI-entered payment in an unexpected shape must not fail the document.
-            }
-        }
-        return list;
-    }
-
     public async Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
     {
         // A bodyless POST 411s through Holded's proxy without an explicit Content-Length; empty content sets one.
@@ -162,75 +136,13 @@ internal sealed class HoldedPurchasesClient(HoldedTransport transport, ILogger<H
         using var resp = await transport.SendAsync(req, ct);
     }
 
-    public async Task<string> PayPurchaseDocumentAsync(
+    public Task<string> PayPurchaseDocumentAsync(
         string documentId, decimal amount, string? treasuryId, LocalDate date, string? description,
-        CancellationToken ct = default)
-    {
-        // The POST returns no payment id, so diff payments_detail before and after; a failed before-read throws
-        // with nothing posted. Not GET /payments: it stamps a payment dated D as (D-1)T22:00Z.
-        var before = (await GetPurchaseDocumentAsync(documentId, ct)).Payments;
-
-        // v2 takes the amount as a decimal *string*; a JSON number is rejected.
-        var payload = new
-        {
-            amount = amount.ToString("F2", CultureInfo.InvariantCulture),
-            treasury_id = string.IsNullOrWhiteSpace(treasuryId) ? null : treasuryId,
-            date = LocalDatePattern.Iso.Format(date),
-            description,
-        };
-
-        using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/purchases/{documentId}/payments")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
-
-        // A 5xx can arrive after Holded saved the payment (production, 2026-11-05): only the document says which.
-        HoldedTransientException? refused = null;
-        try
-        {
-            using var resp = await transport.SendAsync(req, ct);
-        }
-        catch (HoldedTransientException ex)
-        {
-            refused = ex;
-        }
-
-        // From here the payment may be posted: throwing would read as "not paid" and the caller would pay again. The
-        // sentinel names the document a human has to check.
-        IReadOnlyList<HoldedPaymentDetailDto> after;
-        try
-        {
-            after = (await GetPurchaseDocumentAsync(documentId, ct)).Payments;
-        }
-        catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
-        {
-            logger.LogWarning(ex,
-                "Holded {Outcome} a payment on purchase document {DocumentId} but the document could not be re-read for its id; recording it as unconfirmed.",
-                refused is null ? "accepted" : "answered " + refused.Message + " to", documentId);
-            return UnconfirmedPaymentRefPrefix + documentId;
-        }
-
-        var known = before.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
-        var matches = after
-            .Where(p => !known.Contains(p.Id)
-                        && p.Amount == amount
-                        && p.Date == date
-                        && (string.IsNullOrWhiteSpace(treasuryId)
-                            || string.Equals(p.BankId, treasuryId, StringComparison.Ordinal)))
-            .ToList();
-        if (matches.Count == 1) return matches[0].Id;
-        // Refused and nothing new on the document: it was not posted.
-        if (refused is not null && after.All(p => known.Contains(p.Id)))
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(refused);
-
-        logger.LogWarning(
-            "Holded accepted a payment of {Amount} dated {Date} on purchase document {DocumentId} but payments_detail shows {Count} new matching entries (before: [{Before}], after: [{After}]); recording it as unconfirmed.",
-            amount, date, documentId, matches.Count,
-            string.Join(", ", before.Select(Describe)), string.Join(", ", after.Select(Describe)));
-        return UnconfirmedPaymentRefPrefix + documentId;
-
-        static string Describe(HoldedPaymentDetailDto p) =>
-            $"{p.Id} {p.Amount.ToString("F2", CultureInfo.InvariantCulture)} {LocalDatePattern.Iso.Format(p.Date)} {p.BankId}";
-    }
+        CancellationToken ct = default) =>
+        HoldedDocumentPayment.PayAsync(
+            transport, logger, "purchases", documentId,
+            async c => (await GetPurchaseDocumentAsync(documentId, c)).Payments,
+            amount, treasuryId, date, description, ct);
 
     public async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> ListPurchaseDocumentsAsync(
         CancellationToken ct = default)

@@ -67,7 +67,7 @@
         .Template(Localizer["Surveys_Admin_Index_ColumnTitle"], titleCell, sortBy: s => s.Title);
     if (Model.SeesEverySurvey)
     {
-        surveysBuilder.Column(Localizer["Surveys_Admin_Index_ColumnAuthor"], s => s.CreatedByUserId, o => o.Css("small text-muted"));
+        surveysBuilder.Human(Localizer["Surveys_Admin_Index_ColumnAuthor"], s => s.CreatedByUserId, configure: o => o.Css("small text-muted"));
     }
     var surveysTable = surveysBuilder
         .Template(Localizer["Surveys_Admin_Index_ColumnStatus"], statusCell, sortBy: s => s.Status)

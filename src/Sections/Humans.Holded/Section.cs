@@ -54,6 +54,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
 
         services.AddScoped<IHoldedWrite, Services.HoldedWrite>();
+        services.AddExceptionHandler<Infrastructure.HoldedKeyPermissionExceptionHandler>();
 
         services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
 

@@ -38,6 +38,9 @@ internal sealed class Service(
     IPaymentDetailsManagement paymentDetails,
     ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, IUserDataContributor
 {
+    public string? BankTreasuryAccountId =>
+        string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId) ? null : sepa.Value.TreasuryAccountId;
+
     public Task<string?> GetIbanAsync(Guid userId, CancellationToken ct = default) =>
         paymentDetails.GetIbanAsync(userId, ct);
 

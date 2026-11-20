@@ -494,7 +494,7 @@
                                 @{ var authorId = entry.Meeting?.CreatedByUserId ?? entry.Log?.AuthorUserId; }
                                 @if (authorId is { } id)
                                 {
-                                    <span class="text-muted small ms-1">— <vc:human user-id="@id" link="None" /></span>
+                                    <span class="text-muted small ms-1">— <vc:human user-id="@id" /></span>
                                 }
                             </div>
                             @if (Model.CanDoMemberWork && entry.Meeting is not null)
