@@ -69,6 +69,7 @@ public sealed class Section :
         services.AddScoped<Jobs.SepaBankBookingJob>();
         services.AddScoped<Jobs.ExpenseReconJob>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<Service>());
 
         services.AddScoped<IPaymentDetailsRepository, PaymentDetailsRepository>();
         services.AddScoped<PaymentDetailsService>();

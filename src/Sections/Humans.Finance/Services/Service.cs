@@ -39,7 +39,7 @@ internal sealed class Service(
     IOptions<SepaOptions> sepa,
     TrackedCache<string, Dictionary<string, int>> bookingState,
     IPaymentDetailsManagement paymentDetails,
-    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, IUserDataContributor
+    ILogger<Service> logger) : IFinanceService, IFinanceWrite, IFinanceAdminService, IUserDataContributor, IUserMerge
 {
     public string? BankTreasuryAccountId =>
         string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId) ? null : sepa.Value.TreasuryAccountId;
@@ -73,11 +73,14 @@ internal sealed class Service(
                 $"{unreadable} bound Holded contact(s) are missing from the contact list, so those members' accounts are not known.");
 
         var expected = await expenses.GetHoldedReconLinesAsync(ct);
+        // Lines carry the merge survivor; a binding still on a merged-away id is theirs, behind their own.
+        var survivors = await users.GetUserInfosAsync(bindings.Select(b => b.UserId).ToHashSet(), ct);
         var accountByUser = bindings
-            .Select(b => (b.UserId, Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
+            .Select(b => (UserId: survivors.GetValueOrDefault(b.UserId)?.Id ?? b.UserId, Own: b.UserId,
+                Account: contacts.GetValueOrDefault(b.HoldedContactId)?.SupplierAccountNum))
             .Where(x => IsMemberCreditorAccount(x.Account))
             .GroupBy(x => x.UserId)
-            .ToDictionary(g => g.Key, g => g.First().Account!.Value);
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Own == g.Key).First().Account!.Value);
 
         var ledger = new Dictionary<int, IReadOnlyList<HoldedLedgerLineInfo>>();
         foreach (var account in balances.Keys
@@ -508,9 +511,68 @@ internal sealed class Service(
     public async Task<CreditorContactBinding?> GetCreditorContactByUserAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var b = await repo.GetCreditorContactByUserAsync(userId, ct);
+        var b = await MemberBindingAsync(userId, ct);
         return b is null ? null : ToBinding(b);
     }
+
+    /// <summary>Every id the human has held, <paramref name="userId"/> included: their own ids never conflict.</summary>
+    private async Task<IReadOnlyList<Guid>> MemberIdsAsync(Guid userId, CancellationToken ct) =>
+        MemberIds(await users.GetUserInfoAsync(userId, ct), userId);
+
+    private static IReadOnlyList<Guid> MemberIds(UserInfo? info, Guid userId) =>
+        info?.AllUserIds is { } ids && ids.Contains(userId) ? ids : [userId];
+
+    /// <summary><paramref name="userId"/>'s own binding, else the one on another of the human's ids: a SEPA row
+    /// generated before a merge names the archived id, and a merge before <see cref="ReassignAsync"/> left the binding
+    /// there.</summary>
+    private async Task<HoldedCreditorContact?> MemberBindingAsync(Guid userId, CancellationToken ct)
+    {
+        if (await repo.GetCreditorContactByUserAsync(userId, ct) is { } own) return own;
+        foreach (var id in await MemberIdsAsync(userId, ct))
+            if (id != userId && await repo.GetCreditorContactByUserAsync(id, ct) is { } merged)
+                return merged;
+        return null;
+    }
+
+    /// <summary>Every binding by its own user id, plus each of <paramref name="userIds"/> that reaches one only
+    /// through a merge. One snapshot, so a row is judged against a single read.</summary>
+    private async Task<Dictionary<Guid, HoldedCreditorContact>> BindingByUserAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct)
+    {
+        // UserId is the one column the DB keeps unique, so this cannot throw.
+        var byUser = (await repo.GetCreditorContactsAsync(ct)).ToDictionary(c => c.UserId);
+        foreach (var id in userIds.Distinct().Where(id => !byUser.ContainsKey(id)).ToList())
+            foreach (var other in await MemberIdsAsync(id, ct))
+                if (byUser.TryGetValue(other, out var merged))
+                {
+                    byUser[id] = merged;
+                    break;
+                }
+        return byUser;
+    }
+
+    /// <summary>The survivor takes the archived binding only when it has none. Two bindings are two Holded contacts,
+    /// each with its own creditor ledger, so neither is dropped: the archived one stays for an admin to settle.</summary>
+    public async Task ReassignAsync(
+        Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct)
+    {
+        if (await repo.MoveCreditorContactAsync(mergedFromUserId, mergedToUserId, now, ct) is { } moved)
+        {
+            await audit.LogAsync(FinanceAuditActions.HoldedCreditorBound, HoldedCreditorAccount, mergedToUserId,
+                MovedBindingDescription(moved, mergedFromUserId), actorUserId, mergedToUserId, AuditSubjectTypes.User);
+            return;
+        }
+        if (await repo.GetCreditorContactByUserAsync(mergedFromUserId, ct) is { } kept)
+            logger.LogWarning(
+                "Merging member {ArchivedId} into {SurvivorId} kept the archived creditor binding (Holded contact " +
+                "{HoldedContactId} / account {SupplierAccountNum}) in place: the survivor has its own. Settle the " +
+                "two accounts on /Finance/Creditors.",
+                mergedFromUserId, mergedToUserId, kept.HoldedContactId, kept.SupplierAccountNum);
+    }
+
+    private static string MovedBindingDescription(HoldedCreditorContact moved, Guid fromUserId) =>
+        $"Moved creditor account {moved.SupplierAccountNum?.ToString(CultureInfo.InvariantCulture) ?? "(unresolved)"} "
+        + $"(Holded contact {moved.HoldedContactId}) from merged account {fromUserId}";
 
     internal static CreditorContactBinding ToBinding(HoldedCreditorContact b) =>
         new(b.UserId, b.HoldedContactId, b.SupplierAccountNum, b.Source) { CreatedAt = b.CreatedAt };
@@ -522,11 +584,11 @@ internal sealed class Service(
     /// <summary>Overlap on either the 400000xx or the contact merges two members' payables, so both are conflicts.</summary>
     private static HoldedCreditorContact? FindConflictingBinding(
         IEnumerable<HoldedCreditorContact> bindings,
-        Guid userId,
+        IReadOnlyList<Guid> memberIds,
         int? supplierAccountNum,
         string? holdedContactId) =>
         bindings.FirstOrDefault(b =>
-            b.UserId != userId
+            !memberIds.Contains(b.UserId)
             && ((supplierAccountNum is not null && b.SupplierAccountNum == supplierAccountNum)
                 || (!string.IsNullOrEmpty(holdedContactId)
                     && string.Equals(b.HoldedContactId, holdedContactId, StringComparison.Ordinal))));
@@ -580,7 +642,8 @@ internal sealed class Service(
 
         // Only UserId is unique in the DB. Checked before the Holded call so a doomed bind costs no round-trip.
         var bindings = await repo.GetCreditorContactsAsync(ct);
-        if (FindConflictingBinding(bindings, userId, supplierAccountNum, holdedContactId: null) is not null)
+        var memberIds = await MemberIdsAsync(userId, ct);
+        if (FindConflictingBinding(bindings, memberIds, supplierAccountNum, holdedContactId: null) is not null)
             return CreditorBindResult.Failure(
                 $"Account {supplierAccountNum} is already bound to a different member. " +
                 "Check /Finance/Creditors to see who, and unbind them there first.");
@@ -595,7 +658,7 @@ internal sealed class Service(
 
         // A member whose binding carries this contact but whose 400000xx never resolved is invisible to the check above
         // and on /Finance/Creditors (keyed by number), yet merges payables just the same. So name the contact.
-        if (FindConflictingBinding(bindings, userId, supplierAccountNum: null, contact.Id) is not null)
+        if (FindConflictingBinding(bindings, memberIds, supplierAccountNum: null, contact.Id) is not null)
             return CreditorBindResult.Failure(
                 $"Account {supplierAccountNum} belongs to Holded contact \"{contact.Name}\", which is " +
                 "already bound to a different member whose account number has not resolved yet. " +
@@ -655,13 +718,26 @@ internal sealed class Service(
         Guid userId, string legalName, string? burnerName, string? iban,
         string? seedContactId, int? seedAccountNum, string jobName, CancellationToken ct)
     {
+        var info = await users.GetUserInfoAsync(userId, ct);
+        var memberIds = MemberIds(info, userId);
         var binding = await repo.GetCreditorContactByUserAsync(userId, ct);
+        // A merge before ReassignAsync left the survivor's binding on an archived id: take it over as a merge now does,
+        // rather than mint a second contact and creditor account for the same human.
+        if (binding is null && info?.Id == userId)
+            foreach (var mergedId in info.MergedUserIds)
+                if (await repo.MoveCreditorContactAsync(mergedId, userId, clock.GetCurrentInstant(), ct) is { } moved)
+                {
+                    await audit.LogAsync(FinanceAuditActions.HoldedCreditorBound, HoldedCreditorAccount, userId,
+                        MovedBindingDescription(moved, mergedId), jobName, userId, AuditSubjectTypes.User);
+                    binding = moved;
+                    break;
+                }
         var allBindings = await repo.GetCreditorContactsAsync(ct);
 
         // The seed is our guess off a prior report, not Holded's word, so it gets the manual bind's remedy: refuse and
         // let the push mint a contact. That is also what makes Unbind durable.
         if (binding is null
-            && FindConflictingBinding(allBindings, userId, seedAccountNum, seedContactId) is { } seedConflict)
+            && FindConflictingBinding(allBindings, memberIds, seedAccountNum, seedContactId) is { } seedConflict)
         {
             logger.LogError(
                 "Refused a creditor seed for member {UserId}: the contact {SeedContactId} / account " +
@@ -703,7 +779,7 @@ internal sealed class Service(
         // A refused seed cannot collide, so anything left is a pre-existing overlap on the member's own binding: not
         // this push's doing, but reported.
         var accountNum = binding?.SupplierAccountNum ?? seedAccountNum;
-        var conflict = FindConflictingBinding(allBindings, userId, accountNum, contactId);
+        var conflict = FindConflictingBinding(allBindings, memberIds, accountNum, contactId);
         if (conflict is not null)
             LogBindingCollision(
                 nameof(EnsureCreditorContactAsync), userId, contactId, accountNum, conflict);
@@ -794,7 +870,8 @@ internal sealed class Service(
 
         // Holded's own word, so it is written either way; the contact-id overlap is covered upstream.
         var conflict = FindConflictingBinding(
-            await repo.GetCreditorContactsAsync(ct), userId, supplierAccountNum, holdedContactId: null);
+            await repo.GetCreditorContactsAsync(ct), await MemberIdsAsync(userId, ct), supplierAccountNum,
+            holdedContactId: null);
         if (conflict is not null)
             LogBindingCollision(
                 nameof(SetCreditorAccountNumAsync), userId, binding.HoldedContactId,
@@ -1739,8 +1816,7 @@ internal sealed class Service(
         var unavailable = BookingUnavailableReason();
         if (rows.Count == 0 || unavailable is not null) return (rows, unavailable);
 
-        // UserId is the one column the DB keeps unique, so this cannot throw.
-        var bindingByUser = (await repo.GetCreditorContactsAsync(ct)).ToDictionary(c => c.UserId);
+        var bindingByUser = await BindingByUserAsync(rows.Select(r => r.UserId), ct);
         var withReasons = rows
             .Select(r => r with { NotBookableReason = NotBookableReason(r, bindingByUser) })
             .ToList();
@@ -2189,7 +2265,7 @@ internal sealed class Service(
 
         // Every transfer is checked before any is posted, so a bad binding refuses the whole file
         // rather than stopping it half-way.
-        var bindingByUser = (await repo.GetCreditorContactsAsync(ct)).ToDictionary(c => c.UserId);
+        var bindingByUser = await BindingByUserAsync(file.Select(r => r.UserId), ct);
         var unbooked = file.Where(r => !r.IsBooked).OrderBy(r => r.SupplierAccountNum).ToList();
         foreach (var row in unbooked)
             if (NotBookableReason(row, bindingByUser) is { } why)
@@ -2264,7 +2340,7 @@ internal sealed class Service(
                 + "transfer and could not identify one of them, so Humans cannot tell what is still "
                 + "owed. Settle it in Holded by hand; nothing was posted.");
 
-        var binding = await repo.GetCreditorContactByUserAsync(transfer.UserId, ct);
+        var binding = await MemberBindingAsync(transfer.UserId, ct);
         if (binding is null || string.IsNullOrEmpty(binding.HoldedContactId))
             return new SepaBookingResult(false,
                 "The member paid by that transfer has no Holded contact binding — bind them on "
