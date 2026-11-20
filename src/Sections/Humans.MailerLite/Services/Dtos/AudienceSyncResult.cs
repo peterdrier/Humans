@@ -15,7 +15,13 @@ internal sealed record AudienceSyncResult(
     int Unassigned,
     int Errors)
 {
-    public string FormatSummary() => string.Create(
+    public string FormatSummary() => FormatSummary(Created, Assigned, Unassigned, Errors);
+
+    internal static string FormatSummary(IReadOnlyList<AudienceSyncResult> results) => FormatSummary(
+        results.Sum(r => r.Created), results.Sum(r => r.Assigned),
+        results.Sum(r => r.Unassigned), results.Sum(r => r.Errors));
+
+    private static string FormatSummary(int created, int assigned, int unassigned, int errors) => string.Create(
         CultureInfo.InvariantCulture,
-        $"{Created} created, {Assigned} newly assigned, {Unassigned} unassigned, {Errors} errors.");
+        $"{created} created, {assigned} newly assigned, {unassigned} unassigned, {errors} errors.");
 }

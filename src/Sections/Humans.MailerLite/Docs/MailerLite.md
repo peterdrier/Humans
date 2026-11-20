@@ -40,6 +40,7 @@ The section owns `mailerlite_sync_states` (`MailerLiteDbContext`, nobodies-colle
 - `/MailerLite/Admin/Import/Commit` — apply (POST)
 - `/MailerLite/Admin/Audiences/{key}/Sync` — on-demand audience push (POST)
 - `/MailerLite/Admin/SyncAll` — "Push All": push every audience in one action (POST)
+- Single-audience and Push All summaries share the result’s counter formatting; batch summaries sum completed results and separately report audiences that failed.
 - `/MailerLite/Admin/Refresh` — manual MailerLite cache refresh (POST)
 - `/MailerLite/Admin/Audiences/{key}/Debug` — per-audience debug (GET) — paged/sortable sections (expected, currently-in-ML, to-add, to-remove, non-primary diagnostic); Apply button posts to the existing `/Sync` action
 
