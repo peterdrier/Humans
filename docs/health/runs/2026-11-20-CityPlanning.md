@@ -3,7 +3,7 @@
 - Invocation: unattended (daily routine, cloud thread)
 - Anchor commit: `a8099cba0` (origin/main at branch point); branch `section-doctor/2026-11-20T061015Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#2464
 
 ## Assessment summary
 
@@ -44,6 +44,8 @@ Target diff: the section moved (validation tightened, the year-correct seam buil
 - `Docs/debt.yml` had no open rows at the branch point; nothing to verify. The cap was not reached.
 
 ## Worked
+
+- Issue comments: none (no open section issues readable).
 
 - 1, 5, 6, 7, 8, 12, 18: docs and help corrected (sonnet executor; its additions were two more `#2102` references in the feature spec's stories, kept).
 - 2: target regenerated in `Docs/health.md`.
