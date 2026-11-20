@@ -1386,7 +1386,7 @@ public class CampControllerTests
         camp = camp with { Seasons = [other, selected] };
         _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
         _camps.GetCampEditDataAsync(camp.Id, selected.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(MakeEditData(camp, selected));
+            .Returns(MakeEditData(camp, selected) with { HasEarlyEntryCapacity = selected.IsPublic });
         _users.GetUserInfoAsync(leadId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(leadId));
         _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [memberId] = MakeUserInfo(memberId) });
@@ -1402,6 +1402,7 @@ public class CampControllerTests
 
         var model = result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CampEditViewModel>().Subject;
         model.ActiveMembers.Should().ContainSingle().Which.UserId.Should().Be(memberId);
+        model.HasEarlyEntryCapacity.Should().Be(selected.IsPublic);
         if (selected.IsPublic)
         {
             model.RolesPanel.Should().NotBeNull();

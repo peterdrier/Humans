@@ -233,7 +233,10 @@ internal sealed record CampEditData(
     SoundZone? SoundZone,
     ElectricalGrid? ElectricalGrid,
     IReadOnlyList<CampImageSummary> Images,
-    IReadOnlyList<CampHistoricalNameSummary> HistoricalNames);
+    IReadOnlyList<CampHistoricalNameSummary> HistoricalNames)
+{
+    public bool HasEarlyEntryCapacity { get; init; }
+}
 
 internal sealed record CampImageUploadResult(bool Succeeded, CampImage? Image, string? ErrorMessage)
 {

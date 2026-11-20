@@ -216,8 +216,7 @@
                                 </div>
                                 <div class="d-flex gap-2 align-items-center">
                                     @{
-                                        var canGrant = Model.EeGrantedCount < Model.EeSlotCount;
-                                        var eeDisabled = !active.HasEarlyEntry && !canGrant;
+                                        var eeDisabled = !active.HasEarlyEntry && !Model.HasEarlyEntryCapacity;
                                     }
                                     <form method="post" asp-action="SetMemberEarlyEntry"
                                           asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId"

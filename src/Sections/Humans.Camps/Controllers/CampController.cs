@@ -1132,6 +1132,7 @@ internal sealed class CampController(
                 SortOrder = image.SortOrder
             })
             .ToList();
+        model.HasEarlyEntryCapacity = editData.HasEarlyEntryCapacity;
         PopulateEditMembers(model, season);
     }
 
@@ -1144,6 +1145,7 @@ internal sealed class CampController(
             Year = editData.Year,
             EventSettingsId = editData.EventSettingsId,
             IsNameLocked = editData.IsNameLocked,
+            HasEarlyEntryCapacity = editData.HasEarlyEntryCapacity,
             Name = editData.Name,
             ContactEmail = editData.ContactEmail,
             ContactPhone = editData.ContactPhone,

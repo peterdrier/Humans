@@ -236,11 +236,15 @@ internal sealed class CampReadProjection(
             return null;
         }
 
+        var grantedCount = await repo.GetGrantedCountForSeasonAsync(season.Id, cancellationToken);
         return CreateCampEditData(
             camp,
             season,
             season.EventSettingsId,
-            clock.GetCurrentInstant().InUtc().Date);
+            clock.GetCurrentInstant().InUtc().Date) with
+        {
+            HasEarlyEntryCapacity = grantedCount < season.EeSlotCount
+        };
     }
 
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(

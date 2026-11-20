@@ -197,6 +197,7 @@ internal sealed class CampEditViewModel : CampRegisterViewModel
     public int EeSlotCount { get; set; }
     /// <summary>Count of active members with HasEarlyEntry=true for the current season.</summary>
     public int EeGrantedCount { get; set; }
+    public bool HasEarlyEntryCapacity { get; set; }
 
     /// <summary>Null when the camp has no open season; the view hides the panel.</summary>
     public CampRolesPanelViewModel? RolesPanel { get; set; }

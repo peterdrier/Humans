@@ -2,6 +2,7 @@ using System.Text.Encodings.Web;
 using AngleSharp.Html.Parser;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
+using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -63,7 +64,32 @@ public class CampAdminViewTests
         document.Body!.TextContent.Should().Contain("11 granted").And.Contain("10 configured slots").And.Contain("over cap");
     }
 
-    private static async Task<string> RenderAsync(string page, object model)
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task MemberGrantButtons_UseCapacityIncludingConsumedGrants(bool hasCapacity)
+    {
+        var model = new CampEditViewModel
+        {
+            EeSlotCount = 2,
+            EeGrantedCount = 1,
+            HasEarlyEntryCapacity = hasCapacity,
+            ActiveMembers =
+            [
+                new() { CampMemberId = Guid.NewGuid(), HasEarlyEntry = false },
+                new() { CampMemberId = Guid.NewGuid(), HasEarlyEntry = true },
+            ]
+        };
+        var html = await RenderAsync("Members", model, "Camp");
+        var document = await new HtmlParser().ParseDocumentAsync(html, Xunit.TestContext.Current.CancellationToken);
+        var grant = document.QuerySelector("input[name=granted][value=true]")!.ParentElement!.QuerySelector("button")!;
+        var revoke = document.QuerySelector("input[name=granted][value=false]")!.ParentElement!.QuerySelector("button")!;
+
+        grant.HasAttribute("disabled").Should().Be(!hasCapacity);
+        revoke.HasAttribute("disabled").Should().BeFalse();
+    }
+
+    private static async Task<string> RenderAsync(string page, object model, string controller = "CampAdmin")
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
@@ -71,6 +97,7 @@ public class CampAdminViewTests
             EnvironmentName = "Testing",
         });
         builder.Services.AddLocalization();
+        builder.Services.AddSingleton(Substitute.For<IUserService>());
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(CampsResource).Assembly)
@@ -84,11 +111,11 @@ public class CampAdminViewTests
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var result = services.GetRequiredService<IRazorViewEngine>()
-            .GetView(null, $"/Views/CampAdmin/{page}.cshtml", isMainPage: false);
+            .GetView(null, $"/Views/{controller}/{page}.cshtml", isMainPage: false);
         result.Success.Should().BeTrue();
         var http = new DefaultHttpContext { RequestServices = services };
         var route = new RouteData();
-        route.Values["controller"] = "CampAdmin";
+        route.Values["controller"] = controller;
         route.Values["action"] = page;
         var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
