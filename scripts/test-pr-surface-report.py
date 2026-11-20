@@ -67,6 +67,51 @@ class InterfaceSurfaceTests(unittest.TestCase):
                 self.assertEqual(delta["added_interface_methods"], {})
                 self.assertEqual(delta["added_interface_properties"], {})
 
+    def test_interface_members_are_independent_of_line_layout(self):
+        before = "public interface IStripeService\n{\n}"
+        for after in (
+            "public interface IStripeService { void Send(); bool IsReady { get; } }",
+            "public interface IStripeService\n{\n    void Send(); bool IsReady { get; }\n}",
+            "public interface IStripeService {\n    void Send();\n    bool IsReady { get; } }",
+        ):
+            with self.subTest(after=after):
+                delta = self.delta(before, after)
+                self.assertEqual(delta["added_interface_methods"], {"IStripeService": ["void Send()"]})
+                self.assertEqual(delta["added_interface_properties"], {"IStripeService": ["bool IsReady { get; }"]})
+
+    def test_multiple_interfaces_and_default_bodies_can_share_a_line(self):
+        before = "public interface IFirst {} public interface ISecond {}"
+        after = ('public interface IFirst { bool Read() { return true; } } '
+                 'public interface ISecond { int Count => new int[] { 1, 2 }.Length; }')
+        delta = self.delta(before, after)
+        self.assertEqual(delta["added_interface_methods"], {"IFirst": ["bool Read()"]})
+        self.assertEqual(delta["added_interface_properties"], {"ISecond": ["int Count"]})
+        self.assertEqual(delta["new_interfaces"], [])
+
+    def test_semicolon_marker_interfaces_remain_public_surface(self):
+        after = "public interface IFirst; public interface ISecond : IFirst;"
+        self.assertEqual(self.delta("", after)["new_interfaces"],
+                         [f"IFirst ({PATH})", f"ISecond ({PATH})"])
+
+    def test_explicit_inherited_implementations_do_not_add_surface(self):
+        before = "public interface IStripeService : IParent {}"
+        after = ("public interface IStripeService : IParent { "
+                 "bool IParent.Read() => true; int IParent.Count => 1; void Added(); }")
+        delta = self.delta(before, after)
+        self.assertEqual(delta["added_interface_methods"], {"IStripeService": ["void Added()"]})
+        self.assertEqual(delta["added_interface_properties"], {})
+
+    def test_inline_attributes_comments_and_literals_do_not_change_boundaries(self):
+        before = "public interface IStripeService {}"
+        after = ('/* public interface IFake {} */ public interface IStripeService { '
+                 '[Marker("};")] void Read(string value = ";{}"); /* } */ bool IsReady { get; } }')
+        delta = self.delta(before, after)
+        self.assertEqual(delta["new_interfaces"], [])
+        self.assertEqual(delta["added_interface_methods"],
+                         {"IStripeService": ['void Read(string value = ";{}")']})
+        self.assertEqual(delta["added_interface_properties"],
+                         {"IStripeService": ["bool IsReady { get; }"]})
+
     def test_added_property_is_reported_alongside_methods(self):
         before = "public interface IStripeService\n{\n    Task ReadAsync();\n}"
         after = before.replace("    Task", "    bool IsConfigured { get; }\n    Task")

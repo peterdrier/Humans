@@ -318,67 +318,93 @@ def extract_interface_symbols(ref: str) -> dict[str, dict[str, object]]:
         r"(?:(?:static|abstract|virtual|sealed|new|unsafe|extern|async|partial)\s+)*"
         r"(?:private|protected|internal)\b")
     interface_re = re.compile(r"\bpublic\s+(?:(?:partial|unsafe)\s+)*interface\s+(I[A-Za-z0-9_]*)\b")
-    literal_re = re.compile(r'@"(?:[^"]|"")*"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
+    non_code_re = re.compile(
+        r'//[^\n]*|/\*.*?\*/|(?:\$@|@\$|@)"(?:[^"]|"")*"|'
+        r'\$*"{3,}.*?"{3,}|\$?"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'',
+        re.S,
+    )
+
+    def blank(match):
+        return "".join("\n" if char == "\n" else " " for char in match.group())
+
+    def member_spans(code, opening, closing):
+        start = opening + 1
+        braces = parentheses = 0
+        body_open = None
+        for index in range(start, closing):
+            char = code[index]
+            if char == "(":
+                parentheses += 1
+            elif char == ")":
+                parentheses -= 1
+            elif char == "{":
+                if braces == 0 and parentheses == 0:
+                    body_open = index
+                braces += 1
+            elif char == "}":
+                braces -= 1
+                # An expression's object initializer is not the end of its member.
+                if braces == 0 and parentheses == 0 and "=>" not in code[start:body_open]:
+                    yield start, index + 1
+                    start, body_open = index + 1, None
+            elif char == ";" and braces == 0 and parentheses == 0:
+                yield start, index + 1
+                start, body_open = index + 1, None
 
     for path in git_files(ref, INTERFACE_SEARCH_ROOTS):
         if not is_interface_path(path):
             continue
         content = try_run_git(["show", f"{ref}:{path}"])
-        current: str | None = None
-        depth = 0
-        pending_signature: list[str] = []
+        code = non_code_re.sub(blank, content)
+        source = non_code_re.sub(
+            lambda match: blank(match) if match.group().startswith(("//", "/*")) else match.group(), content)
 
-        for raw_line in content.splitlines():
-            line = raw_line.strip()
-            code_line = literal_re.sub(lambda match: " " * len(match.group()), line)
-            # Mask literals before finding comments: a default URL's // is data.
-            comment = code_line.find("//")
-            if comment >= 0:
-                line = line[:comment].rstrip()
-                code_line = code_line[:comment].rstrip()
-            if not line or line.startswith("["):
+        for match in interface_re.finditer(code):
+            current = match.group(1)
+            symbols = interfaces.setdefault(current, {"path": path, "methods": set(), "properties": set()})
+            opening = code.find("{", match.end())
+            semicolon = code.find(";", match.end())
+            if opening < 0 or (semicolon >= 0 and semicolon < opening):
                 continue
-
-            if current is None:
-                match = interface_re.search(code_line)
-                if not match:
+            depth = 1
+            closing = opening + 1
+            while closing < len(code) and depth:
+                depth += (code[closing] == "{") - (code[closing] == "}")
+                closing += 1
+            if depth:
+                continue
+            for start, end in member_spans(code, opening, closing - 1):
+                while start < end and code[start].isspace():
+                    start += 1
+                # Attributes may be inline or multiline; neither is part of a member's signature.
+                while start < end and code[start] == "[":
+                    depth = 1
+                    start += 1
+                    while start < end and depth:
+                        depth += (code[start] == "[") - (code[start] == "]")
+                        start += 1
+                    while start < end and code[start].isspace():
+                        start += 1
+                signature = normalize_signature(source[start:end])
+                masked = non_code_re.sub(blank, signature)
+                body = re.search(r"=>|\{", masked)
+                declaration = signature[:body.start()].strip() if body else signature
+                if not declaration or non_public_member_re.match(declaration):
                     continue
-                current = match.group(1)
-                interfaces.setdefault(current, {"path": path, "methods": set(), "properties": set()})
-                depth = code_line.count("{") - code_line.count("}")
-                continue
-
-            previous_depth = depth
-            depth += code_line.count("{") - code_line.count("}")
-            if pending_signature or (previous_depth == 1 and line != "}"):
-                pending_signature.append(line)
-                if depth == 1 and (line.endswith(";") or line.endswith("}")):
-                    signature = normalize_signature(" ".join(pending_signature))
-                    pending_signature.clear()
-                    # Default interface implementations are behavior, not new surface.
-                    # Compare only the declaration for expression and block bodies.
-                    masked = literal_re.sub(lambda match: " " * len(match.group()), signature)
-                    body = re.search(r"=>|\{", masked)
-                    declaration = signature[:body.start()].strip() if body else signature
-                    if non_public_member_re.match(declaration):
-                        continue
-                    if "(" in declaration and ")" in declaration:
-                        interfaces[current]["methods"].add(declaration)
-                    elif re.search(r"\{\s*(?:get|set|init)\s*;", signature):
-                        # Accessor blocks may span lines; canonical whitespace avoids
-                        # reporting a formatting-only change as new public surface.
-                        signature = re.sub(r"\s*([{};])\s*", r"\1 ", signature).strip()
-                        signature = signature.replace("{", " { ").replace(";", "; ")
-                        interfaces[current]["properties"].add(normalize_signature(signature))
-                    elif body:
-                        # Expression-bodied or get-bodied default property: its body is
-                        # behavior, so the type and name are the surface.
-                        interfaces[current]["properties"].add(normalize_signature(declaration))
-
-            if depth <= 0:
-                current = None
-                depth = 0
-                pending_signature.clear()
+                if re.match(r"(?:(?:public|static|partial|readonly|ref|sealed|abstract|new|unsafe)\s+)*"
+                            r"(?:class|interface|struct|enum|record)\s", declaration):
+                    continue
+                member_head = declaration.split("(", 1)[0].strip()
+                if re.search(r"\b\w+(?:<[^>]+>)?\s*\.\s*\w+(?:<[^>]+>)?(?:\s*\[[^]]*\])?$", member_head):
+                    continue  # Explicit inherited-member implementations add behavior, not surface.
+                if "(" in declaration and ")" in declaration:
+                    symbols["methods"].add(declaration)
+                elif re.search(r"\{\s*(?:get|set|init)\s*;", signature):
+                    signature = re.sub(r"\s*([{};])\s*", r"\1 ", signature).strip()
+                    signature = signature.replace("{", " { ").replace(";", "; ")
+                    symbols["properties"].add(normalize_signature(signature))
+                elif body:
+                    symbols["properties"].add(normalize_signature(declaration))
 
     return interfaces
 
