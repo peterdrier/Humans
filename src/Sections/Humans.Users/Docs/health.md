@@ -106,8 +106,6 @@ The shapes imply one register with one cache and one write funnel:
 
 - Drop of the shadow `users.GoogleEmail` and `user_emails` `IsGoogle` / `GoogleEmailStatus`
   columns waits on prod verification (peterdrier/Humans#2156).
-- The three `user_profiles` name columns are shadow-mapped and unused; their drop is its own PR
-  (nobodies-collective/Humans#1098).
 - Users' one remaining data migration, `users.legacy-identity-emails`, retires when production
   reports it done.
 - `AccountMergeRequest` still carries `User` navs; strip when the nav-strip pattern is

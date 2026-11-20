@@ -1,30 +1,16 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore.ValueGeneration;
 using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
 internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 {
-    internal static readonly string[] LegacyNameColumns = ["BurnerName", "FirstName", "LastName"];
-
     public void Configure(EntityTypeBuilder<Profile> builder)
     {
         builder.ToTable("user_profiles");
 
         builder.HasKey(p => p.Id);
-
-        // The names live on the users row. These columns stay on disk, blank on new rows, until the
-        // separate column-drop migration.
-        foreach (var legacyName in LegacyNameColumns)
-        {
-            builder.Property<string>(legacyName)
-                .HasMaxLength(256)
-                .IsRequired()
-                .HasValueGenerator<BlankStringGenerator>();
-        }
 
         builder.Property(p => p.City)
             .HasMaxLength(256);
@@ -82,13 +68,5 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Ignore(p => p.HasCustomProfilePicture);
-    }
-
-    /// <summary>Fills a NOT NULL legacy column nothing writes any more.</summary>
-    private sealed class BlankStringGenerator : ValueGenerator<string>
-    {
-        public override bool GeneratesTemporaryValues => false;
-
-        public override string Next(EntityEntry entry) => string.Empty;
     }
 }

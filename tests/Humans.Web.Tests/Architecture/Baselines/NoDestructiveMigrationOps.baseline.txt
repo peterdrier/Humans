@@ -661,3 +661,20 @@ src/Sections/Humans.Workgroups/Data/Migrations/20261112195832_RenameTablesToSect
 # told the values were never migrated.
 src/Sections/Humans.Users/Data/Migrations/20261113002956_DropUsersDeadEmailFlags.cs:DropColumn(name=SuppressScheduleChangeEmails,table=users)#1
 src/Sections/Humans.Users/Data/Migrations/20261113002956_DropUsersDeadEmailFlags.cs:DropColumn(name=UnsubscribedFromCampaigns,table=users)#1
+
+# user_profiles.BurnerName, user_profiles.FirstName and user_profiles.LastName (varchar 256) — the
+# profile-side copy of each member's burner name and legal first and last name
+# (nobodies-collective/Humans#1098). The names live on users.BurnerName / FirstName / LastName.
+# Evidence: pickaxe over full history (git log -G on assignments to the three Profile properties):
+# the writers were the profile save, signup stub, account merge and GDPR anonymize paths. From
+# 6d2106b25 (#1443) each of them also wrote the users row in the same save. The retirement PR
+# peterdrier/Humans#2461 (04c8bedc7, merged 2026-11-20) removed the Profile properties, the last
+# profile-side write, the read in UserStateEvaluator and the Art. 15 export read, and deleted the
+# data migration; nothing reads or writes the columns since.
+# Approval: standing approval in memory/architecture/destructive-drops-need-approval.md ("a data
+# migration reporting done"): production GET https://humans.nobodies.team/api/data-migrations
+# reported {"key":"users.profile-names-to-user-row","pending":0,"done":true}, read 2026-11-19.
+# Peter merges this PR himself.
+src/Sections/Humans.Users/Data/Migrations/20261120002309_DropProfileNameColumns.cs:DropColumn(name=BurnerName,table=user_profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261120002309_DropProfileNameColumns.cs:DropColumn(name=FirstName,table=user_profiles)#1
+src/Sections/Humans.Users/Data/Migrations/20261120002309_DropProfileNameColumns.cs:DropColumn(name=LastName,table=user_profiles)#1
