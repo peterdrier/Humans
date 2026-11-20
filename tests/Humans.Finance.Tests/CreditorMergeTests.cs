@@ -62,8 +62,13 @@ public class CreditorMergeTests
         await using var ctx = await _factory.CreateDbContextAsync(Ct);
         ctx.HoldedCreditorContacts.Add(new HoldedCreditorContact
         {
-            Id = Guid.NewGuid(), UserId = userId, HoldedContactId = contactId, SupplierAccountNum = accountNum,
-            Source = CreditorContactSource.Auto, CreatedAt = Now, UpdatedAt = Now,
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            HoldedContactId = contactId,
+            SupplierAccountNum = accountNum,
+            Source = CreditorContactSource.Auto,
+            CreatedAt = Now,
+            UpdatedAt = Now,
         });
         await ctx.SaveChangesAsync(Ct);
     }
