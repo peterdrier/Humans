@@ -84,8 +84,7 @@ internal sealed class WorkspaceUserDirectoryClient(
         request.MaxResults = 1;
 
         var response = await request.ExecuteAsync(ct);
-        var user = response.UsersValue?.FirstOrDefault();
-        return user is null ? null : MapToAccount(user);
+        return response.UsersValue is { Count: > 0 } users ? MapToAccount(users[0]) : null;
     }
 
     public async Task ProvisionAccountAsync(
@@ -170,8 +169,11 @@ internal sealed class WorkspaceUserDirectoryClient(
         return codes;
     }
 
-    private static WorkspaceUserAccount MapToAccount(User user)
+    private static WorkspaceUserAccount MapToAccount(User? user)
     {
+        if (user is null || string.IsNullOrWhiteSpace(user.PrimaryEmail))
+            throw new InvalidOperationException("Google Workspace returned an account without a usable primary email address.");
+
         return new WorkspaceUserAccount(
             PrimaryEmail: user.PrimaryEmail,
             FirstName: user.Name?.GivenName ?? string.Empty,

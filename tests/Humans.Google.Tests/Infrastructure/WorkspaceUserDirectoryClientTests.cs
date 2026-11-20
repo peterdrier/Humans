@@ -70,6 +70,53 @@ public sealed class WorkspaceUserDirectoryClientTests
         handler.Methods.Should().Equal(HttpMethod.Post);
     }
 
+    [HumansTheory]
+    [InlineData(false, "{}")]
+    [InlineData(true, "{}")]
+    [InlineData(false, "{\"primaryEmail\":\"\"}")]
+    [InlineData(true, "{\"primaryEmail\":\"\"}")]
+    [InlineData(false, "{\"primaryEmail\":\" \"}")]
+    [InlineData(true, "{\"primaryEmail\":\" \"}")]
+    [InlineData(false, "null")]
+    [InlineData(true, "null")]
+    public async Task Account_reads_reject_items_without_a_usable_identity(bool lookup, string row)
+    {
+        var prefix = lookup ? "" : "{\"primaryEmail\":\"valid@nobodies.team\"},";
+        using var handler = new ResponseHandler("{\"users\":[" + prefix + row + "]}");
+        using var directory = CreateDirectory(handler);
+        var client = CreateClient(directory);
+        async Task ReadAsync()
+        {
+            if (lookup) await client.GetAccountAsync("requested@nobodies.team", TestContext.Current.CancellationToken);
+            else await client.ListAccountsAsync(TestContext.Current.CancellationToken);
+        }
+
+        var read = ReadAsync;
+        await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("*primary email*");
+        handler.Methods.Should().Equal(HttpMethod.Get);
+    }
+
+    [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task Account_reads_preserve_empty_results_and_usable_identities(bool lookup, bool empty)
+    {
+        using var handler = new ResponseHandler(empty ? "{}"
+            : "{\"users\":[{\"primaryEmail\":\"ana@nobodies.team\"}]}");
+        using var directory = CreateDirectory(handler);
+        var client = CreateClient(directory);
+
+        if (lookup)
+        {
+            var account = await client.GetAccountAsync("ana@nobodies.team", TestContext.Current.CancellationToken);
+            if (empty) account.Should().BeNull();
+            else account!.PrimaryEmail.Should().Be("ana@nobodies.team");
+        }
+        else
+            (await client.ListAccountsAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+    }
+
     private static DirectoryService CreateDirectory(ResponseHandler handler)
     {
         var factory = Substitute.For<global::Google.Apis.Http.IHttpClientFactory>();
