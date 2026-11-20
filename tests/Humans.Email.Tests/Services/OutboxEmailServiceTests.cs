@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 using System.Net;
 using Microsoft.Extensions.Localization;
@@ -192,6 +193,47 @@ public sealed class OutboxEmailServiceTests : IDisposable
             text.Should().Contain(recipient).And.Contain(subject);
             if (smtp) args[3].Should().BeSameAs(failure);
         }
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SmtpDisconnectFailure_PreservesAcceptanceAndRedactedLogging(bool redact)
+    {
+        const string recipient = "erased@example.com";
+        const string subject = "Goodbye Erased Name";
+        const string template = "account_deleted";
+        var smtp = Substitute.For<MailKit.Net.Smtp.ISmtpClient>();
+        smtp.SendAsync(Arg.Any<MailKit.ISendRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new MailKit.SendResult("accepted", [], []));
+        var disconnectFailure = new IOException("Connection closed for " + recipient);
+        smtp.DisconnectAsync(true, Arg.Any<CancellationToken>()).ThrowsAsync(disconnectFailure);
+        var logger = Substitute.For<ILogger<SmtpEmailTransport>>();
+        var transport = new SmtpEmailTransport(Options.Create(new EmailSettings { SmtpHost = "smtp.example.com" }), logger)
+        {
+            CreateClient = () => smtp
+        };
+
+        await transport.SendAsync(recipient, "Erased Name", subject, "private body", null,
+            cancellationToken: TestContext.Current.CancellationToken, redact: redact, templateName: template);
+
+        var logs = logger.ReceivedCalls()
+            .Where(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
+            .Select(call => call.GetArguments()).ToList();
+        logs.Should().NotContain(args => Equals(args[0], LogLevel.Error));
+        var warning = logs.Single(args => Equals(args[0], LogLevel.Warning));
+        if (redact)
+        {
+            foreach (var args in logs)
+            {
+                args[2]!.ToString().Should().Contain(template).And.NotContain(recipient)
+                    .And.NotContain(subject).And.NotContain("Erased Name");
+                args[3].Should().BeNull();
+            }
+            warning[2]!.ToString().Should().Contain(nameof(IOException));
+        }
+        else warning[3].Should().BeSameAs(disconnectFailure);
+        smtp.Received(1).Dispose();
     }
 
     [HumansFact]
