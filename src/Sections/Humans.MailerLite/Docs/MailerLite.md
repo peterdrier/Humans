@@ -40,6 +40,7 @@ The section owns `mailerlite_sync_states` (`MailerLiteDbContext`, nobodies-colle
 - `/MailerLite/Admin/Import/Commit` — apply (POST)
 - `/MailerLite/Admin/Audiences/{key}/Sync` — on-demand audience push (POST)
 - `/MailerLite/Admin/SyncAll` — "Push All": push every audience in one action (POST)
+- Single-audience and Push All summaries share the result’s counter formatting; batch summaries sum completed results and separately report audiences that failed.
 - `/MailerLite/Admin/Refresh` — manual MailerLite cache refresh (POST)
 - `/MailerLite/Admin/Audiences/{key}/Debug` — per-audience debug (GET) — paged/sortable sections (expected, currently-in-ML, to-add, to-remove, non-primary diagnostic); Apply button posts to the existing `/Sync` action
 
@@ -54,7 +55,11 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
-- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
+- Subscriber subscription, unsubscription and opt-in timestamps reject supplied non-string values before cache replacement. Missing, null and empty-string timestamps remain absent; malformed date strings still fail the read. A failed refresh preserves the previous snapshot and fetch timestamp.
+
+- Account status totals compare subscriber statuses case-insensitively, matching import classification. Unknown statuses remain in the subscriber snapshot, are excluded from named counters, and log Warning with their value. Refresh and deletion use the same summary calculation.
+
+- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Dashboard summary/group/drift timeouts render the existing unavailable-state error while preserving local counts; requested cancellation propagates. Dashboard audience-statistics HTTP warnings retain status and reason without an exception stack. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
 
 - Import commits reject binding errors with HTTP 400 and a Warning before rebuilding or applying a plan, so a malformed numeric limit cannot become an unlimited import. A valid blank limit still applies the whole plan; positive limits retain their existing per-outcome throttle.
 
@@ -88,10 +93,11 @@ All routes are `AdminOnly`.
 - For non-bounce subscribers, Humans state wins only when the prior write's `UpdateSource ∈ {Profile, Guest, MagicLink, OneClick}` AND `UpdatedAt > mlActionAt`.
 - `CommunicationPreference.SubscribedAt` is stamped on first known opt-in and never overwritten while non-null.
 - Audience sync excludes ML subscribers with `status ∈ {unsubscribed, bounced, junk}` from group assignment — delivery/consent state overrides audience membership.
+- Audience candidates without a notification-target email are omitted before the diff. Their count and audience key are logged at Warning so the production log viewer shows the omission; no address or member identity is logged.
 - `MailerLiteClient` retries a `429` response up to twice more (3 attempts total), honouring the response's `Retry-After` header (clamped to 0–90s; defaults to 60s when the header is absent or unparsable) before giving up (nobodies-collective/Humans#1103).
 - Successful subscriber erasure (including a remote 404) removes the address from the cached subscriber list and recomputes account status totals from the remaining snapshot. A failed remote deletion retains both.
 - Group reads require nonblank IDs and names. Group creation also requires the returned name to match the requested name exactly before appending to the cached snapshot; incomplete or mismatched response data fails without poisoning the existing group list or selecting another audience for writes.
-- Subscriber status must be a nonblank string. An incomplete status fails decoding rather than becoming eligible for audience assignment or an import opt-out decision.
+- Subscriber IDs, emails and statuses must be nonblank strings. Omitted group lists remain valid; a supplied group list must be an array of nonblank string IDs or objects with nonblank string IDs. Malformed identity or membership metadata fails decoding rather than publishing an incomplete snapshot.
 - Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages. Subscriber metadata must explicitly include `next_cursor`, including a terminal null; an omitted cursor cannot complete a refresh. Subscriber/group page decoding reports `HttpRequestException` with the original parse failure retained, so admin API-error handling applies without replacing the last successful snapshot.
 
 ## Negative Access Rules

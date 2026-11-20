@@ -134,27 +134,35 @@ public class AgentSettingsServiceTests
         options.Models[2].Price.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task Model_options_fall_back_to_the_saved_model_when_anthropic_fails()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Model_options_classify_failures_and_fall_back_to_the_saved_model(bool unexpected)
     {
+        Exception failure = unexpected ? new InvalidOperationException("Model lookup failed") : new HttpRequestException("Model lookup failed");
         var anthropic = Substitute.For<IAnthropicClient>();
         anthropic.ListModelsAsync(Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<AnthropicModelInfo>>(_ => throw new HttpRequestException("down"));
-        var service = CreateModelOptionsService(anthropic, savedModel: "claude-sonnet-4-6");
+            .Returns<IReadOnlyList<AnthropicModelInfo>>(_ => throw failure);
+        var logger = new Humans.Testing.CapturingLogger<AgentSettingsService>();
+        var service = CreateModelOptionsService(anthropic, savedModel: "claude-sonnet-4-6", logger);
 
         var options = await service.GetModelOptionsAsync(Xunit.TestContext.Current.CancellationToken);
 
         options.LiveListAvailable.Should().BeFalse();
         options.Models.Should().ContainSingle().Which.Id.Should().Be("claude-sonnet-4-6");
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(unexpected ? Microsoft.Extensions.Logging.LogLevel.Error : Microsoft.Extensions.Logging.LogLevel.Warning);
+        entry.Exception.Should().BeSameAs(unexpected ? failure : null);
+        entry.Message.Should().Contain(failure.Message);
     }
 
-    private static AgentSettingsService CreateModelOptionsService(IAnthropicClient anthropic, string savedModel)
+    private static AgentSettingsService CreateModelOptionsService(IAnthropicClient anthropic, string savedModel, Microsoft.Extensions.Logging.ILogger<AgentSettingsService>? logger = null)
     {
         var store = new AgentSettingsStore();
         store.Set(new AgentSettings { Model = savedModel });
         var clock = new TestClock(Instant.FromUtc(2026, 10, 28, 9, 0));
         return new AgentSettingsService(Substitute.For<IAgentRepository>(), store, clock, Substitute.For<IAuditLogService>(),
-            anthropic, NullLogger<AgentSettingsService>.Instance);
+            anthropic, logger ?? NullLogger<AgentSettingsService>.Instance);
     }
 
     private static AgentDbContext CreateDb()

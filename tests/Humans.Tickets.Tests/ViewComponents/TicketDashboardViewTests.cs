@@ -216,7 +216,7 @@ public class TicketDashboardViewTests
             ByTicketType = [new TicketTypeSalesAggregate { Price = 1234.5m, TicketsSold = 1234, FaceValue = 1234.5m }],
             ByDiscountCampaign = [new DiscountCampaignAggregate
             {
-                CodesGranted = 1234, CodesUsed = 1234, AverageDiscount = 1234.5m, TotalDiscount = 1234.5m,
+                CodesGranted = 1234, CodesUsed = 1, TotalDiscount = 1234.5m,
             }],
         }, language);
         Assert.True(aggregates.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount)).Length >= 36);

@@ -1,4 +1,5 @@
 using Humans.Finance.Contracts;
+using Humans.Finance.Services;
 using NodaTime;
 
 namespace Humans.Finance.Models;
@@ -88,7 +89,28 @@ internal sealed record SepaPayoutFileVm(
     Instant GeneratedAt,
     Guid GeneratedByUserId,
     IReadOnlyList<SepaTransferVm> Transfers,
-    SepaBatchLineVm? BatchLine);
+    SepaBatchLineVm? BatchLine)
+{
+    public int WithdrawnCount => Transfers.Count(transfer => transfer.Row.IsWithdrawn);
+    public bool IsCancelled => WithdrawnCount == Transfers.Count;
+    public int UnbookedCount => Transfers.Count(transfer => !transfer.Row.IsBooked && !transfer.Row.IsWithdrawn);
+    public int MatchedUnbookedCount => Transfers.Count(transfer =>
+        !transfer.Row.IsBooked && !transfer.Row.IsWithdrawn && transfer.Row.CanBook);
+    public bool AllUnbookedMatched => UnbookedCount > 0 && MatchedUnbookedCount == UnbookedCount;
+    public int SummaryTransferCount => IsCancelled ? Transfers.Count : Transfers.Count - WithdrawnCount;
+
+    // A fully cancelled file keeps its original total; a live file excludes withdrawn transfers.
+    public decimal SummaryTotal
+    {
+        get
+        {
+            var cancelled = IsCancelled;
+            return Transfers.Where(transfer => cancelled || !transfer.Row.IsWithdrawn).Sum(transfer => transfer.Row.Amount);
+        }
+    }
+
+    public bool CanCancel => Service.CancelFileRefusal(Transfers.Select(transfer => transfer.Row).ToList()) is null;
+}
 
 /// <summary>
 /// <list type="bullet">

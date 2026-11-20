@@ -37,6 +37,10 @@ public sealed record HoldedContactDto
     /// assigned.</summary>
     public int? SupplierAccountNum { get; init; }
 
+    /// <summary>client_record.num — the contact's 430xxxxx receivables account. Read live only; the contact mirror
+    /// does not keep it, so a mirrored contact reads null.</summary>
+    public int? ClientAccountNum { get; init; }
+
     public string? TradeName { get; init; }
     public string? Email { get; init; }
     public string? Phone { get; init; }

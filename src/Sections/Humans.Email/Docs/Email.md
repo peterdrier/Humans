@@ -14,7 +14,7 @@
 
 **Vision.** A reliable, resilient, low-effort module that just works: mail goes out when and where it's needed, only to people who want or must get it, without tripping spam or "promotional" classification.
 
-**Known gap: bounces.** Bounce handling is in scope — no other section can do it — but not built. `Sent` means only that the SMTP server accepted the message. How to receive and record delivery outcomes is an open design question (nobodies-collective/Humans#110).
+**Known gap: bounces.** Bounce handling is in scope — no other section can do it — but not built. `Sent` means only that the SMTP server accepted the message. A disconnect/QUIT failure after acceptance is logged as cleanup failure and cannot make the accepted message retryable. Redacted sends keep cleanup warnings limited to template name and failure type. How to receive and record delivery outcomes is an open design question (nobodies-collective/Humans#110).
 
 ## Concepts
 

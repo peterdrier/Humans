@@ -176,6 +176,44 @@ public class EmailOutboxProcessorTests : IDisposable
         updated.NextRetryAt.Should().Be(expectedRetryAt);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SmtpOutcome_SendFailureRetriesButDisconnectFailureDoesNot(bool sendFails)
+    {
+        await SeedMessageAsync(EmailOutboxStatus.Queued);
+        var smtp = Substitute.For<MailKit.Net.Smtp.ISmtpClient>();
+        var failure = new IOException("SMTP connection closed");
+        if (sendFails)
+            smtp.SendAsync(Arg.Any<MailKit.ISendRequest>(), Arg.Any<CancellationToken>())
+                .ThrowsAsync(failure);
+        else
+        {
+            smtp.SendAsync(Arg.Any<MailKit.ISendRequest>(), Arg.Any<CancellationToken>())
+                .Returns(new MailKit.SendResult("accepted", [], []));
+            smtp.DisconnectAsync(true, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+        }
+        var settings = Options.Create(new EmailSettings { SmtpHost = "smtp.example.com" });
+        var transport = new SmtpEmailTransport(settings, NullLogger<SmtpEmailTransport>.Instance)
+        {
+            CreateClient = () => smtp
+        };
+        var processor = WithoutThrottle(new EmailOutboxProcessor(
+            _repo, _outboxService, transport, _metrics, _meters, _clock, settings,
+            NullLogger<EmailOutboxProcessor>.Instance));
+
+        await processor.ProcessQueuedAsync(TestContext.Current.CancellationToken);
+        await processor.ProcessQueuedAsync(TestContext.Current.CancellationToken);
+
+        var row = await FreshQuery().SingleAsync(TestContext.Current.CancellationToken);
+        row.Status.Should().Be(sendFails ? EmailOutboxStatus.Failed : EmailOutboxStatus.Sent);
+        row.RetryCount.Should().Be(sendFails ? 1 : 0);
+        row.SentAt.HasValue.Should().Be(!sendFails);
+        row.NextRetryAt.HasValue.Should().Be(sendFails);
+        await smtp.Received(1).SendAsync(Arg.Any<MailKit.ISendRequest>(), Arg.Any<CancellationToken>());
+        smtp.Received(1).Dispose();
+    }
+
     [HumansFact]
     public async Task ProcessQueuedAsync_MissingSmtpHost_RemainsRetryableWithoutMarkingSent()
     {

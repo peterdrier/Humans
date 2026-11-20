@@ -75,7 +75,8 @@ public sealed class TeamServiceTests : TeamsTestHarness
             team.Members.Add(new TeamMember { Id = Guid.NewGuid(), TeamId = team.Id, UserId = id, Role = TeamMemberRole.Coordinator });
         var provider = new ServiceLocatorBuilder().With(users).With<ITeamResourceService>(_teamResourceService)
             .With(_emailService).With(TestTeamsEmails.Create()).Build();
-        var notices = new TeamMembershipNotices(Notifier, provider, NullLogger<TeamService>.Instance);
+        var notices = new TeamService(Substitute.For<ITeamRepository>(), Substitute.For<IAuditLogService>(), Notifier,
+            Substitute.For<IShiftService>(), AdminAuthorization, provider, Clock, NullLogger<TeamService>.Instance);
         var ct = TestContext.Current.CancellationToken;
         switch (notice)
         {
@@ -151,8 +152,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            Cache,
-            new CachingShiftViewService(Substitute.For<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CachingShiftViewService>.Instance),
             new EventCalendarResolver(NewSettingsServiceBackedByShiftsDb(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
             Clock,
             NullLogger<ShiftManagementService>.Instance);

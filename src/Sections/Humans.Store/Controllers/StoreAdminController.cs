@@ -46,8 +46,7 @@ internal sealed class StoreAdminController(
     {
         var report = await storeService.GetStripeReconciliationAsync(ct);
         var rows = report.Rows
-            .OrderByDescending(r => r.Status is StripeReconciliationStatus.Missing or StripeReconciliationStatus.Unmatched
-                or StripeReconciliationStatus.RecordedPending or StripeReconciliationStatus.RecordedFailed)
+            .OrderByDescending(r => r.RequiresReview)
             .ThenByDescending(r => r.CreatedAt)
             .ToList();
         return View(new PaymentsReconciliationViewModel { Report = report, Rows = rows });
@@ -283,7 +282,7 @@ internal sealed class StoreAdminController(
 
         var result = ModelState.IsValid
             ? await storeService.SaveSettingsAsync(
-                new StoreSettingsDto(model.DepositLiabilityAccountNum, model.SimplifiedInvoiceThresholdEur), user.Id, ct)
+                new StoreSettingsDto(model.StripeGatewayTreasuryId, model.SimplifiedInvoiceThresholdEur), user.Id, ct)
             : AdminMutationResult.Refused("Invalid store settings.");
         if (result.Succeeded)
             SetSuccess("Store settings saved.");

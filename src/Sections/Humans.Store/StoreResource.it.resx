@@ -98,7 +98,6 @@
   <data name="Store_ColVatId" xml:space="preserve"><value>IVA / codice fiscale</value></data>
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Depositi restituiti</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importo da rimborsare</value></data>
-  <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>La fattura può essere emessa solo quando il saldo dell'ordine è zero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Azione</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>Non è stato possibile determinare l’anno dell’ordine. Contatta il team del negozio prima di aggiungere prodotti.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Questo prodotto appartiene a un anno diverso da quello dell’ordine.</value></data>
@@ -133,4 +132,8 @@
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Rimborsato</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Totale ordine (righe, IVA e cauzioni)</value></data>
   <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Totale pagamenti regolati</value></data>
+  <data name="Store_IssueInvoiceDeposits" xml:space="preserve"><value>Cauzioni addebitate {0}, restituite {1}, trattenute {2}: la parte trattenuta è fatturata come ricavo con IVA al {3}%.</value></data>
+  <data name="Store_DownloadInvoice" xml:space="preserve"><value>Scarica fattura {0}</value></data>
+  <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Cauzione di</value></data>
+  <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Stralcio</value></data>
 </root>

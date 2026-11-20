@@ -52,7 +52,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex, "Google API error looking up Drive item {ItemId}: Code={Code} Message={Message}",
+            logger.LogWarning("Google API error looking up Drive item {ItemId}: Code={Code} Message={Message}",
                 itemId, ex.Error?.Code, ex.Error?.Message);
             return new DriveLookupResult(
                 Item: null,
@@ -60,7 +60,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error looking up Drive item {ItemId}", itemId);
+            logger.LogWarning("Transport error looking up Drive item {ItemId}: {Reason}", itemId, ex.Message);
             return new DriveLookupResult(Item: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
@@ -75,8 +75,17 @@ internal sealed class TeamResourceGoogleClient(
             lookupRequest.GroupKeyId = groupEmail;
             var lookupResponse = await lookupRequest.ExecuteAsync(ct);
 
-            var fullGroup = await cloudIdentity.Groups.Get(lookupResponse.Name).ExecuteAsync(ct);
-            var numericId = lookupResponse.Name["groups/".Length..];
+            var resourceName = lookupResponse.Name;
+            if (string.IsNullOrEmpty(resourceName) ||
+                !resourceName.StartsWith("groups/", StringComparison.Ordinal) ||
+                resourceName.Length <= "groups/".Length ||
+                resourceName["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c)))
+            {
+                logger.LogWarning("Cloud Identity group lookup returned a malformed resource name for {Email}", groupEmail);
+                return new GroupLookupResult(null, new GoogleClientError(502, "Group lookup returned a malformed resource name."));
+            }
+            var fullGroup = await cloudIdentity.Groups.Get(resourceName).ExecuteAsync(ct);
+            var numericId = resourceName["groups/".Length..];
             var resolvedEmail = fullGroup.GroupKey?.Id?.Trim();
             var separator = resolvedEmail?.LastIndexOf('@') ?? -1;
             if (resolvedEmail is null || separator <= 0 || separator == resolvedEmail.Length - 1)
@@ -99,7 +108,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex, "Google API error looking up Group {GroupEmail}: Code={Code} Message={Message}",
+            logger.LogWarning("Google API error looking up Group {GroupEmail}: Code={Code} Message={Message}",
                 groupEmail, ex.Error?.Code, ex.Error?.Message);
             return new GroupLookupResult(
                 Group: null,
@@ -107,7 +116,7 @@ internal sealed class TeamResourceGoogleClient(
         }
         catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
         {
-            logger.LogWarning(ex, "Transport error looking up Group {GroupEmail}", groupEmail);
+            logger.LogWarning("Transport error looking up Group {GroupEmail}: {Reason}", groupEmail, ex.Message);
             return new GroupLookupResult(Group: null, Error: new GoogleClientError(0, ex.Message));
         }
     }

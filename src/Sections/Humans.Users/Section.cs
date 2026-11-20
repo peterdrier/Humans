@@ -254,8 +254,6 @@ public sealed class Section :
 
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
 
-    internal const string ProfileNamesKey = "users.profile-names-to-user-row";
-
     internal const string ProfileChildrenUserIdKey = "users.profile-children-user-id";
 
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
@@ -264,10 +262,6 @@ public sealed class Section :
             "Create a verified UserEmail row from the legacy User.Email Identity column",
             "The legacy-column fallback in User.Email / UserInfo.Email",
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
-        new(ProfileNamesKey, SectionName,
-            "Copy burner, first and last name from the profile onto the users row where the row lacks them",
-            "The profile save's second copy of the names, then the three name columns on profiles",
-            ProfileNamesStatusAsync, ApplyProfileNamesAsync),
         new(ProfileChildrenUserIdKey, SectionName,
             "Stamp the owning user id onto contact fields, profile languages and volunteer history",
             "The ProfileId key on user_contact_fields, user_profile_languages and user_volunteer_history_entries",
@@ -287,19 +281,6 @@ public sealed class Section :
 
     private static Task<int> ApplyProfileChildrenAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
         sp.GetRequiredService<ProfileService>().FillProfileChildUserIdsAsync(ct);
-
-    private static async Task<DataMigrationStatus> ProfileNamesStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Users row (burner / first / last)", "Profile (burner / first / last)"],
-            [.. (await sp.GetRequiredService<ProfileService>().GetProfileNameMismatchesAsync(ct))
-                .Select(m => (IReadOnlyList<string>)
-                [
-                    m.UserId.ToString(),
-                    $"{m.UserBurnerName} / {m.UserFirstName} / {m.UserLastName}",
-                    $"{m.ProfileBurnerName} / {m.ProfileFirstName} / {m.ProfileLastName}",
-                ])]);
-
-    private static Task<int> ApplyProfileNamesAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<ProfileService>().CopyProfileNamesToUsersAsync(ct);
 
     private static async Task<DataMigrationStatus> LegacyEmailsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Legacy User.Email"],

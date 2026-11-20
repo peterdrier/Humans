@@ -92,6 +92,10 @@ public class TicketTailorServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("created_at", null)]
+    [Xunit.InlineData("created_at", "null")]
+    [Xunit.InlineData("created_at", "9223372036854775807")]
+    [Xunit.InlineData("created_at", "-9223372036854775808")]
     [Xunit.InlineData("total", null)]
     [Xunit.InlineData("total", "null")]
     [Xunit.InlineData("status", null)]
@@ -129,7 +133,7 @@ public class TicketTailorServiceTests
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "ord_free", created_at = 1716811200L, total = 0, currency = new { code = "eur" }, status = "pending" } },
+            data = new[] { new { id = "ord_free", created_at = 0L, total = 0, currency = new { code = "eur" }, status = "pending" } },
             links = new { next = (string?)null }
         });
 
@@ -138,6 +142,7 @@ public class TicketTailorServiceTests
 
         orders.Should().ContainSingle();
         orders[0].TotalAmount.Should().Be(0m);
+        orders[0].PurchasedAt.Should().Be(Instant.FromUnixTimeSeconds(0));
         orders[0].PaymentStatus.Should().Be("pending");
     }
 
@@ -457,6 +462,28 @@ public class TicketTailorServiceTests
         checkIns.Should().NotContain(c => c.VendorTicketId == "it_out");
         checkIns.Should().NotContain(c => c.VendorTicketId == "it_undo");
         checkIns.Single().CheckedInAt.Should().Be(Instant.FromUnixTimeSeconds(1751983320L));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetCheckInsAsync_RejectsOutOfRangeTimestampsWithTheVendorReadException(bool scanTimestamp)
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[]
+            {
+                new { id = "ci_bad", issued_ticket_id = "it_bad", check_in_at = scanTimestamp ? long.MaxValue : (long?)null,
+                    created_at = long.MaxValue, quantity = 1 }
+            },
+            links = new { next = (string?)null }
+        });
+
+        var read = () => TicketTailorTestHost.CreateService(handler)
+            .GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*timestamp*");
     }
 
     [HumansFact]

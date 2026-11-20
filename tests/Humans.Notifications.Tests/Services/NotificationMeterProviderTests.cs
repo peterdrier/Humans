@@ -22,6 +22,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Humans.Users.Contracts;
 using Xunit;
 
@@ -37,6 +38,7 @@ public class NotificationMeterProviderTests : IDisposable
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ITicketSync _ticketSyncService = Substitute.For<ITicketSync>();
     private readonly INotificationMeterContributor _meterContributor = Substitute.For<INotificationMeterContributor>();
+    private readonly List<INotificationMeterContributor> _contributors;
     private readonly ICampService _campService = Substitute.For<ICampService>();
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly IMemoryCache _cache;
@@ -53,13 +55,14 @@ public class NotificationMeterProviderTests : IDisposable
         _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, ConsentReviewInfo>());
         _meterContributor.GetMetersAsync(default!, default, default).ReturnsForAnyArgs([]);
+        _contributors = [_meterContributor];
         _provider = new NotificationMeterProvider(
             _userService,
             _consentService,
             _googleSyncService,
             _teamService,
             _ticketSyncService,
-            [_meterContributor],
+            _contributors,
             _campService,
             _cache,
             NullLogger<NotificationMeterProvider>.Instance,
@@ -282,6 +285,48 @@ public class NotificationMeterProviderTests : IDisposable
             m.Count == 3);
     }
 
+    public enum MeterSource { Users, Consent, Google, Tickets }
+
+    [HumansTheory]
+    [InlineData(MeterSource.Users)]
+    [InlineData(MeterSource.Consent)]
+    [InlineData(MeterSource.Google)]
+    [InlineData(MeterSource.Tickets)]
+    public async Task GetMetersForUserAsync_SourceFailureKeepsIndependentCachedCounts(MeterSource source)
+    {
+        var people = MakeNeedsConsentReview(1).Append(UserInfoFixtures.FromUser(new User
+        {
+            Id = Guid.NewGuid(),
+            DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0)
+        })).ToList();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(people);
+        _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(3);
+        _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var failure = new InvalidOperationException("source unavailable");
+        switch (source)
+        {
+            case MeterSource.Users:
+                _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+            case MeterSource.Consent:
+                _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+            case MeterSource.Google:
+                _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+            case MeterSource.Tickets:
+                _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+                break;
+        }
+
+        var meters = await _provider.GetMetersForUserAsync(CreatePrincipal(RoleNames.Admin), TestContext.Current.CancellationToken);
+
+        meters.Any(m => string.Equals(m.Title, "Consent reviews pending", StringComparison.Ordinal)).Should().Be(source is not (MeterSource.Users or MeterSource.Consent));
+        meters.Any(m => string.Equals(m.Title, "Pending account deletions", StringComparison.Ordinal) && m.Count == 1).Should().Be(source != MeterSource.Users);
+        meters.Any(m => string.Equals(m.Title, "Failed Google sync events", StringComparison.Ordinal) && m.Count == 3).Should().Be(source != MeterSource.Google);
+        meters.Any(m => string.Equals(m.Title, "Ticket sync error", StringComparison.Ordinal) && m.Count == 1).Should().Be(source != MeterSource.Tickets);
+    }
+
     [HumansFact]
     public async Task GetMetersForUserAsync_Admin_SeesFailedSyncAndDeletionsAndTeamsAndTicketError()
     {
@@ -345,6 +390,46 @@ public class NotificationMeterProviderTests : IDisposable
                 IsPromotedToDirectory: false, CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
                 Members: [], PendingRequestCount: pending),
         });
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetMetersForUserAsync_IsolatesContributorFailureButPropagatesCallerCancellation(bool callerCancelled)
+    {
+        var viewerId = Guid.NewGuid();
+        var principal = CreatePrincipalWithId(viewerId);
+        using var cts = new CancellationTokenSource();
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
+        _campService.GetCampsForEventAsync(CurrentEventId, Arg.Any<CancellationToken>())
+            .Returns([MakeCampInfoWithPendingRequest(viewerId)]);
+        _meterContributor.GetMetersAsync(principal, viewerId, cts.Token)
+            .Returns<Task<IReadOnlyList<NotificationMeter>>>(async _ =>
+            {
+                if (callerCancelled)
+                {
+                    await cts.CancelAsync();
+                    throw new OperationCanceledException(cts.Token);
+                }
+                throw new InvalidOperationException("contributor unavailable");
+            });
+        var healthy = Substitute.For<INotificationMeterContributor>();
+        healthy.GetMetersAsync(principal, viewerId, cts.Token).Returns(
+            [new NotificationMeter { Title = "Healthy section", Count = 2, ActionUrl = "/healthy", Audience = "viewer", Priority = 4 }]);
+        _contributors.Add(healthy);
+
+        var read = () => _provider.GetMetersForUserAsync(principal, cts.Token);
+        if (callerCancelled)
+        {
+            await read.Should().ThrowAsync<OperationCanceledException>();
+            await healthy.DidNotReceiveWithAnyArgs().GetMetersAsync(default!, default, default);
+        }
+        else
+        {
+            var meters = await read();
+            meters.Should().Contain(m => m.Title == "Healthy section" && m.Count == 2);
+            meters.Should().Contain(m => m.ActionUrl == "/Barrios" && m.Count == 1);
+        }
     }
 
     [HumansFact]

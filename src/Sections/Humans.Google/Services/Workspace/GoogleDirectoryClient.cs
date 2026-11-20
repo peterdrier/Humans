@@ -17,11 +17,12 @@ internal sealed class GoogleDirectoryClient(
     public async Task<DirectoryGroupListResult> ListDomainGroupsAsync(CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
+        var service = await GetDirectoryServiceAsync(ct);
         try
         {
-            var service = await GetDirectoryServiceAsync(ct);
             var groups = new List<DirectoryGroup>();
             string? pageToken = null;
+            var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
 
             do
             {
@@ -34,6 +35,14 @@ internal sealed class GoogleDirectoryClient(
                 }
 
                 var response = await request.ExecuteAsync(ct);
+
+                pageToken = response.NextPageToken;
+                if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                {
+                    logger.LogWarning("Google domain groups returned a repeated page token.");
+                    return new DirectoryGroupListResult(Groups: null,
+                        Error: new GoogleClientError(502, "Google domain groups returned a repeated page token."));
+                }
 
                 if (response.GroupsValue is not null)
                 {
@@ -52,20 +61,23 @@ internal sealed class GoogleDirectoryClient(
                             DirectMembersCount: g.DirectMembersCount));
                     }
                 }
-
-                pageToken = response.NextPageToken;
             } while (!string.IsNullOrEmpty(pageToken));
 
             return new DirectoryGroupListResult(groups, Error: null);
         }
         catch (global::Google.GoogleApiException ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
                 "Google API error listing domain groups: Code={Code} Message={Message}",
                 ex.Error?.Code, ex.Error?.Message);
             return new DirectoryGroupListResult(
                 Groups: null,
                 Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error listing domain groups: {Reason}", ex.Message);
+            return new DirectoryGroupListResult(Groups: null, Error: new GoogleClientError(0, ex.Message));
         }
     }
 

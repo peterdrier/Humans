@@ -19,7 +19,7 @@ internal sealed record TripView(
     string? OvernightPlan,
     VehicleType VehicleType,
     int SeatsOffered,
-    int SeatsRemaining,
+    int SeatsAccepted,
     LuggageSize LuggageCapacity,
     string? CapacityNote,
     string? Restrictions,
@@ -30,6 +30,8 @@ internal sealed record TripView(
     TripStatus Status,
     Instant CreatedAt)
 {
+    public int SeatsRemaining => SeatsOffered - SeatsAccepted;
+
     public bool IsFull => SeatsRemaining <= 0;
 
     /// <summary>Last day of travel: departure plus duration minus one.</summary>
@@ -106,7 +108,7 @@ internal sealed record RideshareSnapshot(
             OffersPosted: Trips.Count,
             RequestsPosted: Requests.Count,
             SeatsOffered: Trips.Where(t => activeTrips.Contains(t.Id)).Sum(t => t.SeatsOffered),
-            SeatsFilled: Interests.Where(i => i.Status == InterestStatus.Accepted && activeTrips.Contains(i.TripId)).Sum(i => i.Seats),
+            SeatsFilled: Trips.Where(t => activeTrips.Contains(t.Id)).Sum(t => t.SeatsAccepted),
             RidersStillLooking: Requests.Count(r => r.Status == RequestStatus.Active && !r.IsMatched));
     }
 }

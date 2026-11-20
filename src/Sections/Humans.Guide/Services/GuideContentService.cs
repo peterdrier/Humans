@@ -1,3 +1,4 @@
+using Octokit;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -96,10 +97,11 @@ internal sealed class GuideContentService(
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 failed.Add(stem);
-                logger.LogWarning(ex,
-                    "Failed to fetch or segment guide file {FileStem}; {Outcome}",
+                var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
+                logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
+                    "Failed to fetch or segment guide file {FileStem}; {Outcome}: {Reason}",
                     stem,
-                    hasStale ? "keeping stale cached copy" : "no stale copy available");
+                    hasStale ? "keeping stale cached copy" : "no stale copy available", ex.Message);
             }
         }
 

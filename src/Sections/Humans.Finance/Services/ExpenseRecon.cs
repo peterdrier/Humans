@@ -13,7 +13,7 @@ namespace Humans.Finance.Services;
 /// </summary>
 internal static partial class ExpenseRecon
 {
-    /// <summary>What the push writes in front of a line's description (Expenses' ExpenseHoldedPublisher.DocDescription,
+    /// <summary>What the push writes in front of a line's description (Expenses' ExpenseReportBackgroundProcessor.DocDescription,
     /// internal to that section).</summary>
     internal const string DescriptionMarker = "ER: ";
 

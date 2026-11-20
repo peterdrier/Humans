@@ -46,7 +46,7 @@ public sealed class MyWorkgroupsViewComponentTests
         var joined = Instant.FromUtc(2026, 1, 1, 0, 0);
         var group = new WorkgroupInfo(Guid.NewGuid(), "group", "Group", "Purpose", "Report",
             WorkgroupDeliverableKind.Report, WorkgroupAudience.Board, null, WorkgroupStatus.Active,
-            null, null, null, null, null, joined, joined, null,
+            null, null, null, null, joined, joined, null,
             [new WorkgroupMemberInfo(Guid.NewGuid(), survivorId, WorkgroupMemberRole.Coordinator, joined, null),
                 new WorkgroupMemberInfo(Guid.NewGuid(), Guid.NewGuid(), WorkgroupMemberRole.Member, joined, null, true)],
             [], [], [], null, null, null);

@@ -128,15 +128,16 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task GetPurchaseDocumentAsync_ParsesResponse()
+    public async Task GetPurchaseDocumentAsync_reads_used_fields_without_parsing_unused_metadata()
     {
         var json = """
         {
-          "id":"doc-123","document_number":"F260009",
-          "subtotal":"19.52","tax":"0.00","total":"19.52",
-          "payments_total":"19.52","payments_pending":"0.00",
+          "id":42,"document_number":{},
+          "subtotal":"unreadable","tax":{},"total":[],
+          "payments_total":"unreadable","payments_pending":{},
           "approved_at":"2026-05-10T09:00:00",
-          "tags":["camp-build-camp"],
+          "tags":42,
+          "notes":"Published notes",
           "payments_detail":[
             {"id":"6ad492bfadfbf95ccf087fde","amount":"17.00","date":"2026-10-16","bank_id":"69d65af9b42dd1dd620d9330"},
             {"id":"6ad492bfadfbf95ccf087fdf","amount":"2.52","date":"2026-10-17","bank_id":null}
@@ -154,11 +155,8 @@ public class HoldedClientTests
         var client = Make(handler);
         var doc = await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
 
-        doc.Id.Should().Be("doc-123");
-        doc.DocNumber.Should().Be("F260009");
-        doc.PaymentsPending.Should().Be(0);
         doc.ApprovedAt.Should().NotBeNull();
-        doc.Tags.Should().ContainSingle("camp-build-camp");
+        doc.Notes.Should().Be("Published notes");
         // The live payments_detail shape (2026-10-18): a 2-dp amount string, a plain date, bank_id.
         doc.Payments.Should().HaveCount(2);
         doc.Payments[0].Should().Be(new HoldedPaymentDetailDto(
@@ -199,7 +197,7 @@ public class HoldedClientTests
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":42,"document_number":"F001"}"""));
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"notes":42}"""));
         var client = Make(handler);
 
         var act = async () => await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);

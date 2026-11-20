@@ -29,7 +29,10 @@ internal sealed record StripeReconciliationRow(
     Instant? CreatedAt,
     Guid? OrderId,
     string? OrderLabel,
-    StripeReconciliationStatus Status);
+    StripeReconciliationStatus Status)
+{
+    public bool RequiresReview => Status is not (StripeReconciliationStatus.Recorded or StripeReconciliationStatus.Unpaid);
+}
 
 /// <summary>A recorded Stripe payment with no matching session: reported for review, never auto-deleted.</summary>
 internal sealed record StripeOrphanPayment(
@@ -51,6 +54,9 @@ internal sealed record StripeReconciliationReport(
     IReadOnlyList<StripeOrphanPayment> Orphans)
 {
     public int RecordedCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Recorded);
+    public int RecordedFailedCount => Rows.Count(r => r.Status == StripeReconciliationStatus.RecordedFailed);
+    public bool IsReconciled => StripeQueried && Orphans.Count == 0 && Rows.All(r => !r.RequiresReview);
+
     public int RecordedPendingCount => Rows.Count(r => r.Status == StripeReconciliationStatus.RecordedPending);
     public int MissingCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Missing);
     public int UnmatchedCount => Rows.Count(r => r.Status == StripeReconciliationStatus.Unmatched);

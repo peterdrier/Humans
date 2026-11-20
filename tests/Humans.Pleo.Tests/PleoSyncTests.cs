@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Security.Claims;
 using Humans.Base.Constants;
+using Humans.Pleo.Contracts;
 using Humans.Pleo.Controllers;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +31,7 @@ public sealed class PleoSyncTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Service _service;
     private List<JsonElement> _entries = [];
+    private readonly CapturingLogger<Service> _logger = new();
 
     public PleoSyncTests()
     {
@@ -49,12 +51,12 @@ public sealed class PleoSyncTests
         _client.GetBalanceAsync(Arg.Any<CancellationToken>()).Returns(new PleoBalanceWire("EUR", 1_000_000, 990_000, 0));
 
         _service = new Service(_repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit,
-            NullLogger<Service>.Instance);
+            _logger);
     }
 
     private static JsonElement Entry(
         string id, string family = "CARD_PURCHASE", string? subFamily = "IN_STORE", long minors = 1000,
-        long? bill = null, string? category = LaCantinaCategory, string status = "COMPLETED")
+        long? bill = null, string? category = LaCantinaCategory, string status = "COMPLETED", string currency = "EUR")
     {
         var json = JsonSerializer.Serialize(new
         {
@@ -66,12 +68,38 @@ public sealed class PleoSyncTests
             accountId = category,
             settledAt = "2026-07-01T10:00:00Z",
             performedAt = "2026-07-01T10:00:00Z",
-            transactionValue = new { currency = "EUR", minors },
+            transactionValue = new { currency, minors },
             totalBillValue = bill is null ? null : new { currency = "EUR", minors = bill },
             merchant = new { name = "Makro" },
             receiptIds = string.Equals(family, "PLEO_INVOICE", StringComparison.Ordinal) ? Array.Empty<string>() : ["r1"],
         });
         return JsonDocument.Parse(json).RootElement.Clone();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("JPY", 1500L, "1500", 0)]
+    [Xunit.InlineData("ISK", 1500L, "1500", 0)]
+    [Xunit.InlineData("KWD", 12345L, "12.345", 3)]
+    [Xunit.InlineData("CLF", 12345L, "1.2345", 4)]
+    [Xunit.InlineData("GBP", 6580L, "65.80", 2)]
+    [Xunit.InlineData("EUR", 0L, "0", 2)]
+    [Xunit.InlineData("KWD", -12345L, "-12.345", 3)]
+    public async Task Entry_list_and_detail_preserve_original_currency_units(
+        string currency, long minors, decimal expected, int decimals)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("currency-entry", minors: minors, currency: currency)];
+        _client.ListReceiptsAsync("currency-entry", ct).Returns(Array.Empty<PleoReceiptWire>());
+        await SyncAsync();
+
+        var page = await _service.GetEntriesPageAsync(new PleoEntriesFilter(null, null, null, false, false), ct);
+        var row = page.Rows.Should().ContainSingle().Subject;
+        row.OriginalAmount.Should().Be(expected);
+        row.CurrencyDecimals.Should().Be(decimals);
+        row.Currency.Should().Be(currency);
+        var detail = await _service.GetEntryViewAsync("currency-entry", ct);
+        detail.Should().NotBeNull();
+        detail!.Row.Should().Be(row);
     }
 
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement.Clone();
@@ -132,7 +160,7 @@ public sealed class PleoSyncTests
         {
             if (boundary is SyncBoundary.AfterReplace or SyncBoundary.DetachedSave) await shutdown.CancelAsync();
         });
-        var sync = new PleoMirrorSync(repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
+        var sync = new Service(repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
         var error = await Xunit.Record.ExceptionAsync(() => sync.SyncAsync(shutdown.Token));
 
         if (boundary == SyncBoundary.AfterReplace)
@@ -319,8 +347,10 @@ public sealed class PleoSyncTests
             .Be(new Humans.Pleo.Contracts.PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
     }
 
-    [HumansFact]
-    public async Task Empty_rows_are_skipped_and_counted()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Empty_rows_are_skipped_counted_and_visible_in_logs(bool hasEmptyRows)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries =
@@ -328,15 +358,24 @@ public sealed class PleoSyncTests
             Entry("a"),
             Parse("""{"id":null,"family":null,"transactionValue":null}"""),
             Parse("""{"id":"x","family":null}"""),
+            Parse("""{"id":" \t ","family":"CARD"}"""),
+            Parse("""{"id":"empty-family","family":""}"""),
+            Parse("""{"id":"blank-family","family":" \t "}"""),
             Parse("null"),
         ];
+
+        if (!hasEmptyRows) _entries = [Entry("a")];
 
         await SyncAsync();
 
         (await _repo.GetEntriesAsync(ct)).Select(e => e.Id).Should().Equal("a");
         var state = await _repo.GetSyncStateAsync(ct);
         state!.LastCount.Should().Be(1);
-        state.SkippedCount.Should().Be(3);
+        state.SkippedCount.Should().Be(hasEmptyRows ? 6 : 0);
+        var completion = _logger.Entries.Should().ContainSingle(entry =>
+            entry.Message.StartsWith("Pleo sweep mirrored", StringComparison.Ordinal)).Subject;
+        completion.Level.Should().Be(hasEmptyRows ? LogLevel.Warning : LogLevel.Information);
+        completion.Exception.Should().BeNull();
     }
 
     [HumansFact]
@@ -437,13 +476,18 @@ public sealed class PleoSyncTests
         state.LastError.Should().Contain("403");
     }
 
-    [HumansFact]
-    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error(bool unexpected)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var before = await _repo.GetCategoriesAsync(ct);
+        Exception failure = unexpected
+            ? new InvalidOperationException("Unexpected category failure")
+            : new PleoPermanentException("Pleo bookkeeping-categories:search: 403 Forbidden", 403);
         _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns<IReadOnlyList<PleoCategoryWire>>(
-            _ => throw new PleoPermanentException("Pleo bookkeeping-categories:search: 403 Forbidden", 403));
+            _ => throw failure);
         _entries = [Entry("a")];
 
         (await SyncAsync()).Should().Be(PleoSyncOutcome.SyncedWithoutCategories);
@@ -452,7 +496,43 @@ public sealed class PleoSyncTests
         (await _repo.GetCategoriesAsync(ct)).Should().BeEquivalentTo(before);
         var state = await _repo.GetSyncStateAsync(ct);
         state!.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
-        state.LastError.Should().Contain("403");
+        state.LastError.Should().Contain(failure.Message);
+        var entry = _logger.Entries.Should().ContainSingle(log =>
+            log.Message.StartsWith("Pleo category fetch failed", StringComparison.Ordinal)).Subject;
+        entry.Level.Should().Be(unexpected ? LogLevel.Error : LogLevel.Warning);
+        entry.Exception.Should().BeSameAs(unexpected ? failure : null);
+        if (!unexpected) entry.Message.Should().Contain(failure.Message);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task Receipt_failures_keep_the_fallback_and_warn_without_stacks(bool download, bool transient)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("a")];
+        await SyncAsync();
+        _logger.Entries.Clear();
+        PleoApiException failure = transient
+            ? new PleoTransientException("Pleo receipt unavailable")
+            : new PleoPermanentException("Pleo receipt forbidden", 403);
+        _client.ListReceiptsAsync("a", ct).Returns<IReadOnlyList<PleoReceiptWire>>(_ => throw failure);
+        _client.GetReceiptFileAsync("a", "r1", ct).Returns<PleoReceiptFile>(_ => throw failure);
+
+        if (download)
+            (await _service.GetReceiptFileAsync("a", "r1", ct)).Should().BeNull();
+        else
+        {
+            var detail = await _service.GetEntryViewAsync("a", ct);
+            detail!.Receipts.Should().BeEmpty();
+            detail.ReceiptError.Should().Contain(failure.Message);
+        }
+        var entry = _logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain("a").And.Contain(failure.Message);
     }
 
     [HumansFact]

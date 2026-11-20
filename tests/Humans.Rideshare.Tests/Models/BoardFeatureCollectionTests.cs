@@ -153,7 +153,7 @@ public sealed class BoardFeatureCollectionTests
         IReadOnlyList<Waypoint>? waypoints = null,
         TripStatus status = TripStatus.Active) =>
         new(Guid.NewGuid(), userId, direction, "Paris", 48.85, 2.35, waypoints ?? [], route,
-            July3, 1, null, VehicleType.Car, 3, 3,
+            July3, 1, null, VehicleType.Car, 3, 0,
             LuggageSize.Minimal, null, null, false, CostSharing.ShareFuel, null, null, status, Now);
 
     private static RequestView Request(Guid userId) =>

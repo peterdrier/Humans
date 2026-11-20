@@ -106,7 +106,6 @@
   <data name="Store_ColVatId" xml:space="preserve"><value>IVA / NIF / CIF</value></data>
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Fianzas devueltas</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Importe a reembolsar</value></data>
-  <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>Solo se puede emitir la factura cuando el saldo del pedido es cero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Acción</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>No se ha podido determinar el año del pedido. Contacta con el equipo de la tienda antes de añadir productos.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>Este producto pertenece a un año distinto al del pedido.</value></data>
@@ -141,4 +140,8 @@
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Reembolsado</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Total del pedido (líneas, IVA y fianzas)</value></data>
   <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total de pagos liquidados</value></data>
+  <data name="Store_IssueInvoiceDeposits" xml:space="preserve"><value>Fianzas cobradas {0}, devueltas {1}, retenidas {2}: la parte retenida se factura como ingreso con un {3}% de IVA.</value></data>
+  <data name="Store_DownloadInvoice" xml:space="preserve"><value>Descargar factura {0}</value></data>
+  <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Fianza de</value></data>
+  <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Condonación</value></data>
 </root>

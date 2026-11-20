@@ -138,7 +138,6 @@
   <data name="Store_ColVatId" xml:space="preserve"><value>VAT / tax ID</value></data>
   <data name="Store_DepositsReturned" xml:space="preserve"><value>Deposits returned</value></data>
   <data name="Store_RefundAmount" xml:space="preserve"><value>Refund amount</value></data>
-  <data name="Store_IssueInvoiceNeedsZeroBalance" xml:space="preserve"><value>An invoice can only be issued when the order balance is zero.</value></data>
   <data name="Store_ColAction" xml:space="preserve"><value>Action</value></data>
   <data name="Store_OrderYearUnresolved" xml:space="preserve"><value>The order year could not be resolved. Contact the store team before adding products.</value></data>
   <data name="Store_ProductYearMismatch" xml:space="preserve"><value>This product belongs to a different year from the order.</value></data>
@@ -173,4 +172,8 @@
   <data name="Store_PaymentRefunded" xml:space="preserve"><value>Refunded</value></data>
   <data name="Store_OrderTotal" xml:space="preserve"><value>Order total (lines, VAT and deposits)</value></data>
   <data name="Store_TotalClearedPayments" xml:space="preserve"><value>Total cleared payments</value></data>
+  <data name="Store_IssueInvoiceDeposits" xml:space="preserve"><value>Deposits charged {0}, returned {1}, kept {2}: the kept part is invoiced as income at {3}% VAT.</value></data>
+  <data name="Store_DownloadInvoice" xml:space="preserve"><value>Download invoice {0}</value></data>
+  <data name="Store_RecordPaymentProduct" xml:space="preserve"><value>Deposit of</value></data>
+  <data name="Enum_PaymentMethod_WriteOff" xml:space="preserve"><value>Write-off</value></data>
 </root>

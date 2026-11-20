@@ -1211,8 +1211,6 @@
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Deze dienst zit vol.</value></data>
   <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Rooster niet gevonden.</value></data>
   <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Geen diensten gevonden in de opgegeven periode.</value></data>
-  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Al aangemeld voor alle diensten in deze periode.</value></data>
-  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Alle diensten in deze periode hebben tijdconflicten met bestaande aanmeldingen.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Alle diensten in deze periode zitten vol.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Een of meer diensten in deze reeks zijn alleen voor coördinatoren en beheerders.</value></data>
   <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Al aangemeld voor een of meer diensten in deze periode.</value></data>

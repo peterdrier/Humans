@@ -1,3 +1,4 @@
+using Humans.Holded.Services;
 using AwesomeAssertions;
 using Hangfire;
 using Humans.Holded.Contracts;
@@ -39,7 +40,7 @@ public sealed class HoldedMirrorCatchUpTests
         await catchUp.StartAsync(Xunit.TestContext.Current.CancellationToken);
 
         logger.ReceivedCalls().Select(call => call.GetArguments()).Should().Contain(args =>
-            (Microsoft.Extensions.Logging.LogLevel)args[0]! == Microsoft.Extensions.Logging.LogLevel.Warning && ReferenceEquals(args[3], failure));
+            (Microsoft.Extensions.Logging.LogLevel)args[0]! == Microsoft.Extensions.Logging.LogLevel.Error && ReferenceEquals(args[3], failure));
     }
 
     [HumansFact]

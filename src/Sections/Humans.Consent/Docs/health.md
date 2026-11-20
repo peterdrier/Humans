@@ -24,6 +24,7 @@ account state, the teams and the member's mail.
 | Review & sign | "Show one document; record my agreement" | `GetConsentReviewDetailAsync` + `IConsentSubmission.SubmitConsentAsync`; `/Consent`, `/Consent/Review`, `/Consent/Submit` |
 | My data | "What have I signed; is my deletion pending?" | `/Consent/MyData` over the internal dashboard read |
 | Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncService` + internal reads, all views over one cached active+required set |
+| Repository access | "Can the legal-document source be reached?" | `Health/GitHubHealthCheck`, registered as `github` through `ISectionHealthChecks` |
 | Keep documents current | "Has the source changed? Pull it." | the internal sync surface, the sync runner, the sync and reminder Hangfire jobs at 04:00 |
 | Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
 | Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |
@@ -62,8 +63,8 @@ Three aggregates and one content proxy, each with a single writer:
 - `consent_records` is append-only: the repository exposes Add and reads only
   (`Data/IConsentRepository.cs:12`) and DB triggers reject UPDATE and DELETE
   (`Data/Migrations/20260810192942_BaselineLegal.cs:151`).
-- Every per-user consent read follows the merge chain: internal `ConsentReader` resolves
-  `UserInfo.AllUserIds` before reading (`Services/ConsentReader.cs:21`).
+- Every per-user consent read follows the merge chain: `ConsentService` resolves
+  `UserInfo.AllUserIds` before reading (`Services/ConsentService.cs`).
 - A consent is recorded only with explicit consent (`Services/ConsentService.cs:126`), from a
   profile with all required names (`Services/ConsentService.cs:130`), once per user and version
   (unique index, `Data/ConsentRecordConfiguration.cs:34`), with the user agent cut to 500

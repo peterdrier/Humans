@@ -27,7 +27,7 @@ internal sealed class FinanceOverviewService(
     IPleoService pleo,
     IStripeMirrorService stripe,
     IOptions<SepaOptions> sepa,
-    IHoldedRepository repo,
+    IFinanceRepository repo,
     IAuditLogService audit,
     IClock clock) : IApplicationService
 {
@@ -88,10 +88,10 @@ internal sealed class FinanceOverviewService(
     {
         if (string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId)) return null;
         var mirror = await holded.GetBankMovementsAsync(
-            sepa.Value.TreasuryAccountId, today.PlusDays(-SepaBankBooking.FeedWindowDays), today, ct);
+            sepa.Value.TreasuryAccountId, today.PlusDays(-Service.FeedWindowDays), today, ct);
         return mirror.LastSyncAt is null
             ? new FinanceBankFeedVm(null, null)
-            : new FinanceBankFeedVm(mirror.Movements.Count(m => !SepaBankMatching.IsReconciled(m)), mirror.LastSyncAt);
+            : new FinanceBankFeedVm(mirror.Movements.Count(m => !Service.IsReconciled(m)), mirror.LastSyncAt);
     }
 
     private static bool Under(int accountNum, string prefix) =>

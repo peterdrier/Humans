@@ -7,6 +7,7 @@ using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
+using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
@@ -32,7 +33,7 @@ public class SepaWithdrawTests
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly Guid Actor = Guid.NewGuid();
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -199,11 +200,18 @@ public class SepaWithdrawTests
     public async Task CancelFile_IsRefused_WhenAnyTransferIsBooked_OrTheFileIsAlreadyCancelled(bool booked)
     {
         var fileId = Guid.NewGuid();
-        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>
+        var rows = new List<SepaPayoutTransferRow>
         {
             FileRow(fileId, 1000m, withdrawnAt: booked ? null : GeneratedAt),
             FileRow(fileId, 250m, bookedAt: booked ? FixedNow : null, withdrawnAt: booked ? null : GeneratedAt),
-        });
+        };
+        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(rows);
+        var file = new SepaPayoutFileVm(fileId, "f.xml", GeneratedAt, Actor,
+            rows.Select(row => new SepaTransferVm(row, "Member")).ToList(), null);
+        file.IsCancelled.Should().Be(!booked);
+        file.CanCancel.Should().BeFalse();
+        file.SummaryTransferCount.Should().Be(2);
+        file.SummaryTotal.Should().Be(1250m);
 
         var result = await MakeService().CancelSepaFileAsync(fileId, Actor, TestContext.Current.CancellationToken);
 
@@ -222,8 +230,8 @@ public class SepaWithdrawTests
 
         row.IsWithdrawn.Should().BeTrue();
         row.CanBook.Should().BeFalse();
-        SepaBankBooking.WithdrawRefusal(row).Should().Contain("already withdrawn");
-        SepaBankBooking.WithdrawRefusal(row with { WithdrawnAt = null }).Should().BeNull();
-        SepaBankBooking.WithdrawRefusal(row with { WithdrawnAt = null, BookedAt = FixedNow }).Should().Contain("booked");
+        Service.WithdrawRefusal(row).Should().Contain("already withdrawn");
+        Service.WithdrawRefusal(row with { WithdrawnAt = null }).Should().BeNull();
+        Service.WithdrawRefusal(row with { WithdrawnAt = null, BookedAt = FixedNow }).Should().Contain("booked");
     }
 }

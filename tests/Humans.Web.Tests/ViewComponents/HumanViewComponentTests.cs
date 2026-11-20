@@ -81,7 +81,6 @@ public class HumanViewComponentTests
             {
                 Id = profileId,
                 UserId = userId,
-                BurnerName = "Sparky",
                 ProfilePictureContentType = "image/jpeg",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),

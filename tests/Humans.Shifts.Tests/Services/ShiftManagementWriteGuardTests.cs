@@ -26,7 +26,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly ITeamService _teamService;
-    private readonly ShiftViewProbe _views = new();
     private readonly IRoleAssignmentService _roleAssignments;
     private readonly ShiftManagementService _service;
 
@@ -61,8 +60,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             AuditLog,
             AdminAuthorization,
             serviceProvider,
-            Cache,
-            _views.Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -235,7 +232,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog, AdminAuthorization,
             new ServiceLocatorBuilder().With(_teamService).Build(),
-            Cache, _views.Cache,
             new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
@@ -247,7 +243,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateRotaAsync_WithTags_PersistsRotaAndTags_AndInvalidatesRotaView()
+    public async Task CreateRotaAsync_WithTags_PersistsRotaAndTags()
     {
         var es = SeedEventSettings();
         var team = SeedDepartment("Gate");
@@ -255,7 +251,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         await SaveAllAsync(Ct);
 
         var rota = NewRota(es.Id, team.Id);
-        await _views.PrimeRotaAsync(rota.Id);
         await _service.CreateRotaAsync(rota, [tag.Id]);
 
         var saved = await ShiftsDb.Rotas.AsNoTracking().Include(r => r.Tags)
@@ -263,7 +258,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         saved.TeamId.Should().Be(team.Id);
         saved.UpdatedAt.Should().Be(TestNow);
         saved.Tags.Select(t => t.Id).Should().BeEquivalentTo([tag.Id]);
-        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -283,9 +277,8 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var service = new ShiftManagementService(
             new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(options), ShiftsDb, Clock),
             AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
-            Cache, _views.Cache, NewCalendarResolver(), Clock,
+            NewCalendarResolver(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
-        await _views.PrimeRotaAsync(rota.Id);
 
         Func<Task> write = () => create
             ? service.CreateRotaAsync(rota, [tag.Id])
@@ -300,7 +293,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             saved!.Name.Should().Be(originalName);
             saved.Tags.Should().BeEmpty();
         }
-        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     private sealed class FailRotaTagSave : SaveChangesInterceptor
@@ -462,12 +454,11 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task MoveRotaToTeamAsync_RepointsRotaAndInvalidatesRotaView()
+    public async Task MoveRotaToTeamAsync_RepointsRota()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var target = SeedDepartment("Target");
         await SaveAllAsync(Ct);
-        await _views.PrimeRotaAsync(rota.Id);
 
         var result = await _service.MoveRotaToTeamAsync(
             new MoveRotaInput(rota.Id, rota.TeamId, target.Id, Guid.NewGuid()));
@@ -478,7 +469,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         var moved = await ShiftsDb.Rotas.AsNoTracking().SingleAsync(r => r.Id == rota.Id, Ct);
         moved.TeamId.Should().Be(target.Id);
         moved.UpdatedAt.Should().Be(TestNow);
-        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -503,7 +493,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task DeleteShiftAsync_DeletesShiftAndPendingSignups_AndInvalidatesEveryAffectedView()
+    public async Task DeleteShiftAsync_DeletesShiftAndPendingSignups()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         var shift = SeedShift(rota, dayOffset: 1);
@@ -513,7 +503,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         SeedSignup(shift, bob.Id, SignupStatus.Bailed);
         var pending = ShiftsDb.ShiftSignups.Local.Single(s => s.UserId == alice.Id);
         await SaveAllAsync(Ct);
-        await _views.PrimeRotaAsync(rota.Id, shift);
 
         var actorUserId = Guid.NewGuid();
         await _service.DeleteShiftAsync(shift.Id, actorUserId);
@@ -521,7 +510,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         ShiftsDb.ChangeTracker.Clear();
         (await ShiftsDb.Shifts.AsNoTracking().AnyAsync(s => s.Id == shift.Id, Ct)).Should().BeFalse();
         (await ShiftsDb.ShiftSignups.AsNoTracking().AnyAsync(s => s.ShiftId == shift.Id, Ct)).Should().BeFalse();
-        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
         await AuditLog.Received(1).LogAsync(ShiftsAuditActions.ShiftSignupCancelled, nameof(ShiftSignup), pending.Id,
             Arg.Is<string>(text => text.Contains(rota.Name, StringComparison.Ordinal)
                 && text.Contains("deleted", StringComparison.Ordinal)),
@@ -663,7 +651,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             ? new List<DayStaffingInput> { new(dayOffset, 1, 2) }
             : new List<DayStaffingInput> { new(0, 1, 2), new(dayOffset, 1, 2) };
         var input = new ConfigureBuildStrikeStaffingInput(rota.Id, rota.TeamId, days);
-        await _views.PrimeRotaAsync(rota.Id);
 
         if (valid)
         {
@@ -679,8 +666,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             ShiftsDb.Shifts.Should().BeEmpty();
             result.Succeeded.Should().BeFalse();
             result.Message.Should().Contain("outside the all period");
-            _views.Evictions.Should().Be(0);
-            (await _views.IsRotaCachedAsync(rota.Id)).Should().BeTrue();
         }
     }
 
@@ -787,13 +772,11 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Event);
         await SaveAllAsync(Ct);
-        await _views.PrimeRotaAsync(rota.Id);
 
         var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
             rota.Id, rota.TeamId, 0, 0, [new ShiftTimeSlotInput(new LocalTime(8, 0), 4)], 2, 2));
 
         result.Succeeded.Should().BeTrue();
-        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -1060,11 +1043,10 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
     }
 
     [HumansFact]
-    public async Task CreateShiftAsync_Succeeds_WhenMinEqualsMax_AndInvalidatesRotaView()
+    public async Task CreateShiftAsync_Succeeds_WhenMinEqualsMax()
     {
         var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
         await SaveAllAsync(Ct);
-        await _views.PrimeRotaAsync(rota.Id);
 
         var result = await _service.CreateShiftAsync(NewShiftInput(rota, -3) with
         {
@@ -1073,7 +1055,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         });
 
         result.Succeeded.Should().BeTrue();
-        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -1105,19 +1086,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         result.Message.Should().Be("MinVolunteers cannot exceed MaxVolunteers.");
         ShiftsDb.ChangeTracker.Clear();
         (await ShiftsDb.Shifts.AsNoTracking().SingleAsync(Ct)).DayOffset.Should().Be(-4);
-    }
-
-    [HumansFact]
-    public async Task UpdateShiftAsync_InvalidatesTheShiftView()
-    {
-        var (_, rota, _) = SeedRotaScenario(RotaPeriod.Build);
-        var shift = SeedShift(rota, dayOffset: -4);
-        await SaveAllAsync(Ct);
-        await _views.PrimeRotaAsync(rota.Id, shift);
-
-        await _service.UpdateShiftAsync(NewUpdateInput(shift, rota.TeamId, dayOffset: -3));
-
-        (await _views.IsRotaCachedAsync(rota.Id)).Should().BeFalse();
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

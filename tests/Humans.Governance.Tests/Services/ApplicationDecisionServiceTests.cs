@@ -55,12 +55,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     {
         var source = Guid.NewGuid();
         var live = Guid.NewGuid();
-        var users = Substitute.For<IUserService>();
-        users.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+        _userService.GetUserInfoAsync(source, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
             new User { Id = live, BurnerName = "Live", PreferredLanguage = "es" },
             [new UserEmail { UserId = live, Email = "live@example.org", IsVerified = true, IsPrimary = true }], [], null));
-        var notices = new ApplicationDecisionNotices(users, _emailService, _emailMessages, _notificationService,
-            NullLogger<ApplicationDecisionService>.Instance);
+        var notices = _service;
         var application = new MemberApplication { Id = Guid.NewGuid(), UserId = source, MembershipTier = MembershipTier.Colaborador };
 
         if (decision == ApplicationMutation.Approve)

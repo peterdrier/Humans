@@ -155,9 +155,9 @@ public class GoogleControllerSyncCancellationTests
                 DateTime.UnixEpoch, null, null, null, false, false);
             var first = second with { PrimaryEmail = "aaron@nobodies.team" };
             _admin.GetWorkspaceAccountListAsync(Arg.Any<CancellationToken>())
-                .Returns(new WorkspaceAccountListResult([second, first], 2, 2, 0, 0, 2, 0, 2));
+                .Returns(new WorkspaceAccountListResult([second, first]));
             var view = (await controller.Accounts()).Should().BeOfType<ViewResult>().Subject;
-            var model = view.Model.Should().BeOfType<WorkspaceEmailListViewModel>().Subject;
+            var model = view.Model.Should().BeOfType<WorkspaceAccountListResult>().Subject;
             model.Accounts.Select(a => a.PrimaryEmail).Should().Equal(first.PrimaryEmail, second.PrimaryEmail);
             model.TotalAccounts.Should().Be(2);
             model.MissingTwoFactorCount.Should().Be(2);

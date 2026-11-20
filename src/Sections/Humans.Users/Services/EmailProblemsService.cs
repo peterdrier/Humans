@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Base.Helpers;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -79,6 +80,16 @@ internal sealed class EmailProblemsService(
             var emailAddition = await userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
             if (emailAddition.ErrorKey is not null)
                 continue;
+            if (!emailAddition.Added)
+            {
+                // The user already has an unverified row for the address. Verify it instead; a conflict
+                // with another account becomes a merge request and the row stays listed until it resolves.
+                var verification = await userEmailService.AdminMarkVerifiedAsync(
+                    info.Id, emailAddition.EmailId, actorUserId, ct);
+                if (verification.NoPendingVerification || verification.MergeRequestCreated
+                    || verification.ErrorKey is not null)
+                    continue;
+            }
             await audit.LogAsync(
                 UsersAuditActions.LegacyIdentityEmailBackfilled, AuditSubjectTypes.User, info.Id,
                 $"Backfilled verified UserEmail row from legacy User.Email column: {legacy}",
@@ -97,8 +108,8 @@ internal sealed class EmailProblemsService(
             if (info.IsTombstone) continue;
             var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
-            if (info.UserEmails.Any(e => e.IsVerified
-                && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase))) continue;
+            // Same match as the add, so a row the add treats as existing never stays listed.
+            if (info.UserEmails.Any(e => e.IsVerified && EmailNormalization.EmailsMatch(e.Email, legacy))) continue;
             yield return (info, legacy);
         }
     }

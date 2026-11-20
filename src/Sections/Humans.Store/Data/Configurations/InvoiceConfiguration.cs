@@ -15,6 +15,8 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         b.Property(x => x.HoldedDocNumber).HasMaxLength(50);
         b.Property(x => x.RequestPayload).HasColumnType("jsonb");
         b.Property(x => x.ResponsePayload).HasColumnType("jsonb");
+        b.Property(x => x.BookingState).HasConversion<string>().HasMaxLength(32);
+        b.Property(x => x.BookingNote).HasMaxLength(2000);
 
         b.HasOne<Order>()
             .WithOne()

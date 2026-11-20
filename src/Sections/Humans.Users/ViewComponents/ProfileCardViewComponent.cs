@@ -54,15 +54,7 @@ public sealed class ProfileCardViewComponent(
             ? await contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId, ct)
             : [];
 
-        ContactFieldVisibility accessLevel;
-        if (isOwnProfile || viewMode == ProfileCardViewMode.Admin)
-        {
-            accessLevel = ContactFieldVisibility.BoardOnly;
-        }
-        else
-        {
-            accessLevel = await contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId, ct);
-        }
+        var accessLevel = await contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId, ct);
         var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
 
         var teamsById = await teamService.GetTeamsAsync(ct);

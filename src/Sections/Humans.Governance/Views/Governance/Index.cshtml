@@ -17,11 +17,11 @@
         EmptyMessage = Localizer["Governance_Statutes_ContentNotAvailable"].Value
     };
     var culture = System.Globalization.CultureInfo.CurrentCulture;
-    StatTileViewModel[] tiles =
+    (StatTileViewModel Tile, string Body)[] tiles =
     [
-        new(Localizer["Governance_Asociados"].Value, Model.AsociadoCount.ToString(culture)),
-        new(Localizer["Governance_Colaboradores"].Value, Model.ColaboradorCount.ToString(culture)),
-        new(Localizer["Governance_BoardMembers"].Value, Model.BoardMemberIds.Count.ToString(culture)),
+        (new(Localizer["Governance_Asociados"].Value, Model.AsociadoCount.ToString(culture)), nameof(GovernanceBody.Asociados)),
+        (new(Localizer["Governance_Colaboradores"].Value, Model.ColaboradorCount.ToString(culture)), nameof(GovernanceBody.Colaboradores)),
+        (new(Localizer["Governance_BoardMembers"].Value, Model.BoardMemberIds.Count.ToString(culture)), nameof(GovernanceBody.Board)),
     ];
 }
 
@@ -30,9 +30,11 @@
 </page-header>
 
 <div class="stats" style="--stats-cols: 3">
-    @foreach (var tile in tiles)
+    @foreach (var (tile, body) in tiles)
     {
-        <partial name="_StatTile" model="tile" />
+        <a asp-action="Body" asp-route-body="@body" class="text-reset text-decoration-none d-block">
+            <partial name="_StatTile" model="tile" />
+        </a>
     }
 </div>
 
@@ -167,6 +169,16 @@
                     <div><a asp-controller="GovernanceApplications" asp-action="Index" class="small">@Localizer["Governance_MyApplications_Title"]</a></div>
                 }
             </div>
+            @if (Model.YourAccess.Count > 0)
+            {
+                <div class="border-top">
+                    <div class="card-body pb-0 small fw-semibold">@Localizer["Governance_YourAccess"]</div>
+                    @foreach (var links in Model.YourAccess)
+                    {
+                        <partial name="_BodyLinks" model="links" />
+                    }
+                </div>
+            }
             @if (Model.ApplicationStatus != ApplicationStatus.Approved)
             {
                 <details class="border-top">
@@ -195,7 +207,10 @@
         </div>
 
         <div class="card">
-            <div class="card-header fw-semibold">@Localizer["Governance_TheBoard"]</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">@Localizer["Governance_TheBoard"]</span>
+                <a asp-action="Body" asp-route-body="@nameof(GovernanceBody.Board)" class="small">@Localizer["Governance_ViewAll"]</a>
+            </div>
             @if (Model.BoardMemberIds.Count == 0)
             {
                 <div class="card-body">
@@ -204,12 +219,16 @@
             }
             else
             {
-                <ul class="list-group list-group-flush">
-                    @foreach (var boardMemberId in Model.BoardMemberIds)
-                    {
-                        <li class="list-group-item"><vc:human user-id="@boardMemberId" layout="AvatarName" size="32" /></li>
-                    }
-                </ul>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach (var boardMemberId in Model.BoardMemberIds)
+                        {
+                            <div class="col-6">
+                                <vc:human user-id="@boardMemberId" layout="Card" size="80" />
+                            </div>
+                        }
+                    </div>
+                </div>
             }
         </div>
     </div>

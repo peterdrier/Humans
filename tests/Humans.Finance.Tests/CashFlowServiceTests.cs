@@ -38,6 +38,9 @@ public class CashFlowServiceTests
         feb.PeriodStart.Should().Be(new LocalDate(2026, 2, 1));
         feb.PeriodEnd.Should().Be(new LocalDate(2026, 2, 28));
         feb.ExpenseTotal.Should().Be(-20m);
+        model.ScheduledIncomeTotal.Should().Be(100m);
+        model.ScheduledExpenseTotal.Should().Be(-50m);
+        model.ScheduledNet.Should().Be(50m);
     }
 
     [HumansFact]
@@ -136,6 +139,9 @@ public class CashFlowServiceTests
         model.Unscheduled.IncomeTotal.Should().Be(300m);
         model.Unscheduled.ExpenseTotal.Should().Be(-120m);
         model.Unscheduled.Net.Should().Be(180m);
+        model.ScheduledIncomeTotal.Should().Be(0m);
+        model.ScheduledExpenseTotal.Should().Be(-5m);
+        model.ScheduledNet.Should().Be(-5m);
         model.Unscheduled.Categories.Should().ContainSingle().Which.Amount.Should().Be(180m);
     }
 

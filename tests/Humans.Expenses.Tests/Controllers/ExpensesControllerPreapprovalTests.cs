@@ -225,7 +225,7 @@ public sealed class ExpensesControllerPreapprovalTests
         dispatched.GetArguments()[^1].Should().Be(CancellationToken.None);
     }
 
-    private ExpensesController Build()
+    private ExpensesController Build(Microsoft.Extensions.Logging.ILogger<ExpensesController>? logger = null)
     {
         var http = new DefaultHttpContext
         {
@@ -233,7 +233,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 [new Claim(ClaimTypes.NameIdentifier, _actorId.ToString())], "test"))
         };
         return new ExpensesController(_users, _reports, _budget, _finance, _preapprovals,
-            _authorization, TestClock, NullLogger<ExpensesController>.Instance, _localizer)
+            _authorization, TestClock, logger ?? NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -387,6 +387,63 @@ public sealed class ExpensesControllerPreapprovalTests
         await load.Should().ThrowAsync<OperationCanceledException>();
         _reports.ReceivedCalls().Should().BeEmpty();
         controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, NewFormLookup.ExpenseAccounts)]
+    [Xunit.InlineData(true, NewFormLookup.ExpenseAccounts)]
+    [Xunit.InlineData(false, NewFormLookup.ClaimableGrants)]
+    [Xunit.InlineData(true, NewFormLookup.ClaimableGrants)]
+    [Xunit.InlineData(false, NewFormLookup.PreapprovalGrant)]
+    [Xunit.InlineData(true, NewFormLookup.PreapprovalGrant)]
+    public async Task New_redisplay_cancels_reads_without_reporting_a_creation_failure(
+        bool writeFails, NewFormLookup lookup)
+    {
+        using var request = new CancellationTokenSource();
+        var grantId = Guid.NewGuid();
+        var failure = new IOException("Draft write unavailable");
+        var logger = new Humans.Testing.CapturingLogger<ExpensesController>();
+        _reports.CreateDraftAsync(_actorId, _actorId, 0, null, grantId, Arg.Any<CancellationToken>())
+            .Returns(writeFails ? Task.FromException<ExpenseCreateDraftResult>(failure)
+                : Task.FromResult(new ExpenseCreateDraftResult(false, null, null)));
+        _finance.ListExpenseAccountsAsync(true, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (lookup == NewFormLookup.ExpenseAccounts)
+            {
+                await request.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return (IReadOnlyList<ExpenseAccountOption>)[];
+        });
+        var grantReads = 0;
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            grantReads++;
+            if (lookup == NewFormLookup.ClaimableGrants
+                || (lookup == NewFormLookup.PreapprovalGrant && grantReads == 2))
+            {
+                await request.CancelAsync();
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            }
+            return (IReadOnlyList<GrantOption>)[];
+        });
+        var controller = Build(logger);
+        controller.HttpContext.RequestAborted = request.Token;
+        var create = () => controller.New(new ExpenseNewViewModel { PreapprovalGrantId = grantId });
+
+        await create.Should().ThrowAsync<OperationCanceledException>();
+
+        await _finance.Received(1).ListExpenseAccountsAsync(true, request.Token);
+        grantReads.Should().Be(lookup == NewFormLookup.ExpenseAccounts ? 0
+            : lookup == NewFormLookup.ClaimableGrants ? 1 : 2);
+        _preapprovals.ReceivedCalls().Should().OnlyContain(call =>
+            call.GetArguments().OfType<CancellationToken>().All(ct => ct == request.Token));
+        await _reports.Received(1).CreateDraftAsync(_actorId, _actorId, 0, null, grantId, CancellationToken.None);
+        if (writeFails)
+            logger.Entries.Should().ContainSingle(entry =>
+                entry.Level == Microsoft.Extensions.Logging.LogLevel.Error && ReferenceEquals(entry.Exception, failure));
+        else
+            logger.Entries.Should().NotContain(entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Error);
     }
 
     private static GrantOption Grant(string program, LocalDate claimBy, GrantStatus status = GrantStatus.Open) =>

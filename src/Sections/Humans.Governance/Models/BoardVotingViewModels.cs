@@ -15,9 +15,7 @@ internal sealed class BoardVotingApplicationViewModel
     public Guid ApplicationId { get; set; }
     public Guid UserId { get; set; }
     public MembershipTier MembershipTier { get; set; }
-    public string ApplicationMotivation { get; set; } = string.Empty;
     public DateTime SubmittedAt { get; set; }
-    public ApplicationStatus Status { get; set; }
     public Dictionary<Guid, BoardVoteCellViewModel> VotesByBoardMember { get; set; } = new();
 }
 
@@ -39,7 +37,6 @@ internal sealed class BoardVotingDetailViewModel
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public MembershipTier MembershipTier { get; set; }
-    public ApplicationStatus Status { get; set; }
     public string ApplicationMotivation { get; set; } = string.Empty;
     public string? AdditionalInfo { get; set; }
     public string? SignificantContribution { get; set; }

@@ -41,7 +41,13 @@ public sealed class PleoSyncJobTests
     {
         _pleo.SyncAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new PleoPermanentException("403", 403));
 
-        await RunAsync();
+        var logger = new CapturingLogger<PleoSyncJob>();
+        await new PleoSyncJob(_pleo, logger).ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Warning);
+        entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain("403");
     }
 
     [HumansFact]

@@ -14,7 +14,7 @@ Folder: `src/Sections/Humans.Store/Services/` (namespace
 ### Service (Scoped — `IApplicationService`)
 
 The section's internal Store facade (`Services/Service.cs`). Repository: `IStoreRepository`.
-Its admin summary delegates to `StoreOrderReader`; accounting consumers resolve the reader directly.
+Implements `IStoreAccountingRead`; accounting consumers resolve the same instance.
 
 | Table | R/W |
 |-------|-----|
@@ -54,29 +54,12 @@ Legacy `store_orders.Year = 0` rows are reviewed and repaired through
 Store-owned candidates; the service resolves each cross-section season through
 `ICampService`, updates only resolvable rows, and audits every confirmed repair.
 
-`IssueInvoiceAsync` delegates to `StoreInvoiceIssuer`; live pricing and counterparty
-names come from `StoreOrderReader`. The service constructs its helpers (`StoreOrderReader`,
-`StoreStripePayments`, `StoreCatalog`) with its `IStoreRepository`; accounting reads also resolve `StoreOrderReader` through `IStoreAccountingRead`.
-
-### StoreInvoiceIssuer (internal — `IApplicationService`, constructed per issuance by `Service`)
-
-Repository: `IStoreRepository`.
-
-| Table | R/W |
-|-------|-----|
-| store_products | R (`GetProductsByIdsAsync` — includes inactive products; each line's Holded revenue account) |
-| store_settings | R (`GetSettingsAsync` — deposit liability account, simplified invoice limit) |
-| store_invoices | W (`SaveIssuedInvoiceAsync`) |
-| store_orders | W (`SaveIssuedInvoiceAsync` — frozen `InvoiceIssued` row) |
-| store_order_lines | W (repriced line snapshots, same save) |
-
-Cross-section calls via `IHoldedService` / `IHoldedWrite` (the section's only outbound Holded write) and
-`IAuditLogService`, plus `IClock` and the shared
-`StoreOrderReader`. Issuance reprices the order's line snapshots from the live catalog,
-builds one Holded line per order line (plus a tax-0 line per deposit), creates **and
-approves** the document, then writes `store_invoices` and the frozen `store_orders` row in
-a single `SaveIssuedInvoiceAsync` — one `SaveChanges`, because an order must never be
-`InvoiceIssued` without its invoice row. No `IMemoryCache`.
+`IssueInvoiceAsync` reprices the order's line snapshots from the live catalog, builds one Holded
+line per order line (plus one 21% line per product's kept deposit), creates **and approves** the
+document, then writes `store_invoices` and the frozen `store_orders` row in a single
+`SaveIssuedInvoiceAsync` (one `SaveChanges`: an order is never `InvoiceIssued` without its invoice
+row). Stripe payments from checkout webhooks and missing-payment recovery go through one idempotent
+recording path under a process-wide `TrackedLock`.
 
 ### StoreTransferBooking (internal — `IApplicationService`, Scoped)
 
@@ -84,49 +67,6 @@ Owns no table access of its own: reads team-order lines through `IStoreAccountin
 `IBudgetService` (active year's department categories), `IFinanceService` (category → Holded account map),
 `IHoldedService` (transfer-account ledger mirror and its re-pull), `IHoldedWrite.PostJournalEntryAsync`, and
 `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
-
-### StoreOrderReader (internal — `IStoreAccountingRead`, Scoped)
-
-Repository: `IStoreRepository`.
-
-| Table | R/W |
-|-------|-----|
-| store_products | R (catalog and year-wide pricing) |
-| store_orders | R (single-order DTOs, index, summary and accounting export) |
-| store_order_lines | R (effective prices and quantities) |
-| store_payments | R (settled accounting payments and balances) |
-| store_invoices | R (accounting invoice numbers) |
-
-The year summary and accounting exports share one year-loading and pricing step.
-Cross-section calls via `ISettingsService` (current event year), `ICampService` /
-`ITeamService` (counterparty display names), plus `IClock`. No writes, no `IMemoryCache`.
-
-### StoreStripePayments (internal — `IApplicationService`, constructed once by `Service`)
-
-Repository: `IStoreRepository`.
-
-| Table | R/W |
-|-------|-----|
-| store_payments | R/W (PaymentIntent dedupe, add, status update, delete) |
-| store_orders | R (`GetOrderByIdAsync` — refuses team-owned orders) |
-
-Records Stripe payments from checkout webhooks and missing-payment recovery through
-the same idempotent recording path under a process-wide `TrackedLock`. Recovery reads
-checkout sessions through `IStripeService`. The same owner validates checkout requests
-and assembles reconciliation reports, reusing `StoreOrderReader` for order DTOs.
-Cross-section calls also use `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
-
-### StoreCatalog (internal — `IApplicationService`, constructed once by `Service`)
-
-Repository: `IStoreRepository`.
-
-| Table | R/W |
-|-------|-----|
-| store_products | R/W (active and all-products listings per year; add, update, activate/deactivate) |
-
-The product catalog behind `/Store` and the admin product screens; `StoreOrderReader` reuses its
-`MapProduct` projection. Each product change is audited through `IAuditLogService`; `IClock` for
-timestamps. No other cross-section calls, no `IMemoryCache`.
 
 ### BalanceCalculator
 

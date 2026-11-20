@@ -151,12 +151,26 @@ internal sealed class HoldedTransport
             if ((int)resp.StatusCode >= 500)
                 throw new HoldedTransientException(
                     $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
+            if (resp.StatusCode == HttpStatusCode.Forbidden && MissingKeyPermission(body) is { } permission)
+                throw new HoldedPermanentException(403, body,
+                    $"Humans' Holded key lacks {permission}; add it in Holded > Settings > API");
             // This message reaches logs, LastError, the audit trail and the finance UI, and a 4xx on a contact
             // create can echo the IBAN back: mask it here. ResponseBody keeps the raw body.
             throw new HoldedPermanentException((int)resp.StatusCode, body,
                 $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {MaskDiagnosticBody(body)}");
         }
     }
+
+    /// <summary>The scope Holded names in <c>Insufficient permissions: X required</c>, or null.</summary>
+    internal static string? MissingKeyPermission(string body)
+    {
+        var m = MissingPermissionPattern.Match(body);
+        return m.Success ? m.Groups["scope"].Value.Trim() : null;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex MissingPermissionPattern = new(
+        @"Insufficient permissions:\s*(?<scope>[^""]+?)\s+required",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
 
     private static string MaskDiagnosticBody(string body)
     {

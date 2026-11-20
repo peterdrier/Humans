@@ -117,9 +117,6 @@ internal interface IShiftManagement
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
 
-    /// <summary>Call after signup mutations.</summary>
-    void InvalidateDashboardCaches(Guid eventSettingsId);
-
     /// <summary>
     /// Confirmed volunteers by parent department. Build and Strike only: empty for Event or a null
     /// <paramref name="period"/>.

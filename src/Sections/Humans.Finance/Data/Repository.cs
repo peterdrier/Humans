@@ -7,7 +7,7 @@ using NodaTime;
 namespace Humans.Finance.Data;
 
 internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
-    : IHoldedRepository
+    : IFinanceRepository
 {
     public async Task<IReadOnlyList<HoldedCategoryMap>> GetCategoryMapAsync(CancellationToken ct = default)
     {
@@ -248,4 +248,72 @@ internal sealed class Repository(IDbContextFactory<FinanceDbContext> factory)
         }
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task<FinanceSettings> GetSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == FinanceSettings.SingletonId, ct)
+            ?? new FinanceSettings();
+    }
+
+    public async Task SaveSettingsAsync(FinanceSettings settings, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        if (await ctx.Settings.FirstOrDefaultAsync(s => s.Id == FinanceSettings.SingletonId, ct) is { } row)
+        {
+            row.PleoHoldedContactId = settings.PleoHoldedContactId;
+            row.PleoHoldedTreasuryId = settings.PleoHoldedTreasuryId;
+        }
+        else
+        {
+            ctx.Settings.Add(settings);
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlySet<string>> GetPleoBookingClaimsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return (await ctx.PleoBookingClaims.AsNoTracking().Select(c => c.PleoEntryId).ToListAsync(ct))
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    public async Task<bool> TryClaimPleoBookingAsync(string pleoEntryId, Instant at, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.PleoBookingClaims.Add(new PleoBookingClaim { PleoEntryId = pleoEntryId, ClaimedAt = at });
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: Npgsql.PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "PK_finance_pleo_booking_claims"
+        })
+        {
+            return false;
+        }
+    }
+
+    public async Task ReleasePleoBookingClaimAsync(string pleoEntryId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        await ctx.PleoBookingClaims.Where(c => c.PleoEntryId == pleoEntryId).ExecuteDeleteAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<PleoReceiptUpload>> GetPleoReceiptUploadsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.PleoReceiptUploads.AsNoTracking().ToListAsync(ct);
+    }
+
+    public async Task AddPleoReceiptUploadAsync(PleoReceiptUpload row, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.PleoReceiptUploads.Add(row);
+        await ctx.SaveChangesAsync(ct);
+    }
 }
+

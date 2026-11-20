@@ -34,7 +34,7 @@ public class HoldedDuplicateTests
     private static readonly Guid Actor = Guid.NewGuid();
     private const int Account = 41000067;
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IHoldedWrite _write = Substitute.For<IHoldedWrite>();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
@@ -62,7 +62,7 @@ public class HoldedDuplicateTests
     /// <summary>Notes the mirror holds per document; by default every document is the push's.</summary>
     private readonly Dictionary<string, string?> _notes = new(StringComparer.Ordinal);
 
-    private void Mirror(IEnumerable<HoldedPurchaseDocListItemDto> docs) =>
+    private void Mirror(IEnumerable<HoldedPurchaseDocInfo> docs) =>
         _holded.GetPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(_ => TestPurchaseMirror.Of(docs,
             id => _notes.TryGetValue(id, out var n) ? n : $"Expense report {ReportId}"));
 
@@ -83,22 +83,10 @@ public class HoldedDuplicateTests
         new(report ?? ReportId, Guid.NewGuid(), user ?? UserId, contactId, docId, description, $"Expense report {report ?? ReportId}", amount);
 
     /// <summary>A list item, as the v2 purchase list returns it: never any notes.</summary>
-    private static HoldedPurchaseDocListItemDto Doc(
+    private static HoldedPurchaseDocInfo Doc(
         string id, decimal total = 120m, string description = "ER: Train to Madrid", string contactId = "c1",
-        decimal? pending = null, bool? draft = false) => new()
-        {
-            Id = id,
-            DocNumber = id,
-            ContactId = contactId,
-            ContactName = "Catherine Morgaine Ryan",
-            Description = description,
-            Date = FixedNow,
-            Subtotal = total,
-            Tax = 0m,
-            Total = total,
-            PaymentsPending = pending ?? total,
-            IsDraft = draft,
-        };
+        decimal? pending = null, bool? draft = false) => new HoldedPurchaseDocInfo(
+            id, id, "Catherine Morgaine Ryan", contactId, description, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, total, 0m, total, "eur", draft == false, null, [], null, "", pending ?? total);
 
     private static readonly IReadOnlyDictionary<Guid, IReadOnlySet<string>> NoExtraContacts =
         new Dictionary<Guid, IReadOnlySet<string>>();

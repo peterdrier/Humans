@@ -9,6 +9,9 @@ using Humans.Base.Helpers;
 using Humans.Users.Helpers;
 using Humans.Gdpr.Contracts;
 using NodaTime;
+using Humans.Users.Domain;
+using System.ComponentModel.DataAnnotations;
+using Humans.Base.Threading;
 
 namespace Humans.Users.Services;
 
@@ -20,20 +23,6 @@ internal sealed class UserService(
     ILogger<UserService> logger,
     IAuditLogService audit) : IUserManagement, IUserDataContributor
 {
-    internal const string Account = UserDataExport.Account;
-    internal const string Profile = UserDataExport.Profile;
-    internal const string MergedProfiles = UserDataExport.MergedProfiles;
-    internal const string ContactFields = UserDataExport.ContactFields;
-    internal const string UserEmails = UserDataExport.UserEmails;
-    internal const string VolunteerHistory = UserDataExport.VolunteerHistory;
-    internal const string Languages = UserDataExport.Languages;
-
-    private readonly UserInfoReader infoReader = new(repo);
-    private readonly UserDataExport dataExport = new(repo);
-    private readonly UserProfileMutations profileMutations = new(repo, fileStorage, clock, audit, logger);
-
-    private readonly UserEmailMutations emailMutations = new(repo, clock, logger);
-
     /// <summary>
     /// Only <c>CachingUserService</c> sees the whole graph, so here raw and redirecting reads are
     /// the same; the redirect is tested through the decorator.
@@ -44,16 +33,6 @@ internal sealed class UserService(
     /// <inheritdoc cref="GetRawUserInfoAsync" />
     public Task<IReadOnlyCollection<UserInfo>> GetAllRawUserInfosAsync(CancellationToken ct = default) =>
         GetAllUserInfosAsync(ct);
-
-    public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default) =>
-        infoReader.GetUserInfoAsync(userId, ct);
-
-    public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default) =>
-        infoReader.GetAllUserInfosAsync(ct);
-
-    public ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        infoReader.GetUserInfosAsync(userIds, ct);
 
     public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default) =>
@@ -73,15 +52,6 @@ internal sealed class UserService(
         await repo.RemoveAllUserEmailsForUserAndSaveAsync(userId, ct);
         return await repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
     }
-
-    /// <summary>Verified rows only, matching the address or its gmail/googlemail alternate.</summary>
-    /// <remarks>
-    /// Verified-only is load-bearing: Google sync asks which account owns an address, and an
-    /// unverified address must never resolve. The snapshot match is <c>CachingUserService</c>'s;
-    /// repeating it here would re-derive the whole snapshot on every miss.
-    /// </remarks>
-    public Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
-        infoReader.GetByEmailOrAlternateAsync(email, ct);
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
@@ -122,15 +92,6 @@ internal sealed class UserService(
     public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
         repo.ClearDeletionAsync(userId, ct);
 
-    public Task<bool> EnsureStubProfileAsync(
-        Guid userId,
-        string? burnerName = null,
-        string? firstName = null,
-        string? lastName = null,
-        CancellationToken ct = default,
-        Guid? actorUserId = null) =>
-        profileMutations.EnsureStubProfileAsync(userId, burnerName, firstName, lastName, ct, actorUserId);
-
     public async Task<OnboardingResult> SetSuspensionAsync(
         Guid userId, bool suspended, bool adminSuspension = false, CancellationToken ct = default)
     {
@@ -152,18 +113,6 @@ internal sealed class UserService(
         return new OnboardingResult(true);
     }
 
-    public Task<UserProfileSaveResult> SaveProfileAsync(
-        Guid userId,
-        UserProfileSaveCommand command,
-        byte[]? profilePictureData = null,
-        CancellationToken ct = default,
-        IReadOnlyList<CVEntry>? volunteerHistory = null) =>
-        profileMutations.SaveProfileAsync(userId, command, profilePictureData, ct, volunteerHistory);
-
-    public Task SaveMedicalConditionsAsync(
-        Guid userId, string? medicalConditions, CancellationToken ct = default) =>
-        profileMutations.SaveMedicalConditionsAsync(userId, medicalConditions, ct);
-
     internal async Task<UserProfileAnonymizeResult> AnonymizeProfileForDeletionAsync(
         Guid userId,
         CancellationToken ct = default)
@@ -171,26 +120,10 @@ internal sealed class UserService(
         return new UserProfileAnonymizeResult(await repo.AnonymizeForDeletionByUserIdAsync(userId, ct));
     }
 
-    public Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
-        Guid profileId, IReadOnlyList<ProfileLanguageInfo> languages, CancellationToken ct = default) =>
-        profileMutations.SaveProfileLanguagesAsync(profileId, languages, ct);
-
     public Task<IReadOnlySet<Guid>> SuspendProfilesForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default) =>
         repo.SuspendManyAsync(userIds, ct);
-
-    public Task<UserEmailAddResult> AddUserEmailAsync(
-        Guid userId, UserEmailAddCommand command, CancellationToken ct = default) =>
-        emailMutations.AddUserEmailAsync(userId, command, ct);
-
-    public Task<UpdateEmailResult> UpdateUserEmailAsync(
-        Guid userId, Guid emailId, UserEmailUpdateCommand command, CancellationToken ct = default) =>
-        emailMutations.UpdateUserEmailAsync(userId, emailId, command, ct);
-
-    public Task<bool> RemoveUserEmailAsync(
-        Guid userId, Guid emailId, UserEmailRemoveCommand command, CancellationToken ct = default) =>
-        emailMutations.RemoveUserEmailAsync(userId, emailId, command, ct);
 
     public async Task<UserEmailReconcilePlanResult> ApplyUserEmailReconcilePlanAsync(
         Guid userId,
@@ -215,14 +148,11 @@ internal sealed class UserService(
 
         foreach (var mutatedUserId in mutatedUserIds)
         {
-            await emailMutations.EnsurePrimaryInvariantAsync(mutatedUserId, ct);
+            await EnsurePrimaryInvariantAsync(mutatedUserId, ct);
         }
 
         return new UserEmailReconcilePlanResult(mutatedUserIds);
     }
-
-    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        dataExport.ContributeForUserAsync(userId, ct);
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
@@ -283,7 +213,7 @@ internal sealed class UserService(
         finally
         {
             if (sourceProfile is not null && previousKey is not null)
-                await profileMutations.DeleteSupersededPictureAsync(sourceProfile.Id, previousKey);
+                await DeleteSupersededPictureAsync(sourceProfile.Id, previousKey);
         }
     }
 
@@ -311,4 +241,758 @@ internal sealed class UserService(
         GetExternalLoginsByUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
+
+    internal const string Account = "Account";
+    internal const string Profile = "Profile";
+    internal const string MergedProfiles = "MergedProfiles";
+    internal const string ContactFields = "ContactFields";
+    internal const string UserEmails = "UserEmails";
+    internal const string VolunteerHistory = "VolunteerHistory";
+    internal const string Languages = "Languages";
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var allUsers = (await repo.GetAllAsync(ct)).ToDictionary(u => u.Id);
+        if (!allUsers.TryGetValue(userId, out var user))
+        {
+            return [
+                new UserDataSlice(Account, null),
+                new UserDataSlice(Profile, null)
+            ];
+        }
+
+        var visited = new HashSet<Guid> { userId };
+        while (user.MergedToUserId is { } next && visited.Add(next) &&
+               allUsers.TryGetValue(next, out var target))
+        {
+            user = target;
+        }
+        userId = user.Id;
+
+        // The Workspace identity is Google's export slice; the legacy per-row flags stay here.
+        var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
+        var effectiveEmail = userEmails
+            .Where(e => e.IsVerified)
+            .OrderByDescending(e => e.IsPrimary)
+            .Select(e => e.Email)
+            .FirstOrDefault() ?? user.IdentityEmailColumn;
+
+        var shaped = new
+        {
+            user.Id,
+            Email = effectiveEmail,
+            user.DisplayName,
+            user.PreferredLanguage,
+            ContactSource = user.ContactSource?.ToString(),
+            State = user.State.ToString(),
+            DeletionRequestedAt = user.DeletionRequestedAt.ToIso8601(),
+            DeletionScheduledFor = user.DeletionScheduledFor.ToIso8601(),
+            DeletionEligibleAfter = user.DeletionEligibleAfter.ToIso8601(),
+            CreatedAt = user.CreatedAt.ToIso8601(),
+            LastLoginAt = user.LastLoginAt.ToIso8601()
+        };
+
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
+
+        var contactFields = profile is not null
+            ? await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct)
+            : [];
+
+        var volunteerHistory = profile?.VolunteerHistory
+            .OrderByDescending(v => v.Date)
+            .ThenByDescending(v => v.CreatedAt)
+            .ToList() ?? (IReadOnlyList<VolunteerHistoryEntry>)[];
+
+        var profileLanguages = profile is not null
+            ? await repo.GetLanguagesAsync(profile.Id, ct)
+            : [];
+
+        var profileSlice = profile is null
+            ? new UserDataSlice(Profile, null)
+            : new UserDataSlice(Profile, ShapeProfileForExport(user, profile));
+
+        // Folds keep health data on archived rows, so walk back from the survivor and export every
+        // retained profile.
+        var sourcesByTarget = allUsers.Values.Where(u => u.MergedToUserId is not null)
+            .ToLookup(u => u.MergedToUserId!.Value);
+        var mergedIds = new HashSet<Guid> { userId };
+        var pending = new Queue<Guid>([userId]);
+        while (pending.TryDequeue(out var targetId))
+        {
+            foreach (var source in sourcesByTarget[targetId])
+            {
+                if (mergedIds.Add(source.Id))
+                    pending.Enqueue(source.Id);
+            }
+        }
+        mergedIds.Remove(userId);
+
+        var mergedProfiles = mergedIds.Count == 0 ? [] : await repo.GetAllProfilesAsync(ct);
+        var mergedProfileSlice = new UserDataSlice(MergedProfiles, mergedProfiles
+            .Where(p => mergedIds.Contains(p.UserId))
+            .Select(p => new
+            {
+                p.UserId,
+                Profile = ShapeProfileForExport(allUsers[p.UserId], p)
+            }).ToList());
+
+        var contactFieldSlice = new UserDataSlice(ContactFields, contactFields.Select(cf => new
+        {
+            cf.FieldType,
+            Label = cf.DisplayLabel,
+            cf.Value,
+            cf.Visibility
+        }).ToList());
+
+        var userEmailsSlice = new UserDataSlice(UserEmails, userEmails.Select(e => new
+        {
+            e.Email,
+            e.IsVerified,
+            // JSON keys pinned: GDPR export stability.
+            IsOAuth = e.Provider != null,
+            IsNotificationTarget = e.IsPrimary,
+            VerificationSentAt = e.VerificationSentAt.ToIso8601(),
+            CreatedAt = e.CreatedAt.ToIso8601(),
+            UpdatedAt = e.UpdatedAt.ToIso8601(),
+            e.Visibility
+        }).ToList());
+
+        var volunteerHistorySlice = new UserDataSlice(VolunteerHistory, volunteerHistory.Select(vh => new
+        {
+            Date = vh.Date.ToInvariantDate(),
+            vh.EventName,
+            vh.Description,
+            CreatedAt = vh.CreatedAt.ToIso8601()
+        }).ToList());
+
+        var languagesSlice = new UserDataSlice(Languages, profileLanguages.Select(pl => new
+        {
+            pl.LanguageCode,
+            pl.Proficiency
+        }).ToList());
+
+        return
+        [
+            new UserDataSlice(Account, shaped),
+            profileSlice,
+            mergedProfileSlice,
+            contactFieldSlice,
+            userEmailsSlice,
+            volunteerHistorySlice,
+            languagesSlice
+        ];
+    }
+
+    private static object ShapeProfileForExport(User user, Profile profile) =>
+        new
+        {
+            // JSON keys pinned: GDPR export stability. The names live on the users row.
+            BurnerName = user.BurnerName ?? string.Empty,
+            FirstName = user.FirstName ?? string.Empty,
+            LastName = user.LastName ?? string.Empty,
+            Birthday = profile.DateOfBirth is not null
+                ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}"
+                : null,
+            profile.City,
+            profile.CountryCode,
+            profile.Latitude,
+            profile.Longitude,
+            profile.Bio,
+            profile.Pronouns,
+            profile.ContributionInterests,
+            profile.BoardNotes,
+            // JSON key pinned: GDPR export stability.
+            IsSuspended = user.State is UserState.Suspended or UserState.AdminSuspended,
+            profile.NoPriorBurnExperience,
+            profile.EmergencyContactName,
+            profile.EmergencyContactPhone,
+            profile.EmergencyContactRelationship,
+            profile.MedicalConditions,
+            profile.HasCustomProfilePicture,
+            CreatedAt = profile.CreatedAt.ToIso8601(),
+            UpdatedAt = profile.UpdatedAt.ToIso8601()
+        };
+
+    private static readonly TrackedLock EmailAdditionLock = new("UserService.EmailAddition");
+
+    public async Task<UserEmailAddResult> AddUserEmailAsync(
+        Guid userId,
+        UserEmailAddCommand command,
+        CancellationToken ct = default)
+    {
+        var email = command.Email.Trim();
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = EmailLookupAliases.GetAlternate(normalizedEmail);
+
+        if (email.Length > 256 || !new EmailAddressAttribute().IsValid(email))
+            return Refuse("Validation_EmailAddress");
+
+        using var addition = await EmailAdditionLock.AcquireAsync(logger, ct);
+        var rows = await repo.GetUserEmailsByAddressAsync(normalizedEmail, alternateEmail, ct);
+        var existing = rows.FirstOrDefault(e => e.UserId == userId);
+        if (existing is not null)
+        {
+            if (command.IgnoreExisting)
+                return new UserEmailAddResult(existing.Id, Added: false, IsConflict: false);
+
+            return Refuse("Users_Profile_EmailAlreadyAdded");
+        }
+
+        var isConflict = rows.Any(e => e.UserId != userId && e.IsVerified);
+        // A verified insert has no merge flow to hand the conflict to.
+        if (isConflict && command.IsVerified)
+            return Refuse("Users_Profile_EmailVerifiedOnAnotherAccount");
+
+        var user = await repo.GetByIdAsync(userId, ct);
+        if (user is null || UserStateEvaluator.IsTombstone(user))
+            return Refuse("Users_EmailUpdate_AccountUnavailable");
+
+        var now = clock.GetCurrentInstant();
+        var row = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = email,
+            IsVerified = command.IsVerified,
+            IsPrimary = false,
+            Visibility = command.Visibility,
+            Provider = command.Provider,
+            ProviderKey = command.ProviderKey,
+            VerificationSentAt = command.VerificationSentAt,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        await repo.AddUserEmailAsync(row, ct);
+        // The row has committed; finish its required invariant repairs after a browser disconnect.
+        await EnsurePrimaryInvariantAsync(row.UserId, CancellationToken.None);
+        return new UserEmailAddResult(row.Id, Added: true, isConflict);
+
+        UserEmailAddResult Refuse(string key)
+        {
+            logger.LogWarning("Email addition refused for user {UserId}: {ErrorKey}", userId, key);
+            return new UserEmailAddResult(Guid.Empty, Added: false, IsConflict: false, ErrorKey: key);
+        }
+    }
+
+    public async Task<UpdateEmailResult> UpdateUserEmailAsync(
+        Guid userId,
+        Guid emailId,
+        UserEmailUpdateCommand command,
+        CancellationToken ct = default)
+    {
+        var changed = false;
+
+        if (command.MarkVerified)
+        {
+            var email = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
+            if (email is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
+
+            if (email.IsVerified || email.Provider is not null)
+                return new UpdateEmailResult(false, "Users_Profile_InvalidVerificationLink");
+
+            email.IsVerified = true;
+            email.UpdatedAt = clock.GetCurrentInstant();
+            await repo.UpdateUserEmailAsync(email, ct);
+            // Verification has committed; primary repair is part of completing it.
+            await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
+            changed = true;
+        }
+
+        if (command.Primary == UserEmailPrimaryChange.MakePrimary)
+        {
+            var primary = await SetPrimaryEmailAsync(userId, emailId, ct);
+            if (!primary.Succeeded) return primary;
+            changed = true;
+        }
+        else if (command.Primary == UserEmailPrimaryChange.ClearDuplicatePrimary)
+        {
+            changed |= await ClearDuplicatePrimaryAsync(userId, emailId, ct);
+        }
+
+        if (command.ChangeVisibility)
+        {
+            var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
+            if (row is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
+            row.Visibility = command.Visibility;
+            row.UpdatedAt = clock.GetCurrentInstant();
+            await repo.UpdateUserEmailAsync(row, ct);
+            changed = true;
+        }
+
+        return new UpdateEmailResult(changed);
+    }
+
+    public async Task<bool> RemoveUserEmailAsync(
+        Guid userId,
+        Guid emailId,
+        UserEmailRemoveCommand command,
+        CancellationToken ct = default)
+    {
+        var email = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct)
+            ?? throw new InvalidOperationException("Email not found.");
+
+        var hasProvider = !string.IsNullOrEmpty(email.Provider);
+        if (command.Mode == UserEmailRemovalMode.PlainEmail && hasProvider)
+            return false;
+        if (command.Mode == UserEmailRemovalMode.ProviderLinkedEmail && !hasProvider)
+            return false;
+
+        if (command.PreserveLastVerifiedEmail && email.IsVerified)
+        {
+            var allEmails = await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct);
+            var verifiedRemaining = allEmails.Count(e => e.IsVerified && e.Id != emailId);
+
+            if (verifiedRemaining == 0)
+            {
+                throw new ValidationException(
+                    "Cannot remove your last verified email. Add another verified email first " +
+                    "so you can still receive system notifications.");
+            }
+        }
+
+        await repo.RemoveUserEmailAsync(email, ct);
+
+        if (command.RepairInvariants)
+        {
+            // Removal has committed; leave the remaining verified addresses usable.
+            await EnsurePrimaryInvariantAsync(userId, CancellationToken.None);
+        }
+
+        return true;
+    }
+
+    private async Task<UpdateEmailResult> SetPrimaryEmailAsync(Guid userId, Guid emailId, CancellationToken ct)
+    {
+        var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
+
+        var target = emails.FirstOrDefault(e => e.Id == emailId);
+        if (target is null) return new UpdateEmailResult(false, "Users_EmailUpdate_NotFound");
+
+        if (!target.IsVerified)
+            return new UpdateEmailResult(false, "Users_EmailUpdate_UnverifiedTarget");
+
+        var now = clock.GetCurrentInstant();
+        var changed = new List<UserEmail>();
+        foreach (var email in emails)
+        {
+            var shouldBePrimary = email.Id == emailId;
+            if (email.IsPrimary != shouldBePrimary)
+            {
+                email.IsPrimary = shouldBePrimary;
+                email.UpdatedAt = now;
+                changed.Add(email);
+            }
+        }
+
+        if (changed.Count > 0)
+            await repo.UpdateUserEmailsAsync(changed, ct);
+        return new UpdateEmailResult(true);
+    }
+
+    private async Task<bool> ClearDuplicatePrimaryAsync(Guid userId, Guid emailId, CancellationToken ct)
+    {
+        var row = await repo.GetUserEmailByIdAndUserIdAsync(emailId, userId, ct);
+        if (row is null || !row.IsPrimary) return false;
+
+        var allEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
+        if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
+
+        row.IsPrimary = false;
+        row.UpdatedAt = clock.GetCurrentInstant();
+        await repo.UpdateUserEmailAsync(row, ct);
+        return true;
+    }
+
+    internal async Task EnsurePrimaryInvariantAsync(Guid userId, CancellationToken ct)
+    {
+        var emails = (await repo.GetUserEmailsByUserIdForMutationAsync(userId, ct)).ToList();
+        var verified = emails.Where(e => e.IsVerified).ToList();
+        if (verified.Count == 0)
+            return;
+
+        var currentPrimaries = verified.Where(e => e.IsPrimary).ToList();
+
+        var winner =
+            verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+            ?? currentPrimaries.OrderBy(e => e.Id).FirstOrDefault()
+            ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
+
+        if (currentPrimaries.Count == 1 && currentPrimaries[0].Id == winner.Id)
+            return;
+
+        var now = clock.GetCurrentInstant();
+        var changed = new List<UserEmail>();
+        foreach (var row in verified)
+        {
+            var shouldBePrimary = row.Id == winner.Id;
+            if (row.IsPrimary != shouldBePrimary)
+            {
+                row.IsPrimary = shouldBePrimary;
+                row.UpdatedAt = now;
+                changed.Add(row);
+            }
+        }
+
+        if (changed.Count > 0)
+            await repo.UpdateUserEmailsAsync(changed, ct);
+    }
+
+    private static readonly TrackedLock[] ProfileStubLocks = Enumerable
+        .Range(0, 32)
+        .Select(i => new TrackedLock($"UserService.ProfileStub[{i}]"))
+        .ToArray();
+
+    private static TrackedLock ProfileStubLockFor(Guid userId) =>
+        ProfileStubLocks[(uint)userId.GetHashCode() % (uint)ProfileStubLocks.Length];
+
+    public async Task<bool> EnsureStubProfileAsync(
+        Guid userId,
+        string? burnerName = null,
+        string? firstName = null,
+        string? lastName = null,
+        CancellationToken ct = default,
+        Guid? actorUserId = null)
+    {
+        using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
+
+        var existing = await repo.GetByUserIdAsync(userId, ct);
+        if (existing is not null) return false;
+
+        var info = await GetUserInfoAsync(userId, ct);
+        if (info is null)
+            return false;
+
+        if (info.IsTombstone)
+        {
+            logger.LogError(
+                "EnsureStubProfileAsync called for tombstone user {UserId} (MergedAt={MergedAt}) - refusing to create Stub Profile",
+                userId, info.MergedAt);
+            return false;
+        }
+
+        // OAuth/import creation seeds User.BurnerName before any Profile exists; keep it when the
+        // caller gives none.
+        var user = await repo.GetByIdAsync(userId, ct);
+        var resolvedBurnerName = burnerName ?? user?.BurnerName;
+
+        var now = clock.GetCurrentInstant();
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        var names = new UserNames(
+            (resolvedBurnerName ?? string.Empty).Trim(),
+            (firstName ?? string.Empty).Trim(),
+            (lastName ?? string.Empty).Trim());
+
+        // Seeded names (magic-link signup) promote straight to Active; import/OAuth stubs carry no
+        // legal names and stay Bare. The repository derives User.State.
+        await repo.AddAsync(profile, ct, names);
+        if (actorUserId.HasValue)
+            await audit.LogAsync(UsersAuditActions.StubProfileBackfilled, AuditSubjectTypes.User, userId,
+                "Created missing profile.", actorUserId.Value);
+        return true;
+    }
+
+    public async Task<UserProfileSaveResult> SaveProfileAsync(
+        Guid userId,
+        UserProfileSaveCommand command,
+        byte[]? profilePictureData = null,
+        CancellationToken ct = default,
+        IReadOnlyList<CVEntry>? volunteerHistory = null)
+    {
+        using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
+
+        var now = clock.GetCurrentInstant();
+        var profile = await repo.GetByUserIdAsync(userId, ct);
+
+        if (profile is null)
+        {
+            profile = new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            await repo.AddAsync(profile, ct);
+        }
+
+        var previousPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
+
+        profile.City = command.City;
+        profile.CountryCode = command.CountryCode;
+        profile.Latitude = command.Latitude;
+        profile.Longitude = command.Longitude;
+        profile.PlaceId = command.PlaceId;
+        profile.Bio = command.Bio?.TrimEnd();
+        profile.Pronouns = command.Pronouns;
+        profile.ContributionInterests = command.ContributionInterests?.TrimEnd();
+        profile.BoardNotes = command.BoardNotes?.TrimEnd();
+        profile.EmergencyContactName = command.EmergencyContactName;
+        profile.EmergencyContactPhone = command.EmergencyContactPhone;
+        profile.EmergencyContactRelationship = command.EmergencyContactRelationship;
+        profile.NoPriorBurnExperience = command.NoPriorBurnExperience;
+
+        profile.UpdatedAt = now;
+
+        // Year 4 is a leap year, so Feb 29 validates.
+        if (command.BirthdayMonth is >= 1 and <= 12 && command.BirthdayDay is >= 1 and <= 31)
+        {
+            try
+            {
+                profile.DateOfBirth = new LocalDate(4, command.BirthdayMonth.Value, command.BirthdayDay.Value);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                profile.DateOfBirth = null;
+            }
+        }
+        else
+        {
+            profile.DateOfBirth = null;
+        }
+
+        // Every upload lands on a fresh key, so the previous bytes survive until the editor deletes
+        // them after this save commits.
+        var pictureMutation = command.PictureMutation;
+        string? newPictureKey = null;
+        if (pictureMutation == UserProfilePictureMutation.Set
+            && profilePictureData is not null && command.ProfilePictureContentType is not null)
+        {
+            try
+            {
+                newPictureKey = ProfilePictureKeys.NewVersioned(profile.Id, command.ProfilePictureContentType);
+                await fileStorage.SaveAsync(newPictureKey, profilePictureData, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex,
+                    "Failed to write profile picture for {ProfileId}; preserving the previous picture metadata",
+                    profile.Id);
+                newPictureKey = null;
+                pictureMutation = UserProfilePictureMutation.None;
+            }
+        }
+
+        switch (pictureMutation)
+        {
+            case UserProfilePictureMutation.Remove:
+                profile.ProfilePictureContentType = null;
+                profile.ProfilePictureStorageKey = null;
+                break;
+            case UserProfilePictureMutation.Set:
+                profile.ProfilePictureContentType = command.ProfilePictureContentType;
+                profile.ProfilePictureStorageKey = newPictureKey;
+                break;
+        }
+
+        var currentPictureKey = ProfilePictureKeys.Resolve(
+            profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey);
+        try
+        {
+            await repo.UpdateAsync(profile, ct, volunteerHistory,
+                new UserNames(command.BurnerName, command.FirstName, command.LastName));
+            return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
+        }
+        finally
+        {
+            if (newPictureKey is not null || !string.Equals(previousPictureKey, currentPictureKey, StringComparison.Ordinal))
+                await DeleteSupersededPictureAsync(profile.Id, previousPictureKey, newPictureKey);
+        }
+    }
+
+    internal async Task DeleteSupersededPictureAsync(Guid profileId, params string?[] keys)
+    {
+        var candidates = keys.OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        if (candidates.Count == 0) return;
+        try
+        {
+            var picture = await repo.GetProfilePictureLocationAsync(profileId, CancellationToken.None);
+            var currentKey = picture is { } current
+                ? ProfilePictureKeys.Resolve(profileId, current.ContentType, current.StorageKey)
+                : null;
+            foreach (var key in candidates.Where(key => !string.Equals(key, currentKey, StringComparison.Ordinal)))
+            {
+                try
+                {
+                    await fileStorage.DeleteAsync(key, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to delete superseded profile picture for {ProfileId}", profileId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to verify profile picture references for {ProfileId}; retaining files", profileId);
+        }
+    }
+
+    public async Task SaveMedicalConditionsAsync(
+        Guid userId,
+        string? medicalConditions,
+        CancellationToken ct = default)
+    {
+        using var _ = await ProfileStubLockFor(userId).AcquireAsync(logger, ct);
+
+        var now = clock.GetCurrentInstant();
+        var profile = await repo.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+        {
+            profile = new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            await repo.AddAsync(profile, ct);
+        }
+
+        profile.MedicalConditions = medicalConditions;
+        profile.UpdatedAt = now;
+
+        await repo.UpdateAsync(profile, ct);
+    }
+
+    public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
+        Guid profileId,
+        IReadOnlyList<ProfileLanguageInfo> languages,
+        CancellationToken ct = default)
+    {
+        var rows = languages
+            .Select(l => new ProfileLanguage
+            {
+                Id = l.Id == Guid.Empty ? Guid.NewGuid() : l.Id,
+                ProfileId = profileId,
+                LanguageCode = l.LanguageCode,
+                Proficiency = l.Proficiency,
+            })
+            .ToList();
+
+        var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
+        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
+        return new UserProfileLanguagesSaveResult(
+            ownerUserId is not null,
+            ownerUserId);
+    }
+
+    public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await repo.GetByIdAsync(userId, ct);
+        if (user is null) return null;
+
+        var userEmails = await repo.GetUserEmailsByUserIdReadOnlyAsync(userId, ct);
+        var externalLoginsMap = await repo.GetExternalLoginsByUserIdsAsync([userId], ct);
+        var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
+            ? logins
+            : [];
+
+        var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
+        IReadOnlyList<ContactField> contactFields = [];
+        IReadOnlyList<ProfileLanguage> languages = [];
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
+        if (profile is not null)
+        {
+            contactFields = await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
+            languages = profile.Languages.ToList();
+            volunteerHistory = profile.VolunteerHistory.ToList();
+        }
+
+        var info = UserInfoFactory.Create(
+            user, userEmails, externalLogins,
+            profile, contactFields, languages, volunteerHistory);
+
+        return info;
+    }
+
+    public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
+    {
+        var users = await repo.GetAllAsync(ct);
+        if (users.Count == 0) return [];
+
+        var userIds = users.Select(u => u.Id).ToList();
+
+        var allEmails = await repo.GetAllUserEmailsAsync(ct);
+        var emailsByUser = allEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+
+        var loginsByUser = await repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
+
+        var profiles = await repo.GetAllProfilesAsync(ct);
+        var profileByUser = profiles.ToDictionary(p => p.UserId);
+
+        var allContactFields = await repo.GetAllContactFieldsAsync(ct);
+        var contactFieldsByProfile = allContactFields
+            .GroupBy(c => c.ProfileId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
+
+        var result = new List<UserInfo>(users.Count);
+        foreach (var user in users)
+        {
+            var emails = emailsByUser.TryGetValue(user.Id, out var es) ? es : [];
+            var logins = loginsByUser.TryGetValue(user.Id, out var ls) ? ls : [];
+            profileByUser.TryGetValue(user.Id, out var profile);
+            IReadOnlyList<ContactField> contactFields = [];
+            IReadOnlyList<ProfileLanguage> languages = [];
+            IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
+            if (profile is not null)
+            {
+                contactFields = contactFieldsByProfile.TryGetValue(profile.Id, out var cf) ? cf : [];
+                languages = profile.Languages.ToList();
+                volunteerHistory = profile.VolunteerHistory.ToList();
+            }
+
+            var info = UserInfoFactory.Create(
+                user, emails, logins,
+                profile, contactFields, languages, volunteerHistory);
+            result.Add(info);
+        }
+
+        return result;
+    }
+
+    public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, UserInfo>();
+
+        var requested = userIds as IReadOnlySet<Guid> ?? new HashSet<Guid>(userIds);
+        var all = await GetAllUserInfosAsync(ct);
+        return all
+            .Where(u => requested.Contains(u.Id))
+            .ToDictionary(u => u.Id);
+    }
+
+    /// <summary>Verified rows only, matching the address or its gmail/googlemail alternate.</summary>
+    /// <remarks>
+    /// Verified-only is load-bearing: Google sync asks which account owns an address, and an
+    /// unverified address must never resolve. The snapshot match is <c>CachingUserService</c>'s;
+    /// repeating it here would re-derive the whole snapshot on every miss.
+    /// </remarks>
+    public async Task<UserInfo?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
+    {
+        var normalized = EmailNormalization.NormalizeForComparison(email);
+        var alternate = EmailLookupAliases.GetAlternate(normalized);
+
+        // The query needs the alternate (ILIKE matches the literal string); the in-memory re-check
+        // doesn't, since EmailsMatch folds gmail/googlemail on both sides.
+        var rows = await repo.GetUserEmailsByAddressAsync(normalized, alternate, ct);
+
+        var match = rows
+            .Where(r => r.IsVerified && EmailNormalization.EmailsMatch(r.Email, normalized))
+            .OrderByDescending(r => r.IsPrimary)
+            .FirstOrDefault();
+
+        return match is null ? null : await GetUserInfoAsync(match.UserId, ct);
+    }
 }

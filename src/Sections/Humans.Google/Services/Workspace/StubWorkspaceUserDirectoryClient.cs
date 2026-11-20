@@ -39,7 +39,7 @@ internal sealed class StubWorkspaceUserDirectoryClient(
         return Task.FromResult(account);
     }
 
-    public Task<WorkspaceUserAccount> ProvisionAccountAsync(
+    public Task ProvisionAccountAsync(
         string primaryEmail,
         string firstName,
         string lastName,
@@ -53,7 +53,7 @@ internal sealed class StubWorkspaceUserDirectoryClient(
             IsEnrolledIn2Sv: false,
             RecoveryEmail: recoveryEmail);
         _accounts.Add(account);
-        return Task.FromResult(account);
+        return Task.CompletedTask;
     }
 
     public Task SuspendAccountAsync(string primaryEmail, CancellationToken ct = default)

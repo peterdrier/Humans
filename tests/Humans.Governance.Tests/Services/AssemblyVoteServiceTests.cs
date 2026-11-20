@@ -704,7 +704,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // The officer is on no roster, so the voting-record slice is empty — without the
         // actor slice their activity would be missing from the export entirely.
         var actions = slices.Should()
-            .ContainSingle(s => s.SectionName == AssemblyVoteDataExport.AssemblyVoteActions)
+            .ContainSingle(s => s.SectionName == AssemblyVoteService.AssemblyVoteActions)
             .Which.Data;
         var json = System.Text.Json.JsonSerializer.Serialize(actions);
         json.Should().Contain("Opened").And.Contain("Closed");
@@ -730,7 +730,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
 
         var json = System.Text.Json.JsonSerializer.Serialize(
             slices.Single(x => string.Equals(
-                x.SectionName, AssemblyVoteDataExport.AssemblyVotes, StringComparison.Ordinal)).Data);
+                x.SectionName, AssemblyVoteService.AssemblyVotes, StringComparison.Ordinal)).Data);
         json.Should().MatchRegex("\"CastAt\":\"[0-9]{4}-");
         json.Should().MatchRegex("\"ClosesAt\":\"[0-9]{4}-");
         json.Should().MatchRegex("\"RecordedAt\":\"[0-9]{4}-");
@@ -999,7 +999,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
     public void ErasureDeclaration_DeclaresPartialRetentionForAssemblyVotes()
     {
         _fx.Service.ErasureDeclaration.Should().ContainKey(
-            AssemblyVoteDataExport.AssemblyVotes);
+            AssemblyVoteService.AssemblyVotes);
     }
 
     // An elapsed vote is closed for every purpose, admin actions included.
@@ -1871,8 +1871,9 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             repo.StampNotifiedAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
             repo.StampReminderSentAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
         }
-        var effects = new AssemblyVoteEffects(repo, _fx.Users, _fx.Email, _fx.Messages, _fx.Notifications,
-            _fx.NotificationResolve, _fx.Audit, _fx.Clock, NullLogger.Instance, AssemblyVoteDrafts.MaxTitleLength, AssemblyVoteService.LapseJobName);
+        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();
         Func<Task> action = opening ? () => effects.RetryOpenedEmailsAsync(vote, failures, shutdown.Token)
             : () => effects.SendRemindersAsync(now, failures, shutdown.Token);
@@ -2029,10 +2030,9 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         if (lookupFails)
             _fx.Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Identity lookup unavailable")));
-        var effects = new AssemblyVoteEffects(_fx.Repository, _fx.Users, _fx.Email, _fx.Messages,
-            _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Clock,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<AssemblyVoteService>.Instance,
-            AssemblyVoteDrafts.MaxTitleLength, AssemblyVoteService.LapseJobName);
+        var effects = new AssemblyVoteService(_fx.Repository, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            NullLogger<AssemblyVoteService>.Instance);
 
         await effects.AfterTransitionAsync("opening notices", vote.Id,
             token => effects.NotifyRosterOpenedAsync(vote, [sourceRow, survivorRow], token));
@@ -2440,7 +2440,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // data reachable for deletion but invisible to the subject who asked for it.
         var json = System.Text.Json.JsonSerializer.Serialize(
             slices.Single(x => string.Equals(
-                x.SectionName, AssemblyVoteDataExport.AssemblyVotes, StringComparison.Ordinal)).Data);
+                x.SectionName, AssemblyVoteService.AssemblyVotes, StringComparison.Ordinal)).Data);
         json.Should().Contain("\"Choice\":");
     }
 
@@ -2467,7 +2467,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         // to reach the same officer's record.
         var json = System.Text.Json.JsonSerializer.Serialize(
             slices.Single(x => string.Equals(
-                x.SectionName, AssemblyVoteDataExport.AssemblyVoteActions, StringComparison.Ordinal)).Data);
+                x.SectionName, AssemblyVoteService.AssemblyVoteActions, StringComparison.Ordinal)).Data);
         json.Should().Contain("Opened").And.Contain("Closed");
     }
 
@@ -2824,9 +2824,9 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         else
             repo.GetByIdAsync(vote.Id, ct)
                 .Returns(_ => Task.FromException<AssemblyVote?>(failure), _ => Task.FromResult<AssemblyVote?>(vote));
-        var effects = new AssemblyVoteEffects(repo, _fx.Users, _fx.Email, _fx.Messages,
-            _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Clock,
-            NullLogger.Instance, AssemblyVoteDrafts.MaxTitleLength, AssemblyVoteService.LapseJobName);
+        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+            _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock,
+            NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();
 
         if (opening) await effects.RetryOpenedEmailsAsync(vote, failures, ct);

@@ -186,10 +186,10 @@ internal sealed class BudgetController(
         var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await budgetService.GetLineItemByIdAsync(id, HttpContext.RequestAborted);
-        if (lineItem is null) return NotFound();
+        var categoryId = await budgetService.GetLineItemCategoryIdAsync(id, HttpContext.RequestAborted);
+        if (categoryId is null) return NotFound();
 
-        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
+        var authResult = await AuthorizeCategoryEditAsync(categoryId.Value);
         if (authResult is not null) return authResult;
 
         if (!ModelState.IsValid)
@@ -208,7 +208,7 @@ internal sealed class BudgetController(
             {
                 logger.LogWarning("Rejected budget line item input for actor {ActorId}", user.Id);
                 SetError(localizer["Budget_Flash_LineUpdateFailed"].Value);
-                return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
+                return RedirectToAction(nameof(CategoryDetail), new { id = categoryId.Value });
             }
             SetSuccess(localizer["Budget_Flash_LineUpdated", description].Value);
         }
@@ -218,7 +218,7 @@ internal sealed class BudgetController(
             SetError(localizer["Budget_Flash_LineUpdateFailed"].Value);
         }
 
-        return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
+        return RedirectToAction(nameof(CategoryDetail), new { id = categoryId.Value });
     }
 
     [HttpPost("LineItems/{id:guid}/Delete")]
@@ -228,10 +228,10 @@ internal sealed class BudgetController(
         var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await budgetService.GetLineItemByIdAsync(id, HttpContext.RequestAborted);
-        if (lineItem is null) return NotFound();
+        var categoryId = await budgetService.GetLineItemCategoryIdAsync(id, HttpContext.RequestAborted);
+        if (categoryId is null) return NotFound();
 
-        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
+        var authResult = await AuthorizeCategoryEditAsync(categoryId.Value);
         if (authResult is not null) return authResult;
 
         try
@@ -250,7 +250,7 @@ internal sealed class BudgetController(
             logger.LogError(ex, "Failed to delete line item {LineItemId}", id);
             SetError(localizer["Budget_Flash_LineDeleteFailed"].Value);
         }
-        return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
+        return RedirectToAction(nameof(CategoryDetail), new { id = categoryId.Value });
     }
 
     private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId)
