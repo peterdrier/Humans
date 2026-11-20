@@ -52,16 +52,17 @@ public class AboutController(
     [HttpGet("Staff")]
     public async Task<IActionResult> Staff()
     {
+        var ct = HttpContext.RequestAborted;
         try
         {
             var now = clock.GetCurrentInstant();
 
             // Load all active role assignments with user data — small user base, fits in memory
             var (assignments, _) = await roleAssignmentService.GetFilteredAsync(
-                roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
+                roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now, ct);
 
             var assigneeInfos = await _userService.GetUserInfosAsync(
-                assignments.Select(ra => ra.UserId).Distinct().ToList());
+                assignments.Select(ra => ra.UserId).Distinct().ToList(), ct);
 
             // Board first, Admin last, the section roles between them by title.
             var roleDefinitions = catalog.Roles
@@ -103,6 +104,10 @@ public class AboutController(
             };
 
             return View(viewModel);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
