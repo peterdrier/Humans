@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Auth.Data;

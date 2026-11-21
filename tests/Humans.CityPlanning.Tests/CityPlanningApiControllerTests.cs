@@ -67,7 +67,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings);
+            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings, _containers);
         _authorization = MapAdminAuthorization(_service);
     }
 
@@ -245,6 +245,8 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         if (!isAdmin && !isLead)
         {
             result.Should().BeOfType<ForbidResult>();
+            await _containers.DidNotReceiveWithAnyArgs().GetAllAsync(default);
+            await _containers.DidNotReceiveWithAnyArgs().GetPlacementsByYearAsync(default, default);
             return;
         }
 
@@ -638,7 +640,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         repo.GetHistoryEntryAsync(default, default, default).ThrowsAsyncForAnyArgs(failure);
         _service = new CityPlanningService(repo, Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings);
+            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings, _containers);
         var controller = CreateController(CampsRoles.CampsAdmin);
         Func<Task> act = async () =>
         {

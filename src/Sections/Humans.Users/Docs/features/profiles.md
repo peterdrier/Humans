@@ -248,7 +248,7 @@ User requests deletion (/Gdpr/RequestDeletion)
     ▼ Grace period expires
 ProcessAccountDeletionsJob (daily)
     │
-    └── IAccountDeletionService.AnonymizeExpiredAccountAsync (per due user)
+    └── AccountDeletionService.AnonymizeExpiredAccountAsync (per due user)
         │
         ├── Capture summary (original email, burner name, language)
         │

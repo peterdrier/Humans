@@ -392,11 +392,11 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    public MergeFixtureBuilder WithSourceTeamJoinRequest(
+    internal MergeFixtureBuilder WithSourceTeamJoinRequest(
         Guid teamId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
         => AddTeamJoinRequest(SourceUserId, teamId, status);
 
-    public MergeFixtureBuilder WithTargetTeamJoinRequest(
+    internal MergeFixtureBuilder WithTargetTeamJoinRequest(
         Guid teamId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
         => AddTeamJoinRequest(TargetUserId, teamId, status);
 

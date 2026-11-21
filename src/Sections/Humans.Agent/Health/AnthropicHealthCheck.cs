@@ -1,16 +1,16 @@
-using Humans.Agent.Contracts;
+using Humans.Agent.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Humans.Agent.Health;
 
 /// <summary>DNS reachability only. Healthy without probing when the agent is disabled.</summary>
-internal sealed class AnthropicHealthCheck(IAgentAvailability agent) : IHealthCheck
+internal sealed class AnthropicHealthCheck(IAgentSettingsService agent) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        if (!agent.IsEnabled)
+        if (!agent.Current.Enabled)
             return HealthCheckResult.Healthy("agent disabled");
 
         try

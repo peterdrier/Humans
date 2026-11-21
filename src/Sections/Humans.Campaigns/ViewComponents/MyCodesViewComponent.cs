@@ -1,13 +1,13 @@
 using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Base.Enums;
-using Humans.Campaigns.Contracts;
+using Humans.Campaigns.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Campaigns.ViewComponents;
 
 /// <summary>Renders only on the viewer's own profile: grants from Active or Completed campaigns.</summary>
-public sealed class MyCodesViewComponent(ICampaignService campaigns) : ViewComponent
+internal sealed class MyCodesViewComponent(ICampaignManagement campaigns) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {

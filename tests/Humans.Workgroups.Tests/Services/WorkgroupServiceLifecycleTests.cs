@@ -190,7 +190,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied);
         var actor = group.Members.Single().UserId;
         Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([actor]);
-        Notifications.SendToRoleAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+        RoleNotifications.SendToRoleAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Notification storage unavailable"));

@@ -2,6 +2,7 @@ using Humans.Tickets.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Jobs;
@@ -38,6 +39,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
         services.AddScoped<IGateService>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GateService>());
+        services.AddScoped<IGateAdmissions, GateAdmissionReads>();
 
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();

@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using System.Transactions;
 using Humans.Base.Extensions;
 using Humans.Users.Services;

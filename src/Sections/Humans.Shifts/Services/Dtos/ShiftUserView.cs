@@ -36,6 +36,6 @@ internal sealed record ShiftUserSignup(ShiftAdminSignup Signup, ShiftInfo Shift,
     /// <summary>Needs <c>Shift.Rota</c> loaded.</summary>
     internal static ShiftUserSignup From(ShiftSignup signup) => new(
         new ShiftAdminSignup(signup.Id, signup.UserId, signup.SignupBlockId, signup.Status, signup.CreatedAt),
-        ShiftBrowseReader.ToShiftInfo(signup.Shift),
-        ShiftBrowseReader.ToRotaInfo(signup.Shift.Rota));
+        ShiftManagementService.ToShiftInfo(signup.Shift),
+        ShiftManagementService.ToRotaInfo(signup.Shift.Rota));
 }

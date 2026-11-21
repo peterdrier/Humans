@@ -12,11 +12,12 @@ public sealed class EventTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 18, 12, 0));
 
     [HumansTheory]
-    [InlineData(EventStatus.Draft)]
-    [InlineData(EventStatus.Rejected)]
-    [InlineData(EventStatus.ResubmitRequested)]
-    public void Submit_FromValidState_SetsPendingAndTimestamps(EventStatus source)
+    [InlineData((int)EventStatus.Draft)]
+    [InlineData((int)EventStatus.Rejected)]
+    [InlineData((int)EventStatus.ResubmitRequested)]
+    public void Submit_FromValidState_SetsPendingAndTimestamps(int sourceValue)
     {
+        var source = (EventStatus)sourceValue;
         var guideEvent = CreateEvent(source);
 
         guideEvent.Submit(_clock);
@@ -38,10 +39,11 @@ public sealed class EventTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Approved)]
-    [InlineData(EventStatus.Pending)]
-    public void Submit_FromInvalidState_Throws(EventStatus source)
+    [InlineData((int)EventStatus.Approved)]
+    [InlineData((int)EventStatus.Pending)]
+    public void Submit_FromInvalidState_Throws(int sourceValue)
     {
+        var source = (EventStatus)sourceValue;
         var guideEvent = CreateEvent(source);
 
         var action = () => guideEvent.Submit(_clock);
@@ -51,11 +53,12 @@ public sealed class EventTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Draft)]
-    [InlineData(EventStatus.Pending)]
-    [InlineData(EventStatus.Approved)]
-    public void Withdraw_FromValidState_SetsWithdrawnAndLastUpdated(EventStatus source)
+    [InlineData((int)EventStatus.Draft)]
+    [InlineData((int)EventStatus.Pending)]
+    [InlineData((int)EventStatus.Approved)]
+    public void Withdraw_FromValidState_SetsWithdrawnAndLastUpdated(int sourceValue)
     {
+        var source = (EventStatus)sourceValue;
         var guideEvent = CreateEvent(source);
 
         guideEvent.Withdraw(_clock);
@@ -65,11 +68,12 @@ public sealed class EventTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Rejected)]
-    [InlineData(EventStatus.ResubmitRequested)]
-    [InlineData(EventStatus.Withdrawn)]
-    public void Withdraw_FromInvalidState_Throws(EventStatus source)
+    [InlineData((int)EventStatus.Rejected)]
+    [InlineData((int)EventStatus.ResubmitRequested)]
+    [InlineData((int)EventStatus.Withdrawn)]
+    public void Withdraw_FromInvalidState_Throws(int sourceValue)
     {
+        var source = (EventStatus)sourceValue;
         var guideEvent = CreateEvent(source);
 
         var action = () => guideEvent.Withdraw(_clock);
@@ -93,34 +97,36 @@ public sealed class EventTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Draft, false, true)]
-    [InlineData(EventStatus.Draft, true, false)]   // camp events have no Draft stage
-    [InlineData(EventStatus.Pending, false, true)]
-    [InlineData(EventStatus.Pending, true, true)]
-    [InlineData(EventStatus.Rejected, false, true)]
-    [InlineData(EventStatus.Rejected, true, true)]
-    [InlineData(EventStatus.ResubmitRequested, false, true)]
-    [InlineData(EventStatus.ResubmitRequested, true, true)]
-    [InlineData(EventStatus.Approved, false, false)]
-    [InlineData(EventStatus.Withdrawn, false, false)]
+    [InlineData((int)EventStatus.Draft, false, true)]
+    [InlineData((int)EventStatus.Draft, true, false)]   // camp events have no Draft stage
+    [InlineData((int)EventStatus.Pending, false, true)]
+    [InlineData((int)EventStatus.Pending, true, true)]
+    [InlineData((int)EventStatus.Rejected, false, true)]
+    [InlineData((int)EventStatus.Rejected, true, true)]
+    [InlineData((int)EventStatus.ResubmitRequested, false, true)]
+    [InlineData((int)EventStatus.ResubmitRequested, true, true)]
+    [InlineData((int)EventStatus.Approved, false, false)]
+    [InlineData((int)EventStatus.Withdrawn, false, false)]
     public void IsEditableBySubmitter_CoversStatusAndCampAsymmetry(
-        EventStatus status, bool isCampEvent, bool expected)
+        int statusValue, bool isCampEvent, bool expected)
     {
+        var status = (EventStatus)statusValue;
         Event.IsEditableBySubmitter(status, isCampEvent).Should().Be(expected);
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Draft, false, true)]
-    [InlineData(EventStatus.Draft, true, false)]   // camp events have no Draft stage
-    [InlineData(EventStatus.Pending, false, true)]
-    [InlineData(EventStatus.Pending, true, true)]
-    [InlineData(EventStatus.Approved, false, true)]
-    [InlineData(EventStatus.Approved, true, true)]
-    [InlineData(EventStatus.Rejected, false, false)]
-    [InlineData(EventStatus.Withdrawn, false, false)]
+    [InlineData((int)EventStatus.Draft, false, true)]
+    [InlineData((int)EventStatus.Draft, true, false)]   // camp events have no Draft stage
+    [InlineData((int)EventStatus.Pending, false, true)]
+    [InlineData((int)EventStatus.Pending, true, true)]
+    [InlineData((int)EventStatus.Approved, false, true)]
+    [InlineData((int)EventStatus.Approved, true, true)]
+    [InlineData((int)EventStatus.Rejected, false, false)]
+    [InlineData((int)EventStatus.Withdrawn, false, false)]
     public void IsWithdrawableBySubmitter_CoversStatusAndCampAsymmetry(
-        EventStatus status, bool isCampEvent, bool expected)
+        int statusValue, bool isCampEvent, bool expected)
     {
+        var status = (EventStatus)statusValue;
         Event.IsWithdrawableBySubmitter(status, isCampEvent).Should().Be(expected);
     }
 
@@ -137,10 +143,7 @@ public sealed class EventTests
         startTime.Should().Be(isAllDay ? TimeSpan.Zero : new TimeSpan(14, 30, 0));
     }
 
-    // Three facts rather than one theory: EventModerationActionType is internal to the
-    // section (only EventStatus is on the Contracts surface), and xUnit requires a public
-    // test class, so the enum cannot appear in a test method's signature. Naming it in the
-    // body keeps the InternalsVisibleTo access without widening the section's surface.
+    // Keep the internal moderation-action type out of public test signatures.
     [HumansFact]
     public void ApplyModerationAction_Approved_FromPending_TransitionsToApproved() =>
         AssertModerationTransition(EventModerationActionType.Approved, EventStatus.Approved);
@@ -167,13 +170,14 @@ public sealed class EventTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Draft)]
-    [InlineData(EventStatus.Approved)]
-    [InlineData(EventStatus.Rejected)]
-    [InlineData(EventStatus.ResubmitRequested)]
-    [InlineData(EventStatus.Withdrawn)]
-    public void ApplyModerationAction_FromInvalidState_Throws(EventStatus source)
+    [InlineData((int)EventStatus.Draft)]
+    [InlineData((int)EventStatus.Approved)]
+    [InlineData((int)EventStatus.Rejected)]
+    [InlineData((int)EventStatus.ResubmitRequested)]
+    [InlineData((int)EventStatus.Withdrawn)]
+    public void ApplyModerationAction_FromInvalidState_Throws(int sourceValue)
     {
+        var source = (EventStatus)sourceValue;
         var guideEvent = CreateEvent(source);
 
         var action = () => guideEvent.ApplyModerationAction(EventModerationActionType.Approved, _clock);

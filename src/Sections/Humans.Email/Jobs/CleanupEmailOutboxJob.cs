@@ -6,7 +6,7 @@ namespace Humans.Email.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class CleanupEmailOutboxJob(
-    IEmailOutboxRetention outbox,
+    IEmailOutboxManagement outbox,
     IHumansMetrics metrics,
     ILogger<CleanupEmailOutboxJob> logger) : IRecurringJob
 {

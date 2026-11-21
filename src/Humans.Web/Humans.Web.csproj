@@ -57,6 +57,7 @@
     <ProjectReference Include="..\Sections\Humans.Notifications\Humans.Notifications.csproj" />
     <ProjectReference Include="..\Sections\Humans.Rideshare\Humans.Rideshare.csproj" />
     <ProjectReference Include="..\Sections\Humans.Preapprovals\Humans.Preapprovals.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Pretix\Humans.Pretix.csproj" />
     <ProjectReference Include="..\Sections\Humans.Workgroups\Humans.Workgroups.csproj" />
     <ProjectReference Include="..\Sections\Humans.Scanner\Humans.Scanner.csproj" />
     <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
@@ -68,7 +69,9 @@
     <ProjectReference Include="..\Sections\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Sections\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tickets\Humans.Tickets.csproj" />
+    <ProjectReference Include="..\Sections\Humans.HiEvents\Humans.HiEvents.csproj" />
     <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
+    <ProjectReference Include="..\Sections\Humans.BoxOffice\Humans.BoxOffice.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tour\Humans.Tour.csproj" />
     <ProjectReference Include="..\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>

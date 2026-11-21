@@ -1,13 +1,13 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Surveys.Contracts;
+using Humans.Surveys.Services;
 
 namespace Humans.Surveys.Jobs;
 
 /// <summary>Daily: the one-time 7-day reminder to invitees who haven't completed.</summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class SendSurveyReminderJob(
-    ISurveyReminderSender surveyReminders,
+    ISurveyInvitations surveyReminders,
     ILogger<SendSurveyReminderJob> logger) : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)

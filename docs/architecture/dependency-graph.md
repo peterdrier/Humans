@@ -20,6 +20,7 @@ graph LR
     AuditLog
     Auth
     Backdoor
+    BoxOffice
     Budget
     Calendar
     Campaigns
@@ -50,6 +51,7 @@ graph LR
     Onboarding
     Pleo
     Preapprovals
+    Pretix
     Rideshare
     Scanner
     Search
@@ -87,6 +89,7 @@ graph LR
     Backdoor --> Surveys
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
+    BoxOffice -.-> Tickets
     Budget --> Issues
     Budget -.-> Camps
     Budget -.-> Finance
@@ -217,6 +220,7 @@ graph LR
     Preapprovals -.-> Email
     Preapprovals -.-> Finance
     Preapprovals -.-> Notifications
+    Pretix -.-> Tickets
     Rideshare --> Settings
     Rideshare -.-> Notifications
     Scanner --> Calendar
@@ -275,8 +279,9 @@ graph LR
     Tickets --> Auth
     Tickets --> Budget
     Tickets --> Campaigns
-    Tickets --> Consent
     Tickets --> EarlyEntry
+    Tickets --> Gate
+    Tickets --> Grants
     Tickets --> Issues
     Tickets --> Settings
     Tickets --> Stripe

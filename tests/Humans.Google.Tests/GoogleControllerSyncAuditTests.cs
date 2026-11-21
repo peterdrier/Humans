@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -148,6 +149,7 @@ public sealed class GoogleControllerSyncAuditTests
         _users,
         Substitute.For<IGoogleSyncManagement>(),
         Substitute.For<IGoogleGroupSync>(),
+        Substitute.For<IGoogleDriveSync>(),
         _resources,
         _provisioning,
         Substitute.For<IGoogleAdminService>(),

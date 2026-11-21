@@ -1,10 +1,10 @@
-using Humans.Agent.Contracts;
+using Humans.Agent.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Agent.ViewComponents;
 
 /// <summary>The chrome slot invokes it unconditionally, so the sign-in gate lives here.</summary>
-internal sealed class HelpWidgetViewComponent(IAgentAvailability agent) : ViewComponent
+internal sealed class HelpWidgetViewComponent(IAgentSettingsService agent) : ViewComponent
 {
     public IViewComponentResult Invoke()
     {
@@ -12,7 +12,7 @@ internal sealed class HelpWidgetViewComponent(IAgentAvailability agent) : ViewCo
             return Content(string.Empty);
 
         var pagePath = Request?.Path.Value ?? string.Empty;
-        var agentAvailable = agent.IsEnabled;
+        var agentAvailable = agent.Current.Enabled;
 
         return View(new HelpWidgetModel(pagePath, agentAvailable));
     }

@@ -53,7 +53,6 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
             sp.GetRequiredService<IShiftView>(), sp.GetRequiredService<ILogger<SurveyService>>()));
         services.AddScoped<SurveyInvitationDelivery>();
         services.AddScoped<ISurveyInvitations>(sp => sp.GetRequiredService<SurveyInvitationDelivery>());
-        services.AddScoped<ISurveyReminderSender>(sp => sp.GetRequiredService<SurveyInvitationDelivery>());
         services.AddScoped<ISurveyResponses, SurveyResponseService>();
         services.AddScoped<ISurveyResults, SurveyResultsService>();
         services.AddScoped<ISurveyAnalysisRead>(sp => sp.GetRequiredService<ISurveyResults>());

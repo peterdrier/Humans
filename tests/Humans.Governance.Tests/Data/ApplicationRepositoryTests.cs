@@ -460,8 +460,8 @@ public sealed class ApplicationRepositoryTests : IDisposable
         SeedApp(tier: MembershipTier.Asociado); // A submitted application is not a term.
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var applications = Substitute.For<IGovernanceManagement>();
-        applications.GetActiveApprovedTierUserIdsAsync(
+        var applications = Substitute.For<IGovernanceManagement, IGovernanceService>();
+        ((IGovernanceService)applications).GetActiveApprovedTierUserIdsAsync(
                 Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(call => _repo.GetActiveApprovedTierUserIdsAsync(
                 call.Arg<MembershipTier>(), call.Arg<LocalDate>(), call.Arg<CancellationToken>()));
@@ -475,6 +475,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
             .Returns([]);
         var services = new ServiceCollection();
         services.AddSingleton(applications);
+        services.AddSingleton((IGovernanceService)applications);
         services.AddSingleton(users);
         services.AddSingleton(membership);
         services.AddSingleton<IClock>(clock);

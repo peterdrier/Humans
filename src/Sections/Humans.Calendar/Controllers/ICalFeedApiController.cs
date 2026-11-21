@@ -1,5 +1,5 @@
 using Humans.Base.Controllers;
-using Humans.Calendar.Contracts;
+using Humans.Calendar.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +11,7 @@ namespace Humans.Calendar.Controllers;
 [ApiController]
 [Route("api/ical")]
 internal sealed class ICalFeedApiController(
-    IICalFeedService feed,
+    ICalFeedService feed,
     IUserService users,
     ILogger<ICalFeedApiController> logger) : ApiControllerBase(users)
 {

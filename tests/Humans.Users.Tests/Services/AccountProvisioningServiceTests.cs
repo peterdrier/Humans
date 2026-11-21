@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using System.Transactions;
 using Humans.Users.Data;
 using NSubstitute.ExceptionExtensions;

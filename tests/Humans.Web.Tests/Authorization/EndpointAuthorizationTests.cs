@@ -239,6 +239,10 @@ public class EndpointAuthorizationTests
             "LegalController",
             "SurveyController",
             "StoreStripeWebhookController",
+            "BoxOfficeStripeWebhookController",
+            "HiEventsWebhookController",
+            "PretixWebhookController",
+            "HiEventsWebhookController",
             "CampApiController",
             "ColorPaletteController",
             // API-key authenticated by BackdoorApiKeyAuthFilter, which runs after endpoint authorization.
@@ -290,6 +294,10 @@ public class EndpointAuthorizationTests
             "EventsApiController.GetBarrio",
             "EventsApiController.GetCategories",
             "ICalFeedApiController.GetFeed",
+            // The signed-out way into buying a ticket: public prices and a sign-in link; Index only redirects there.
+            "TicketBuyController.Index",
+            "TicketBuyController.Public",
+            "TicketBuyController.SendLink",
         };
 
         var controllerTypes = AllControllerTypes(includeApiControllers: true)

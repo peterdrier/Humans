@@ -69,7 +69,11 @@ public sealed class NotificationsControllerTests
         inbox.ClickThroughAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((string?)null);
         var contributor = Substitute.For<INotificationMeterContributor>();
         contributor.GetMetersAsync(Arg.Any<ClaimsPrincipal>(), actorId, Arg.Any<CancellationToken>()).Returns(
-            [new NotificationMeter { Title = "Pending", Count = 4, ActionUrl = "/", Audience = "the Board", Priority = 9 }]);
+        [
+            new NotificationMeter { Title = "Low", Count = 1, ActionUrl = "/", Audience = "the Board", Priority = 3 },
+            new NotificationMeter { Title = "Pending", Count = 4, ActionUrl = "/", Audience = "the Board", Priority = 9 },
+            new NotificationMeter { Title = "Middle", Count = 2, ActionUrl = "/", Audience = "the Board", Priority = 7 },
+        ]);
         var meters = new NotificationMeterProvider([contributor], NullLogger<NotificationMeterProvider>.Instance);
         var http = new DefaultHttpContext
         {
@@ -113,7 +117,7 @@ public sealed class NotificationsControllerTests
                 {
                     var model = result is ViewResult view ? view.Model : ((PartialViewResult)result).Model;
                     var rows = model is NotificationInboxViewModel list ? list.Meters : ((NotificationPopupViewModel)model!).Meters;
-                    rows.Should().ContainSingle().Which.Count.Should().Be(4);
+                    rows.Select(m => (m.Title, m.Count)).Should().Equal(("Pending", 4), ("Middle", 2), ("Low", 1));
                 }
             }
         }

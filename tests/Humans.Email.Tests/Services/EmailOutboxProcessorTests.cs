@@ -100,7 +100,7 @@ public class EmailOutboxProcessorTests : IDisposable
         var failure = new OperationCanceledException(shutdown ? jobCancellation.Token : dependencyCancellation.Token);
         var processor = Substitute.For<IEmailOutboxProcessor>();
         processor.ProcessQueuedAsync(jobCancellation.Token).ThrowsAsync(failure);
-        var retention = Substitute.For<IEmailOutboxRetention>();
+        var retention = Substitute.For<IEmailOutboxManagement>();
         retention.PurgeExpiredAsync(jobCancellation.Token).ThrowsAsync(failure);
         var logger = new CapturingLogger<CleanupEmailOutboxJob>();
         IRecurringJob job = cleanup

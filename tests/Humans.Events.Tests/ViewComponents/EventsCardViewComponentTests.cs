@@ -1,3 +1,5 @@
+using Humans.Events.Services.Dtos;
+using Humans.Events.Services;
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -22,7 +24,7 @@ namespace Humans.Events.Tests.ViewComponents;
 /// </summary>
 public class EventsCardViewComponentTests
 {
-    private readonly IEventService _events = Substitute.For<IEventService>();
+    private readonly IEventManagement _events = Substitute.For<IEventManagement>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private EventsCardViewComponent BuildSut(
