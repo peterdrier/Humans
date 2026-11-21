@@ -426,4 +426,13 @@
   <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
     <value>Cancel·la i torna a començar</value>
   </data>
+  <data name="Tickets_Buy_State_Processing" xml:space="preserve">
+    <value>Pagament en camí</value>
+  </data>
+  <data name="Tickets_Buy_ProcessingHelp" xml:space="preserve">
+    <value>El teu pagament és en camí. Els pagaments bancaris poden trigar uns dies; la teva entrada queda reservada fins que arribi i t'escriurem quan estigui pagada.</value>
+  </data>
+  <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
+    <value>Aquest pagament ja és en camí i ja no es pot cancel·lar.</value>
+  </data>
 </root>

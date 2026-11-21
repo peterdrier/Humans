@@ -4,7 +4,8 @@
     ViewData["Title"] = Localizer["Tickets_Buy_OrderTitle"].Value;
     string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture) + " €";
     var order = Model.Order;
-    var open = order.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending;
+    var open = order.IsOpen;
+    var processing = order.State == TicketCheckoutOrderState.Processing;
 }
 
 @section Crumbs {
@@ -24,6 +25,10 @@
 @if (order.State == TicketCheckoutOrderState.Paid)
 {
     <p>@Localizer["Tickets_Buy_PaidHelp"]</p>
+}
+else if (processing)
+{
+    <p class="text-muted">@Localizer["Tickets_Buy_ProcessingHelp"]</p>
 }
 else if (open)
 {
@@ -100,10 +105,13 @@ else if (open)
             <a class="btn btn-primary" href="@order.PaymentUrl">@Localizer["Tickets_Buy_PayNow"]</a>
         }
         <a class="btn btn-outline-secondary" asp-action="Order" asp-route-id="@order.Id">@Localizer["Tickets_Buy_Refresh"]</a>
-        <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-outline-danger">@Localizer["Tickets_Buy_Cancel"]</button>
-        </form>
+        @if (!processing)
+        {
+            <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger">@Localizer["Tickets_Buy_Cancel"]</button>
+            </form>
+        }
     </div>
 }
 

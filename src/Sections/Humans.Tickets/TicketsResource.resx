@@ -415,4 +415,13 @@
   <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
     <value>Cancel and start again</value>
   </data>
+  <data name="Tickets_Buy_State_Processing" xml:space="preserve">
+    <value>Payment on its way</value>
+  </data>
+  <data name="Tickets_Buy_ProcessingHelp" xml:space="preserve">
+    <value>Your payment is on its way. Bank payments can take a few days; your ticket is held until it arrives, and we email you once it is paid.</value>
+  </data>
+  <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
+    <value>This payment is already on its way and can no longer be cancelled.</value>
+  </data>
 </root>
