@@ -78,8 +78,6 @@ public sealed class Section :
         services.AddSingleton<CachingLegalDocumentSyncService>();
         services.AddSingleton<ILegalDocumentSyncManagement>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
-        services.AddSingleton<ILegalDocumentSyncService>(sp =>
-            sp.GetRequiredService<CachingLegalDocumentSyncService>());
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
 
