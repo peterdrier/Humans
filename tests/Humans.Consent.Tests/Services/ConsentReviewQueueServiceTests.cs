@@ -1,11 +1,15 @@
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Consent.Contracts;
+using Humans.Consent.Data;
+using Humans.Consent.Domain;
 using Humans.Consent.Services;
 using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
@@ -14,13 +18,19 @@ namespace Humans.Consent.Tests.Services;
 public sealed class ConsentReviewQueueServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IConsentWrite _consentWrite = Substitute.For<IConsentWrite>();
+    private readonly IConsentReviewRepository _reviewRepository = Substitute.For<IConsentReviewRepository>();
+    private readonly ConsentReviewService _consentWrite;
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IGovernanceService _governance = Substitute.For<IGovernanceService>();
     private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
 
     public ConsentReviewQueueServiceTests()
     {
+        _consentWrite = new ConsentReviewService(_reviewRepository, _userService,
+            Substitute.For<IAuditLogService>(), new FakeClock(Instant.FromUnixTimeSeconds(1)));
+        _userService.GetRawUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(MakeUserInfo(call.Arg<Guid>(),
+                UserFixtures.Profile(createdAt: Instant.FromUnixTimeSeconds(1)))));
         _consentService.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => _reviews);
     }
@@ -50,15 +60,13 @@ public sealed class ConsentReviewQueueServiceTests
         var reviewerId = Guid.NewGuid();
         const string notes = "looks good";
 
-        _consentWrite.RecordConsentCheckAsync(
-                userId, ConsentCheckStatus.Cleared, reviewerId, notes, Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(true));
-
         var result = await BuildSut().ClearAsync(userId, reviewerId, notes, TestContext.Current.CancellationToken);
 
         result.Success.Should().BeTrue();
-        await _consentWrite.Received(1).RecordConsentCheckAsync(
-            userId, ConsentCheckStatus.Cleared, reviewerId, notes, Arg.Any<CancellationToken>());
+        await _reviewRepository.Received(1).UpsertAsync(
+            Arg.Is<ConsentReview>(row => row.UserId == userId && row.Status == ConsentCheckStatus.Cleared
+                && row.CheckedByUserId == reviewerId && string.Equals(row.Notes, notes, StringComparison.Ordinal) && row.IsApproved),
+            TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
@@ -209,9 +217,6 @@ public sealed class ConsentReviewQueueServiceTests
         Review(mergedId, ConsentCheckStatus.Flagged);
 
         StubReviewQueueDependencies([flagged, pending, rejected, unselected, merged]);
-        _consentWrite.RecordConsentCheckAsync(
-                Arg.Any<Guid>(), Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new OnboardingResult(true)));
 
         var reviewerId = Guid.NewGuid();
         var result = await BuildSut().BulkClearAsync(
@@ -223,14 +228,15 @@ public sealed class ConsentReviewQueueServiceTests
 
         foreach (var cleared in new[] { flaggedId, pendingId })
         {
-            await _consentWrite.Received(1).RecordConsentCheckAsync(
-                cleared, ConsentCheckStatus.Cleared, reviewerId, Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            await _reviewRepository.Received(1).UpsertAsync(
+                Arg.Is<ConsentReview>(row => row.UserId == cleared && row.Status == ConsentCheckStatus.Cleared
+                    && row.CheckedByUserId == reviewerId && row.IsApproved), TestContext.Current.CancellationToken);
         }
 
         foreach (var untouched in new[] { rejectedId, unselectedId, mergedId })
         {
-            await _consentWrite.DidNotReceive().RecordConsentCheckAsync(
-                untouched, Arg.Any<ConsentCheckStatus>(), Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            await _reviewRepository.DidNotReceive().UpsertAsync(
+                Arg.Is<ConsentReview>(row => row.UserId == untouched), Arg.Any<CancellationToken>());
         }
     }
 

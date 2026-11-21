@@ -31,6 +31,16 @@ internal sealed record CampaignEditSnapshot(
     string? ReplyToAddress,
     CampaignStatus Status);
 
+internal sealed record CampaignGrantSummary(
+    Guid Id,
+    Guid CampaignId,
+    string CampaignTitle,
+    Guid CampaignCodeId,
+    string Code,
+    Guid UserId,
+    Instant AssignedAt,
+    Instant? RedeemedAt);
+
 internal sealed record CampaignAdminSummary(
     Guid Id,
     string Title,

@@ -5,7 +5,6 @@ using Humans.Base.Extensions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Surveys.Models;
 
@@ -188,7 +187,7 @@ internal sealed class SurveyBuilderViewModel
 
     // date <input> value (empty when unset).
     public string AudienceLoggedInSinceInput
-        => AudienceLoggedInSince is null ? string.Empty : LocalDatePattern.Iso.Format(AudienceLoggedInSince.Value);
+        => AudienceLoggedInSince.ToInvariantDate() ?? string.Empty;
 
     private static string FormatLocal(LocalDateTime? local)
         => local is null ? string.Empty : DateFormattingExtensions.PlacementDateTimePattern.Format(local.Value);

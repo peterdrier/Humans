@@ -82,12 +82,11 @@ internal sealed class ContactFieldService(
         var now = clock.GetCurrentInstant();
 
         // Also the cache key: resolved before committing, so a failed lookup can't skip the refresh.
-        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
+        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken)
+            ?? throw new InvalidOperationException($"Profile {profileId} has no owning user.");
 
         // Detached: mutations go back explicitly through BatchSaveAsync.
-        IReadOnlyList<ContactField> existingFields = ownerUserId is { } owner
-            ? await userRepository.GetContactFieldsByUserIdForMutationAsync(owner, cancellationToken)
-            : [];
+        var existingFields = await userRepository.GetContactFieldsByUserIdForMutationAsync(ownerUserId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
@@ -114,7 +113,6 @@ internal sealed class ContactFieldService(
                 field = new ContactField
                 {
                     Id = Guid.NewGuid(),
-                    ProfileId = profileId,
                     UserId = ownerUserId,
                     CreatedAt = now
                 };
@@ -135,20 +133,17 @@ internal sealed class ContactFieldService(
         }
         finally
         {
-            if (ownerUserId is not null)
+            try
             {
-                try
-                {
-                    // The write may have committed even if its acknowledgement failed. Finish the refresh
-                    // independently of the request so old contact values and visibility cannot remain cached.
-                    await userInfoRefresher.RefreshAsync(ownerUserId.Value, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "UserInfo refresh failed after contact field write for {UserId}",
-                        ownerUserId.Value);
-                }
+                // The write may have committed even if its acknowledgement failed. Finish the refresh
+                // independently of the request so old contact values and visibility cannot remain cached.
+                await userInfoRefresher.RefreshAsync(ownerUserId, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "UserInfo refresh failed after contact field write for {UserId}",
+                    ownerUserId);
             }
         }
         return new(true, profileId);

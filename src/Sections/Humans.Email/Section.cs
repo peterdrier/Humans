@@ -95,8 +95,6 @@ public sealed class Section :
 
         services.AddScoped<EmailOutboxService>();
         services.AddScoped<IEmailOutboxManagement>(sp => sp.GetRequiredService<EmailOutboxService>());
-        services.AddScoped<IEmailOutboxService>(sp => sp.GetRequiredService<EmailOutboxService>());
-        services.AddScoped<IEmailOutboxRetention>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<EmailOutboxService>());
 

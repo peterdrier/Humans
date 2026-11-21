@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using AwesomeAssertions;
 using Humans.Google.Contracts;
 using Xunit;
@@ -5,7 +6,7 @@ using Xunit;
 namespace Humans.Google.Tests.Enums;
 
 /// <summary>
-/// All five are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves
+/// These enums are persisted with <c>HasConversion&lt;string&gt;()</c>: renaming a member leaves
 /// the OLD string in the column. A rename needs a migration that UPDATEs the stored values.
 /// </summary>
 public class EnumStringStabilityTests

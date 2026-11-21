@@ -293,9 +293,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
-
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -314,11 +311,7 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProfileId");
-
                     b.HasIndex("UserId");
-
-                    b.HasIndex("ProfileId", "Visibility");
 
                     b.ToTable("user_contact_fields", (string)null);
                 });
@@ -428,15 +421,10 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProfileId");
 
                     b.HasIndex("UserId");
 
@@ -464,9 +452,6 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
-
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -474,8 +459,6 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ProfileId");
 
                     b.HasIndex("UserId");
 
@@ -657,18 +640,10 @@ namespace Humans.Users.Data.Migrations
 
             modelBuilder.Entity("Humans.Users.Domain.ContactField", b =>
                 {
-                    b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany("ContactFields")
-                        .HasForeignKey("ProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Humans.Users.Contracts.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.Profile", b =>
@@ -682,34 +657,18 @@ namespace Humans.Users.Data.Migrations
 
             modelBuilder.Entity("Humans.Users.Domain.ProfileLanguage", b =>
                 {
-                    b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany()
-                        .HasForeignKey("ProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Humans.Users.Contracts.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.VolunteerHistoryEntry", b =>
                 {
-                    b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany()
-                        .HasForeignKey("ProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Humans.Users.Contracts.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -766,11 +725,6 @@ namespace Humans.Users.Data.Migrations
             modelBuilder.Entity("Humans.Users.Contracts.User", b =>
                 {
                     b.Navigation("UserEmails");
-                });
-
-            modelBuilder.Entity("Humans.Users.Domain.Profile", b =>
-                {
-                    b.Navigation("ContactFields");
                 });
 #pragma warning restore 612, 618
         }

@@ -163,10 +163,10 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 | Public interface | Notes |
 |---|---|
-| `ICampaignService` | Read contract: `GetCodeTrackingAsync` (Tickets); `GetActiveOrCompletedGrantsForUserAsync` and `GetAllGrantsForUserAsync` are read by Campaigns' own member and admin cards (below). DTOs only. |
+| `ICampaignService` | `GetCodeTrackingAsync` (Tickets). DTOs only. |
 | `ICampaignWrite` | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes). Unavoidable: it is driven by another section's job. |
 
-`CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. Campaign/code CRUD, activation, wave sending and resend are not public: the section's controller injects the concrete service.
+`CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. The two grant-summary reads belong to management for its own cards. `CampaignGrantSummary` is internal under `Services/Dtos`, shared by this section's detail page and cards. Campaign/code CRUD, activation, wave sending and resend are not public: the section's controller injects the concrete service.
 
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
@@ -185,7 +185,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 | `UserPartSlots.Profile` | `MyCodesViewComponent` ("My Codes", member-facing, `Campaigns_MyCodes_*` keys in all supported cultures) | Own profile only |
 | `UserPartSlots.AdminDetail` | `CampaignCodesViewComponent` ("Campaign Codes", English, admin-only) | `/Users/Admin/{id}`, `UsersPolicies.Read` |
 
-Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.
+Both components are internal and inject existing management. The host discovers them through its section feature provider and invokes them by type through the user-part slots. Their audience checks, request cancellation and rendering are unchanged. Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.
 
 ### Touch-and-clean guidance
 

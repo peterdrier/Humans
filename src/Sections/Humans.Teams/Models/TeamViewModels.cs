@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;

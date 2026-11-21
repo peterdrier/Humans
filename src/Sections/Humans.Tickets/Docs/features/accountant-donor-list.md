@@ -68,7 +68,7 @@ No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `Purc
 `PaymentStatus`, `VendorOrderId`) and its `TicketAttendee` rows (`Price`, `Status`).
 
 - `OrderExportRow` (existing) gained `VendorOrderId`, `PurchasedAt`, `VipDonations`.
-- `DonationExportRow` (new, section-internal): `Date, VendorOrderId, BuyerName, BuyerEmail, Type, Amount`.
+- `DonationExportRow` (new, section-internal): `PurchasedAt, Date, VendorOrderId, BuyerName, BuyerEmail, Type, Amount`. `PurchasedAt` stays internal for ordering; it is not a CSV column.
 - `TicketsAuditActions.TicketDonationsExported` (new).
 
 ## Workflow
@@ -78,7 +78,7 @@ No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `Purc
    `ITicketManagement.GetDonationExportDataAsync(actorUserId)`.
 3. `TicketQueryService` filters paid orders, splits each into its donation rows, dates them in
    Europe/Madrid, writes the audit entry, returns the rows.
-4. The controller renders the CSV through `HumansCsv` and appends the `Total` row.
+4. The controller orders rows by purchase instant, renders the CSV through `HumansCsv` and appends the `Total` row. Equal instants retain their service order, keeping each order’s VIP row before its separate donation.
 
 ## Related
 

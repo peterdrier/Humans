@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
-using Humans.Google.Contracts;
 using Humans.Google.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -12,7 +11,7 @@ namespace Humans.Google.Tests;
 
 public sealed class GoogleNotificationMetersTests : IDisposable
 {
-    private readonly IGoogleSyncService _sync = Substitute.For<IGoogleSyncService>();
+    private readonly IGoogleSyncManagement _sync = Substitute.For<IGoogleSyncManagement>();
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly GoogleNotificationMeters _sut;
 

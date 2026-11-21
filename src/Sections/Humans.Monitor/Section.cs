@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Monitor.Contracts;
 using Humans.Monitor.Jobs;
 using Humans.Monitor.Services;
 using Microsoft.Extensions.Configuration;

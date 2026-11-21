@@ -345,7 +345,7 @@ internal sealed class TicketController(
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow("Date", "Order ID", "Name", "Email", "Type", "Amount");
-            foreach (var r in rows)
+            foreach (var r in rows.OrderBy(row => row.PurchasedAt))
             {
                 csv.WriteRow(r.Date, r.VendorOrderId, r.BuyerName, r.BuyerEmail, r.Type, r.Amount);
             }

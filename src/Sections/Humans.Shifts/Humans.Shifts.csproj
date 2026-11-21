@@ -34,17 +34,14 @@
     <!--
       Humans.Base above carries the shared enums whose persisted strings this section reads;
       the section's own persisted-string enums (SignupStatus, ShiftPriority, SignupPolicy,
-      RotaPeriod, ShiftPeriod, BuildSubPeriod) live on Humans.Shifts.Contracts, with their
+      RotaPeriod, ShiftPeriod, BuildSubPeriod) live in Contracts/, with their
       EnumStringStabilityTests rows in tests/Humans.Shifts.Tests/Enums.
     -->
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
     <!-- Fills Onboarding's IOnboardingShiftsStep slot. The leaf only, which references Base alone. -->
     <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <!--
-      Outbound section references, all acyclic — none of these names a Humans.Shifts
-      type (they may name Humans.Shifts.Contracts, which is
-      below this project).
+      Outbound section references, all acyclic: none of these references Humans.Shifts.
         Camps         — ICampService: camp labels and rosters for the summary-by-camp.
         Auth          — the coordinator/manager authorization surface.
         EarlyEntry    — VolunteerTrackingExportService implements IEarlyEntryProvider;

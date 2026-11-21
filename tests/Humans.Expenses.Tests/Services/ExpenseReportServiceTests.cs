@@ -130,9 +130,9 @@ public sealed partial class ExpenseReportServiceTests
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = actorId }, [], [], null));
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         using var request = new CancellationTokenSource();
-        var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
+        var controller = new ExpensesController(_teamService, _userService, _sut, _review, _budgetService, _finance, _preapprovals,
             Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
@@ -191,7 +191,7 @@ public sealed partial class ExpenseReportServiceTests
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
                 return Task.FromResult<byte[]?>([4, 5, 6]);
             });
-        var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
+        var controller = new ExpensesController(_teamService, _userService, _sut, _review, _budgetService, _finance, _preapprovals,
             authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
@@ -226,7 +226,7 @@ public sealed partial class ExpenseReportServiceTests
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
         });
-        var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
+        var controller = new ExpensesController(_teamService, _userService, _sut, _review, _budgetService, _finance, _preapprovals,
             Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
@@ -269,7 +269,7 @@ public sealed partial class ExpenseReportServiceTests
         var lineId = (await _sut.AddLineWithResultAsync(id, actorId, "Invoice", 10m,
             lineType: ExpenseLineType.Invoice, ct: TestContext.Current.CancellationToken)).LineId!.Value;
         await SeedReportWithStatusAsync(Guid.NewGuid(), actorId, category.Id, year.Id, ExpenseReportStatus.Submitted);
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var actor = UserInfo.Create(new User { Id = actorId }, [], [], null);
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [actorId] = actor }));
@@ -287,7 +287,7 @@ public sealed partial class ExpenseReportServiceTests
             Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
-        var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
+        var controller = new ExpensesController(_teamService, _userService, _sut, _review, _budgetService, _finance, _preapprovals,
             authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
@@ -336,7 +336,7 @@ public sealed partial class ExpenseReportServiceTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
-        var controller = new ExpensesController(_userService, _sut, _review, _budgetService, _finance, _preapprovals,
+        var controller = new ExpensesController(_teamService, _userService, _sut, _review, _budgetService, _finance, _preapprovals,
             authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext
@@ -941,7 +941,7 @@ public sealed partial class ExpenseReportServiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(_userService, reports, review, _budgetService, _finance, _preapprovals,
+        var controller = new ExpensesController(_teamService, _userService, reports, review, _budgetService, _finance, _preapprovals,
             authorization, Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },
@@ -3270,7 +3270,7 @@ public sealed partial class ExpenseReportServiceTests
         });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = userId }, [], [], null));
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var reports = Substitute.For<IExpenseReportManagement>();
         var review = Substitute.For<IExpenseReview>();
         reports.GetForSubmitterAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
@@ -3281,7 +3281,7 @@ public sealed partial class ExpenseReportServiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
-        var controller = new ExpensesController(_userService, reports, review, _budgetService, _finance, _preapprovals,
+        var controller = new ExpensesController(_teamService, _userService, reports, review, _budgetService, _finance, _preapprovals,
             Substitute.For<IAuthorizationService>(), Clock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, _localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = context },

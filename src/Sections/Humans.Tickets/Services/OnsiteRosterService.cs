@@ -7,13 +7,13 @@ namespace Humans.Tickets.Services;
 
 internal sealed class OnsiteRosterService : IOnsiteRosterService
 {
-    private readonly IEventParticipationManagement _participations;
+    private readonly ITicketService _participations;
     private readonly ICampService _camps;
     private readonly ITeamService _teams;
     private readonly IRoleAssignmentService _roles;
 
     public OnsiteRosterService(
-        IEventParticipationManagement participations,
+        ITicketService participations,
         ICampService camps,
         ITeamService teams,
         IRoleAssignmentService roles)

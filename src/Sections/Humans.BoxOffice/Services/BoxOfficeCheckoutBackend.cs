@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Options;
@@ -36,6 +37,7 @@ internal sealed class BoxOfficeCheckoutBackend(
     public const string BackendKey = "boxoffice";
     internal const string OrderMetadataKey = "humans_ticket_order_id";
     internal const string RefundMetadataKey = "humans_ticket_refund_id";
+    internal const string TicketCountMetadataKey = "humans_ticket_count";
 
     /// <summary>Stripe's bounds on a Checkout Session's <c>expires_at</c>, with a margin for clock skew.</summary>
     private static readonly Duration MinLifetime = Duration.FromMinutes(31);
@@ -69,6 +71,11 @@ internal sealed class BoxOfficeCheckoutBackend(
         if (expiresAt > now + MaxLifetime) expiresAt = now + MaxLifetime;
 
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal) { [OrderMetadataKey] = request.OrderId.ToString() };
+        // Free ticket lines never reach Stripe, so reconciliation reads the ticket count from here.
+        var sessionMetadata = new Dictionary<string, string>(metadata, StringComparer.Ordinal)
+        {
+            [TicketCountMetadataKey] = request.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString(CultureInfo.InvariantCulture),
+        };
         var language = request.Culture.Split('-')[0];
         var options = new SessionCreateOptions
         {
@@ -93,7 +100,7 @@ internal sealed class BoxOfficeCheckoutBackend(
                     },
                 },
             }).ToList(),
-            Metadata = metadata,
+            Metadata = sessionMetadata,
             PaymentIntentData = new SessionPaymentIntentDataOptions
             {
                 Description = $"Humans ticket order {request.OrderId}",
@@ -116,9 +123,16 @@ internal sealed class BoxOfficeCheckoutBackend(
         }
     }
 
-    public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
+    public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default) =>
+        await StatusOfAsync(await GetSessionAsync(backendOrderId, ct), everyRefund: true, ct);
+
+    /// <summary>
+    /// The session's payment intent and latest charge must be expanded. Without <paramref name="everyRefund"/> the
+    /// refunds are read only for a charge that shows some, which misses a refund that failed (it drops out of the
+    /// charge's total): fine for totals, not for <see cref="CheckoutStatus.RefundFailed"/>.
+    /// </summary>
+    private async Task<CheckoutStatus> StatusOfAsync(Session session, bool everyRefund, CancellationToken ct)
     {
-        var session = await GetSessionAsync(backendOrderId, ct);
         var intent = session.PaymentIntent;
         var charge = intent?.LatestCharge;
 
@@ -138,7 +152,9 @@ internal sealed class BoxOfficeCheckoutBackend(
             : null;
         // charge.amount_refunded counts a refund from the moment it is created, pending included, and a failed one
         // drops back out: read the refunds themselves so only money that went back counts.
-        var refunds = session.PaymentIntentId is { } paymentIntentId ? await ListRefundsAsync(paymentIntentId, ct) : [];
+        var refunds = session.PaymentIntentId is { } paymentIntentId && (everyRefund || charge is { AmountRefunded: > 0 })
+            ? await ListRefundsAsync(paymentIntentId, ct)
+            : [];
         return new CheckoutStatus(
             state,
             charge?.BalanceTransaction?.Fee,
@@ -147,6 +163,47 @@ internal sealed class BoxOfficeCheckoutBackend(
             refunds.Where(r => StateOf(r) == RefundState.Succeeded).Sum(r => r.Amount),
             refunds.Any(r => StateOf(r) == RefundState.Failed && r.Metadata?.ContainsKey(RefundMetadataKey) == true),
             charge is { Disputed: true, Id: { } chargeId } ? await DisputedAsync(chargeId, ct) : 0);
+    }
+
+    public string? EventRefOf(string backendOrderId) => null;
+
+    /// <summary>
+    /// Lists every Checkout Session on the account, since the Stripe account sells tickets only and a session Humans
+    /// did not open is exactly what reconciliation must show. Box Office keeps no events, so the event id is ignored.
+    /// </summary>
+    public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
+        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
+    {
+        var options = new SessionListOptions
+        {
+            Created = new DateRangeOptions { GreaterThanOrEqual = from.ToDateTimeUtc(), LessThan = to.ToDateTimeUtc() },
+            Limit = 100,
+            Expand = ["data.payment_intent.latest_charge"],
+        };
+        var orders = new List<BackendOrderSummary>();
+        try
+        {
+            await foreach (var session in new SessionService(Client()).ListAutoPagingAsync(options, cancellationToken: ct))
+            {
+                var status = await StatusOfAsync(session, everyRefund: false, ct);
+                orders.Add(new BackendOrderSummary(
+                    session.Id,
+                    Guid.TryParse(session.Metadata?.GetValueOrDefault(OrderMetadataKey), out var orderId) ? orderId : null,
+                    Instant.FromDateTimeUtc(DateTime.SpecifyKind(session.Created, DateTimeKind.Utc)),
+                    status.State,
+                    session.AmountTotal ?? 0,
+                    int.TryParse(session.Metadata?.GetValueOrDefault(TicketCountMetadataKey), NumberStyles.None,
+                        CultureInfo.InvariantCulture, out var tickets) ? tickets : null,
+                    status.RefundedMinor,
+                    status.DisputedMinor));
+            }
+        }
+        catch (StripeException ex)
+        {
+            throw new TicketCheckoutException($"Stripe could not list checkout sessions: {ex.Message}", ex);
+        }
+
+        return orders;
     }
 
     private async Task<long> DisputedAsync(string chargeId, CancellationToken ct)

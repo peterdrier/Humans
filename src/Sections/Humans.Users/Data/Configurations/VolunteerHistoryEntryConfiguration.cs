@@ -28,17 +28,11 @@ internal sealed class VolunteerHistoryEntryConfiguration : IEntityTypeConfigurat
         builder.Property(v => v.UpdatedAt)
             .IsRequired();
 
-        builder.HasOne(v => v.Profile)
-            .WithMany()
-            .HasForeignKey(v => v.ProfileId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(v => v.ProfileId);
         builder.HasIndex(v => v.UserId);
     }
 }

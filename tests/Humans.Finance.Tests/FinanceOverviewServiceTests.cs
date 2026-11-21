@@ -3,6 +3,13 @@ using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
+using Humans.Finance.Domain;
+using Humans.Finance.ViewComponents;
+using Humans.Pleo.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Holded.Contracts;
 using Humans.Stripe.Contracts;
 using NodaTime;
@@ -123,6 +130,59 @@ public class FinanceOverviewServiceTests
         await _audit.Received(1).LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Is<string>(d => d.Contains("44100001 → acct_store")), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public void CashAccounts_SortsEachGroupWithBanksBeforeStripe()
+    {
+        var cards = new FinanceLedgerCardsVm(
+            [new(57200003, "Bank", 1m), new(57000001, "Cash", 2m)],
+            [new(44100002, "Stripe B", 3m), new(44100001, "Stripe A", 4m)], [], 0m, []);
+
+        cards.CashAccounts.Select(a => a.AccountNum).Should().Equal(57000001, 57200003, 44100001, 44100002);
+        cards.CashTotal.Should().Be(10m);
+    }
+
+    [HumansFact]
+    public async Task StripeLinkSettingsComponent_SortsBeforeAssigningFormIndices()
+    {
+        var overview = LinkService();
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holding money", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100001, "Active", null, null, false, 0m),
+        ]);
+        var syncedAt = Instant.FromUtc(2026, 11, 1, 0, 0);
+        _stripe.GetEurBalancesAsync(Arg.Any<CancellationToken>()).Returns([
+            new StripeAccountBalance("acct_z", 1m, 0m, syncedAt),
+            new StripeAccountBalance("acct_A", 1m, 0m, syncedAt),
+            new StripeAccountBalance("acct_a", 1m, 0m, syncedAt),
+            new StripeAccountBalance("acct_z", 1m, 0m, syncedAt),
+        ]);
+        _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new FinanceSettings());
+        var pleo = new PleoBooking(FixedOrgTimeZone.Madrid, Substitute.For<IPleoService>(), _holded,
+            Substitute.For<IHoldedWrite>(), _repo, _audit, new PleoBookingState(), SystemClock.Instance,
+            NullLogger<PleoBooking>.Instance);
+        var component = new FinanceSettingsTabViewComponent(overview, pleo)
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext { RequestAborted = TestContext.Current.CancellationToken }
+                }
+            }
+        };
+
+        var result = await component.InvokeAsync();
+
+        var viewData = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData;
+        viewData.Should().NotBeNull();
+        var model = viewData!.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
+        model.Rows.Select(r => r.LedgerAccountNum).Should().Equal(44100001, 44100002, 44100003);
+        model.Rows.Select(r => r.Index).Should().Equal(0, 1, 2);
+        model.Rows.Last().StripeAccountId.Should().Be("acct_old");
+        model.StripeAccounts.Should().Equal("acct_A", "acct_a", "acct_z");
     }
 
     [HumansFact]

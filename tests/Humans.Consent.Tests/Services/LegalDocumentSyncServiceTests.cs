@@ -239,7 +239,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         });
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person, [reached.Id] = reached });
-        var consents = Substitute.For<IConsentService>();
+        var consents = Substitute.For<IConsentManagement>();
         consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>());
         var pendingRepository = Substitute.For<ILegalDocumentRepository>();
@@ -312,7 +312,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         });
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [person.Id] = person });
-        var consents = Substitute.For<IConsentService>();
+        var consents = Substitute.For<IConsentManagement>();
         consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>());
         var email = Substitute.For<IEmailService>();

@@ -17,6 +17,9 @@ cycles and of which one is active.
 
 ## Concepts
 
+The event form renders its nullable early-entry close with `ToIso8601` and parses it
+with `DateFormattingExtensions.Iso8601InstantPattern`, using the shared seconds-precision UTC format.
+
 - A **Setting** is one key/value row in `settings_system_values`. Well-known keys live
   in `SettingKeys`; values are strings, parsed by the caller.
 - **EventSettings** is one event cycle's app-wide values: name, public year,

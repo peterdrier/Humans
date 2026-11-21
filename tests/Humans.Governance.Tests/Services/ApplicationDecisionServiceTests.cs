@@ -128,11 +128,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     private ApplicationDecisionService CreateService(
-        IApplicationRepository? repository = null, IDbContextFactory<GovernanceDbContext>? factory = null) => new(
+        IApplicationRepository? repository = null) => new(
         repository ?? _repository,
         _userService,
-        new MembershipTierService(
-            new ApplicationRepository(factory ?? GovernanceDbFactory), repository ?? _repository, _userService, AuditLog, Clock),
         _roleAssignmentService,
         AuditLog,
         _emailService,
@@ -143,6 +141,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _cache,
         Clock,
         NullLogger<ApplicationDecisionService>.Instance);
+
+    private MembershipTierService CreateTierService() =>
+        new(new ApplicationRepository(GovernanceDbFactory), _repository, _userService, AuditLog, Clock);
 
     private void PrimeVotingBadges(params Guid[] boardMemberIds)
     {
@@ -331,7 +332,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         };
         var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var applications = new GovernanceApplicationsController(_service, _userService, localizer,
+        var applications = new GovernanceApplicationsController(_service, CreateTierService(), _userService, localizer,
             NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -398,7 +399,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             RequestAborted = request.Token,
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
-        var controller = new GovernanceApplicationsController(_service, _userService,
+        var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(),
             NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
@@ -482,7 +483,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var viewerId = Guid.NewGuid();
         _userService.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = viewerId })));
-        var controller = new GovernanceApplicationsController(_service, _userService, governanceLocalizer,
+        var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService, governanceLocalizer,
             NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
@@ -711,7 +712,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             await seed.SaveChangesAsync(ct);
         }
         interceptor.Reject = true;
-        var service = CreateService(new ApplicationRepository(factory), factory);
+        var service = CreateService(new ApplicationRepository(factory));
         var approve = () => service.ApproveAsync(application.Id, Guid.NewGuid(), null, new LocalDate(2026, 3, 1), ct);
 
         await approve.Should().ThrowAsync<InvalidOperationException>().WithMessage("Tier grant save failed");
@@ -1622,7 +1623,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
-        var controller = new GovernanceApplicationsController(_service, _userService,
+        var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
@@ -1653,7 +1654,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
-        var controller = new GovernanceApplicationsController(_service, _userService,
+        var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
@@ -1689,7 +1690,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = viewerId }));
         });
-        var controller = new GovernanceApplicationsController(_service, _userService,
+        var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
@@ -1794,7 +1795,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
-        var controller = new GovernanceApplicationsController(_service, _userService,
+        var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext
@@ -1828,7 +1829,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var motivation = new string('x', prefixLength) + suffix;
         app.Motivation = motivation;
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        var controller = new GovernanceApplicationsController(_service, _userService,
+        var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
             Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, Clock)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
@@ -1999,7 +2000,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             await seed.SaveChangesAsync(ct);
         }
         interceptor.Reject = true;
-        var service = CreateService(new ApplicationRepository(factory), factory);
+        var service = CreateService(new ApplicationRepository(factory));
         var correct = () => service.FixTermExpiryDriftAsync(Guid.NewGuid(), ct);
 
         await correct.Should().ThrowAsync<InvalidOperationException>().WithMessage("Tier grant save failed");

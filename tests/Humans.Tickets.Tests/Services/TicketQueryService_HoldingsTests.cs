@@ -46,7 +46,7 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<ISettingsService>(),
             Substitute.For<IAuditLogService>(),
             SystemClock.Instance,
-            Substitute.For<IEventParticipationManagement>(),
+            Substitute.For<IEventParticipationRepository>(),
             Substitute.For<ITicketCheckoutService>());
 
         // Default: no orders, no visible attendees

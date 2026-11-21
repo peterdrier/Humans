@@ -10,7 +10,7 @@ namespace Humans.Tickets.Services.Stores;
 /// Caches only <see cref="GetEventSummaryAsync"/>. An order pull for an event evicts that event's summary, so it is
 /// never older than the orders the sync last pulled.
 /// </summary>
-internal sealed class CachingTicketVendorService : ITicketVendorService
+internal sealed class CachingTicketVendorService : ITicketVendorService, ITicketVendorMirror
 {
     private static readonly Duration EventSummaryCacheTtl = Duration.FromMinutes(15);
 

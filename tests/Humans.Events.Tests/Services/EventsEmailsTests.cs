@@ -1,3 +1,4 @@
+using Humans.Events.Domain;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;

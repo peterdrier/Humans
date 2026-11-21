@@ -13,6 +13,16 @@ The Hi.Events option for 2027 ticket checkout: one implementation of Tickets' `I
 `hievents`), plus the webhook that tells Tickets an order changed. Hi.Events only takes the payment; Humans owns the
 price, the named ticket and the QR code.
 
+## Purpose
+
+Hi.Events is an open-source event ticketing platform. This section lets Humans use the Nobodies fork of it (`peterdrier/Hi.Events`, `docker/coolify/` there for Coolify) as a payment desk: it creates a reserved Hi.Events order at Humans' exact prices, sends the buyer to Hi.Events' Stripe pay page, and reports back what Hi.Events holds.
+
+**What good looks like.** A Humans order and its Hi.Events order always agree on amount, payment and refund state. A retried create or refund never doubles. Hi.Events sends buyers nothing, and nothing sells on its public event page.
+
+**Deliberate choices.** A small fork patch (checkout endpoint, refund idempotency, anonymize) instead of per-person promo codes, since stock Hi.Events takes a caller price only for donations. One hidden `TICKET` and one hidden `GENERAL` carrier product per event instead of mirroring Humans' catalogue. Erasure anonymizes the whole order, because Hi.Events copies the buyer's email onto every attendee.
+
+**Out of scope.** Hi.Events Cloud (it lacks the fork's endpoint), Hi.Events' own catalogue, promo codes, seating, box office, check-in and buyer mail; any per-event setting in Humans beyond the event id.
+
 ## Concepts
 
 - The **port** is `Humans.Tickets.Contracts.ITicketCheckoutBackend`. Tickets owns it; this section implements it and
@@ -83,6 +93,7 @@ None — the section owns no tables.
 - Buyer names go in 50 characters of first name and 50 of last name, split at a space; attendee lines carry the full
   legal name (Hi.Events allows 255 on this endpoint).
 - `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
+- `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting attendees as tickets. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id.
 
 ## Personal data and erasure
 
@@ -93,3 +104,24 @@ Stripe customer row and the webhook delivery logs that carried the order, and ke
 customer record inside Stripe itself stays: Stripe holds it as payment processor. The whole order goes, not just the named person, because
 Hi.Events copies the buyer's email onto every attendee row, so the person cannot be told apart from the others; Humans
 keeps the names it needs. A failure throws, so Tickets retries before tombstoning its own copy.
+
+## Negative Access Rules
+
+- Code outside this project **cannot** name `HiEventsCheckoutBackend` or `HiEventsSettings`.
+- The webhook **cannot** change any state itself; it only tells Tickets an order changed, and Tickets re-reads it.
+- A buyer **cannot** buy through Hi.Events' public event page: checkout refuses a visible carrier product.
+
+## Triggers
+
+- A signed `order.*` webhook calls `ITicketCheckoutEvents.CheckoutChangedAsync("hievents", "{eventId}:{orderId}")`.
+
+## Cross-Section Dependencies
+
+- **Tickets**: implements `ITicketCheckoutBackend`, calls `ITicketCheckoutEvents`, both from the `Humans.Tickets.Contracts` leaf.
+- **Base**: configuration registry.
+
+## Architecture
+
+**Owning services:** `HiEventsCheckoutBackend`
+**Owned tables:** None, adapter over Tickets' port.
+**Status:** (A) Migrated, the adapter shape: no tables, an empty `Contracts/`, one webhook controller.

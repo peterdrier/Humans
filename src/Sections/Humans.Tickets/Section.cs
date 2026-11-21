@@ -87,7 +87,6 @@ public sealed class Section :
         services.AddSingleton<ITicketManagement>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketSyncService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
-        services.AddSingleton<ITicketSync>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketTransferService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketTransferQueue>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<IAttendeeContactImportService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
@@ -110,7 +109,7 @@ public sealed class Section :
 
         services.AddScoped<TicketVendorGateway>();
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
-        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<TicketVendorGateway>());
+        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<CachingTicketVendorService>());
 
         services.AddScoped<TicketDashboardPageBuilder>();
 
@@ -149,6 +148,7 @@ public sealed class Section :
         services.AddScoped<TicketDeliveryService>();
         services.AddScoped<ITicketDelivery, TicketDeliveryHandOff>();
         services.AddScoped<TicketCheckoutReconcileJob>();
+        services.AddScoped<TicketReconJob>();
     }
 
     string IIssueQueueOwner.QueueKey => "Tickets";
@@ -223,6 +223,9 @@ public sealed class Section :
         // Catches webhooks that never arrived; the webhook is only a nudge.
         yield return new RecurringJobDescriptor(
             "tickets-checkout-reconcile", typeof(TicketCheckoutReconcileJob), "*/5 * * * *");
+
+        // The daily financial check of every backend against Humans' orders; reads only.
+        yield return new RecurringJobDescriptor("tickets-checkout-recon", typeof(TicketReconJob), "30 4 * * *");
     }
 
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>

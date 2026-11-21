@@ -1,6 +1,10 @@
 <!-- freshness:triggers
   src/Sections/Humans.BoxOffice/**
+  src/Sections/Humans.Tickets.Contracts/ITicketCheckoutBackend.cs
   tests/Humans.BoxOffice.Tests/**
+-->
+<!-- freshness:flag-on-change
+  The session status mapping, refund idempotency and cap, and the webhook's event list and trust model.
 -->
 
 # BoxOffice — Section Invariants
@@ -9,6 +13,25 @@ Humans' own ticket checkout: one implementation of Tickets' `ITicketCheckoutBack
 takes payment through Stripe hosted Checkout and refunds through the Stripe API. It owns no tables and no Tickets data:
 Tickets owns the order, the price and the named ticket; this section only turns them into a Stripe Checkout Session
 and reads it back. Spec: `src/Sections/Humans.Tickets/Docs/features/checkout.md`.
+
+## Purpose
+
+Box Office is the option with no ticketing vendor at all: Humans sells, and Stripe only takes the card, Klarna or
+iDEAL payment on its hosted page and refunds it. It needs no container to run, only a Stripe account kept for tickets.
+
+**What good looks like.** Every Checkout Session matches one Humans order to the cent, every state Stripe can put a
+payment in (3-D Secure, a debit settling for days, a failed debit, a chargeback, a refund made in the dashboard)
+reaches Tickets, and a repeated call never charges or refunds twice. What Stripe charged, refunded, kept as fees
+and paid out to the bank reconciles against Humans' orders per period, with a drill-down where the two differ.
+
+**Deliberate choices.** Its own restricted key and webhook on the ticket
+Stripe account, apart from the Store's Stripe integration. API refunds are allowed here as the one money-out exception.
+This section stores nothing: every order, refund, ticket and timeline entry lives in Tickets' tables
+(`ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_tickets`, `ticket_checkout_order_events`), the
+same for all three backends.
+
+**Out of scope.** Stripe products, prices, coupons and invoices; erasing data inside
+Stripe, which keeps it as the payment processor.
 
 ## Concepts
 
@@ -28,6 +51,18 @@ and reads it back. Spec: `src/Sections/Humans.Tickets/Docs/features/checkout.md`
 - A refund request first looks for a refund carrying its Humans refund id and answers with that one's state, so a
   repeat after a lost answer is never refused by the cap.
 
+## Data Model
+
+None. The section owns no tables. The Checkout Session is the record of the payment; Tickets owns the Humans order.
+
+## Actors & Roles
+
+| Actor | Capabilities |
+|-------|--------------|
+| Tickets | Resolves the port by key `boxoffice` and calls it |
+| Stripe | Posts signed events to `/BoxOffice/StripeWebhook` |
+| Any human | None; the buyer only follows the Checkout link to Stripe |
+
 ## Invariants
 
 - Charges EUR only; a non-EUR request, a negative line or a non-positive total throws `TicketCheckoutException` before
@@ -41,6 +76,7 @@ and reads it back. Spec: `src/Sections/Humans.Tickets/Docs/features/checkout.md`
   of the refunded PaymentIntent. An invalid signature answers 400, so a wrong secret shows as failed deliveries in Stripe. `refund.*` and `charge.dispute.*` events are mapped like `charge.refunded`.
 - Cancelling expires the session; Stripe refusing that is an error only when the session is complete and not failed.
 - `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session and reports a missing webhook secret; it cannot test the refund permission without refunding.
+- `ListOrdersAsync` lists every Checkout Session created in the period, whatever made it, since the account sells tickets only. Each session carries `humans_ticket_count` (ticket lines, free ones included) for reconciliation; one without it has no count. Refunds are read only for a charge that shows some. `EventRefOf` is always null.
 
 ## Settings
 
@@ -55,3 +91,23 @@ Tickets' `/Tickets/Admin/Sales` shows whether the backend is configured.
 
 - The webhook never trusts its payload for state: Tickets re-reads the session from Stripe.
 - No page here; buyers and admins act only through Tickets' pages and policies.
+- Code outside this project **cannot** name `BoxOfficeCheckoutBackend` or `BoxOfficeSettings`.
+- `ErasePersonalDataAsync` **cannot** remove anything: Stripe offers no way to strip a session, and this section holds
+  nothing.
+
+## Triggers
+
+- A verified webhook event calls `ITicketCheckoutEvents.CheckoutChangedAsync("boxoffice", sessionId)` for each session
+  it names.
+
+## Cross-Section Dependencies
+
+- **Tickets**: implements `ITicketCheckoutBackend`, calls `ITicketCheckoutEvents`, both from the `Humans.Tickets.Contracts` leaf.
+- **Base**: configuration registry.
+- **Stripe** (section): none. Box Office uses its own key and Stripe.NET client, not `IStripeService`.
+
+## Architecture
+
+**Owning services:** `BoxOfficeCheckoutBackend`
+**Owned tables:** None, adapter over Tickets' port.
+**Status:** (A) Migrated, the adapter shape: no tables, no public contract, one webhook controller.

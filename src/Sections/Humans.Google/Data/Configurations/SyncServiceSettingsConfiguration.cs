@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

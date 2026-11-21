@@ -12,7 +12,7 @@ namespace Humans.Governance.Jobs;
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class MembershipTierExpiryJob(
-    IGovernanceManagement governance,
+    MembershipTierService governance,
     IHumansMetrics metrics,
     ILogger<MembershipTierExpiryJob> logger,
     IClock clock) : IRecurringJob
@@ -28,7 +28,7 @@ internal sealed class MembershipTierExpiryJob(
             foreach (var tier in ExpiringTiers)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                total += (await governance.ExpireMembershipTiersAsync(tier, today, cancellationToken)).Count;
+                total += (await governance.ExpireAsync(tier, today, cancellationToken)).Count;
             }
 
             metrics.RecordJobRun("membership_tier_expiry", "success");

@@ -171,7 +171,7 @@ public sealed class LegalDocumentSyncRunnerTests
                 recipients.Select(user => new TeamMemberInfo(Guid.NewGuid(), user.Id, "Member", user.Email, null, TeamMemberRole.Member, default)).ToList()));
             users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(recipients.ToDictionary(user => user.Id));
-            var consents = Substitute.For<IConsentService>();
+            var consents = Substitute.For<IConsentManagement>();
             consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<Guid, IReadOnlySet<Guid>>());
             Runner = new(Sync, Email, TestConsentEmails.Create(), Teams, users, consents, Documents,
@@ -218,7 +218,7 @@ public sealed class LegalDocumentSyncRunnerTests
             .Returns(new Dictionary<Guid, UserInfo> { [user.Id] = user });
         var repository = Substitute.For<ILegalDocumentRepository>();
         repository.GetDocumentsAsync(null, Arg.Any<CancellationToken>()).Returns(new[] { own, other, optional });
-        var consents = Substitute.For<IConsentService>();
+        var consents = Substitute.For<IConsentManagement>();
         consents.GetConsentMapForUsersAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlySet<Guid>> { [user.Id] = alreadyConsented ? new HashSet<Guid> { own.CurrentVersion!.Id } : new HashSet<Guid>() });
         var email = Substitute.For<IEmailService>();
@@ -257,7 +257,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var teams = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
         var runner = new LegalDocumentSyncRunner(sync, email, TestConsentEmails.Create(), teams,
-            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<ILegalDocumentRepository>(),
+            Substitute.For<IUserService>(), Substitute.For<IConsentManagement>(), Substitute.For<ILegalDocumentRepository>(),
             NullLogger<LegalDocumentSyncRunner>.Instance);
 
         await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);
@@ -291,7 +291,7 @@ public sealed class LegalDocumentSyncRunnerTests
         var teams = Substitute.For<ITeamService>();
         var email = Substitute.For<IEmailService>();
         var runner = new LegalDocumentSyncRunner(sync, email, TestConsentEmails.Create(), teams,
-            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), documents,
+            Substitute.For<IUserService>(), Substitute.For<IConsentManagement>(), documents,
             NullLogger<LegalDocumentSyncRunner>.Instance);
 
         await runner.SyncAndNotifyAsync(TestContext.Current.CancellationToken);

@@ -53,7 +53,7 @@ The external surface, grouped by the question each group answers.
 | S2 | *What tier does this person hold today?* | contracts read surface | `HasActiveApprovedTierAsync`, `GetActiveApprovedTierUserIdsAsync`, `GetMembershipTierAsync`, `GetMembershipTiersAsync` |
 | S3 | *What is still on the Board's plate?* | internal management + admin pages + Notifications' meter contributor | `GetUnvotedApplicationCountAsync`, `GetPendingApplicationCountAsync`, `GetAdminStatsAsync`; `GET /Governance/Applications/Admin`, `GET /Governance/BoardVoting` |
 | S4 | *Move one application along its state machine* | the decision service, own pages only | `ValidateSubmission`, `SubmitAsync`, `WithdrawAsync`, `CastBoardVoteAsync`, `ApproveAsync`, `RejectAsync`; `POST /Governance/Applications/Create`, `POST /Governance/BoardVoting/Vote`, `POST /Governance/BoardVoting/Finalize` |
-| S5 | *Whose term is ending or has ended?* | internal management, job-only | `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync`, `ExpireMembershipTiersAsync`; `TermRenewalReminderJob`, `MembershipTierExpiryJob` |
+| S5 | *Whose term is ending or has ended?* | internal management for reminders; existing tier service for expiry, job-only | `GetExpiringApplicationsNeedingReminderAsync`, `GetPendingApplicationUserTiersAsync`, `MarkRenewalReminderSentAsync`; `MembershipTierService.ExpireAsync`; `TermRenewalReminderJob`, `MembershipTierExpiryJob` |
 | S6 | *Is this person in good standing, and what are they missing?* | membership-calculator read surface | the whole of `IMembershipCalculator`: consent completeness (per person, per team, batched), the consolidated snapshot, the standing partition, required-team resolution |
 | S7 | *What is the association voting on, and may I vote?* | own pages only | `GetVotesForMemberAsync`, `GetVoteForMemberAsync`; `GET /Governance/Votes`, `GET /Governance/Votes/{id}` |
 | S8 | *Record what I choose, and let me change it* | own pages only | `CastBallotAsync`; `POST /Governance/Votes/{id}/Ballot` |
@@ -93,9 +93,9 @@ Written fresh from the shapes, not from today's folders.
 - **Presentation**: one controller per audience (own applications, Board voting, the section
   index, member-facing votes, vote administration); view components for the member dashboard
   and the admin dashboard; one admin nav group; one job contribution carrying three jobs.
-- **Contracts leaf**: exactly what lives outside the section: the application and tier read
-  surface, the membership-calculator read surface, the DTOs those signatures name, and
-  `ApplicationStatus`. Governance publishes no write interface.
+- **Contracts leaf**: membership-tier and active-term reads, `MembershipTier` and
+  `MembershipStatusLabels`. Applications, state snapshots and `ApplicationStatus` stay
+  internal. Governance publishes no write interface.
 
 Nothing that is only called from inside the section belongs on an interface.
 

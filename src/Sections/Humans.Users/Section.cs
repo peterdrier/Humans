@@ -144,7 +144,8 @@ public sealed class Section :
 
         // ExternalLoginService keeps its Humans.Application.Services.Users namespace: HUM0005
         // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
-        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<AccountDeletionService>();
+        services.AddScoped<IAccountDeletionService>(sp => sp.GetRequiredService<AccountDeletionService>());
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IUserSignInService, UserSignInService>();
 

@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;

@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -39,6 +40,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
 
     private readonly GoogleWorkspaceSyncService _syncService;
+    private readonly GoogleDriveAccessSyncService _driveSync;
 
     public GoogleWorkspaceSyncServiceReconciliationTests()
         : base(Instant.FromUtc(2026, 8, 2, 9, 0))
@@ -80,7 +82,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
                 .Where(r => r.IsActive && r.ResourceType != GoogleResourceType.Group
                     && (call.ArgAt<string?>(0) is null || string.Equals(r.GoogleId, call.ArgAt<string?>(0), StringComparison.Ordinal)))
                 .Select(r => r.GoogleId).Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => new GoogleDriveAccessClaim([]), StringComparer.Ordinal)));
-        var driveSync = new GoogleDriveAccessSyncService(
+        _driveSync = new GoogleDriveAccessSyncService(
             [_driveSource], _drivePermissions, _userService, _identities, _userEmailService, _syncSettingsService,
             _syncLog, Substitute.For<IGoogleSyncLogViewer>(), _removalNotifications, repository, _teamService, teamResourceService,
             Clock, NullLogger<GoogleDriveAccessSyncService>.Instance);
@@ -96,7 +98,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
             _teamService,
             _userService, _identities,
             _googleGroupSync,
-            driveSync,
+            _driveSync,
             [_driveSource],
             AuditLog,
             _syncLog,
@@ -168,7 +170,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansFact]
-    public async Task SyncResourcesByTypeAsync_SoftDeletedTeamWithExtraPermission_RevokesAccessAndDeactivatesResource()
+    public async Task DriveReconcileAllAsync_SoftDeletedTeamWithExtraPermission_RevokesAccessAndDeactivatesResource()
     {
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
@@ -184,11 +186,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
         // Team.IsActive = false + no active members (every TeamMember.LeftAt set).
         StubTeams((teamId, IsActive: false, Members: []));
 
-        var result = await _syncService.SyncResourcesByTypeAsync(
-            GoogleResourceType.DriveFolder,
-            SyncAction.Execute,
-            ct,
-            GoogleSyncSource.ScheduledSync);
+        var result = await _driveSync.ReconcileAllAsync(SyncAction.Execute, ct, GoogleResourceType.DriveFolder, GoogleSyncSource.ScheduledSync);
 
         result.Diffs.Should().ContainSingle(d => d.ErrorMessage == null);
 
@@ -216,7 +214,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansFact]
-    public async Task SyncResourcesByTypeAsync_SharedGoogleIdGroupErrors_NoRowInGroupIsDeactivated()
+    public async Task DriveReconcileAllAsync_SharedGoogleIdGroupErrors_NoRowInGroupIsDeactivated()
     {
         var ct = TestContext.Current.CancellationToken;
         var teamId1 = Guid.NewGuid();
@@ -234,8 +232,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
             (teamId1, IsActive: false, Members: []),
             (teamId2, IsActive: false, Members: []));
 
-        var result = await _syncService.SyncResourcesByTypeAsync(
-            GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
+        var result = await _driveSync.ReconcileAllAsync(SyncAction.Execute, ct, GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync);
 
         result.Diffs.Should().ContainSingle(d => d.ErrorMessage != null);
 
@@ -247,7 +244,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansFact]
-    public async Task SyncResourcesByTypeAsync_PartialErrorWithinTeam_DefersDeactivationForBothRows()
+    public async Task DriveReconcileAllAsync_PartialErrorWithinTeam_DefersDeactivationForBothRows()
     {
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
@@ -261,7 +258,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
 
         StubTeams((teamId, IsActive: false, Members: []));
 
-        await _syncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
+        await _driveSync.ReconcileAllAsync(SyncAction.Execute, ct, GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync);
 
         var rows = await GoogleDb.GoogleResources.AsNoTracking()
             .Where(r => r.Id == cleanResourceId || r.Id == erroredResourceId)
@@ -271,7 +268,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansFact]
-    public async Task SyncResourcesByTypeAsync_DriveFolderPass_DoesNotDeactivateGroupOrDriveFileRowsForSameTeam()
+    public async Task DriveReconcileAllAsync_DriveFolderPass_DoesNotDeactivateGroupOrDriveFileRowsForSameTeam()
     {
         var ct = TestContext.Current.CancellationToken;
         var teamId = Guid.NewGuid();
@@ -284,7 +281,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
 
         StubTeams((teamId, IsActive: false, Members: []));
 
-        await _syncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
+        await _driveSync.ReconcileAllAsync(SyncAction.Execute, ct, GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync);
 
         var folderRow = await GoogleDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == folderResourceId, ct);
         folderRow.IsActive.Should().BeFalse("the DriveFolder row for the soft-deleted team should be deactivated");
@@ -297,7 +294,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansFact]
-    public async Task SyncResourcesByTypeAsync_DriveFilePass_RevokesAccessAndDeactivatesResource()
+    public async Task DriveReconcileAllAsync_DriveFilePass_RevokesAccessAndDeactivatesResource()
     {
         // The DriveFile pass must load rows of exactly the requested type: a DriveFolder-only
         // loader filters at the DB, so this pass would load nothing and silently leave
@@ -314,8 +311,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
 
         StubTeams((teamId, IsActive: false, Members: []));
 
-        var result = await _syncService.SyncResourcesByTypeAsync(
-            GoogleResourceType.DriveFile, SyncAction.Execute, ct);
+        var result = await _driveSync.ReconcileAllAsync(SyncAction.Execute, ct, GoogleResourceType.DriveFile, GoogleSyncSource.ManualSync);
 
         result.Diffs.Should().ContainSingle(d => d.ErrorMessage == null);
 
@@ -327,10 +323,11 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansTheory]
-    [InlineData(SyncMode.AddOnly)]
-    [InlineData(SyncMode.None)]
-    public async Task SyncResourcesByTypeAsync_WhenNotAddAndRemove_DoesNotDeactivateOrRevoke(SyncMode mode)
+    [InlineData((int)SyncMode.AddOnly)]
+    [InlineData((int)SyncMode.None)]
+    public async Task DriveReconcileAllAsync_WhenNotAddAndRemove_DoesNotDeactivateOrRevoke(int modeValue)
     {
+        var mode = (SyncMode)modeValue;
         var ct = TestContext.Current.CancellationToken;
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(mode);
@@ -345,7 +342,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
 
         StubTeams((teamId, IsActive: false, Members: []));
 
-        await _syncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, ct);
+        await _driveSync.ReconcileAllAsync(SyncAction.Execute, ct, GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync);
 
         var row = await GoogleDb.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId, ct);
         row.IsActive.Should().BeTrue("deactivation only happens when sync mode is AddAndRemove");
