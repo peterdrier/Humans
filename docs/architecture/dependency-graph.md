@@ -69,8 +69,8 @@ graph LR
     Agent --> Consent
     Agent --> Issues
     Agent --> Settings
+    Agent --> Shifts
     Agent -.-> Governance
-    Agent -.-> Shifts
     Agent -.-> Teams
     Agent -.-> Tickets
     Auth -.-> Email
@@ -103,14 +103,14 @@ graph LR
     Camps --> Google
     Camps --> Issues
     Camps --> Settings
+    Camps --> Shifts
     Camps -.-> CityPlanning
     Camps -.-> Email
     Camps -.-> Notifications
-    Camps -.-> Shifts
     Camps -.-> Teams
     Camps -.-> Tickets
     Cantina --> Settings
-    Cantina -.-> Shifts
+    Cantina --> Shifts
     CityPlanning --> Containers
     CityPlanning --> Issues
     CityPlanning --> Settings
@@ -129,16 +129,16 @@ graph LR
     Containers -.-> CityPlanning
     Debug --> Consent
     Debug --> Settings
+    Debug --> Shifts
     Debug -.-> Email
-    Debug -.-> Shifts
     Debug -.-> Tickets
     Development --> Auth
     Development --> Budget
     Development --> Consent
     Development --> Settings
+    Development --> Shifts
     Development -.-> Camps
     Development -.-> CityPlanning
-    Development -.-> Shifts
     Development -.-> Teams
     Development -.-> Users
     Email --> Settings
@@ -165,7 +165,7 @@ graph LR
     Gate --> Auth
     Gate --> EarlyEntry
     Gate --> Settings
-    Gate -.-> Shifts
+    Gate --> Shifts
     Gate -.-> Tickets
     Gdpr -.-> Users
     Google --> AuditLog
@@ -196,8 +196,8 @@ graph LR
     Issues -.-> Email
     Issues -.-> Notifications
     LowIncome --> Grants
+    MailerLite --> Shifts
     MailerLite -.-> Email
-    MailerLite -.-> Shifts
     MailerLite -.-> Tickets
     MailerLite -.-> Users
     Monitor --> Google
@@ -207,10 +207,10 @@ graph LR
     Onboarding --> Consent
     Onboarding --> Issues
     Onboarding --> Settings
+    Onboarding --> Shifts
     Onboarding -.-> Email
     Onboarding -.-> Governance
     Onboarding -.-> Notifications
-    Onboarding -.-> Shifts
     Onboarding -.-> Teams
     Onboarding -.-> Users
     Pleo -.-> Finance
@@ -253,9 +253,9 @@ graph LR
     Store -.-> Teams
     Stripe -.-> Finance
     Surveys --> Google
+    Surveys --> Shifts
     Surveys -.-> Email
     Surveys -.-> Governance
-    Surveys -.-> Shifts
     Surveys -.-> Teams
     Surveys -.-> Tickets
     Teams --> AuditLog
@@ -296,11 +296,11 @@ graph LR
     Users --> Google
     Users --> Issues
     Users --> Settings
+    Users --> Shifts
     Users -.-> Email
     Users -.-> Governance
     Users -.-> Notifications
     Users -.-> Onboarding
-    Users -.-> Shifts
     Users -.-> Teams
     Users -.-> Tickets
     Workgroups --> Auth

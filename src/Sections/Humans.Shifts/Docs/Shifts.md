@@ -1,7 +1,5 @@
 <!-- freshness:triggers
   src/Sections/Humans.Shifts/**
-  src/Sections/Humans.Shifts.Contracts/**
-  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Tickets.Contracts/ParticipationStatus.cs
   src/Sections/Humans.Teams.Contracts/ITeamService.cs
@@ -417,13 +415,13 @@ Invalid rota and shift edits redisplay the team shift page without saving. Only 
 
 ## Cross-Section Dependencies
 
-### Inbound — the public contract (`Humans.Shifts.Contracts`)
+### Inbound — the public contract (`Contracts/`)
 
-Everything outside the section reaches Shifts through the `Humans.Shifts.Contracts`
-leaf project, never through `IShiftManagement` / `IShiftSignupService` (both
+Everything outside the section reaches Shifts through the public types in its `Contracts/`
+folder (namespace `Humans.Shifts.Contracts`), never through `IShiftManagement` / `IShiftSignupService` (both
 declared `internal`; they serve the section's own call sites by inheriting the contract):
 
-| Leaf interface | What it carries |
+| Contract interface | What it carries |
 |---|---|
 | `IShiftService` | Pure reads with an external caller — coordinator/department lookups, browse shifts, rota search, and one rota by id. |
 | `IShiftSignups` | Sign up, sign up a range. |
@@ -433,7 +431,7 @@ declared `internal`; they serve the section's own call sites by inheriting the c
 Everything else on the two full interfaces — rota and shift CRUD, bulk generation, the
 coordinator dashboard's aggregates, the coverage heatmap, post-event stats, the
 approve/refuse/no-show review surface — has no caller outside the
-section and is not on the leaf. The active-burn read (`IBurnSettingsService` → `BurnSettingsInfo`), volunteer
+section and is not in `Contracts/`. The active-burn read (`IBurnSettingsService` → `BurnSettingsInfo`), volunteer
 profiles, the build strip, no-show history and the staffing snapshot are section-internal too.
 
 **Team page parts.** Shifts fills Teams' `ITeamShiftsParts` slot (declared in `Teams.Contracts`). `Box` is the
@@ -459,7 +457,7 @@ coordinator or a privileged signup approver and never on one's own profile; on t
 - **Notifications:** `INotificationEmitter` — coordinator notifications for signup changes, voluntell assignments, and coverage gaps. No direct email-outbox dependency from this section. Its sources are declared in `ShiftsNotificationSources` (`src/Sections/Humans.Shifts/ShiftsNotificationSources.cs`), one `NotificationSourceDefinition` each: `ShiftCoverageGap` (actionable, to dept coordinators: confirmed count drops below min); `ShiftSignupChange` (informational, to dept coordinators: signup confirmed/bailed); `ShiftAssigned` (informational, to the volunteer: coordinator voluntells a shift).
 - **GDPR:** `ShiftSignupService` implements `IUserDataContributor` (export of signups, volunteer event profile, general availability, tag preferences) and `CancelActiveSignupsForUserAsync` (deletion).
 - **iCal feed:** `ShiftSignupService` implements `Humans.Calendar.Contracts.ICalendarFeedContributor` (`Humans.Shifts` references `Humans.Calendar` for the contributor interface) — contributes the user's Confirmed and Pending shift signups (with rota/team name, shift description, and practical info) to the personal iCal feed assembled by `IICalFeedService`. Only active commitments (Confirmed + Pending) are exported; Cancelled/Bailed/NoShow history is excluded. Shifts is a **contributor only**: the subscription card, the feed URL and the token rotation live on `/Calendar` (Calendar owns the feed end to end), and no Shifts page renders them.
-- **Cantina:** fills the `IShiftsPageBanner` slot (in `Shifts.Contracts`) with its dietary banner, rendered above `/Shifts` and `/Shifts/Mine` through `_PageBanners`. Shifts holds no reference to Cantina; the banner decides for itself whether to show and reads `HasQualifyingCantinaSignupAsync` from Shifts. Shifts pages show no dietary badges. Dietary info never gates a signup.
+- **Cantina:** fills the `IShiftsPageBanner` slot (in `Contracts/`) with its dietary banner, rendered above `/Shifts` and `/Shifts/Mine` through `_PageBanners`. Shifts holds no reference to Cantina; the banner decides for itself whether to show and reads `HasQualifyingCantinaSignupAsync` from Shifts. Shifts pages show no dietary badges. Dietary info never gates a signup.
 - **Users (account merge):** `ShiftManagementService`, `ShiftSignupService` and `VolunteerTrackingService` each register as `IUserMerge`; `AccountMergeService.AcceptAsync` fans out to them to re-FK Shifts-owned user-scoped rows from source to target (see Triggers).
 - **Settings:** `ISettingsService` (`Humans.Settings.Contracts`) — the calendar authority as of nobodies-collective/Humans#1630, and "active event" authority as of nobodies-collective/Humans#1631. Internal `EventCalendarResolver` wraps it (memoized per request) and resolves the calendar by `Rota.EventSettingsId` via `GetEventSettingsByIdAsync`, or `GetActiveEventSettings` for active-event paths. No fallback to this section's own `EventSettings` columns when the calendar can't be resolved — those columns are dead. The resolver composes a `BurnSettingsInfo` with this section's build sub-period starts and browsing switch; `BurnSettingsService` reuses that projection without a second repository read.
 - **Early Entry contributor:** `VolunteerTrackingExportService` implements `IEarlyEntryProvider` — derives EE grants (earliest confirmed build-shift day − 1, source = that shift's team) for the cross-source EE roster. EarlyEntry reads this live on every call, so no signup, shift edit or rota move signals it.

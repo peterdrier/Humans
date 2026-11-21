@@ -49,7 +49,6 @@
     <Project Path="src/Sections/Humans.Rideshare/Humans.Rideshare.csproj" />
     <Project Path="src/Sections/Humans.Scanner/Humans.Scanner.csproj" />
     <Project Path="src/Sections/Humans.Search/Humans.Search.csproj" />
-    <Project Path="src/Sections/Humans.Shifts.Contracts/Humans.Shifts.Contracts.csproj" />
     <Project Path="src/Sections/Humans.Store/Humans.Store.csproj" />
     <Project Path="src/Sections/Humans.Stripe/Humans.Stripe.csproj" />
     <Project Path="src/Sections/Humans.Surveys/Humans.Surveys.csproj" />
