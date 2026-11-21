@@ -109,8 +109,8 @@ public sealed record CheckoutSession(string BackendOrderId, Uri PaymentUrl, Uri?
 /// <paramref name="RefundedMinor"/> is everything refunded against the order so far, however it was issued, so a
 /// refund made in the backend's own dashboard is still seen; it moves only once money has actually gone back. Tickets
 /// settles its <see cref="RefundState.Pending"/> and <see cref="RefundState.ManualRequired"/> refunds from it, oldest
-/// first. <paramref name="RefundFailed"/> is true when a refund the backend accepted has since failed; Tickets then
-/// repeats each pending refund <paramref name="RefundedMinor"/> does not cover, under its own id, to learn which failed.
+/// first, and repeats each pending refund <paramref name="RefundedMinor"/> does not cover, under its own id, to learn
+/// whether it failed. <paramref name="RefundFailed"/> (a refund the backend accepted has since failed) is informational.
 /// </para>
 /// </summary>
 public sealed record CheckoutStatus(
