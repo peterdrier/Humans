@@ -1,6 +1,6 @@
-namespace Humans.Teams.Contracts;
+namespace Humans.Teams.Domain;
 
-public enum TeamJoinRequestStatus
+internal enum TeamJoinRequestStatus
 {
     Pending = 0,
 

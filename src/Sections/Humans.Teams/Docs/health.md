@@ -39,7 +39,7 @@ coordinators’ system-team membership. Google resources stay active until recon
 
 Vocabulary the leaf carries: `TeamInfo` (+ `TeamMemberInfo`, `TeamRoleDefinitionSnapshot`,
 `TeamRoleAssignmentSnapshot`), `UserTeamMembershipInfo`, `TeamSearchHit`, `SyncReport`,
-`TeamMemberRole`, `RolePeriod`, `SlotPriority`, `TeamJoinRequestStatus`, `CallToAction` /
+`TeamMemberRole`, `RolePeriod`, `SlotPriority`, `CallToAction` /
 `CallToActionStyle`, `TeamCoordinatorAccess`.
 
 ## 3. Structure
