@@ -1,0 +1,34 @@
+@model OwnerPageViewModel
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = Localizer["Roles_Owner_Title", Model.Owner.Name].Value;
+    Func<RoleRow, IHtmlContent> priorityCell = @<text>@if (item.TopOpenPriority is { } priority) { <status-badge value="@priority" /> }</text>;
+    Func<RoleRow, IHtmlContent> periodCell = @<status-badge value="@item.Role.Period" />;
+    var table = TableModel.For(Model.Roles)
+        .Link(Localizer["Roles_Col_Role"].Value, r => r.Role.Name, r => r.Url)
+        .Column(Localizer["Roles_Col_Filled"].Value, r => $"{r.Role.Holders.Count} / {r.Role.SlotCount}", c => c.End())
+        .Template(Localizer["Roles_Col_OpenPriority"].Value, priorityCell)
+        .Template(Localizer["Roles_Col_Period"].Value, periodCell)
+        .Column(Localizer["Roles_Col_Public"].Value, r => r.Role.IsPublic, c => c.BoolIcon())
+        .Empty(Localizer["Roles_Owner_Empty"].Value)
+        .Build();
+}
+
+@section Crumbs {
+    <a href="@Model.Owner.Url">@Model.Owner.Name</a>
+    <span>@SharedLocalizer["Nav_Roles"]</span>
+}
+
+<page-header title="@(Localizer["Roles_Owner_Title", Model.Owner.Name].Value)">
+    <page-header-subtitle>@Localizer["Roles_Owner_Subtitle"]</page-header-subtitle>
+</page-header>
+
+<partial name="_Table" model="table" />
+
+<div class="card mt-4">
+    <div class="card-header"><h2 class="h5 mb-0">@Localizer["Roles_Owner_AddTitle"]</h2></div>
+    <div class="card-body">
+        <partial name="_RoleForm" model='new RoleFormViewModel(null, Url.Action("Add", new { kind = Model.Owner.Owner.Kind, key = Model.Owner.Key })!, Model.Permissions, Model.CanSetCoordinator)' />
+    </div>
+</div>

@@ -1,0 +1,18 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error. *@
+@using Humans.Roles
+@using Humans.Roles.Contracts
+@using Humans.Roles.Models
+@using Humans.Base
+@using Humans.Base.Authorization
+@using Humans.Base.Extensions
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
+@using Humans.Teams.Contracts
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<RolesResource> Localizer
+@* Enum_SlotPriority_* and Enum_RolePeriod_* stay in SharedResource. *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.Base
+@addTagHelper *, Humans.Roles

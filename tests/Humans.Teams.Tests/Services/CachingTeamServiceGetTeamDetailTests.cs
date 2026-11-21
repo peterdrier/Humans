@@ -1,3 +1,5 @@
+using Humans.Teams;
+using Microsoft.Extensions.Localization;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using AwesomeAssertions;
@@ -59,7 +61,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         _service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance);
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
         _pages = new TeamPageService(
             _service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),

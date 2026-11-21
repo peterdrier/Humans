@@ -1,0 +1,27 @@
+@model BoardViewModel
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = Localizer["Roles_Board_Title"].Value;
+    @* Templates, not EnumBadge: the table's EnumBadge prints the raw enum name; status-badge localizes. *@
+    Func<BoardSlot, IHtmlContent> periodCell = @<status-badge value="@item.Period" />;
+    Func<BoardSlot, IHtmlContent> priorityCell = @<status-badge value="@item.Priority" />;
+    var table = TableModel.For(Model.Slots)
+        .Link(Localizer["Roles_Col_Role"].Value, s => s.Role, s => s.RoleUrl)
+        .Link(Localizer["Roles_Col_Owner"].Value, s => s.Owner, s => s.OwnerUrl, c => c.SelectFilter())
+        .Template(Localizer["Roles_Col_Period"].Value, periodCell, c => c.SelectFilter())
+        .Template(Localizer["Roles_Col_Priority"].Value, priorityCell, c => c.SelectFilter(), s => RolePriorityOrder.Rank(s.Priority))
+        .Empty(Localizer["Roles_Board_Empty"].Value)
+        .Build();
+}
+
+<page-header title="@(Localizer["Roles_Board_Title"].Value)">
+    <page-header-subtitle>@Localizer["Roles_Board_Subtitle"]</page-header-subtitle>
+</page-header>
+
+<div class="stats">
+    <partial name="_StatTile" model='new StatTileViewModel(Localizer["Roles_Board_OpenSlots"].Value, Model.Slots.Count.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel(Localizer["Roles_Board_Critical"].Value, Model.CriticalCount.ToString(), Severity: Model.CriticalCount > 0 ? Humans.Base.Interfaces.TileSeverity.Critical : Humans.Base.Interfaces.TileSeverity.Normal)' />
+</div>
+
+<partial name="_Table" model="table" />

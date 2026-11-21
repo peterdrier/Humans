@@ -17,6 +17,19 @@ Standing responsibilities on an owner (a team today, camps next): Cantina coordi
 - A **system role** (Auth's roles, such as Admin, ShiftsAdmin) is tied to a section. A role is tied to an owner. Roles declares one system role, **RolesAdmin**.
 - Roles are not per year: they carry over from event to event.
 
+## Pages
+
+| Route | What | Who |
+|---|---|---|
+| `GET /Roles` | Open-roles board: every open slot on a role the viewer can see, most needed first. Filters: owner, period, priority. In the main nav. | Signed-in members |
+| `GET /Roles/{kind}/{key}` | An owner's roles, plus the add form | Whoever manages that owner's roles |
+| `GET /Roles/{kind}/{key}/{slug}` | One role: description, slots and holders, who to talk to; for managers, assign, unassign, edit and delete | Anyone who can see the role |
+
+- A team's roles card renders on the team page through Teams' `ITeamRolesPart` slot. It renders nothing when the viewer sees no roles and can't manage them.
+- `{key}` is the owner's own link key (a team's slug). `{slug}` matches the slug or the custom slug, and only within that owner.
+- "Who to talk to" lists the holders of the nearest coordinator role, walking up from the owner.
+- Refusals and messages are localized (`RolesResource`, 7 cultures). Owner sections return their refusals already localized.
+
 ## Data Model
 
 | Table | Columns |
@@ -48,6 +61,9 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 
 ## Negative Access Rules
 
+- A member **cannot** see a private role, or any role on a hidden owner, unless they manage that owner's roles or are Admin, RolesAdmin or Board. Nobody sees roles on an inactive owner, on the board or the role page.
+- A member who can't manage an owner's roles **cannot** open its manage page (403).
+
 - A coordinator **cannot** manage roles on a parent or sibling owner.
 - A coordinator **cannot** create, fill or empty a coordinator role, even their own.
 - RolesAdmin **does not** hold any permission through being RolesAdmin.
@@ -61,7 +77,7 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 - **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` for Admin and RolesAdmin.
 - **Permissions**: owner kinds (`IOwnerKind`) for the tree, section declarations (`ISectionPermissions`) for key checks. Roles registers itself as an `IPermissionSource`.
 - **Owner sections**: found through DI (`IRoleOwner`, `IOwnerKind`, `IEntityNameContributor` for owner names). Roles references none of them.
-- **Teams.Contracts**: `RolePeriod` and `SlotPriority`, shared with Teams' old roles until those retire.
+- **Teams.Contracts**: `RolePeriod` and `SlotPriority`, shared with Teams' old roles until those retire; Roles fills the team page's `ITeamRolesPart` slot.
 
 ## Architecture
 
@@ -75,7 +91,7 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 |---|---:|---|
 | `IRoleService` | 2 | `GetRolesAsync`, `GetRoleAsync`; whole, from the cache |
 | `IRoleWrite` | 1 | `RemoveAsync(owner, userId, actorUserId)` |
-| `IRoleOwner` | — | Implemented by owner sections |
+| `IRoleOwner` | — | Implemented by owner sections: `EnsureMemberAsync`, `ListAsync` (owner names, link keys, hidden flag, page URL) |
 
 - `CachingRoleService` holds every role; every write clears it. It is the permission source and carries GDPR and merge, and never injects the permission service.
 - Tests: `tests/Humans.Roles.Tests/RoleServiceTests.cs`.

@@ -1,0 +1,49 @@
+@model RolesCardViewModel
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">@Localizer["Roles_Card_Title"]</h2>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Index", "Roles")" class="btn btn-sm btn-outline-secondary">@Localizer["Roles_Card_Board"]</a>
+            @if (Model.CanManage)
+            {
+                <a href="@Model.ManageUrl" class="btn btn-sm btn-outline-primary">@Localizer["Roles_Card_Manage"]</a>
+            }
+        </div>
+    </div>
+    @if (Model.Roles.Count == 0)
+    {
+        <div class="card-body"><empty-state>@Localizer["Roles_Owner_Empty"]</empty-state></div>
+    }
+    else
+    {
+        <ul class="list-group list-group-flush">
+            @foreach (var row in Model.Roles)
+            {
+                <li class="list-group-item">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <a href="@row.Url" class="fw-semibold">@row.Role.Name</a>
+                        @if (row.Role.Period != RolePeriod.YearRound)
+                        {
+                            <status-badge value="@row.Role.Period" />
+                        }
+                        @if (row.TopOpenPriority is { } priority)
+                        {
+                            <status-badge value="@priority" />
+                        }
+                        <span class="ms-auto text-muted small">@Localizer["Roles_Role_OpenCount", row.OpenCount, row.Role.SlotCount]</span>
+                    </div>
+                    @if (row.Role.Holders.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-3 mt-1 small">
+                            @foreach (var holder in row.Role.Holders.OrderBy(h => h.Slot))
+                            {
+                                <vc:human user-id="@holder.UserId" />
+                            }
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>

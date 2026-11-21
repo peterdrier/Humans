@@ -7,20 +7,27 @@ using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using Humans.Roles.Data;
 using Humans.Roles.Services;
+using Humans.Roles.ViewComponents;
+using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Roles;
 
-public sealed class Section : ISection, ISectionRoles
+public sealed class Section : ISection, ISectionRoles, ISectionNav, ITeamRolesPart
 {
+    Type ITeamRolesPart.Card => typeof(TeamRolesCardViewComponent);
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(RolesSystemRoles.RolesAdmin, "Roles Admin",
             "Sets up each team's coordinator role and who holds it, and can manage any team's roles. Holds no permissions itself.",
             "fa-solid fa-user-tag"),
     ];
+
+    IEnumerable<MemberNavItem> ISectionNav.Items() =>
+        [new("Nav_Roles", Controller: "Roles", Action: "Index", Weight: 21)];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
