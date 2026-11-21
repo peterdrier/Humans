@@ -24,6 +24,7 @@ public class NotificationServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly NotificationRepository _repo;
     private readonly NotificationService _service;
+    private readonly NotificationEmitter _emitter;
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
@@ -39,11 +40,11 @@ public class NotificationServiceTests : IDisposable
 
         _preferenceService.StubInboxDisabledFrom(_dbContext);
 
-        var emitter = new NotificationEmitter(
+        _emitter = new NotificationEmitter(
             _repo, _preferenceService, _clock,
             NullLogger<NotificationEmitter>.Instance);
         _service = new NotificationService(
-            emitter, _repo, _roleAssignmentService, NullLogger<NotificationService>.Instance);
+            _emitter, _repo, _roleAssignmentService, NullLogger<NotificationService>.Instance);
     }
 
     public void Dispose()
@@ -53,12 +54,11 @@ public class NotificationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_DelegatesToTheEmitter()
+    public async Task SendAsync_CreatesNotificationForRecipient()
     {
-        // A pass-through; NotificationEmitterTests covers the behaviour. This proves only that the delegation is live.
         var user = Guid.NewGuid();
 
-        await _service.SendAsync(
+        await _emitter.SendAsync(
             TestSources.TeamUpdate,
             NotificationClass.Informational,
             NotificationPriority.Normal,
@@ -83,9 +83,9 @@ public class NotificationServiceTests : IDisposable
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         var ct = TestContext.Current.CancellationToken;
-        await _service.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
+        await _emitter.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
             NotificationPriority.Normal, "Source notice", [source], cancellationToken: ct);
-        await _service.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
+        await _emitter.SendAsync(TestSources.TeamUpdate, NotificationClass.Informational,
             NotificationPriority.Normal, "Target notice", [target], cancellationToken: ct);
         var inbox = new NotificationInboxService(_repo, TestSources.Registry, _clock);
         (await inbox.GetUnreadBadgeCountsAsync(source, ct)).Should().Be((0, 1));

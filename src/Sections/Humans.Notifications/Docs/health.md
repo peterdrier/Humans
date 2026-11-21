@@ -109,7 +109,7 @@ Specified or known, not built; reserved, not ranked:
 - **`NotificationEmitter` is its own type.** `NotificationService` injects
   `IRoleAssignmentService`, and `RoleAssignmentService` emits; it injects the narrow
   `INotificationEmitter`, whose implementation has no edge back, so the graph cannot close.
-  `NotificationService.SendAsync` delegates to the emitter to keep one copy of that path.
+  Known-recipient callers inject `INotificationEmitter` directly; `NotificationService` exposes only shared role dispatch and recipient reassignment.
 - **`NotificationRecipient.UserId` is init-only**, so the account-merge fold is
   remove-then-add rather than an update.
 - **No FK and no navigation on `ResolvedByUserId` or `NotificationRecipient.UserId`**
