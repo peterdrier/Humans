@@ -331,7 +331,7 @@ The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Driv
 |---|---|
 | `IGoogleSyncService` | Read contract: `IsFolderReachableAsync` (Workgroups root-folder check). The failed-event count stays on internal `IGoogleSyncManagement` for `GoogleNotificationMeters`. |
 | `IGoogleSyncWrite` | `AddUserToTeamResourcesAsync` (Teams system-team sync), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
-| `ITeamResourceService` | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
+| `ITeamResourceService` | Read contract: team-resource snapshots and summaries (Teams, Users, Governance, Monitor). Resource permission checks, service-account email and single-resource lookup stay on internal `ITeamResourceManagement`. |
 | `IGoogleService` | Read contract: `GetWorkspaceIdentityAsync` / `GetWorkspaceIdentitiesAsync` — a member's effective Workspace identity (`WorkspaceIdentity(UserId, Email, Status)`), keyed by the requested id (merge-aware). Teams, Camps, Users' admin list. |
 | `IGoogleWrite` | `ClearIfAddressAsync` — Users reports an address leaving an account. |
 
