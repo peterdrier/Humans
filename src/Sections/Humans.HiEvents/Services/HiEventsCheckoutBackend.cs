@@ -54,9 +54,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         _clock = clock;
         _logger = logger;
 
-        if (!string.IsNullOrEmpty(_settings.ApiUrl))
+        // Never throw here: Tickets resolves every backend together, so a bad setting must only switch this one off.
+        if (_settings.ApiBaseUri is { } baseUri)
         {
-            _http.BaseAddress = new Uri(_settings.ApiUrl.TrimEnd('/') + "/");
+            _http.BaseAddress = baseUri;
         }
 
         if (!string.IsNullOrEmpty(_settings.ApiKey))
@@ -79,10 +80,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         if (!_settings.Events.TryGetValue(request.BackendEventRef!, out var products) || products.TicketProductId <= 0)
             throw new TicketCheckoutException($"HiEvents:Events:{eventId}:TicketProductId is not set.");
 
+        var (firstName, lastName) = SplitBuyerName(request.BuyerName);
         var body = new CheckoutOrderBody(
             ExternalReference: request.OrderId.ToString("N"),
-            FirstName: request.BuyerName,
-            LastName: null,
+            FirstName: firstName,
+            LastName: lastName,
             Email: request.BuyerEmail,
             Locale: ToLocale(request.Culture),
             ExpiresAt: InstantPattern.ExtendedIso.Format(request.ExpiresAt),
@@ -189,9 +191,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         "COMPLETED" => CheckoutState.Failed,
         "CANCELLED" => CheckoutState.Cancelled,
         "ABANDONED" => CheckoutState.Expired,
-        "RESERVED" when DateFormattingExtensions.ParseInvariantTimestamp(order.ReservedUntil) is { } until && until <= _clock.GetCurrentInstant()
-            => CheckoutState.Expired,
-        "RESERVED" => CheckoutState.Pending,
+        "RESERVED" => DateFormattingExtensions.ParseInvariantTimestamp(order.ReservedUntil) is { } until
+            ? until <= _clock.GetCurrentInstant() ? CheckoutState.Expired : CheckoutState.Pending
+            : throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable reserved_until '{order.ReservedUntil}'."),
+        // Only reachable when offline payment is on for the event, which it must not be; the order is still unpaid.
+        "AWAITING_OFFLINE_PAYMENT" => CheckoutState.Pending,
         _ => throw new HttpRequestException($"Hi.Events order {order.Id} has unknown status '{order.Status}'."),
     };
 
@@ -239,6 +243,27 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         var language = culture.Split('-', 2)[0].ToLowerInvariant();
         return SupportedLocales.Contains(language) ? language : "en";
     }
+
+    /// <summary>
+    /// Hi.Events keeps a buyer's first and last name in 50 characters each. A longer full name is split at a space so
+    /// it still reads whole; past 100 characters the tail is cut, since the ticket's attendee line carries the full
+    /// legal name.
+    /// </summary>
+    internal static (string FirstName, string? LastName) SplitBuyerName(string name)
+    {
+        name = name.Trim();
+        if (name.Length <= BuyerNamePartLength)
+            return (name, null);
+
+        var split = name.LastIndexOf(' ', BuyerNamePartLength);
+        if (split <= 0)
+            split = BuyerNamePartLength;
+
+        var last = name[split..].Trim();
+        return (name[..split].Trim(), last.Length <= BuyerNamePartLength ? last : last[..BuyerNamePartLength].TrimEnd());
+    }
+
+    private const int BuyerNamePartLength = 50;
 
     private static long ToMinor(decimal amount) => (long)decimal.Round(amount * 100m, MidpointRounding.AwayFromZero);
 

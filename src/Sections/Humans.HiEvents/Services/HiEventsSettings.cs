@@ -25,7 +25,14 @@ internal sealed class HiEventsSettings
     /// <summary>From <c>HIEVENTS_WEBHOOK_SECRET</c>, never appsettings.</summary>
     public string WebhookSecret { get; set; } = string.Empty;
 
-    public bool IsConfigured => !string.IsNullOrEmpty(ApiUrl) && !string.IsNullOrEmpty(ApiKey);
+    public bool IsConfigured => ApiBaseUri is not null && !string.IsNullOrEmpty(ApiKey);
+
+    /// <summary>Null when <c>ApiUrl</c> is unset or not an absolute http(s) address.</summary>
+    public Uri? ApiBaseUri =>
+        Uri.TryCreate(ApiUrl.TrimEnd('/') + "/", UriKind.Absolute, out var uri)
+        && (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal) || string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal))
+            ? uri
+            : null;
 
     public string ResolvedAppUrl => !string.IsNullOrEmpty(AppUrl)
         ? AppUrl.TrimEnd('/')

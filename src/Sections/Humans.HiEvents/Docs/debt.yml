@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.HiEvents. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 1
-inbox: []
+next_id: 2
+inbox:
+  - added: 2026-11-21
+    id: HIEVENTS-1
+    what: "Buyer and attendee names and emails sent to Hi.Events have no erasure path: a Humans deletion request tombstones Tickets' copy only. Needs a fork endpoint that anonymises one order and a port call from Tickets on erasure (AGENTS.md GDPR). Found in design review of peterdrier/Humans#2495."
+    review: panel

@@ -127,6 +127,7 @@ public class HiEventsCheckoutBackendTests
     [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 10:30:00", CheckoutState.Pending)]
     [Xunit.InlineData("RESERVED", "PAYMENT_FAILED", "2027-01-02 10:30:00", CheckoutState.Pending)]
     [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 09:59:59", CheckoutState.Expired)]
+    [Xunit.InlineData("AWAITING_OFFLINE_PAYMENT", "AWAITING_OFFLINE_PAYMENT", null, CheckoutState.Pending)]
     public async Task GetStatus_MapsHiEventsStatuses(string status, string paymentStatus, string? reservedUntil, CheckoutState expected)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
@@ -204,17 +205,49 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
-    public void IsConfigured_NeedsUrlAndKey()
+    public async Task GetStatus_ReservedWithAnUnreadableExpiry_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "soon"));
+
+        var act = () => Backend().GetStatusAsync("7:42", Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansFact]
+    public void IsConfigured_NeedsAnAbsoluteUrlAndKey_AndABadUrlDoesNotThrow()
     {
         Backend().IsConfigured.Should().BeTrue();
         Backend(apiKey: "").IsConfigured.Should().BeFalse();
+        Backend(apiUrl: "").IsConfigured.Should().BeFalse();
+        Backend(apiUrl: "tickets example/api").IsConfigured.Should().BeFalse();
+        Backend(apiUrl: "ftp://tickets.example/api").IsConfigured.Should().BeFalse();
     }
 
-    private HiEventsCheckoutBackend Backend(string apiKey = "key", int donationProductId = 200) => new(
+    [HumansTheory]
+    [Xunit.InlineData("Ana Buyer", "Ana Buyer", null)]
+    [Xunit.InlineData("María de los Ángeles Fernández de Córdoba y Martínez",
+        "María de los Ángeles Fernández de Córdoba y", "Martínez")]
+    public void SplitBuyerName_KeepsEachPartWithinFiftyCharacters(string name, string first, string? last)
+    {
+        HiEventsCheckoutBackend.SplitBuyerName(name).Should().Be((first, last));
+    }
+
+    [HumansFact]
+    public void SplitBuyerName_CutsANameLongerThanBothParts()
+    {
+        var (first, last) = HiEventsCheckoutBackend.SplitBuyerName(new string('a', 60) + " " + new string('b', 60));
+
+        first.Should().HaveLength(50);
+        last.Should().HaveLength(50);
+    }
+
+    private HiEventsCheckoutBackend Backend(string apiKey = "key", int donationProductId = 200,
+        string apiUrl = "https://tickets.example/api") => new(
         new HttpClient(_handler),
         Options.Create(new HiEventsSettings
         {
-            ApiUrl = "https://tickets.example/api",
+            ApiUrl = apiUrl,
             ApiKey = apiKey,
             Events = new(StringComparer.Ordinal)
             {

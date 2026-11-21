@@ -64,3 +64,17 @@ None — the section owns no tables.
 - Hi.Events sends the buyer and attendees no email for these orders (`send_buyer_emails: false`, refunds with
   `notify_buyer: false`); Humans owns the ticket, receipt and refund emails. Organizer and team notices in Hi.Events
   still go out.
+- Offline payment must be off on every Hi.Events event Humans sells through; an order moved to
+  `AWAITING_OFFLINE_PAYMENT` reads as `Pending` until it expires.
+- A reserved order whose `reserved_until` does not parse is an error, not `Pending`.
+- A malformed `HiEvents:ApiUrl` only makes this backend unconfigured; it never throws while Tickets resolves backends.
+- Buyer names go in 50 characters of first name and 50 of last name, split at a space; attendee lines carry the full
+  legal name (Hi.Events allows 255 on this endpoint).
+
+## Personal data and erasure
+
+Hi.Events holds each buyer's name and email and each attendee's legal name for orders created here. No erasure path
+reaches it yet (HIEVENTS-1 in `debt.yml`): a Humans deletion request tombstones Tickets' copy only. Until that is
+built, this option is not fit for production, and an erasure request means anonymising the order and its attendees in
+the Hi.Events admin by the ticketing team.
+
