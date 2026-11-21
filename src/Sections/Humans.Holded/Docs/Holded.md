@@ -66,7 +66,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 | `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced), notes, doc + line tags, first line's booked account |
 | `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, `BookedAt` (`booking_date` to the second: a Stripe gateway line's only match key, with the amount), signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
 | `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
-| `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `BankMovements`), plus `Usage`: the month's call count as last read (`LastCount`) and when (`LastSyncAt`); lazy-created |
+| `holded_sync_states` | keyed on `(Kind, Scope)`: one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `Usage`, `Scope` empty), and one `BankMovements` row per treasury account (`Scope` = its id). `Usage` is the month's call count as last read (`LastCount`) and when (`LastSyncAt`); lazy-created |
 
 Sentinel table is `holded_accounts` — created by this baseline alone, so its existence proves
 the baseline ran. (`holded_ledger_lines` could not carry that proof: the historical chain and
@@ -83,7 +83,7 @@ under Accounts. Each page does one thing.
   line with when it was read and a refresh button (one GET /usage, `FinancePolicies.Manage`;
   loading the page never calls Holded; budget = `Holded:MonthlyCallBudget`, default 2000;
   the optional budget key and its configured value are listed on `/Debug/Configuration`), per
-  sync kind the last run, status, count and error, mirror counts (lines, entries, non-archived
+  sync kind (bank feeds as `BankMovements · <treasury id>`, one row each; the unscoped pre-per-treasury row is hidden) the last run, status, count and error, mirror counts (lines, entries, non-archived
   accounts), the number of accounts where mirror ≠ Holded (linked to `/Holded/Accounts?mismatched=true`),
   and the Sync now / Full resync buttons with the full resync's cost estimate (one call per 200
   lines plus the chart).
@@ -210,8 +210,8 @@ it wrote.
   reliable incremental key). Notes need one GET per doc: only docs the mirror has no notes for,
   newest first, at most 50 a run; a transient failure ends that run's fetching and never fails the
   sync. Unreadable notes log their document ID at Warning with a reason for transient failures, or Error with exception details for permanent/malformed responses; the run also warns with the failure count. A failed list records `Error` on the `PurchaseDocs` state and keeps the last good mirror.
-- Each sync kind is serialized by its own non-blocking in-process gate; a second caller is
-  skipped and told so, never queued (single-server deployment).
+- Each sync kind is serialized by its own non-blocking in-process gate (the bank feed's is per
+  treasury account); a second caller is skipped and told so, never queued (single-server deployment).
 - `SyncAccountLedgerAsync(accountNum)` re-pulls one account's whole history (inception to today) and replaces
   only that account's mirrored lines, under the same gate (false when a sweep holds it). Sync states are
   untouched. Finance's Pleo and SEPA bookings and Expenses' report publishing call it before posting onto
@@ -228,7 +228,8 @@ it wrote.
 - API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
 - The treasury bank feed is mirrored per window: `SyncBankMovementsAsync(treasury, from, to)` reads
   Holded's feed for that window and replaces it in `holded_bank_movements`; `GetBankMovementsAsync`
-  reads the mirror with the `BankMovements` state's `LastSyncAt` (null until a sync succeeds). A
+  reads the mirror with that treasury's own `BankMovements` state `LastSyncAt` (null until a sync of
+  that treasury succeeds, an empty feed included — another treasury's sync never stamps it). A
   sync already running answers false, a failed one throws and keeps the last good stamp. Finance's
   SEPA booking syncs before every read it moves money on; `/Finance/Sepa` reads the mirror alone.
   The feed's parsing rules are in [`Holded-connector.md`](Holded-connector.md).

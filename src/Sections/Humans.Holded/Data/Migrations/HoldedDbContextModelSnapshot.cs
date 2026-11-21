@@ -302,6 +302,10 @@ namespace Humans.Holded.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<string>("Scope")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<int>("LastCount")
                         .HasColumnType("integer");
 
@@ -320,7 +324,7 @@ namespace Humans.Holded.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
-                    b.HasKey("Kind");
+                    b.HasKey("Kind", "Scope");
 
                     b.ToTable("holded_sync_states", (string)null);
                 });

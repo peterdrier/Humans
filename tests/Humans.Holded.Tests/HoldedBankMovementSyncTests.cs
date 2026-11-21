@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
+using Humans.Holded.Models;
 using Humans.Holded.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -92,6 +93,40 @@ public sealed class HoldedBankMovementSyncTests
         var mirror = await _service.GetBankMovementsAsync("t1", new LocalDate(2026, 8, 1), new LocalDate(2026, 8, 9), ct);
         mirror.LastSyncAt.Should().Be(FixedNow);
         mirror.Movements.Select(m => (m.Id, m.Status)).Should().BeEquivalentTo([("b", "reconciled"), ("c", "pending")]);
+    }
+
+    [HumansFact]
+    public async Task Sync_StampsOnlyItsOwnTreasury_EvenWhenTheFeedIsEmpty()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        LocalDate from = new(2026, 8, 1), to = new(2026, 8, 9);
+        Feed();
+        (await _service.SyncBankMovementsAsync("t1", from, to, ct: ct)).Should().BeTrue();
+
+        (await _service.GetBankMovementsAsync("t1", from, to, ct)).LastSyncAt.Should().Be(FixedNow);
+        (await _service.GetBankMovementsAsync("t2", from, to, ct)).LastSyncAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Sync_TracksEachTreasurysCountAndError_Separately()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        LocalDate from = new(2026, 8, 1), to = new(2026, 8, 9);
+        Feed(Line("a", 1), Line("b", 2));
+        _client.ListBankMovementsAsync("t2", from, to, Arg.Any<CancellationToken>(), Arg.Any<IReadOnlySet<string>?>())
+            .Returns<IReadOnlyList<HoldedBankMovementDto>>(_ => throw new HoldedTransientException("t2 down"));
+
+        await _service.SyncBankMovementsAsync("t1", from, to, ct: ct);
+        await Record.ExceptionAsync(() => _service.SyncBankMovementsAsync("t2", from, to, ct: ct));
+
+        var rows = (await _service.GetSummaryAsync(ct)).SyncStates;
+        rows.Should().ContainSingle(r => r.Kind == "BankMovements · t1")
+            .Which.Should().Match<HoldedSyncStateRow>(r =>
+                r.Status == "Idle" && r.LastCount == 2 && r.LastError == null && r.LastSyncAt == FixedNow);
+        rows.Should().ContainSingle(r => r.Kind == "BankMovements · t2")
+            .Which.Should().Match<HoldedSyncStateRow>(r =>
+                r.Status == "Error" && r.LastError == "t2 down" && r.LastSyncAt == null);
+        (await _service.GetBankMovementsAsync("t2", from, to, ct)).LastSyncAt.Should().BeNull();
     }
 }
 
