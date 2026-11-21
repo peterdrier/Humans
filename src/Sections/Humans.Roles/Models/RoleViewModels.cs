@@ -10,6 +10,9 @@ internal sealed record BoardSlot(string Owner, string OwnerUrl, string Role, str
 
 internal sealed record BoardViewModel(IReadOnlyList<BoardSlot> Slots, int CriticalCount);
 
+/// <summary>One owner on the admin list.</summary>
+internal sealed record AdminOwnerRow(string Owner, string Url, IReadOnlyList<Guid> Coordinators, int RoleCount, int OpenSlots, bool IsHidden);
+
 /// <summary>A role on an owner's list or card.</summary>
 internal sealed record RoleRow(RoleInfo Role, string Url)
 {
