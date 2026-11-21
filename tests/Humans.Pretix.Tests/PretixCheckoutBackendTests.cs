@@ -229,6 +229,19 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Status_RetryAfterAFailedRefund_IsNotReportedFailed()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+            new { local_id = 1, state = "failed", amount = "225.00", payment = 1, comment = "", provider = "stripe" },
+            new { local_id = 2, state = "transit", amount = "225.00", payment = 1, comment = "", provider = "stripe" }));
+
+        var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.RefundFailed.Should().BeFalse();
+        status.RefundedMinor.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task Status_CancelledOrderHoldingMoney_IsPaid()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(

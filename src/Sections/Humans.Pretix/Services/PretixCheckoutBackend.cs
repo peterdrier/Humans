@@ -187,7 +187,8 @@ internal sealed class PretixCheckoutBackend(
             // The refund may or may not have happened, and Tickets never retries this refund id, so the order says
             // which: a refund carrying the marker stands; otherwise the fee comes off so the total stays right.
             var after = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-            var made = after.Refunds.FirstOrDefault(r => r.Comment?.Contains(comment, StringComparison.Ordinal) == true);
+            var made = after.Refunds.FirstOrDefault(r =>
+                r.Comment?.Contains(comment, StringComparison.Ordinal) == true && r.State is not ("failed" or "canceled"));
             if (made is not null)
                 return MapRefund(made, AdminOrderUrl(eventSlug, code));
             if (feeIsNew)
@@ -313,7 +314,8 @@ internal sealed class PretixCheckoutBackend(
             // The order's own payment_date is a date only; the confirmed payment carries the time.
             state == CheckoutState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
             refunded,
-            order.Refunds.Any(r => r.State is "failed" or "canceled"));
+            // Only the newest refund counts: a retry after a failure must not read as failed while its money moves.
+            order.Refunds.MaxBy(r => r.LocalId)?.State is "failed" or "canceled");
     }
 
     /// <summary>
