@@ -8,7 +8,6 @@ internal sealed class GateScanEvent
     internal const int BarcodeMaxLength = 128;
     internal const int LaneIdMaxLength = 64;
     internal const int NoteMaxLength = 1000;
-    internal const int ConfirmedRequirementsMaxLength = 2000;
 
     public Guid Id { get; init; }
 
@@ -38,12 +37,6 @@ internal sealed class GateScanEvent
     public Instant? ClientScanAt { get; init; }
 
     public string? Note { get; init; }
-
-    /// <summary>
-    /// The outstanding items the agent confirmed before this admit, one instruction per line, as shown on the card.
-    /// Null when there were none.
-    /// </summary>
-    public string? ConfirmedRequirements { get; init; }
 
     /// <summary>
     /// Set on override admits. The shared supervisor PIN authorizes but cannot attribute, so this holds the gate

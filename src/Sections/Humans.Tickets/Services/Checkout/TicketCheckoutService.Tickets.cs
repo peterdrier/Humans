@@ -86,8 +86,7 @@ internal sealed partial class TicketCheckoutService
         var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .ToList();
-        // A used ticket (or a used child ticket that would be voided with it) never goes back on sale.
-        if ((await gateAdmissions.GetAdmittedAsync([ticket.Barcode, .. dependents.Select(d => d.Barcode)], ct)).Count > 0)
+        if (await IsAdmittedAsync(ticket, ct))
             return new("Tickets_Resale_NotOfferable");
         var now = clock.GetCurrentInstant();
         var offer = new TicketResaleOffer
@@ -192,8 +191,14 @@ internal sealed partial class TicketCheckoutService
         return CheckoutMutationResult.Ok;
     }
 
-    private async Task<bool> IsAdmittedAsync(TicketCheckoutTicket ticket, CancellationToken ct) =>
-        (await gateAdmissions.GetAdmittedAsync([ticket.Barcode], ct)).Count > 0;
+    /// <summary>The ticket or a valid child riding on it was admitted: selling it would void someone already inside.</summary>
+    private async Task<bool> IsAdmittedAsync(TicketCheckoutTicket ticket, CancellationToken ct)
+    {
+        var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
+            .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
+            .Select(t => t.Barcode);
+        return (await gateAdmissions.GetAdmittedAsync([ticket.Barcode, .. dependents], ct)).Count > 0;
+    }
 
     private async Task<bool> IsAdmittedAsync(Guid ticketId, CancellationToken ct) =>
         await repository.GetTicketAsync(ticketId, ct) is { } ticket && await IsAdmittedAsync(ticket, ct);

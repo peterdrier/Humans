@@ -59,15 +59,6 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     background: rgba(0,0,0,.32); border-radius: 8px; padding: .35rem .8rem;
 }
 
-/* Outstanding items: big tap targets, each ticked before admit unlocks. */
-.gate-requirements {
-    width: 100%; margin-top: 1.25rem; text-align: left; background: rgba(0,0,0,.32);
-    border: 3px solid #FFC94D; border-radius: 12px; padding: .75rem 1rem;
-}
-.gate-requirements-title { font-size: 1.3rem; font-weight: 800; text-transform: uppercase; color: #FFC94D; }
-.gate-requirement { display: flex; align-items: center; gap: .9rem; font-size: 1.4rem; font-weight: 600; padding: .6rem 0; cursor: pointer; }
-.gate-requirement input { width: 2.2rem; height: 2.2rem; flex: none; }
-
 /* Verdict colours — paired with distinct icons + words so colour is never the only cue. */
 .gate-admit { background: #0B7A2F; }
 .gate-stop { background: #B11217; }

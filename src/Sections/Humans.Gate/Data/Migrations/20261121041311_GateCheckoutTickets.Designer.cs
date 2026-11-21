@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Gate.Data.Migrations
 {
     [DbContext(typeof(GateDbContext))]
-    [Migration("20261121022835_GateCheckoutTicketsAndRequirements")]
-    partial class GateCheckoutTicketsAndRequirements
+    [Migration("20261121041311_GateCheckoutTickets")]
+    partial class GateCheckoutTickets
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -46,10 +46,6 @@ namespace Humans.Gate.Data.Migrations
 
                     b.Property<Instant?>("ClientScanAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ConfirmedRequirements")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
 
                     b.Property<Guid?>("GuestUserId")
                         .HasColumnType("uuid");

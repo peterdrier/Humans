@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Humans.Gate.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class GateCheckoutTicketsAndRequirements : Migration
+    public partial class GateCheckoutTickets : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,13 +16,6 @@ namespace Humans.Gate.Data.Migrations
                 table: "gate_scan_events",
                 type: "uuid",
                 nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "ConfirmedRequirements",
-                table: "gate_scan_events",
-                type: "character varying(2000)",
-                maxLength: 2000,
-                nullable: true);
         }
 
         /// <inheritdoc />
@@ -30,10 +23,6 @@ namespace Humans.Gate.Data.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "CheckoutTicketId",
-                table: "gate_scan_events");
-
-            migrationBuilder.DropColumn(
-                name: "ConfirmedRequirements",
                 table: "gate_scan_events");
         }
     }

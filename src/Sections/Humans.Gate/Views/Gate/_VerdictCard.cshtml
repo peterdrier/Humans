@@ -37,20 +37,6 @@
         <div class="gate-reason">@Model.Reason</div>
     }
 
-    @if (Model.Requirements.Count > 0 && (Model.Kind == GateCardKind.IdConfirm || Model.AllowSupervisorOverride))
-    {
-        <div class="gate-requirements" data-requirements>
-            <div class="gate-requirements-title">Before admitting</div>
-            @foreach (var item in Model.Requirements)
-            {
-                <label class="gate-requirement">
-                    <input type="checkbox" data-requirement="@item.Key" />
-                    <span>@item.Instruction</span>
-                </label>
-            }
-        </div>
-    }
-
     @* A barely-trained volunteer needs to be told what to do and where to escalate, not just the diagnosis. *@
     @if (Model.Kind == GateCardKind.Stop)
     {

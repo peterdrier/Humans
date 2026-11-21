@@ -1,5 +1,4 @@
 using Humans.Base.Interfaces;
-using Humans.Gate.Contracts;
 using Humans.Gate.Domain;
 using NodaTime;
 
@@ -101,9 +100,6 @@ internal sealed record GateScanResult(
 
     /// <summary>An Invalid checkout ticket that is only waiting in the resale queue: the holder can withdraw it.</summary>
     public bool InResaleQueue { get; init; }
-
-    /// <summary>What the agent must resolve and confirm before admitting, in source order. Empty when the ticket is invalid or already used.</summary>
-    public IReadOnlyList<GateEntryRequirement> Requirements { get; init; } = [];
 }
 
 /// <summary>
@@ -118,11 +114,7 @@ internal sealed record GateDecisionInput(
     Instant? ClientScanAt,
     string? Note,
     bool OverrideEarly = false,
-    string? SupervisorPin = null)
-{
-    /// <summary>Keys of the outstanding items the agent ticked; matched against a fresh read, never trusted alone.</summary>
-    public IReadOnlyList<string> ConfirmedRequirementKeys { get; init; } = [];
-}
+    string? SupervisorPin = null);
 
 internal sealed record GateDecisionResult(
     GateVerdict Verdict,
@@ -134,8 +126,7 @@ internal sealed record GateDecisionResult(
     string? VendorTicketId = null,
     GateOverrideFailure? OverrideFailure = null,
     int? RetryAfterSeconds = null,
-    bool InputTooLong = false,
-    GateScanResult? UnconfirmedRequirements = null);
+    bool InputTooLong = false);
 
 internal enum GateOverrideFailure
 {

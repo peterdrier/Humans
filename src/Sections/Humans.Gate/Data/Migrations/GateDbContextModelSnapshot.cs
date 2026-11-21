@@ -44,10 +44,6 @@ namespace Humans.Gate.Data.Migrations
                     b.Property<Instant?>("ClientScanAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ConfirmedRequirements")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
                     b.Property<Guid?>("GuestUserId")
                         .HasColumnType("uuid");
 

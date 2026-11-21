@@ -9,7 +9,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
-using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Jobs;
@@ -31,7 +30,6 @@ internal sealed class GateService(
     IRoleAssignmentService roles,
     ITicketWrite ticketWrite,
     ITicketGateLookup issuedTickets,
-    IEnumerable<IGateEntryRequirementSource> requirementSources,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
     IBackgroundJobClient backgroundJobs,
@@ -85,10 +83,6 @@ internal sealed class GateService(
             EarliestEntryDate: ee?.EarliestEntryDate,
             Today: today));
 
-        var requirements = outcome is GatePreCheckOutcome.Invalid or GatePreCheckOutcome.Duplicate
-            || ticket.GuestUserId is not { } guest || burn is null
-                ? []
-                : await GetOutstandingAsync(guest, burn.Id, ct);
 
         return new GateScanResult(
             outcome,
@@ -109,7 +103,6 @@ internal sealed class GateService(
         {
             CheckoutTicketId = ticket.CheckoutTicketId,
             InResaleQueue = ticket.InResaleQueue,
-            Requirements = requirements,
         };
     }
 
@@ -158,38 +151,12 @@ internal sealed class GateService(
         string? VendorTicketId,
         bool InResaleQueue);
 
-    /// <summary>
-    /// A source that fails becomes an item of its own: the agent fetches the gate lead rather than the gate silently
-    /// admitting someone whose outstanding items it could not read.
-    /// </summary>
-    private async Task<IReadOnlyList<GateEntryRequirement>> GetOutstandingAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct)
-    {
-        List<GateEntryRequirement> items = [];
-        foreach (var source in requirementSources)
-        {
-            try
-            {
-                items.AddRange(await source.GetOutstandingAsync(userId, eventSettingsId, ct));
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogWarning(ex, "Gate entry requirement source {Source} failed for {UserId}", source.GetType().Name, userId);
-                items.Add(new GateEntryRequirement(
-                    $"unavailable:{source.GetType().Name}",
-                    "Outstanding items could not be checked: ask the gate lead before admitting"));
-            }
-        }
-        return items.DistinctBy(i => i.Key, StringComparer.Ordinal).ToList();
-    }
-
     public async Task<GateDecisionResult> RecordDecisionAsync(
         GateDecisionInput input, Guid scannedByUserId, CancellationToken ct = default)
     {
         if (!FitsStorage(GateBarcode.Normalize(input.Barcode), GateScanEvent.BarcodeMaxLength)
             || !FitsStorage(input.LaneId, GateScanEvent.LaneIdMaxLength)
-            || !FitsStorage(input.Note, GateScanEvent.NoteMaxLength)
-            || input.ConfirmedRequirementKeys.Count > MaxConfirmedRequirements)
+            || !FitsStorage(input.Note, GateScanEvent.NoteMaxLength))
         {
             logger.LogWarning("Rejected gate decision exceeding storage limits from scanner {ScannerId}", scannedByUserId);
             return new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true);
@@ -203,11 +170,6 @@ internal sealed class GateService(
         var eval = await EvaluateAsync(input.Barcode, ct);
         var verdict = ResolveVerdict(eval.Outcome, input, overrideAuthorized);
         var admit = IsAdmit(verdict);
-
-        // Outstanding items are re-read too: an admit needs every current item confirmed, not the ones the card showed.
-        if (admit && eval.Requirements.Any(r => !input.ConfirmedRequirementKeys.Contains(r.Key, StringComparer.Ordinal)))
-            return new GateDecisionResult(GateVerdict.Unresolved, eval.GuestName, eval.TicketTypeName, false, null, null,
-                UnconfirmedRequirements: eval);
 
         var scan = BuildEvent(eval, input, scannedByUserId, verdict, admit, overrideAuthorized);
         var recorded = await repository.RecordScanAsync(scan, ct);
@@ -234,8 +196,6 @@ internal sealed class GateService(
             eval.PreviousAdmitAt, eval.PreviousAdmitByUserId,
             VendorTicketId: admit ? eval.VendorTicketId : null);
     }
-
-    private const int MaxConfirmedRequirements = 32;
 
     private static bool FitsStorage(string? value, int limit) =>
         value is null || value.EnumerateRunes().Count() <= limit;
@@ -528,7 +488,6 @@ internal sealed class GateService(
             Verdict = s.Verdict.ToString(),
             Role = s.GuestUserId == userId ? "Guest" : "Scanner",
             s.LaneId,
-            ConfirmedRequirements = s.GuestUserId == userId ? s.ConfirmedRequirements : null,
         }).ToList());
 
         return [slice];
@@ -586,20 +545,9 @@ internal sealed class GateService(
             LaneId = input.LaneId,
             ClientScanAt = input.ClientScanAt,
             Note = input.Note,
-            ConfirmedRequirements = admit ? ConfirmedText(eval.Requirements) : null,
             OverrideByUserId = admit && overrideAuthorized ? scannedByUserId : null,
             AdmitDedupeKey = admit ? eval.Barcode : null,
         };
-
-    private static string? ConfirmedText(IReadOnlyList<GateEntryRequirement> items)
-    {
-        if (items.Count == 0)
-            return null;
-        var text = string.Join('\n', items.Select(i => i.Instruction));
-        return text.Length <= GateScanEvent.ConfirmedRequirementsMaxLength
-            ? text
-            : text[..(GateScanEvent.ConfirmedRequirementsMaxLength - 1)] + "…";
-    }
 
     private static bool IsAdmit(GateVerdict v) =>
         v is GateVerdict.Admitted or GateVerdict.AdmittedEarly

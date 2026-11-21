@@ -7,7 +7,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
-using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Models;
@@ -84,7 +83,6 @@ public class GateServiceTests
 
     private readonly ITicketService _tickets = Substitute.For<ITicketService>();
     private readonly ITicketGateLookup _issued = Substitute.For<ITicketGateLookup>();
-    private readonly IGateEntryRequirementSource _requirements = Substitute.For<IGateEntryRequirementSource>();
     private readonly IEarlyEntryService _earlyEntry = Substitute.For<IEarlyEntryService>();
     private readonly ISettingsService _burn = Substitute.For<ISettingsService>();
     private readonly IShiftService _shifts = Substitute.For<IShiftService>();
@@ -107,10 +105,8 @@ public class GateServiceTests
         _burn.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((EarlyEntryRosterRow?)null);
-        _requirements.GetOutstandingAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<GateEntryRequirement>());
         _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users,
-            _issued, [_requirements], _pinHasher, _auditLog, _jobs, _ledger, new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), Clock), _config, NullLogger<GateService>.Instance, Clock);
+            _issued, _pinHasher, _auditLog, _jobs, _ledger, new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), Clock), _config, NullLogger<GateService>.Instance, Clock);
 
         // Baseline: a past cutoff, so general entry is open; without one every scan fails safe to
         // AMBER. Seeded sync (the ctor can't await) into the store the repository's factory shares.
@@ -1220,12 +1216,9 @@ public class GateServiceTests
         return ticket;
     }
 
-    private Task<GateDecisionResult> RecordIssuedAsync(params string[] confirmed) =>
+    private Task<GateDecisionResult> RecordIssuedAsync() =>
         _svc.RecordDecisionAsync(
-            new GateDecisionInput(IssuedBarcode.ToLowerInvariant(), IdConfirmed: true, ChildWithAdult: false, "L1", null, null)
-            {
-                ConfirmedRequirementKeys = confirmed,
-            },
+            new GateDecisionInput(IssuedBarcode.ToLowerInvariant(), IdConfirmed: true, ChildWithAdult: false, "L1", null, null),
             AgentId);
 
     [HumansFact]
@@ -1245,7 +1238,6 @@ public class GateServiceTests
         row.CheckoutTicketId.Should().Be(ticket.Id);
         row.TicketAttendeeId.Should().BeNull();
         row.GuestUserId.Should().Be(GuestId);
-        row.ConfirmedRequirements.Should().BeNull();
         _jobs.DidNotReceive().Create(Arg.Any<Job>(), Arg.Any<IState>());
         await _users.Received(1).RecordParticipationAsync(
             GuestId, 2027, ParticipationStatus.Attended, Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
@@ -1278,74 +1270,9 @@ public class GateServiceTests
 
         eval.Outcome.Should().Be(GatePreCheckOutcome.NeedsIdCheckEarly);
         eval.GuestUserId.Should().BeNull();
-        eval.Requirements.Should().BeEmpty();
         (await RecordIssuedAsync()).Verdict.Should().Be(GateVerdict.AdmittedEarly);
         await _users.DidNotReceive().RecordParticipationAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(), Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task OutstandingItems_MustAllBeConfirmed_BeforeAnAdmit_AndAreRecordedWithIt()
-    {
-        StubIssued(holder: GuestId);
-        _requirements.GetOutstandingAsync(GuestId, _activeEvent.Id, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
-                new GateEntryRequirement("a", "Sign the volunteer agreement on paper"),
-                new GateEntryRequirement("b", "Sign the paper copy of the ticket rules"),
-            });
-
-        (await _svc.EvaluateAsync(IssuedBarcode)).Requirements.Select(r => r.Key).Should().Equal("a", "b");
-
-        var refused = await RecordIssuedAsync("a");
-        refused.Verdict.Should().Be(GateVerdict.Unresolved);
-        refused.UnconfirmedRequirements.Should().NotBeNull();
-        GateDb.GateScanEvents.AsNoTracking().Should().BeEmpty();
-        await _users.DidNotReceive().RecordParticipationAsync(
-            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(), Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
-
-        (await RecordIssuedAsync("b", "a")).Verdict.Should().Be(GateVerdict.Admitted);
-        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken)).ConfirmedRequirements.Should()
-            .Be("Sign the volunteer agreement on paper\nSign the paper copy of the ticket rules");
-    }
-
-    [HumansFact]
-    public async Task OutstandingItems_DoNotBlockTurningSomeoneAway()
-    {
-        StubIssued(holder: GuestId);
-        _requirements.GetOutstandingAsync(GuestId, _activeEvent.Id, Arg.Any<CancellationToken>())
-            .Returns(new[] { new GateEntryRequirement("a", "Sign on paper") });
-
-        var result = await _svc.RecordDecisionAsync(
-            new GateDecisionInput(IssuedBarcode, IdConfirmed: false, ChildWithAdult: false, "L1", null, null), AgentId);
-
-        result.Verdict.Should().Be(GateVerdict.RejectedNameMismatch);
-        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken)).ConfirmedRequirements.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task OutstandingItems_AFailingSource_BecomesAnItemToConfirm_NeverASilentAdmit()
-    {
-        StubIssued(holder: GuestId);
-        _requirements.GetOutstandingAsync(GuestId, _activeEvent.Id, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("consent store down"));
-
-        var item = (await _svc.EvaluateAsync(IssuedBarcode)).Requirements.Should().ContainSingle().Subject;
-
-        item.Instruction.Should().Contain("gate lead");
-        (await RecordIssuedAsync()).Verdict.Should().Be(GateVerdict.Unresolved);
-        (await RecordIssuedAsync(item.Key)).Verdict.Should().Be(GateVerdict.Admitted);
-    }
-
-    [HumansFact]
-    public async Task OutstandingItems_TooManyConfirmations_AreRejectedAsInput()
-    {
-        StubIssued(holder: GuestId);
-
-        var result = await RecordIssuedAsync(Enumerable.Range(0, 33).Select(i => $"k{i}").ToArray());
-
-        result.InputTooLong.Should().BeTrue();
-        GateDb.GateScanEvents.AsNoTracking().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1372,22 +1299,4 @@ public class GateServiceTests
         admitted.Should().BeEquivalentTo([IssuedBarcode.ToLowerInvariant()]);
         (await reads.GetAdmittedAsync([], Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
-
-    [HumansFact]
-    public async Task OutstandingItems_AlsoGateASupervisorOverride()
-    {
-        await _svc.SaveSettingsAsync(new GateSettingsDto(Clock.GetCurrentInstant().Plus(Duration.FromDays(2)), 16));
-        StubIssued(holder: GuestId);
-        _requirements.GetOutstandingAsync(GuestId, _activeEvent.Id, Arg.Any<CancellationToken>())
-            .Returns(new[] { new GateEntryRequirement("a", "Sign on paper") });
-        GateDecisionInput Override(params string[] keys) =>
-            new(IssuedBarcode, IdConfirmed: false, ChildWithAdult: false, "L1", null, null, OverrideEarly: true, SupervisorPin: SupervisorPin)
-            {
-                ConfirmedRequirementKeys = keys,
-            };
-
-        (await _svc.RecordDecisionAsync(Override(), AgentId)).UnconfirmedRequirements.Should().NotBeNull();
-        (await _svc.RecordDecisionAsync(Override("a"), AgentId)).Verdict.Should().Be(GateVerdict.AdmittedEarlyOverride);
-    }
 }
-

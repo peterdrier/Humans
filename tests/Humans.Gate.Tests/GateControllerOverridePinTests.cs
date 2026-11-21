@@ -74,7 +74,7 @@ public class GateControllerOverridePinTests
             await request.CancelAsync();
         Func<Task<IActionResult>> invoke = action switch
         {
-            GateAction.Decision => () => controller.Decision(Barcode, true, false, false, null, null, null, request.Token),
+            GateAction.Decision => () => controller.Decision(Barcode, true, false, false, null, null, request.Token),
             GateAction.SetStaffPin => () => controller.SetStaffPin(staffId, Pin, request.Token),
             _ => () => controller.ResetStaffPin(staffId, request.Token),
         };
@@ -117,7 +117,7 @@ public class GateControllerOverridePinTests
 
     private Task<IActionResult> DecideAsync(GateController c, bool overrideEarly = false, bool child = false, string? pin = null) =>
         c.Decision(Barcode, idConfirmed: false, childWithAdult: child, overrideEarly: overrideEarly,
-            supervisorPin: pin, laneId: null, requirement: null, TestContext.Current.CancellationToken);
+            supervisorPin: pin, laneId: null, TestContext.Current.CancellationToken);
 
     private static GateScanCardViewModel CardOf(IActionResult result) =>
         Assert.IsType<GateScanCardViewModel>(Assert.IsType<PartialViewResult>(result).Model);
@@ -137,7 +137,7 @@ public class GateControllerOverridePinTests
         if (invalidField is not null) controller.ModelState.AddModelError(invalidField, "Invalid boolean.");
 
         var result = await controller.Decision(Barcode, idConfirmed, childWithAdult: false,
-            overrideEarly: false, supervisorPin: null, laneId: null, requirement: null, TestContext.Current.CancellationToken);
+            overrideEarly: false, supervisorPin: null, laneId: null, TestContext.Current.CancellationToken);
 
         if (authenticated) Assert.IsType<BadRequestResult>(result);
         else Assert.IsType<UnauthorizedResult>(result);
@@ -152,7 +152,7 @@ public class GateControllerOverridePinTests
             .Returns(new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true));
         var controller = BuildController(Pin);
 
-        var result = await controller.Decision(Barcode, true, false, false, null, null, null,
+        var result = await controller.Decision(Barcode, true, false, false, null, null,
             TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<BadRequestResult>();
@@ -164,7 +164,7 @@ public class GateControllerOverridePinTests
         var controller = BuildController(Pin);
 
         await controller.Decision(Barcode, idConfirmed: true, childWithAdult: false,
-            overrideEarly: false, supervisorPin: null, laneId: null, requirement: null, TestContext.Current.CancellationToken);
+            overrideEarly: false, supervisorPin: null, laneId: null, TestContext.Current.CancellationToken);
 
         await _gate.Received(1).RecordDecisionAsync(
             Arg.Is<GateDecisionInput>(i => i.IdConfirmed), _gateAccount, Arg.Any<CancellationToken>());
@@ -203,28 +203,5 @@ public class GateControllerOverridePinTests
         card.Reason.Should().Contain(reason);
         card.AllowSupervisorOverride.Should().Be(allowOverride);
         card.AllowChildWithAdult.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task Decision_UnconfirmedItems_ShowTheIdCardAgainWithTheItems_AndPassTheTickedKeys()
-    {
-        var item = new Humans.Gate.Contracts.GateEntryRequirement("rules", "Sign the paper copy of the ticket rules");
-        var pending = new GateScanResult(GatePreCheckOutcome.NeedsIdCheck, Barcode, "Ana Ruiz", "Wave 1", false, null,
-            null, null, null, null)
-        { Requirements = [item] };
-        _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new GateDecisionResult(GateVerdict.Unresolved, "Ana Ruiz", "Wave 1", false, null, null,
-                UnconfirmedRequirements: pending));
-        var controller = BuildController(Pin);
-
-        var card = CardOf(await controller.Decision(Barcode, idConfirmed: true, childWithAdult: false,
-            overrideEarly: false, supervisorPin: null, laneId: null, requirement: ["other"], TestContext.Current.CancellationToken));
-
-        card.Kind.Should().Be(GateCardKind.IdConfirm);
-        card.Requirements.Should().Equal(item);
-        card.Reason.Should().Contain("confirm every item");
-        await _gate.Received(1).RecordDecisionAsync(
-            Arg.Is<GateDecisionInput>(i => i.ConfirmedRequirementKeys.SequenceEqual(new[] { "other" })),
-            _gateAccount, Arg.Any<CancellationToken>());
     }
 }
