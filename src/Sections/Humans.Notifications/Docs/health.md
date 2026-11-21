@@ -36,7 +36,7 @@ can mute the chatter but never the work.
 | 4 | "I have dealt with this." | `MarkAllRead` · `BulkResolve` · `BulkDismiss` · `ClickThrough` from the pages; `Resolve` · `Dismiss` · `MarkRead` routed but reached by no page |
 | 5 | "How much work is waiting for someone like me?" | `NotificationMeterProvider.GetMetersForUserAsync` |
 | 6 | "What is unread for this key's owner?" | `INotificationInboxRead.GetUnreadInboxAsync`, served by Backdoor at `/api/backdoor/notifications` |
-| 7 | "Throw away what has aged out." | `INotificationRetention.PurgeExpiredAsync`, driven nightly by `CleanupNotificationsJob` |
+| 7 | "Throw away what has aged out." | internal `INotificationInboxService.PurgeExpiredAsync`, driven nightly by `CleanupNotificationsJob` |
 | 8 | "Which sources exist, and which are retired?" | `INotificationSourceContributor`, collected by `NotificationSourceRegistry` at startup |
 | 9 | "Give me / erase everything you hold about this human." | `IUserDataContributor` on `NotificationInboxService` |
 | 10 | "These two accounts are one human — fold them." | `IUserMerge.ReassignAsync` on `NotificationService` |
