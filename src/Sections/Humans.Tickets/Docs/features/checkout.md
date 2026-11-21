@@ -43,13 +43,13 @@ Rules every backend follows:
 ## Flow
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, capacity, waves, supporter totals (VIP
-   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`), child price and age, the team whose required
-   documents are the ticket rules, when resale opens (tickets sold) and how many days a resale invitation lasts.
+   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`), child price and age, the ticket rules page
+   (an https address; a changed version gets a new address), when resale opens (tickets sold) and how many days a resale invitation lasts.
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed, each priced in its own time zone and checked for holdings on its own. They see
    their price, may add children (child price, issued on their own ticket), a partner (name and email; public price;
    the account is found or made once the order is paid), a VIP upgrade (shown as the ticket plus a donation) and a donation.
-   They tick the ticket rules (signed through Consent, IP and user agent recorded) and may opt in to the mailing list
+   They tick the ticket rules on every checkout (the page's address goes on the order's timeline; no Consent signing) and may opt in to the mailing list
    (asked only while they have no Marketing choice on record), then continue to the backend's payment page.
 3. The backend returns them to `/Tickets/Buy/Order/{id}`, which refreshes the status and splits ticket and donation
    subtotals. The webhook and the 5-minute reconcile job catch the rest. The move to `Paid` is one conditional update,
@@ -73,8 +73,7 @@ Each order carries a short `Reference` (the first 8 hex digits of its id) shown 
 
 `/Tickets/Buy/Public` (where a signed-out `/Tickets/Buy` lands) shows each selling event at today's public price and
 asks for an email. Auth's magic link signs an existing member in, or starts signup (legal name, consents) for a new
-one, and returns them to the buy page, which then prefills them and shows their own price. Tickets are named and
-consent needs a real profile, so the account always comes before the order.
+one, and returns them to the buy page, which then prefills them and shows their own price. Tickets are named, so the account always comes before the order.
 
 ## Returning a ticket and the resale queue
 

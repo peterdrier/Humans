@@ -318,9 +318,6 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Accepta les normes de les entrades per continuar.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>No s'ha pogut registrar la teva acceptació de les normes. Comprova que el perfil estigui complet i torna-ho a provar.</value>
-  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Aquest enllaç d'invitació ja no és vàlid, o es va enviar a un correu diferent del de la teva sessió.</value>
   </data>

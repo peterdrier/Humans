@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Grants.Contracts;
 using Humans.Settings.Contracts;
@@ -36,8 +35,6 @@ public sealed class TicketCheckoutServiceTests
     private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly IConsentService _consents = Substitute.For<IConsentService>();
-    private readonly IConsentSubmission _consentSubmission = Substitute.For<IConsentSubmission>();
     private readonly ICommunicationPreferenceService _preferenceReads = Substitute.For<ICommunicationPreferenceService>();
     private readonly ICommunicationPreferenceWrite _preferences = Substitute.For<ICommunicationPreferenceWrite>();
     private readonly IEmailService _email = Substitute.For<IEmailService>();
@@ -105,7 +102,7 @@ public sealed class TicketCheckoutServiceTests
         var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
 
         _service = new TicketCheckoutService(_repo, [_backend], _grants, _settings, _users, _provisioning, _userEmails,
-            _consents, _consentSubmission, _preferenceReads, _preferences, _email, emails, [_delivery], localizer, _audit,
+            _preferenceReads, _preferences, _email, emails, [_delivery], localizer, _audit,
             _clock, NullLogger<TicketCheckoutService>.Instance);
     }
 
@@ -460,40 +457,17 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Ticket_rules_must_be_accepted_and_are_signed_through_consent()
+    public async Task Ticket_rules_must_be_accepted_on_every_checkout_and_the_page_is_on_the_timeline()
     {
-        var teamId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        _salesEvent.TermsTeamId = teamId;
-        _consents.GetRequiredConsentRowsForUserAsync(_buyerId, teamId, Arg.Any<CancellationToken>())
-            .Returns([new RequiredConsentRow(versionId, "Ticket rules", Signed: false)]);
-        _consentSubmission.SubmitConsentAsync(_buyerId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ConsentSubmitResult(true, "Ticket rules"));
+        _salesEvent.TermsUrl = "https://nobodies.team/rules-2027";
 
+        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().TermsUrl.Should().Be("https://nobodies.team/rules-2027");
         (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_TermsRequired");
         _repo.Orders.Should().BeEmpty();
 
-        var result = await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, IpAddress = "203.0.113.9" }, _buyerId, Ct);
-
-        result.Refusal.Should().BeNull();
-        await _consentSubmission.Received(1).SubmitConsentAsync(
-            _buyerId, versionId, true, "203.0.113.9", Arg.Any<string>(), Arg.Any<CancellationToken>());
-        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.TermsAccepted && e.Detail.Contains("Ticket rules"));
-    }
-
-    [HumansFact]
-    public async Task A_failed_consent_refuses_the_checkout()
-    {
-        var teamId = Guid.NewGuid();
-        _salesEvent.TermsTeamId = teamId;
-        _consents.GetRequiredConsentRowsForUserAsync(_buyerId, teamId, Arg.Any<CancellationToken>())
-            .Returns([new RequiredConsentRow(Guid.NewGuid(), "Ticket rules", Signed: false)]);
-        _consentSubmission.SubmitConsentAsync(default, default, default, default!, default!, default)
-            .ReturnsForAnyArgs(new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable"));
-
-        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true }, _buyerId, Ct))
-            .Refusal.Should().Be("Tickets_Buy_TermsFailed");
-        _repo.Orders.Should().BeEmpty();
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true }, _buyerId, Ct)).Refusal.Should().BeNull();
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.TermsAccepted
+            && e.Detail.Contains("https://nobodies.team/rules-2027"));
     }
 
     [HumansFact]

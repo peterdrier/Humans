@@ -307,9 +307,6 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Please accept the ticket rules to continue.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Your acceptance of the ticket rules could not be recorded. Check your profile is complete and try again.</value>
-  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>This invitation link is no longer valid, or it was sent to a different email address than the one you are signed in with.</value>
   </data>
