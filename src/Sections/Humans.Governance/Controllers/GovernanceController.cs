@@ -31,6 +31,7 @@ internal sealed class GovernanceController(
         var ct = HttpContext.RequestAborted;
         var data = await governanceIndexService.GetIndexDataAsync(user.Id, ct);
         var boardInfos = await UserService.GetUserInfosAsync(data.BoardMemberIds, ct);
+        var positions = await boardSeats.GetPositionsAsync(ct);
 
         var viewModel = new GovernanceIndexViewModel
         {
@@ -50,9 +51,8 @@ internal sealed class GovernanceController(
             MemberSince = data.MemberSince?.ToDateTimeUtc(),
             ColaboradorCount = data.ColaboradorCount,
             AsociadoCount = data.AsociadoCount,
-            BoardMemberIds = data.BoardMemberIds
-                .OrderBy(id => boardInfos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)
-                .ToList(),
+            BoardMemberIds = OrderByOffice(data.BoardMemberIds, positions, boardInfos),
+            BoardPositions = positions,
             OpenVotes = data.OpenVotes.OrderBy(v => v.ClosesAt).ToList(),
             UnvotedApplicationCount = data.UnvotedApplicationCount,
             YourAccess = [.. data.YourAccess.OrderBy(a => a.Body)]
@@ -74,12 +74,15 @@ internal sealed class GovernanceController(
         var seesLinks = data.MemberIds.Contains(user.Id)
             || (await authorization.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded;
         var infos = await UserService.GetUserInfosAsync(data.MemberIds, ct);
+        var positions = parsed == GovernanceBody.Board
+            ? await boardSeats.GetPositionsAsync(ct)
+            : new Dictionary<Guid, BoardPosition>();
 
         return View(new GovernanceBodyViewModel
         {
             Body = data.Body,
-            MemberIds = [.. data.MemberIds
-                .OrderBy(id => infos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)],
+            MemberIds = OrderByOffice(data.MemberIds, positions, infos),
+            Positions = positions,
             Links = seesLinks ? data.Links : null,
             CanManageBoard = parsed == GovernanceBody.Board && await MayManageBoardAsync(),
         });
@@ -122,6 +125,34 @@ internal sealed class GovernanceController(
             SetError(localizer["Governance_BoardMemberNotOn", name].Value);
         return RedirectToAction(nameof(Body), new { body = nameof(GovernanceBody.Board) });
     }
+
+    /// <summary>Gives a Board member an office, or with no office clears the one they hold.</summary>
+    [HttpPost("Board/Position")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetBoardPosition(Guid userId, BoardPosition? position)
+    {
+        var ct = HttpContext.RequestAborted;
+        var actor = await GetCurrentUserInfoAsync(ct);
+        if (actor is null || !await MayManageBoardAsync())
+            return Forbid();
+
+        var result = position is { } office
+            ? await boardSeats.SetPositionAsync(office, userId, actor.Id, ct)
+            : (await boardSeats.GetPositionsAsync(ct)).TryGetValue(userId, out var held)
+                ? await boardSeats.SetPositionAsync(held, null, actor.Id, ct)
+                : new RoleAssignmentResult(true);
+        if (result.Success)
+            SetSuccess(localizer["Governance_BoardPositionSaved"].Value);
+        else
+            SetError(localizer["Governance_BoardPositionNotOnBoard"].Value);
+        return RedirectToAction(nameof(Body), new { body = nameof(GovernanceBody.Board) });
+    }
+
+    private static List<Guid> OrderByOffice(
+        IEnumerable<Guid> ids, IReadOnlyDictionary<Guid, BoardPosition> positions, IReadOnlyDictionary<Guid, UserInfo> infos) =>
+        [.. ids
+            .OrderBy(id => positions.TryGetValue(id, out var p) ? (int)p : int.MaxValue)
+            .ThenBy(id => infos.TryGetValue(id, out var info) ? info.BurnerName : string.Empty, StringComparer.CurrentCultureIgnoreCase)];
 
     private async Task<bool> MayManageBoardAsync() =>
         (await authorization.AuthorizeAsync(User, RoleNames.Board, PolicyNames.RoleAssignmentManage)).Succeeded;

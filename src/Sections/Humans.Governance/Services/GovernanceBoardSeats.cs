@@ -1,6 +1,10 @@
+using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Interfaces;
+using Humans.Gdpr.Contracts;
+using Humans.Governance.Data;
+using Humans.Governance.Domain;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -8,15 +12,20 @@ namespace Humans.Governance.Services;
 
 /// <summary>
 /// Board seats are added and ended here; Auth stores them as the Board role, which the rest of the app checks.
-/// Auth audits each change. The caller authorizes against <c>PolicyNames.RoleAssignmentManage</c>.
+/// Auth audits each seat change. The Board offices (President, …) are stored here and audited here.
+/// The caller authorizes against <c>PolicyNames.RoleAssignmentManage</c>.
 /// </summary>
 internal sealed class GovernanceBoardSeats(
     IRoleAssignmentService roles,
     IRoleAssignmentWrite roleWrite,
     IUserService users,
-    IClock clock) : IApplicationService
+    IGovernanceBodyRepository repository,
+    IAuditLogService audit,
+    IClock clock) : IApplicationService, IUserDataContributor, IUserMerge
 {
     public const string InactiveAccount = nameof(InactiveAccount);
+    public const string NotOnBoard = nameof(NotOnBoard);
+    internal const string BoardPositionSlice = "BoardPosition";
 
     /// <summary>Only an active account can take a seat; anything else fails with <see cref="InactiveAccount"/>.</summary>
     public async Task<RoleAssignmentResult> AddAsync(Guid userId, Guid actorUserId, CancellationToken ct = default) =>
@@ -24,13 +33,69 @@ internal sealed class GovernanceBoardSeats(
             ? await roleWrite.AssignRoleAsync(member.Id, RoleNames.Board, actorUserId, notes: null, ct)
             : new RoleAssignmentResult(false, InactiveAccount);
 
+    /// <summary>Ends the active Board seat and drops the office the person held.</summary>
     public async Task<RoleAssignmentResult> EndAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var seat = (await roles.GetByUserIdAsync(userId, ct))
             .FirstOrDefault(a => string.Equals(a.RoleName, RoleNames.Board, StringComparison.Ordinal) && a.IsActive(now));
-        return seat is null
-            ? new RoleAssignmentResult(false, "RoleNotActive")
-            : await roleWrite.EndRoleAsync(seat.Id, actorUserId, notes: null, ct);
+        if (seat is null)
+            return new RoleAssignmentResult(false, "RoleNotActive");
+
+        var result = await roleWrite.EndRoleAsync(seat.Id, actorUserId, notes: null, ct);
+        if (result.Success)
+            await repository.ClearBoardPositionForUserAsync(userId, ct);
+        return result;
     }
+
+    /// <summary>Each current Board member's office; someone whose seat ended is left out.</summary>
+    public async Task<IReadOnlyDictionary<Guid, BoardPosition>> GetPositionsAsync(CancellationToken ct = default)
+    {
+        var board = (await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct)).ToHashSet();
+        return (await repository.GetBoardPositionsAsync(ct))
+            .Where(p => board.Contains(p.UserId))
+            .ToDictionary(p => p.UserId, p => p.Position);
+    }
+
+    /// <summary>
+    /// Gives an office to a current Board member, who then holds no other; a null user leaves it empty.
+    /// Fails with <see cref="NotOnBoard"/> for someone without an active seat.
+    /// </summary>
+    public async Task<RoleAssignmentResult> SetPositionAsync(
+        BoardPosition position, Guid? userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (userId is { } holder && !await roles.IsUserBoardMemberAsync(holder, ct))
+            return new RoleAssignmentResult(false, NotOnBoard);
+
+        var previous = (await repository.GetBoardPositionsAsync(ct)).FirstOrDefault(p => p.Position == position);
+        await repository.SetBoardPositionAsync(position, userId, clock.GetCurrentInstant(), ct);
+        var subject = userId ?? previous?.UserId;
+        if (subject is { } subjectId)
+        {
+            await audit.LogAsync(
+                GovernanceAuditActions.BoardPositionSet, AuditSubjectTypes.User, subjectId,
+                userId is null ? $"Board office {position} left empty" : $"Board office {position} given",
+                actorUserId);
+        }
+
+        return new RoleAssignmentResult(true);
+    }
+
+    public async Task ReassignAsync(
+        Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
+        await repository.ReassignBoardPositionAsync(mergedFromUserId, mergedToUserId, now, ct);
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var row = (await repository.GetBoardPositionsAsync(ct)).FirstOrDefault(p => p.UserId == userId);
+        return [new UserDataSlice(BoardPositionSlice, row is null ? null : new { row.Position })];
+    }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal) { [BoardPositionSlice] = null };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
+        repository.ClearBoardPositionForUserAsync(userId, ct);
 }

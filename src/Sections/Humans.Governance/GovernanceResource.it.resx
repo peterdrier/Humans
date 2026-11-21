@@ -815,4 +815,13 @@
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>il Consiglio</value></data>
   <data name="Governance_Status_Board" xml:space="preserve"><value>Consiglio</value></data>
   <data name="Governance_MemberSince" xml:space="preserve"><value>Membro dal</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Carica</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Presidenza</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicepresidenza</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Segreteria</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Tesoreria</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Nessuna carica</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Salva</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Carica del Consiglio salvata.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Solo un membro attuale del Consiglio può ricoprire una carica.</value></data>
 </root>

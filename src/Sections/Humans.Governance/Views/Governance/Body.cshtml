@@ -32,6 +32,10 @@
                         {
                             <div class="col-6 col-sm-4 col-md-3">
                                 <vc:human user-id="@memberId" layout="Card" size="102" />
+                                @if (Model.Positions.TryGetValue(memberId, out var office))
+                                {
+                                    <div class="text-center small text-muted">@Localizer[$"Governance_Position_{office}"]</div>
+                                }
                             </div>
                         }
                     </div>
@@ -59,6 +63,18 @@
                         {
                             <li class="list-group-item d-flex align-items-center gap-2">
                                 <span class="flex-grow-1"><vc:human user-id="@memberId" layout="AvatarName" size="24" /></span>
+                                <form asp-action="SetBoardPosition" method="post" class="m-0 d-flex gap-1">
+                                    <input type="hidden" name="userId" value="@memberId" />
+                                    @{ var held = Model.Positions.TryGetValue(memberId, out var current) ? current : (BoardPosition?)null; }
+                                    <select name="position" class="form-select form-select-sm" aria-label="@Localizer["Governance_Position"]">
+                                        <option value="" selected="@(held is null)">@Localizer["Governance_Position_None"]</option>
+                                        @foreach (var option in Enum.GetValues<BoardPosition>())
+                                        {
+                                            <option value="@option" selected="@(held == option)">@Localizer[$"Governance_Position_{option}"]</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">@Localizer["Governance_Save"]</button>
+                                </form>
                                 <form asp-action="EndBoardMember" method="post" class="m-0">
                                     <input type="hidden" name="userId" value="@memberId" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Governance_EndBoardSeat"]</button>
