@@ -51,15 +51,27 @@ function Get-TestSubjectName {
 }
 
 function Find-ProductionMatches {
-    param([string]$SubjectName)
+    param([string]$SubjectName, [string]$RepoPath)
     if ([string]::IsNullOrWhiteSpace($SubjectName)) {
         return @()
     }
 
     $pattern = "$SubjectName.cs"
-    return @(Get-ChildItem -Path (Join-Path $Root 'src') -Recurse -Filter $pattern -File -ErrorAction SilentlyContinue |
+    $productionPaths = @(Get-ChildItem -Path (Join-Path $Root 'src') -Recurse -Filter $pattern -File -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -notmatch '[\\/](bin|obj|Migrations)[\\/]|\.Designer\.cs$|DbContextModelSnapshot\.cs$' } |
         ForEach-Object { Convert-ToRepoPath $_.FullName })
+
+    # Service.cs recurs across sections; credit the test project's owner when it has a match.
+    $testProjectName = ($RepoPath -split '/')[1] -replace '\.Tests$', ''
+    $ownerRoots = @("src/Sections/$testProjectName/", "src/$testProjectName/")
+    $ownedPaths = @($productionPaths | Where-Object {
+        $_.StartsWith($ownerRoots[0], [StringComparison]::OrdinalIgnoreCase) -or
+        $_.StartsWith($ownerRoots[1], [StringComparison]::OrdinalIgnoreCase)
+    })
+    if ($ownedPaths.Count -gt 0) {
+        return $ownedPaths
+    }
+    return $productionPaths
 }
 
 $testFiles = Get-ChildItem -Path (Join-Path $Root 'tests') -Recurse -Filter '*.cs' -File |
@@ -84,7 +96,7 @@ $rows = foreach ($file in $testFiles) {
     $ratchetCount = Count-Matches $text '\bRatchetTestRunner\.Run\('
     $assertionCount += $ratchetCount
     $subject = Get-TestSubjectName $repoPath
-    $productionMatches = Find-ProductionMatches $subject
+    $productionMatches = Find-ProductionMatches $subject $repoPath
     $category = Get-Category $repoPath
 
     $publicMethodNames = @()
