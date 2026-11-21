@@ -356,18 +356,14 @@ internal sealed class UserService(
 
         var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
 
-        var contactFields = profile is not null
-            ? await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct)
-            : [];
+        var contactFields = await repo.GetContactFieldsByUserIdReadOnlyAsync(userId, ct);
 
         var volunteerHistory = profile?.VolunteerHistory
             .OrderByDescending(v => v.Date)
             .ThenByDescending(v => v.CreatedAt)
             .ToList() ?? (IReadOnlyList<VolunteerHistoryEntry>)[];
 
-        var profileLanguages = profile is not null
-            ? await repo.GetLanguagesAsync(profile.Id, ct)
-            : [];
+        var profileLanguages = await repo.GetLanguagesAsync(userId, ct);
 
         var profileSlice = profile is null
             ? new UserDataSlice(Profile, null)
@@ -929,21 +925,22 @@ internal sealed class UserService(
         IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default)
     {
+        if (await repo.GetOwnerUserIdAsync(profileId, ct) is not { } ownerUserId)
+            return new UserProfileLanguagesSaveResult(false, null);
+
         var rows = languages
             .Select(l => new ProfileLanguage
             {
                 Id = l.Id == Guid.Empty ? Guid.NewGuid() : l.Id,
                 ProfileId = profileId,
+                UserId = ownerUserId,
                 LanguageCode = l.LanguageCode,
                 Proficiency = l.Proficiency,
             })
             .ToList();
 
-        var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
-        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
-        return new UserProfileLanguagesSaveResult(
-            ownerUserId is not null,
-            ownerUserId);
+        await repo.ReplaceLanguagesAsync(ownerUserId, rows, ct);
+        return new UserProfileLanguagesSaveResult(true, ownerUserId);
     }
 
     public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
@@ -963,7 +960,7 @@ internal sealed class UserService(
         IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
-            contactFields = await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
+            contactFields = await repo.GetContactFieldsByUserIdReadOnlyAsync(userId, ct);
             languages = profile.Languages.ToList();
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
@@ -993,8 +990,9 @@ internal sealed class UserService(
         var profileByUser = profiles.ToDictionary(p => p.UserId);
 
         var allContactFields = await repo.GetAllContactFieldsAsync(ct);
-        var contactFieldsByProfile = allContactFields
-            .GroupBy(c => c.ProfileId)
+        var contactFieldsByUser = allContactFields
+            .Where(c => c.UserId is not null)
+            .GroupBy(c => c.UserId!.Value)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
         var result = new List<UserInfo>(users.Count);
@@ -1008,7 +1006,7 @@ internal sealed class UserService(
             IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
             if (profile is not null)
             {
-                contactFields = contactFieldsByProfile.TryGetValue(profile.Id, out var cf) ? cf : [];
+                contactFields = contactFieldsByUser.TryGetValue(user.Id, out var cf) ? cf : [];
                 languages = profile.Languages.ToList();
                 volunteerHistory = profile.VolunteerHistory.ToList();
             }

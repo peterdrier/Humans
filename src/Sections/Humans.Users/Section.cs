@@ -259,8 +259,6 @@ public sealed class Section :
 
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
 
-    internal const string ProfileChildrenUserIdKey = "users.profile-children-user-id";
-
     internal const string LeftoverMergeRequestsKey = "users.leftover-merge-requests";
 
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
@@ -269,10 +267,6 @@ public sealed class Section :
             "Create a verified UserEmail row from the legacy User.Email Identity column",
             "The legacy-column fallback in User.Email / UserInfo.Email",
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
-        new(ProfileChildrenUserIdKey, SectionName,
-            "Stamp the owning user id onto contact fields, profile languages and volunteer history",
-            "The ProfileId key on user_contact_fields, user_profile_languages and user_volunteer_history_entries",
-            ProfileChildrenStatusAsync, ApplyProfileChildrenAsync),
         new(LeftoverMergeRequestsKey, SectionName,
             "Dismiss merge requests left from before merges were self-service: removes each pending email, the accounts are untouched",
             "The leftover-request listing and dismiss code in AccountMergeService",
@@ -300,20 +294,6 @@ public sealed class Section :
         }
         return dismissed;
     }
-
-    private static async Task<DataMigrationStatus> ProfileChildrenStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Contact fields", "Languages", "Volunteer history"],
-            [.. (await sp.GetRequiredService<ProfileService>().GetProfileChildRowsWithoutUserAsync(ct))
-                .Select(r => (IReadOnlyList<string>)
-                [
-                    r.UserId.ToString(),
-                    r.ContactFields.ToString(CultureInfo.InvariantCulture),
-                    r.Languages.ToString(CultureInfo.InvariantCulture),
-                    r.VolunteerHistory.ToString(CultureInfo.InvariantCulture),
-                ])]);
-
-    private static Task<int> ApplyProfileChildrenAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<ProfileService>().FillProfileChildUserIdsAsync(ct);
 
     private static async Task<DataMigrationStatus> LegacyEmailsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Legacy User.Email"],

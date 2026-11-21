@@ -6,12 +6,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Settings.Services;
 
-/// <summary>Every event row plus the global timezone: the whole of what the event reads answer from.</summary>
-internal sealed record SettingsSnapshot(IReadOnlyList<EventSettingsInfo> Events, string TimeZoneId);
+/// <summary>Every event row, the global timezone and every key/value row: the whole of what the reads answer from.</summary>
+internal sealed record SettingsSnapshot(
+    IReadOnlyList<EventSettingsInfo> Events, string TimeZoneId, IReadOnlyDictionary<string, string> Values);
 
 /// <summary>
 /// Holds one <see cref="SettingsSnapshot"/> so the event reads, which nearly every section makes on nearly every
-/// request, never reach the database. It loads at startup, and <see cref="Service"/> reloads it before it tells the
+/// request, and the key/value reads, which jobs make every minute, never reach the database. It loads at startup, and <see cref="Service"/> reloads it before it tells the
 /// change listeners, so a listener that re-reads sees the write.
 /// </summary>
 internal sealed class CachingSettingsService(
@@ -24,8 +25,11 @@ internal sealed class CachingSettingsService(
 
     private const int SnapshotKey = 0;
 
-    public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetValueAsync(key, cancellationToken));
+    public async Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
+        (await GetSnapshotAsync(cancellationToken)).Values.GetValueOrDefault(key);
+
+    public async Task<IReadOnlyDictionary<string, string>> GetAllValuesAsync(CancellationToken cancellationToken = default) =>
+        (await GetSnapshotAsync(cancellationToken)).Values;
 
     public Task SetValueAsync(string key, string value, CancellationToken cancellationToken = default) =>
         WithInnerAsync(async inner =>
@@ -81,7 +85,9 @@ internal sealed class CachingSettingsService(
 
     protected override async ValueTask<SettingsSnapshot?> LoadRowAsync(int key, CancellationToken ct) =>
         await WithInnerAsync(async inner => new SettingsSnapshot(
-            await inner.GetAllEventSettingsAsync(ct), await inner.GetTimeZoneIdAsync(ct)));
+            await inner.GetAllEventSettingsAsync(ct),
+            await inner.GetTimeZoneIdAsync(ct),
+            await inner.GetAllValuesAsync(ct)));
 
     private SettingsSnapshot CurrentSnapshot() =>
         TryGet(SnapshotKey, out var snapshot)

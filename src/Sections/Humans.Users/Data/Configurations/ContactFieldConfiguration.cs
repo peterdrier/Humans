@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
@@ -40,6 +41,11 @@ internal sealed class ContactFieldConfiguration : IEntityTypeConfiguration<Conta
         builder.HasOne(cf => cf.Profile)
             .WithMany(p => p.ContactFields)
             .HasForeignKey(cf => cf.ProfileId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(cf => cf.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(cf => cf.ProfileId);

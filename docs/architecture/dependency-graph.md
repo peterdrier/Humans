@@ -99,11 +99,11 @@ graph LR
     Campaigns -.-> Teams
     Campaigns -.-> Tickets
     Campaigns -.-> Users
-    Camps --> CityPlanning
     Camps --> EarlyEntry
     Camps --> Google
     Camps --> Issues
     Camps --> Settings
+    Camps -.-> CityPlanning
     Camps -.-> Email
     Camps -.-> Notifications
     Camps -.-> Shifts
@@ -122,9 +122,9 @@ graph LR
     Consent -.-> Governance
     Consent -.-> Notifications
     Consent -.-> Onboarding
-    Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
+    Containers --> Settings
     Containers -.-> Camps
     Containers -.-> CityPlanning
     Debug --> Consent
@@ -236,12 +236,12 @@ graph LR
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
-    Shifts --> Onboarding
     Shifts --> Settings
     Shifts --> Teams
     Shifts -.-> Camps
     Shifts -.-> Email
     Shifts -.-> Notifications
+    Shifts -.-> Onboarding
     Shifts -.-> Tickets
     Store --> AuditLog
     Store --> Budget

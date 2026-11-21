@@ -40,7 +40,6 @@ public class SectionDataMigrationsTests
         migrations.Select(m => m.Key).Should().BeEquivalentTo(
         [
             Section.LegacyIdentityEmailsKey,
-            Section.ProfileChildrenUserIdKey,
             Section.LeftoverMergeRequestsKey,
         ]);
         migrations.Should().OnlyContain(m => string.Equals(m.Section, "Users", StringComparison.Ordinal) && m.Key.StartsWith("users.", StringComparison.Ordinal));

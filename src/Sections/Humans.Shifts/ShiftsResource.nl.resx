@@ -1314,4 +1314,5 @@
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Diensten beheren</value>
   </data>
+  <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Voeg eerst je naam toe — die hebben we nodig voordat je je kunt aanmelden voor diensten.</value></data>
 </root>
