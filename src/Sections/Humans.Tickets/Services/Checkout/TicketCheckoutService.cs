@@ -842,6 +842,7 @@ internal sealed partial class TicketCheckoutService(
                 State = t.State.ToString(),
                 IssuedAt = t.IssuedAt.ToIso8601(),
                 VoidedAt = t.VoidedAt.ToIso8601(),
+                t.VoidReason,
             }).ToList()),
             new UserDataSlice(OffersSlice, offers.Select(o => new
             {

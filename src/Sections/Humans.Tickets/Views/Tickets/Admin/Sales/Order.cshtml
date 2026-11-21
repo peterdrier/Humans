@@ -61,7 +61,7 @@ else
                 <tr>
                     <td>@t.HolderName @(t.HolderEmail is null ? "" : $"({t.HolderEmail})")</td>
                     <td>@t.Kind</td>
-                    <td><code>@t.Barcode</code></td>
+                    <td><a asp-controller="TicketsSupportAdmin" asp-action="Ticket" asp-route-orderId="@o.Id" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a></td>
                     <td>@t.State @t.VoidReason</td>
                     <td class="text-end">@Eur(t.PricePaidMinor)</td>
                 </tr>

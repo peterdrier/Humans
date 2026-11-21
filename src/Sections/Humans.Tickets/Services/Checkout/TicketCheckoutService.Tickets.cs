@@ -54,14 +54,14 @@ internal sealed partial class TicketCheckoutService
             var eventName = salesEvent is null ? string.Empty
                 : (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
             var offers = await repository.GetOffersForSalesEventAsync(group.Key, ct);
-            var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved)
-                .OrderBy(o => o.OfferedAt).ToList();
+            var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
+            var positions = TicketSupportReports.QueuePositions(offers, now);
             var eventTickets = salesEvent is null ? [] : await repository.GetTicketsForSalesEventAsync(group.Key, ct);
             foreach (var ticket in group.OrderBy(t => t.IssuedAt))
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
-                held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : queue.IndexOf(offer) + 1,
+                held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
                     CanOffer: offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not TicketSalesMode.Closed },
                     HasDependents: hasDependents,
                     DirectedActive: offer?.IsDirectedTo(now) == true));
@@ -88,7 +88,8 @@ internal sealed partial class TicketCheckoutService
             return new("Tickets_Resale_NotOfferable");
 
         // Children go wherever their adult goes: returned with the adult and refunded with it when it sells.
-        var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
+        // Event-wide: an admin-issued companion lives on its own order.
+        var dependents = (await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .ToList();
         if (await IsAdmittedAsync(ticket, ct))
@@ -318,12 +319,7 @@ internal sealed partial class TicketCheckoutService
         }
     }
 
-    /// <summary>
-    /// Finds or makes each partner's account now the order is paid. Only a verified address attaches a ticket to an
-    /// existing account; a single unverified row is replaced by a new account, as the attendee import does; an
-    /// ambiguous address leaves the ticket without an account for the ticketing team to attach. The legal name stays on
-    /// the line and ticket: as a display name it would become the account's public burner name.
-    /// </summary>
+    /// <summary>Finds or makes each partner's account now the order is paid (see <see cref="ResolveAccountAsync"/>).</summary>
     private async Task ResolvePartnersAsync(TicketCheckoutOrder order, CancellationToken ct)
     {
         var changed = false;
@@ -334,28 +330,7 @@ internal sealed partial class TicketCheckoutService
             string? problem = null;
             try
             {
-                var verified = (await userEmails.FindByAddressAsync(line.AttendeeEmail!, aliased: true, verifiedOnly: true, ct))
-                    .Select(r => r.UserId).Distinct().ToList();
-                if (verified.Count == 1)
-                {
-                    holder = (await users.GetUserInfoAsync(verified[0], ct))?.Id ?? verified[0];
-                }
-                else if (verified.Count > 1)
-                {
-                    problem = "the address is verified on more than one account";
-                }
-                else
-                {
-                    var rows = await userEmails.FindByAddressAsync(line.AttendeeEmail!, aliased: true, verifiedOnly: false, ct);
-                    if (rows.Count > 1)
-                        problem = "the address is unverified on more than one account";
-                    else if (rows.Count == 1)
-                        holder = (await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(
-                            rows[0].UserId, rows[0].Id, line.AttendeeEmail!, displayName: null, ContactSource.Manual, ct)).UserId;
-                    else
-                        holder = (await provisioning.FindOrCreateUserByEmailAsync(
-                            line.AttendeeEmail!, displayName: null, ContactSource.Manual, ct)).UserId;
-                }
+                (holder, problem) = await ResolveAccountAsync(line.AttendeeEmail!, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -379,6 +354,29 @@ internal sealed partial class TicketCheckoutService
         }
         if (changed)
             await repository.UpdateOrderAsync(order, ct);
+    }
+
+    /// <summary>
+    /// The account a ticket for <paramref name="email"/> belongs to. Only a verified address attaches a ticket to an
+    /// existing account; a single unverified row is replaced by a new account, as the attendee import does; an
+    /// ambiguous address gives no account and the reason. The legal name stays on the line and ticket: as a display
+    /// name it would become the account's public burner name.
+    /// </summary>
+    private async Task<(Guid? UserId, string? Problem)> ResolveAccountAsync(string email, CancellationToken ct)
+    {
+        var verified = (await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+            .Select(r => r.UserId).Distinct().ToList();
+        if (verified.Count == 1)
+            return ((await users.GetUserInfoAsync(verified[0], ct))?.Id ?? verified[0], null);
+        if (verified.Count > 1)
+            return (null, "the address is verified on more than one account");
+        var rows = await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: false, ct);
+        if (rows.Count > 1)
+            return (null, "the address is unverified on more than one account");
+        var provisioned = rows.Count == 1
+            ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(rows[0].UserId, rows[0].Id, email, displayName: null, ContactSource.Manual, ct)
+            : await provisioning.FindOrCreateUserByEmailAsync(email, displayName: null, ContactSource.Manual, ct);
+        return (provisioned.UserId, null);
     }
 
     /// <summary>On the order's timeline and in the audit log, where the ticketing team reviews what automation left them.</summary>
@@ -448,6 +446,9 @@ internal sealed partial class TicketCheckoutService
             child.VoidedAt = now;
             child.VoidReason = "Returned with the adult's ticket";
             await repository.UpdateTicketAsync(child, ct);
+            if (child.OrderId != old.OrderId)
+                await TimelineAsync(child.OrderId, TicketCheckoutOrderEventKind.Voided,
+                    $"Ticket {child.Barcode} voided: its adult's ticket {old.Barcode} was resold", null, ct);
         }
     }
 
