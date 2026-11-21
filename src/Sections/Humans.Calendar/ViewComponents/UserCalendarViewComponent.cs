@@ -1,16 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Humans.Calendar.Contracts;
+using Humans.Calendar.Services;
 
-namespace Humans.Calendar.Contracts;
+namespace Humans.Calendar.ViewComponents;
 
 /// <summary>Admin view of a member's feed items. Never shows the token or feed URL.</summary>
-/// <remarks>
-/// Public so MVC discovers it and generates the tag helper: an internal view component renders as inert markup
-/// with a green build.
-/// </remarks>
-public sealed class UserCalendarViewComponent(
+internal sealed class UserCalendarViewComponent(
     IICalFeedService feed,
     IUserService users,
+    ICalendarFeedTokenService tokens,
     ILogger<UserCalendarViewComponent> logger) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
@@ -20,7 +19,7 @@ public sealed class UserCalendarViewComponent(
         {
             var ct = HttpContext.RequestAborted;
             var user = await users.GetUserInfoAsync(userId, ct);
-            model.HasFeedToken = await feed.HasFeedAsync(user?.Id ?? userId, ct);
+            model.HasFeedToken = await tokens.GetAsync(user?.Id ?? userId, ct) is not null;
             model.Items = (await feed.GetFeedItemsAsync(user?.Id ?? userId, ct)).OrderBy(i => i.Start).ToList();
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
@@ -36,7 +35,7 @@ public sealed class UserCalendarViewComponent(
     }
 }
 
-public class UserCalendarViewModel
+internal sealed class UserCalendarViewModel
 {
     public bool HasFeedToken { get; set; }
     public bool LoadFailed { get; set; }
