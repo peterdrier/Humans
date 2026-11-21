@@ -46,8 +46,8 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Oldest first, dated in the org time zone. Audits the actor: this is a bulk export of buyer identity leaving the
-    /// system.
+    /// Unordered and dated in the org time zone; the export controller orders by purchase time.
+    /// Audits the actor: this is a bulk export of buyer identity leaving the system.
     /// </summary>
     Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
