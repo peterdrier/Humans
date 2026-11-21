@@ -44,7 +44,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketSalesEvent
 
-**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves` and `PriceRules` are jsonb; `SupporterTotalsMinor` is `bigint[]`. Amounts are minor units (cents) throughout the checkout lane.
+**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves` and `PriceRules` are jsonb; `SupporterTotalsMinor` is `bigint[]`. `Switches` (jsonb, nullable; null reads as the defaults) holds the event's ticketing switches: resale scheme (`Off`, `Queue`, `QueueAndDirected`), partner tickets, donations, mailing list opt-in (see checkout.md). Amounts are minor units (cents) throughout the checkout lane.
 
 ### TicketCheckoutOrder
 

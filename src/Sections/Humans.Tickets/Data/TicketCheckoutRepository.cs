@@ -46,6 +46,15 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
                 AmountMinor = r.AmountMinor,
                 Label = r.Label,
             }).ToList();
+            tracked.Switches = salesEvent.Switches is { } sw
+                ? new TicketSalesSwitches
+                {
+                    Resale = sw.Resale,
+                    PartnerTickets = sw.PartnerTickets,
+                    Donations = sw.Donations,
+                    MailingListOptIn = sw.MailingListOptIn,
+                }
+                : null;
         }
         await ctx.SaveChangesAsync(ct);
     }

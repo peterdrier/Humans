@@ -485,6 +485,127 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Switched_off_partner_tickets_donations_and_mailing_list_are_refused_and_not_offered()
+    {
+        _salesEvent.Switches = new TicketSalesSwitches { PartnerTickets = false, Donations = false, MailingListOptIn = false };
+
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.OffersPartner.Should().BeFalse();
+        page.OffersDonations.Should().BeFalse();
+        page.AskMarketing.Should().BeFalse();
+        (await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_Invalid");
+        (await _service.StartCheckoutAsync(Buy(supporter: 40000), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_Invalid");
+        (await _service.StartCheckoutAsync(Buy(donation: 1000), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_Invalid");
+        _repo.Orders.Should().BeEmpty();
+
+        await _service.StartCheckoutAsync(Buy() with { MarketingOptIn = true }, _buyerId, Ct);
+        await _preferences.DidNotReceiveWithAnyArgs().UpdatePreferenceAsync(default, default, default, default!, default);
+    }
+
+    [HumansFact]
+    public async Task A_setup_without_switches_sells_the_default_scheme()
+    {
+        _salesEvent.Switches = null;
+
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.OffersPartner.Should().BeTrue();
+        page.OffersDonations.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Resale_switched_off_refuses_returns_and_a_resale_only_setup()
+    {
+        _salesEvent.Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off };
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var ticket = _repo.Tickets.Single(t => t.OrderId == order.Id);
+
+        (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single().CanOffer.Should().BeFalse();
+        (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_Closed");
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+
+        var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.ResaleOnly, null, 100, 0.1m,
+            [], [], [])
+        {
+            Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off },
+        };
+        (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().Be("Resale only needs resale switched on.");
+    }
+
+    [HumansFact]
+    public async Task Switching_resale_off_withdraws_open_offers_and_hands_the_tickets_back()
+    {
+        var ticket = await OfferedTicketAsync();
+
+        await SaveResaleOffAsync();
+
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleWithdrawn && e.Detail.Contains("resale switched off"));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketResaleWithdrawn, Arg.Any<string>(), ticket.OrderId,
+            Arg.Is<string>(d => d.Contains("resale switched off")), _buyerId, Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task An_offer_in_a_checkout_when_resale_is_switched_off_is_withdrawn_once_that_checkout_ends()
+    {
+        var ticket = await OfferedTicketAsync();
+        var pending = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+
+        await SaveResaleOffAsync();
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Reserved);
+
+        _backend.GetStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
+        (await _service.CancelAsync(pending.OrderId!.Value, _otherBuyerId, Ct)).Refusal.Should().BeNull();
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+    }
+
+    private async Task SaveResaleOffAsync()
+    {
+        var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
+            _salesEvent.Waves, [], [])
+        {
+            Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off },
+        };
+        (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Switching_to_queue_only_ends_live_invitations_and_the_offer_sells_from_the_queue()
+    {
+        var old = await OfferedTicketAsync();
+        EmailMessage? sent = null;
+        await _email.SendAsync(Arg.Do<EmailMessage>(m => sent = m), Arg.Any<CancellationToken>());
+        (await _service.InviteBuyerAsync(old.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().BeNull();
+        var token = sent!.HtmlBody["https://h.example/r/".Length..];
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct)).Should().NotBeNull();
+
+        var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.ResaleOnly, null, 3000, 0.10m,
+            _salesEvent.Waves, [], [])
+        {
+            Switches = new TicketSalesSwitches { Resale = ResaleScheme.Queue },
+        };
+        (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().BeNull();
+
+        _repo.Offers.Single().DirectedTokenHash.Should().BeNull();
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleInviteCancelled);
+        var held = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single();
+        held.DirectedActive.Should().BeFalse();
+        held.CanInvite.Should().BeFalse();
+        (await _service.InviteBuyerAsync(old.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotFound");
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct)).Should().BeNull();
+        (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
+            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+
+        var queued = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
+    }
+
+    [HumansFact]
     public async Task Mailing_list_opt_in_is_saved_only_when_the_buyer_has_no_choice_on_record()
     {
         await _service.StartCheckoutAsync(Buy() with { MarketingOptIn = true }, _buyerId, Ct);

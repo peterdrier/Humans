@@ -87,6 +87,32 @@
             <label class="form-label" for="ChildMaxAge">Child is under age</label>
             <input class="form-control" id="ChildMaxAge" name="ChildMaxAge" type="number" min="1" value="@f.ChildMaxAge" />
         </div>
+        <div class="col-md-6">
+            <label class="form-label" for="Resale">Resale</label>
+            <select class="form-select" id="Resale" name="Resale">
+                @foreach (var scheme in Enum.GetValues<ResaleScheme>())
+                {
+                    <option value="@scheme" selected="@(scheme == f.Resale)">@scheme</option>
+                }
+            </select>
+            <div class="form-text">Off: holders cannot return a ticket (no Resale only mode). Queue: returned tickets sell oldest first, before fresh stock. QueueAndDirected: also a holder's single-use link for one buyer.</div>
+        </div>
+        <div class="col-md-6">
+            <span class="form-label d-block">Offered at checkout</span>
+            @foreach (var (name, label, on) in new[]
+            {
+                (nameof(f.PartnerTickets), "Partner ticket (one more adult, public price)", f.PartnerTickets),
+                (nameof(f.Donations), "Donations (supporter totals and the free donation)", f.Donations),
+                (nameof(f.MailingListOptIn), "Mailing list opt-in", f.MailingListOptIn),
+            })
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="@name" name="@name" value="true" checked="@on" />
+                    <input type="hidden" name="@name" value="false" />
+                    <label class="form-check-label" for="@name">@label</label>
+                </div>
+            }
+        </div>
         <div class="col-md-3">
             <label class="form-label" for="ResaleOpensAtSold">Resale opens at tickets sold</label>
             <input class="form-control" id="ResaleOpensAtSold" name="ResaleOpensAtSold" type="number" min="0" value="@f.ResaleOpensAtSold" placeholder="empty: at once" />
