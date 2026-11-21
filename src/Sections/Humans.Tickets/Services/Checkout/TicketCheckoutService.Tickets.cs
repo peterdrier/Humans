@@ -62,7 +62,7 @@ internal sealed partial class TicketCheckoutService
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
                 held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
-                    CanOffer: salesEvent?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not TicketSalesMode.Closed },
+                    CanOffer: salesEvent?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not (TicketSalesMode.Closed or TicketSalesMode.InvitedOnly) },
                     HasDependents: hasDependents,
                     DirectedActive: offer?.HasLiveInvite == true)
                 {

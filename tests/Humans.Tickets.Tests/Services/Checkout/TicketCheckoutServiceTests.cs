@@ -1005,6 +1005,7 @@ public sealed class TicketCheckoutServiceTests
         _salesEvent.Mode = TicketSalesMode.InvitedOnly;
 
         _salesEvent.ResaleSelling.Should().BeFalse();
+        (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == ticket.Id).CanOffer.Should().BeFalse();
         (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_Closed");
         var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.InvitedOnly, null, 100, 0.1m,
             [], [], _salesEvent.PriceRules);
