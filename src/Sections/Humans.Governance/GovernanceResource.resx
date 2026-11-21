@@ -349,4 +349,13 @@
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
   <data name="Governance_Status_Board" xml:space="preserve"><value>Board</value></data>
   <data name="Governance_MemberSince" xml:space="preserve"><value>Member since</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Office</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>President</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vice-President</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Secretary</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Treasurer</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>No office</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Board office saved.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Only a current Board member can hold a Board office.</value></data>
 </root>

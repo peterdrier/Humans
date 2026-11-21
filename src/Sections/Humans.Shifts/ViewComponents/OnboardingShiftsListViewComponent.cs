@@ -6,22 +6,34 @@ using Humans.Shifts.Services;
 namespace Humans.Shifts.ViewComponents;
 
 /// <summary>
-/// The caller has already filtered <c>shifts</c> to the selected priority pill. Takes the event by id because the
-/// rota partials need this section's own <see cref="BurnSettingsInfo"/>.
+/// Fills Onboarding's <c>IOnboardingShiftsStep</c> slot. Onboarding has already filtered to the selected priority
+/// pill and passes the surviving <c>shiftIds</c>; this reads the rows and the viewer's signups from the same cached
+/// browse query Onboarding used.
 /// </summary>
-internal sealed class OnboardingShiftsListViewComponent(IBurnSettingsService burnSettings) : ViewComponent
+internal sealed class OnboardingShiftsListViewComponent(
+    IBurnSettingsService burnSettings,
+    IShiftService shifts,
+    IShiftView shiftView) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(
         Guid eventSettingsId,
-        IReadOnlyList<UrgentShiftInfo> shifts,
-        HashSet<Guid> userSignupShiftIds,
-        Dictionary<Guid, SignupStatus> userSignupStatuses)
+        Guid viewerUserId,
+        IReadOnlyList<Guid> shiftIds)
     {
-        var eventSettings = await burnSettings.GetByIdAsync(eventSettingsId, HttpContext.RequestAborted);
+        var ct = HttpContext.RequestAborted;
+        var eventSettings = await burnSettings.GetByIdAsync(eventSettingsId, ct);
         if (eventSettings is null)
             return Content(string.Empty);
 
-        var rotaGroups = shifts
+        var wanted = shiftIds.ToHashSet();
+        var rows = await shifts.GetBrowseShiftsAsync(new ShiftBrowseQuery(
+            eventSettingsId,
+            Flags: ShiftBrowseQueryFlags.IncludeSignups, ViewerUserId: viewerUserId), ct);
+        var (signupShiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(
+            (await shiftView.GetUserAsync(viewerUserId, ct)).Signups);
+
+        var rotaGroups = rows
+            .Where(u => wanted.Contains(u.Shift.Id))
             .OrderByDescending(u => u.UrgencyScore)
             .GroupBy(u => u.Shift.RotaId)
             .Select(rg => ShiftBrowseMapper.BuildRotaGroup(
@@ -36,8 +48,8 @@ internal sealed class OnboardingShiftsListViewComponent(IBurnSettingsService bur
             ShowSignups = true,
             Sort = "urgency",
             UrgencyRankedRotas = rotaGroups,
-            UserSignupShiftIds = userSignupShiftIds,
-            UserSignupStatuses = userSignupStatuses,
+            UserSignupShiftIds = signupShiftIds,
+            UserSignupStatuses = statuses,
         });
     }
 }

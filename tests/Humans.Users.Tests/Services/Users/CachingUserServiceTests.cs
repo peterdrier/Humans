@@ -662,6 +662,7 @@ public class CachingUserServiceTests
         {
             Id = languageId,
             ProfileId = profileId,
+            UserId = userId,
             LanguageCode = "es",
             Proficiency = LanguageProficiency.Native,
         });
@@ -669,6 +670,7 @@ public class CachingUserServiceTests
         {
             Id = historyId,
             ProfileId = profileId,
+            UserId = userId,
             Date = new LocalDate(2025, 3, 1),
             EventName = "Nowhere 2025",
         });
@@ -676,6 +678,7 @@ public class CachingUserServiceTests
         {
             Id = contactFieldId,
             ProfileId = profileId,
+            UserId = userId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 555 0001",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -895,6 +898,7 @@ public class CachingUserServiceTests
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = cf.Type,
                 Value = cf.Value,
                 Visibility = cf.Visibility,
@@ -907,6 +911,7 @@ public class CachingUserServiceTests
             {
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
+                UserId = profile.UserId,
                 Date = new LocalDate(2025, 1, 1),
                 EventName = v.EventName,
                 Description = v.Description,
@@ -1328,6 +1333,7 @@ public class CachingUserServiceTests
         {
             Id = Guid.NewGuid(),
             ProfileId = profileId,
+            UserId = userId,
             LanguageCode = "es",
             Proficiency = LanguageProficiency.Native,
         });
@@ -1366,6 +1372,7 @@ public class CachingUserServiceTests
         {
             Id = Guid.NewGuid(),
             ProfileId = profileId,
+            UserId = userId,
             Date = new LocalDate(2025, 3, 1),
             EventName = "Nowhere 2025",
             Description = "Sound crew",

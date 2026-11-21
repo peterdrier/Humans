@@ -80,6 +80,26 @@ public sealed class ServiceTests
         (_cache.GetActiveEventSettings())!.Id.Should().Be(second.Id, "a write must reload the snapshot");
     }
 
+    [HumansFact]
+    public async Task ValueReads_AreServedFromMemoryUntilAValueWriteReloadsThem()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _repository.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _repository.GetAllValuesAsync(Arg.Any<CancellationToken>()).Returns(
+            new Dictionary<string, string>(StringComparer.Ordinal) { [SettingKeys.IsEmailSendingPaused] = "false" });
+
+        (await _cache.GetValueAsync(SettingKeys.IsEmailSendingPaused, ct)).Should().Be("false");
+        (await _cache.GetValueAsync(SettingKeys.IsEmailSendingPaused, ct)).Should().Be("false");
+        await _repository.Received(1).GetAllValuesAsync(Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().GetValueAsync(SettingKeys.IsEmailSendingPaused, Arg.Any<CancellationToken>());
+
+        _repository.GetAllValuesAsync(Arg.Any<CancellationToken>()).Returns(
+            new Dictionary<string, string>(StringComparer.Ordinal) { [SettingKeys.IsEmailSendingPaused] = "true" });
+        await _cache.SetValueAsync(SettingKeys.IsEmailSendingPaused, "true", ct);
+
+        (await _cache.GetValueAsync(SettingKeys.IsEmailSendingPaused, ct)).Should().Be("true");
+    }
+
     private static EventSettings MakeEntity(Guid id, bool isActive = true) => new()
     {
         Id = id,

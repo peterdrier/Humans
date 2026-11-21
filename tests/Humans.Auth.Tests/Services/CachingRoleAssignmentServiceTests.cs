@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.Services;
+using Humans.Base.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -226,6 +227,29 @@ public sealed class CachingRoleAssignmentServiceTests
         var roles = await service.GetActiveForUserAsync(userA, Xunit.TestContext.Current.CancellationToken);
 
         roles.Select(r => r.RoleName).Should().Equal("Board", "Coordinator");
+    }
+
+    [HumansFact]
+    public async Task RoleChecks_AnswerFromActiveCachedRows_WithoutAskingInner()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var board = Guid.NewGuid();
+        var lapsed = Guid.NewGuid();
+        var (service, inner) = BuildService(
+            [ActiveFor(board, RoleNames.Board, now), ExpiredFor(lapsed, RoleNames.Admin, now)],
+            new FakeClock(now));
+
+        (await service.IsUserBoardMemberAsync(board, ct)).Should().BeTrue();
+        (await service.IsUserAdminAsync(lapsed, ct)).Should().BeFalse();
+        (await service.HasAnyActiveAssignmentAsync(lapsed, ct)).Should().BeFalse();
+        (await service.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct)).Should().Equal(board);
+        (await service.GetUserIdsWithActiveAssignmentsAsync(ct)).Should().Equal(board);
+
+        await inner.DidNotReceiveWithAnyArgs().HasActiveRoleAsync(default, default!, default);
+        await inner.DidNotReceiveWithAnyArgs().GetActiveUserIdsInRoleAsync(default!, default);
+        await inner.DidNotReceiveWithAnyArgs().GetUserIdsWithActiveAssignmentsAsync(default);
+        await inner.DidNotReceiveWithAnyArgs().HasAnyActiveAssignmentAsync(default, default);
     }
 
     [HumansFact]

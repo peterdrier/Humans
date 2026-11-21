@@ -163,5 +163,4 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboarding profiles pending</value></data>
   <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>Consent Coordinators</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
-  <data name="Consent_Meter_AudienceShiftsAdmin" xml:space="preserve"><value>Shifts Admins</value></data>
 </root>

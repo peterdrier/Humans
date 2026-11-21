@@ -7,6 +7,9 @@ internal sealed record EventSettingsSaveResult(bool Succeeded, string? ErrorMess
 /// <summary>Adds the event-settings write, which is off the cross-section contract.</summary>
 internal interface ISettingsWriteService : ISettingsService
 {
+    /// <summary>Every key/value row, for the cache's snapshot.</summary>
+    Task<IReadOnlyDictionary<string, string>> GetAllValuesAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Upserts by <see cref="EventSettingsInfo.Id"/> (blank mints a new cycle) and audits every call, even an unchanged
     /// save, naming <paramref name="actorUserId"/>. The posted timezone is ignored: the row stores the global one.
