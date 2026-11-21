@@ -2,7 +2,6 @@ using Humans.Search.Models;
 using Humans.Search.Services;
 using Humans.Search.Services.Dtos;
 using Humans.Base.Controllers;
-using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,23 +19,14 @@ internal sealed class SearchController(
     [HttpGet("")]
     public async Task<IActionResult> Index(
         string? q,
-        SearchResultType? filter,
+        string? filter,
         CancellationToken ct)
     {
         var trimmed = (q ?? string.Empty).Trim();
-        if (trimmed.Length < 2)
-            return View(new GlobalSearchViewModel { Query = q, Filter = filter });
-
-        return View(await RunSearchAsync(trimmed, filter, ct));
-    }
-
-    private async Task<GlobalSearchViewModel> RunSearchAsync(
-        string trimmed, SearchResultType? filter, CancellationToken ct)
-    {
         try
         {
             var results = await searchService.SearchAsync(trimmed, filter, ct);
-            return BuildViewModel(results, filter);
+            return View(BuildViewModel(trimmed.Length < 2 ? q : results.Query, results));
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -48,29 +38,23 @@ internal sealed class SearchController(
         {
             logger.LogError(ex, "Global search failed for query {Query}", trimmed);
             // Keep the form usable, but do not report an incomplete search as no matches.
-            return new GlobalSearchViewModel { Query = trimmed, Filter = filter, SearchFailed = true };
+            return View(new GlobalSearchViewModel { Query = trimmed, Filter = filter, SearchFailed = true });
         }
     }
 
-    private static GlobalSearchViewModel BuildViewModel(
-        GlobalSearchResults results, SearchResultType? filter) =>
+    private static GlobalSearchViewModel BuildViewModel(string? query, GlobalSearchResults results) =>
         new()
         {
-            Query = results.Query,
-            Filter = filter,
-            HumanResults = results.Humans
-                .OrderByRelevance()
+            Query = query,
+            Filter = results.Filter,
+            Buckets = results.Buckets
+                .Select(b => b with
+                {
+                    Hits = b.Hits
+                        .OrderByDescending(h => h.Score)
+                        .ThenBy(h => h.SortKey, StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
+                })
                 .ToList(),
-            TeamResults = SortByScore(results.Teams),
-            CampResults = SortByScore(results.Camps),
-            ShiftResults = SortByScore(results.Shifts),
-            EventResults = SortByScore(results.Events),
         };
-
-    private static IReadOnlyList<GlobalSearchResult> SortByScore(
-        IReadOnlyList<GlobalSearchResult> bucket) =>
-        bucket
-            .OrderByDescending(r => r.Score)
-            .ThenBy(r => r.SortKey, StringComparer.OrdinalIgnoreCase)
-            .ToList();
 }

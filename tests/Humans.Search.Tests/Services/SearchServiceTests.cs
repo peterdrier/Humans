@@ -1,63 +1,34 @@
 using AwesomeAssertions;
-using Humans.Camps.Contracts;
-using Humans.Events.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
-using Humans.Users.Contracts;
+using Humans.Base.Interfaces;
 using Humans.Search.Services;
-using Humans.Search.Services.Dtos;
-using Microsoft.Extensions.Configuration;
-using NSubstitute;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Humans.Search.Tests.Services;
 
 /// <summary>
-/// Pinned here and nowhere else: the human bucket's field mask (<see cref="PersonSearchFields.PublicAll"/>,
-/// this service's only search-time privacy filter) and the key/sort-key pass-through.
+/// The orchestration only: the length gate, trimming, the filter, enablement and order. What each category searches
+/// (field masks, visibility, the unbounded cap) is pinned beside its contributor in the owning section's tests.
 /// </summary>
 public sealed class SearchServiceTests
 {
-    private const int ScoreExact = 100;
-    private const int ScorePrefix = 80;
-
-    private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly ITeamService _teams = Substitute.For<ITeamService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
-    private readonly IShiftService _shifts = Substitute.For<IShiftService>();
-    private readonly IEventService _events = Substitute.For<IEventService>();
-
-    public SearchServiceTests()
-    {
-        StubHumans(MakeHuman("Kitchen Sink"));
-        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
-        StubCamps(new CampSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
-        StubRotas(new RotaSearchHit(Guid.NewGuid(), "Kitchen", ScoreExact));
-        StubEvents(new EventSearchHit(Guid.NewGuid(), "Kitchen Takeover", ScoreExact));
-    }
+    private readonly FakeCategory _humans = new("Human", 0);
+    private readonly FakeCategory _teams = new("Team", 10);
+    private readonly FakeCategory _events = new("Event", 40);
 
     [HumansTheory]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("a")]
     [InlineData("  k  ")]
-    public async Task SearchAsync_QueryShorterThanTwoCharsAfterTrim_ReturnsEmpty_AndTouchesNoSection(string query)
+    public async Task SearchAsync_QueryShorterThanTwoCharsAfterTrim_ListsEveryCategoryEmpty_AndSearchesNone(string query)
     {
         var results = await Build().SearchAsync(query, ct: TestContext.Current.CancellationToken);
 
         results.Query.Should().Be(query.Trim());
-        results.Humans.Should().BeEmpty();
-        results.Teams.Should().BeEmpty();
-        results.Camps.Should().BeEmpty();
-        results.Shifts.Should().BeEmpty();
-        results.Events.Should().BeEmpty();
-
-        await _users.DidNotReceive().SearchUsersAsync(
-            Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _teams.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _camps.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _shifts.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _events.DidNotReceive().SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team", "Event");
+        results.Buckets.Should().AllSatisfy(b => b.Hits.Should().BeEmpty());
+        AllCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -65,7 +36,7 @@ public sealed class SearchServiceTests
     {
         await Build().SearchAsync("ki", ct: TestContext.Current.CancellationToken);
 
-        await _teams.Received(1).SearchAsync("ki", Arg.Any<int>(), Arg.Any<CancellationToken>());
+        AllCalls().Should().Equal("Human:ki", "Team:ki", "Event:ki");
     }
 
     [HumansFact]
@@ -74,225 +45,95 @@ public sealed class SearchServiceTests
         var results = await Build().SearchAsync("  Kitchen  ", ct: TestContext.Current.CancellationToken);
 
         results.Query.Should().Be("Kitchen");
-        await _teams.Received(1).SearchAsync("Kitchen", Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _camps.Received(1).SearchAsync("Kitchen", Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _shifts.Received(1).SearchAsync("Kitchen", Arg.Any<int>(), Arg.Any<CancellationToken>());
+        AllCalls().Should().Equal("Human:Kitchen", "Team:Kitchen", "Event:Kitchen");
     }
 
-    /// <summary>
-    /// Each <c>onlyType</c> value queries just that section and skips the other four. One
-    /// fact over the five cases: a public test method cannot take the internal
-    /// <see cref="SearchResultType"/> as a theory parameter (CS0051).
-    /// </summary>
-    [HumansFact]
-    public async Task SearchAsync_OnlyType_QueriesThatSectionAndSkipsTheOtherFour()
+    [HumansTheory]
+    [InlineData("Team")]
+    [InlineData("team")]
+    public async Task SearchAsync_Filter_SearchesOnlyThatCategory_AndStillListsTheOthers(string filter)
     {
-        foreach (var onlyType in Enum.GetValues<SearchResultType>())
-        {
-            await AssertOnlyTypeQueriesOneSectionAsync(onlyType);
-        }
-    }
+        var results = await Build().SearchAsync("Kitchen", filter, TestContext.Current.CancellationToken);
 
-    private async Task AssertOnlyTypeQueriesOneSectionAsync(SearchResultType onlyType)
-    {
-        _users.ClearReceivedCalls();
-        _teams.ClearReceivedCalls();
-        _camps.ClearReceivedCalls();
-        _shifts.ClearReceivedCalls();
-        _events.ClearReceivedCalls();
-
-        var results = await Build().SearchAsync("Kitchen", onlyType, TestContext.Current.CancellationToken);
-
-        results.Humans.Should().HaveCount(onlyType == SearchResultType.Human ? 1 : 0);
-        results.Teams.Should().HaveCount(onlyType == SearchResultType.Team ? 1 : 0);
-        results.Camps.Should().HaveCount(onlyType == SearchResultType.Camp ? 1 : 0);
-        results.Shifts.Should().HaveCount(onlyType == SearchResultType.Shift ? 1 : 0);
-        results.Events.Should().HaveCount(onlyType == SearchResultType.Event ? 1 : 0);
-
-        await _users.Received(onlyType == SearchResultType.Human ? 1 : 0).SearchUsersAsync(
-            Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _teams.Received(onlyType == SearchResultType.Team ? 1 : 0).SearchAsync(
-            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _camps.Received(onlyType == SearchResultType.Camp ? 1 : 0).SearchAsync(
-            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _shifts.Received(onlyType == SearchResultType.Shift ? 1 : 0).SearchAsync(
-            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _events.Received(onlyType == SearchResultType.Event ? 1 : 0).SearchAsync(
-            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        results.Filter.Should().Be("Team");
+        AllCalls().Should().Equal("Team:Kitchen");
+        results.Buckets.Single(b => string.Equals(b.Key, "Team", StringComparison.Ordinal)).Hits.Should().ContainSingle();
+        results.Buckets.Where(b => !string.Equals(b.Key, "Team", StringComparison.Ordinal)).Should().AllSatisfy(b => b.Hits.Should().BeEmpty());
     }
 
     [HumansFact]
-    public async Task SearchAsync_NoOnlyType_QueriesEverySection()
+    public async Task SearchAsync_UnknownFilter_SearchesEveryCategory()
     {
-        var results = await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
+        var results = await Build().SearchAsync("Kitchen", "Nope", TestContext.Current.CancellationToken);
 
-        results.Humans.Should().ContainSingle();
-        results.Teams.Should().ContainSingle();
-        results.Camps.Should().ContainSingle();
-        results.Shifts.Should().ContainSingle();
-        results.Events.Should().ContainSingle();
+        results.Filter.Should().BeNull();
+        AllCalls().Should().HaveCount(3);
     }
 
     [HumansFact]
-    public async Task SearchAsync_CarriesEachSectionsOwnScore_WithoutRescoring()
+    public async Task SearchAsync_DisabledCategory_IsNeitherListedNorSearched_EvenWhenFiltered()
     {
-        // A score that contradicts the name proves this service takes the section's word for it.
-        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Nothing Like The Query", ScorePrefix));
-        StubEvents(new EventSearchHit(Guid.NewGuid(), "Nothing Like The Query", ScorePrefix));
+        _events.Enabled = false;
 
-        var results = await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
+        var results = await Build().SearchAsync("Kitchen", "Event", TestContext.Current.CancellationToken);
 
-        results.Teams.Should().ContainSingle().Which.Score.Should().Be(ScorePrefix);
-        results.Events.Should().ContainSingle().Which.Score.Should().Be(ScorePrefix);
+        results.Filter.Should().BeNull();
+        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team");
+        _events.Calls.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task SearchAsync_PassesEachSectionsKey_AndTheNameOnlyAsASortKey()
+    public async Task SearchAsync_OrdersCategoriesByWeight_NotRegistrationOrder()
     {
-        var teamId = Guid.NewGuid();
-        var campId = Guid.NewGuid();
-        var rotaId = Guid.NewGuid();
-        StubTeams(new TeamSearchHit(teamId, "Kitchen Crew", ScorePrefix));
-        StubCamps(new CampSearchHit(campId, "Garden of Joy", ScorePrefix));
-        StubRotas(new RotaSearchHit(rotaId, "Garden", ScoreExact));
-        var eventId = Guid.NewGuid();
-        StubEvents(new EventSearchHit(eventId, "Fire & Ice", ScorePrefix));
-
-        var results = await Build().SearchAsync("Garden", ct: TestContext.Current.CancellationToken);
-
-        var team = results.Teams.Should().ContainSingle().Subject;
-        team.Key.Should().Be(teamId);
-        team.SortKey.Should().Be("Kitchen Crew");
-
-        var camp = results.Camps.Should().ContainSingle().Subject;
-        camp.Key.Should().Be(campId);
-        camp.SortKey.Should().Be("Garden of Joy");
-
-        var rota = results.Shifts.Should().ContainSingle().Subject;
-        rota.Key.Should().Be(rotaId);
-        rota.SortKey.Should().Be("Garden");
-
-        var ev = results.Events.Should().ContainSingle().Subject;
-        ev.Key.Should().Be(eventId);
-        ev.SortKey.Should().Be("Fire & Ice");
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_GuidQuery_ReturnsWhateverEachSectionResolved()
-    {
-        // By-GUID lookups skip the visibility filter: the
-        // destination page decides whether the caller may open it. Each section owns that
-        // branch; this service passes the hits through unchanged.
-        var id = Guid.NewGuid();
-        StubTeams(new TeamSearchHit(Guid.NewGuid(), "Hidden Ops", ScoreExact));
-        StubCamps(new CampSearchHit(Guid.NewGuid(), "Pending Camp", ScoreExact));
-        StubRotas(new RotaSearchHit(Guid.NewGuid(), "Admin Only Rota", ScoreExact));
-
-        var results = await Build().SearchAsync(id.ToString(), ct: TestContext.Current.CancellationToken);
-
-        results.Teams.Should().ContainSingle().Which.Score.Should().Be(ScoreExact);
-        results.Camps.Should().ContainSingle().Which.Score.Should().Be(ScoreExact);
-        results.Shifts.Should().ContainSingle().Which.Score.Should().Be(ScoreExact);
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_GuidQuery_StillReturnsNothing_WhenTheSectionResolvedNoEntity()
-    {
-        StubTeams();
-        StubCamps();
-        StubRotas();
-
-        var results = await Build().SearchAsync(
-            Guid.NewGuid().ToString(), ct: TestContext.Current.CancellationToken);
-
-        results.Teams.Should().BeEmpty();
-        results.Camps.Should().BeEmpty();
-        results.Shifts.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_HumanBucket_AlwaysAsksForPublicFieldsOnly()
-    {
-        // SearchService takes no viewer, so "admin-only fields match for nobody" is
-        // structural: the mask is a constant, and this asserts the constant.
-        await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
-
-        await _users.Received(1).SearchUsersAsync(
-            "Kitchen", PersonSearchFields.PublicAll, Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _users.DidNotReceive().SearchUsersAsync(
-            Arg.Any<string>(),
-            Arg.Is<PersonSearchFields>(f =>
-                f.HasFlag(PersonSearchFields.Admin) || f.HasFlag(PersonSearchFields.LegalName)),
-            Arg.Any<int>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_GuidQuery_AlsoAsksForPublicFieldsOnly()
-    {
-        // The id path must not widen the field mask. Users' own eligibility gate on the
-        // GUID branch is pinned where it lives; this harness stubs IUserService.
-        await Build().SearchAsync(Guid.NewGuid().ToString(), ct: TestContext.Current.CancellationToken);
-
-        await _users.Received(1).SearchUsersAsync(
-            Arg.Any<string>(), PersonSearchFields.PublicAll, Arg.Any<int>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_PassesAnUnboundedCap_ToEverySection()
-    {
-        // No per-type cap: capping made people miss matches.
-        await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
-
-        await _users.Received(1).SearchUsersAsync(
-            Arg.Any<string>(), Arg.Any<PersonSearchFields>(), int.MaxValue, Arg.Any<CancellationToken>());
-        await _teams.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
-        await _camps.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
-        await _shifts.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
-        await _events.Received(1).SearchAsync(Arg.Any<string>(), int.MaxValue, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SearchAsync_EventsFeatureOff_ReturnsNoEvents_AndNeverCallsTheEventsSection()
-    {
-        var results = await Build(eventsEnabled: false)
+        var results = await new SearchService([new FakeContributor(_events, _teams, _humans)], Services())
             .SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
-        results.Events.Should().BeEmpty();
-        await _events.DidNotReceive().SearchAsync(
-            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        results.Buckets.Select(b => b.Key).Should().Equal("Human", "Team", "Event");
     }
 
-    private SearchService Build(bool eventsEnabled = true) =>
-        new(_users, _teams, _camps, _shifts, _events,
-            new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>(StringComparer.Ordinal)
-                {
-                    ["Features:Events"] = eventsEnabled ? "true" : "false"
-                })
-                .Build());
+    [HumansFact]
+    public async Task SearchAsync_PassesEachContributorsHitsAndLabelThrough_WithoutRescoring()
+    {
+        var hit = new SearchHit(Guid.NewGuid(), "Nothing Like The Query", 40, "Bio", "…kitchen…");
+        _teams.Hits = [hit];
 
-    private void StubHumans(params HumanSearchResult[] hits) =>
-        _users.SearchUsersAsync(
-                Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<HumanSearchResult>>(hits));
+        var results = await Build().SearchAsync("Kitchen", ct: TestContext.Current.CancellationToken);
 
-    private void StubTeams(params TeamSearchHit[] hits) =>
-        _teams.SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<TeamSearchHit>>(hits));
+        var team = results.Buckets.Single(b => string.Equals(b.Key, "Team", StringComparison.Ordinal));
+        team.Label.Should().Be("Team label");
+        team.IconCssClass.Should().Be("icon-Team");
+        team.ResultComponent.Should().Be<FakeCategory>();
+        team.Hits.Should().ContainSingle().Which.Should().Be(hit);
+    }
 
-    private void StubCamps(params CampSearchHit[] hits) =>
-        _camps.SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CampSearchHit>>(hits));
+    private SearchService Build() => new([new FakeContributor(_humans, _teams, _events)], Services());
 
-    private void StubRotas(params RotaSearchHit[] hits) =>
-        _shifts.SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<RotaSearchHit>>(hits));
+    private static ServiceProvider Services() => new ServiceCollection().BuildServiceProvider();
 
-    private void StubEvents(params EventSearchHit[] hits) =>
-        _events.SearchAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<EventSearchHit>>(hits));
+    private IEnumerable<string> AllCalls() => _humans.Calls.Concat(_teams.Calls).Concat(_events.Calls);
 
-    private static HumanSearchResult MakeHuman(string burnerName) =>
-        new(Guid.NewGuid(), burnerName, null, "Name", null, null, ScoreExact);
+    private sealed class FakeCategory(string key, int weight)
+    {
+        public bool Enabled { get; set; } = true;
+        public IReadOnlyList<SearchHit> Hits { get; set; } = [new SearchHit(Guid.NewGuid(), key, 100)];
+        public List<string> Calls { get; } = [];
+
+        public SearchCategory ToCategory() => new(
+            key,
+            _ => $"{key} label",
+            $"icon-{key}",
+            typeof(FakeCategory),
+            (_, query, _) =>
+            {
+                Calls.Add($"{key}:{query}");
+                return Task.FromResult(Hits);
+            },
+            weight,
+            _ => Enabled);
+    }
+
+    private sealed class FakeContributor(params FakeCategory[] categories) : ISearchContributor
+    {
+        public IEnumerable<SearchCategory> Categories() => categories.Select(c => c.ToCategory());
+    }
 }

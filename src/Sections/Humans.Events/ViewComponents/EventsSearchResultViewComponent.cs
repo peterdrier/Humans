@@ -10,10 +10,10 @@ namespace Humans.Events.ViewComponents;
 public sealed class EventsSearchResultViewComponent(IEventService events) : ViewComponent
 {
     /// <summary>Nothing when the event no longer resolves as approved.</summary>
-    public async Task<IViewComponentResult> InvokeAsync(Guid eventId)
+    public async Task<IViewComponentResult> InvokeAsync(Guid key)
     {
         // O(1) on the approved-only cache: no query, and no per-row scan either.
-        var match = await events.GetApprovedEventByIdAsync(eventId, HttpContext.RequestAborted);
+        var match = await events.GetApprovedEventByIdAsync(key, HttpContext.RequestAborted);
         return match is null
             ? Content(string.Empty)
             : View(new EventsSearchResultViewModel(match.Title, match.CategoryName));

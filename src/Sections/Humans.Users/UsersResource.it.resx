@@ -793,6 +793,7 @@
   <data name="Users_Status_Board" xml:space="preserve"><value>Consiglio</value></data>
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminazioni di account in sospeso</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>amministratori</value></data>
+  <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
   <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>Aggiungere {0} al tuo account?</value></data>
   <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Conferma questo indirizzo</value></data>
   <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>Questo link non funziona più. Un link funziona una sola volta, per un'ora. Per riceverne uno nuovo, rimuovi l'indirizzo nelle impostazioni email e aggiungilo di nuovo.</value></data>

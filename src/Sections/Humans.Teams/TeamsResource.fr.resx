@@ -527,4 +527,5 @@
   <data name="Teams_Notification_Someone" xml:space="preserve"><value>Quelqu’un</value></data>
   <data name="Teams_Meter_JoinRequestsPending" xml:space="preserve"><value>Demandes d’adhésion aux équipes en attente</value></data>
   <data name="Teams_Meter_AudienceAdmin" xml:space="preserve"><value>administrateurs</value></data>
+  <data name="Teams_Search_Category" xml:space="preserve"><value>Équipes</value></data>
 </root>

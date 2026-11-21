@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
@@ -41,7 +42,9 @@ public sealed class Section :
     ISectionHelp,
     ISectionNav,
     ISectionPolicies,
-    ISectionSettings
+    ISectionSettings,
+    ISearchContributor,
+    IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(CampsGalleryViewComponent))];
@@ -219,4 +222,17 @@ public sealed class Section :
         new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), CampsPolicies.Manage)
     ];
 
+    IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(MyCampsViewComponent))];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Camp",
+            sp => sp.GetRequiredService<IStringLocalizer<CampsResource>>()["Camps_Search_Category"].Value,
+            "fa-solid fa-campground", typeof(CampsSearchResultViewComponent), SearchCampsAsync, Weight: 20),
+    ];
+
+    private static async Task<IReadOnlyList<SearchHit>> SearchCampsAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<ICampService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(c => new SearchHit(c.CampId, c.Name, c.Score))];
 }

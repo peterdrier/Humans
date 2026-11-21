@@ -142,7 +142,7 @@ public sealed class WorkspaceIdentityServiceTests
             new Addr("alice@example.org", Primary: true),
             new Addr("alice@gmail.com", Designated: true, Status: GoogleEmailStatus.Valid));
 
-        await _sut.ClearIfAddressAsync(info.Id, "ALICE@gmail.com", Ct);
+        await _sut.AddressRemovedAsync(info.Id, "ALICE@gmail.com", Ct);
 
         _repo.Rows[info.Id].Email.Should().BeNull();
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
@@ -155,7 +155,7 @@ public sealed class WorkspaceIdentityServiceTests
         var info = Seed(new Addr("alice@example.org", Primary: true), new Addr("alice@gmail.com", Designated: true));
         await _repo.UpsertAsync(info.Id, "alice@gmail.com", GoogleEmailStatus.Valid, Instant.MinValue, Ct);
 
-        await _sut.ClearIfAddressAsync(info.Id, "alice@example.org", Ct);
+        await _sut.AddressRemovedAsync(info.Id, "alice@example.org", Ct);
 
         _repo.Rows[info.Id].Email.Should().Be("alice@gmail.com");
         _repo.Rows[info.Id].Status.Should().Be(GoogleEmailStatus.Valid);

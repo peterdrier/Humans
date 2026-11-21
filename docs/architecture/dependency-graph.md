@@ -42,6 +42,7 @@ graph LR
     Governance
     Grants
     Guide
+    HiEvents
     Holded
     Issues
     LowIncome
@@ -49,6 +50,7 @@ graph LR
     Monitor
     Notifications
     Onboarding
+    Permissions
     Pleo
     Preapprovals
     Pretix
@@ -193,6 +195,7 @@ graph LR
     Guide --> Auth
     Guide -.-> Camps
     Guide -.-> Teams
+    HiEvents -.-> Tickets
     Holded -.-> Finance
     Issues --> AuditLog
     Issues --> Auth
@@ -216,6 +219,7 @@ graph LR
     Onboarding -.-> Notifications
     Onboarding -.-> Teams
     Onboarding -.-> Users
+    Permissions --> Auth
     Pleo -.-> Finance
     Preapprovals -.-> Email
     Preapprovals -.-> Finance
@@ -230,11 +234,6 @@ graph LR
     Scanner --> Issues
     Scanner --> Settings
     Scanner --> Tickets
-    Search --> Camps
-    Search --> Events
-    Search --> Shifts
-    Search --> Teams
-    Search --> Users
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Consent
@@ -294,14 +293,13 @@ graph LR
     Tickets -.-> Users
     Users --> AuditLog
     Users --> Auth
-    Users --> Camps
     Users --> Cantina
     Users --> Consent
     Users --> Gdpr
     Users --> Google
     Users --> Issues
-    Users --> Settings
     Users --> Shifts
+    Users -.-> Camps
     Users -.-> Email
     Users -.-> Governance
     Users -.-> Notifications

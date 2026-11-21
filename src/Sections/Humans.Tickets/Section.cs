@@ -1,5 +1,6 @@
-using Humans.Settings.Contracts;
+using System.Globalization;
 using Humans.Base.Authorization;
+using Humans.Settings.Contracts;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
@@ -38,6 +39,7 @@ public sealed class Section :
     ISectionRoles,
     ISectionAccessMatrix,
     ISectionAdminNav,
+    ISectionAdminTiles,
     ISectionChrome,
     ISectionConfiguration,
     ISectionHealthChecks,
@@ -106,6 +108,7 @@ public sealed class Section :
         services.AddScoped<TicketsEmails>();
         services.AddScoped<IEmailPreviewContributor, TicketsEmailPreviews>();
         services.AddScoped<ICommunicationPreferenceLock, TicketingPreferenceLock>();
+        services.AddScoped<IUserEmailLock, TicketEmailLock>();
 
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
 
@@ -189,6 +192,23 @@ public sealed class Section :
             new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40)
         ])
     ];
+
+    IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
+        [new AdminTile("tickets.holders", "Ticket holders", "fa-solid fa-ticket", TicketHoldersAsync, Weight: 30)];
+
+    private static async ValueTask<AdminTileValue?> TicketHoldersAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
+        var count = 0;
+        if (activeEvent is { Year: > 0 })
+        {
+            var living = (await sp.GetRequiredService<IUserService>().GetAllUserInfosAsync(ct))
+                .Select(u => u.Id).ToHashSet();
+            count = (await sp.GetRequiredService<ITicketService>().GetAllParticipationsAsync(ct))
+                .Count(p => p.Year == activeEvent.Year && p.HasTicket && living.Contains(p.UserId));
+        }
+        return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with ticket");
+    }
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {

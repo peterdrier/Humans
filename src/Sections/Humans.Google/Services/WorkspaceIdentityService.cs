@@ -15,7 +15,7 @@ internal sealed class WorkspaceIdentityService(
     IWorkspaceIdentityRepository repo,
     IUserService users,
     IAuditLogService audit,
-    IClock clock) : IWorkspaceIdentityManagement, IUserDataContributor, IUserMerge
+    IClock clock) : IWorkspaceIdentityManagement, IUserDataContributor, IUserMerge, IUserEmailRemovalListener
 {
     internal const string WorkspaceIdentitySlice = "WorkspaceIdentity";
     internal const string NobodiesTeamSuffix = "@nobodies.team";
@@ -109,7 +109,7 @@ internal sealed class WorkspaceIdentityService(
             .Where(r => r is { Email: not null, DriveEmail: not null })
             .ToDictionary(r => r.UserId, r => new DriveEmailOverride(r.Email!, r.DriveEmail!));
 
-    public async Task ClearIfAddressAsync(Guid userId, string email, CancellationToken ct = default)
+    public async Task AddressRemovedAsync(Guid userId, string email, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
         var id = info?.Id ?? userId;

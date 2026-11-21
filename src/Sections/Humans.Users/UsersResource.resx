@@ -417,6 +417,7 @@
   <data name="Users_Status_Board" xml:space="preserve"><value>Board</value></data>
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Pending account deletions</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
   <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>Add {0} to your account?</value></data>
   <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Confirm this address</value></data>
   <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>This link no longer works. A link works once, for one hour. To get a new one, remove the address on your email settings page and add it again.</value></data>
