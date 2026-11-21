@@ -87,7 +87,7 @@ This is the same ladder used by `ProfileCardViewComponent` for the canonical pro
 
 ## Avatar Rule
 
-Each row renders an `<img>` thumbnail using `UserInfo.ProfilePictureUrl` — the single source of profile-picture URLs across the app. When the target has a custom-uploaded profile picture, that property resolves to `/Profile/Picture?id={ProfileId}&v={ticks}`; otherwise it falls back to whatever's stored on `User.ProfilePictureUrl` (typically null today). The picker is consistent with every other picture-display site (profile card, `<vc:human>`, etc.) for free.
+Each row renders an `<img>` thumbnail using `UserInfo.ProfilePictureUrl` — the single source of profile-picture URLs across the app. When the target has a custom-uploaded profile picture, that property resolves to `/Profile/Picture?id={userId}&v={ticks}`; otherwise it falls back to whatever's stored on `User.ProfilePictureUrl` (typically null today). The picker is consistent with every other picture-display site (profile card, `<vc:human>`, etc.) for free.
 
 The view defends against broken URLs with `img.onerror = () => img.remove();` — a bad picture URL silently drops the thumbnail without leaving a broken-image icon.
 
