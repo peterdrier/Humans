@@ -26,7 +26,9 @@ price, the named ticket and the QR code.
   edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`. Only infrastructure lives in
   configuration: there is no per-event mapping to keep, because each event's carrier products are found in Hi.Events.
 - **Carrier products**: Humans owns the catalogue and prices every line, so each Hi.Events event needs exactly one
-  product of type `TICKET` (ticket lines) and one of type `GENERAL` (donation lines), neither with taxes or fees.
+  product of type `TICKET` (ticket lines) and one of type `GENERAL` (donation lines), neither with taxes or fees, and
+  both hidden. The event must be live for the pay page to work, and a visible carrier would sell on the event's public
+  page at its base price, outside Humans; checkout refuses a visible carrier. The fork's checkout ignores the flag.
 
 ## Data Model
 

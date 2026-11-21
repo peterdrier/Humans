@@ -124,6 +124,18 @@ _handler.Enqueue(HttpStatusCode.OK, Products());
     }
 
     [HumansFact]
+    public async Task CreateCheckout_WithAVisibleCarrierProduct_ThrowsBeforeCreatingAnOrder()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", VisibleProductId), ("GENERAL", 200)));
+
+        var act = () => Backend().CreateCheckoutAsync(Request(
+            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+
+        (await act.Should().ThrowAsync<TicketCheckoutException>()).WithMessage("*must be hidden*");
+        _handler.Requests.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public async Task CreateCheckout_DonationWithoutADonationProduct_Throws()
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100)));
@@ -244,6 +256,28 @@ _handler.Enqueue(HttpStatusCode.OK, Products());
     }
 
     [HumansFact]
+    public async Task Cancel_ExpiredOrder_IsCancelledInHiEvents()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "ABANDONED"));
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "CANCELLED"));
+
+        await Backend().CancelAsync("7:42", Ct);
+
+        _handler.Requests[1].Request.RequestUri!.AbsolutePath.Should().Be("/api/events/7/orders/42/cancel");
+    }
+
+    [HumansFact]
+    public async Task Cancel_RacingAnotherCancel_IsANoOp()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "2027-01-02 10:30:00"));
+        _handler.Enqueue(HttpStatusCode.Conflict, new { message = "Order already cancelled" });
+
+        await Backend().CancelAsync("7:42", Ct);
+
+        _handler.Requests.Should().HaveCount(2);
+    }
+
+    [HumansFact]
     public async Task Cancel_ReservedOrder_CancelsWithoutRefund()
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "2027-01-02 10:30:00"));
@@ -343,10 +377,12 @@ _handler.Enqueue(HttpStatusCode.OK, Products());
         OrderId, Guid.NewGuid(), backendEventRef, "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
         Now.Plus(Duration.FromMinutes(30)), new Uri("https://humans.example/Tickets/Return"));
 
+    private const int VisibleProductId = 999;
+
     private static object Products(params (string Type, int Id)[] products) => new
     {
         data = (products.Length == 0 ? [("TICKET", 100), ("GENERAL", 200)] : products)
-            .Select(p => new { id = p.Id, product_type = p.Type, title = $"Carrier {p.Id}" })
+            .Select(p => new { id = p.Id, product_type = p.Type, title = $"Carrier {p.Id}", is_hidden = p.Id != VisibleProductId })
             .ToArray(),
     };
 

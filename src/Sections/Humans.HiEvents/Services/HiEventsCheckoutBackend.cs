@@ -231,7 +231,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     /// <summary>
     /// Humans owns the catalogue and prices every line, so a Hi.Events event needs just one carrier product per line
     /// kind: one product of type <c>TICKET</c> for ticket lines and one of type <c>GENERAL</c> for donations. Neither may
-    /// carry taxes or fees in Hi.Events, or the order total stops matching the lines and the checkout is refused.
+    /// carry taxes or fees in Hi.Events, or the order total stops matching the lines and the checkout is refused. Both must
+    /// be hidden: the pay page needs the event live, and a visible carrier would sell on its public page at its base price.
     /// </summary>
     private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, IReadOnlyList<HiEventsProduct> products)
     {
@@ -241,6 +242,12 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         {
             throw new TicketCheckoutException(
                 $"Hi.Events event {eventId} needs exactly one {productType} product to carry {line.Kind} lines; it has {carriers.Count}.");
+        }
+
+        if (!carriers[0].IsHidden)
+        {
+            throw new TicketCheckoutException(
+                $"Hi.Events product {carriers[0].Id} on event {eventId} must be hidden, or it sells on the event's public page.");
         }
 
         return new CheckoutOrderItem(
@@ -338,7 +345,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     private sealed record ProductPage(List<HiEventsProduct>? Data);
 
-    private sealed record HiEventsProduct(int Id, string? ProductType);
+    private sealed record HiEventsProduct(int Id, string? ProductType, bool IsHidden);
 
     private sealed record RefundEnvelope(RefundMeta? Meta);
 
