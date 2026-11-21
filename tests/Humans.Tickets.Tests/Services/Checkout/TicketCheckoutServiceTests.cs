@@ -673,7 +673,10 @@ public sealed class TicketCheckoutServiceTests
         _salesEvent.PriceRules.Add(new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Credit, AmountMinor = 9000 });
         var closed = new TicketSalesEvent
         {
-            Id = Guid.NewGuid(), EventSettingsId = _event.Id, BackendKey = "test", Mode = TicketSalesMode.Closed,
+            Id = Guid.NewGuid(),
+            EventSettingsId = _event.Id,
+            BackendKey = "test",
+            Mode = TicketSalesMode.Closed,
             Waves = [new TicketSalesWave { Name = "Only", EndsOn = new LocalDate(2027, 8, 1), PriceMinor = 1000 }],
         };
         _repo.SalesEvents.Add(closed);
