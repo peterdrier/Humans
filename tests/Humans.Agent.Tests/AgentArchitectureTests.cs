@@ -1,0 +1,21 @@
+using AwesomeAssertions;
+using Humans.Agent.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Humans.Agent.Tests;
+
+public class AgentArchitectureTests
+{
+    [HumansFact]
+    public void SectionRegistersTheConversationRetentionService()
+    {
+        // The daily job that deletes expired agent conversations asks for this interface.
+        // Lose the registration and the job stops running, so old conversations are kept
+        // forever. The job itself is not in DI, so no start-up check would notice.
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().Build());
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IAgentService));
+    }
+}
