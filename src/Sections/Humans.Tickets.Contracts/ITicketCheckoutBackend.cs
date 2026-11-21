@@ -60,7 +60,37 @@ public interface ITicketCheckoutBackend : IApplicationService
     /// </summary>
     [ExternalWrite]
     Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default);
+
+    /// <summary>What an admin needs to connect this backend, shown on Tickets' backends page. Never throws.</summary>
+    CheckoutBackendSetup Setup { get; }
+
+    /// <summary>
+    /// Reads the backend and changes nothing: the credentials work and, given <paramref name="backendEventRef"/>, that
+    /// event is ready to sell through Humans. Never throws; every problem is a finding that is not ok.
+    /// </summary>
+    Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default);
 }
+
+/// <summary>
+/// <paramref name="Hosting"/> says who runs the backend and where: Humans' own instance, the vendor's hosted service,
+/// or Stripe. <paramref name="WebhookPath"/> is the path and query on the Humans site to enter in the backend, secrets
+/// as placeholders; null when it needs no webhook. <paramref name="Notes"/> are setup steps the settings cannot show.
+/// </summary>
+public sealed record CheckoutBackendSetup(
+    string DisplayName,
+    string Hosting,
+    Uri? AdminUrl,
+    IReadOnlyList<CheckoutBackendSetting> Settings,
+    string? WebhookPath,
+    IReadOnlyList<string> Notes);
+
+/// <summary>
+/// One server setting the backend reads. <paramref name="Name"/> is the configuration key or environment variable;
+/// <paramref name="Value"/> is null when unset or secret, so a secret only ever shows as set or missing.
+/// </summary>
+public sealed record CheckoutBackendSetting(string Name, string Purpose, bool IsSecret, bool IsSet, string? Value);
+
+public sealed record CheckoutBackendFinding(bool Ok, string Text);
 
 /// <summary>
 /// <paramref name="EventId"/> is the Humans (Settings) event the order is for; several events may sell at once.

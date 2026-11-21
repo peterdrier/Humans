@@ -242,6 +242,7 @@ public class EndpointAuthorizationTests
             "BoxOfficeStripeWebhookController",
             "HiEventsWebhookController",
             "PretixWebhookController",
+            "HiEventsWebhookController",
             "CampApiController",
             "ColorPaletteController",
             // API-key authenticated by BackdoorApiKeyAuthFilter, which runs after endpoint authorization.

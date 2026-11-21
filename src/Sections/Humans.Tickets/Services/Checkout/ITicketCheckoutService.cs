@@ -12,6 +12,9 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 {
     IReadOnlyList<CheckoutBackendInfo> Backends { get; }
 
+    /// <summary>Runs the backend's read-only check, for an event when its id in the backend is given; null for an unknown key.</summary>
+    Task<IReadOnlyList<CheckoutBackendFinding>?> CheckBackendAsync(string key, string? backendEventRef, CancellationToken ct = default);
+
     Task<IReadOnlyList<TicketSalesEvent>> GetSalesEventsAsync(CancellationToken ct = default);
 
     Task<TicketSalesEvent?> GetSalesEventAsync(Guid id, CancellationToken ct = default);
@@ -104,7 +107,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
 }
 
-internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured);
+internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured, CheckoutBackendSetup Setup);
 
 /// <summary>Admin pages are English-only, so the refusal is shown as is.</summary>
 internal sealed record CheckoutMutationResult(string? Refusal = null)

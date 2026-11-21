@@ -31,6 +31,23 @@ internal sealed class TicketsSalesAdminController(
             new SalesAdminIndexViewModel(salesEvents, events, checkout.Backends));
     }
 
+    [HttpGet("Backends")]
+    public async Task<IActionResult> Backends(CancellationToken ct) =>
+        View("~/Views/Tickets/Admin/Sales/Backends.cshtml", await BackendsModelAsync(null, ct));
+
+    /// <summary>Changes nothing; Manage only because it calls the vendor with Humans' credentials.</summary>
+    [HttpPost("Backends/{key}/Check")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckBackend(string key, string? backendEventRef, CancellationToken ct)
+    {
+        var findings = await checkout.CheckBackendAsync(key, backendEventRef, ct);
+        if (findings is null)
+            return NotFound();
+        return View("~/Views/Tickets/Admin/Sales/Backends.cshtml",
+            await BackendsModelAsync(new BackendCheckResult(key, backendEventRef, findings), ct));
+    }
+
     [HttpGet("Edit/{id:guid?}")]
     public async Task<IActionResult> Edit(Guid? id, CancellationToken ct)
     {
@@ -94,6 +111,9 @@ internal sealed class TicketsSalesAdminController(
         return RedirectToAction(nameof(Order), new { id });
     }
 
+    private async Task<BackendsViewModel> BackendsModelAsync(BackendCheckResult? check, CancellationToken ct) =>
+        new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check);
+
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
         new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends);
 }
@@ -105,6 +125,17 @@ internal sealed record SalesAdminIndexViewModel(
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
+
+internal sealed record BackendsViewModel(
+    IReadOnlyList<CheckoutBackendInfo> Backends,
+    IReadOnlyList<TicketSalesEvent> SalesEvents,
+    IReadOnlyList<EventSettingsInfo> Events,
+    BackendCheckResult? Check)
+{
+    public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
+}
+
+internal sealed record BackendCheckResult(string Key, string? BackendEventRef, IReadOnlyList<CheckoutBackendFinding> Findings);
 
 internal sealed record SalesEditViewModel(
     SalesEditForm Form,

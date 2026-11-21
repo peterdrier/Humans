@@ -59,6 +59,39 @@ public sealed class BoxOfficeCheckoutBackendTests
     }
 
     [HumansFact]
+    public void Setup_says_test_mode_and_never_shows_the_key()
+    {
+        var setup = Backend().Setup;
+
+        setup.Hosting.Should().Contain("test mode");
+        setup.Settings.Should().OnlyContain(s => s.IsSecret && s.Value == null);
+        setup.Settings.Single(s => string.Equals(s.Name, "STRIPE_BOXOFFICE_KEY", StringComparison.Ordinal)).IsSet.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Check_reads_sessions_and_flags_a_missing_webhook_secret()
+    {
+        Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}""");
+
+        var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
+
+        findings.Should().Contain(f => f.Ok && f.Text.Contains("test mode"));
+        findings.Should().ContainSingle(f => !f.Ok).Which.Text.Should().Contain("STRIPE_BOXOFFICE_WEBHOOK_SECRET");
+        _requests.Single().Method.Should().Be(HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task Check_reports_an_unreachable_Stripe_instead_of_throwing()
+    {
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns<StripeResponse>(_ => throw new HttpRequestException("no route"));
+
+        var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("could not be reached"));
+    }
+
+    [HumansFact]
     public async Task Checkout_charges_each_line_exactly_and_is_idempotent_per_order()
     {
         Respond(Session("open", "unpaid"));

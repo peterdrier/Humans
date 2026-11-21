@@ -49,7 +49,13 @@ internal sealed partial class TicketCheckoutService(
     private readonly IReadOnlyList<ITicketCheckoutBackend> _backends = backends.ToList();
 
     public IReadOnlyList<CheckoutBackendInfo> Backends =>
-        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
+        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured, b.Setup)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
+
+    public async Task<IReadOnlyList<CheckoutBackendFinding>?> CheckBackendAsync(
+        string key, string? backendEventRef, CancellationToken ct = default) =>
+        BackendFor(key) is { } backend
+            ? await backend.CheckAsync(string.IsNullOrWhiteSpace(backendEventRef) ? null : backendEventRef.Trim(), ct)
+            : null;
 
     private ITicketCheckoutBackend? BackendFor(string key) =>
         _backends.FirstOrDefault(b => string.Equals(b.Key, key, StringComparison.Ordinal));
