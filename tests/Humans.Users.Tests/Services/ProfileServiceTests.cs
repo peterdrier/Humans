@@ -58,7 +58,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             NullLogger<UserService>.Instance, AuditLog);
 
         _service = new ProfileService(
-            _userRepository,
             _storageUserService,
             _pictureStorage);
         _editor = new ProfileEditorService(

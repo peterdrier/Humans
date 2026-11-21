@@ -1,11 +1,9 @@
-using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
 
 namespace Humans.Users.Services;
 
-internal sealed class ProfileService(IUserRepository userRepository,
-    IUserService userService,
+internal sealed class ProfileService(IUserService userService,
     IFileStorage fileStorage) : IProfilePictureService
 {
     /// <summary>
