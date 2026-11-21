@@ -66,7 +66,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   `IssueSectionRouting.CanHandle` the same question the service asks, to shape the page and to
   answer 403 where the service would answer 404.
 - **Contracts** — `IIssueTriage` (machine door), `IssueViewer` (who is asking),
-  `IIssueQueueOwner` (a section declaring a queue), `IIssuesRetention` (job), `IssueStatus`,
+  `IIssueQueueOwner` (a section declaring a queue) (job), `IssueStatus`,
   `IssueCategory`, the read models the machine door serialises.
 
 ## 4. Invariants
