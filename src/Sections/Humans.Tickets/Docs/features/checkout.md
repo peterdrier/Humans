@@ -10,8 +10,9 @@ amounts and VAT, buyer prefilled, expiry, return URL; returns the backend order 
 (state, fee, method, paid at, refunded total), `RefundAsync` (exact amount, `RefundId` idempotent; may answer
 `ManualRequired` with a dashboard link), `CancelAsync`, `ErasePersonalDataAsync` (GDPR: one person's name and email off
 one order), `Setup` (display name, hosting, its server settings with secrets only as set or missing, webhook path,
-setup notes) and `CheckAsync` (read-only connection test, optionally for one backend event; never throws, answers
-findings). Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
+setup notes), `CheckAsync` (read-only connection test, optionally for one backend event; never throws, answers
+findings) and `ListOrdersAsync` (every order the backend holds created in a period, for reconciliation; read-only,
+throws rather than answer a partial list). Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
 their webhook; Tickets then re-reads the status. Each backend is its own section: `Humans.BoxOffice` (`boxoffice`,
 Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
 
@@ -48,6 +49,33 @@ Rules every backend follows:
   account that carry one of those addresses (the account's primary address and those on the member's own orders; such
   a ticket is tombstoned but left valid, and one issued to another of their addresses is missed). A partner on an order that ended unpaid is forgotten 30 days after its
   hold lapsed, once a late payment can no longer arrive.
+
+## Reconciliation
+
+A standing rule (Peter, 2026-11-21): anything financial is checked against the other side. For one backend and a
+period, Humans' orders on it are matched with the backend's own list (`ListOrdersAsync`) by the Humans order id the
+backend stores (Stripe session metadata, pretix `api_meta`, Hi.Events `external_reference`). Each side's totals count
+paid orders only: orders, tickets, charged, refunded, chargebacks and net. Humans also counts the tickets it issued for
+those orders. The period is by the day the order was created; a pair belongs to its Humans order's day and the backend
+is read an hour wider on both sides, so an order made at midnight is not split.
+
+Per order it names what differs: missing at the backend, extra at the backend (no Humans order, or one on another
+backend), a duplicate backend order for one Humans order, a backend order Humans never recorded (a create whose answer
+was lost), paid on one side only, total, refunded, chargeback or ticket count, and a paid order whose tickets were not
+all issued. A backend that cannot be read gives an error, never a partial comparison.
+
+`/Tickets/Admin/Sales/Recon` shows it for any date range (default the last 30 days, Europe/Madrid days), differences
+only or every order, each row linking to the Humans order and the backend's admin. It is open to Read, Board included:
+checking the money is oversight, and it changes nothing. `TicketReconJob` runs daily at 04:30 over the whole sale (from
+the first sales setup to the start of today), so a late refund on an old order is caught too, and logs an error per
+backend out of balance or unreadable.
+
+Per backend: Box Office lists every Checkout Session on the ticket Stripe account (it has no events) and reads the ticket
+count from the session's `humans_ticket_count` metadata, since free lines never reach Stripe; a session without it
+counts as Humans' number. pretix lists each event's orders and counts positions on the `humans-ticket` item; its total
+adds back the adapter's refund fees. Hi.Events lists each event's orders and counts attendees; it reports no
+chargebacks. An order whose sales setup moved to another backend is read only through its event's current id, so it may
+show as missing.
 
 ## Flow
 
@@ -125,3 +153,5 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 - Chargebacks and disputes: a dispute is read only as `RefundedMinor` and nothing voids the ticket yet.
 - Payment-method-dependent prices.
 - Order, sales and check-in reports across events (the keying and the timeline are in place for them).
+- Reconciliation of payouts (what Stripe paid into the bank) and of fees; the reconciliation covers what each order
+  charged, refunded and lost to chargebacks.

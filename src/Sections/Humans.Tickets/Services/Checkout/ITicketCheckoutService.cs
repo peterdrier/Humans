@@ -1,6 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
+using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
 
@@ -88,6 +89,16 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Financial reconciliation of one backend for [<paramref name="from"/>, <paramref name="to"/>): Humans' orders
+    /// against the backend's own list. Reads only. Null for an unknown backend; a backend that cannot be read gives a
+    /// result carrying the error, never a partial comparison.
+    /// </summary>
+    Task<TicketRecon?> ReconcileBackendAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
+
+    /// <summary>The backends some sales setup sells through, for the reconciliation page and its daily run.</summary>
+    Task<IReadOnlyList<string>> GetBackendsInUseAsync(CancellationToken ct = default);
 }
 
 internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured, CheckoutBackendSetup Setup);

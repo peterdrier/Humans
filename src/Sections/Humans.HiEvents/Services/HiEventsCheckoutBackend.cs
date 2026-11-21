@@ -318,6 +318,45 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         return findings;
     }
 
+    public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
+        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
+    {
+        if (!IsConfigured)
+            throw new TicketCheckoutException("Hi.Events is not configured.");
+        if (!int.TryParse(backendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
+            throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{backendEventRef}'.");
+
+        var range = string.Create(CultureInfo.InvariantCulture,
+            $"filter_fields[created_at][gte]={Uri.EscapeDataString(from.ToInvariantTimestamp())}&filter_fields[created_at][lt]={Uri.EscapeDataString(to.ToInvariantTimestamp())}");
+        var orders = new List<BackendOrderSummary>();
+        for (var page = 1; ; page++)
+        {
+            using var response = await _http.GetAsync(string.Create(CultureInfo.InvariantCulture,
+                $"events/{eventId}/orders?per_page={ListPageSize}&page={page}&sort_by=created_at&sort_direction=asc&{range}"), ct);
+            var data = (await ReadAsync<OrderPage>(response, ct)).Data ?? [];
+            orders.AddRange(data.Select(order => new BackendOrderSummary(
+                ToBackendOrderId(eventId, order.Id),
+                Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
+                ParseCreatedAt(order.CreatedAt)
+                    ?? throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable created_at '{order.CreatedAt}'."),
+                ToState(order),
+                ToMinor(order.TotalGross),
+                order.Attendees?.Count,
+                ToMinor(order.TotalRefunded ?? 0m),
+                0)));
+            if (data.Count < ListPageSize)
+                return orders;
+        }
+    }
+
+    private const int ListPageSize = 100;
+
+    /// <summary>Laravel serialises timestamp columns as ISO 8601 in UTC; a raw column reads as plain UTC text.</summary>
+    private static Instant? ParseCreatedAt(string? value) =>
+        value is not null && InstantPattern.ExtendedIso.Parse(value) is { Success: true } iso
+            ? iso.Value
+            : DateFormattingExtensions.ParseInvariantTimestamp(value);
+
     private static async Task<bool> IsUserAsync(HttpResponseMessage response, CancellationToken ct)
     {
         try
@@ -474,6 +513,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     private sealed record ProductPage(List<HiEventsProduct>? Data);
 
+    private sealed record OrderPage(List<HiEventsOrder>? Data);
+
+    private sealed record HiEventsAttendee(int Id);
+
     private sealed record HiEventsProduct(int Id, string? ProductType, bool? IsHidden);
 
     private sealed record RefundEnvelope(RefundMeta? Meta);
@@ -492,5 +535,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         decimal? TotalRefunded,
         string? PaymentProvider,
         string? PaymentLinkUrl,
-        string? ReservedUntil); // UTC, "yyyy-MM-dd HH:mm:ss" with no offset
+        string? ReservedUntil, // UTC, "yyyy-MM-dd HH:mm:ss" with no offset
+        string? ExternalReference = null,
+        string? CreatedAt = null,
+        List<HiEventsAttendee>? Attendees = null);
 }

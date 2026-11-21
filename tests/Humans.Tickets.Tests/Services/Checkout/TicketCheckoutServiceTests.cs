@@ -123,6 +123,29 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Recon_reads_the_backend_a_margin_wider_and_reports_an_unreadable_one_without_comparing()
+    {
+        _salesEvent.BackendEventRef = " slug ";
+        var from = Instant.FromUtc(2027, 1, 1, 0, 0);
+        var to = Instant.FromUtc(2027, 1, 2, 0, 0);
+        _backend.ListOrdersAsync("slug", from - TicketReconBuilder.Margin, to + TicketReconBuilder.Margin, Arg.Any<CancellationToken>())
+            .Returns([new BackendOrderSummary("x", null, from, CheckoutState.Paid, 100, 1, 0, 0)]);
+
+        var recon = await _service.ReconcileBackendAsync("test", from, to, TestContext.Current.CancellationToken);
+
+        recon!.Problems.Single().Issues.Should().Equal(TicketReconIssue.ExtraAtBackend);
+        (await _service.GetBackendsInUseAsync(TestContext.Current.CancellationToken)).Should().Equal("test");
+        (await _service.ReconcileBackendAsync("nope", from, to, TestContext.Current.CancellationToken)).Should().BeNull();
+
+        _backend.ListOrdersAsync(Arg.Any<string?>(), Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<BackendOrderSummary>>(_ => throw new HttpRequestException("down"));
+        var failed = await _service.ReconcileBackendAsync("test", from, to, TestContext.Current.CancellationToken);
+        failed!.Error.Should().Contain("down");
+        failed.Rows.Should().BeEmpty();
+        failed.Balanced.Should().BeFalse();
+    }
+
+    [HumansFact]
     public void Price_is_the_wave_on_the_pricing_date_then_the_last_wave()
     {
         TicketPrice.For(_salesEvent, new LocalDate(2027, 1, 31), []).Should().NotBeNull()

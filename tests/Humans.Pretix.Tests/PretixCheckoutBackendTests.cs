@@ -601,4 +601,67 @@ public class PretixCheckoutBackendTests
         PretixCheckoutBackend.OrderCode(first).Should().HaveLength(16)
             .And.MatchRegex("^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]+$");
     }
+    [HumansFact]
+    public async Task ListOrders_FollowsPagesCountsTicketItemsAndAddsBackRefundFees()
+    {
+        object Listed(string code, string datetime, object apiMeta, object[] fees, object[] refunds, decimal total) => new
+        {
+            code,
+            status = "p",
+            url = $"https://pretix.test/nobodies/nowhere2027/order/{code}/secret/",
+            total = total.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+            datetime,
+            positions = new object[]
+            {
+                new { id = 1, positionid = 1, item = 7, price = "225.00", tax_rate = "10.00", canceled = false },
+                new { id = 2, positionid = 2, item = 7, price = "0.00", tax_rate = "10.00", canceled = false },
+                new { id = 3, positionid = 3, item = 8, price = "75.00", tax_rate = "0.00", canceled = false },
+            },
+            fees,
+            payments = new object[] { new { local_id = 1, state = "confirmed", amount = "300.00", provider = "stripe", payment_date = datetime } },
+            refunds,
+            api_meta = apiMeta,
+        };
+        var pretix = new FakePretix()
+            .On("GET", $"{Api}items/", HttpStatusCode.OK, new
+            {
+                results = new object[] { new { id = 7, internal_name = "humans-ticket" }, new { id = 8, internal_name = "humans-donation" } },
+            })
+            .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
+            {
+                next = $"https://pretix.test{Api}orders/?page=2",
+                results = new[] { Listed(Code, "2027-01-05T09:30:00.123456+00:00", new { humans_order_id = OrderId.ToString() }, [], [], 300m) },
+            })
+            .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
+            {
+                next = (string?)null,
+                results = new[]
+                {
+                    Listed("MANUAL1", "2027-01-06T10:00:00+00:00", new { },
+                        [new { id = 4, fee_type = "other", value = "-50.00", canceled = false, internal_type = "humans-refund:x" }],
+                        [new { local_id = 1, state = "done", amount = "50.00", payment = 1, comment = "humans-refund:x", provider = "stripe" }],
+                        250m),
+                },
+            });
+
+        var orders = await Create(pretix).ListOrdersAsync(
+            "nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
+
+        orders.Should().HaveCount(2);
+        orders[0].Should().Be(new BackendOrderSummary(
+            $"nowhere2027/{Code}", OrderId, Instant.FromUtc(2027, 1, 5, 9, 30).PlusTicks(1234560), CheckoutState.Paid, 30000, 2, 0, 0));
+        orders[1].HumansOrderId.Should().BeNull();
+        orders[1].TotalMinor.Should().Be(30000, "the refund fee comes back on; the refund counts on its own");
+        orders[1].RefundedMinor.Should().Be(5000);
+        pretix.Requests.Count(r => string.Equals(r.Route, $"GET {Api}orders/", StringComparison.Ordinal)).Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task ListOrders_WithoutAnEventSlug_Throws()
+    {
+        var act = () => Create(new FakePretix()).ListOrdersAsync(
+            null, Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>();
+    }
 }

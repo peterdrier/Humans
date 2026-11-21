@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.Base.Controllers;
+using Humans.Base.Interfaces;
 using Humans.Grants.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -20,6 +21,8 @@ internal sealed class TicketsSalesAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
     IGrantService grants,
+    IOrgTimeZone orgTimeZone,
+    IClock clock,
     IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -111,6 +114,39 @@ internal sealed class TicketsSalesAdminController(
         return RedirectToAction(nameof(Order), new { id });
     }
 
+    /// <summary>
+    /// Read-only, and open to Read (the Board) on purpose: checking the money is oversight. Dates are whole days in the
+    /// organisation's time zone, <paramref name="to"/> included; the default is the last 30 days.
+    /// </summary>
+    [HttpGet("Recon")]
+    public async Task<IActionResult> Recon(string? backend, string? from, string? to, bool all, CancellationToken ct)
+    {
+        var zone = orgTimeZone.Zone;
+        var today = clock.GetCurrentInstant().InZone(zone).Date;
+        var toDate = ReconDate(to) ?? today;
+        var fromDate = ReconDate(from) ?? toDate.PlusDays(-29);
+        if (fromDate > toDate)
+            (fromDate, toDate) = (toDate, fromDate);
+
+        var inUse = await checkout.GetBackendsInUseAsync(ct);
+        var keys = string.IsNullOrWhiteSpace(backend) ? inUse : [backend];
+        var start = fromDate.AtStartOfDayInZone(zone).ToInstant();
+        var end = toDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
+        var recons = new List<TicketRecon>();
+        foreach (var key in keys)
+        {
+            if (await checkout.ReconcileBackendAsync(key, start, end, ct) is not { } recon)
+                return NotFound();
+            recons.Add(recon);
+        }
+
+        return View("~/Views/Tickets/Admin/Sales/Recon.cshtml",
+            new ReconViewModel(recons, inUse, backend, fromDate, toDate, all, zone));
+    }
+
+    private static LocalDate? ReconDate(string? value) =>
+        value is not null && LocalDatePattern.Iso.Parse(value) is { Success: true } parsed ? parsed.Value : null;
+
     private async Task<BackendsViewModel> BackendsModelAsync(BackendCheckResult? check, CancellationToken ct) =>
         new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check);
 
@@ -134,6 +170,15 @@ internal sealed record BackendsViewModel(
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
+
+internal sealed record ReconViewModel(
+    IReadOnlyList<TicketRecon> Recons,
+    IReadOnlyList<string> BackendsInUse,
+    string? Backend,
+    LocalDate From,
+    LocalDate To,
+    bool All,
+    DateTimeZone Zone);
 
 internal sealed record BackendCheckResult(string Key, string? BackendEventRef, IReadOnlyList<CheckoutBackendFinding> Findings);
 
