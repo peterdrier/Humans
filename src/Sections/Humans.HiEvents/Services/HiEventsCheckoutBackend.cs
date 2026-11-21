@@ -133,7 +133,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             FeeMinor: null,
             PaymentMethod: order.PaymentProvider?.ToLowerInvariant(),
             PaidAt: null,
-            RefundedMinor: ToMinor(order.TotalRefunded ?? 0m));
+            RefundedMinor: ToMinor(order.TotalRefunded ?? 0m),
+            RefundFailed: string.Equals(order.RefundStatus, "REFUND_FAILED", StringComparison.Ordinal));
     }
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
@@ -182,6 +183,18 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         if (response.StatusCode == HttpStatusCode.Conflict)
             return;
 
+        await ReadOrderAsync(response, ct);
+    }
+
+    /// <summary>
+    /// Hi.Events copies the buyer's email onto every attendee and Humans sends attendees no email of their own, so
+    /// the person cannot be told apart from the others on the order: the whole order is anonymised. Humans keeps the
+    /// legal names it needs; amounts and statuses stay in Hi.Events.
+    /// </summary>
+    public async Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default)
+    {
+        var (eventId, orderId) = ParseBackendOrderId(backendOrderId);
+        using var response = await _http.PostAsync($"events/{eventId}/orders/{orderId}/anonymize", content: null, ct);
         await ReadOrderAsync(response, ct);
     }
 
@@ -306,6 +319,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         int Id,
         string Status,
         string? PaymentStatus,
+        string? RefundStatus,
         string Currency,
         decimal TotalGross,
         decimal? TotalRefunded,

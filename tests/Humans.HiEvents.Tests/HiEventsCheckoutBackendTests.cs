@@ -205,6 +205,39 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task GetStatus_ReportsAFailedRefund()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED",
+            refundStatus: "REFUND_FAILED"));
+
+        var result = await Backend().GetStatusAsync("7:42", Ct);
+
+        result.RefundFailed.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task ErasePersonalData_AnonymisesTheOrder()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED"));
+
+        await Backend().ErasePersonalDataAsync("7:42", "ana@example.org", Ct);
+
+        var (request, _) = _handler.Requests.Single();
+        request.Method.Should().Be(HttpMethod.Post);
+        request.RequestUri!.AbsolutePath.Should().Be("/api/events/7/orders/42/anonymize");
+    }
+
+    [HumansFact]
+    public async Task ErasePersonalData_ThrowsWhenHiEventsFails()
+    {
+        _handler.Enqueue(HttpStatusCode.NotFound, new { message = "Order 42 not found for event 7" });
+
+        var act = () => Backend().ErasePersonalDataAsync("7:42", "ana@example.org", Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansFact]
     public async Task GetStatus_ReservedWithAnUnreadableExpiry_Throws()
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "soon"));
@@ -271,7 +304,8 @@ public class HiEventsCheckoutBackendTests
         string paymentStatus = "AWAITING_PAYMENT",
         string? paymentLink = null,
         string? reservedUntil = null,
-        decimal refunded = 0m) => new
+        decimal refunded = 0m,
+        string? refundStatus = null) => new
         {
             data = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
@@ -279,6 +313,7 @@ public class HiEventsCheckoutBackendTests
                 ["event_id"] = 7,
                 ["status"] = status,
                 ["payment_status"] = paymentStatus,
+                ["refund_status"] = refundStatus,
                 ["currency"] = "EUR",
                 ["total_gross"] = total,
                 ["total_refunded"] = refunded,

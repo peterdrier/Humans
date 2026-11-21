@@ -56,7 +56,10 @@ None — the section owns no tables.
 - Refund: always `Pending` on acceptance, because Hi.Events refunds through Stripe asynchronously; the amount shows in
   `RefundedMinor` once Stripe confirms. The Humans refund id is the idempotency key, so a retry after a completed
   refund, or while that same refund is still pending in Stripe, refunds nothing and is accepted. Every 422 is a refund
-  that did not happen and answers `Failed` with Hi.Events' message.
+  that did not happen and answers `Failed` with Hi.Events' message. `RefundFailed` is Hi.Events' `REFUND_FAILED`, set
+  when Stripe fails a refund it had accepted.
+- Late payment: a payment that lands after Humans cancelled the checkout, or after it expired, is kept by the fork (it
+  never auto-refunds orders created here) and reads as `Paid`.
 - Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.
@@ -73,8 +76,8 @@ None — the section owns no tables.
 
 ## Personal data and erasure
 
-Hi.Events holds each buyer's name and email and each attendee's legal name for orders created here. No erasure path
-reaches it yet (HIEVENTS-1 in `debt.yml`): a Humans deletion request tombstones Tickets' copy only. Until that is
-built, this option is not fit for production, and an erasure request means anonymising the order and its attendees in
-the Hi.Events admin by the ticketing team.
-
+Hi.Events holds each buyer's name and email and each attendee's legal name for orders created here.
+`ErasePersonalDataAsync` calls the fork's `POST .../orders/{order_id}/anonymize`, which scrubs the buyer and every
+attendee on the order and keeps amounts, statuses and dates. The whole order goes, not just the named person, because
+Hi.Events copies the buyer's email onto every attendee row, so the person cannot be told apart from the others; Humans
+keeps the names it needs. A failure throws, so Tickets retries before tombstoning its own copy.
