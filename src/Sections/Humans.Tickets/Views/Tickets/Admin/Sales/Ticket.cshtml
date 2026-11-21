@@ -5,8 +5,7 @@
     string Eur(long minor) => (minor / 100m).ToEuro();
     var t = Model.Ticket;
     var live = t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
-    var renamable = t.State == TicketCheckoutTicketState.Valid && t.Kind == TicketHolderKind.Adult && t.ClassLabel is null && t.CreditsMinor == 0
-        && !Model.Dependents.Any(d => d.State == TicketCheckoutTicketState.Valid);
+    var renamable = t.State == TicketCheckoutTicketState.Valid && t.Kind == TicketHolderKind.Adult;
     var canCompanion = t.State == TicketCheckoutTicketState.Valid && t.Kind == TicketHolderKind.Adult
         && !Model.Dependents.Any(d => d.Kind == TicketHolderKind.Companion && d.State == TicketCheckoutTicketState.Valid);
 }
@@ -54,8 +53,12 @@
 <div authorize-policy="@TicketsPolicies.Manage">
     @if (renamable)
     {
-        <h2 class="h5">Rename (exception)</h2>
-        <p class="text-muted">Tickets are not transferable. Rename only as an agreed exception for a full price ticket; the new holder's account is found or created.</p>
+        <h2 class="h5">Rename</h2>
+        <p class="text-muted">
+            With the holder's own email, this corrects their legal name. With a different email it moves the ticket to
+            that person, which is only an agreed exception: tickets are not transferable, and only a full price ticket
+            without child or companion tickets can move. The new holder's account is found or created.
+        </p>
         <form asp-action="Rename" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post" class="row g-2 align-items-end mb-4">
             @Html.AntiForgeryToken()
             <div class="col-md-3"><label class="form-label" for="rename-name">Legal name</label><input class="form-control" id="rename-name" name="holderName" maxlength="200" required /></div>

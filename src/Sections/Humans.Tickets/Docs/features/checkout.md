@@ -98,4 +98,6 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 - Checkout tickets in holdings, the gate list and the scanner.
 - Payment-method-dependent prices.
 - Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.
+- Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
+  never asks the backend to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
 - A renamed ticket is not emailed to its new holder (`ITicketDelivery` is per order, sent once); they see it in their profile.

@@ -25,9 +25,9 @@ internal sealed partial class TicketCheckoutService
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Only a valid adult ticket can be renamed.");
 
-        var holder = await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct);
         var fromUserId = ticket.HolderUserId;
-        var samePerson = holder.UserId == fromUserId;
+        var existing = await users.GetByEmailOrAlternateAsync(holderEmail, ct);
+        var samePerson = existing is not null && existing.Id == fromUserId;
         // Correcting the same person's legal name is always allowed; moving the ticket to someone else is the exception.
         if (!samePerson)
         {
@@ -36,11 +36,14 @@ internal sealed partial class TicketCheckoutService
             if ((await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
                 .Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
                 return new("Void this ticket's child and companion tickets before moving it to another person.");
-            if (await HoldsTicketAsync(ticket.SalesEventId, holder.UserId, clock.GetCurrentInstant(), ct))
+            if (existing is not null && await HoldsTicketAsync(ticket.SalesEventId, existing.Id, clock.GetCurrentInstant(), ct))
                 return new("That person already holds a ticket for this event.");
         }
+        // Only once the rename is allowed, so a refused move leaves no account behind.
+        var holderUserId = existing?.Id
+            ?? (await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct)).UserId;
 
-        ticket.HolderUserId = holder.UserId;
+        ticket.HolderUserId = holderUserId;
         ticket.HolderName = holderName;
         ticket.HolderEmail = holderEmail;
         await repository.UpdateTicketAsync(ticket, ct);
@@ -50,7 +53,7 @@ internal sealed partial class TicketCheckoutService
             l.Kind == CheckoutLineKind.Ticket && l.HolderKind is null or TicketHolderKind.Adult && l.AttendeeUserId == fromUserId);
         if (order is not null && line is not null)
         {
-            line.AttendeeUserId = holder.UserId;
+            line.AttendeeUserId = holderUserId;
             line.AttendeeName = holderName;
             line.AttendeeEmail = holderEmail;
             await repository.UpdateOrderAsync(order, ct);
@@ -62,9 +65,9 @@ internal sealed partial class TicketCheckoutService
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.Renamed,
             $"Ticket {ticket.Barcode} {what} by the ticketing team: {why}", actorUserId, ct);
         var description = $"Ticket {ticket.Barcode} {what}" +
-            (samePerson ? string.Empty : $" (from user {fromUserId?.ToString() ?? "none"} to user {holder.UserId})") + $": {why}";
+            (samePerson ? string.Empty : $" (from user {fromUserId?.ToString() ?? "none"} to user {holderUserId})") + $": {why}";
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketRenamed, AuditEntityType, ticket.OrderId,
-            description, actorUserId, holder.UserId, AuditSubjectTypes.User);
+            description, actorUserId, holderUserId, AuditSubjectTypes.User);
         if (!samePerson && fromUserId is { } previous)
             await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketRenamed, AuditEntityType, ticket.OrderId,
                 description, actorUserId, previous, AuditSubjectTypes.User);

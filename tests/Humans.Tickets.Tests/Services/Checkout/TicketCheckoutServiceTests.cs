@@ -597,14 +597,13 @@ public sealed class TicketCheckoutServiceTests
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
             .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
         var ticket = await PaidAdultAsync();
-        _provisioning.FindOrCreateUserByEmailAsync("cy@example.com", "Cy", ContactSource.Manual, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(Guid.NewGuid(), Created: true));
-        _provisioning.FindOrCreateUserByEmailAsync("ana@example.com", "Ana María García", ContactSource.Manual, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(_buyerId, Created: false));
+        var buyer = await _users.GetUserInfoAsync(_buyerId, Ct);
+        _users.GetByEmailOrAlternateAsync("ana@example.com", Arg.Any<CancellationToken>()).Returns(buyer);
 
         (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Asked nicely", _adminId, Ct))
             .Refusal.Should().StartWith("Only a full price ticket");
         ticket.HolderUserId.Should().Be(_buyerId);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
 
         (await _service.RenameTicketAsync(ticket.Id, "Ana María García", "ana@example.com", "Typo in the legal name", _adminId, Ct))
             .Refusal.Should().BeNull();
