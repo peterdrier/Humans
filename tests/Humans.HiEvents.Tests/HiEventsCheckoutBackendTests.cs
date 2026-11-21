@@ -451,8 +451,12 @@ public class HiEventsCheckoutBackendTests
     public async Task ListOrders_PagesThroughThePeriodAndReadsHumansIdsAndTickets()
     {
         var full = Enumerable.Range(1, 100).Select(i => ListedOrder(i, OrderId.ToString("N"), attendees: 1)).ToArray();
-        _handler.Enqueue(HttpStatusCode.OK, new { data = full });
-        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(101, null, attendees: 2, refunded: 50m) } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = full, meta = new { last_page = 2, total = 101 } });
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { ListedOrder(100, OrderId.ToString("N"), attendees: 1), ListedOrder(101, null, attendees: 2, refunded: 50m) },
+            meta = new { last_page = 2, total = 101 },
+        });
 
         var orders = await Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
@@ -466,6 +470,17 @@ public class HiEventsCheckoutBackendTests
             .And.Contain("filter_fields[created_at][gte]=2027-01-01 00:00:00")
             .And.Contain("filter_fields[created_at][lt]=2027-02-01 00:00:00");
         Uri.UnescapeDataString(_handler.Requests[1].Request.RequestUri!.Query).Should().Contain("page=2&");
+    }
+
+    [HumansFact]
+    public async Task ListOrders_WhenAnOrderSlipsBetweenPages_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
+
+        var act = () => Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
     }
 
     [HumansFact]

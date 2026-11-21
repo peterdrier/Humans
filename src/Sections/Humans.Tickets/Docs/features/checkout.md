@@ -62,21 +62,25 @@ reaches a backend, so it stays out of both sides' totals and only its tickets ar
 
 Per order it names what differs: missing at the backend, extra at the backend (no Humans order, or one on another
 backend), a duplicate backend order for one Humans order, a backend order Humans never recorded (a create whose answer
-was lost), paid on one side only, total, refunded, chargeback or ticket count, and a paid order whose tickets were not
-all issued. A backend that cannot be read gives an error, never a partial comparison.
+was lost, or one listed in place of the recorded one, which then reads missing), paid on one side only, total, refunded,
+chargeback or ticket count, and a paid order whose tickets were not all issued. A difference where no money moved on
+either side (an open checkout, an expired leftover) is listed but does not unbalance the backend. A backend that cannot
+be read gives an error, never a partial comparison.
 
 `/Tickets/Admin/Sales/Recon` shows it for any date range (default the last 30 days, Europe/Madrid days), differences
 only or every order, each row linking to the Humans order and the backend's admin. It is open to Read, Board included:
 checking the money is oversight, and it changes nothing. `TicketReconJob` runs daily at 04:30 over the whole sale (from
-the first sales setup to the start of today), so a late refund on an old order is caught too, and logs an error per
-backend out of balance or unreadable.
+the first sales setup to the start of today), so a late refund on an old order is caught too. It logs an error per
+backend out of balance or unreadable, an information line per balanced one, and goes on to the next backend when one
+fails. A backend stays in use while it holds orders, whatever the sales setups point at now.
 
 Per backend: Box Office lists every Checkout Session on the ticket Stripe account (it has no events) and reads the ticket
 count from the session's `humans_ticket_count` metadata, since free lines never reach Stripe; a session without it
-counts as Humans' number. pretix lists each event's orders and counts positions on the `humans-ticket` item; its total
-adds back the adapter's refund fees. Hi.Events lists each event's orders and counts attendees; it reports no
-chargebacks. An order whose sales setup moved to another backend is read only through its event's current id, so it may
-show as missing.
+counts as Humans' number. pretix lists each event's orders and counts positions on the `humans-ticket` item; a paid
+order is charged what pretix received, and refunds made outside pretix (`external`) count as refunded. Hi.Events lists
+each event's orders and counts attendees; it reports no chargebacks, and its order list leaves out unpaid orders, so an
+open checkout reads missing (no money moved) and a lost create shows only once paid. Every event a backend's orders were
+sold under is read (`EventRefOf`), beside the events the setups sell through now.
 
 ## Flow
 
@@ -156,3 +160,7 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 - Order, sales and check-in reports across events (the keying and the timeline are in place for them).
 - Reconciliation of payouts (what Stripe paid into the bank) and of fees; the reconciliation covers what each order
   charged, refunded and lost to chargebacks.
+- Reconciliation follow-ups: a notification or audit entry when out of balance (today only the error log); signing off a
+  difference; a vendor admin link on extra rows; currency on backend rows (all are summed as EUR cents); comparing
+  refunds with Humans' own refund records rather than the backend's copy; telling a Stripe test account shared by QA and
+  previews apart (each sees the others' sessions as extra).

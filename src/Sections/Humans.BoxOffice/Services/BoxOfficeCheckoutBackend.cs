@@ -165,6 +165,8 @@ internal sealed class BoxOfficeCheckoutBackend(
             charge is { Disputed: true, Id: { } chargeId } ? await DisputedAsync(chargeId, ct) : 0);
     }
 
+    public string? EventRefOf(string backendOrderId) => null;
+
     /// <summary>
     /// Lists every Checkout Session on the account, since the Stripe account sells tickets only and a session Humans
     /// did not open is exactly what reconciliation must show. Box Office keeps no events, so the event id is ignored.

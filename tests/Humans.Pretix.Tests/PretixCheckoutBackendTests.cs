@@ -657,6 +657,42 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task ListOrders_ChargesWhatWasReceivedAndCountsExternalRefunds()
+    {
+        var pretix = new FakePretix()
+            .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = new object[] { new { id = 7, internal_name = "humans-ticket" } } })
+            .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
+            {
+                results = new object[]
+                {
+                    new
+                    {
+                        code = Code,
+                        status = "p",
+                        url = $"https://pretix.test/nobodies/nowhere2027/order/{Code}/secret/",
+                        total = "300.00",
+                        datetime = "2027-01-05T09:30:00+00:00",
+                        positions = new object[] { new { id = 1, positionid = 1, item = 7, price = "300.00", tax_rate = "10.00", canceled = false } },
+                        fees = Array.Empty<object>(),
+                        payments = new object[]
+                        {
+                            new { local_id = 1, state = "confirmed", amount = "300.00", provider = "stripe", payment_date = "2027-01-05T09:31:00+00:00" },
+                            new { local_id = 2, state = "confirmed", amount = "300.00", provider = "stripe", payment_date = "2027-01-05T09:32:00+00:00" },
+                        },
+                        refunds = new object[] { new { local_id = 1, state = "external", amount = "40.00", payment = 1, comment = (string?)null, provider = "stripe" } },
+                        api_meta = new { humans_order_id = OrderId.ToString() },
+                    },
+                },
+            });
+
+        var order = (await Create(pretix).ListOrdersAsync(
+            "nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken)).Single();
+
+        order.TotalMinor.Should().Be(60000, "paid twice");
+        order.RefundedMinor.Should().Be(4000, "a refund made outside pretix has left");
+    }
+
+    [HumansFact]
     public async Task ListOrders_WithoutAnEventSlug_Throws()
     {
         var act = () => Create(new FakePretix()).ListOrdersAsync(

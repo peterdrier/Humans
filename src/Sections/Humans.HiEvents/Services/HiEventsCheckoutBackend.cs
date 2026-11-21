@@ -318,6 +318,9 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         return findings;
     }
 
+    public string? EventRefOf(string backendOrderId) =>
+        ParseBackendOrderId(backendOrderId).EventId.ToString(CultureInfo.InvariantCulture);
+
     public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
@@ -328,13 +331,15 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
         var range = string.Create(CultureInfo.InvariantCulture,
             $"filter_fields[created_at][gte]={Uri.EscapeDataString(from.ToInvariantTimestamp())}&filter_fields[created_at][lt]={Uri.EscapeDataString(to.ToInvariantTimestamp())}");
-        var orders = new List<BackendOrderSummary>();
+        var orders = new Dictionary<int, BackendOrderSummary>();
         for (var page = 1; ; page++)
         {
             using var response = await _http.GetAsync(string.Create(CultureInfo.InvariantCulture,
                 $"events/{eventId}/orders?per_page={ListPageSize}&page={page}&sort_by=created_at&sort_direction=asc&{range}"), ct);
-            var data = (await ReadAsync<OrderPage>(response, ct)).Data ?? [];
-            orders.AddRange(data.Select(order => new BackendOrderSummary(
+            var read = await ReadAsync<OrderPage>(response, ct);
+            var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered an order page without its paging.");
+            foreach (var order in read.Data ?? [])
+                orders[order.Id] = new BackendOrderSummary(
                 ToBackendOrderId(eventId, order.Id),
                 Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
                 ParseCreatedAt(order.CreatedAt)
@@ -343,9 +348,13 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                 ToMinor(order.TotalGross),
                 order.Attendees?.Count,
                 ToMinor(order.TotalRefunded ?? 0m),
-                0)));
-            if (data.Count < ListPageSize)
-                return orders;
+                0);
+            if (page < meta.LastPage)
+                continue;
+            // Orders sharing a created_at second may change places between pages; one skipped shows here.
+            if (orders.Count != meta.Total)
+                throw new HttpRequestException($"Hi.Events listed {orders.Count} distinct orders of the {meta.Total} it counts; read again.");
+            return orders.Values.ToList();
         }
     }
 
@@ -513,7 +522,9 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     private sealed record ProductPage(List<HiEventsProduct>? Data);
 
-    private sealed record OrderPage(List<HiEventsOrder>? Data);
+    private sealed record OrderPage(List<HiEventsOrder>? Data, PageMeta? Meta);
+
+    private sealed record PageMeta(int LastPage, int Total);
 
     private sealed record HiEventsAttendee(int Id);
 

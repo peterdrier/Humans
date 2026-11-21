@@ -79,6 +79,12 @@ public interface ITicketCheckoutBackend : IApplicationService
     /// </summary>
     Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default);
+
+    /// <summary>
+    /// The backend event ref <paramref name="backendOrderId"/> was sold under, so an order is still reconciled after its
+    /// sales setup moved to another event or backend; null for a backend that keeps no events.
+    /// </summary>
+    string? EventRefOf(string backendOrderId);
 }
 
 /// <summary>

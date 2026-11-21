@@ -36,6 +36,7 @@
 <p class="text-muted">
     Humans' orders against each backend's own order list, by the day the order was created (@Model.Zone.Id).
     Totals count paid orders; every order is matched whatever its state, so a missing, extra or doubled one shows.
+    A difference where no money moved on either side is listed but leaves the backend balanced.
     A daily run checks the whole sale and logs an error when a backend is out of balance.
 </p>
 
@@ -124,7 +125,7 @@
                             {
                                 var o = row.Order;
                                 var b = row.Backend;
-                                <tr class="@(row.Issues.Count > 0 ? "table-warning" : null)">
+                                <tr class="@(row.Issues.Count == 0 ? null : row.MoneyMoved ? "table-warning" : "table-light")">
                                     <td>@row.CreatedAt.ToDateTime(Model.Zone)</td>
                                     <td>
                                         @if (o is not null)
@@ -160,7 +161,7 @@
                                         @(o?.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString() ?? "–") /
                                         @(b?.TicketCount?.ToString() ?? "–")@(row.TicketsIssued is { } issued ? $" · {issued} issued" : "")
                                     </td>
-                                    <td>@string.Join(", ", row.Issues.Select(Issue))</td>
+                                    <td>@string.Join(", ", row.Issues.Select(Issue))@(row.Issues.Count > 0 && !row.MoneyMoved ? " (no money moved)" : "")</td>
                                 </tr>
                             }
                         </tbody>

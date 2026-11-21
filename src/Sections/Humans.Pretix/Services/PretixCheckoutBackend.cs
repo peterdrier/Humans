@@ -350,6 +350,8 @@ internal sealed partial class PretixCheckoutBackend(
         return findings;
     }
 
+    public string? EventRefOf(string backendOrderId) => ParseBackendOrderId(backendOrderId).EventSlug;
+
     public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
@@ -387,6 +389,13 @@ internal sealed partial class PretixCheckoutBackend(
         var refundFees = order.Fees
             .Where(f => !f.Canceled && f.InternalType?.StartsWith(RefundCommentPrefix, StringComparison.Ordinal) == true)
             .Sum(f => f.Value);
+        // A paid order is charged what pretix received, so one paid twice or short shows as a total difference.
+        var charged = status.State == CheckoutState.Paid
+            ? order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
+            : order.Total - refundFees;
+        // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until someone processes it;
+        // the money is gone, so reconciliation counts it though GetStatusAsync does not.
+        var external = order.Refunds.Where(r => string.Equals(r.State, "external", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
         return new BackendOrderSummary(
             FormatBackendOrderId(eventSlug, order.Code),
             order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var meta) == true
@@ -395,9 +404,9 @@ internal sealed partial class PretixCheckoutBackend(
                 : null,
             ParseInstant(order.Datetime) ?? throw new HttpRequestException($"pretix order {order.Code} has no datetime."),
             status.State,
-            ToMinor(order.Total - refundFees),
+            ToMinor(charged),
             order.Positions.Count(p => !p.Canceled && ticketItems.Contains(p.Item)),
-            status.RefundedMinor,
+            status.RefundedMinor + external,
             status.DisputedMinor);
     }
 

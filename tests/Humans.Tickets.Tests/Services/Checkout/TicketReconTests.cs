@@ -159,6 +159,32 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
+    public void Recorded_backend_order_replaced_by_another_names_both()
+    {
+        Order();
+        _backend[0] = _backend[0] with { BackendOrderId = "ev/OTHER" };
+
+        var recon = Build();
+
+        recon.Balanced.Should().BeFalse();
+        recon.Problems.Select(r => (r.Backend?.BackendOrderId, r.Issues.Single())).Should().BeEquivalentTo([
+            ((string?)null, TicketReconIssue.MissingAtBackend), ("ev/OTHER", TicketReconIssue.NotRecorded),
+        ]);
+    }
+
+    [HumansFact]
+    public void Difference_where_no_money_moved_is_listed_and_balanced()
+    {
+        Order(state: TicketCheckoutOrderState.Pending, atBackend: false);
+        _backend.Add(new BackendOrderSummary("ev/LEFTOVER", null, Mid, CheckoutState.Expired, 25000, 1, 0, 0));
+
+        var recon = Build();
+
+        recon.Problems.Should().HaveCount(2).And.OnlyContain(r => !r.MoneyMoved);
+        recon.Balanced.Should().BeTrue();
+    }
+
+    [HumansFact]
     public void Differences_in_money_and_tickets_are_named_per_order()
     {
         Order();

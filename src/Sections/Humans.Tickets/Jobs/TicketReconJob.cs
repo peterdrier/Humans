@@ -27,9 +27,27 @@ internal sealed class TicketReconJob(
         var to = clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date.AtStartOfDayInZone(orgTimeZone.Zone).ToInstant();
         foreach (var key in await checkout.GetBackendsInUseAsync(cancellationToken))
         {
-            var recon = await checkout.ReconcileBackendAsync(key, from, to, cancellationToken);
-            if (recon is null || recon.Balanced)
+            TicketRecon? recon;
+            try
+            {
+                recon = await checkout.ReconcileBackendAsync(key, from, to, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // One backend failing must not leave the others unchecked.
+                logger.LogError(ex, "Ticket reconciliation of {Backend} could not run", key);
                 continue;
+            }
+
+            if (recon is null)
+                continue;
+            if (recon.Balanced)
+            {
+                logger.LogInformation(
+                    "Ticket reconciliation of {Backend} is balanced: {Orders} paid orders, {Tickets} tickets, {Net} net; {Listed} unpaid difference(s) listed",
+                    key, recon.Humans.Orders, recon.Humans.Tickets, recon.Humans.NetMinor, recon.Problems.Count());
+                continue;
+            }
             if (recon.Error is not null)
             {
                 logger.LogError("Ticket reconciliation of {Backend} could not run: {Error}", key, recon.Error);
@@ -42,8 +60,8 @@ internal sealed class TicketReconJob(
                 "{Problems} order(s) differ: {Issues}",
                 key, recon.Humans.Orders, recon.Humans.Tickets, recon.Humans.NetMinor,
                 recon.Backend.Orders, recon.Backend.Tickets, recon.Backend.NetMinor, recon.TicketsIssued,
-                recon.Problems.Count(),
-                string.Join(", ", recon.Problems.SelectMany(r => r.Issues).GroupBy(i => i).Select(g => $"{g.Key} {g.Count()}")));
+                recon.Problems.Count(r => r.MoneyMoved),
+                string.Join(", ", recon.Problems.Where(r => r.MoneyMoved).SelectMany(r => r.Issues).GroupBy(i => i).Select(g => $"{g.Key} {g.Count()}")));
         }
     }
 }

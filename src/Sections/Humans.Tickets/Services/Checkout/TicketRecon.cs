@@ -18,7 +18,10 @@ internal enum TicketReconIssue
     ExtraAtBackend,
     /// <summary>A second backend order for the same Humans order.</summary>
     Duplicate,
-    /// <summary>The backend holds an order for it that Humans never recorded (a create whose answer was lost).</summary>
+    /// <summary>
+    /// The backend holds an order for it that Humans never recorded: a create whose answer was lost, or one beside the
+    /// recorded one the backend no longer lists.
+    /// </summary>
     NotRecorded,
     /// <summary>Paid on one side and not the other.</summary>
     PaidMismatch,
@@ -38,6 +41,11 @@ internal sealed record TicketReconRow(
     IReadOnlyList<TicketReconIssue> Issues)
 {
     public Instant CreatedAt => Order?.CreatedAt ?? Backend!.CreatedAt;
+
+    /// <summary>Paid, refunded or charged back on either side. A difference where no money moved is listed, not out of balance.</summary>
+    public bool MoneyMoved =>
+        Order is { } o && (o.State == TicketCheckoutOrderState.Paid || o.RefundedMinor > 0 || o.DisputedMinor > 0)
+        || Backend is { } b && (b.State == CheckoutState.Paid || b.RefundedMinor > 0 || b.DisputedMinor > 0);
 }
 
 internal sealed record TicketRecon(
@@ -52,7 +60,7 @@ internal sealed record TicketRecon(
 {
     public IEnumerable<TicketReconRow> Problems => Rows.Where(r => r.Issues.Count > 0);
 
-    public bool Balanced => Error is null && Humans == Backend && Humans.Tickets == TicketsIssued && !Problems.Any();
+    public bool Balanced => Error is null && Humans == Backend && Humans.Tickets == TicketsIssued && !Problems.Any(r => r.MoneyMoved);
 }
 
 /// <summary>
@@ -63,7 +71,8 @@ internal sealed record TicketRecon(
 /// </para>
 /// <para>
 /// Totals count paid orders only: a pending, expired or cancelled order took no money on either side. Each order is
-/// still matched, so one that is missing, extra or doubled shows whatever its state. An order no backend ever took (a
+/// still matched, so one that is missing, extra or doubled shows whatever its state; where no money moved on either
+/// side (an open checkout a backend does not list, an expired leftover), it is listed and does not unbalance. An order no backend ever took (a
 /// free one, paid with nothing to charge) stays out of both sides' totals; only its tickets are checked.
 /// </para>
 /// </summary>
@@ -101,9 +110,11 @@ internal static class TicketReconBuilder
         foreach (var order in inPeriod)
         {
             var mine = byHumansId.GetValueOrDefault(order.Id) ?? [];
-            // The one Humans recorded leads; with none recorded, the backend's oldest.
-            var primary = mine.FirstOrDefault(b => string.Equals(b.BackendOrderId, order.BackendOrderId, StringComparison.Ordinal))
-                ?? mine.OrderBy(b => b.CreatedAt).FirstOrDefault();
+            // The one Humans recorded leads; with none recorded, the backend's oldest. A recorded one the backend no
+            // longer lists is missing, and whatever it does list for the order was never recorded.
+            var primary = order.BackendOrderId is null
+                ? mine.OrderBy(b => b.CreatedAt).FirstOrDefault()
+                : mine.FirstOrDefault(b => string.Equals(b.BackendOrderId, order.BackendOrderId, StringComparison.Ordinal));
             int? ticketsIssued = order.State == TicketCheckoutOrderState.Paid ? issued.GetValueOrDefault(order.Id) : null;
             if (primary is null && order.BackendOrderId is null)
             {
@@ -115,7 +126,8 @@ internal static class TicketReconBuilder
             }
 
             rows.Add(new TicketReconRow(order, primary, ticketsIssued, Compare(order, primary, ticketsIssued)));
-            rows.AddRange(mine.Where(b => b != primary).Select(b => new TicketReconRow(order, b, null, [TicketReconIssue.Duplicate])));
+            var other = primary is null ? TicketReconIssue.NotRecorded : TicketReconIssue.Duplicate;
+            rows.AddRange(mine.Where(b => b != primary).Select(b => new TicketReconRow(order, b, null, [other])));
         }
 
         foreach (var b in backend.Where(b => b.CreatedAt >= from && b.CreatedAt < to))
