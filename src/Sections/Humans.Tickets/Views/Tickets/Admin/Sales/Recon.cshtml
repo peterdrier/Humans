@@ -4,23 +4,18 @@
 @model Humans.Tickets.Controllers.ReconViewModel
 @{
     ViewData["Title"] = "Reconciliation";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    string Eur(long minor) => TicketReconLabels.Eur(minor);
     string Diff(long humans, long backend) => humans == backend ? "" : (backend - humans > 0 ? "+" : "") + (backend - humans);
     string EurDiff(long humans, long backend) => humans == backend ? "" : (backend - humans > 0 ? "+" : "−") + Eur(Math.Abs(backend - humans));
     string? Money(long? minor) => minor is { } m ? Eur(m) : null;
-    string Issue(TicketReconIssue issue) => issue switch
+    string Kind(PaymentLedgerEntryKind kind) => kind switch
     {
-        TicketReconIssue.MissingAtBackend => "missing at backend",
-        TicketReconIssue.ExtraAtBackend => "extra at backend",
-        TicketReconIssue.Duplicate => "duplicate",
-        TicketReconIssue.NotRecorded => "backend order not recorded in Humans",
-        TicketReconIssue.PaidMismatch => "paid on one side only",
-        TicketReconIssue.TotalMismatch => "total differs",
-        TicketReconIssue.RefundMismatch => "refunded differs",
-        TicketReconIssue.DisputeMismatch => "chargeback differs",
-        TicketReconIssue.TicketCountMismatch => "ticket count differs",
-        TicketReconIssue.TicketsNotIssued => "tickets not issued",
-        _ => issue.ToString(),
+        PaymentLedgerEntryKind.Charge => "payment",
+        PaymentLedgerEntryKind.Refund => "refund",
+        PaymentLedgerEntryKind.Dispute => "chargeback",
+        PaymentLedgerEntryKind.Fee => "fee",
+        PaymentLedgerEntryKind.Payout => "payout",
+        _ => "other",
     };
     var range = $"{Model.From:yyyy-MM-dd} to {Model.To:yyyy-MM-dd}";
 }
@@ -31,7 +26,9 @@
     Humans' orders against each backend's own order list, by the day the order was created (@Model.Zone.Id).
     Totals count paid orders; every order is matched whatever its state, so a missing, extra or doubled one shows.
     A difference where no money moved on either side is listed but leaves the backend balanced.
-    A daily run checks the whole sale and logs an error when a backend is out of balance.
+    Where Humans can read the backend's payment account (Box Office), its payments, refunds, chargebacks, fees and payouts
+    are checked too, by the day the money moved.
+    A daily run checks the whole sale and mails the ticketing team (@TicketConstants.TicketsTeamEmail) whatever is out of balance.
 </p>
 
 <form method="get" class="row g-2 align-items-end mb-4">
@@ -169,12 +166,143 @@
                                         @(o?.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString() ?? "–") /
                                         @(b?.TicketCount?.ToString() ?? "–")@(row.TicketsIssued is { } issued ? $" · {issued} issued" : "")
                                     </td>
-                                    <td>@string.Join(", ", row.Issues.Select(Issue))@(row.Issues.Count > 0 && !row.MoneyMoved ? " (no money moved)" : "")</td>
+                                    <td>@string.Join(", ", row.Issues.Select(i => i.Label()))@(row.Issues.Count > 0 && !row.MoneyMoved ? " (no money moved)" : "")</td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                     <p class="small text-muted mb-0">Each pair reads Humans / backend.</p>
+                }
+            }
+
+            @if (r.Error is not null && !Model.Payments.ContainsKey(r.BackendKey))
+            {
+                // Unconfigured or unreachable: the error above already says so.
+            }
+            else if (!Model.Payments.TryGetValue(r.BackendKey, out var p))
+            {
+                <h3 class="h6 mt-4">Payments, fees and payouts</h3>
+                <p class="text-muted mb-0">This backend takes payments through its own payment account, which Humans cannot read.</p>
+            }
+            else if (p.Error is not null)
+            {
+                <h3 class="h6 mt-4">Payments, fees and payouts</h3>
+                <p class="text-danger mb-0">@p.Error</p>
+            }
+            else
+            {
+                <h3 class="h6 mt-4">Payments, fees and payouts</h3>
+                var moves = Model.All ? p.Rows.Where(x => x.Entry.Kind != PaymentLedgerEntryKind.Payout).ToList() : p.Problems.ToList();
+                var otherFees = p.OtherFees.ToList();
+                <p>
+                    <span class="badge @(p.Balanced ? "bg-success" : "bg-danger")">@(p.Balanced ? "Balanced" : "Out of balance")</span>
+                    <span class="small text-muted">By the day the money moved in the payment account.</span>
+                </p>
+                <table class="table table-sm w-auto">
+                    <tbody>
+                        <tr><th>Charged</th><td class="text-end">@Eur(p.Totals.ChargedMinor)</td></tr>
+                        <tr><th>Refunded</th><td class="text-end">@Eur(p.Totals.RefundedMinor)</td></tr>
+                        <tr><th>Chargebacks</th><td class="text-end">@Eur(p.Totals.DisputedMinor)</td></tr>
+                        <tr><th>Fees</th><td class="text-end">@Eur(p.Totals.FeesMinor)</td></tr>
+                        @if (p.Totals.OtherMinor != 0)
+                        {
+                            <tr><th>Other movements</th><td class="text-end">@Eur(p.Totals.OtherMinor)</td></tr>
+                        }
+                        <tr><th>Net into the balance</th><td class="text-end"><strong>@Eur(p.Totals.NetMinor)</strong></td></tr>
+                        <tr><th>Paid out to the bank</th><td class="text-end">@Eur(p.Totals.PaidOutMinor)</td></tr>
+                    </tbody>
+                </table>
+                <table class="table table-sm w-auto">
+                    <thead><tr><th></th><th class="text-end">Humans</th><th class="text-end">Payment account</th><th class="text-end">Difference</th></tr></thead>
+                    <tbody>
+                        <tr><th>Fees on order payments</th><td class="text-end">@Eur(p.HumansPaymentFeesMinor)</td><td class="text-end">@Eur(p.PaymentFeesMinor)</td><td class="text-end text-danger">@EurDiff(p.HumansPaymentFeesMinor, p.PaymentFeesMinor)</td></tr>
+                    </tbody>
+                </table>
+
+                <h4 class="h6">@(Model.All ? $"Movements ({moves.Count})" : $"Movement differences ({moves.Count})")</h4>
+                @if (moves.Count == 0)
+                {
+                    <p class="text-muted">@(Model.All ? "No movements in this period." : "Every payment, refund and chargeback matches its order.")</p>
+                }
+                else
+                {
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>When</th><th>Kind</th><th>Movement</th><th>Humans order</th><th class="text-end">Amount</th><th class="text-end">Fee</th><th>Issues</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in moves)
+                            {
+                                <tr class="@(row.Issues.Count == 0 ? null : "table-warning")">
+                                    <td>@row.Entry.CreatedAt.ToDateTime(Model.Zone)</td>
+                                    <td>@Kind(row.Entry.Kind)</td>
+                                    <td><code>@row.Entry.Id</code></td>
+                                    <td>
+                                        @if (row.Order is { } o)
+                                        {
+                                            <a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a>
+                                            <span class="small text-muted">@o.State, @Eur(o.TotalMinor), fee @(Money(o.FeeMinor) ?? "unknown")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">none</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">@Eur(row.Entry.AmountMinor)</td>
+                                    <td class="text-end">@Eur(row.Entry.FeeMinor)</td>
+                                    <td>@string.Join(", ", row.Issues.Select(i => i.Label()))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+                @if (otherFees.Count > 0)
+                {
+                    <h4 class="h6">Fees not on a payment (@otherFees.Count)</h4>
+                    <table class="table table-sm w-auto">
+                        <thead><tr><th>When</th><th>Kind</th><th>Description</th><th class="text-end">Fee</th></tr></thead>
+                        <tbody>
+                            @foreach (var row in otherFees)
+                            {
+                                <tr>
+                                    <td>@row.Entry.CreatedAt.ToDateTime(Model.Zone)</td>
+                                    <td>@Kind(row.Entry.Kind)</td>
+                                    <td>@row.Entry.Description</td>
+                                    <td class="text-end">@Eur(row.Entry.Kind == PaymentLedgerEntryKind.Fee ? row.Entry.FeeMinor - row.Entry.AmountMinor : row.Entry.FeeMinor)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+                <h4 class="h6">Payouts (@p.Payouts.Count)</h4>
+                @if (p.Payouts.Count == 0)
+                {
+                    <p class="text-muted mb-0">No payout was made in this period.</p>
+                }
+                else
+                {
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr><th>Made</th><th>Arrives</th><th>Payout</th><th>Status</th><th class="text-end">Amount</th><th class="text-end">Contents</th><th>Issues</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in p.Payouts)
+                            {
+                                var po = row.Payout;
+                                <tr class="@(row.Issues.Count == 0 ? null : "table-warning")">
+                                    <td>@po.CreatedAt.ToDateTime(Model.Zone)</td>
+                                    <td>@(po.ArrivalAt is { } arrives ? arrives.InZone(Model.Zone).Date.ToString("yyyy-MM-dd", null) : "–")</td>
+                                    <td><code>@po.Id</code></td>
+                                    <td>@po.Status</td>
+                                    <td class="text-end">@Eur(po.AmountMinor)</td>
+                                    <td class="text-end">@(po.ContentsNetMinor is { } net ? $"{Eur(net)} in {po.ContentsCount}" : "not listed (made by hand or not reconciled yet)")</td>
+                                    <td>@string.Join(", ", row.Issues.Select(i => i.Label()))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 }
             }
         </div>

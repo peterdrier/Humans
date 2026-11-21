@@ -141,15 +141,18 @@ internal sealed class TicketsSalesAdminController(
         var start = fromDate.AtStartOfDayInZone(zone).ToInstant();
         var end = toDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
         var recons = new List<TicketRecon>();
+        var payments = new Dictionary<string, TicketPaymentRecon>(StringComparer.Ordinal);
         foreach (var key in keys)
         {
             if (await checkout.ReconcileBackendAsync(key, start, end, ct) is not { } recon)
                 return NotFound();
             recons.Add(recon);
+            if (await checkout.ReconcilePaymentsAsync(key, start, end, ct) is { } payment)
+                payments[key] = payment;
         }
 
         return View("~/Views/Tickets/Admin/Sales/Recon.cshtml",
-            new ReconViewModel(recons, inUse, backend, fromDate, toDate, all, zone));
+            new ReconViewModel(recons, payments, inUse, backend, fromDate, toDate, all, zone));
     }
 
     private static LocalDate? ReconDate(string? value) =>
@@ -180,8 +183,10 @@ internal sealed record BackendsViewModel(
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
 
+/// <summary><c>Payments</c> holds a backend only where Humans can read its payment account.</summary>
 internal sealed record ReconViewModel(
     IReadOnlyList<TicketRecon> Recons,
+    IReadOnlyDictionary<string, TicketPaymentRecon> Payments,
     IReadOnlyList<string> BackendsInUse,
     string? Backend,
     LocalDate From,
