@@ -501,6 +501,26 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Status_PendingOrderWithASettlingPayment_IsProcessingAndCannotBeCancelled()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+            Code, status: "n", total: 1000m,
+            payments:
+            [
+                new { local_id = 1, state = "created", amount = "1000.00", provider = "banktransfer", payment_date = (string?)null },
+                new { local_id = 2, state = "pending", amount = "1000.00", provider = "stripe_sepa_debit", payment_date = (string?)null },
+            ]));
+        var backend = Create(pretix);
+
+        var status = await backend.GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+        var cancel = () => backend.CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.State.Should().Be(CheckoutState.Processing);
+        await cancel.Should().ThrowAsync<TicketCheckoutException>();
+        pretix.Requests.Should().NotContain(r => r.Route.Contains("mark_canceled", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
     public async Task Cancel_PaidOrder_Throws()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: "p"));

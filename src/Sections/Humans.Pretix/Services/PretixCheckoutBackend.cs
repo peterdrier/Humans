@@ -222,8 +222,8 @@ internal sealed class PretixCheckoutBackend(
         EnsureConfigured();
         var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-        if (MapStatus(order, logger).State == CheckoutState.Paid)
-            throw new TicketCheckoutException($"pretix order {code} is already paid.");
+        if (MapStatus(order, logger).State is CheckoutState.Paid or CheckoutState.Processing)
+            throw new TicketCheckoutException($"pretix order {code} is paid or its payment is settling.");
         // Expired is cancelled too: pretix still accepts a late payment on an expired order.
         if (!string.Equals(order.Status, "c", StringComparison.Ordinal))
             await CancelOrderAsync(eventSlug, code, ct);
@@ -291,6 +291,9 @@ internal sealed class PretixCheckoutBackend(
 
         if (IsCovered(order, state))
             state = CheckoutState.Paid;
+        // A "pending" payment has left the buyer (a SEPA debit settling); a bank transfer not yet sent stays "created".
+        else if (state == CheckoutState.Pending && order.Payments.Any(p => string.Equals(p.State, "pending", StringComparison.Ordinal)))
+            state = CheckoutState.Processing;
 
         // The buyer pays exactly the lines, so bootstrap.py sets every method's fee to zero. A surcharge here is
         // misconfiguration; it is logged rather than thrown, because a throw would hide a real payment from Humans.
