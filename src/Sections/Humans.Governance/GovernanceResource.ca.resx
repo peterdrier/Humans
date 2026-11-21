@@ -815,4 +815,13 @@
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
   <data name="Governance_Status_Board" xml:space="preserve"><value>Junta</value></data>
   <data name="Governance_MemberSince" xml:space="preserve"><value>Membre des de</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Càrrec</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Presidència</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicepresidència</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Secretaria</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Tresoreria</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Sense càrrec</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Desa</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Càrrec de la Junta desat.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Només un membre actual de la Junta pot ocupar un càrrec.</value></data>
 </root>
