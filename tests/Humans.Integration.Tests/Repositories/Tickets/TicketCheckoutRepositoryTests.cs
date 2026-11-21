@@ -194,7 +194,11 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
         var offer = new TicketResaleOffer
         {
-            Id = Guid.NewGuid(), SalesEventId = Guid.NewGuid(), TicketId = Guid.NewGuid(), HolderUserId = Guid.NewGuid(), OfferedAt = Now,
+            Id = Guid.NewGuid(),
+            SalesEventId = Guid.NewGuid(),
+            TicketId = Guid.NewGuid(),
+            HolderUserId = Guid.NewGuid(),
+            OfferedAt = Now,
             Invites =
             [
                 new TicketResaleInvite { Email = "a@example.com", TokenHash = "A", SentAt = Now },
