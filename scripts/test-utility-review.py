@@ -56,7 +56,8 @@ def class_scopes(source):
     scopes = []
     for declaration in CLASS.finditer(code):
         opening = code.find("{", declaration.end())
-        if opening < 0:
+        semicolon = code.find(";", declaration.end())
+        if opening < 0 or (semicolon >= 0 and semicolon < opening):
             continue
         depth = 1
         for index in range(opening + 1, len(code)):

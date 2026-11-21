@@ -6,7 +6,7 @@ Generate a disposable inventory from current source and one existing non-integra
 python scripts/test-utility-review.py --results local/test-results --results-revision <commit-sha>
 ```
 
-The script excludes `Humans.Integration.Tests`. It writes ignored `local/test-utility/methods.csv`, `inventory.sqlite`, and `summary.json`; no reviewed mapping or status file is maintained. Omit `--results` for a source-only inventory. The summary records the source and result revisions and whether test sources are dirty. Per-method durations sum case times, so parallel tests overlap; use the suite's wall time to judge the overall gate.
+The script excludes `Humans.Integration.Tests`. It writes ignored `local/test-utility/methods.csv`, `inventory.sqlite`, and `summary.json`; no reviewed mapping or status file is maintained. Omit `--results` for a source-only inventory. Semicolon-only helper classes do not enclose subsequent test methods. The summary records the source and result revisions and whether test sources are dirty. Per-method durations sum case times, so parallel tests overlap; use the suite's wall time to judge the overall gate.
 
 Compare two inventories from the same revision after separate test runs:
 
