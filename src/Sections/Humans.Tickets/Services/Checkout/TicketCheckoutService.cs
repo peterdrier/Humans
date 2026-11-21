@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Grants.Contracts;
@@ -24,8 +23,6 @@ internal sealed partial class TicketCheckoutService(
     IUserService users,
     IAccountProvisioningService provisioning,
     IUserEmailService userEmails,
-    IConsentService consents,
-    IConsentSubmission consentSubmission,
     ICommunicationPreferenceService preferenceReads,
     ICommunicationPreferenceWrite preferences,
     IEmailService email,
@@ -80,6 +77,9 @@ internal sealed partial class TicketCheckoutService(
             return new("Supporter totals must be positive.");
         if (save.ChildPriceMinor < 0 || save.ChildMaxAge is <= 0 || save.ResaleOpensAtSold < 0 || save.DirectedResaleDays is < 1 or > 30)
             return new("Child price, child age, resale threshold and invitation days must be sensible numbers.");
+        if (save.TermsUrl is { } terms && (terms.Length > 500 || !Uri.TryCreate(terms, UriKind.Absolute, out var termsUri)
+            || !string.Equals(termsUri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
+            return new("The ticket rules page must be an https address of at most 500 characters.");
 
         var existing = save.Id is { } id ? await repository.GetSalesEventAsync(id, ct) : null;
         if (save.Id is not null && existing is null)
@@ -107,7 +107,7 @@ internal sealed partial class TicketCheckoutService(
             ChildMaxAge = save.ChildMaxAge,
             ResaleOpensAtSold = save.ResaleOpensAtSold,
             DirectedResaleDays = save.DirectedResaleDays,
-            TermsTeamId = save.TermsTeamId,
+            TermsUrl = save.TermsUrl,
             UpdatedAt = now,
         };
         await repository.SaveSalesEventAsync(salesEvent, ct);
@@ -171,8 +171,12 @@ internal sealed partial class TicketCheckoutService(
         directedRefusal ?? context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
         context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).OrderByDescending(o => o.CreatedAt).ToList())
     {
-        TermsToAccept = context.TermsToAccept,
+        TermsUrl = context.SalesEvent.TermsUrl,
         AskMarketing = context.AskMarketing,
+        OpenOrder = context.UserOrders
+            .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
+                && o.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && o.HoldsTickets(context.Now))
+            .MaxBy(o => o.CreatedAt),
     };
 
     public async Task<StartCheckoutResult> StartCheckoutAsync(
@@ -206,8 +210,7 @@ internal sealed partial class TicketCheckoutService(
         if (command.SupporterTotalMinor is { } requested
             && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(requested)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        var unsignedTerms = context.TermsToAccept.Where(t => !t.Signed).ToList();
-        if (unsignedTerms.Count > 0 && !command.AcceptTerms)
+        if (salesEvent.TermsUrl is not null && !command.AcceptTerms)
             return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
 
         TicketResaleOffer? directed = null;
@@ -266,13 +269,6 @@ internal sealed partial class TicketCheckoutService(
         if (lines.Count == 0)
             return StartCheckoutResult.Refused("Tickets_Buy_Empty");
 
-        foreach (var term in unsignedTerms)
-        {
-            var consent = await consentSubmission.SubmitConsentAsync(
-                buyer.Id, term.DocumentVersionId, explicitConsent: true, command.IpAddress, command.UserAgent, ct);
-            if (!consent.Success && !string.Equals(consent.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
-                return StartCheckoutResult.Refused("Tickets_Buy_TermsFailed");
-        }
         if (command.MarketingOptIn && context.AskMarketing)
             await preferences.UpdatePreferenceAsync(buyer.Id, MessageCategory.Marketing, optedOut: false, JobName, ct);
 
@@ -297,9 +293,9 @@ internal sealed partial class TicketCheckoutService(
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.Created,
             $"{ticketCount} ticket(s), {FormatMinor(order.TotalMinor)} {order.Currency} on {order.BackendKey}" +
             (lines.Any(l => l.ResaleOfferId is not null) ? ", from the resale queue" : string.Empty), buyer.Id, ct);
-        if (unsignedTerms.Count > 0)
-            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted,
-                "Accepted " + string.Join(", ", unsignedTerms.Select(t => t.Title)), buyer.Id, ct);
+        if (salesEvent.TermsUrl is { } termsUrl)
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted, "Accepted the ticket rules at " + termsUrl,
+                buyer.Id, ct);
         foreach (var offer in new[] { resaleForSelf, resaleForPartner }.OfType<TicketResaleOffer>())
             await ReserveOfferAsync(offer, order.Id, ct);
 
@@ -484,13 +480,14 @@ internal sealed partial class TicketCheckoutService(
         }
 
         var status = await backend.GetStatusAsync(order.BackendOrderId, ct);
-        var before = (order.State, order.RefundedMinor, order.FeeMinor);
+        var before = (order.State, order.RefundedMinor, order.FeeMinor, order.DisputedMinor);
         var newState = status.State switch
         {
             CheckoutState.Paid => TicketCheckoutOrderState.Paid,
             CheckoutState.Failed => TicketCheckoutOrderState.Failed,
             CheckoutState.Expired => TicketCheckoutOrderState.Expired,
             CheckoutState.Cancelled => TicketCheckoutOrderState.Cancelled,
+            CheckoutState.Processing => TicketCheckoutOrderState.Processing,
             _ => TicketCheckoutOrderState.Pending,
         };
 
@@ -498,7 +495,7 @@ internal sealed partial class TicketCheckoutService(
         if (order.State == TicketCheckoutOrderState.Paid)
             newState = TicketCheckoutOrderState.Paid;
 
-        var wasOpen = order.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending;
+        var wasOpen = order.IsOpen;
         if (wasOpen && newState == TicketCheckoutOrderState.Pending && order.ExpiresAt <= now)
         {
             // Tickets owns the hold: once it lapses the backend must stop taking money for it.
@@ -530,9 +527,10 @@ internal sealed partial class TicketCheckoutService(
         order.FeeMinor = status.FeeMinor ?? order.FeeMinor;
         order.PaymentMethod = status.PaymentMethod ?? order.PaymentMethod;
         order.RefundedMinor = status.RefundedMinor;
+        order.DisputedMinor = status.DisputedMinor;
 
         var refundsSettled = order.State == TicketCheckoutOrderState.Paid && await SettleRefundsAsync(order, status, ct);
-        if (before == (order.State, order.RefundedMinor, order.FeeMinor))
+        if (before == (order.State, order.RefundedMinor, order.FeeMinor, order.DisputedMinor))
             return refundsSettled;
 
         order.UpdatedAt = now;
@@ -547,16 +545,24 @@ internal sealed partial class TicketCheckoutService(
         if (before.RefundedMinor != order.RefundedMinor)
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundedTotalChanged,
                 $"{order.BackendKey} reports {FormatMinor(order.RefundedMinor)} {order.Currency} refunded in total", null, ct);
+        if (before.DisputedMinor != order.DisputedMinor)
+        {
+            var detail = order.DisputedMinor > 0
+                ? $"{order.BackendKey} reports a chargeback: {FormatMinor(order.DisputedMinor)} {order.Currency} taken back by the buyer's bank; the ticketing team should decide on the tickets"
+                : $"{order.BackendKey} reports the chargeback closed in the event's favour";
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundedTotalChanged, detail, null, ct);
+            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id, detail, JobName);
+        }
 
         if (late)
             logger.LogWarning("Checkout order {OrderId} was paid after it was {State}; its tickets are issued anyway",
                 order.Id, before.State);
         if (becamePaid)
             await CompletePaidAsync(order, ct);
-        else if (before.State != order.State && order.State is not TicketCheckoutOrderState.Pending)
+        else if (before.State != order.State && !order.IsOpen)
             await ReleaseOffersAsync(order, ct);
 
-        if (before.State != order.State)
+        if (before.State != order.State && !order.IsOpen)
         {
             var action = order.State == TicketCheckoutOrderState.Paid
                 ? TicketsAuditActions.TicketCheckoutPaid
@@ -585,8 +591,9 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>
-    /// Settles pending refunds from the refunded total, oldest first. A backend's failure flag may follow only its newest
-    /// refund, so each uncovered refund the backend knows is asked for its own state by repeating it under its id.
+    /// Settles open refunds, oldest first. A refund the backend knows by id is asked for its own state by repeating it
+    /// under its id, so a refund made in the backend's dashboard never settles one of Tickets' own; the rest (manual
+    /// refunds, and any whose state cannot be read now) settle from what the refunded total does not already explain.
     /// </summary>
     private async Task<bool> SettleRefundsAsync(TicketCheckoutOrder order, CheckoutStatus status, CancellationToken ct)
     {
@@ -595,17 +602,19 @@ internal sealed partial class TicketCheckoutService(
         var changed = false;
         foreach (var refund in refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired))
         {
-            if (refund.AmountMinor <= covered)
+            var own = refund is { State: RefundState.Pending, BackendRefundId: not null }
+                && order.BackendOrderId is not null && BackendFor(order.BackendKey) is { } backend
+                ? await OwnRefundStateAsync(backend, order, refund, ct)
+                : null;
+            if (own is { State: RefundState.Succeeded } || (own is null && refund.AmountMinor <= covered))
             {
                 covered -= refund.AmountMinor;
                 refund.State = RefundState.Succeeded;
             }
-            else if (refund is { State: RefundState.Pending, BackendRefundId: not null }
-                && order.BackendOrderId is not null && BackendFor(order.BackendKey) is { } backend
-                && await OwnRefundStateAsync(backend, order, refund, ct) is { State: RefundState.Failed } failed)
+            else if (own is { State: RefundState.Failed })
             {
                 refund.State = RefundState.Failed;
-                refund.FailureReason = Truncate(failed.FailureReason ?? $"{order.BackendKey} reports the refund failed");
+                refund.FailureReason = Truncate(own.FailureReason ?? $"{order.BackendKey} reports the refund failed");
             }
             else
             {
@@ -742,7 +751,9 @@ internal sealed partial class TicketCheckoutService(
         var order = await repository.GetOrderAsync(orderId, ct);
         if (order is null || order.BuyerUserId != userId)
             return new("Tickets_Buy_OrderNotFound");
-        if (order.State is not (TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending))
+        if (order.State == TicketCheckoutOrderState.Processing)
+            return new("Tickets_Buy_PaymentProcessing");
+        if (!order.IsOpen)
             return CheckoutMutationResult.Ok;
 
         if (order.BackendOrderId is not null && BackendFor(order.BackendKey) is { } backend)
@@ -751,6 +762,8 @@ internal sealed partial class TicketCheckoutService(
             await RefreshAsync(order, ct);
             if (order.State == TicketCheckoutOrderState.Paid)
                 return new("Tickets_Buy_AlreadyPaid");
+            if (order.State == TicketCheckoutOrderState.Processing)
+                return new("Tickets_Buy_PaymentProcessing");
             await backend.CancelAsync(order.BackendOrderId, ct);
         }
 
@@ -947,7 +960,6 @@ internal sealed partial class TicketCheckoutService(
         string? Unavailable,
         bool AlreadyHoldsTicket,
         IReadOnlyList<TicketCheckoutOrder> UserOrders,
-        IReadOnlyList<RequiredConsentRow> TermsToAccept,
         bool AskMarketing,
         Instant Now,
         bool FreshSoldOut);
@@ -978,9 +990,6 @@ internal sealed partial class TicketCheckoutService(
         var resalePrice = TicketPrice.For(salesEvent, today, creditPrograms);
         var userOrders = await repository.GetOrdersForUserAsync(userId, ct);
         var holds = await HoldsTicketAsync(salesEvent.Id, userId, now, ct);
-        var terms = salesEvent.TermsTeamId is { } termsTeam
-            ? await consents.GetRequiredConsentRowsForUserAsync(userId, termsTeam, ct)
-            : [];
         var askMarketing = await preferenceReads.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct) is null;
 
         string? unavailable = null;
@@ -994,7 +1003,7 @@ internal sealed partial class TicketCheckoutService(
             unavailable = "Tickets_Buy_NeedLegalName";
 
         var freshSoldOut = (await LoadStockAsync(salesEvent, now, ct)).Held + 1 > salesEvent.Capacity;
-        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders, terms,
+        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders,
             askMarketing, now, freshSoldOut);
     }
 

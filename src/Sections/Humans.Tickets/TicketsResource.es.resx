@@ -318,9 +318,6 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Acepta las normas de las entradas para continuar.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>No se ha podido registrar tu aceptación de las normas. Comprueba que tu perfil esté completo y vuelve a intentarlo.</value>
-  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Este enlace de invitación ya no es válido, o se envió a otro correo distinto del de tu sesión.</value>
   </data>
@@ -422,5 +419,20 @@
   </data>
   <data name="Tickets_Buy_Reference" xml:space="preserve">
     <value>Referencia del pedido</value>
+  </data>
+  <data name="Tickets_Buy_OpenOrder" xml:space="preserve">
+    <value>Tienes un pago en curso para este evento. Termina de pagar o cancélalo para empezar de nuevo.</value>
+  </data>
+  <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
+    <value>Cancelar y empezar de nuevo</value>
+  </data>
+  <data name="Tickets_Buy_State_Processing" xml:space="preserve">
+    <value>Pago en camino</value>
+  </data>
+  <data name="Tickets_Buy_ProcessingHelp" xml:space="preserve">
+    <value>Tu pago está en camino. Los pagos bancarios pueden tardar unos días; tu entrada queda reservada hasta que llegue y te escribiremos cuando esté pagada.</value>
+  </data>
+  <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
+    <value>Este pago ya está en camino y ya no se puede cancelar.</value>
   </data>
 </root>

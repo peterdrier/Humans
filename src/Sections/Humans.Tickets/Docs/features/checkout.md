@@ -23,9 +23,19 @@ Rules every backend follows:
   `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
   audit log ("after the order was Expired") and logs a warning; a released resale offer another checkout took stays
   with that checkout, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
+- **Stuck checkout.** While a buyer's own unpaid checkout still holds their ticket, the buy page links to it and offers
+  "cancel and start again", so a dropped connection never locks them out until `ExpiresAt`. Starting a checkout runs to
+  the end even if the buyer's request is aborted, so a half-made order always has its backend session.
+- **Payment on its way.** A backend reports `Processing` once the buyer finished paying with a method that settles
+  later (a SEPA debit, a bank transfer, sometimes the next day). The order then holds its tickets past `ExpiresAt`, is
+  never cancelled by Tickets or the buyer (the buy page offers no "start again" for it), and ends Paid or Failed.
+- **Chargebacks.** `DisputedMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
+  the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
-  `Pending` and `ManualRequired` refunds from it, oldest first. Each uncovered pending refund is repeated under its own id
-  and only those the backend answers `Failed` are marked so (`RefundFailed` may follow only the newest refund); those stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  `Pending` and `ManualRequired` refunds, oldest first. A pending refund the backend knows by id is repeated under that
+  id and takes the state the backend answers (`RefundFailed` may follow only the newest refund), so a refund made in the
+  backend's dashboard never settles one of Tickets' own. The rest settle from the part of `RefundedMinor` that Tickets'
+  succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose backend call threw.
 - **Erasure.** A member's deletion calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
   own copy; a backend failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
@@ -40,13 +50,13 @@ Rules every backend follows:
 ## Flow
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, capacity, waves, supporter totals (VIP
-   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`), child price and age, the team whose required
-   documents are the ticket rules, when resale opens (tickets sold) and how many days a resale invitation lasts.
+   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`), child price and age, the ticket rules page
+   (an https address; a changed version gets a new address), when resale opens (tickets sold) and how many days a resale invitation lasts.
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed, each priced in its own time zone and checked for holdings on its own. They see
    their price, may add children (child price, issued on their own ticket), a partner (name and email; public price;
    the account is found or made once the order is paid), a VIP upgrade (shown as the ticket plus a donation) and a donation.
-   They tick the ticket rules (signed through Consent, IP and user agent recorded) and may opt in to the mailing list
+   They tick the ticket rules on every checkout (the page's address goes on the order's timeline; no Consent signing) and may opt in to the mailing list
    (asked only while they have no Marketing choice on record), then continue to the backend's payment page.
 3. The backend returns them to `/Tickets/Buy/Order/{id}`, which refreshes the status and splits ticket and donation
    subtotals. The webhook and the 5-minute reconcile job catch the rest. The move to `Paid` is one conditional update,
@@ -70,8 +80,7 @@ Each order carries a short `Reference` (the first 8 hex digits of its id) shown 
 
 `/Tickets/Buy/Public` (where a signed-out `/Tickets/Buy` lands) shows each selling event at today's public price and
 asks for an email. Auth's magic link signs an existing member in, or starts signup (legal name, consents) for a new
-one, and returns them to the buy page, which then prefills them and shows their own price. Tickets are named and
-consent needs a real profile, so the account always comes before the order.
+one, and returns them to the buy page, which then prefills them and shows their own price. Tickets are named, so the account always comes before the order.
 
 ## Returning a ticket and the resale queue
 
