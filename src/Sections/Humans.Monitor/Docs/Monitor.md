@@ -39,6 +39,8 @@ pages and data.
   `IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`,
   `IUserService`, and `IAuditLogService`.
 - A service-account change, matched by email or `people/{client_id}`, is never anomalous.
+- The last-run marker uses the shared `ToIso8601` formatter and
+  `DateFormattingExtensions.Iso8601InstantPattern` parser for seconds-precision UTC values.
 - The last-run marker advances only when every resource was queried and the connector is
   configured. Ordinary resource failures still audit anomalies from the incomplete run.
 - Job cancellation propagates from a resource read and is checked between resources and

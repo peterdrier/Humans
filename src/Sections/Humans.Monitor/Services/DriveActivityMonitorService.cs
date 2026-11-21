@@ -218,8 +218,7 @@ internal sealed class DriveActivityMonitorService(
             return null;
         }
 
-        var pattern = NodaTime.Text.InstantPattern.General;
-        var result = pattern.Parse(value);
+        var result = DateFormattingExtensions.Iso8601InstantPattern.Parse(value);
         if (result.Success)
         {
             return result.Value;

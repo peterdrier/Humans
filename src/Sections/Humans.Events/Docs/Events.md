@@ -18,6 +18,9 @@ Event programming: submission, moderation, browsing, export, and preference mana
 
 ## Concepts
 
+Guide API start timestamps use `DateFormattingExtensions.ToIso8601`, the shared
+seconds-precision UTC format, for both approved and moderation projections.
+
 - An **Event** is a submitter-authored event entry (title, description, category, schedule, location) in a Pending → Approved/Rejected/ResubmitRequested lifecycle.
 - An **EventGuideSettings** singleton configures the submission window, publish date, and print slot cap for the active event edition.
 - An **EventCategory** is a moderator-managed taxonomy with display order, sensitivity flag, and active/inactive status.
