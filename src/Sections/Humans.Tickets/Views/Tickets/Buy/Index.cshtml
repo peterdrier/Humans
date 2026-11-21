@@ -2,9 +2,32 @@
 @model IReadOnlyList<Humans.Tickets.Services.Checkout.BuyPage>
 @{
     ViewData["Title"] = Localizer["Tickets_Buy_Title"].Value;
-    string Eur(long minor) => (minor / 100m).ToEuro();
     var directedToken = ViewData["DirectedToken"] as string;
     var single = Model.Count == 1;
+}
+
+@{
+    void Summary(TicketPrice own)
+    {
+        <div class="stat buy-summary">
+            <div class="label">@Localizer["Tickets_Buy_YourPrice"]</div>
+            <div class="value buy-total">@((own.AmountMinor / 100m).ToEuro())</div>
+            <dl class="buy-lines">
+                <dt>@own.Wave.Name</dt>
+                <dd>@((own.Wave.PriceMinor / 100m).ToEuro())</dd>
+                @if (own.ClassPrice is { } cls)
+                {
+                    <dt>@cls.Label</dt>
+                    <dd>@((cls.AmountMinor / 100m).ToEuro())</dd>
+                }
+                @foreach (var credit in own.Credits)
+                {
+                    <dt>@credit.Label</dt>
+                    <dd>−@((credit.AmountMinor / 100m).ToEuro())</dd>
+                }
+            </dl>
+        </div>
+    }
 }
 
 <page-header title="@(Localizer["Tickets_Buy_Title"].Value)" subtitle="@(single ? Model[0].EventName : null)">
@@ -43,25 +66,8 @@ else
 {
     var own = sale.OwnPrice!;
     var nothingToBuy = sale.AlreadyHoldsTicket && (!sale.OffersPartner || directedToken is not null) && !sale.OffersDonations;
-    <div class="col-lg-4 order-lg-2">
-        <div class="stat buy-summary">
-            <div class="label">@Localizer["Tickets_Buy_YourPrice"]</div>
-            <div class="value buy-total">@Eur(own.AmountMinor)</div>
-            <dl class="buy-lines">
-                <dt>@own.Wave.Name</dt>
-                <dd>@Eur(own.Wave.PriceMinor)</dd>
-                @if (own.ClassPrice is { } cls)
-                {
-                    <dt>@cls.Label</dt>
-                    <dd>@Eur(cls.AmountMinor)</dd>
-                }
-                @foreach (var credit in own.Credits)
-                {
-                    <dt>@credit.Label</dt>
-                    <dd>−@Eur(credit.AmountMinor)</dd>
-                }
-            </dl>
-        </div>
+    <div class="col-lg-4 order-lg-2 d-none d-lg-block">
+        @{ Summary(own); }
     </div>
 
     <div class="col-lg-8 order-lg-1">
@@ -100,7 +106,7 @@ else
                 {
                     <hr class="my-4" />
                     <h3 class="h4">@Localizer["Tickets_Buy_Children"]</h3>
-                    <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_ChildrenHelp"].Value, Eur(childPrice), sale.SalesEvent.ChildMaxAge?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "")</p>
+                    <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_ChildrenHelp"].Value, (childPrice / 100m).ToEuro(), sale.SalesEvent.ChildMaxAge?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "")</p>
                     <div class="row g-2">
                         @for (var c = 0; c < 3; c++)
                         {
@@ -127,7 +133,7 @@ else
                         {
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="radio" name="supporterTotalMinor" id="supporter-@total-@p" value="@total" />
-                                <label class="form-check-label" for="supporter-@total-@p">@string.Format(Localizer["Tickets_Buy_SupporterOption"].Value, Eur(total), Eur(total - own.AmountMinor))</label>
+                                <label class="form-check-label" for="supporter-@total-@p">@string.Format(Localizer["Tickets_Buy_SupporterOption"].Value, (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro())</label>
                             </div>
                         }
                     </fieldset>
@@ -138,7 +144,7 @@ else
             {
                 <hr class="my-4" />
                 <h3 class="h4">@Localizer["Tickets_Buy_Partner"]</h3>
-                <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_PartnerHelp"].Value, Eur(sale.PublicPrice!.AmountMinor))</p>
+                <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_PartnerHelp"].Value, (sale.PublicPrice!.AmountMinor / 100m).ToEuro())</p>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label" for="partnerName-@p">@Localizer["Tickets_Buy_PartnerName"]</label>
@@ -191,6 +197,9 @@ else
                         <label class="form-check-label" for="marketing-@p">@Localizer["Tickets_Buy_Marketing"]</label>
                     </div>
                 }
+                <div class="d-lg-none mb-3">
+                    @{ Summary(own); }
+                </div>
                 <div>
                     <button type="submit" class="btn btn-primary btn-lg buy-pay mt-2">@Localizer["Tickets_Buy_Pay"]</button>
                 </div>
@@ -218,7 +227,7 @@ else
                 <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2" asp-action="Order" asp-route-id="@order.Id">
                     <span>@order.CreatedAt.ToDateTime()</span>
                     <span class="d-flex align-items-center gap-2">
-                        @Eur(order.TotalMinor)
+                        @((order.TotalMinor / 100m).ToEuro())
                         <status-badge value="@order.State" text="@(Localizer[$"Tickets_Buy_State_{order.State}"].Value)" />
                     </span>
                 </a>

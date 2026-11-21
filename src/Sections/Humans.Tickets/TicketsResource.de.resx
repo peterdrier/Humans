@@ -111,9 +111,6 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Dein Preis</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Aktuelle Welle: {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Gesamt</value>
   </data>

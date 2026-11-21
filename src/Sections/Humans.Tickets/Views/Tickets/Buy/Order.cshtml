@@ -2,7 +2,6 @@
 @model Humans.Tickets.Controllers.TicketBuyOrderViewModel
 @{
     ViewData["Title"] = Localizer["Tickets_Buy_OrderTitle"].Value;
-    string Eur(long minor) => (minor / 100m).ToEuro();
     var order = Model.Order;
     var open = order.IsOpen;
     var processing = order.State == TicketCheckoutOrderState.Processing;
@@ -39,7 +38,7 @@
             @if (Model.IsBuyer)
             {
                 <div class="label">@Localizer["Tickets_Buy_Total"]</div>
-                <div class="value buy-total">@Eur(order.TotalMinor)</div>
+                <div class="value buy-total">@((order.TotalMinor / 100m).ToEuro())</div>
             }
             <dl class="buy-lines">
                 @foreach (var line in Model.VisibleLines)
@@ -64,7 +63,7 @@
                             <span class="d-block small">@line.AttendeeName</span>
                         }
                     </dt>
-                    <dd>@(Model.IsBuyer ? Eur(line.AmountMinor) : "")</dd>
+                    <dd>@(Model.IsBuyer ? (line.AmountMinor / 100m).ToEuro() : "")</dd>
                 }
                 @if (Model.IsBuyer)
                 {
@@ -72,15 +71,15 @@
                     @if (donations > 0)
                     {
                         <dt class="buy-lines-sub">@Localizer["Tickets_Buy_TicketsSubtotal"]</dt>
-                        <dd class="buy-lines-sub">@Eur(order.TicketTotalMinor)</dd>
+                        <dd class="buy-lines-sub">@((order.TicketTotalMinor / 100m).ToEuro())</dd>
                         <dt>@Localizer["Tickets_Buy_DonationSubtotal"]</dt>
-                        <dd>@Eur(donations)</dd>
+                        <dd>@((donations / 100m).ToEuro())</dd>
                     }
                 }
             </dl>
             @if (Model.IsBuyer && order.RefundedMinor > 0)
             {
-                <p class="small text-muted text-end mt-2 mb-0">@string.Format(Localizer["Tickets_Buy_Refunded"].Value, Eur(order.RefundedMinor))</p>
+                <p class="small text-muted text-end mt-2 mb-0">@string.Format(Localizer["Tickets_Buy_Refunded"].Value, (order.RefundedMinor / 100m).ToEuro())</p>
             }
 
             @if (open && Model.IsBuyer)

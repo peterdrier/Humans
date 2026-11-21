@@ -100,9 +100,6 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Your price</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Current wave: {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Total</value>
   </data>
