@@ -1,10 +1,11 @@
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
+using Humans.Google.Domain;
 using NodaTime;
 
-namespace Humans.Google.Contracts;
+namespace Humans.Google.Services;
 
-public interface IGoogleSyncLogViewer : IApplicationService
+internal interface IGoogleSyncLogViewer : IApplicationService
 {
     /// <summary>Newest first.</summary>
     Task<IReadOnlyList<GoogleSyncLogView>> GetForResourceAsync(Guid resourceId, CancellationToken ct = default);
@@ -15,7 +16,7 @@ public interface IGoogleSyncLogViewer : IApplicationService
 }
 
 /// <summary>The resource name is resolved.</summary>
-public sealed record GoogleSyncLogView(
+internal sealed record GoogleSyncLogView(
     GoogleSyncLogAction Action,
     Instant OccurredAt,
     string Description,
@@ -26,9 +27,3 @@ public sealed record GoogleSyncLogView(
     bool Success,
     string? ErrorMessage,
     Guid? UserId = null);
-
-public enum GoogleSyncLogAction
-{
-    AccessGranted,
-    AccessRevoked
-}

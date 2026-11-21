@@ -142,7 +142,7 @@ Repository: `IGoogleSyncLogRepository`.
 
 Implements the internal `IGoogleSyncLogService` (writes, plus the
 `/Google/ActivityLog` read, 500-row cap), the public read side
-(`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`, and
+(`IGoogleSyncLogViewer`) backing the section’s internal, type-invoked sync-log component, and
 `IUserDataContributor` for the GDPR export and erasure (design-rules.md, *Personal data obligations* — the
 table holds `UserId`/`UserEmail`). Writes are best-effort — a repository failure is logged
 at Error and swallowed so a sync never fails on its own bookkeeping. The
