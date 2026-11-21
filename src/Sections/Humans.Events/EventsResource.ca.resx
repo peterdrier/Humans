@@ -180,4 +180,5 @@
   <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Tria cada dia de repetició una sola vegada al calendari d’aquest esdeveniment.</value></data>
   <data name="Events_CategoryUnavailable" xml:space="preserve"><value>Tria una categoria activa. La categoria seleccionada ja no està disponible.</value></data>
   <data name="Events_VenueUnavailable" xml:space="preserve"><value>Tria un espai actiu. L’espai seleccionat ja no està disponible.</value></data>
+  <data name="Events_Search_Category" xml:space="preserve"><value>Esdeveniments</value></data>
 </root>

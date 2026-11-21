@@ -23,6 +23,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
@@ -41,6 +42,7 @@ public sealed class Section :
     ISectionJobs,
     ISectionNav,
     ISectionPolicies,
+    ISearchContributor,
     IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
@@ -209,4 +211,16 @@ public sealed class Section :
     [
         new(UserPartSlots.Profile, typeof(TeamMessageButtonsViewComponent), Weight: 200),
     ];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Team",
+            sp => sp.GetRequiredService<IStringLocalizer<TeamsResource>>()["Teams_Search_Category"].Value,
+            "fa-solid fa-users", typeof(TeamsSearchResultViewComponent), SearchTeamsAsync, Weight: 10),
+    ];
+
+    private static async Task<IReadOnlyList<SearchHit>> SearchTeamsAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<ITeamService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(t => new SearchHit(t.TeamId, t.Name, t.Score))];
 }

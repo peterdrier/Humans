@@ -1,6 +1,10 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Google.Contracts;
+using Humans.Base.Configuration;
+using Humans.Email.Contracts;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
+using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,13 +23,11 @@ namespace Humans.Users.Tests.Services;
 public class UserEmailServiceReconcileOAuthTests
 {
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
-    private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
-    private readonly IGoogleWrite _googleIdentity = Substitute.For<IGoogleWrite>();
+    private readonly IUserEmailRemovalListener _googleIdentity = Substitute.For<IUserEmailRemovalListener>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 
     private const string Provider = "Google";
@@ -36,15 +38,18 @@ public class UserEmailServiceReconcileOAuthTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        _serviceProvider = new ServiceLocatorBuilder().With(_mergeService).With(_googleIdentity).Build();
-
         _service = new UserEmailService(
             _repository,
             _userService,
             _userManager,
             _clock,
             _auditLogService,
-            _serviceProvider,
+            [],
+            [_googleIdentity],
+            new EphemeralDataProtectionProvider(),
+            TestUsersEmails.Create(),
+            Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }),
+            Substitute.For<IEmailService>(),
             NullLogger<UserEmailService>.Instance);
 
         _userService.ApplyUserEmailReconcilePlanAsync(
@@ -136,7 +141,7 @@ public class UserEmailServiceReconcileOAuthTests
             rowToInsert: Arg.Is<UserEmail?>(r => r == null),
             Arg.Any<CancellationToken>());
         // The renamed-away address stops being the Google identity.
-        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
+        await _googleIdentity.Received(1).AddressRemovedAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             UsersAuditActions.GoogleEmailRenamed,
             Arg.Any<string>(), userId,
@@ -189,7 +194,7 @@ public class UserEmailServiceReconcileOAuthTests
         sibling.ProviderKey.Should().Be(ProviderKey);
         sibling.IsVerified.Should().BeTrue("OAuth callback proves ownership; tag-move force-verifies");
         sibling.IsPrimary.Should().BeTrue("flag-union: old row had IsPrimary=true");
-        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
+        await _googleIdentity.Received(1).AddressRemovedAsync(userId, "old@example.com", Arg.Any<CancellationToken>());
 
         // Atomic plan: update the sibling AND delete the old tagged row in
         // one transaction.

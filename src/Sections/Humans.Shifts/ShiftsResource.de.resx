@@ -1313,5 +1313,6 @@
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Schichten verwalten</value>
   </data>
+  <data name="Shifts_Search_Category" xml:space="preserve"><value>Schichten</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Füge zuerst deinen Namen hinzu — wir brauchen ihn, bevor du dich für Schichten anmelden kannst.</value></data>
 </root>

@@ -8,10 +8,10 @@ namespace Humans.Teams.ViewComponents;
 public sealed class TeamsSearchResultViewComponent(ITeamService teams) : ViewComponent
 {
     /// <summary>Renders nothing when the team no longer resolves.</summary>
-    public async Task<IViewComponentResult> InvokeAsync(Guid teamId)
+    public async Task<IViewComponentResult> InvokeAsync(Guid key)
     {
         // From the cached snapshot: a row costs no query.
-        var team = await teams.GetTeamAsync(teamId, HttpContext.RequestAborted);
+        var team = await teams.GetTeamAsync(key, HttpContext.RequestAborted);
         return team is null
             ? Content(string.Empty)
             : View(new TeamsSearchResultViewModel(team.Name, team.Slug));

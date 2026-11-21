@@ -33,16 +33,9 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="Search_FilterAll" xml:space="preserve"><value>Alle</value></data>
   <data name="Search_FilterAriaLabel" xml:space="preserve"><value>Resultaten filteren op type</value></data>
-  <data name="Search_FilterCamps" xml:space="preserve"><value>Kampen</value></data>
-  <data name="Search_FilterEvents" xml:space="preserve"><value>Evenementen</value></data>
-  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
-  <data name="Search_FilterShifts" xml:space="preserve"><value>Diensten</value></data>
-  <data name="Search_FilterTeams" xml:space="preserve"><value>Teams</value></data>
-  <data name="Search_GlobalHint" xml:space="preserve"><value>Typ minstens 2 tekens om te zoeken in humans, teams, kampen en diensten.</value></data>
-  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Typ minstens 2 tekens om te zoeken in humans, teams, kampen, diensten en evenementen.</value></data>
+  <data name="Search_GlobalHint" xml:space="preserve"><value>Typ minstens 2 tekens om te zoeken in {0}.</value></data>
   <data name="Search_GlobalNoResults" xml:space="preserve"><value>Geen resultaten voor {0}.</value></data>
-  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Zoek humans, teams, kampen, diensten…</value></data>
-  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Zoek humans, teams, kampen, diensten, evenementen…</value></data>
+  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Zoeken…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Zoeken</value></data>
   <data name="Search_QueryAriaLabel" xml:space="preserve"><value>Zoekopdracht</value></data>
   <data name="Search_MinChars" xml:space="preserve">

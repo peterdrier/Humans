@@ -49,7 +49,7 @@ public class EmailConfirmationServiceTests
         Account(_me, "mine@example.com");
     }
 
-    private string Token => _service.CreateToken(_me, _emailId);
+    private string Token => EmailConfirmationService.CreateToken(_dataProtection, _me, _emailId);
 
     private void Account(Guid id, string confirmedAddress, UserState state = UserState.Active, bool filledIn = true)
     {

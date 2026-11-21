@@ -2,7 +2,7 @@ using Humans.Google.Contracts;
 
 namespace Humans.Google.Services;
 
-internal interface IWorkspaceIdentityManagement : IGoogleService, IGoogleWrite
+internal interface IWorkspaceIdentityManagement : IGoogleService
 {
     /// <summary>
     /// Audited as <c>UserEmailGoogleSet</c>; re-asserting the current address clears a Rejected verdict. False when the

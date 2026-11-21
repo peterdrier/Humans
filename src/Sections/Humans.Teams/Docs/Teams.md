@@ -209,7 +209,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 **Inbound** — sections that reference Teams:
 
-- **Search:** renders team hits with `<vc:teams-search-result>`.
+- **Search (contributor):** Teams' `Section` is an `ISearchContributor` — the `Team` category (`Teams_Search_Category`, weight 10) maps `ITeamService.SearchAsync(query, int.MaxValue)` to `SearchHit`s, each rendered by `<vc:teams-search-result key>`.
 - **Budget, Expenses:** coordinator scoping (`GetEffectiveBudgetCoordinatorTeamIdsAsync`, `IsUserCoordinatorOfTeamAsync`); Budget's dev seeder uses `ITeamSeeding`.
 - **Onboarding, Governance, Auth, Camps, Google, Development:** call `ISystemTeamSync` after the facts they own change.
 - **Users:** account deletion calls `RevokeAllMembershipsAsync`; account merge reaches `IUserMerge.ReassignAsync`; profiles read team memberships.

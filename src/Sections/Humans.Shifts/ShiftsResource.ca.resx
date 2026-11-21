@@ -1313,5 +1313,6 @@
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Gestionar torns</value>
   </data>
+  <data name="Shifts_Search_Category" xml:space="preserve"><value>Torns</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Afegeix primer el teu nom — el necessitem abans que puguis apuntar-te a torns.</value></data>
 </root>

@@ -4,7 +4,7 @@ Empty on purpose.
 
 `Contracts/` holds everything consumed from outside the section. Search is a pure consumer:
 it owns no tables, and nothing outside it names a Search type. `ISearchService`,
-`GlobalSearchResults`, `GlobalSearchResult` and `SearchResultType` have one consumer — the
+`GlobalSearchResults` and `SearchBucket` have one consumer — the
 section's own `SearchController` — so they stay `internal` in `Services/` and `Models/`.
 Promotion is decided from the consumer list, never from the name.
 
