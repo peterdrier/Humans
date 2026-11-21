@@ -59,6 +59,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         _service = new ProfileService(
             _userRepository,
+            _storageUserService,
             _pictureStorage);
         _editor = new ProfileEditorService(
             _userService, _contactFields,

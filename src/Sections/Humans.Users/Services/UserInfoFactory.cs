@@ -60,6 +60,8 @@ internal static class UserInfoFactory
             EmergencyContactRelationship: profile.EmergencyContactRelationship,
             HasCustomPicture: profile.ProfilePictureContentType is not null,
             ProfilePictureContentType: profile.ProfilePictureContentType,
+            ProfilePictureFileKey: ProfilePictureKeys.Resolve(
+                profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey),
             CreatedAt: profile.CreatedAt,
             UpdatedAt: profile.UpdatedAt,
             AdminNotes: profile.AdminNotes,
