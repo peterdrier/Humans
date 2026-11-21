@@ -14,6 +14,7 @@ using Humans.Expenses.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -22,6 +23,7 @@ namespace Humans.Expenses.Controllers;
 [Authorize]
 [Route("Expenses")]
 internal sealed class ExpensesController(
+    ITeamService teams,
     IUserService userService,
     IExpenseReportManagement service,
     IExpenseReview review,
@@ -34,7 +36,7 @@ internal sealed class ExpensesController(
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly ExpensePageBuilder pageBuilder = new(orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
+    private readonly ExpensePageBuilder pageBuilder = new(teams, orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
     private readonly IUserService _userService = userService;
 
     private LocalDate Today => pageBuilder.Today;
