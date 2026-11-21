@@ -132,7 +132,13 @@ public enum CheckoutState
 
 public sealed record RefundRequest(Guid RefundId, string BackendOrderId, long AmountMinor, string Reason);
 
-/// <summary><paramref name="ManualRefundUrl"/> is set only for <see cref="RefundState.ManualRequired"/>.</summary>
+/// <summary>
+/// <paramref name="BackendRefundId"/> is required whenever the backend accepted the refund
+/// (<see cref="RefundState.Pending"/> or <see cref="RefundState.Succeeded"/>). Tickets reads a pending refund without
+/// one as "the call never got an answer" and resends it under the same id on every reconcile run, so an adapter that
+/// cannot name the refund must throw instead. <paramref name="ManualRefundUrl"/> is set only for
+/// <see cref="RefundState.ManualRequired"/>.
+/// </summary>
 public sealed record RefundResult(
     RefundState State,
     string? BackendRefundId,

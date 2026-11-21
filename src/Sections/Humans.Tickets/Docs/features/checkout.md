@@ -60,7 +60,8 @@ Rules every backend follows:
    tickets or without its resale refund.
 4. A TicketsAdmin refunds from the order page: only paid orders, never above the ticket lines net of earlier refunds
    (pending and manual ones count until they settle). A refund call that throws stays `Pending`, since the money may
-   have gone. A refund never voids a ticket; voiding is the admin's separate step.
+   have gone, with no backend id; that is how reconcile knows to resend it, so an adapter must always name a refund it
+   accepted. A refund never voids a ticket; voiding is the admin's separate step.
 
 Each order carries a short `Reference` (the first 8 hex digits of its id) shown to the buyer and the team.
 
