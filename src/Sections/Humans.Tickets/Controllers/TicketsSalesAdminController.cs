@@ -19,7 +19,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Sales")]
 internal sealed class TicketsSalesAdminController(
     ITicketCheckoutService checkout,
-    ITicketDelivery delivery,
+    TicketDeliveryService delivery,
     ISettingsService settings,
     IGrantService grants,
     IUserService userService) : HumansControllerBase(userService)
@@ -148,6 +148,11 @@ internal sealed class SalesEditForm
     public string? Waves { get; set; }
     public string? SupporterTotals { get; set; }
     public string? PriceRules { get; set; }
+    public string? ChildPrice { get; set; }
+    public int? ChildMaxAge { get; set; }
+    public int? ResaleOpensAtSold { get; set; }
+    public int DirectedResaleDays { get; set; } = 3;
+    public Guid? TermsTeamId { get; set; }
 
     private static readonly LocalDatePattern DatePattern = LocalDatePattern.Iso;
     private static readonly InstantPattern InstantPattern = InstantPattern.General;
@@ -164,6 +169,11 @@ internal sealed class SalesEditForm
         Waves = string.Join('\n', e.Waves.Select(w => $"{w.Name};{DatePattern.Format(w.EndsOn)};{Eur(w.PriceMinor)}")),
         SupporterTotals = string.Join(", ", e.SupporterTotalsMinor.Select(Eur)),
         PriceRules = string.Join('\n', e.PriceRules.Select(r => $"{r.GrantProgramId};{r.Kind};{Eur(r.AmountMinor)};{r.Label}")),
+        ChildPrice = e.ChildPriceMinor is { } child ? Eur(child) : null,
+        ChildMaxAge = e.ChildMaxAge,
+        ResaleOpensAtSold = e.ResaleOpensAtSold,
+        DirectedResaleDays = e.DirectedResaleDays,
+        TermsTeamId = e.TermsTeamId,
     };
 
     public (SalesEventSave? Save, string? Error) ToSave(Guid? id)
@@ -198,12 +208,26 @@ internal sealed class SalesEditForm
             var parts = line.Split(';', 4, StringSplitOptions.TrimEntries);
             if (parts.Length != 4 || !Guid.TryParse(parts[0], out var programId)
                 || !Enum.TryParse<TicketPriceRuleKind>(parts[1], ignoreCase: true, out var kind) || !TryMinor(parts[2], out var amount))
-                return (null, $"Price rule line '{line}' is not programId;ClassPrice|Credit;amount;label.");
+                return (null, $"Price rule line '{line}' is not programId;ClassPrice|Credit|WavePin;amount;label.");
             rules.Add(new TicketPriceRule { GrantProgramId = programId, Kind = kind, AmountMinor = amount, Label = parts[3] });
         }
 
+        long? childPrice = null;
+        if (!string.IsNullOrWhiteSpace(ChildPrice))
+        {
+            if (!TryMinor(ChildPrice.Trim(), out var child)) return (null, "Child ticket price is not an amount.");
+            childPrice = child;
+        }
+
         return (new SalesEventSave(id, EventSettingsId, BackendKey.Trim(), BackendEventRef, Mode, close, Capacity,
-            TicketVatRate, waves, totals, rules), null);
+            TicketVatRate, waves, totals, rules)
+        {
+            ChildPriceMinor = childPrice,
+            ChildMaxAge = ChildMaxAge,
+            ResaleOpensAtSold = ResaleOpensAtSold,
+            DirectedResaleDays = DirectedResaleDays,
+            TermsTeamId = TermsTeamId,
+        }, null);
     }
 
     private static IEnumerable<string> Lines(string? text) =>

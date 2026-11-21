@@ -35,6 +35,9 @@ internal sealed class TicketCheckoutOrder
 
     public string Currency { get; init; } = "EUR";
 
+    /// <summary>The UI culture the buyer checked out in, for their receipt and ticket mail.</summary>
+    public string Culture { get; init; } = "en";
+
     public long TotalMinor { get; init; }
 
     public long? FeeMinor { get; set; }
@@ -91,8 +94,21 @@ internal sealed class TicketCheckoutOrderLine
     /// <summary>The ticket holder when known; null for a partner who has no account yet.</summary>
     public Guid? AttendeeUserId { get; set; }
 
-    /// <summary>The scannable code, issued when the order is paid.</summary>
-    public string? Barcode { get; set; }
+    public TicketHolderKind? HolderKind { get; set; }
+
+    /// <summary>For a child line, the index of the adult line it belongs to in the same order.</summary>
+    public int? ParentLineIndex { get; set; }
+
+    public string? WaveName { get; set; }
+
+    public Guid? ClassProgramId { get; set; }
+
+    public string? ClassLabel { get; set; }
+
+    public long CreditsMinor { get; set; }
+
+    /// <summary>Set when this line buys a returned ticket instead of fresh stock.</summary>
+    public Guid? ResaleOfferId { get; set; }
 
     public TicketDonationPurpose? DonationPurpose { get; set; }
 }
@@ -122,7 +138,8 @@ internal sealed class TicketCheckoutRefund
 
     public string? ManualRefundUrl { get; set; }
 
-    public Guid RequestedByUserId { get; init; }
+    /// <summary>Null for automation (the refund owed when a returned ticket resells).</summary>
+    public Guid? RequestedByUserId { get; init; }
 
     public Instant CreatedAt { get; init; }
 }
@@ -157,4 +174,16 @@ internal enum TicketCheckoutOrderEventKind
     RefundRequested = 5,
     RefundSettled = 6,
     Cancelled = 7,
+    TicketsIssued = 8,
+    ResaleOffered = 9,
+    ResaleWithdrawn = 10,
+    ResaleSold = 11,
+    ResaleInvited = 12,
+    ResaleInviteUsed = 13,
+    ResaleInviteLapsed = 14,
+    ResaleInviteCancelled = 15,
+    Renamed = 16,
+    Voided = 17,
+    CompanionIssued = 18,
+    TermsAccepted = 19,
 }

@@ -74,10 +74,10 @@ public sealed class TicketsEmailsTests
             .HtmlBody.Should().Contain("<strong>Reason:</strong> sold out");
     }
 
-    private static IssuedTicketMail SampleTicket(string holderName = "Ana", string? buyerName = null) => new(
-        Guid.NewGuid(), "ana@x.com", holderName, "Nowhere 2027", "Adult", "H7K2M9QX4T8VB3NRP",
-        new Uri("https://humans.example/Tickets/Mine/Code/tok"), new Uri("https://humans.example/Tickets/Mine"),
-        buyerName, Guid.NewGuid());
+    private static IssuedTicketMail SampleTicket(string holderName = "Ana", string? buyerName = null, params TicketCard[] riders) => new(
+        Guid.NewGuid(), "ana@x.com", holderName, "Nowhere 2027",
+        [new TicketCard(holderName, "Adult", "H7K2M9QX4T8VB3NRP", new Uri("https://humans.example/Tickets/Code/tok")), .. riders],
+        new Uri("https://humans.example/Tickets/Buy/Mine"), buyerName, Guid.NewGuid());
 
     private static OrderReceiptMail SampleReceipt(long refundedMinor = 0) => new(
         Guid.NewGuid(), "payer@x.com", "Payer", "Nowhere 2027", "3F9A0C1B", new NodaTime.LocalDate(2027, 1, 2), "card",
@@ -100,7 +100,7 @@ public sealed class TicketsEmailsTests
         msg.TemplateName.Should().Be("ticket_issued");
         msg.DeliveryId.Should().Be(ticket.DeliveryId);
         msg.Subject.Should().Be("Your ticket for Nowhere 2027");
-        msg.HtmlBody.Should().Contain("src=\"https://humans.example/Tickets/Mine/Code/tok\"")
+        msg.HtmlBody.Should().Contain("src=\"https://humans.example/Tickets/Code/tok\"")
             .And.Contain("H7K2M9QX4T8VB3NRP")
             .And.Contain("Ana &lt;Holder&gt;").And.NotContain("Ana <Holder>")
             .And.Contain("Ben &amp; Co bought this ticket for you")
@@ -109,9 +109,19 @@ public sealed class TicketsEmailsTests
     }
 
     [HumansFact]
+    public void TicketIssued_CarriesAChildTicketRidingOnTheAdults()
+    {
+        var msg = Create().TicketIssued(SampleTicket(riders: new TicketCard("Kid", "Child", "HKID0000000000000", new Uri("https://humans.example/Tickets/Code/kid"))), "en");
+
+        msg.HtmlBody.Should().Contain("HKID0000000000000").And.Contain("Child ticket").And.Contain("children coming with you")
+            .And.Contain("H7K2M9QX4T8VB3NRP");
+    }
+
+    [HumansFact]
     public void TicketIssued_ForTheBuyerThemselves_SaysNothingAboutWhoPaid()
     {
-        Create().TicketIssued(SampleTicket(), "en").HtmlBody.Should().NotContain("bought this ticket for you");
+        Create().TicketIssued(SampleTicket(), "en").HtmlBody.Should().NotContain("bought this ticket for you")
+            .And.NotContain("children coming with you");
     }
 
     [HumansFact]
@@ -201,6 +211,7 @@ public sealed class TicketsEmailsTests
         if (type == typeof(IssuedTicketMail)) return SampleTicket(buyerName: flag ? "Payer" : null);
         if (type == typeof(OrderReceiptMail)) return SampleReceipt();
         if (type == typeof(bool)) return flag;
+        if (type == typeof(int)) return 3;
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"TicketsEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");

@@ -13,7 +13,7 @@ namespace Humans.Tickets.Services.Delivery;
 internal sealed class TicketCodeImages(IDataProtectionProvider dataProtection, IOptions<EmailSettings> settings)
 {
     private const string ProtectorPurpose = "TicketCodeImage";
-    internal const string RoutePrefix = "/Tickets/Mine/Code/";
+    internal const string RoutePrefix = "/Tickets/Code/";
 
     private readonly IDataProtector _protector = dataProtection.CreateProtector(ProtectorPurpose);
 

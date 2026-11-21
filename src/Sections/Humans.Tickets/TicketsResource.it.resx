@@ -258,6 +258,144 @@
   <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
     <value>Per una donazione così grande, contatta l'organizzazione.</value>
   </data>
+  <data name="Tickets_Buy_Line_Child" xml:space="preserve">
+    <value>Biglietto bambino</value>
+  </data>
+  <data name="Tickets_Buy_DonationLineNote" xml:space="preserve">
+    <value>Una donazione all'associazione: senza IVA, non rimborsabile.</value>
+  </data>
+  <data name="Tickets_Buy_TicketsSubtotal" xml:space="preserve">
+    <value>Biglietti</value>
+  </data>
+  <data name="Tickets_Buy_DonationSubtotal" xml:space="preserve">
+    <value>Donazione</value>
+  </data>
+  <data name="Tickets_Buy_YourTickets" xml:space="preserve">
+    <value>Biglietti</value>
+  </data>
+  <data name="Tickets_Ticket_State_Valid" xml:space="preserve">
+    <value>Valido</value>
+  </data>
+  <data name="Tickets_Ticket_State_Offered" xml:space="preserve">
+    <value>In rivendita</value>
+  </data>
+  <data name="Tickets_Ticket_State_Resold" xml:space="preserve">
+    <value>Rivenduto</value>
+  </data>
+  <data name="Tickets_Ticket_State_Void" xml:space="preserve">
+    <value>Annullato</value>
+  </data>
+  <data name="Tickets_Mine_Title" xml:space="preserve">
+    <value>I miei biglietti</value>
+  </data>
+  <data name="Tickets_Mine_None" xml:space="preserve">
+    <value>Non hai biglietti acquistati tramite Humans.</value>
+  </data>
+  <data name="Tickets_Resale_DirectedIntro" xml:space="preserve">
+    <value>Hai ricevuto un invito ad acquistare un biglietto restituito specifico. Paghi il prezzo attuale all'associazione e ricevi un nuovo biglietto a tuo nome.</value>
+  </data>
+  <data name="Tickets_Buy_Children" xml:space="preserve">
+    <value>Bambini che vengono con te</value>
+  </data>
+  <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
+    <value>{0} ciascuno, per bambini sotto i {1} anni il primo giorno. Il loro nome legale, come sul documento. I loro biglietti seguono il tuo.</value>
+  </data>
+  <data name="Tickets_Buy_ChildName" xml:space="preserve">
+    <value>Bambino {0}: nome legale</value>
+  </data>
+  <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
+    <value>Migliora la tua esperienza e aiutaci a fare il miglior evento possibile. Il tuo biglietto resta al tuo prezzo; il resto è una donazione all'associazione, senza IVA e non rimborsabile.</value>
+  </data>
+  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
+    <value>{0} di biglietto + {1} di donazione</value>
+  </data>
+  <data name="Tickets_Buy_Terms" xml:space="preserve">
+    <value>Regole dei biglietti</value>
+  </data>
+  <data name="Tickets_Buy_TermsAccept" xml:space="preserve">
+    <value>Ho letto e accetto le regole dei biglietti indicate sopra.</value>
+  </data>
+  <data name="Tickets_Buy_Marketing" xml:space="preserve">
+    <value>Inviatemi la newsletter dell'associazione.</value>
+  </data>
+  <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
+    <value>Accetta le regole dei biglietti per continuare.</value>
+  </data>
+  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
+    <value>Non è stato possibile registrare l'accettazione delle regole. Controlla che il profilo sia completo e riprova.</value>
+  </data>
+  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
+    <value>Questo link di invito non è più valido, oppure è stato inviato a un'email diversa da quella con cui hai effettuato l'accesso.</value>
+  </data>
+  <data name="Tickets_Resale_NotFound" xml:space="preserve">
+    <value>Biglietto non trovato.</value>
+  </data>
+  <data name="Tickets_Resale_NotOfferable" xml:space="preserve">
+    <value>Questo biglietto non può essere messo in rivendita.</value>
+  </data>
+  <data name="Tickets_Resale_Closed" xml:space="preserve">
+    <value>Le restituzioni sono chiuse per questo evento.</value>
+  </data>
+  <data name="Tickets_Resale_InCheckout" xml:space="preserve">
+    <value>Qualcuno sta pagando questo biglietto proprio ora. Riprova tra un'ora.</value>
+  </data>
+  <data name="Tickets_Resale_InviteEmailInvalid" xml:space="preserve">
+    <value>Inserisci l'email della persona che vuoi invitare.</value>
+  </data>
+  <data name="Tickets_Resale_NotOpenYet" xml:space="preserve">
+    <value>La rivendita non è ancora aperta per questo evento, quindi nessuno può ancora comprare il tuo biglietto.</value>
+  </data>
+  <data name="Tickets_Resale_Offered" xml:space="preserve">
+    <value>Il tuo biglietto è nella coda di rivendita.</value>
+  </data>
+  <data name="Tickets_Resale_Withdrawn" xml:space="preserve">
+    <value>Il tuo biglietto è uscito dalla coda di rivendita ed è di nuovo valido.</value>
+  </data>
+  <data name="Tickets_Resale_Invited" xml:space="preserve">
+    <value>Invito inviato.</value>
+  </data>
+  <data name="Tickets_Resale_InviteCancelled" xml:space="preserve">
+    <value>Invito annullato. Il tuo biglietto mantiene il suo posto in coda.</value>
+  </data>
+  <data name="Tickets_Resale_InQueue" xml:space="preserve">
+    <value>Nella coda di rivendita in posizione {0}. Quando viene venduto ti verranno rimborsati {1}.</value>
+  </data>
+  <data name="Tickets_Resale_QueueNote" xml:space="preserve">
+    <value>Il tuo biglietto resta valido finché non viene venduto. Se non si vende entro l'evento non c'è rimborso, e puoi comunque riprenderlo e venire.</value>
+  </data>
+  <data name="Tickets_Resale_Withdraw" xml:space="preserve">
+    <value>Riprenderlo</value>
+  </data>
+  <data name="Tickets_Resale_InvitedTo" xml:space="preserve">
+    <value>Invito per: {0}</value>
+  </data>
+  <data name="Tickets_Resale_CancelInvite" xml:space="preserve">
+    <value>Annulla invito</value>
+  </data>
+  <data name="Tickets_Resale_InviteEmail" xml:space="preserve">
+    <value>La sua email</value>
+  </data>
+  <data name="Tickets_Resale_Invite" xml:space="preserve">
+    <value>Invita qualcuno</value>
+  </data>
+  <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
+    <value>Conosci qualcuno che vuole il tuo biglietto? Invitalo: riceverà un link per acquistarlo prima della coda, al prezzo attuale e a suo nome. Ti viene rimborsato ciò che hai pagato. Nessun denaro passa tra voi.</value>
+  </data>
+  <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
+    <value>Non puoi venire? Restituisci il biglietto alla coda di rivendita. Quando qualcuno lo compra ti viene rimborsato quanto pagato per il biglietto (non donazioni né commissioni).</value>
+  </data>
+  <data name="Tickets_Resale_OfferWithChildren" xml:space="preserve">
+    <value>I biglietti bambino collegati vengono restituiti insieme e rimborsati anch'essi.</value>
+  </data>
+  <data name="Tickets_Resale_Offer" xml:space="preserve">
+    <value>Restituisci il mio biglietto</value>
+  </data>
+  <data name="Tickets_Resale_Email_Invite_Subject" xml:space="preserve">
+    <value>Un biglietto per {0} ti aspetta</value>
+  </data>
+  <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
+    <value>&lt;p&gt;Ciao,&lt;/p&gt;&lt;p&gt;{0} non può venire a &lt;strong&gt;{1}&lt;/strong&gt; e ti invita ad acquistare il suo biglietto restituito prima della coda di rivendita.&lt;/p&gt;&lt;p&gt;Paghi il prezzo attuale del biglietto all'associazione e ricevi un nuovo biglietto a tuo nome: il nome deve corrispondere al tuo documento all'ingresso. Accedi o crea il tuo account Humans con questa email, poi usa questo link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Il link è valido per {3} giorni.&lt;/p&gt;</value>
+  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Il tuo biglietto per {0}</value>
   </data>
@@ -357,28 +495,13 @@
   <data name="Tickets_Delivery_Join_Closing" xml:space="preserve">
     <value>Ci vediamo lì.</value>
   </data>
-  <data name="Tickets_Mine_Title" xml:space="preserve">
-    <value>I miei biglietti</value>
-  </data>
-  <data name="Tickets_Mine_Empty" xml:space="preserve">
-    <value>Non hai ancora biglietti acquistati tramite Humans.</value>
-  </data>
   <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
     <value>Mostra questo codice all'ingresso insieme a un documento d'identità con foto. Il nome deve corrispondere al documento.</value>
   </data>
   <data name="Tickets_Mine_Show" xml:space="preserve">
     <value>Mostra biglietto</value>
   </data>
-  <data name="Tickets_Mine_State_Valid" xml:space="preserve">
-    <value>Valido</value>
-  </data>
-  <data name="Tickets_Mine_State_Offered" xml:space="preserve">
-    <value>In rivendita</value>
-  </data>
-  <data name="Tickets_Mine_State_Resold" xml:space="preserve">
-    <value>Rivenduto</value>
-  </data>
-  <data name="Tickets_Mine_State_Void" xml:space="preserve">
-    <value>Annullato</value>
+  <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
+    <value>Qui ci sono anche i biglietti dei bambini che vengono con te. Ognuno ha il suo codice: mostrali all'ingresso insieme al tuo.</value>
   </data>
 </root>

@@ -12,12 +12,18 @@ internal sealed record TicketPrice(
     IReadOnlyList<TicketPriceRule> Credits,
     long AmountMinor)
 {
-    /// <summary>Null when the event has no waves.</summary>
-    public static TicketPrice? For(TicketSalesEvent salesEvent, LocalDate pricingDate, IReadOnlyCollection<Guid> activeProgramIds)
+    /// <summary>
+    /// Null when the event has no waves. <paramref name="pinnedOn"/> is the earliest issue date of the person's
+    /// <see cref="TicketPriceRuleKind.WavePin"/> grants; the wave on sale then applies when it is cheaper.
+    /// </summary>
+    public static TicketPrice? For(
+        TicketSalesEvent salesEvent, LocalDate pricingDate, IReadOnlyCollection<Guid> activeProgramIds, LocalDate? pinnedOn = null)
     {
         var wave = WaveOn(salesEvent, pricingDate);
         if (wave is null)
             return null;
+        if (pinnedOn is { } pin && pin < pricingDate && WaveOn(salesEvent, pin) is { } pinned && pinned.PriceMinor < wave.PriceMinor)
+            wave = pinned;
 
         var rules = salesEvent.PriceRules.Where(r => activeProgramIds.Contains(r.GrantProgramId)).ToList();
         var classPrice = rules

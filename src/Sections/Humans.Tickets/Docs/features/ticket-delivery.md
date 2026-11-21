@@ -13,12 +13,12 @@ so every named person gets their own ticket by email, and can open it in Humans 
 
 | Mail | To | Category | When |
 |------|----|----------|------|
-| `ticket_issued` | each holder of a valid or offered ticket on the order | System | as soon as the order's tickets are issued |
+| `ticket_issued` | each valid or offered ticket with an email, to its holder; a ticket without one (a child) rides on its adult's mail | System | as soon as the order's tickets are issued |
 | `ticket_order_receipt` | the payer | System | with the tickets |
-| `ticket_join_invitation` | each holder | Ticketing (opt-out honoured) | two days later, only if the ticket is still `Valid` |
+| `ticket_join_invitation` | each holder of an adult or companion ticket with an account | Ticketing (opt-out honoured) | two days later, only if the ticket is still `Valid` |
 
-- **Ticket email:** event, holder name, ticket kind, the QR code of the ticket's `Barcode` (the code the gate scans),
-  the barcode as text, a link to `/Tickets/Mine`, and the ticket rules (named ticket matching photo ID, no transfers or
+- **Ticket email:** one card per ticket (the holder's, then any child riding on it): event, holder name, ticket kind, the QR code of the ticket's `Barcode` (the code the gate scans),
+  the barcode as text, a link to `/Tickets/Buy/Mine`, and the ticket rules (named ticket matching photo ID, no transfers or
   outside resale, return through Humans refunds the ticket price when resold and never the donation, private event of
   the association). When someone else paid, it says who.
 - **Receipt:** order reference (first 8 hex characters of the order id), paid date in the event's time zone, payment
@@ -31,10 +31,10 @@ in the seven cultures, and every template has a sample in `/Email/EmailPreview`.
 
 ## QR image
 
-Mail clients block `data:` images, so the email's `<img>` loads `/Tickets/Mine/Code/{token}`, anonymous because a mail
+Mail clients block `data:` images, so the email's `<img>` loads `/Tickets/Code/{token}`, anonymous because a mail
 client fetches it signed out. The token is the barcode under a Data Protection purpose (`TicketCodeImage`), so the
 endpoint never renders text Humans did not issue. The QR uses error correction level Q, which survives a scuffed
-screen. `/Tickets/Mine` embeds the same image as a `data:` URI.
+screen. `/Tickets/Buy/Mine` embeds the same image as a `data:` URI.
 
 ## Repeats and resends
 

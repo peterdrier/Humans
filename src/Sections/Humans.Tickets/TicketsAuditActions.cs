@@ -37,6 +37,15 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCheckoutRefunded = new("TicketCheckoutRefunded");
 
+    public static readonly AuditActionDefinition TicketResaleOffered = new("TicketResaleOffered");
+
+    public static readonly AuditActionDefinition TicketResaleWithdrawn = new("TicketResaleWithdrawn");
+
+    public static readonly AuditActionDefinition TicketCheckoutTicketRenamed = new("TicketCheckoutTicketRenamed");
+
+    public static readonly AuditActionDefinition TicketCheckoutTicketVoided = new("TicketCheckoutTicketVoided");
+
+    public static readonly AuditActionDefinition TicketCompanionIssued = new("TicketCompanionIssued");
     /// <summary>Ticket emails and the receipt, queued automatically once an order's tickets were issued.</summary>
     public static readonly AuditActionDefinition TicketDeliverySent = new("TicketDeliverySent");
 

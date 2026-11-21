@@ -65,15 +65,17 @@ public sealed class TicketDeliveryServiceTests
         _repository, _settings, _users, _email, TestTicketsEmails.Create(), TestTicketCodeImages.Create(), _jobs, _audit,
         Options.Create(new EmailSettings { BaseUrl = TestTicketsEmails.BaseUrl }), NullLogger<TicketDeliveryService>.Instance);
 
-    private TicketCheckoutTicket Ticket(Guid holderId, string name, string email, TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid) => new()
+    private TicketCheckoutTicket Ticket(Guid? holderId, string name, string? email, TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid,
+        TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null) => new()
     {
         Id = Guid.NewGuid(),
+        ParentTicketId = parent,
         OrderId = _order.Id,
         SalesEventId = _salesEvent.Id,
         HolderUserId = holderId,
         HolderName = name,
         HolderEmail = email,
-        Kind = TicketCheckoutTicketKind.Adult,
+        Kind = kind,
         State = state,
         Barcode = "H" + Guid.NewGuid().ToString("N")[..16].ToUpperInvariant(),
     };
@@ -99,6 +101,20 @@ public sealed class TicketDeliveryServiceTests
         _jobs.ReceivedWithAnyArgs(2).Create(default!, default!);
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketDeliverySent, Arg.Any<string>(), _order.Id,
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task TicketsIssued_PutsAChildWithoutEmailOnTheAdultsMail_AndInvitesOnlyTheAdult()
+    {
+        var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
+        var child = Ticket(BuyerId, "Kid Buyer", null, kind: TicketHolderKind.Child, parent: adult.Id);
+        Tickets(adult, child);
+
+        await Create().TicketsIssuedAsync(_order.Id);
+
+        var ticketMail = _sent.Where(m => string.Equals(m.TemplateName, "ticket_issued", StringComparison.Ordinal)).Should().ContainSingle().Subject;
+        ticketMail.HtmlBody.Should().Contain(adult.Barcode).And.Contain(child.Barcode);
+        _jobs.ReceivedWithAnyArgs(1).Create(default!, default!);
     }
 
     [HumansFact]

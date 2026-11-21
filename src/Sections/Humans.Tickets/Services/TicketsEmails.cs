@@ -90,8 +90,23 @@ internal sealed class TicketsEmails(
         }
     }
 
+    /// <summary>The invited person may have no account yet, so it goes to the address the holder typed.</summary>
+    public EmailMessage ResaleInvitation(
+        string toEmail, string holderName, string eventName, string claimUrl, int days, string? culture = null)
+    {
+        using (new CultureScope(culture, logger))
+        {
+            return new EmailMessage(
+                toEmail, null, null,
+                Lf("Tickets_Resale_Email_Invite_Subject", eventName),
+                Lf("Tickets_Resale_Email_Invite_Body", Encode(holderName), Encode(eventName), Encode(claimUrl), days),
+                "ticket_resale_invitation", MessageCategory.Ticketing);
+        }
+    }
+
     /// <summary>
-    /// One per named person, to the holder. System: a ticket is not optional mail.
+    /// One per ticket holder with an email, to the holder, carrying the tickets that ride on theirs (children). System:
+    /// a ticket is not optional mail.
     /// </summary>
     public EmailMessage TicketIssued(IssuedTicketMail ticket, string? culture = null)
     {
@@ -101,17 +116,24 @@ internal sealed class TicketsEmails(
             var boughtBy = ticket.BuyerName is { } buyer
                 ? $"<p>{Lf("Tickets_Delivery_Ticket_BoughtBy", Encode(buyer))}</p>"
                 : string.Empty;
+            var cards = string.Concat(ticket.Tickets.Select(card => $"""
+                <div style="border: 2px dashed #c9a96e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; background: #ffffff;">
+                    <div style="font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #8b7355;">{eventName}</div>
+                    <div style="font-family: Georgia, serif; font-size: 24px; color: #3d2b1f; margin: 6px 0 2px 0;">{Encode(card.HolderName)}</div>
+                    <div style="font-size: 14px; color: #6b5a4e;">{Encode(localizer[$"Tickets_Delivery_Kind_{card.Kind}"].Value)}</div>
+                    <img src="{Encode(card.CodeImageUrl.ToString())}" width="240" height="240" alt="{Encode(card.Barcode)}" style="display: block; margin: 16px auto; width: 240px; height: 240px;">
+                    <div style="font-family: monospace; font-size: 16px; letter-spacing: 0.1em;">{Encode(card.Barcode)}</div>
+                </div>
+                """));
+            var riders = ticket.Tickets.Count > 1
+                ? $"<p>{localizer["Tickets_Delivery_Ticket_Riders"].Value}</p>"
+                : string.Empty;
             var body = $"""
                 <h2>{Lf("Tickets_Delivery_Ticket_Heading", eventName)}</h2>
                 <p>{Lf("Tickets_Delivery_Ticket_Intro", Encode(ticket.HolderName))}</p>
                 {boughtBy}
-                <div style="border: 2px dashed #c9a96e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; background: #ffffff;">
-                    <div style="font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #8b7355;">{eventName}</div>
-                    <div style="font-family: Georgia, serif; font-size: 24px; color: #3d2b1f; margin: 6px 0 2px 0;">{Encode(ticket.HolderName)}</div>
-                    <div style="font-size: 14px; color: #6b5a4e;">{Encode(localizer[$"Tickets_Delivery_Kind_{ticket.Kind}"].Value)}</div>
-                    <img src="{Encode(ticket.CodeImageUrl.ToString())}" width="240" height="240" alt="{Encode(ticket.Barcode)}" style="display: block; margin: 16px auto; width: 240px; height: 240px;">
-                    <div style="font-family: monospace; font-size: 16px; letter-spacing: 0.1em;">{Encode(ticket.Barcode)}</div>
-                </div>
+                {riders}
+                {cards}
                 <p>{localizer["Tickets_Delivery_Ticket_AtTheGate"].Value}</p>
                 <p><a href="{Encode(ticket.MyTicketsUrl.ToString())}">{localizer["Tickets_Delivery_Ticket_Open"].Value}</a></p>
                 <h3>{localizer["Tickets_Delivery_Rules_Heading"].Value}</h3>
@@ -206,18 +228,19 @@ internal sealed class TicketsEmails(
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 }
 
-/// <summary><paramref name="Kind"/> names a <c>Tickets_Delivery_Kind_*</c> key.</summary>
+/// <summary><paramref name="Tickets"/> starts with the holder's own ticket.</summary>
 internal sealed record IssuedTicketMail(
     Guid? HolderUserId,
     string HolderEmail,
     string HolderName,
     string EventName,
-    string Kind,
-    string Barcode,
-    Uri CodeImageUrl,
+    IReadOnlyList<TicketCard> Tickets,
     Uri MyTicketsUrl,
     string? BuyerName,
     Guid? DeliveryId);
+
+/// <summary><paramref name="Kind"/> names a <c>Tickets_Delivery_Kind_*</c> key.</summary>
+internal sealed record TicketCard(string HolderName, string Kind, string Barcode, Uri CodeImageUrl);
 
 internal sealed record OrderReceiptMail(
     Guid BuyerUserId,

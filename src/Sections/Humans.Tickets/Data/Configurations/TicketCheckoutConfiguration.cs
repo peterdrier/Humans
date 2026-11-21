@@ -45,6 +45,7 @@ internal sealed class TicketCheckoutOrderConfiguration : IEntityTypeConfiguratio
         builder.Property(x => x.AdminUrl).HasMaxLength(2048);
         builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
+        builder.Property(x => x.Culture).IsRequired().HasMaxLength(16);
         builder.Property(x => x.PaymentMethod).HasMaxLength(64);
         builder.Ignore(x => x.TicketTotalMinor);
         builder.OwnsMany(x => x.Lines, l =>
@@ -52,6 +53,7 @@ internal sealed class TicketCheckoutOrderConfiguration : IEntityTypeConfiguratio
             l.ToJson("lines");
             l.Property(p => p.Kind).HasConversion<string>();
             l.Property(p => p.DonationPurpose).HasConversion<string>();
+            l.Property(p => p.HolderKind).HasConversion<string>();
         });
     }
 }
@@ -82,3 +84,40 @@ internal sealed class TicketCheckoutOrderEventConfiguration : IEntityTypeConfigu
         builder.Property(x => x.Detail).IsRequired().HasMaxLength(2000);
     }
 }
+
+internal sealed class TicketCheckoutTicketConfiguration : IEntityTypeConfiguration<TicketCheckoutTicket>
+{
+    public void Configure(EntityTypeBuilder<TicketCheckoutTicket> builder)
+    {
+        builder.ToTable("ticket_checkout_tickets");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.Barcode).IsUnique();
+        builder.HasIndex(x => x.OrderId);
+        builder.HasIndex(x => x.SalesEventId);
+        builder.HasIndex(x => x.HolderUserId);
+        builder.Property(x => x.Kind).IsRequired().HasConversion<string>().HasMaxLength(16);
+        builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
+        builder.Property(x => x.HolderName).IsRequired().HasMaxLength(513);
+        builder.Property(x => x.HolderEmail).HasMaxLength(320);
+        builder.Property(x => x.Barcode).IsRequired().HasMaxLength(32);
+        builder.Property(x => x.WaveName).IsRequired().HasMaxLength(128);
+        builder.Property(x => x.ClassLabel).HasMaxLength(128);
+        builder.Property(x => x.VoidReason).HasMaxLength(500);
+    }
+}
+
+internal sealed class TicketResaleOfferConfiguration : IEntityTypeConfiguration<TicketResaleOffer>
+{
+    public void Configure(EntityTypeBuilder<TicketResaleOffer> builder)
+    {
+        builder.ToTable("ticket_resale_offers");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.SalesEventId);
+        builder.HasIndex(x => x.TicketId);
+        builder.HasIndex(x => x.DirectedTokenHash);
+        builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
+        builder.Property(x => x.DirectedEmail).HasMaxLength(320);
+        builder.Property(x => x.DirectedTokenHash).HasMaxLength(64);
+    }
+}
+

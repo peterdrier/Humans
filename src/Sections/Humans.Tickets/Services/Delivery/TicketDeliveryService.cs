@@ -43,13 +43,14 @@ internal sealed class TicketDeliveryService(
         if (sent is null)
             return;
 
-        foreach (var ticket in sent.Value.Tickets)
-            jobs.Schedule<ITicketDelivery>(d => d.SendJoinInvitationAsync(ticket.Id, CancellationToken.None), JoinInvitationDelay);
+        foreach (var ticket in sent.Value.Tickets.Where(t => t.HolderUserId is not null && t.Kind != TicketHolderKind.Child))
+            jobs.Schedule<TicketDeliveryService>(d => d.SendJoinInvitationAsync(ticket.Id, CancellationToken.None), JoinInvitationDelay);
 
         await auditLog.LogAsync(TicketsAuditActions.TicketDeliverySent, TicketCheckoutService.AuditEntityType, orderId,
             $"Queued {sent.Value.Tickets.Count} ticket email(s) and the receipt", JobName);
     }
 
+    /// <summary>The ticketing team's resend: every ticket email and the receipt go out again, no second invitation.</summary>
     public async Task<CheckoutMutationResult> ResendAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
         var sent = await SendAsync(orderId, fresh: true, ct);
@@ -61,6 +62,7 @@ internal sealed class TicketDeliveryService(
         return CheckoutMutationResult.Ok;
     }
 
+    /// <summary>The scheduled follow-up; skipped once the ticket is no longer valid.</summary>
     public async Task SendJoinInvitationAsync(Guid ticketId, CancellationToken ct = default)
     {
         var ticket = await repository.GetTicketAsync(ticketId, ct);
@@ -71,9 +73,11 @@ internal sealed class TicketDeliveryService(
             return;
 
         var holder = await users.GetUserInfoAsync(holderId, ct);
+        if ((holder?.Email ?? ticket.HolderEmail) is not { } address)
+            return;
         var baseUrl = BaseUrl;
         await email.SendAsync(emails.JoinInvitation(
-            holderId, holder?.Email ?? ticket.HolderEmail, ticket.HolderName, eventName,
+            holderId, address, ticket.HolderName, eventName,
             new Uri($"{baseUrl}/Profile"), new Uri($"{baseUrl}/Shifts"),
             DeliveryIdFor("ticket_join_invitation", ticket.Id), CultureOf(holder)), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketJoinInvitationSent, TicketCheckoutService.AuditEntityType, ticket.OrderId,
@@ -104,20 +108,22 @@ internal sealed class TicketDeliveryService(
         var baseUrl = BaseUrl;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
 
-        foreach (var ticket in tickets)
+        // Each ticket with an email gets its own mail; one without (a child) rides on its adult's.
+        var mailed = tickets.Where(t => !string.IsNullOrWhiteSpace(t.HolderEmail) || t.ParentTicketId is null).ToList();
+        foreach (var ticket in mailed)
         {
             var holder = ticket.HolderUserId is { } holderId ? await users.GetUserInfoAsync(holderId, ct) : null;
-            var boughtBySomeoneElse = ticket.HolderUserId != order.BuyerUserId;
+            if ((holder?.Email ?? ticket.HolderEmail ?? (ticket.HolderUserId == order.BuyerUserId ? buyer?.Email ?? order.BuyerEmail : null)) is not { } address)
+                continue;
+            var riders = tickets.Where(t => t.ParentTicketId == ticket.Id && !mailed.Contains(t));
             await email.SendAsync(emails.TicketIssued(new IssuedTicketMail(
                 ticket.HolderUserId,
-                holder?.Email ?? ticket.HolderEmail,
+                address,
                 ticket.HolderName,
                 eventSettings.EventName,
-                ticket.Kind.ToString(),
-                ticket.Barcode,
-                codeImages.ImageUrl(ticket.Barcode),
-                new Uri($"{baseUrl}/Tickets/Mine"),
-                boughtBySomeoneElse ? order.BuyerName : null,
+                [Card(ticket), .. riders.Select(Card)],
+                new Uri($"{baseUrl}/Tickets/Buy/Mine"),
+                ticket.HolderUserId != order.BuyerUserId ? order.BuyerName : null,
                 fresh ? null : DeliveryIdFor("ticket_issued", ticket.Id)), CultureOf(holder ?? buyer)), ct);
         }
 
@@ -148,6 +154,9 @@ internal sealed class TicketDeliveryService(
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{template}:{subjectId:N}"));
         return new Guid(hash.AsSpan(0, 16));
     }
+
+    private TicketCard Card(TicketCheckoutTicket ticket) =>
+        new(ticket.HolderName, ticket.Kind.ToString(), ticket.Barcode, codeImages.ImageUrl(ticket.Barcode));
 
     private string BaseUrl => emailSettings.Value.BaseUrl.TrimEnd('/');
 

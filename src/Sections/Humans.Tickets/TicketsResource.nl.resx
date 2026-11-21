@@ -258,6 +258,144 @@
   <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
     <value>Neem voor een donatie van deze omvang contact op met de organisatie.</value>
   </data>
+  <data name="Tickets_Buy_Line_Child" xml:space="preserve">
+    <value>Kinderticket</value>
+  </data>
+  <data name="Tickets_Buy_DonationLineNote" xml:space="preserve">
+    <value>Een donatie aan de vereniging: zonder btw, wordt niet terugbetaald.</value>
+  </data>
+  <data name="Tickets_Buy_TicketsSubtotal" xml:space="preserve">
+    <value>Tickets</value>
+  </data>
+  <data name="Tickets_Buy_DonationSubtotal" xml:space="preserve">
+    <value>Donatie</value>
+  </data>
+  <data name="Tickets_Buy_YourTickets" xml:space="preserve">
+    <value>Tickets</value>
+  </data>
+  <data name="Tickets_Ticket_State_Valid" xml:space="preserve">
+    <value>Geldig</value>
+  </data>
+  <data name="Tickets_Ticket_State_Offered" xml:space="preserve">
+    <value>Aangeboden voor doorverkoop</value>
+  </data>
+  <data name="Tickets_Ticket_State_Resold" xml:space="preserve">
+    <value>Doorverkocht</value>
+  </data>
+  <data name="Tickets_Ticket_State_Void" xml:space="preserve">
+    <value>Ongeldig</value>
+  </data>
+  <data name="Tickets_Mine_Title" xml:space="preserve">
+    <value>Mijn tickets</value>
+  </data>
+  <data name="Tickets_Mine_None" xml:space="preserve">
+    <value>Je hebt geen tickets die via Humans zijn gekocht.</value>
+  </data>
+  <data name="Tickets_Resale_DirectedIntro" xml:space="preserve">
+    <value>Je bent uitgenodigd om één specifiek teruggegeven ticket te kopen. Je betaalt de huidige prijs aan de vereniging en krijgt een nieuw ticket op je eigen naam.</value>
+  </data>
+  <data name="Tickets_Buy_Children" xml:space="preserve">
+    <value>Kinderen die met je meekomen</value>
+  </data>
+  <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
+    <value>{0} per kind, voor kinderen onder de {1} op de eerste dag. Hun wettelijke naam, zoals op hun identiteitsbewijs. Hun tickets horen bij het jouwe.</value>
+  </data>
+  <data name="Tickets_Buy_ChildName" xml:space="preserve">
+    <value>Kind {0}: wettelijke naam</value>
+  </data>
+  <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
+    <value>Maak je ervaring groter en help ons het beste evenement te maken. Je ticket blijft op jouw prijs; de rest is een donatie aan de vereniging, zonder btw, en wordt niet terugbetaald.</value>
+  </data>
+  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
+    <value>{0} ticket + {1} donatie</value>
+  </data>
+  <data name="Tickets_Buy_Terms" xml:space="preserve">
+    <value>Ticketregels</value>
+  </data>
+  <data name="Tickets_Buy_TermsAccept" xml:space="preserve">
+    <value>Ik heb de ticketregels hierboven gelezen en ga ermee akkoord.</value>
+  </data>
+  <data name="Tickets_Buy_Marketing" xml:space="preserve">
+    <value>Stuur me de nieuwsbrief van de vereniging.</value>
+  </data>
+  <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
+    <value>Ga akkoord met de ticketregels om verder te gaan.</value>
+  </data>
+  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
+    <value>Je akkoord met de ticketregels kon niet worden vastgelegd. Controleer of je profiel volledig is en probeer het opnieuw.</value>
+  </data>
+  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
+    <value>Deze uitnodigingslink is niet meer geldig, of hij is naar een ander e-mailadres gestuurd dan waarmee je bent ingelogd.</value>
+  </data>
+  <data name="Tickets_Resale_NotFound" xml:space="preserve">
+    <value>Ticket niet gevonden.</value>
+  </data>
+  <data name="Tickets_Resale_NotOfferable" xml:space="preserve">
+    <value>Dit ticket kan niet voor doorverkoop worden aangeboden.</value>
+  </data>
+  <data name="Tickets_Resale_Closed" xml:space="preserve">
+    <value>Teruggeven is gesloten voor dit evenement.</value>
+  </data>
+  <data name="Tickets_Resale_InCheckout" xml:space="preserve">
+    <value>Iemand betaalt dit ticket op dit moment. Probeer het over een uur opnieuw.</value>
+  </data>
+  <data name="Tickets_Resale_InviteEmailInvalid" xml:space="preserve">
+    <value>Vul het e-mailadres in van de persoon die je wilt uitnodigen.</value>
+  </data>
+  <data name="Tickets_Resale_NotOpenYet" xml:space="preserve">
+    <value>Doorverkoop is voor dit evenement nog niet open, dus niemand kan je ticket nog kopen.</value>
+  </data>
+  <data name="Tickets_Resale_Offered" xml:space="preserve">
+    <value>Je ticket staat in de doorverkoopwachtrij.</value>
+  </data>
+  <data name="Tickets_Resale_Withdrawn" xml:space="preserve">
+    <value>Je ticket is uit de doorverkoopwachtrij en weer geldig.</value>
+  </data>
+  <data name="Tickets_Resale_Invited" xml:space="preserve">
+    <value>Uitnodiging verstuurd.</value>
+  </data>
+  <data name="Tickets_Resale_InviteCancelled" xml:space="preserve">
+    <value>Uitnodiging ingetrokken. Je ticket houdt zijn plek in de wachtrij.</value>
+  </data>
+  <data name="Tickets_Resale_InQueue" xml:space="preserve">
+    <value>In de doorverkoopwachtrij op plek {0}. Als het verkocht is, krijg je {1} terug.</value>
+  </data>
+  <data name="Tickets_Resale_QueueNote" xml:space="preserve">
+    <value>Je ticket blijft geldig tot het verkocht is. Is het voor het evenement niet verkocht, dan is er geen terugbetaling, en kun je het nog terugnemen en komen.</value>
+  </data>
+  <data name="Tickets_Resale_Withdraw" xml:space="preserve">
+    <value>Terugnemen</value>
+  </data>
+  <data name="Tickets_Resale_InvitedTo" xml:space="preserve">
+    <value>Uitgenodigd: {0}</value>
+  </data>
+  <data name="Tickets_Resale_CancelInvite" xml:space="preserve">
+    <value>Uitnodiging intrekken</value>
+  </data>
+  <data name="Tickets_Resale_InviteEmail" xml:space="preserve">
+    <value>Hun e-mail</value>
+  </data>
+  <data name="Tickets_Resale_Invite" xml:space="preserve">
+    <value>Koper uitnodigen</value>
+  </data>
+  <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
+    <value>Ken je iemand die je ticket wil? Nodig diegene uit: die krijgt een link om het vóór de wachtrij te kopen, tegen de huidige prijs en op eigen naam. Jij krijgt terug wat je betaalde. Er gaat geen geld tussen jullie.</value>
+  </data>
+  <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
+    <value>Kun je niet komen? Geef je ticket terug aan de doorverkoopwachtrij. Als iemand het koopt, krijg je terug wat je voor het ticket betaalde (geen donaties of kosten).</value>
+  </data>
+  <data name="Tickets_Resale_OfferWithChildren" xml:space="preserve">
+    <value>De kindertickets die erbij horen, worden mee teruggegeven en ook terugbetaald.</value>
+  </data>
+  <data name="Tickets_Resale_Offer" xml:space="preserve">
+    <value>Mijn ticket teruggeven</value>
+  </data>
+  <data name="Tickets_Resale_Email_Invite_Subject" xml:space="preserve">
+    <value>Er wacht een ticket voor {0} op je</value>
+  </data>
+  <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hoi,&lt;/p&gt;&lt;p&gt;{0} kan niet naar &lt;strong&gt;{1}&lt;/strong&gt; komen en heeft je uitgenodigd om het teruggegeven ticket vóór de doorverkoopwachtrij te kopen.&lt;/p&gt;&lt;p&gt;Je betaalt de huidige ticketprijs aan de vereniging en krijgt een nieuw ticket op je eigen naam: de naam moet bij de ingang overeenkomen met je identiteitsbewijs. Log in of maak je Humans-account aan met dit e-mailadres en gebruik dan deze link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;De link werkt {3} dagen.&lt;/p&gt;</value>
+  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Je ticket voor {0}</value>
   </data>
@@ -357,28 +495,13 @@
   <data name="Tickets_Delivery_Join_Closing" xml:space="preserve">
     <value>Tot daar.</value>
   </data>
-  <data name="Tickets_Mine_Title" xml:space="preserve">
-    <value>Mijn tickets</value>
-  </data>
-  <data name="Tickets_Mine_Empty" xml:space="preserve">
-    <value>Je hebt nog geen tickets die via Humans zijn gekocht.</value>
-  </data>
   <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
     <value>Laat deze code bij de ingang zien samen met een identiteitsbewijs met foto. De naam moet overeenkomen met je identiteitsbewijs.</value>
   </data>
   <data name="Tickets_Mine_Show" xml:space="preserve">
     <value>Ticket tonen</value>
   </data>
-  <data name="Tickets_Mine_State_Valid" xml:space="preserve">
-    <value>Geldig</value>
-  </data>
-  <data name="Tickets_Mine_State_Offered" xml:space="preserve">
-    <value>Aangeboden voor doorverkoop</value>
-  </data>
-  <data name="Tickets_Mine_State_Resold" xml:space="preserve">
-    <value>Doorverkocht</value>
-  </data>
-  <data name="Tickets_Mine_State_Void" xml:space="preserve">
-    <value>Ongeldig</value>
+  <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
+    <value>Hier staan ook de tickets van de kinderen die met je meekomen. Elk heeft een eigen code: laat ze bij de ingang samen met de jouwe zien.</value>
   </data>
 </root>

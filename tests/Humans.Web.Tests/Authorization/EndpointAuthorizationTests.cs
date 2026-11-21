@@ -292,7 +292,7 @@ public class EndpointAuthorizationTests
             "EventsApiController.GetCategories",
             "ICalFeedApiController.GetFeed",
             // The ticket email's QR image: mail clients fetch it signed out. Renders only a token Humans minted.
-            "TicketWalletController.Code",
+            "TicketCodeController.Code",
         };
 
         var controllerTypes = AllControllerTypes(includeApiControllers: true)
