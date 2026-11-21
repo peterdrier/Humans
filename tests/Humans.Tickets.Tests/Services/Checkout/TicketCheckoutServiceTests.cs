@@ -532,6 +532,8 @@ public sealed class TicketCheckoutServiceTests
         _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
         ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
         _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleWithdrawn && e.Detail.Contains("resale switched off"));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketResaleWithdrawn, Arg.Any<string>(), ticket.OrderId,
+            Arg.Is<string>(d => d.Contains("resale switched off")), _buyerId, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

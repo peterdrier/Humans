@@ -1202,6 +1202,13 @@ internal sealed partial class TicketCheckoutService(
         await repository.UpdateTicketAsync(ticket, ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
             $"Ticket {ticket.Barcode} taken back out of the resale queue: resale switched off for this event", actorUserId, ct);
+        const string detail = "withdrawn from resale: resale switched off for this event";
+        if (actorUserId is { } actor)
+            await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
+                $"Ticket {ticket.Barcode} {detail}", actor);
+        else
+            await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
+                $"Ticket {ticket.Barcode} {detail}", JobName);
     }
 
     private static string OnOff(bool on) => on ? "on" : "off";
