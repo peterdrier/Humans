@@ -439,6 +439,27 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Refund_RepeatAfterTheRefundFailed_AnswersFailedAndNeverRefundsAgain()
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = new FakePretix()
+            .On("GET", OrderPath, HttpStatusCode.OK, Order(
+                Code, status: "p", total: 775m,
+                fees: [RefundFee(refundId)],
+                payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe" }],
+                refunds: [new { local_id = 3, state = "failed", amount = "225.00", payment = 1, comment = $"humans-refund:{refundId} Resold", provider = "stripe" }]))
+            .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrder());
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        result.BackendRefundId.Should().Be("3");
+        pretix.BodiesFor("POST", $"{OrderPath}payments/1/refund/").Should().BeEmpty();
+        JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}change/").Single()!)!["cancel_fees"]![0]!["fee"]!.GetValue<int>().Should().Be(7);
+    }
+
+    [HumansFact]
     public async Task Refund_MethodCannotRefundAutomatically_AsksForAPersonInPretix()
     {
         var refundId = Guid.NewGuid();

@@ -145,11 +145,17 @@ internal sealed class PretixCheckoutBackend(
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var comment = RefundCommentPrefix + request.RefundId.ToString("D");
 
-        var earlier = order.Refunds.FirstOrDefault(r =>
-            r.Comment?.Contains(comment, StringComparison.Ordinal) == true
-            && r.State is not ("failed" or "canceled"));
+        // A repeat answers the earlier refund's current state and never refunds again; Tickets uses it to learn
+        // how a refund ended. A refund that failed after pretix accepted it gives its lowered total back.
+        var earlier = order.Refunds.LastOrDefault(r => r.Comment?.Contains(comment, StringComparison.Ordinal) == true);
         if (earlier is not null)
+        {
+            var earlierFee = order.Fees.FirstOrDefault(f =>
+                !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
+            if (earlier.State is "failed" or "canceled" && earlierFee is not null)
+                await CancelFeeAsync(eventSlug, code, earlierFee.Id, ct);
             return MapRefund(earlier, AdminOrderUrl(eventSlug, code));
+        }
 
         var payment = RefundablePayment(order, request.AmountMinor);
         if (payment is null)
