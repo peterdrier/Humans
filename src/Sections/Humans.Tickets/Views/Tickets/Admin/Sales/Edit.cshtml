@@ -328,7 +328,14 @@
                 </div>
             </template>
             <div class="form-check form-switch mt-3 mb-0">
-                <input class="form-check-input" type="checkbox" role="switch" id="CompanionTickets" name="CompanionTickets" value="true" checked="@f.CompanionTickets" />
+                @if (f.CompanionTickets)
+                {
+                    <input class="form-check-input" type="checkbox" role="switch" id="CompanionTickets" name="CompanionTickets" value="true" checked />
+                }
+                else
+                {
+                    <input class="form-check-input" type="checkbox" role="switch" id="CompanionTickets" name="CompanionTickets" value="true" />
+                }
                 <input type="hidden" name="CompanionTickets" value="false" />
                 <label class="form-check-label" for="CompanionTickets">Companion tickets</label>
                 <div class="form-text mt-0">A holder may ask for a free ticket for a companion already in Humans; the ticketing team approves each one.</div>
