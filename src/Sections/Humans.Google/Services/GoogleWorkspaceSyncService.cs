@@ -251,18 +251,6 @@ internal sealed class GoogleWorkspaceSyncService(
     }
 
     /// <inheritdoc />
-    public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
-        GoogleResourceType resourceType,
-        SyncAction action,
-        CancellationToken cancellationToken = default,
-        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
-    {
-        if (resourceType == GoogleResourceType.Group)
-            throw new InvalidOperationException("Google Group membership sync is handled by IGoogleGroupSync.");
-        return googleDriveSync.ReconcileAllAsync(action, cancellationToken, resourceType, syncSource);
-    }
-
-    /// <inheritdoc />
     public async Task<ResourceSyncDiff> SyncSingleResourceAsync(
         Guid resourceId,
         SyncAction action,

@@ -15,14 +15,6 @@ internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite,
         SyncAction action,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Drive only; Group membership is <see cref="IGoogleGroupSync"/>'s.</summary>
-    [ExternalWrite]
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(
-        GoogleResourceType resourceType,
-        SyncAction action,
-        CancellationToken cancellationToken = default,
-        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
-
     /// <summary>Detect-only. A skipped result when sync is disabled.</summary>
     Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default);
 

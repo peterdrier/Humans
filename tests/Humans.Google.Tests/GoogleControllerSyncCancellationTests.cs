@@ -42,6 +42,7 @@ public class GoogleControllerSyncCancellationTests
     private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
     private readonly IGoogleAdminService _admin = Substitute.For<IGoogleAdminService>();
     private readonly IGoogleSyncManagement _syncService = Substitute.For<IGoogleSyncManagement>();
+    private readonly IGoogleDriveSync _driveSync = Substitute.For<IGoogleDriveSync>();
     private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IEmailProvisioningService _provisioning = Substitute.For<IEmailProvisioningService>();
 
@@ -186,6 +187,8 @@ public class GoogleControllerSyncCancellationTests
 
         await controller.SyncExecuteAll(GoogleResourceType.DriveFolder);
 
+        await _driveSync.Received(1).ReconcileAllAsync(SyncAction.Execute, CancellationToken.None,
+            GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync);
         received.Value.IsCancellationRequested.Should().BeFalse();
     }
 
@@ -212,8 +215,8 @@ public class GoogleControllerSyncCancellationTests
     public async Task SyncPreview_does_not_forward_the_request_token_because_it_can_write()
     {
         var received = new Box();
-        _syncService
-            .SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Preview, Arg.Any<CancellationToken>())
+        _driveSync
+            .ReconcileAllAsync(SyncAction.Preview, Arg.Any<CancellationToken>(), GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync)
             .Returns(call =>
             {
                 received.Value = call.Arg<CancellationToken>();
@@ -224,6 +227,8 @@ public class GoogleControllerSyncCancellationTests
 
         await controller.SyncPreview(GoogleResourceType.DriveFolder);
 
+        await _driveSync.Received(1).ReconcileAllAsync(SyncAction.Preview, CancellationToken.None,
+            GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync);
         received.Value.IsCancellationRequested.Should().BeFalse(
             "a preview stamps resource errors, so it is a POST and finishes once started (HUM0038)");
     }
@@ -244,8 +249,8 @@ public class GoogleControllerSyncCancellationTests
     private Box CaptureByTypeToken()
     {
         var box = new Box();
-        _syncService
-            .SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>())
+        _driveSync
+            .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>(), GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync)
             .Returns(call =>
             {
                 box.Value = call.Arg<CancellationToken>();
@@ -310,6 +315,7 @@ public class GoogleControllerSyncCancellationTests
             _users,
             _syncService,
             _groupSync,
+            _driveSync,
             _resources,
             _provisioning,
             _admin,

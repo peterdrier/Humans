@@ -217,7 +217,7 @@ Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation
 Task<string> CreateSubfolderAsync(string parentFolderId, string name, ...);
 Task RequestSyncAsync(string folderId, ...);
 ```
-Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncSingleResourceAsync`, `SyncResourcesByTypeAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetFailedSyncEventCountAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
+Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncSingleResourceAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetFailedSyncEventCountAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
 
 The management-only domain-group, drift/remediation, and outbox snapshot DTOs live inside the section. Public group reconciliation and provisioning contracts retain their result types.
 

@@ -231,17 +231,14 @@ See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/feat
 
 **Process**:
 ```
-1. For each service type (GoogleDrive, GoogleGroups):
-   a. Read SyncMode from sync_service_settings
-   b. If mode is None → skip this service entirely
-   c. Map SyncMode to SyncAction:
-      - AddOnly → SyncAction.AddOnly (adds only)
-      - AddAndRemove → SyncAction.AddAndRemove (adds + removes)
-   d. Call SyncResourcesByTypeAsync(resourceType, action)
-      - Computes diff for all active resources of that type
-      - Executes adds (and removes if AddAndRemove) per resource
-      - Per-resource error handling (log + store ErrorMessage, continue)
-      - Updates LastSyncedAt on each resource
+1. Skip the run without Google credentials.
+2. Reconcile Drive claims through IGoogleDriveSync.ReconcileAllAsync(Execute).
+3. Reconcile Group claims through IGoogleGroupSync.ReconcileAllAsync(Execute).
+   Each owner applies its stored SyncMode and reports per-resource errors.
+4. Update Drive folder paths and enforce inherited-access restrictions.
+5. Check Group settings and remediate reported drift.
+   Phases isolate failures and report one accumulated summary; shutdown propagates
+   after reporting the outcomes already recorded.
 ```
 
 **Sync modes** (configured at `/Google/SyncSettings` by Admin users):
