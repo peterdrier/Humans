@@ -5,6 +5,7 @@ namespace Humans.Tickets;
 /// <summary>The audit actions Tickets writes. Names are stored on audit rows: never rename one.</summary>
 internal sealed class TicketsAuditActions : AuditActionContributor
 {
+    // Retired with the transfer-request pages: nothing writes them; declared so stored 2026 rows keep their verb.
     public static readonly AuditActionDefinition TicketTransferRequested = new("TicketTransferRequested");
 
     public static readonly AuditActionDefinition TicketTransferApproved = new("TicketTransferApproved");
@@ -39,7 +40,7 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCheckoutRefunded = new("TicketCheckoutRefunded");
 
-    /// <summary>Automation left the ticketing team something to do: a duplicate or unattached partner ticket, a refund to pay by hand.</summary>
+    /// <summary>Automation left the ticketing team something to do: someone who ended up with two tickets, a refund to pay by hand.</summary>
     public static readonly AuditActionDefinition TicketCheckoutNeedsAttention = new("TicketCheckoutNeedsAttention");
 
     public static readonly AuditActionDefinition TicketResaleOffered = new("TicketResaleOffered");

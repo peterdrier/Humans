@@ -37,7 +37,6 @@ internal static class GuideFiles
     [
         "EmailAccount",
         "TwoStepVerification",
-        "TicketTransfers",
         "AiHelper",
         "SigningIn",
         "YourData"

@@ -89,8 +89,8 @@ but the decision to admit-and-record from inside Humans is yours to bless.
   write actions and the terminal uses the chromeless `_GateLayout`._
 - **Name-mismatch fix link** — on a `RejectedNameMismatch`, auto-email the holder's
   per-attendee email (`TicketAttendee.AttendeeEmail`, the custom-field email, not
-  the buyer email) a link into the existing transfer flow (sign-in / create
-  account). Reuses Peter's `TicketTransferService`.
+  the buyer email) a link to fix the name (sign-in / create account). The old
+  ticket transfer flow it once pointed at is gone.
 
 ## Admission precedence (`GateAdmissionRules.Evaluate`)
 

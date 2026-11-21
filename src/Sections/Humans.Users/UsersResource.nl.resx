@@ -345,7 +345,7 @@
     <value>Accounts samenvoegen?</value>
   </data>
   <data name="Users_Emails_MergeWarningBody" xml:space="preserve">
-    <value>Accounts samenvoegen is bedoeld om twee accounts van dezelfde persoon te combineren (bijvoorbeeld een oud en een nieuw e-mailadres die allebei van jou zijn). Het is geen manier om tickets, boekingen of andere zaken tussen twee verschillende personen te delen of over te dragen. Gebruik de functie voor ticketoverdracht op /Tickets/Transfers om een ticket aan een andere Human over te dragen.</value>
+    <value>Accounts samenvoegen is bedoeld om twee accounts van dezelfde persoon te combineren (bijvoorbeeld een oud en een nieuw e-mailadres die allebei van jou zijn). Het is geen manier om tickets, boekingen of andere zaken tussen twee verschillende personen te delen of over te dragen. Wil je een ticket aan een andere Human doorgeven, bied het dan te koop aan via /Tickets/Buy/Mine en nodig die persoon per e-mail uit.</value>
   </data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Er wordt een verificatiemail naar dit adres gestuurd.</value>

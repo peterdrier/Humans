@@ -104,7 +104,7 @@ internal sealed class TicketCheckoutOrderLine
 
     public string? AttendeeEmail { get; set; }
 
-    /// <summary>The ticket holder when known; null for a partner who has no account yet.</summary>
+    /// <summary>The ticket holder when known; null for a child or a companion issued without an account.</summary>
     public Guid? AttendeeUserId { get; set; }
 
     public TicketHolderKind? HolderKind { get; set; }

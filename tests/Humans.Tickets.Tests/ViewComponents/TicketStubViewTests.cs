@@ -44,7 +44,7 @@ public class TicketStubViewTests
             Writer = writer,
             ViewData = new ViewDataDictionary<TicketStubInfo>(new EmptyModelMetadataProvider(), new ModelStateDictionary())
             {
-                Model = new TicketStubInfo("Ada", "ada@example.com", TicketAttendeeStatus.Valid, false, null, null),
+                Model = new TicketStubInfo("Ada", "ada@example.com", TicketAttendeeStatus.Valid, null),
             },
         };
 

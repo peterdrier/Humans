@@ -19,11 +19,9 @@ public static class SectionHelpContent
         ## Tickets
 
         **Q: Can I transfer my ticket to my partner / someone else?**
-        Yes. The preferred way is in-app: go to /Tickets/Transfers and request a transfer to the
-        receiver (they need their own Humans account). The tickets team approves it and the ticket is
-        reissued in their name. You can also email tickets@nobodies.team, but the in-app request is
-        better — same team either way, and the app makes it clear who is sending and receiving. One
-        request per ticket.
+        Not by handing the ticket over. For a ticket bought in Humans, once resale is open, offer it
+        for resale at /Tickets/Buy/Mine and invite the person by email: they get a link to buy it in
+        their own name. Otherwise email tickets@nobodies.team.
 
         **Q: I bought a ticket under a different email address.**
         Add that email at /Profile/Me/Emails. The order relinks to your account automatically on the
