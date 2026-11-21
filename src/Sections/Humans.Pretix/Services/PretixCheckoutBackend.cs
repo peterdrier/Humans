@@ -148,13 +148,12 @@ internal sealed partial class PretixCheckoutBackend(
 
         // A repeat answers the earlier refund's current state and never refunds again; Tickets uses it to learn
         // how a refund ended. A refund that failed after pretix accepted it gives its lowered total back.
+        var fee = order.Fees.FirstOrDefault(f => !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
         var earlier = order.Refunds.LastOrDefault(r => r.Comment?.Contains(comment, StringComparison.Ordinal) == true);
         if (earlier is not null)
         {
-            var earlierFee = order.Fees.FirstOrDefault(f =>
-                !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
-            if (earlier.State is "failed" or "canceled" && earlierFee is not null)
-                await CancelFeeAsync(eventSlug, code, earlierFee.Id, ct);
+            if (earlier.State is "failed" or "canceled" && fee is not null)
+                await CancelFeeAsync(eventSlug, code, fee.Id, ct);
             return MapRefund(earlier, AdminOrderUrl(eventSlug, code));
         }
 
@@ -168,7 +167,6 @@ internal sealed partial class PretixCheckoutBackend(
         // pretix reopens a paid order for payment whenever a refund leaves its total uncovered, so the order total
         // drops by the refund first, as a negative fee that also marks the refund. The order then stays paid and
         // nobody can pay the refunded amount again.
-        var fee = order.Fees.FirstOrDefault(f => !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
         var feeIsNew = fee is null;
         fee ??= await AddRefundFeeAsync(eventSlug, code, comment, request.AmountMinor, ct);
 
@@ -322,7 +320,7 @@ internal sealed partial class PretixCheckoutBackend(
                 return findings;
             }
 
-            var details = Deserialize<PretixEventCheck>(ev.Body);
+            var details = Deserialize<PretixEvent>(ev.Body);
             findings.Add(string.Equals(details.Currency, "EUR", StringComparison.OrdinalIgnoreCase)
                 ? new(true, "The event sells in EUR.")
                 : new(false, $"The event sells in {details.Currency}, Humans sells in EUR."));
@@ -393,7 +391,7 @@ internal sealed partial class PretixCheckoutBackend(
         var refundFees = order.Fees
             .Where(f => !f.Canceled && f.InternalType?.StartsWith(RefundCommentPrefix, StringComparison.Ordinal) == true)
             .Sum(f => f.Value);
-        var received = order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount);
+        var received = Received(order);
         // Tickets never takes a paid order back, but pretix cancels or reopens one once a person processes a refund or
         // chargeback, and keeps a late-paid one expired. For the list, an order that took its money stays paid,
         // whatever went back afterwards; GetStatusAsync keeps the net rule because it decides whether tickets issue.
@@ -500,30 +498,28 @@ internal sealed partial class PretixCheckoutBackend(
         && id.GetString() is { } stripeId
         && (stripeId.StartsWith("dp_", StringComparison.Ordinal) || stripeId.StartsWith("du_", StringComparison.Ordinal));
 
-    /// <summary>
-    /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
-    /// outside this adapter can reopen a paid order. The money decides, so a late payment is reported, never stranded.
-    /// </summary>
     /// <summary>The order still holds <paramref name="amountMinor"/> beyond its total: no refund has paid it out.</summary>
     private static bool StillHolds(PretixOrder order, long amountMinor) =>
         ToMinor(NetPaid(order) - order.Total) >= amountMinor;
 
+    /// <summary>What the buyer paid in: a payment refunded since still came in.</summary>
+    private static decimal Received(PretixOrder order) =>
+        order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount);
+
     private static decimal NetPaid(PretixOrder order) =>
-        order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
+        Received(order)
         - order.Refunds.Where(r => r.State is "done" or "transit" or "created" or "external").Sum(r => r.Amount);
 
-    private static bool IsCovered(PretixOrder order, CheckoutState state)
+    /// <summary>
+    /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
+    /// outside this adapter can reopen a paid order. The money decides, so a late payment is reported, never stranded.
+    /// </summary>
+    private static bool IsCovered(PretixOrder order, CheckoutState state) => state switch
     {
-        var paid = order.Payments
-            .Where(p => p.State is "confirmed" or "refunded")
-            .Sum(p => p.Amount);
-        return state switch
-        {
-            CheckoutState.Pending or CheckoutState.Expired => paid > 0 && NetPaid(order) >= order.Total,
-            CheckoutState.Cancelled => NetPaid(order) > 0,
-            _ => false,
-        };
-    }
+        CheckoutState.Pending or CheckoutState.Expired => Received(order) > 0 && NetPaid(order) >= order.Total,
+        CheckoutState.Cancelled => NetPaid(order) > 0,
+        _ => false,
+    };
 
     private static int CarrierItem(PretixPage<PretixItem> items, string internalName) =>
         items.Results.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
@@ -749,12 +745,10 @@ internal sealed partial class PretixCheckoutBackend(
 
     private sealed record RawResponse(HttpStatusCode Status, string Body);
 
-    internal sealed record PretixEvent(string Currency);
-
     [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9._-]*$", RegexOptions.CultureInvariant, 1000)]
     private static partial Regex EventSlug();
 
-    private sealed record PretixEventCheck(string Currency, bool Live, bool Testmode);
+    private sealed record PretixEvent(string Currency, bool Live, bool Testmode);
 
     internal sealed record PretixPage<T>(IReadOnlyList<T> Results, string? Next = null);
 
