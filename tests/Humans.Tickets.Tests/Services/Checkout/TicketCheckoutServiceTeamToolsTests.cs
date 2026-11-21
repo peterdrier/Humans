@@ -138,8 +138,8 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansFact]
     public async Task Cancelling_the_event_voids_refunds_and_emails_every_paid_order_once()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var first = await BuyAndPayAsync(Buy(donation: 1000) with { ChildNames = ["Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var first = await BuyAndPayAsync(Buy(donation: 1000) with { Children = [new("Kid García", null)] }, _buyerId);
         var second = await BuyAndPayAsync(Buy(), _otherBuyerId);
         _email.ClearReceivedCalls();
 
@@ -257,8 +257,8 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansFact]
     public async Task A_team_refund_after_cancelling_does_not_stand_in_for_the_rest_of_the_cancellation_refund()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
         await _service.CancelSalesEventAsync(_salesEvent.Id, "Storm", _adminId, Ct);
         (await _service.VoidTicketAsync(child.Id, "Asked first", 5000, _adminId, Ct)).Refusal.Should().BeNull();
@@ -293,8 +293,8 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansFact]
     public async Task A_void_suggests_the_ticket_and_its_children_on_the_order_within_what_can_be_refunded()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
         var adult = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Adult);
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
 
