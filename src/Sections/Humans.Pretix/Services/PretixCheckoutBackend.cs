@@ -389,10 +389,15 @@ internal sealed partial class PretixCheckoutBackend(
         var refundFees = order.Fees
             .Where(f => !f.Canceled && f.InternalType?.StartsWith(RefundCommentPrefix, StringComparison.Ordinal) == true)
             .Sum(f => f.Value);
+        var received = order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount);
+        // Tickets never takes a paid order back, but pretix cancels or reopens one once a person processes a refund or
+        // chargeback, and keeps a late-paid one expired. For the list, an order that took its money stays paid,
+        // whatever went back afterwards; GetStatusAsync keeps the net rule because it decides whether tickets issue.
+        var state = status.State != CheckoutState.Paid && received > 0 && received >= order.Total - refundFees
+            ? CheckoutState.Paid
+            : status.State;
         // A paid order is charged what pretix received, so one paid twice or short shows as a total difference.
-        var charged = status.State == CheckoutState.Paid
-            ? order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
-            : order.Total - refundFees;
+        var charged = state == CheckoutState.Paid ? received : order.Total - refundFees;
         return new BackendOrderSummary(
             FormatBackendOrderId(eventSlug, order.Code),
             order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var meta) == true
@@ -400,7 +405,7 @@ internal sealed partial class PretixCheckoutBackend(
                 ? orderId
                 : null,
             ParseInstant(order.Datetime) ?? throw new HttpRequestException($"pretix order {order.Code} has no datetime."),
-            status.State,
+            state,
             ToMinor(charged),
             order.Positions.Count(p => !p.Canceled && ticketItems.Contains(p.Item)),
             status.RefundedMinor,
@@ -481,7 +486,8 @@ internal sealed partial class PretixCheckoutBackend(
 
     /// <summary>
     /// pretix's Stripe plugin records a chargeback as an external refund carrying the Stripe dispute's id, and never
-    /// updates it: a won dispute or a mere inquiry stays until a person cancels that refund in pretix, which clears it.
+    /// updates it. A won dispute or an inquiry clears only when a person cancels that refund in pretix, which pretix
+    /// allows only while it is still <c>external</c>; once processed (or completed by pretix itself) it stays disputed.
     /// </summary>
     private static bool IsChargeback(PretixRefund refund) =>
         string.Equals(refund.Source, "external", StringComparison.Ordinal)

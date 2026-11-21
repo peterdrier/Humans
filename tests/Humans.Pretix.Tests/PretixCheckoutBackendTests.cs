@@ -740,6 +740,79 @@ public class PretixCheckoutBackendTests
         order.DisputedMinor.Should().Be(6000, "a chargeback is not a refund");
     }
 
+    [HumansTheory]
+    [InlineData("p", "external", "du_1", "100.00", 0, 10000)]
+    [InlineData("c", "done", "dp_1", "100.00", 0, 10000)]
+    [InlineData("n", "done", "re_1", "40.00", 4000, 0)]
+    [InlineData("e", "done", "re_1", "40.00", 4000, 0)]
+    [InlineData("e", "external", "dp_1", "100.00", 0, 10000)]
+    public async Task ListOrders_OrderThatTookItsMoney_StaysPaidWhateverPretixMadeOfItLater(
+        string status, string refundState, string stripeId, string amount, long refunded, long disputed)
+    {
+        // Processing a refund in pretix cancels or reopens the order; a late payment leaves it expired. Tickets keeps
+        // all of these Paid, so the list must too or reconciliation never ties out.
+        var pretix = new FakePretix()
+            .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = new object[] { new { id = 7, internal_name = "humans-ticket" } } })
+            .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
+            {
+                results = new object[]
+                {
+                    new
+                    {
+                        code = Code,
+                        status,
+                        url = $"https://pretix.test/nobodies/nowhere2027/order/{Code}/secret/",
+                        total = "100.00",
+                        datetime = "2027-01-05T09:30:00+00:00",
+                        positions = new object[] { new { id = 1, positionid = 1, item = 7, price = "100.00", tax_rate = "10.00", canceled = false } },
+                        fees = Array.Empty<object>(),
+                        payments = new object[] { new { local_id = 1, state = "confirmed", amount = "100.00", provider = "stripe", payment_date = "2027-01-05T09:31:00+00:00" } },
+                        refunds = new object[] { new { local_id = 1, state = refundState, source = "external", amount, payment = 1, comment = (string?)null, provider = "stripe", details = new { id = stripeId } } },
+                        api_meta = new { humans_order_id = OrderId.ToString() },
+                    },
+                },
+            });
+
+        var order = (await Create(pretix).ListOrdersAsync(
+            "nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken)).Single();
+
+        order.State.Should().Be(CheckoutState.Paid);
+        order.TotalMinor.Should().Be(10000);
+        order.RefundedMinor.Should().Be(refunded);
+        order.DisputedMinor.Should().Be(disputed);
+    }
+
+    [HumansFact]
+    public async Task ListOrders_PendingOrderPaidShort_IsNotPaid()
+    {
+        var pretix = new FakePretix()
+            .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = Array.Empty<object>() })
+            .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
+            {
+                results = new object[]
+                {
+                    new
+                    {
+                        code = Code,
+                        status = "n",
+                        url = $"https://pretix.test/nobodies/nowhere2027/order/{Code}/secret/",
+                        total = "100.00",
+                        datetime = "2027-01-05T09:30:00+00:00",
+                        positions = Array.Empty<object>(),
+                        fees = Array.Empty<object>(),
+                        payments = new object[] { new { local_id = 1, state = "confirmed", amount = "60.00", provider = "stripe", payment_date = "2027-01-05T09:31:00+00:00" } },
+                        refunds = Array.Empty<object>(),
+                    },
+                },
+            });
+
+        var order = (await Create(pretix).ListOrdersAsync(
+            "nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken)).Single();
+
+        order.State.Should().Be(CheckoutState.Pending);
+        order.TotalMinor.Should().Be(10000);
+    }
+
     [HumansFact]
     public async Task ListOrders_WithoutAnEventSlug_Throws()
     {

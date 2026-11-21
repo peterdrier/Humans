@@ -22,7 +22,10 @@ pretix only takes the payment.
    ```
 
 5. In pretix's control panel, per event: connect Stripe (Payment, Stripe), enable card, iDEAL
-   and Klarna, and leave every method's fee at zero (Humans charges exactly the lines). Put the event live.
+   and Klarna, and leave every method's fee at zero (Humans charges exactly the lines). With pretix's own
+   Stripe keys (not Stripe Connect), register the webhook pretix shows there (`https://<pretix>/_stripe/webhook/`)
+   in Stripe: it is the only way pretix, and so Humans, hears of a refund made in the Stripe dashboard or a
+   chargeback. Put the event live.
 6. In Humans, set `Pretix:BaseUrl`, `Pretix:Organizer` and the env vars `PRETIX_API_TOKEN`,
    `PRETIX_WEBHOOK_SECRET` from the bootstrap output (once per instance), then at
    `/Tickets/Admin/Sales` pick backend `pretix` and the event slug. Each further event only needs
@@ -37,4 +40,7 @@ pretix only takes the payment.
 - The API token can create orders and refund them; pretix has one permission for both. It sits
   only in Humans' environment.
 - `pretix-cron` runs pretix's periodic tasks every 5 minutes (order expiry, webhook retries).
+- Chargebacks show in pretix as an external refund waiting to be processed. Leave it unprocessed until the
+  dispute is final: cancel it if the event won (that clears the flag in Humans), process it if lost. A processed
+  one can no longer be cancelled, so a dispute won after that stays flagged in Humans.
 - Upgrades: bump the image tag in both services; migrations run on start.
