@@ -10,7 +10,7 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
     private const string SampleTicket = "Nobodies 2026 — Early Bird (TT-10482)";
     private const string SampleReceiver = "Alex Firestone";
     private const string SampleReason = "The receiver could not be verified as a member.";
-    private const string SampleEvent = "Nowhere 2027";
+    private const string SampleEvent = "Elsewhere 2027";
     private const string SampleBarcode = "H7K2M9QX4T8VB3NRP";
     private const string SampleChildBarcode = "HC4W8N2R6T0YZ5KMB";
     private static readonly Uri SampleBase = new("https://humans.nobodies.team/");
@@ -35,7 +35,7 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
             new EmailPreviewSample("ticket-transfer-decision-rejected", "Ticket Transfer Cancelled",
                 emails.TicketTransferDecision(Guid.Empty, email, name, successful: false, SampleTicket, SampleReceiver, SampleReason, culture)),
             new EmailPreviewSample("ticket-resale-invitation", "Ticket Resale Invitation",
-                emails.ResaleInvitation(email, SampleReceiver, "Nowhere 2027", "https://humans.example/Tickets/Buy/Resale/sample-token", 3, culture)),
+                emails.ResaleInvitation(email, SampleReceiver, "Elsewhere 2027", "https://humans.example/Tickets/Buy/Resale/sample-token", 3, culture)),
 
             new EmailPreviewSample("ticket-issued", "Ticket (bought by someone else, with a child)",
                 emails.TicketIssued(new IssuedTicketMail(Guid.Empty, email, name, SampleEvent,

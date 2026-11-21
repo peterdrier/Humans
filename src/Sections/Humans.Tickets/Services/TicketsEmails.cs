@@ -147,7 +147,7 @@ internal sealed class TicketsEmails(
             return new EmailMessage(
                 ticket.HolderEmail, ticket.HolderName, ticket.HolderUserId,
                 Lf("Tickets_Delivery_Ticket_Subject", ticket.EventName),
-                body, "ticket_issued", MessageCategory.System, Culture: culture, DeliveryId: ticket.DeliveryId);
+                body, "ticket_issued", MessageCategory.System, Culture: culture, DeliveryId: ticket.DeliveryId, Urgent: true);
         }
     }
 
@@ -191,7 +191,7 @@ internal sealed class TicketsEmails(
             return new EmailMessage(
                 receipt.BuyerEmail, receipt.BuyerName, receipt.BuyerUserId,
                 Lf("Tickets_Delivery_Receipt_Subject", receipt.Reference),
-                body, "ticket_order_receipt", MessageCategory.System, Culture: culture, DeliveryId: receipt.DeliveryId);
+                body, "ticket_order_receipt", MessageCategory.System, Culture: culture, DeliveryId: receipt.DeliveryId, Urgent: true);
         }
     }
 

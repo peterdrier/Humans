@@ -98,6 +98,7 @@ public sealed class TicketsEmailsTests
         msg.UserId.Should().Be(ticket.HolderUserId);
         msg.Category.Should().Be(MessageCategory.System, "a ticket is not mail anyone may opt out of");
         msg.TemplateName.Should().Be("ticket_issued");
+        msg.Urgent.Should().BeTrue("the buyer is waiting for their ticket");
         msg.DeliveryId.Should().Be(ticket.DeliveryId);
         msg.Subject.Should().Be("Your ticket for Nowhere 2027");
         msg.HtmlBody.Should().Contain("src=\"https://humans.example/Tickets/Code/tok\"")
@@ -138,6 +139,7 @@ public sealed class TicketsEmailsTests
         msg.RecipientEmail.Should().Be("payer@x.com");
         msg.Category.Should().Be(MessageCategory.System);
         msg.TemplateName.Should().Be("ticket_order_receipt");
+        msg.Urgent.Should().BeTrue();
         msg.Subject.Should().Be("Receipt for your order 3F9A0C1B");
         msg.HtmlBody.Should().Contain("Ticket for Ana &lt;A&gt; (includes 10% VAT)")
             .And.Contain("Donation: More low income tickets (no VAT)")
