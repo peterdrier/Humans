@@ -518,7 +518,8 @@ internal sealed partial class TicketCheckoutService
     {
         var cutoff = clock.GetCurrentInstant() - ResaleRefundHold;
         var batch = new ResaleRefundBatch(0, 0, 0, 0);
-        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+        // A cancelled event refunds both the seller's and the buyer's order in full, so a resale refund would pay twice.
+        foreach (var salesEvent in (await repository.GetSalesEventsAsync(ct)).Where(e => e.CancelledAt is null))
         {
             var (started, startedMinor, heldBack, waiting) = (0, 0L, 0, 0);
             foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))

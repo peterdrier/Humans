@@ -93,20 +93,43 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     /// <summary>
     /// The ticketing team's exception: a valid full-price adult ticket with no dependents moves to another named
-    /// person, whose account is found or created.
+    /// person, whose account is found or created. With <paramref name="overrideRules"/> (Admin only) a class
+    /// price or credit ticket may move too.
     /// </summary>
     Task<CheckoutMutationResult> RenameTicketAsync(
-        Guid ticketId, string holderName, string holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+        Guid ticketId, string holderName, string holderEmail, string reason, bool overrideRules, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Voids a valid or offered ticket and its dependents, withdrawing any open offer. Refunds stay separate.</summary>
-    Task<CheckoutMutationResult> VoidTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
+    /// <summary>
+    /// Voids a valid or offered ticket and its dependents, withdrawing any open offer, and refunds
+    /// <paramref name="refundMinor"/> of its order first; zero voids with no refund, said so on the timeline and audit.
+    /// A refund the backend declines leaves the ticket valid.
+    /// </summary>
+    Task<CheckoutMutationResult> VoidTicketAsync(
+        Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Admin override: a voided ticket works again, unless its holder holds another or the event is cancelled.</summary>
+    Task<CheckoutMutationResult> RestoreTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>The ticketing team takes a holder's ticket out of the resale queue; the holder keeps it.</summary>
+    Task<CheckoutMutationResult> WithdrawOfferForHolderAsync(Guid offerId, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Super admin only, never undone: closes sales for good; the reconcile job then voids every ticket, refunds every
+    /// paid order what its tickets cost (donations stay) and emails each buyer.
+    /// </summary>
+    Task<CheckoutMutationResult> CancelSalesEventAsync(Guid salesEventId, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>A cancellation's progress and money, or what cancelling now would do; null for an unknown sales event.</summary>
+    Task<CancellationProgress?> GetCancellationProgressAsync(Guid salesEventId, CancellationToken ct = default);
 
     /// <summary>
     /// Issues a free companion ticket attached to a valid adult ticket, on a zero-total order of its own, within
-    /// capacity. The email is optional: a companion without one holds no account.
+    /// capacity, or past it with <paramref name="overrideCapacity"/> (Admin only). The email is optional: a
+    /// companion without one holds no account.
     /// </summary>
     Task<CheckoutMutationResult> IssueCompanionAsync(
-        Guid parentTicketId, string holderName, string? holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+        Guid parentTicketId, string holderName, string? holderEmail, string reason, bool overrideCapacity, Guid actorUserId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// The holder of a valid adult ticket asks for a free companion who is already in Humans, found by the address they
@@ -311,6 +334,14 @@ internal sealed record CheckoutOrderDetail(
         Math.Max(0, Order.TicketTotalMinor - Order.DisputedMinor
             - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
             - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
+
+    /// <summary>
+    /// The refund a void suggests: what the ticket and the valid dependents voided with it cost on this order, within
+    /// <see cref="RefundableMinor"/>. A dependent on another order (a companion) was paid there, so it adds nothing here.
+    /// </summary>
+    public long VoidRefundMinor(TicketCheckoutTicket ticket) =>
+        Math.Min(RefundableMinor, ticket.PricePaidMinor + Tickets
+            .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid).Sum(t => t.PricePaidMinor));
 }
 
 /// <summary>

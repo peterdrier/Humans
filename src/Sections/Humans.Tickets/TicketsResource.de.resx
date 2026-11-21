@@ -608,4 +608,19 @@
   <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
     <value>Alle, die du eingegeben hast, sind für dieses Ticket schon eingeladen.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} ist abgesagt</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Es tut uns sehr leid: &lt;strong&gt;{1}&lt;/strong&gt; ist abgesagt. Deine Tickets dafür gelten nicht mehr.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>Wir erstatten dir {0} auf dem Weg, auf dem du bezahlt hast. Es kann ein paar Tage dauern, bis der Betrag auf deinem Konto erscheint.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_RefundByHand" xml:space="preserve">
+    <value>Wir schulden dir {0}. Die automatische Erstattung hat nicht geklappt, deshalb erstattet unser Ticketteam dir den Betrag von Hand und meldet sich, falls es etwas von dir braucht.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Spenden werden nicht automatisch erstattet. Wenn du deine zurückhaben möchtest, antworte auf diese E-Mail.</value>
+  </data>
 </root>

@@ -1,3 +1,4 @@
+using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -11,14 +12,16 @@ using NodaTime;
 namespace Humans.Tickets.Controllers;
 
 /// <summary>
-/// The ticketing team's customer service pages over the checkout lane: lookup, refund list, resale queue, report, and
-/// the ticket exceptions (rename, void, free companion). English only.
+/// The ticketing team's customer service pages over the checkout lane: lookup, refund list, resale queue, report, the
+/// ticket exceptions (rename, void and refund, free companion), the audited overrides, and cancelling an event. English
+/// only.
 /// </summary>
 [Authorize(Policy = TicketsPolicies.Read)]
 [Route("Tickets/Admin/Sales")]
 internal sealed class TicketsSupportAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
+    IClock clock,
     IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("Lookup")]
@@ -62,8 +65,56 @@ internal sealed class TicketsSupportAdminController(
         var tickets = await checkout.GetTicketsForSalesEventAsync(id, ct);
         var rows = TicketSupportReports.ResaleQueue(
             await checkout.GetOffersForSalesEventAsync(id, ct), tickets, await checkout.GetRefundsForSalesEventAsync(id, ct));
+        var reservedBy = (await checkout.GetOrdersForSalesEventAsync(id, ct)).ToDictionary(o => o.Id);
         return View("~/Views/Tickets/Admin/Sales/Resale.cshtml", new ResaleViewModel(
-            id, await EventNameAsync(salesEvent, ct), salesEvent, rows));
+            id, await EventNameAsync(salesEvent, ct), salesEvent, rows, reservedBy, clock.GetCurrentInstant()));
+    }
+
+    [HttpPost("{id:guid}/Resale/{offerId:guid}/Withdraw")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WithdrawOffer(Guid id, Guid offerId, string? reason, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        var result = await checkout.WithdrawOfferForHolderAsync(offerId, reason ?? string.Empty, user.Id, ct);
+        if (result.Succeeded)
+            SetSuccess("Taken out of the queue: the holder keeps the ticket.");
+        else
+            SetError(result.Refusal!);
+        return RedirectToAction(nameof(Resale), new { id });
+    }
+
+    [HttpGet("{id:guid}/Cancel")]
+    public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
+    {
+        var salesEvent = await checkout.GetSalesEventAsync(id, ct);
+        var progress = await checkout.GetCancellationProgressAsync(id, ct);
+        if (salesEvent is null || progress is null)
+            return NotFound();
+        return View("~/Views/Tickets/Admin/Sales/Cancel.cshtml", new CancelViewModel(
+            id, await EventNameAsync(salesEvent, ct), salesEvent.BackendKey, progress));
+    }
+
+    [HttpPost("{id:guid}/Cancel")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(Guid id, string? reason, string? confirmName, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+        var salesEvent = await checkout.GetSalesEventAsync(id, ct);
+        if (salesEvent is null)
+            return NotFound();
+
+        if (!string.Equals(confirmName?.Trim(), await EventNameAsync(salesEvent, ct), StringComparison.Ordinal))
+            SetError("Type the event's name exactly to confirm. Nothing was cancelled.");
+        else if (await checkout.CancelSalesEventAsync(id, reason ?? string.Empty, user.Id, ct) is { Succeeded: false } refused)
+            SetError(refused.Refusal!);
+        else
+            SetSuccess("Event cancelled. Sales are closed; tickets are voided and orders refunded over the next runs, every five minutes.");
+        return RedirectToAction(nameof(Cancel), new { id });
     }
 
     [HttpPost("{id:guid}/Resale/Open")]
@@ -135,11 +186,14 @@ internal sealed class TicketsSupportAdminController(
         var eventTickets = await checkout.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct);
         var offer = (await checkout.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(o => o.TicketId == ticket.Id).MaxBy(o => o.OfferedAt);
+        var dependents = eventTickets.Where(t => t.ParentTicketId == ticket.Id).ToList();
         return View("~/Views/Tickets/Admin/Sales/Ticket.cshtml", new TicketAdminViewModel(
             detail.Order, ticket,
             ticket.ParentTicketId is { } parentId ? eventTickets.FirstOrDefault(t => t.Id == parentId) : null,
-            eventTickets.Where(t => t.ParentTicketId == ticket.Id).ToList(),
-            offer));
+            dependents,
+            offer,
+            detail.VoidRefundMinor(ticket),
+            detail.RefundableMinor));
     }
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Rename")]
@@ -147,21 +201,59 @@ internal sealed class TicketsSupportAdminController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Rename(Guid orderId, Guid ticketId, string? holderName, string? holderEmail, string? reason, CancellationToken ct) =>
         ActAsync(orderId, ticketId, "Ticket renamed.", (actor, c) =>
-            checkout.RenameTicketAsync(ticketId, holderName ?? string.Empty, holderEmail ?? string.Empty, reason ?? string.Empty, actor, c), ct);
+            checkout.RenameTicketAsync(ticketId, holderName ?? string.Empty, holderEmail ?? string.Empty, reason ?? string.Empty,
+                overrideRules: false, actor, c), ct);
 
+    /// <summary>
+    /// Refunds <paramref name="refund"/> (euros) and voids, or voids with no refund when <paramref name="noRefund"/> is
+    /// chosen; the form makes the team pick one, so a void never skips the money by accident.
+    /// </summary>
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Void")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, CancellationToken ct) =>
-        ActAsync(orderId, ticketId, "Ticket voided. Refund from the order page if money is owed.", (actor, c) =>
-            checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, actor, c), ct);
+    public async Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, decimal? refund, bool noRefund, CancellationToken ct)
+    {
+        var refundMinor = noRefund || refund is not { } euros ? 0 : (long)Math.Round(euros * 100m, MidpointRounding.AwayFromZero);
+        if (!noRefund && refundMinor <= 0)
+        {
+            SetError("Enter the amount to refund, or choose 'No refund' to void without one. Nothing was voided.");
+            return RedirectToAction(nameof(Ticket), new { orderId, ticketId });
+        }
+        return await ActAsync(orderId, ticketId,
+            noRefund ? "Ticket voided with no refund." : "Ticket voided and the refund sent; it shows on the order and the refund list.",
+            (actor, c) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, c), ct);
+    }
+
+    [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Restore")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> Restore(Guid orderId, Guid ticketId, string? reason, CancellationToken ct) =>
+        ActAsync(orderId, ticketId, "Override: ticket restored.", (actor, c) =>
+            checkout.RestoreTicketAsync(ticketId, reason ?? string.Empty, actor, c), ct);
+
+    [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/OverrideRename")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> OverrideRename(Guid orderId, Guid ticketId, string? holderName, string? holderEmail, string? reason, CancellationToken ct) =>
+        ActAsync(orderId, ticketId, "Override: ticket renamed.", (actor, c) =>
+            checkout.RenameTicketAsync(ticketId, holderName ?? string.Empty, holderEmail ?? string.Empty, reason ?? string.Empty,
+                overrideRules: true, actor, c), ct);
+
+    [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/OverrideCompanion")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> OverrideCompanion(Guid orderId, Guid ticketId, string? holderName, string? holderEmail, string? reason, CancellationToken ct) =>
+        ActAsync(orderId, ticketId, "Override: companion ticket issued.", (actor, c) =>
+            checkout.IssueCompanionAsync(ticketId, holderName ?? string.Empty, holderEmail, reason ?? string.Empty,
+                overrideCapacity: true, actor, c), ct);
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Companion")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Companion(Guid orderId, Guid ticketId, string? holderName, string? holderEmail, string? reason, CancellationToken ct) =>
         ActAsync(orderId, ticketId, "Companion ticket issued.", (actor, c) =>
-            checkout.IssueCompanionAsync(ticketId, holderName ?? string.Empty, holderEmail, reason ?? string.Empty, actor, c), ct);
+            checkout.IssueCompanionAsync(ticketId, holderName ?? string.Empty, holderEmail, reason ?? string.Empty,
+                overrideCapacity: false, actor, c), ct);
 
     private async Task<IActionResult> ActAsync(
         Guid orderId, Guid ticketId, string success, Func<Guid, CancellationToken, Task<CheckoutMutationResult>> act, CancellationToken ct)
@@ -187,9 +279,19 @@ internal sealed record LookupViewModel(string Query, IReadOnlyList<OrderSearchHi
 
 internal sealed record RefundsViewModel(Guid SalesEventId, string EventName, RefundState? State, IReadOnlyList<RefundListRow> Rows);
 
+/// <summary>The resale queue page. <c>Orders</c> holds the event's orders by id, to name the checkout holding a reserved ticket.</summary>
 internal sealed record ResaleViewModel(
-    Guid SalesEventId, string EventName, TicketSalesEvent SalesEvent, IReadOnlyList<ResaleQueueRow> Rows)
+    Guid SalesEventId, string EventName, TicketSalesEvent SalesEvent, IReadOnlyList<ResaleQueueRow> Rows,
+    IReadOnlyDictionary<Guid, TicketCheckoutOrder> Orders, Instant Now)
 {
+    /// <summary>
+    /// A reserved offer whose checkout is over or no longer holds its tickets (a payment on its way still does), which the
+    /// reconcile job has not yet put right.
+    /// </summary>
+    public bool IsStuck(TicketResaleOffer offer) =>
+        offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } holdingId }
+        && (Orders.GetValueOrDefault(holdingId) is not { IsOpen: true } holding || !holding.HoldsTickets(Now));
+
     public TicketSalesMode Mode => SalesEvent.Mode;
     public bool ResaleSelling => SalesEvent.ResaleSelling;
     public bool SwitchedOff => SalesEvent.EffectiveSwitches.Resale == ResaleScheme.Off;
@@ -199,9 +301,17 @@ internal sealed record CompanionsViewModel(Guid SalesEventId, string EventName, 
 
 internal sealed record ReportViewModel(Guid SalesEventId, string EventName, int Capacity, SalesReport Report);
 
+/// <summary>
+/// One ticket's admin page. <c>SuggestedRefundMinor</c> is what voiding refunds by default: the ticket and its
+/// dependents on this order, within what the order can still refund.
+/// </summary>
 internal sealed record TicketAdminViewModel(
     TicketCheckoutOrder Order,
     TicketCheckoutTicket Ticket,
     TicketCheckoutTicket? Parent,
     IReadOnlyList<TicketCheckoutTicket> Dependents,
-    TicketResaleOffer? LatestOffer);
+    TicketResaleOffer? LatestOffer,
+    long SuggestedRefundMinor,
+    long RefundableMinor);
+
+internal sealed record CancelViewModel(Guid SalesEventId, string EventName, string BackendKey, CancellationProgress Progress);

@@ -212,7 +212,8 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   backend's) or a chargeback, is held back for good and flagged for the team (`TicketCheckoutNeedsAttention`,
   "Resale refund held back"): it is recorded as a `Failed` refund on the holder's order, so no later batch pays it and
   reconciliation lists it among failed refunds until the team settles it. A refund that cannot even start is recorded
-  the same way, for the team to pay by hand; the timeline of both orders records it. Each run
+  the same way, for the team to pay by hand; the timeline of both orders records it. A cancelled sales event is
+  skipped: its cancellation already refunds the holder's and the buyer's orders in full. Each run
   leaves one `TicketResaleRefundBatch` audit row per event with the count and total started, held back and waiting;
   the batch refunds are reconciled with the backend like every other refund. The resale queue page shows a sold offer
   without its refund as waiting for the batch.
@@ -245,8 +246,22 @@ order timeline and the answer is audited.
 
 `/Tickets/Admin/Sales/Lookup` finds orders across events. Per event, the sales index links the refund list, the resale
 queue (directed offers marked with the invited emails, sold ones waiting for the evening refund batch), the companion requests and the sales report. Each issued ticket has an admin
-page, reached from its order, with the three exceptions: rename (full price adults only), void (no refund; refund from
-the order), and a free companion ticket.
+page, reached from its order, with the three exceptions: rename (full price adults only), void and refund (or void
+with no refund, said plainly), and a free companion ticket. The resale queue marks a reserved offer Stuck once its
+buyer's order closed or expired, and the team can take an open offer out for its holder.
+
+Overrides (Admin only) repair what the rules miss: restore a voided ticket, move a class priced
+ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`.
+
+Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. The reconcile
+job then works the paid orders within a two minute budget per run: withdraw open offers, void live tickets, refund the
+ticket lines through the order's backend, timeline `EventCancelled`, email the buyer (donation only orders too; marked
+`CancellationEmailedAt`, sent under a fixed delivery id). A repeat is safe: void stays void,
+and a refund asked for since the cancellation is not asked again, so one the backend turns down (or that cannot start)
+stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed, the email
+says the team will refund by hand instead of promising it is on its way. An order with
+a returned ticket a buyer is paying for waits until that settles. The cancel page balances the ticket money: taken =
+chargebacks + refunded + in flight + still refundable; the vendor side is on the reconciliation page.
 
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).

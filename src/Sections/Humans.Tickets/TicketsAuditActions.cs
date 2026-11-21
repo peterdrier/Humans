@@ -53,6 +53,15 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCompanionIssued = new("TicketCompanionIssued");
 
+    /// <summary>An Admin stepped past a ticket rule by hand.</summary>
+    public static readonly AuditActionDefinition TicketOverride = new("TicketOverride");
+
+    /// <summary>A super admin cancelled an event; the reconcile job then voids and refunds its orders.</summary>
+    public static readonly AuditActionDefinition TicketSalesEventCancelled = new("TicketSalesEventCancelled");
+
+    /// <summary>The ticketing team took a holder's ticket out of the resale queue.</summary>
+    public static readonly AuditActionDefinition TicketResaleWithdrawnByTeam = new("TicketResaleWithdrawnByTeam");
+
     /// <summary>The ticketing team approved or declined a holder's companion request.</summary>
     public static readonly AuditActionDefinition TicketCompanionRequestDecided = new("TicketCompanionRequestDecided");
     /// <summary>Ticket emails and the receipt, queued automatically once an order's tickets were issued.</summary>

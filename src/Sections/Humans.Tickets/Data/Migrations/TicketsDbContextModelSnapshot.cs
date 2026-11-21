@@ -56,6 +56,9 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<Guid>("BuyerUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Instant?>("CancellationEmailedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -431,6 +434,16 @@ namespace Humans.Tickets.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Instant?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CancelledByUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Capacity")
                         .HasColumnType("integer");

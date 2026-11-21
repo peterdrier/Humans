@@ -30,7 +30,31 @@
             <a asp-action="Ticket" asp-route-orderId="@t.OrderId" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a>
         }
     </text>;
-    Func<ResaleQueueRow, IHtmlContent> waitingStateCell = @<text><status-badge value="@item.Offer.State" text="@(item.Offer.State == TicketResaleOfferState.Reserved ? "In a checkout" : "Waiting")" /></text>;
+    Func<ResaleQueueRow, IHtmlContent> waitingStateCell = @<text>
+        <status-badge value="@item.Offer.State" text="@(item.Offer.State == TicketResaleOfferState.Reserved ? "In a checkout" : "Waiting")" />
+        @if (item.Offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } holdingId })
+        {
+            var holding = Model.Orders.GetValueOrDefault(holdingId);
+            <a class="small d-block" asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@holdingId">order @(holding?.Reference ?? holdingId.ToString())</a>
+            @if (Model.IsStuck(item.Offer))
+            {
+                <span class="badge bg-danger" title="The checkout holding it is over or past its hold; the reconcile job should release or complete it within five minutes. Open the order to check it.">Stuck</span>
+            }
+        }
+    </text>;
+    Func<ResaleQueueRow, IHtmlContent> waitingActionsCell = @<text>
+        @if (item.Offer.State == TicketResaleOfferState.Open)
+        {
+            <details authorize-policy="@TicketsPolicies.Manage">
+                <summary class="small">Take out</summary>
+                <form method="post" asp-action="WithdrawOffer" asp-route-id="@Model.SalesEventId" asp-route-offerId="@item.Offer.Id" class="mt-1">
+                    @Html.AntiForgeryToken()
+                    <input class="form-control form-control-sm mb-1" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason" />
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Take out of the queue</button>
+                </form>
+            </details>
+        }
+    </text>;
     var waitingTable = TableModel.For(waiting)
         .Column("#", r => r.Position, o => o.Number())
         .Template("Holder", holderCell, o => o.NoSort())
@@ -39,6 +63,7 @@
         .Column("Owed (€)", r => r.Offer.RefundOwedMinor / 100m, o => o.Currency().End())
         .Template("State", waitingStateCell, sortBy: r => r.Offer.State.ToString())
         .Column("Invited buyers", r => r.DirectedLive ? string.Join(", ", r.Offer.Invites.Select(i => i.Email)) : null)
+        .Template("", waitingActionsCell, o => o.NoSort().End())
         .Empty("Nobody is waiting.")
         .Build();
 
@@ -121,6 +146,7 @@
     }
     <span class="d-block">An invited ticket keeps its place: any invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it; a later link offers the next returned ticket.</span>
     <span class="d-block">Refunds for sold tickets go out in the evening batch once the buyer's order has held for 12 hours. A buyer order that was refunded or disputed holds the refund back for the team.</span>
+    <span class="d-block">Taking a ticket out gives it back to its holder, valid. To void it and refund instead, open the ticket.</span>
 </p>
 
 <div class="card mb-4">

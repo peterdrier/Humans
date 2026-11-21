@@ -608,4 +608,19 @@
   <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
     <value>Tutte le persone che hai indicato sono già state invitate per questo biglietto.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} è annullato</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Ci dispiace molto: &lt;strong&gt;{1}&lt;/strong&gt; è annullato. I tuoi biglietti non sono più validi.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>Ti rimborsiamo {0} con lo stesso metodo con cui hai pagato. Possono servire alcuni giorni perché compaia sul tuo conto.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_RefundByHand" xml:space="preserve">
+    <value>Ti dobbiamo {0}. Il rimborso automatico non è andato a buon fine, quindi il nostro team biglietti ti rimborserà a mano e ti scriverà se ha bisogno di qualcosa da te.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Le donazioni non vengono rimborsate automaticamente. Se vuoi indietro la tua, rispondi a questa email.</value>
+  </data>
 </root>

@@ -113,6 +113,8 @@ internal sealed partial class TicketCheckoutService(
         var existing = save.Id is { } id ? await repository.GetSalesEventAsync(id, ct) : null;
         if (save.Id is not null && existing is null)
             return new("That sales event no longer exists.");
+        if (existing?.CancelledAt is not null)
+            return new("The event is cancelled; its sales setup can no longer change.");
         if (save.TermsFolder is { } newFolder && !string.Equals(newFolder, existing?.TermsFolder, StringComparison.Ordinal)
             && await rulesSource.GetAsync(newFolder, refresh: true, ct) is null)
             return new($"The legal repo has no Spanish and English ticket rules in {newFolder}, or GitHub could not be read. " +
@@ -171,6 +173,8 @@ internal sealed partial class TicketCheckoutService(
         var salesEvent = await repository.GetSalesEventAsync(salesEventId, ct);
         if (salesEvent is null)
             return new("That sales event no longer exists.");
+        if (salesEvent.CancelledAt is not null)
+            return new("The event is cancelled.");
         if (open && salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
             return new("Resale is switched off in the sales setup.");
         if (!open && salesEvent.Mode == TicketSalesMode.ResaleOnly)
@@ -538,6 +542,7 @@ internal sealed partial class TicketCheckoutService(
         }
         changed += await RepairPaidAsync(ct);
         changed += await SweepOffersAsync(ct);
+        changed += await SweepCancelledEventsAsync(ct);
         return changed;
     }
 

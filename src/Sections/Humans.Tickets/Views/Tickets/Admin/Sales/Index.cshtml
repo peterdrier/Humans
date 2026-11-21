@@ -4,7 +4,16 @@
 @{
     ViewData["Title"] = "Ticket sales";
 
-    Func<TicketSalesEvent, IHtmlContent> modeCell = @<text><status-badge value="@item.Mode" /></text>;
+    Func<TicketSalesEvent, IHtmlContent> modeCell = @<text>
+        @if (item.CancelledAt is not null)
+        {
+            <a class="badge bg-danger text-decoration-none" asp-controller="TicketsSupportAdmin" asp-action="Cancel" asp-route-id="@item.Id">Cancelled</a>
+        }
+        else
+        {
+            <status-badge value="@item.Mode" />
+        }
+    </text>;
     Func<TicketSalesEvent, IHtmlContent> waveCell = @<text>
         @if (TicketPrice.WaveOn(item, Model.Today) is { } wave)
         {
@@ -22,6 +31,15 @@
                 <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Resale" asp-route-id="@item.Id">Resale queue</a></li>
                 <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Companions" asp-route-id="@item.Id">Companion requests</a></li>
                 <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.Id">Sales setup</a></li>
+                @if (item.CancelledAt is not null)
+                {
+                    <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Cancel" asp-route-id="@item.Id">Cancellation progress</a></li>
+                }
+                else
+                {
+                    <li authorize-policy="@Humans.Base.Authorization.PolicyNames.AdminOnly"><hr class="dropdown-divider"></li>
+                    <li authorize-policy="@Humans.Base.Authorization.PolicyNames.AdminOnly"><a class="dropdown-item text-danger" asp-controller="TicketsSupportAdmin" asp-action="Cancel" asp-route-id="@item.Id">Cancel event</a></li>
+                }
             </ul>
         </div>
     </text>;

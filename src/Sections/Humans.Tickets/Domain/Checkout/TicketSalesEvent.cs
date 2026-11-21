@@ -71,6 +71,16 @@ internal sealed class TicketSalesEvent
     /// </summary>
     public List<string>? DonationPurposes { get; set; }
 
+    /// <summary>
+    /// When a super admin cancelled the event; never undone. Sales stay closed, and the reconcile job voids every ticket
+    /// and refunds every paid order what its tickets cost.
+    /// </summary>
+    public Instant? CancelledAt { get; set; }
+
+    public Guid? CancelledByUserId { get; set; }
+
+    public string? CancelReason { get; set; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant UpdatedAt { get; set; }

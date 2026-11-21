@@ -608,4 +608,19 @@
   <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
     <value>Iedereen die je hebt ingevuld, is al uitgenodigd voor dit ticket.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} gaat niet door</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;Het spijt ons heel erg: &lt;strong&gt;{1}&lt;/strong&gt; gaat niet door. Je tickets zijn niet meer geldig.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>We betalen {0} terug via de manier waarop je hebt betaald. Het kan een paar dagen duren voordat het op je rekening staat.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_RefundByHand" xml:space="preserve">
+    <value>We zijn je {0} verschuldigd. De automatische terugbetaling is niet gelukt, dus ons ticketteam betaalt je met de hand terug en neemt contact op als ze iets van je nodig hebben.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Donaties worden niet automatisch terugbetaald. Wil je de jouwe terug, antwoord dan op deze e-mail.</value>
+  </data>
 </root>

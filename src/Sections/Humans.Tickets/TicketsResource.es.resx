@@ -608,4 +608,19 @@
   <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
     <value>Todas las personas que has indicado ya están invitadas para esta entrada.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} se cancela</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Lo sentimos mucho: &lt;strong&gt;{1}&lt;/strong&gt; se cancela. Tus entradas ya no son válidas.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>Te devolvemos {0} por el mismo medio con el que pagaste. Puede tardar unos días en aparecer en tu cuenta.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_RefundByHand" xml:space="preserve">
+    <value>Te debemos {0}. La devolución automática no se pudo hacer, así que nuestro equipo de entradas te la hará a mano y te escribirá si necesita algo de ti.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Las donaciones no se devuelven automáticamente. Si quieres que te devolvamos la tuya, responde a este correo.</value>
+  </data>
 </root>
