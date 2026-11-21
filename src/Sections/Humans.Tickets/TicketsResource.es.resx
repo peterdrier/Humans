@@ -575,6 +575,9 @@
   <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
     <value>Te devolvemos {0} por el mismo medio con el que pagaste. Puede tardar unos días en aparecer en tu cuenta.</value>
   </data>
+  <data name="Tickets_Cancel_Email_RefundByHand" xml:space="preserve">
+    <value>Te debemos {0}. La devolución automática no se pudo hacer, así que nuestro equipo de entradas te la hará a mano y te escribirá si necesita algo de ti.</value>
+  </data>
   <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
     <value>Las donaciones no se devuelven automáticamente. Si quieres que te devolvamos la tuya, responde a este correo.</value>
   </data>

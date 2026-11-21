@@ -566,6 +566,9 @@
   <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
     <value>We are refunding {0} to the way you paid. It can take a few days to show on your account.</value>
   </data>
+  <data name="Tickets_Cancel_Email_RefundByHand" xml:space="preserve">
+    <value>We owe you {0} back. The automatic refund did not go through, so our ticketing team will refund you by hand and get in touch if they need anything from you.</value>
+  </data>
   <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
     <value>Donations are not refunded automatically. If you want yours back, reply to this email.</value>
   </data>

@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121200536_TicketEventCancellation")]
+    [Migration("20261121211607_TicketEventCancellation")]
     partial class TicketEventCancellation
     {
         /// <inheritdoc />
@@ -58,6 +58,9 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<Guid>("BuyerUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<Instant?>("CancellationEmailedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");

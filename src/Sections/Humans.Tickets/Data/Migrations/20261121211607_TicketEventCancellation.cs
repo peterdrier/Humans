@@ -30,6 +30,12 @@ namespace Humans.Tickets.Data.Migrations
                 table: "ticket_sales_events",
                 type: "uuid",
                 nullable: true);
+
+            migrationBuilder.AddColumn<Instant>(
+                name: "CancellationEmailedAt",
+                table: "ticket_checkout_orders",
+                type: "timestamp with time zone",
+                nullable: true);
         }
 
         /// <inheritdoc />
@@ -46,6 +52,10 @@ namespace Humans.Tickets.Data.Migrations
             migrationBuilder.DropColumn(
                 name: "CancelledByUserId",
                 table: "ticket_sales_events");
+
+            migrationBuilder.DropColumn(
+                name: "CancellationEmailedAt",
+                table: "ticket_checkout_orders");
         }
     }
 }

@@ -187,8 +187,47 @@ public sealed partial class TicketCheckoutServiceTests
         progress.StillRefundableMinor.Should().Be(22500);
         progress.RefundsSince.Should().ContainSingle(r => r.State == RefundState.Failed && r.AmountMinor == 22500);
         _repo.Events.Should().ContainSingle(e => e.Kind == TicketCheckoutOrderEventKind.EventCancelled && e.Detail.Contains("by hand"));
+        await _email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_event_cancelled"
+            && m.HtmlBody.Contains("Tickets_Cancel_Email_RefundByHand")), Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("card closed")), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task A_cancellation_email_that_fails_is_sent_next_run_naming_the_refund_already_asked_for()
+    {
+        await BuyAndPayAsync(Buy(), _buyerId);
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("outbox down")), Task.CompletedTask);
+        await _service.CancelSalesEventAsync(_salesEvent.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        (await _service.GetCancellationProgressAsync(_salesEvent.Id, Ct))!.ToDo.Should().Be(1);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _backend.Received(1).RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        var sent = _email.ReceivedCalls().Select(c => c.GetArguments()[0]).OfType<EmailMessage>()
+            .Where(m => string.Equals(m.TemplateName, "ticket_event_cancelled", StringComparison.Ordinal)).ToList();
+        sent.Should().HaveCount(2);
+        sent.Should().OnlyContain(m => m.HtmlBody.Contains("Tickets_Cancel_Email_Refund") && m.DeliveryId == sent[0].DeliveryId);
+        (await _service.GetCancellationProgressAsync(_salesEvent.Id, Ct))!.ToDo.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task A_donation_only_order_gets_the_cancellation_email_and_no_refund()
+    {
+        await BuyAndPayAsync(Buy(forSelf: false, donation: 5000), _buyerId);
+        _email.ClearReceivedCalls();
+        await _service.CancelSalesEventAsync(_salesEvent.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _backend.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        await _email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "ticket_event_cancelled"
+            && m.HtmlBody.Contains("Tickets_Cancel_Email_Donation") && !m.HtmlBody.Contains("Tickets_Cancel_Email_Refund")),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

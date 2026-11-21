@@ -56,6 +56,9 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<Guid>("BuyerUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Instant?>("CancellationEmailedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 

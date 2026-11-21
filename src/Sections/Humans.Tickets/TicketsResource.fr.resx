@@ -575,6 +575,9 @@
   <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
     <value>Nous te remboursons {0} par le moyen de paiement que tu as utilisé. Cela peut prendre quelques jours avant d’apparaître sur ton compte.</value>
   </data>
+  <data name="Tickets_Cancel_Email_RefundByHand" xml:space="preserve">
+    <value>Nous te devons {0}. Le remboursement automatique n’a pas abouti : notre équipe billetterie te remboursera à la main et te contactera si elle a besoin de quelque chose.</value>
+  </data>
   <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
     <value>Les dons ne sont pas remboursés automatiquement. Si tu veux récupérer le tien, réponds à cet e-mail.</value>
   </data>

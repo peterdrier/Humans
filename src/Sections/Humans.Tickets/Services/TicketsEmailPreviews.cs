@@ -50,7 +50,7 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
                 emails.JoinInvitation(Guid.Empty, email, name, SampleEvent, new Uri(SampleBase, "Profile"),
                     new Uri(SampleBase, "Shifts"), null, culture)),
             new EmailPreviewSample("ticket-event-cancelled", "Ticket Event Cancelled",
-                emails.EventCancelled(Guid.Empty, email, name, SampleEvent, 45000, hadDonation: true, culture)),
+                emails.EventCancelled(Guid.Empty, email, name, SampleEvent, 45000, refundFailed: false, hadDonation: true, culture)),
         ];
     }
 }

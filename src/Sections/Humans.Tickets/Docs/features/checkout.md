@@ -223,9 +223,11 @@ ticket, a companion past capacity. Each needs a reason and is audited `TicketOve
 
 Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. The reconcile
 job then works the paid orders within a two minute budget per run: withdraw open offers, void live tickets, refund the
-ticket lines through the order's backend, timeline `EventCancelled`, email the buyer. A repeat is safe: void stays void,
+ticket lines through the order's backend, timeline `EventCancelled`, email the buyer (donation only orders too; marked
+`CancellationEmailedAt`, sent under a fixed delivery id). A repeat is safe: void stays void,
 and a refund asked for since the cancellation is not asked again, so one the backend turns down (or that cannot start)
-stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. An order with
+stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed, the email
+says the team will refund by hand instead of promising it is on its way. An order with
 a returned ticket a buyer is paying for waits until that settles. The cancel page balances the ticket money: taken =
 chargebacks + refunded + in flight + still refundable; the vendor side is on the reconciliation page.
 

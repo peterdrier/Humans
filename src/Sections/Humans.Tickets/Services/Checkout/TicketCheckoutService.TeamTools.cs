@@ -138,17 +138,20 @@ internal sealed partial class TicketCheckoutService
                 holdings.InvalidateHoldings(holder);
         }
 
-        var refundMinor = state.HasCancelRefund(order) ? 0 : state.Refundable(order);
-        var refundNote = ", nothing to refund";
-        if (refundMinor > 0)
+        // A repeat after a stop part way finds the refund already asked for, so the email still names it.
+        var (refundMinor, refundFailed) = state.CancelRefund(order) is { } asked
+            ? (asked.AmountMinor, asked.State == RefundState.Failed)
+            : (state.Refundable(order), false);
+        var refundNote = refundMinor > 0 ? $", {FormatMinor(refundMinor)} {order.Currency} refund asked for" : ", nothing to refund";
+        if (refundMinor > 0 && !state.HasCancelRefund(order))
         {
             var cancelRefundId = CancellationState.CancelRefundId(salesEvent.Id, order.Id);
             var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
-            refundNote = $", {FormatMinor(refundMinor)} {order.Currency} refund asked for";
             if (!result.Succeeded)
             {
+                refundFailed = true;
                 logger.LogError("Cancellation refund of checkout order {OrderId} failed: {Refusal}", order.Id, result.Refusal);
-                // Written as failed so the order leaves the to-do list and the team sees what is owed.
+                // Written as failed so it is not asked again and the team sees what is owed.
                 if (refundId is null)
                     await repository.AddRefundAsync(new TicketCheckoutRefund
                     {
@@ -173,7 +176,10 @@ internal sealed partial class TicketCheckoutService
         var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
             await email.SendAsync(emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
-                order.Lines.Any(l => l.Kind == CheckoutLineKind.Donation), order.Culture), ct);
+                refundFailed, order.Lines.Any(l => l.Kind == CheckoutLineKind.Donation), order.Culture)
+                with { DeliveryId = CancellationState.CancelNoticeId(salesEvent.Id, order.Id) }, ct);
+        order.CancellationEmailedAt = clock.GetCurrentInstant();
+        await repository.UpdateOrderAsync(order, ct);
         return true;
     }
 
@@ -223,12 +229,21 @@ internal sealed partial class TicketCheckoutService
             return new Guid(SHA256.HashData(both)[..16]);
         }
 
-        public bool HasCancelRefund(TicketCheckoutOrder order) =>
-            refunds[order.Id].Any(r => r.Id == CancelRefundId(salesEvent.Id, order.Id));
+        /// <summary>The cancellation email's delivery id: a repeat after a stop before the order was marked emailed reuses it.</summary>
+        public static Guid CancelNoticeId(Guid salesEventId, Guid orderId) =>
+            new(SHA256.HashData(CancelRefundId(salesEventId, orderId).ToByteArray())[..16]);
 
-        /// <summary>Paid orders with a ticket still working, or money still owed that the cancellation has not asked for.</summary>
+        public TicketCheckoutRefund? CancelRefund(TicketCheckoutOrder order) =>
+            refunds[order.Id].FirstOrDefault(r => r.Id == CancelRefundId(salesEvent.Id, order.Id));
+
+        public bool HasCancelRefund(TicketCheckoutOrder order) => CancelRefund(order) is not null;
+
+        /// <summary>
+        /// Paid orders not yet emailed (donation only orders too), with a ticket still working, or with money still owed
+        /// that the cancellation has not asked for.
+        /// </summary>
         public IReadOnlyList<TicketCheckoutOrder> ToDo => Paid
-            .Where(o => tickets[o.Id].Any(IsLive) || (Refundable(o) > 0 && !HasCancelRefund(o)))
+            .Where(o => o.CancellationEmailedAt is null || tickets[o.Id].Any(IsLive) || (Refundable(o) > 0 && !HasCancelRefund(o)))
             .OrderBy(o => o.PaidAt)
             .ToList();
 
