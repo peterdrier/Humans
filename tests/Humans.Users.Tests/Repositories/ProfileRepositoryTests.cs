@@ -68,7 +68,6 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var user = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
-        var profileId = profile.Id;
         var keepId = Guid.NewGuid();
         var removeId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
@@ -77,7 +76,6 @@ public sealed class UserRepositoryProfileTests : IDisposable
             new VolunteerHistoryEntry
             {
                 Id = keepId,
-                ProfileId = profileId,
                 UserId = user.Id,
                 Date = new LocalDate(2024, 3, 1),
                 EventName = "Keep me",
@@ -88,7 +86,6 @@ public sealed class UserRepositoryProfileTests : IDisposable
             new VolunteerHistoryEntry
             {
                 Id = removeId,
-                ProfileId = profileId,
                 UserId = user.Id,
                 Date = new LocalDate(2024, 4, 1),
                 EventName = "Remove me",
@@ -114,7 +111,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         // entities from _dbContext's identity map.
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
-            .Where(v => v.ProfileId == profileId)
+            .Where(v => v.UserId == user.Id)
             .OrderBy(v => v.Date)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -141,14 +138,12 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var user = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
-        var profileId = profile.Id;
         var entryId = Guid.NewGuid();
         var seededAt = _clock.GetCurrentInstant();
 
         await _dbContext.VolunteerHistoryEntries.AddAsync(new VolunteerHistoryEntry
         {
             Id = entryId,
-            ProfileId = profileId,
             UserId = user.Id,
             Date = new LocalDate(2024, 3, 1),
             EventName = "Keep me",
@@ -169,7 +164,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
-            .Where(v => v.ProfileId == profileId)
+            .Where(v => v.UserId == user.Id)
             .SingleAsync(Xunit.TestContext.Current.CancellationToken);
         persisted.UpdatedAt.Should().Be(seededAt);
     }
@@ -183,14 +178,12 @@ public sealed class UserRepositoryProfileTests : IDisposable
         var user = await SeedUserAsync(UserState.Active);
         var profile = NewProfile(user.Id);
         _dbContext.Profiles.Add(profile);
-        var profileId = profile.Id;
         var entryId = Guid.NewGuid();
         var createdAt = _clock.GetCurrentInstant();
 
         await _dbContext.VolunteerHistoryEntries.AddAsync(new VolunteerHistoryEntry
         {
             Id = entryId,
-            ProfileId = profileId,
             UserId = user.Id,
             Date = new LocalDate(2024, 3, 1),
             EventName = "Original Name",
@@ -212,7 +205,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
 
         var persisted = await _dbContext.VolunteerHistoryEntries
             .AsNoTracking()
-            .Where(v => v.ProfileId == profileId)
+            .Where(v => v.UserId == user.Id)
             .SingleAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Same row — Id and CreatedAt preserved
@@ -324,7 +317,7 @@ public sealed class UserRepositoryProfileTests : IDisposable
         _dbContext.ChangeTracker.Clear();
 
         await _repo.ReplaceLanguagesAsync(user.Id,
-            [new ProfileLanguage { Id = Guid.NewGuid(), ProfileId = profile.Id, UserId = user.Id, LanguageCode = "es" }], ct);
+            [new ProfileLanguage { Id = Guid.NewGuid(), UserId = user.Id, LanguageCode = "es" }], ct);
         var detached = await _dbContext.Profiles.AsNoTracking().SingleAsync(p => p.Id == profile.Id, ct);
         await _repo.UpdateAsync(detached, ct, [new CVEntry(Guid.Empty, new LocalDate(2025, 7, 1), "Nowhere", null)]);
 

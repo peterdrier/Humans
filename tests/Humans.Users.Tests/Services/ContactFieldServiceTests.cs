@@ -56,7 +56,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var existing = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
@@ -86,7 +85,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var field = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 611111111",
@@ -386,7 +384,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             Db.ContactFields.Add(new ContactField
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = type,
                 Value = "Contact value",
@@ -398,7 +395,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         Db.ContactFields.Add(new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = ContactFieldType.Other,
             CustomLabel = "My custom label",
@@ -431,7 +427,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         result.Should().HaveCount(4);
         result.ToDictionary(f => f.Id, f => f.DisplayOrder).Should().BeEquivalentTo(
-            Db.ContactFields.Where(f => f.ProfileId == profile.Id).ToDictionary(f => f.Id, f => f.DisplayOrder));
+            Db.ContactFields.Where(f => f.UserId == profile.UserId).ToDictionary(f => f.Id, f => f.DisplayOrder));
     }
 
     #endregion
@@ -451,7 +447,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         await _service.SaveContactFieldsAsync(profile.Id, fields, TestContext.Current.CancellationToken);
 
         var savedFields = await Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .ToListAsync(TestContext.Current.CancellationToken);
         savedFields.Should().HaveCount(2);
     }
@@ -479,7 +475,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var existingField = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
@@ -511,7 +506,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var existingField = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
@@ -527,7 +521,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         await _service.SaveContactFieldsAsync(profile.Id, new List<ContactFieldEditDto>(), TestContext.Current.CancellationToken);
 
         var remainingFields = await Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .ToListAsync(TestContext.Current.CancellationToken);
         remainingFields.Should().BeEmpty();
     }
@@ -540,7 +534,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var legacy = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = default,
             Value = "legacy@example.org",
@@ -571,7 +564,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new ContactField
             {
                 Id = legacyId,
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = default,
                 Value = "legacy@example.org",
@@ -582,7 +574,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new ContactField
             {
                 Id = signalId,
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = ContactFieldType.Signal,
                 Value = "signal-handle",
@@ -616,7 +607,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var legacy = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = default,
             Value = "legacy@example.org",
@@ -627,7 +617,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var phone = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "old-number",
@@ -638,7 +627,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var foreign = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = otherProfile.Id,
             UserId = otherProfile.UserId,
             FieldType = default,
             Value = "other@example.org",
@@ -679,7 +667,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var field = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
             UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
@@ -726,7 +713,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         await _service.SaveContactFieldsAsync(profile.Id, fields, TestContext.Current.CancellationToken);
 
         var savedFields = await Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .ToListAsync(TestContext.Current.CancellationToken);
         savedFields.Should().HaveCount(1);
     }
@@ -739,7 +726,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     private void StubUserInfo(Guid userId, Profile profile)
     {
         var fields = Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .OrderBy(cf => cf.DisplayOrder)
             .ToList();
         var info = UserInfoFactory.Create(
@@ -784,7 +771,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = ContactFieldType.Phone,
                 Value = "+34 612345678",
@@ -796,7 +782,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = ContactFieldType.Signal,
                 Value = "+1234567890",
@@ -808,7 +793,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = ContactFieldType.Telegram,
                 Value = "@coordcontact",
@@ -820,7 +804,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = ContactFieldType.Phone,
                 Value = "+9876543210",

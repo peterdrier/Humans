@@ -55,12 +55,7 @@ internal sealed partial class UserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // Moved rows still carry the profile id until that column is dropped.
-        var targetProfileId = await ctx.Profiles
-            .Where(p => p.UserId == targetUserId)
-            .Select(p => (Guid?)p.Id)
-            .FirstOrDefaultAsync(ct);
-        if (targetProfileId is null)
+        if (!await ctx.Profiles.AnyAsync(p => p.UserId == targetUserId, ct))
             return;
 
         var sourceRows = await ctx.ContactFields
@@ -84,7 +79,6 @@ internal sealed partial class UserRepository
             }
             else
             {
-                ctx.Entry(src).Property(nameof(ContactField.ProfileId)).CurrentValue = targetProfileId.Value;
                 src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
                 targetKeys.Add(key);

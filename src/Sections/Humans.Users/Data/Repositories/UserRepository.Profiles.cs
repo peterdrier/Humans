@@ -263,7 +263,6 @@ internal sealed partial class UserRepository
             }
             else
             {
-                ctx.Entry(src).Property(nameof(VolunteerHistoryEntry.ProfileId)).CurrentValue = targetProfile.Id;
                 src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
                 targetVolunteerKeys.Add(key);
@@ -284,7 +283,6 @@ internal sealed partial class UserRepository
             }
             else
             {
-                ctx.Entry(src).Property(nameof(ProfileLanguage.ProfileId)).CurrentValue = targetProfile.Id;
                 src.UserId = targetUserId;
                 targetLanguageByCode[src.LanguageCode] = src;
             }
@@ -404,7 +402,6 @@ internal sealed partial class UserRepository
                 ctx.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
                 {
                     Id = Guid.NewGuid(),
-                    ProfileId = profile.Id,
                     UserId = profile.UserId,
                     Date = entry.Date,
                     EventName = entry.EventName,
