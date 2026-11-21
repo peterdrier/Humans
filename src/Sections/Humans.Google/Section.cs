@@ -1,3 +1,4 @@
+using Humans.Base.Demo;
 using Humans.Google.Domain;
 using Humans.Teams.Contracts;
 using Humans.Base.Models.Tables;
@@ -27,6 +28,8 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
+
+[assembly: Humans.Base.Demo.NoDemoStory("Mirrors Google Workspace: demo people must never reach real Google.")]
 
 namespace Humans.Google;
 
@@ -152,6 +155,8 @@ public sealed class Section :
 
             services.AddHttpClient<GoogleTranslationClient>();
             services.AddScoped<IGoogleTranslationService>(sp => sp.GetRequiredService<GoogleTranslationClient>());
+
+            services.AddDemoSafetyCheck<GoogleDemoSafetyCheck>(configuration);
         }
         else
         {

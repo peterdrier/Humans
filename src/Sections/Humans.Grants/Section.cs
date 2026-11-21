@@ -17,6 +17,8 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Grants;
 
 public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectionPolicies, IUserPart

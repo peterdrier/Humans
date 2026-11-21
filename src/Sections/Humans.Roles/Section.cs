@@ -13,6 +13,8 @@ using Humans.Users.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Roles;
 
 public sealed class Section : ISection, ISectionRoles, ISectionNav, ITeamRolesPart

@@ -15,6 +15,8 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Campaigns;
 
 /// <summary>No caching decorator: the admin pages are the only readers and they are not hot.</summary>

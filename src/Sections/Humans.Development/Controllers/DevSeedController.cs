@@ -7,6 +7,9 @@ using Humans.Development.Services;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Hangfire;
+using Humans.Development.Jobs;
+using Humans.Development.Services.Demo;
 
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
@@ -22,6 +25,7 @@ internal sealed class DevSeedController(
     IConfiguration configuration,
     ConfigurationRegistry configRegistry,
     IServiceProvider serviceProvider,
+    IBackgroundJobClient backgroundJobs,
     IUserService userService,
     ILogger<DevSeedController> logger) : HumansControllerBase(userService)
 {
@@ -35,7 +39,38 @@ internal sealed class DevSeedController(
             return NotFound();
         }
 
-        return View();
+        return View(serviceProvider.GetRequiredService<DemoRunStatus>());
+    }
+
+    /// <summary>Builds or tops up the demo world, or with <paramref name="reset"/> retires it first; in the background.</summary>
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [HttpPost("demo")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RunDemo(bool reset, CancellationToken cancellationToken)
+    {
+        if (!IsDevSeedEnabled())
+        {
+            return NotFound();
+        }
+
+        var (errorResult, user) = await RequireCurrentUserAsync(cancellationToken);
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        if (!serviceProvider.GetRequiredService<DemoRunStatus>().TryStart())
+        {
+            SetError("A demo run is already going.");
+        }
+        else
+        {
+            var actorId = user.Id;
+            backgroundJobs.Enqueue<DemoWorldJob>(job => job.ExecuteAsync(reset, actorId, CancellationToken.None));
+            SetSuccess(reset ? "Demo reset started." : "Demo build started.");
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     [Authorize(Policy = FinancePolicies.Manage)]

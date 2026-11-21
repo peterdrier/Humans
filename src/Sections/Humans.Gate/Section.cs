@@ -18,6 +18,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Models.Tables;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Gate;
 
 /// <summary>No caching decorator: a stale gate read admits or blocks the wrong person.</summary>

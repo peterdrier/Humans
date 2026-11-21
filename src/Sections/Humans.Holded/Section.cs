@@ -12,6 +12,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
+[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Holded sync, never from demo stories.")]
+
 namespace Humans.Holded;
 
 /// <summary>No GDPR contributor: no table is user-scoped. The member-to-creditor binding is Finance's, and Finance

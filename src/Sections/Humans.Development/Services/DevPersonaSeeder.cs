@@ -280,7 +280,7 @@ internal sealed class DevPersonaSeeder(
     }
 
     /// <summary>Shared by seeding and the No-Name reset so the two cannot drift.</summary>
-    private static ProfileSaveRequest BuildPersonaProfileRequest(
+    internal static ProfileSaveRequest BuildPersonaProfileRequest(
         string burnerName, string firstName, string lastName, string bio) =>
         new(
             BurnerName: burnerName,
