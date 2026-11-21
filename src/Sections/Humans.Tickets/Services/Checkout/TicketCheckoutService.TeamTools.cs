@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using Humans.AuditLog.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
@@ -80,7 +81,7 @@ internal sealed partial class TicketCheckoutService
 
     /// <summary>
     /// Works the cancelled events' orders until the budget runs out; the next run carries on. Each order is safe to
-    /// repeat: what is already void stays void, and a refund already asked for counts against what can be refunded.
+    /// repeat: what is already void stays void, and the cancellation's own refund is asked for once.
     /// </summary>
     private async Task<int> SweepCancelledEventsAsync(CancellationToken ct)
     {
@@ -137,13 +138,37 @@ internal sealed partial class TicketCheckoutService
                 holdings.InvalidateHoldings(holder);
         }
 
-        var refundMinor = state.Refundable(order);
-        if (refundMinor > 0 && !state.RefundedSinceCancel(order))
-            await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct);
+        var refundMinor = state.HasCancelRefund(order) ? 0 : state.Refundable(order);
+        var refundNote = ", nothing to refund";
+        if (refundMinor > 0)
+        {
+            var cancelRefundId = CancellationState.CancelRefundId(salesEvent.Id, order.Id);
+            var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
+            refundNote = $", {FormatMinor(refundMinor)} {order.Currency} refund asked for";
+            if (refundId is null)
+            {
+                // Written as failed so the order leaves the to-do list and the team sees what is owed.
+                logger.LogError("Cancellation refund of checkout order {OrderId} could not start: {Refusal}", order.Id, result.Refusal);
+                await repository.AddRefundAsync(new TicketCheckoutRefund
+                {
+                    Id = cancelRefundId,
+                    OrderId = order.Id,
+                    AmountMinor = refundMinor,
+                    Reason = Truncate(why),
+                    State = RefundState.Failed,
+                    FailureReason = Truncate(result.Refusal ?? "Refused"),
+                    CreatedAt = now,
+                }, ct);
+                refundNote = $"; the {FormatMinor(refundMinor)} {order.Currency} refund could not start " +
+                    $"({Truncate(result.Refusal ?? "refused")}): the ticketing team must refund it by hand";
+                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
+                    $"Cancellation refund{refundNote[1..]}", JobName);
+            }
+        }
 
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.EventCancelled,
             $"{why}. {live.Count} ticket(s) voided" + (offers.Count > 0 ? $", {offers.Count} taken out of the resale queue" : string.Empty) +
-            (refundMinor > 0 ? $", {FormatMinor(refundMinor)} {order.Currency} refund asked for" : ", nothing to refund"), null, ct);
+            refundNote, null, ct);
         var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
             await email.SendAsync(emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
@@ -185,11 +210,24 @@ internal sealed partial class TicketCheckoutService
         public long Refundable(TicketCheckoutOrder order) =>
             new CheckoutOrderDetail(order, refunds[order.Id].ToList(), [], tickets[order.Id].ToList()).RefundableMinor;
 
-        public bool RefundedSinceCancel(TicketCheckoutOrder order) => refunds[order.Id].Any(r => r.CreatedAt >= Since);
+        /// <summary>
+        /// The cancellation's own refund of an order has a fixed id, so a refund the team makes meanwhile never stands in for
+        /// it, and a repeat finds the one already asked for (a declined one is not tried again).
+        /// </summary>
+        public static Guid CancelRefundId(Guid salesEventId, Guid orderId)
+        {
+            Span<byte> both = stackalloc byte[32];
+            salesEventId.TryWriteBytes(both[..16]);
+            orderId.TryWriteBytes(both[16..]);
+            return new Guid(SHA256.HashData(both)[..16]);
+        }
 
-        /// <summary>Paid orders with a ticket still working, or money still owed that no refund since the cancellation asked for.</summary>
+        public bool HasCancelRefund(TicketCheckoutOrder order) =>
+            refunds[order.Id].Any(r => r.Id == CancelRefundId(salesEvent.Id, order.Id));
+
+        /// <summary>Paid orders with a ticket still working, or money still owed that the cancellation has not asked for.</summary>
         public IReadOnlyList<TicketCheckoutOrder> ToDo => Paid
-            .Where(o => tickets[o.Id].Any(IsLive) || (Refundable(o) > 0 && !RefundedSinceCancel(o)))
+            .Where(o => tickets[o.Id].Any(IsLive) || (Refundable(o) > 0 && !HasCancelRefund(o)))
             .OrderBy(o => o.PaidAt)
             .ToList();
 

@@ -209,4 +209,56 @@ public sealed partial class TicketCheckoutServiceTests
         adult.State.Should().Be(TicketCheckoutTicketState.Offered);
         (await _service.GetCancellationProgressAsync(_salesEvent.Id, Ct))!.ToDo.Should().Be(1);
     }
+
+    [HumansFact]
+    public async Task A_team_refund_after_cancelling_does_not_stand_in_for_the_rest_of_the_cancellation_refund()
+    {
+        _salesEvent.ChildPriceMinor = 5000;
+        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
+        await _service.CancelSalesEventAsync(_salesEvent.Id, "Storm", _adminId, Ct);
+        (await _service.VoidTicketAsync(child.Id, "Asked first", 5000, _adminId, Ct)).Refusal.Should().BeNull();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _backend.Received(1).RefundAsync(Arg.Is<RefundRequest>(r => r.BackendOrderId == order.BackendOrderId && r.AmountMinor == 22500),
+            Arg.Any<CancellationToken>());
+        var progress = (await _service.GetCancellationProgressAsync(_salesEvent.Id, Ct))!;
+        progress.ToDo.Should().Be(0);
+        progress.StillRefundableMinor.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task A_cancellation_refund_that_cannot_start_is_written_as_failed_and_emailed_once()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        order.BackendOrderId = null;
+        _email.ClearReceivedCalls();
+        await _service.CancelSalesEventAsync(_salesEvent.Id, "Storm", _adminId, Ct);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds.Should().ContainSingle(r => r.Refund.OrderId == order.Id && r.Refund.State == RefundState.Failed);
+        await _email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        _repo.Events.Should().ContainSingle(e => e.Kind == TicketCheckoutOrderEventKind.EventCancelled && e.Detail.Contains("by hand"));
+        (await _service.GetCancellationProgressAsync(_salesEvent.Id, Ct))!.ToDo.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task A_void_suggests_the_ticket_and_its_children_on_the_order_within_what_can_be_refunded()
+    {
+        _salesEvent.ChildPriceMinor = 5000;
+        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        var adult = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Adult);
+        var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
+
+        var detail = (await _service.GetOrderDetailAsync(order.Id, Ct))!;
+        detail.VoidRefundMinor(adult).Should().Be(27500);
+        detail.VoidRefundMinor(child).Should().Be(5000);
+
+        await _service.RefundAsync(order.Id, 25000, "Partly back", _adminId, Ct);
+        (await _service.GetOrderDetailAsync(order.Id, Ct))!.VoidRefundMinor(adult).Should().Be(2500);
+    }
 }

@@ -187,15 +187,12 @@ internal sealed class TicketsSupportAdminController(
         var offer = (await checkout.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(o => o.TicketId == ticket.Id).MaxBy(o => o.OfferedAt);
         var dependents = eventTickets.Where(t => t.ParentTicketId == ticket.Id).ToList();
-        // What the ticket and the dependents voided with it cost on this order, within what the order can still refund.
-        var costMinor = ticket.PricePaidMinor + dependents
-            .Where(d => d.OrderId == ticket.OrderId && d.State == TicketCheckoutTicketState.Valid).Sum(d => d.PricePaidMinor);
         return View("~/Views/Tickets/Admin/Sales/Ticket.cshtml", new TicketAdminViewModel(
             detail.Order, ticket,
             ticket.ParentTicketId is { } parentId ? eventTickets.FirstOrDefault(t => t.Id == parentId) : null,
             dependents,
             offer,
-            Math.Min(costMinor, detail.RefundableMinor),
+            detail.VoidRefundMinor(ticket),
             detail.RefundableMinor));
     }
 

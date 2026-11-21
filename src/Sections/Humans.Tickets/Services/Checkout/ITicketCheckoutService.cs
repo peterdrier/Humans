@@ -315,6 +315,14 @@ internal sealed record CheckoutOrderDetail(
         Math.Max(0, Order.TicketTotalMinor - Order.DisputedMinor
             - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
             - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
+
+    /// <summary>
+    /// The refund a void suggests: what the ticket and the valid dependents voided with it cost on this order, within
+    /// <see cref="RefundableMinor"/>. A dependent on another order (a companion) was paid there, so it adds nothing here.
+    /// </summary>
+    public long VoidRefundMinor(TicketCheckoutTicket ticket) =>
+        Math.Min(RefundableMinor, ticket.PricePaidMinor + Tickets
+            .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid).Sum(t => t.PricePaidMinor));
 }
 
 /// <summary>
