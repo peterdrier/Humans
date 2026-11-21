@@ -55,6 +55,12 @@ internal sealed class TicketCheckoutOrder
     /// <summary>As the backend reports it: taken back by the buyer's bank in a chargeback not (yet) won.</summary>
     public long DisputedMinor { get; set; }
 
+    /// <summary>The legal repo folder of the ticket rules the buyer accepted; null when the sale had none.</summary>
+    public string? TermsFolder { get; init; }
+
+    /// <summary>The commit of <see cref="TermsFolder"/> whose text the buyer was shown and accepted.</summary>
+    public string? TermsVersion { get; init; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant ExpiresAt { get; init; }

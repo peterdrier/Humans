@@ -318,6 +318,12 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Accepta les normes de les entrades per continuar.</value>
   </data>
+  <data name="Tickets_Buy_TermsChanged" xml:space="preserve">
+    <value>Les normes de les entrades han canviat des que vas obrir aquesta pàgina. Torna-les a llegir i accepta-les per continuar.</value>
+  </data>
+  <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
+    <value>Ara mateix no es poden carregar les normes de les entrades, així que no es poden comprar entrades. Torna-ho a provar d'aquí a uns minuts.</value>
+  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Aquest enllaç d'invitació ja no és vàlid, o es va enviar a un correu diferent del de la teva sessió.</value>
   </data>

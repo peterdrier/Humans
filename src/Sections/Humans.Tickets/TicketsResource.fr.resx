@@ -318,6 +318,12 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Accepte les règles des billets pour continuer.</value>
   </data>
+  <data name="Tickets_Buy_TermsChanged" xml:space="preserve">
+    <value>Les règles des billets ont changé depuis que tu as ouvert cette page. Relis-les et accepte-les pour continuer.</value>
+  </data>
+  <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
+    <value>Les règles des billets ne peuvent pas être chargées pour le moment, donc aucun billet ne peut être acheté. Réessaie dans quelques minutes.</value>
+  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Ce lien d'invitation n'est plus valide, ou il a été envoyé à une autre adresse que celle de ton compte.</value>
   </data>
