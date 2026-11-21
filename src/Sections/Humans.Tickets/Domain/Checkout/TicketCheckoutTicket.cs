@@ -14,6 +14,9 @@ internal sealed class TicketCheckoutTicket
 
     public Guid OrderId { get; init; }
 
+    /// <summary>The order line this ticket was issued for; unique per order, so an order is never fulfilled twice.</summary>
+    public int LineIndex { get; init; }
+
     public TicketHolderKind Kind { get; init; }
 
     /// <summary>The adult a child or companion ticket belongs to; it goes wherever the adult's ticket goes.</summary>
@@ -108,6 +111,9 @@ internal sealed class TicketResaleOffer
     public Instant? DirectedExpiresAt { get; set; }
 
     public Instant? DirectedUsedAt { get; set; }
+
+    /// <summary>Invitations sent for this offer, capped so a holder cannot mail addresses without end.</summary>
+    public int DirectedInviteCount { get; set; }
 
     public bool IsDirectedTo(Instant now) => DirectedTokenHash is not null && DirectedUsedAt is null && DirectedExpiresAt > now;
 }

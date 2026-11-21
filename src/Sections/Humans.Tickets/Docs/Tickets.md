@@ -56,11 +56,11 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketCheckoutTicket
 
-**Table:** `ticket_checkout_tickets` — unique `Barcode`; indexes on `OrderId`, `SalesEventId`, `HolderUserId`. `ParentTicketId` links a child or companion to its adult. Erasure tombstones `HolderName` and `HolderEmail`.
+**Table:** `ticket_checkout_tickets` — unique `Barcode`; unique (`OrderId`, `LineIndex`), so a paid order issues each line once; indexes on `SalesEventId`, `HolderUserId`, `ParentTicketId`. `ParentTicketId` links a child or companion to its adult. Erasure tombstones `HolderName` and `HolderEmail`, children's names included.
 
 ### TicketResaleOffer
 
-**Table:** `ticket_resale_offers` — one per return to the queue (`Open` → `Reserved` → `Sold`, or `Withdrawn`). `DirectedTokenHash` is the SHA-256 of an emailed link's token; the token is never stored. Erasure clears `DirectedEmail` and the token.
+**Table:** `ticket_resale_offers` — one per return to the queue (`Open` → `Reserved` → `Sold`, or `Withdrawn`). `DirectedTokenHash` is the SHA-256 of an emailed link's token; the token is never stored. `DirectedInviteCount` caps invitations per offer at three. Erasure clears `DirectedEmail` and the token, also on another holder's offer that invited the erased member.
 
 ### TicketCheckoutOrderEvent
 

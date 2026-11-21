@@ -7,7 +7,8 @@ namespace Humans.BoxOffice.Controllers;
 
 /// <summary>
 /// Anonymous: authenticated by the Stripe signature. Only a nudge: Tickets reads the session's state back from Stripe,
-/// so a replay changes nothing. 503 while the signing secret is unset.
+/// so a replay changes nothing. 503 while the signing secret is unset; 400 on a bad signature, so a wrong secret shows
+/// as failed deliveries in Stripe instead of green ones Humans ignores.
 /// </summary>
 [ApiController]
 [AllowAnonymous]
@@ -32,6 +33,8 @@ internal sealed class BoxOfficeStripeWebhookController(
             body = await reader.ReadToEndAsync(ct);
 
         var sessionIds = await backend.ParseWebhookAsync(body, Request.Headers["Stripe-Signature"].ToString(), ct);
+        if (sessionIds is null)
+            return BadRequest();
         foreach (var sessionId in sessionIds)
             await checkoutEvents.CheckoutChangedAsync(BoxOfficeCheckoutBackend.BackendKey, sessionId, ct);
 

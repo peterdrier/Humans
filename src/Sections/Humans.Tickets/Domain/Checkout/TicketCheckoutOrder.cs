@@ -11,6 +11,9 @@ internal sealed class TicketCheckoutOrder
 {
     public Guid Id { get; init; }
 
+    /// <summary>The short code a buyer quotes to the ticketing team and that receipts print.</summary>
+    public string Reference => Id.ToString("N")[..8].ToUpperInvariant();
+
     public Guid SalesEventId { get; init; }
 
     /// <summary>The signed-in payer.</summary>
@@ -186,4 +189,7 @@ internal enum TicketCheckoutOrderEventKind
     Voided = 17,
     CompanionIssued = 18,
     TermsAccepted = 19,
+    TicketsEmailed = 20,
+    TicketsResent = 21,
+    TicketMailSkipped = 22,
 }

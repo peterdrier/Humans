@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.Auth.Contracts;
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
@@ -128,7 +129,9 @@ internal sealed class TicketBuyController(
             : RedirectToAction(nameof(Order), new { id = result.OrderId });
     }
 
+    // A partner whose account was made at payment follows the ticket email here before finishing onboarding.
     [HttpGet("Mine")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Mine(CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);

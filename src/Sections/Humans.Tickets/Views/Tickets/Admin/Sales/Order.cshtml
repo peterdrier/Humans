@@ -15,6 +15,7 @@
 <page-header title="Ticket order" />
 
 <dl class="row">
+    <dt class="col-sm-3">Reference</dt><dd class="col-sm-9"><code>@o.Reference</code></dd>
     <dt class="col-sm-3">Buyer</dt><dd class="col-sm-9">@o.BuyerName (@o.BuyerEmail) <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@o.BuyerUserId">profile</a></dd>
     <dt class="col-sm-3">State</dt><dd class="col-sm-9">@o.State</dd>
     <dt class="col-sm-3">Backend</dt><dd class="col-sm-9"><code>@o.BackendKey</code> @o.BackendOrderId @if (o.AdminUrl is not null) { <a href="@o.AdminUrl" target="_blank" rel="noopener">open in @o.BackendKey</a> }</dd>

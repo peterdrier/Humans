@@ -235,6 +235,9 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<int>("LineIndex")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
 
@@ -271,9 +274,12 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.HasIndex("HolderUserId");
 
-                    b.HasIndex("OrderId");
+                    b.HasIndex("ParentTicketId");
 
                     b.HasIndex("SalesEventId");
+
+                    b.HasIndex("OrderId", "LineIndex")
+                        .IsUnique();
 
                     b.ToTable("ticket_checkout_tickets", (string)null);
                 });
@@ -290,6 +296,9 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<Instant?>("DirectedExpiresAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DirectedInviteCount")
+                        .HasColumnType("integer");
 
                     b.Property<string>("DirectedTokenHash")
                         .HasMaxLength(64)
