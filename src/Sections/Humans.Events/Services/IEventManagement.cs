@@ -41,7 +41,6 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     Task<EventSubmissionsSummary> GetUserSubmissionsSummaryAsync(Guid userId, CancellationToken ct = default);
     Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
-    Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
     Task<EventSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
     /// <summary>Refuses a closed submission window or unavailable category/individual venue without writing or emailing.

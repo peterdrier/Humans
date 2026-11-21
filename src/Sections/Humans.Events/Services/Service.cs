@@ -48,7 +48,7 @@ internal sealed class EventService(
         return guideEvent is null ? null : EventInfo.FromEvent(guideEvent);
     }
 
-    public async Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
+    private async Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
     {
         var guideEventId = await GetGuideEventIdAsync(ct);
         var events = await repo.GetCampSubmissionsAsync(campId, ct);
