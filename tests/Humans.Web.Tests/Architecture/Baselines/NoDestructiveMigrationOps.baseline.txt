@@ -754,4 +754,4 @@ src/Sections/Humans.Governance/Data/Migrations/20261121133716_DropApplicationRev
 # Approval: Peter, 2026-11-21, in the project thread: "if they're in the ticketing bit and we
 # haven't used any of it yet, then you can drop whatever you want. Because none of it's live and
 # anywhere near production. So go ahead."
-src/Sections/Humans.Tickets/Data/Migrations/20261121181201_DropTicketSalesEventTermsUrl.cs:DropColumn(name=TermsUrl,table=ticket_sales_events)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121183331_TicketRulesFromLegalRepo.cs:DropColumn(name=TermsUrl,table=ticket_sales_events)#1

@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121173521_TicketRulesFromLegalRepo")]
+    [Migration("20261121183331_TicketRulesFromLegalRepo")]
     partial class TicketRulesFromLegalRepo
     {
         /// <inheritdoc />
@@ -412,10 +412,6 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<string>("TermsFolder")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<string>("TermsUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<decimal>("TicketVatRate")
                         .HasPrecision(5, 4)
