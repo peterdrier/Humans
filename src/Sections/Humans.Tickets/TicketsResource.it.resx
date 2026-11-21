@@ -396,4 +396,25 @@
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
     <value>&lt;p&gt;Ciao,&lt;/p&gt;&lt;p&gt;{0} non può venire a &lt;strong&gt;{1}&lt;/strong&gt; e ti invita ad acquistare il suo biglietto restituito prima della coda di rivendita.&lt;/p&gt;&lt;p&gt;Paghi il prezzo attuale del biglietto all'associazione e ricevi un nuovo biglietto a tuo nome: il nome deve corrispondere al tuo documento all'ingresso. Accedi o crea il tuo account Humans con questa email, poi usa questo link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Il link è valido per {3} giorni.&lt;/p&gt;</value>
   </data>
+  <data name="Tickets_Public_PriceToday" xml:space="preserve">
+    <value>{0} oggi</value>
+  </data>
+  <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
+    <value>(solo biglietti restituiti)</value>
+  </data>
+  <data name="Tickets_Public_Intro" xml:space="preserve">
+    <value>Ogni biglietto porta il nome legale di chi lo usa e si acquista da un account Humans. Inserisci la tua email: ti inviamo un link per accedere, o per creare il tuo account con il tuo nome legale, e arrivi direttamente alla pagina di acquisto.</value>
+  </data>
+  <data name="Tickets_Public_Email" xml:space="preserve">
+    <value>La tua email</value>
+  </data>
+  <data name="Tickets_Public_Send" xml:space="preserve">
+    <value>Inviami il link</value>
+  </data>
+  <data name="Tickets_Public_Sent" xml:space="preserve">
+    <value>Controlla la posta: sta arrivando un link per continuare. È valido per 15 minuti.</value>
+  </data>
+  <data name="Tickets_Public_PriceNote" xml:space="preserve">
+    <value>Questo è il prezzo pubblico. Dopo l'accesso vedrai il tuo prezzo, che può essere più basso se hai un'agevolazione per i biglietti.</value>
+  </data>
 </root>

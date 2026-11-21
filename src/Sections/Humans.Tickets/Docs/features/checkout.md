@@ -48,6 +48,13 @@ Rules every backend follows:
    sale.
 4. A TicketsAdmin refunds from the order page: only paid orders, never above the ticket lines net of earlier refunds.
 
+## Signed-out buyers
+
+`/Tickets/Buy/Public` (where a signed-out `/Tickets/Buy` lands) shows each selling event at today's public price and
+asks for an email. Auth's magic link signs an existing member in, or starts signup (legal name, consents) for a new
+one, and returns them to the buy page, which then prefills them and shows their own price. Tickets are named and
+consent needs a real profile, so the account always comes before the order.
+
 ## Returning a ticket and the resale queue
 
 - `/Tickets/Buy/Mine` lists the member's live tickets. A holder offers an adult ticket back while the event is not
@@ -79,7 +86,6 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 
 ## Not yet
 
-- Public (signed-out) purchase path.
 - Companion tickets and the admin resale and ticket views (admin thread); ticket email with QR and the post-purchase
   shifts email (delivery thread, through `ITicketDelivery`).
 - Checkout tickets in holdings, the gate list and the scanner.
