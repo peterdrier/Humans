@@ -46,7 +46,5 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
                     (a, b) => a != null && b != null && a.SequenceEqual(b),
                     v => v.Aggregate(0, (h, s) => HashCode.Combine(h, StringComparer.Ordinal.GetHashCode(s))),
                     v => v.ToList()));
-
-        builder.HasIndex(r => new { r.OwnerKind, r.OwnerId, r.Slug }).IsUnique();
     }
 }

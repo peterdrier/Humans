@@ -134,7 +134,7 @@ internal sealed class CachingTeamService(
             return null;
 
         var added = await AddMemberToTeamAsync(ownerId, userId, actorUserId, ct);
-        return added.Succeeded ? null : added.Refusal ?? added.ErrorKey;
+        return added.Succeeded ? null : added.Refusal ?? "They couldn't be added to the team.";
     }
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(

@@ -37,7 +37,7 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 ## Invariants
 
 - A role has one owner, of a kind a section registers.
-- Name is unique per owner, ignoring case. Slug and custom slug are unique per owner across both. Links use slugs, never the id.
+- Name is unique per owner, ignoring case. Slug and custom slug are unique per owner across both, checked by the service (the database enforces uniqueness on ids only). Links use slugs, never the id.
 - At most one coordinator role per owner. Only Admin and RolesAdmin create, edit, fill, empty or delete it, and whether a role is the coordinator role changes only while it is empty.
 - Who manages an owner's roles: Admin, RolesAdmin, and holders of the coordinator role on that owner or an ancestor, counted only on active, non-system owners. Never a parent or a sibling. Holding a narrow role never lets anyone manage roles.
 - A permission key goes on a role only if a section declares it, it applies to the owner's kind, and, for a top-level-only permission, the owner is top level.
@@ -54,7 +54,7 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 
 ## Triggers
 
-- Teams calls `IRoleWrite.RemoveAsync` when a person leaves or is removed from a team, and for each member when a team is deactivated. A merge doesn't: Roles' own merge step moves the slots.
+- Teams calls `IRoleWrite.RemoveAsync` when a person leaves or is removed from a team, when account deletion revokes all their memberships, and for each member when a team is deactivated. A merge doesn't: Roles' own merge step moves the slots.
 
 ## Cross-Section Dependencies
 

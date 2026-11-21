@@ -745,6 +745,22 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
         await _roleWrite.Received(1).RemoveAsync(TeamOwner.Of(team.Id), user.Id, user.Id, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task RevokeAllMembershipsAsync_RemovesTheirRolesOnEveryTeam()
+    {
+        var user = SeedUser("User");
+        var first = SeedTeam("First");
+        var second = SeedTeam("Second");
+        SeedMember(first, user);
+        SeedMember(second, user);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.RevokeAllMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await _roleWrite.Received(1).RemoveAsync(TeamOwner.Of(first.Id), user.Id, user.Id, Arg.Any<CancellationToken>());
+        await _roleWrite.Received(1).RemoveAsync(TeamOwner.Of(second.Id), user.Id, user.Id, Arg.Any<CancellationToken>());
+    }
+
     private TeamMember SeedMember(Team team, User user, TeamMemberRole role = TeamMemberRole.Member)
     {
         var member = new TeamMember

@@ -1406,8 +1406,13 @@ internal sealed class TeamService(
             relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
     }
 
-    public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        repo.RevokeAllMembershipsAsync(userId, clock.GetCurrentInstant(), cancellationToken);
+    public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        foreach (var membership in await GetUserTeamMembershipsAsync(userId, cancellationToken))
+            await RoleWrite.RemoveAsync(TeamOwner.Of(membership.TeamId), userId, userId, cancellationToken);
+
+        return await repo.RevokeAllMembershipsAsync(userId, clock.GetCurrentInstant(), cancellationToken);
+    }
 
     public async Task ReassignAsync(
         Guid sourceUserId,

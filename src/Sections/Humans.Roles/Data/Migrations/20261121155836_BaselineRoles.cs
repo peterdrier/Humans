@@ -76,12 +76,6 @@ namespace Humans.Roles.Data.Migrations
                 name: "IX_role_assignments_UserId",
                 table: "role_assignments",
                 column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_role_definitions_OwnerKind_OwnerId_Slug",
-                table: "role_definitions",
-                columns: new[] { "OwnerKind", "OwnerId", "Slug" },
-                unique: true);
         }
 
         /// <inheritdoc />

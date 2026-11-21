@@ -204,6 +204,9 @@ internal sealed class RoleService(
         if (!await repository.RemoveAssignmentAsync(roleId, userId, ct))
             return Refuse("They don't hold this role.");
 
+        if (role.Assignments.FirstOrDefault(a => a.UserId == userId) is { } removed)
+            role.Assignments.Remove(removed);
+
         await audit.LogAsync(RolesAuditActions.HolderRemoved, AuditEntityType, role.Id,
             $"Unassigned from role '{role.Name}' on {await OwnerNameAsync(owner, ct)}",
             actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);

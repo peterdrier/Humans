@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Roles.Data.Migrations
 {
     [DbContext(typeof(RolesDbContext))]
-    [Migration("20261121153108_BaselineRoles")]
+    [Migration("20261121155836_BaselineRoles")]
     partial class BaselineRoles
     {
         /// <inheritdoc />
@@ -95,9 +95,6 @@ namespace Humans.Roles.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("OwnerKind", "OwnerId", "Slug")
-                        .IsUnique();
 
                     b.ToTable("role_definitions", (string)null);
                 });

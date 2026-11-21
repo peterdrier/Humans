@@ -93,9 +93,6 @@ namespace Humans.Roles.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OwnerKind", "OwnerId", "Slug")
-                        .IsUnique();
-
                     b.ToTable("role_definitions", (string)null);
                 });
 
