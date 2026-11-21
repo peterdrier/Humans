@@ -20,7 +20,10 @@ internal enum TicketPayoutIssue
 {
     /// <summary>The payout sends another amount than the net of what the provider says it contains.</summary>
     ContentsMismatch,
-    /// <summary>The payout failed or was cancelled, so the money is back in the account.</summary>
+    /// <summary>
+    /// The payout failed or was cancelled, so the money is back in the account and goes out again in a later payout.
+    /// Shown, but it never unbalances: a failed payout stays failed, so it would hold the nightly alert forever.
+    /// </summary>
     Failed,
 }
 
@@ -61,7 +64,7 @@ internal sealed record TicketPaymentRecon(
 {
     public IEnumerable<TicketPaymentRow> Problems => Rows.Where(r => r.Issues.Count > 0);
 
-    public IEnumerable<TicketPayoutRow> PayoutProblems => Payouts.Where(p => p.Issues.Count > 0);
+    public IEnumerable<TicketPayoutRow> PayoutProblems => Payouts.Where(p => p.Issues.Any(i => i != TicketPayoutIssue.Failed));
 
     /// <summary>Fees charged on their own or on a chargeback rather than on a payment, listed for the team to check.</summary>
     public IEnumerable<TicketPaymentRow> OtherFees => Rows.Where(r =>
@@ -79,8 +82,8 @@ internal sealed record TicketPaymentRecon(
 /// </para>
 /// <para>
 /// A payment must name an order on this backend that Humans holds as paid (or settling), for the order's total, with
-/// the fee Humans recorded. A refund or chargeback must name an order. A payout must send what it contains and must not
-/// have failed. A fee on its own (Stripe's own billing, a chargeback fee) names no order and is listed, not a problem.
+/// the fee Humans recorded (a failed delayed debit, whose payment came back, may be Failed). A refund or chargeback must name an order. A payout must send what it contains; a failed
+/// one is shown, not counted, since it stays failed forever. A fee on its own (Stripe's own billing, a chargeback fee) names no order and is listed, not a problem.
 /// </para>
 /// </summary>
 internal static class TicketPaymentReconBuilder
@@ -93,11 +96,15 @@ internal static class TicketPaymentReconBuilder
         IReadOnlyCollection<TicketCheckoutOrder> orders)
     {
         var mine = orders.Where(o => string.Equals(o.BackendKey, backendKey, StringComparison.Ordinal)).ToDictionary(o => o.Id);
+        // A delayed debit that failed shows as its payment and then that payment coming back.
+        var returned = ledger.Entries
+            .Where(e => e is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: < 0, HumansOrderId: not null })
+            .Select(e => e.HumansOrderId!.Value).ToHashSet();
         var rows = new List<TicketPaymentRow>();
         foreach (var entry in ledger.Entries.OrderBy(e => e.CreatedAt))
         {
             var order = entry.HumansOrderId is { } id ? mine.GetValueOrDefault(id) : null;
-            rows.Add(new TicketPaymentRow(entry, order, Check(entry, order)));
+            rows.Add(new TicketPaymentRow(entry, order, Check(entry, order, order is not null && returned.Contains(order.Id))));
         }
 
         var payments = rows.Where(r => IsPayment(r.Entry) && r.Order is not null).ToList();
@@ -129,7 +136,7 @@ internal static class TicketPaymentReconBuilder
     private static long Sum(IEnumerable<PaymentLedgerEntry> entries, PaymentLedgerEntryKind kind) =>
         entries.Where(e => e.Kind == kind).Sum(e => e.AmountMinor);
 
-    private static IReadOnlyList<TicketPaymentIssue> Check(PaymentLedgerEntry entry, TicketCheckoutOrder? order)
+    private static IReadOnlyList<TicketPaymentIssue> Check(PaymentLedgerEntry entry, TicketCheckoutOrder? order, bool returned)
     {
         if (entry.Kind is not (PaymentLedgerEntryKind.Charge or PaymentLedgerEntryKind.Refund or PaymentLedgerEntryKind.Dispute))
             return [];
@@ -139,7 +146,8 @@ internal static class TicketPaymentReconBuilder
             return [];
 
         var issues = new List<TicketPaymentIssue>();
-        if (order.State is not (TicketCheckoutOrderState.Paid or TicketCheckoutOrderState.Processing))
+        if (order.State is not (TicketCheckoutOrderState.Paid or TicketCheckoutOrderState.Processing)
+            && !(order.State == TicketCheckoutOrderState.Failed && returned))
             issues.Add(TicketPaymentIssue.NotPaidInHumans);
         if (entry.AmountMinor != order.TotalMinor)
             issues.Add(TicketPaymentIssue.AmountMismatch);

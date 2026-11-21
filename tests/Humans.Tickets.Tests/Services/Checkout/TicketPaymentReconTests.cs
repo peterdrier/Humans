@@ -130,8 +130,38 @@ public sealed class TicketPaymentReconTests
         var recon = Build();
 
         recon.Balanced.Should().BeFalse();
-        recon.PayoutProblems.Select(p => (p.Payout.Id, p.Issues.Single())).Should().Equal(
-            ("po_short", TicketPayoutIssue.ContentsMismatch), ("po_failed", TicketPayoutIssue.Failed));
+        recon.PayoutProblems.Select(p => p.Payout.Id).Should().Equal("po_short");
+        recon.Payouts.Single(p => string.Equals(p.Payout.Id, "po_failed", StringComparison.Ordinal)).Issues.Should().Equal(TicketPayoutIssue.Failed);
+    }
+
+    [HumansFact]
+    public void A_failed_payout_alone_is_shown_but_balances()
+    {
+        _payouts.Add(new PaymentPayout("po_failed", Mid, null, 5000, "failed", 5000, 1));
+
+        Build().Balanced.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void A_failed_delayed_debit_whose_payment_came_back_balances()
+    {
+        var failed = Order(state: TicketCheckoutOrderState.Failed);
+        Entry(PaymentLedgerEntryKind.Charge, 30000, 450, failed.Id);
+        Entry(PaymentLedgerEntryKind.Charge, -30000, 0, failed.Id);
+
+        var recon = Build();
+
+        recon.Balanced.Should().BeTrue();
+        recon.Totals.ChargedMinor.Should().Be(0);
+    }
+
+    [HumansFact]
+    public void A_payment_kept_on_a_failed_order_unbalances()
+    {
+        var failed = Order(state: TicketCheckoutOrderState.Failed);
+        Entry(PaymentLedgerEntryKind.Charge, 30000, 450, failed.Id);
+
+        Build().Problems.Should().ContainSingle().Which.Issues.Should().Equal(TicketPaymentIssue.NotPaidInHumans);
     }
 
     [HumansFact]
