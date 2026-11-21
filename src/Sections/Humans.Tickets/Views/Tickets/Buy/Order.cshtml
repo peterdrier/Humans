@@ -2,10 +2,10 @@
 @model Humans.Tickets.Controllers.TicketBuyOrderViewModel
 @{
     ViewData["Title"] = Localizer["Tickets_Buy_OrderTitle"].Value;
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture) + " €";
     var order = Model.Order;
     var open = order.IsOpen;
     var processing = order.State == TicketCheckoutOrderState.Processing;
+    var canPay = open && Model.IsBuyer && order.PaymentUrl is not null && order.State == TicketCheckoutOrderState.Pending;
 }
 
 @section Crumbs {
@@ -13,106 +13,112 @@
     <span>@Localizer["Tickets_Buy_OrderTitle"]</span>
 }
 
-<page-header title="@(Localizer["Tickets_Buy_OrderTitle"].Value)" />
+<page-header title="@(Localizer["Tickets_Buy_OrderTitle"].Value)">
+    <page-header-badge><status-badge value="@order.State" text="@(Localizer[$"Tickets_Buy_State_{order.State}"].Value)" /></page-header-badge>
+    <page-header-subtitle>@Localizer["Tickets_Buy_Reference"]: <code>@order.Reference</code></page-header-subtitle>
+    <a class="btn btn-outline-secondary" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
+</page-header>
 
-<p>
-    <span class="me-2">@Localizer["Tickets_Buy_Reference"]: <code>@order.Reference</code></span>
-    <span class="badge @(order.State == TicketCheckoutOrderState.Paid ? "bg-success" : open ? "bg-warning text-dark" : "bg-secondary")">
-        @Localizer[$"Tickets_Buy_State_{order.State}"]
-    </span>
-</p>
-
-@if (order.State == TicketCheckoutOrderState.Paid)
-{
-    <p>@Localizer["Tickets_Buy_PaidHelp"]</p>
-}
-else if (processing)
-{
-    <p class="text-muted">@Localizer["Tickets_Buy_ProcessingHelp"]</p>
-}
-else if (open)
-{
-    <p class="text-muted">@Localizer["Tickets_Buy_PendingHelp"]</p>
-}
-
-<table class="table">
-    <tbody>
-        @foreach (var line in Model.VisibleLines)
+<div class="row g-4">
+    <div class="col-lg-7">
+        @if (order.State == TicketCheckoutOrderState.Paid)
         {
-            <tr>
-                <td>
-                    @if (line.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket)
-                    {
-                        @(line.HolderKind == TicketHolderKind.Child ? Localizer["Tickets_Buy_Line_Child"] : Localizer["Tickets_Buy_Line_Ticket"])
-                        var priceName = line.ClassLabel ?? line.WaveName;
-                        @if (priceName is not null && line.HolderKind != TicketHolderKind.Child)
+            <p>@Localizer["Tickets_Buy_PaidHelp"]</p>
+        }
+        else if (processing)
+        {
+            <p class="text-muted">@Localizer["Tickets_Buy_ProcessingHelp"]</p>
+        }
+        else if (open)
+        {
+            <p class="text-muted">@Localizer["Tickets_Buy_PendingHelp"]</p>
+        }
+
+        <div class="stat mb-4">
+            @if (Model.IsBuyer)
+            {
+                <div class="label">@Localizer["Tickets_Buy_Total"]</div>
+                <div class="value buy-total">@((order.TotalMinor / 100m).ToEuro())</div>
+            }
+            <dl class="buy-lines">
+                @foreach (var line in Model.VisibleLines)
+                {
+                    <dt>
+                        @if (line.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket)
                         {
-                            <span class="text-muted">(@priceName)</span>
+                            @(line.HolderKind == TicketHolderKind.Child ? Localizer["Tickets_Buy_Line_Child"] : Localizer["Tickets_Buy_Line_Ticket"])
+                            var priceName = line.ClassLabel ?? line.WaveName;
+                            @if (priceName is not null && line.HolderKind != TicketHolderKind.Child)
+                            {
+                                <span class="text-muted">(@priceName)</span>
+                            }
                         }
-                    }
-                    else
+                        else
+                        {
+                            @string.Format(Localizer["Tickets_Buy_Line_Donation"].Value, Localizer[$"Tickets_Buy_Purpose_{line.DonationPurpose ?? TicketDonationPurpose.General}"].Value)
+                            <span class="d-block small text-muted">@Localizer["Tickets_Buy_DonationLineNote"]</span>
+                        }
+                        @if (line.AttendeeName is not null)
+                        {
+                            <span class="d-block small">@line.AttendeeName</span>
+                        }
+                    </dt>
+                    <dd>@(Model.IsBuyer ? (line.AmountMinor / 100m).ToEuro() : "")</dd>
+                }
+                @if (Model.IsBuyer)
+                {
+                    var donations = order.TotalMinor - order.TicketTotalMinor;
+                    @if (donations > 0)
                     {
-                        @string.Format(Localizer["Tickets_Buy_Line_Donation"].Value, Localizer[$"Tickets_Buy_Purpose_{line.DonationPurpose ?? TicketDonationPurpose.General}"].Value)
-                        <div class="small text-muted">@Localizer["Tickets_Buy_DonationLineNote"]</div>
+                        <dt class="buy-lines-sub">@Localizer["Tickets_Buy_TicketsSubtotal"]</dt>
+                        <dd class="buy-lines-sub">@((order.TicketTotalMinor / 100m).ToEuro())</dd>
+                        <dt>@Localizer["Tickets_Buy_DonationSubtotal"]</dt>
+                        <dd>@((donations / 100m).ToEuro())</dd>
                     }
-                    @if (line.AttendeeName is not null)
+                }
+            </dl>
+            @if (Model.IsBuyer && order.RefundedMinor > 0)
+            {
+                <p class="small text-muted text-end mt-2 mb-0">@string.Format(Localizer["Tickets_Buy_Refunded"].Value, (order.RefundedMinor / 100m).ToEuro())</p>
+            }
+
+            @if (open && Model.IsBuyer)
+            {
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-4">
+                    @if (canPay)
                     {
-                        <div class="small">@line.AttendeeName</div>
+                        <a class="btn btn-primary btn-lg buy-pay" href="@order.PaymentUrl">@Localizer["Tickets_Buy_PayNow"]</a>
                     }
-                </td>
-                <td class="text-end">@(Model.IsBuyer ? Eur(line.AmountMinor) : "")</td>
-            </tr>
-        }
-    </tbody>
-    @if (Model.IsBuyer)
-    {
-        var donations = order.TotalMinor - order.TicketTotalMinor;
-        <tfoot>
-            @if (donations > 0)
-            {
-                <tr><td>@Localizer["Tickets_Buy_TicketsSubtotal"]</td><td class="text-end">@Eur(order.TicketTotalMinor)</td></tr>
-                <tr><td>@Localizer["Tickets_Buy_DonationSubtotal"]</td><td class="text-end">@Eur(donations)</td></tr>
+                    <a class="btn btn-outline-secondary" asp-action="Order" asp-route-id="@order.Id">@Localizer["Tickets_Buy_Refresh"]</a>
+                    @if (!processing)
+                    {
+                        <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger btn-sm">@Localizer["Tickets_Buy_Cancel"]</button>
+                        </form>
+                    }
+                </div>
             }
-            <tr class="fw-semibold"><td>@Localizer["Tickets_Buy_Total"]</td><td class="text-end">@Eur(order.TotalMinor)</td></tr>
-            @if (order.RefundedMinor > 0)
-            {
-                <tr><td colspan="2" class="text-end">@string.Format(Localizer["Tickets_Buy_Refunded"].Value, Eur(order.RefundedMinor))</td></tr>
-            }
-        </tfoot>
-    }
-</table>
-
-@if (Model.VisibleTickets.Any())
-{
-    <h2 class="h5">@Localizer["Tickets_Buy_YourTickets"]</h2>
-    <ul class="list-group mb-3">
-        @foreach (var ticket in Model.VisibleTickets)
-        {
-            <li class="list-group-item d-flex justify-content-between">
-                <span>@ticket.HolderName <span class="small text-muted">@Localizer["Tickets_Buy_Barcode"]: <code>@ticket.Barcode</code></span></span>
-                <span>@Localizer[$"Tickets_Ticket_State_{ticket.State}"]</span>
-            </li>
-        }
-    </ul>
-    <p><a asp-action="Mine">@Localizer["Tickets_Mine_Title"]</a></p>
-}
-
-@if (open && Model.IsBuyer)
-{
-    <div class="d-flex gap-2 mb-3">
-        @if (order.PaymentUrl is not null && order.State == TicketCheckoutOrderState.Pending)
-        {
-            <a class="btn btn-primary" href="@order.PaymentUrl">@Localizer["Tickets_Buy_PayNow"]</a>
-        }
-        <a class="btn btn-outline-secondary" asp-action="Order" asp-route-id="@order.Id">@Localizer["Tickets_Buy_Refresh"]</a>
-        @if (!processing)
-        {
-            <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger">@Localizer["Tickets_Buy_Cancel"]</button>
-            </form>
-        }
+        </div>
     </div>
-}
 
-<a class="btn btn-outline-secondary" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
+    @if (Model.VisibleTickets.Any())
+    {
+        <div class="col-lg-5">
+            <h2 class="h4">@Localizer["Tickets_Buy_YourTickets"]</h2>
+            <div class="list-group mb-3">
+                @foreach (var ticket in Model.VisibleTickets)
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-start gap-2">
+                        <span>
+                            @ticket.HolderName
+                            <span class="d-block small text-muted">@Localizer["Tickets_Buy_Barcode"]: <code>@ticket.Barcode</code></span>
+                        </span>
+                        <status-badge value="@ticket.State" text="@(Localizer[$"Tickets_Ticket_State_{ticket.State}"].Value)" />
+                    </div>
+                }
+            </div>
+            <a class="btn btn-primary" asp-action="Mine">@Localizer["Tickets_Mine_Title"]</a>
+        </div>
+    }
+</div>

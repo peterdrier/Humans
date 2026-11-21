@@ -59,7 +59,7 @@ internal sealed class TicketQueryService(
         var currentEventId = syncState?.VendorEventId;
         var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
 
-        var approved = await ticketTransferRepository.GetByStatusAsync(TicketTransferStatus.Approved, ct);
+        var approved = await ticketTransferRepository.GetApprovedAsync(ct);
         var transfersByAttendee = approved
             .GroupBy(t => t.OriginalTicketAttendeeId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.DecidedAt).First());
@@ -243,9 +243,6 @@ internal sealed class TicketQueryService(
         await ticketRepository.EraseUserPiiAsync(userId, ct);
         await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
     }
-
-    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
-        ticketRepository.GetOrderDriftAsync(ct);
 
     public async Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
@@ -817,11 +814,6 @@ internal sealed class TicketQueryService(
             .ToList();
 
         var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
-        // GroupBy, not ToDictionary: stray duplicate pendings must not crash the dashboard read.
-        var pendingByAttendee = (await ticketTransferRepository.GetBySenderAsync(userId, ct))
-            .Where(r => r.Status == TicketTransferStatus.Pending)
-            .GroupBy(r => r.OriginalTicketAttendeeId)
-            .ToDictionary(g => g.Key, g => g.First().Id);
         var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
             .Select(a => new UserTicketHoldingRow(
@@ -831,10 +823,6 @@ internal sealed class TicketQueryService(
                 a.VendorTicketId,
                 a.TicketTypeName,
                 a.Status,
-                HasPendingOutgoingTransfer: pendingByAttendee.ContainsKey(a.Id),
-                PendingTransferRequestId: pendingByAttendee.TryGetValue(a.Id, out var transferId)
-                    ? transferId
-                    : null,
                 CheckedInAt: a.CheckedInAt))
             .ToList();
 

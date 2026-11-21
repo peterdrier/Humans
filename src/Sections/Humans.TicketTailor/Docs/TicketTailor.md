@@ -11,7 +11,6 @@
   src/Sections/Humans.Tickets/Section.cs
   src/Sections/Humans.Tickets/Services/TicketVendorGateway.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
-  src/Sections/Humans.Tickets/Services/TicketTransferService.cs
   src/Sections/Humans.Tickets/Models/TicketDashboardPageBuilder.cs
   src/Sections/Humans.Tickets/Health/TicketVendorHealthCheck.cs
   src/Humans.Base/Extensions/LoggerTimingExtensions.cs
@@ -39,7 +38,7 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 
 | Actor | Capabilities |
 |-------|--------------|
-| Tickets (`TicketVendorGateway`, `TicketSyncService`, `TicketTransferService`, `TicketDashboardPageBuilder`, `TicketVendorHealthCheck`) | The only injectors of the port (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`) |
+| Tickets (`TicketVendorGateway`, `TicketSyncService`, `TicketDashboardPageBuilder`, `TicketVendorHealthCheck`) | The only injectors of the port (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`) |
 | Any human | None — the section has no controllers, views or routes |
 
 ## Invariants

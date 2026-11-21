@@ -16,31 +16,6 @@ public sealed class TicketsEmailsTests
     private static TicketsEmails Create() => TestTicketsEmails.Create();
 
     [HumansFact]
-    public void TicketTransferRequested_GoesToTheSender_System()
-    {
-        var msg = Create().TicketTransferRequested(Guid.NewGuid(), "a@x.com", "Alice", "Receiver", "Ticket #1", "en");
-
-        msg.RecipientEmail.Should().Be("a@x.com");
-        msg.RecipientName.Should().Be("Alice");
-        msg.TemplateName.Should().Be("ticket_transfer_requested");
-        msg.Category.Should().Be(MessageCategory.System);
-        msg.ReplyTo.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void TicketTransferTeamNotification_RoutesToTicketsInbox_System()
-    {
-        var msg = Create().TicketTransferTeamNotification(
-            "Sender", "Receiver", "rx@x.com", "Ticket #1", "reason", "https://review");
-
-        msg.RecipientEmail.Should().Be(TicketConstants.TicketsTeamEmail);
-        msg.RecipientName.Should().Be("Ticket team");
-        msg.UserId.Should().BeNull("an operator mailbox has no account behind it");
-        msg.TemplateName.Should().Be("ticket_transfer_team");
-        msg.Category.Should().Be(MessageCategory.System);
-    }
-
-    [HumansFact]
     public void ReconciliationAlert_GoesToTheTicketsInbox_WithEachFindingEncoded()
     {
         var msg = Create().ReconciliationAlert(["boxoffice orders: <out> of balance", "pretix orders: could not be checked"],
@@ -53,40 +28,6 @@ public sealed class TicketsEmailsTests
         msg.HtmlBody.Should().Contain("<li>boxoffice orders: &lt;out&gt; of balance</li>")
             .And.Contain("<li>pretix orders: could not be checked</li>")
             .And.Contain($"{TestTicketsEmails.BaseUrl}/Tickets/Admin/Sales/Recon?from=2027-01-01&amp;to=2027-01-09");
-    }
-
-    [HumansFact]
-    public void TicketTransferTeamNotification_MakesARelativeReviewUrlAbsolute()
-    {
-        var msg = Create().TicketTransferTeamNotification(
-            "Sender", "Receiver", "rx@x.com", "Ticket #1", null, "/Tickets/Admin/Transfers/Detail/1");
-
-        msg.HtmlBody.Should().Contain($"{TestTicketsEmails.BaseUrl}/Tickets/Admin/Transfers/Detail/1");
-    }
-
-    [HumansFact]
-    public void TicketTransferDecision_TemplateReflectsOutcome()
-    {
-        var emails = Create();
-
-        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "A", successful: true, "T", "Rx", null, "en")
-            .TemplateName.Should().Be("ticket_transfer_completed");
-
-        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "A", successful: false, "T", "Rx", "why", "en")
-            .TemplateName.Should().Be("ticket_transfer_cancelled");
-    }
-
-    [HumansFact]
-    public void TicketTransferDecision_EncodesNamesAndOmitsAnEmptyReason()
-    {
-        var emails = Create();
-
-        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "Ann <Admin>", successful: false, "Lights & sound", "Rx", null, "en")
-            .HtmlBody.Should().Contain("Ann &lt;Admin&gt;").And.Contain("Lights &amp; sound")
-            .And.NotContain("<strong>Reason:</strong>");
-
-        emails.TicketTransferDecision(Guid.NewGuid(), "a@x.com", "Ann", successful: false, "T", "Rx", "sold out", "en")
-            .HtmlBody.Should().Contain("<strong>Reason:</strong> sold out");
     }
 
     private static IssuedTicketMail SampleTicket(string holderName = "Ana", string? buyerName = null, params TicketCard[] riders) => new(

@@ -63,9 +63,6 @@ namespace Humans.Governance.Data.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<Instant?>("ReviewStartedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Guid?>("ReviewedByUserId")
                         .HasColumnType("uuid");
 

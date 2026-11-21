@@ -40,56 +40,14 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Tickets_TicketTransfer_Pending" xml:space="preserve">
-    <value>Pendiente de revisión</value>
-  </data>
-  <data name="Tickets_TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transferencia ya pendiente</value></data>
-  <data name="Tickets_TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancelar solicitud</value></data>
-  <data name="Tickets_TicketTransfer_CheckedIn" xml:space="preserve"><value>Ya has hecho el check-in — no se puede transferir</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Esto solicitará transferir la entrada {0} ({1}) a {2}.</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmNote" xml:space="preserve"><value>Nuestro equipo de entradas lo procesará y te avisará en breve.</value></data>
-  <data name="Tickets_TicketTransfer_Continue" xml:space="preserve"><value>Continuar</value></data>
-  <data name="Tickets_TicketTransfer_NoneTransferable" xml:space="preserve"><value>Ninguna de tus entradas se puede transferir ahora mismo.</value></data>
-  <data name="Tickets_TicketTransfer_NoRequests" xml:space="preserve"><value>No has solicitado ninguna transferencia.</value></data>
-  <data name="Tickets_TicketTransfer_NoTickets" xml:space="preserve"><value>No tienes ninguna entrada para transferir.</value></data>
-  <data name="Tickets_TicketTransfer_NotTransferable" xml:space="preserve"><value>No transferible</value></data>
-  <data name="Tickets_TicketTransfer_ReasonLabel" xml:space="preserve"><value>Motivo de la transferencia (opcional, visible para el equipo de entradas)</value></data>
-  <data name="Tickets_TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Busca por nombre o pega su correo exacto…</value></data>
-  <data name="Tickets_TicketTransfer_Requested" xml:space="preserve"><value>Solicitada</value></data>
-  <data name="Tickets_TicketTransfer_RequestTransfer" xml:space="preserve"><value>Solicitar transferencia</value></data>
-  <data name="Tickets_TicketTransfer_StatusApproved" xml:space="preserve"><value>Completada</value></data>
-  <data name="Tickets_TicketTransfer_StatusCancelled" xml:space="preserve"><value>Cancelada</value></data>
-  <data name="Tickets_TicketTransfer_StatusRejected" xml:space="preserve"><value>Cancelada por el equipo</value></data>
-  <data name="Tickets_TicketTransfer_Step1" xml:space="preserve"><value>1. Elige la entrada que vas a transferir</value></data>
-  <data name="Tickets_TicketTransfer_Step2" xml:space="preserve"><value>2. ¿A quién se la envías?</value></data>
-  <data name="Tickets_TicketTransfer_Step3" xml:space="preserve"><value>3. Confirmar</value></data>
-  <data name="Tickets_TicketTransfer_Title" xml:space="preserve"><value>Transferir una entrada</value></data>
-  <data name="Tickets_TicketTransfer_YourRequests" xml:space="preserve"><value>Tus solicitudes de transferencia</value></data>
-  <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>No se pudo preparar la transferencia: elige una de tus entradas y una persona destinataria válida que no seas tú.</value></data>
-  <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transferencia solicitada. Nuestro equipo de entradas la procesará y te avisará en breve.</value></data>
-  <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transferencia cancelada.</value></data>
-  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Transferencia no encontrada.</value></data>
-  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Solo se pueden cancelar las transferencias pendientes.</value></data>
-  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Solo quien envió la solicitud puede cancelar esta transferencia.</value></data>
-  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>No se pudo cancelar la transferencia. Actualiza la página o contacta con el equipo de entradas.</value></data>
-  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>Solo puedes transferir entradas que estén actualmente a tu nombre.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Entrada individual</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Check-in realizado</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Anulada</value></data>
   <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Acceso anticipado {0}</value><comment>{0} = fecha de acceso</comment></data>
-  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Transferencia pendiente</value></data>
   <data name="Tickets_TicketHoldings_Title" xml:space="preserve"><value>Entradas</value></data>
   <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>pedido</value></data>
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>pedidos</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>No hay entradas.</value></data>
-  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Transferencias…</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Solicitud de transferencia de entrada</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;Hemos recibido tu solicitud para transferir la entrada &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;Nuestro equipo de entradas la tramitará y te avisará en breve. No tienes que hacer nada más.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Transferencia de entrada completada</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;La transferencia de la entrada &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt; se ha completado.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Transferencia de entrada cancelada</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0}:&lt;/p&gt;&lt;p&gt;La transferencia solicitada de la entrada &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt; no se completó.&lt;/p&gt;{3}&lt;p&gt;Si tienes preguntas, responde a este correo y nuestro equipo de entradas te ayudará.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
   <data name="Tickets_Onsite_Since" xml:space="preserve"><value>En el sitio desde {0}</value></data>
   <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Check-in en la puerta realizado</value></data>
   <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>Se te ha marcado como no asistente este año.</value></data>
@@ -99,7 +57,6 @@
   <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Se ha eliminado tu declaración.</value></data>
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>No se pudo deshacer; es posible que la sincronización de entradas haya actualizado tu estado.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Tu estado de entrada no está disponible en este momento. Inténtalo de nuevo más tarde.</value></data>
-  <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Los motivos no pueden superar los 1000 caracteres.</value></data>
   <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Error de sincronización de entradas</value></data>
   <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>administradores</value></data>
   <data name="Tickets_Buy_Title" xml:space="preserve">
@@ -111,11 +68,11 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Tu precio</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Tanda actual: {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Total</value>
+  </data>
+  <data name="Tickets_Buy_ForSelfHeading" xml:space="preserve">
+    <value>Tu entrada</value>
   </data>
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Una entrada para mí ({0})</value>
@@ -302,9 +259,6 @@
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Mejora tu experiencia y ayúdanos a hacer el mejor evento posible. Tu entrada mantiene tu precio; el resto es una donación a la asociación, sin IVA y no reembolsable.</value>
-  </data>
-  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
-    <value>{0} de entrada + {1} de donación</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Normas de las entradas</value>
