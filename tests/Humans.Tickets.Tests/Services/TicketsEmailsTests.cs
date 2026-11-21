@@ -117,6 +117,7 @@ public sealed class TicketsEmailsTests
         var type = parameter.ParameterType;
         if (type == typeof(Guid)) return Guid.NewGuid();
         if (type == typeof(bool)) return flag;
+        if (type == typeof(int)) return 3;
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"TicketsEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");

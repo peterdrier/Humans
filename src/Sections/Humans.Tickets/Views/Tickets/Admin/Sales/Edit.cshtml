@@ -72,12 +72,34 @@
         <div class="col-md-6">
             <label class="form-label" for="PriceRules">Price rules from grants</label>
             <textarea class="form-control font-monospace" id="PriceRules" name="PriceRules" rows="5" placeholder="program id;ClassPrice;125.00;Low income">@f.PriceRules</textarea>
-            <div class="form-text">One per line: grant program id;ClassPrice or Credit;amount;label shown to the buyer. The cheapest class price wins; credits stack.</div>
+            <div class="form-text">One per line: grant program id;ClassPrice, Credit or WavePin;amount;label shown to the buyer. The cheapest class price wins; credits stack; WavePin prices at the wave on sale the day the grant was issued (the low income pin; amount unused).</div>
         </div>
         <div class="col-md-6">
             <label class="form-label" for="SupporterTotals">Supporter totals</label>
             <input class="form-control" id="SupporterTotals" name="SupporterTotals" value="@f.SupporterTotals" placeholder="400, 500, 1000" />
             <div class="form-text">The ticket at the buyer's price, the rest a donation without VAT.</div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="ChildPrice">Child ticket price (€)</label>
+            <input class="form-control" id="ChildPrice" name="ChildPrice" value="@f.ChildPrice" placeholder="empty: no child tickets" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="ChildMaxAge">Child is under age</label>
+            <input class="form-control" id="ChildMaxAge" name="ChildMaxAge" type="number" min="1" value="@f.ChildMaxAge" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="ResaleOpensAtSold">Resale opens at tickets sold</label>
+            <input class="form-control" id="ResaleOpensAtSold" name="ResaleOpensAtSold" type="number" min="0" value="@f.ResaleOpensAtSold" placeholder="empty: at once" />
+            <div class="form-text">Returned tickets sell before fresh stock once this many are sold.</div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="DirectedResaleDays">Resale invitation lasts (days)</label>
+            <input class="form-control" id="DirectedResaleDays" name="DirectedResaleDays" type="number" min="1" max="30" value="@f.DirectedResaleDays" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="TermsTeamId">Ticket rules team id</label>
+            <input class="form-control font-monospace" id="TermsTeamId" name="TermsTeamId" value="@f.TermsTeamId" />
+            <div class="form-text">Every buyer accepts this team's required legal documents (set them up in <a href="/Legal/Admin/Documents">Legal documents</a>). Empty: no checkbox.</div>
         </div>
     </div>
 

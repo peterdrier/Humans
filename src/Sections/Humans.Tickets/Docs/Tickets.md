@@ -36,7 +36,9 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 - **Checkout lane** (2027 ticketing; spec [features/checkout.md](features/checkout.md)): Humans sells tickets itself. Tickets owns the price rule, the orders and the named ticket lines, and routes each order to the event's **checkout backend**, an adapter section implementing `ITicketCheckoutBackend` (Contracts leaf): `boxoffice` (Stripe direct, `Humans.BoxOffice`), `pretix`, `hievents`. A backend only charges the lines it is given, reports the outcome and refunds an exact amount. Its webhook is a nudge to `ITicketCheckoutEvents`; Tickets always re-reads the backend's status, and `TicketCheckoutReconcileJob` polls open orders every 5 minutes for missed webhooks.
 - A **Ticket Sales Event** is the sales setup of one Settings event: backend key, the event's id inside the backend, mode (`Closed` / `Open` / `ResaleOnly`), sales close instant, capacity, ticket VAT, dated **waves**, **supporter totals** (VIP buttons) and **price rules** mapping a Grants program to a class price or a credit.
 - **Price rule:** wave price on the pricing date (today in the event's zone; the last wave holds until sales close), replaced by the cheapest class price among the buyer's active grants, minus every credit, floored at 0. A partner ticket always costs the public price. A supporter total is the buyer's ticket plus the rest as a VAT-free donation line; a free donation with a purpose may be added or bought alone.
-- A **Ticket Checkout Order** is one purchase: buyer, backend key and id, state (`Created` → `Pending` → `Paid` | `Failed` | `Expired` | `Cancelled`), total, fee, method, refunded total, and its lines (ticket lines carry the holder's legal name, email, user id and, once paid, a barcode). A paid order never leaves `Paid`. A zero-total order is paid at once without a backend.
+- A **Ticket Checkout Order** is one purchase: buyer, backend key and id, state (`Created` → `Pending` → `Paid` | `Failed` | `Expired` | `Cancelled`), total, fee, method, refunded total, and its lines (ticket lines carry the holder's legal name, email, user id, pricing facts and, for children, the adult line they ride on). A paid order never leaves `Paid` and issues its tickets once.
+- A **Checkout Ticket** is what the gate scans: one per paid ticket line, unique barcode, `Valid` → `Offered` (in the resale queue, still valid) → `Resold` | `Void`. Never renamed by a holder; resale voids it and issues a new one.
+- A **Resale Offer** is a holder's ticket waiting in the queue, oldest first; it may be directed to one invited email for a few days. A zero-total order is paid at once without a backend.
 
 ## Data Model
 
@@ -51,6 +53,14 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 ### TicketCheckoutRefund
 
 **Table:** `ticket_checkout_refunds` — one row per refund request, saved before the backend call so a crash still counts it; `Id` is the backend's idempotency key.
+
+### TicketCheckoutTicket
+
+**Table:** `ticket_checkout_tickets` — unique `Barcode`; indexes on `OrderId`, `SalesEventId`, `HolderUserId`. `ParentTicketId` links a child or companion to its adult. Erasure tombstones `HolderName` and `HolderEmail`.
+
+### TicketResaleOffer
+
+**Table:** `ticket_resale_offers` — one per return to the queue (`Open` → `Reserved` → `Sold`, or `Withdrawn`). `DirectedTokenHash` is the SHA-256 of an emailed link's token; the token is never stored. Erasure clears `DirectedEmail` and the token.
 
 ### TicketCheckoutOrderEvent
 
@@ -115,7 +125,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketsAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketsPolicies.Read`) |
 | TicketsAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV (each download audits the actor, export kind and row count). Generate discount codes for campaigns (Campaign section, policy `TicketsPolicies.Manage`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketsPolicies.Manage`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketsPolicies.Manage`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketsPolicies.Manage`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
-| Any authenticated member | Buy a ticket for themselves and/or one named partner for any event that is not Closed (several can sell at once; nothing assumes the active event), see orders they paid for or hold a line in, cancel their own unpaid order. Never sees another payer's order |
+| Any authenticated member | Buy a ticket for themselves and/or one named partner for any event that is not Closed (several can sell at once; nothing assumes the active event), see orders they paid for or hold a line in, cancel their own unpaid order, return their own adult ticket to the resale queue, withdraw it and invite one buyer for it. Never sees another payer's order or acts on another holder's ticket |
 | TicketsAdmin, Board, Admin (Read) | See sales setups, checkout orders and refunds. Board can never save a setup or refund |
 | TicketsAdmin, Admin (Manage) | Save a sales setup; refund a paid checkout order up to its ticket lines (donations never) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`). Download the donor list CSV (`/Tickets/Export/Donations`, audited) |
@@ -224,6 +234,9 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Buy` | GET + POST | `[Authorize]` | One section per selling event; the POST names its `salesEventId`: own ticket at the member's price, optional partner at the public price, supporter total, donation; POST redirects to the backend's payment page |
 | `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | Order status, refreshed from the backend; the payer sees the whole order, a holder only their own line; anyone else 404 |
 | `/Tickets/Buy/Order/{id}/Cancel` | POST | `[Authorize]` | The payer abandons an unpaid order |
+| `/Tickets/Buy/Mine` | GET | `[Authorize]` | The member's live checkout tickets, resale queue position and actions |
+| `/Tickets/Buy/Mine/{ticketId}/Offer`, `/Withdraw`, `/Invite`, `/CancelInvite` | POST | `[Authorize]` | Holder only (anyone else 404): return a ticket to the queue, take it back (not while a checkout holds it), invite one buyer by email, cancel the invitation |
+| `/Tickets/Buy/Resale/{token}` | GET | `[Authorize]` | Buy page for a directed offer; only the invited email, while the link is live |
 | `/Tickets/Admin/Sales` | GET | `TicketsPolicies.Read` | Sales setups per event and each registered backend's configured state |
 | `/Tickets/Admin/Sales/Edit/{id?}` | GET + POST | Read / `TicketsPolicies.Manage` | Edit a sales setup (audited `TicketSalesEventSaved`) |
 | `/Tickets/Admin/Sales/{id}/Orders` | GET | `TicketsPolicies.Read` | Orders and totals for one sales setup |

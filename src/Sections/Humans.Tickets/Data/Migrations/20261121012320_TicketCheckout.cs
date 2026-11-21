@@ -44,6 +44,7 @@ namespace Humans.Tickets.Data.Migrations
                     AdminUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
                     State = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    Culture = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     TotalMinor = table.Column<long>(type: "bigint", nullable: false),
                     FeeMinor = table.Column<long>(type: "bigint", nullable: true),
                     PaymentMethod = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
@@ -71,12 +72,66 @@ namespace Humans.Tickets.Data.Migrations
                     BackendRefundId = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     FailureReason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     ManualRefundUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
-                    RequestedByUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    RequestedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ticket_checkout_refunds", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ticket_checkout_tickets",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    SalesEventId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrderId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Kind = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                    ParentTicketId = table.Column<Guid>(type: "uuid", nullable: true),
+                    HolderUserId = table.Column<Guid>(type: "uuid", nullable: true),
+                    HolderName = table.Column<string>(type: "character varying(513)", maxLength: 513, nullable: false),
+                    HolderEmail = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    Barcode = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    PricePaidMinor = table.Column<long>(type: "bigint", nullable: false),
+                    WaveName = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    ClassProgramId = table.Column<Guid>(type: "uuid", nullable: true),
+                    ClassLabel = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    CreditsMinor = table.Column<long>(type: "bigint", nullable: false),
+                    State = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                    IssuedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
+                    VoidedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
+                    VoidReason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ticket_checkout_tickets", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ticket_resale_offers",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    SalesEventId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TicketId = table.Column<Guid>(type: "uuid", nullable: false),
+                    HolderUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OfferedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
+                    State = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                    RefundOwedMinor = table.Column<long>(type: "bigint", nullable: false),
+                    ReservedByOrderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    SoldToOrderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    SoldAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
+                    WithdrawnAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
+                    RefundId = table.Column<Guid>(type: "uuid", nullable: true),
+                    DirectedEmail = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
+                    DirectedTokenHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    DirectedExpiresAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
+                    DirectedUsedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ticket_resale_offers", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -92,6 +147,11 @@ namespace Humans.Tickets.Data.Migrations
                     Capacity = table.Column<int>(type: "integer", nullable: false),
                     TicketVatRate = table.Column<decimal>(type: "numeric(5,4)", precision: 5, scale: 4, nullable: false),
                     SupporterTotalsMinor = table.Column<List<long>>(type: "bigint[]", nullable: false),
+                    ResaleOpensAtSold = table.Column<int>(type: "integer", nullable: true),
+                    DirectedResaleDays = table.Column<int>(type: "integer", nullable: false),
+                    TermsTeamId = table.Column<Guid>(type: "uuid", nullable: true),
+                    ChildPriceMinor = table.Column<long>(type: "bigint", nullable: true),
+                    ChildMaxAge = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
                     price_rules = table.Column<string>(type: "jsonb", nullable: true),
@@ -129,6 +189,42 @@ namespace Humans.Tickets.Data.Migrations
                 column: "OrderId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ticket_checkout_tickets_Barcode",
+                table: "ticket_checkout_tickets",
+                column: "Barcode",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticket_checkout_tickets_HolderUserId",
+                table: "ticket_checkout_tickets",
+                column: "HolderUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticket_checkout_tickets_OrderId",
+                table: "ticket_checkout_tickets",
+                column: "OrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticket_checkout_tickets_SalesEventId",
+                table: "ticket_checkout_tickets",
+                column: "SalesEventId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticket_resale_offers_DirectedTokenHash",
+                table: "ticket_resale_offers",
+                column: "DirectedTokenHash");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticket_resale_offers_SalesEventId",
+                table: "ticket_resale_offers",
+                column: "SalesEventId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticket_resale_offers_TicketId",
+                table: "ticket_resale_offers",
+                column: "TicketId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ticket_sales_events_EventSettingsId",
                 table: "ticket_sales_events",
                 column: "EventSettingsId",
@@ -146,6 +242,12 @@ namespace Humans.Tickets.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "ticket_checkout_refunds");
+
+            migrationBuilder.DropTable(
+                name: "ticket_checkout_tickets");
+
+            migrationBuilder.DropTable(
+                name: "ticket_resale_offers");
 
             migrationBuilder.DropTable(
                 name: "ticket_sales_events");

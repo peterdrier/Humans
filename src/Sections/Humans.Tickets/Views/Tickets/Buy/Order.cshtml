@@ -35,14 +35,23 @@ else if (open)
         {
             <tr>
                 <td>
-                    @line.Description
+                    @if (line.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket)
+                    {
+                        @(line.HolderKind == TicketHolderKind.Child ? Localizer["Tickets_Buy_Line_Child"] : Localizer["Tickets_Buy_Line_Ticket"])
+                        var priceName = line.ClassLabel ?? line.WaveName;
+                        @if (priceName is not null && line.HolderKind != TicketHolderKind.Child)
+                        {
+                            <span class="text-muted">(@priceName)</span>
+                        }
+                    }
+                    else
+                    {
+                        @string.Format(Localizer["Tickets_Buy_Line_Donation"].Value, Localizer[$"Tickets_Buy_Purpose_{line.DonationPurpose ?? TicketDonationPurpose.General}"].Value)
+                        <div class="small text-muted">@Localizer["Tickets_Buy_DonationLineNote"]</div>
+                    }
                     @if (line.AttendeeName is not null)
                     {
                         <div class="small">@line.AttendeeName</div>
-                    }
-                    @if (line.Barcode is not null)
-                    {
-                        <div class="small text-muted">@Localizer["Tickets_Buy_Barcode"]: <code>@line.Barcode</code></div>
                     }
                 </td>
                 <td class="text-end">@(Model.IsBuyer ? Eur(line.AmountMinor) : "")</td>
@@ -51,7 +60,13 @@ else if (open)
     </tbody>
     @if (Model.IsBuyer)
     {
+        var donations = order.TotalMinor - order.TicketTotalMinor;
         <tfoot>
+            @if (donations > 0)
+            {
+                <tr><td>@Localizer["Tickets_Buy_TicketsSubtotal"]</td><td class="text-end">@Eur(order.TicketTotalMinor)</td></tr>
+                <tr><td>@Localizer["Tickets_Buy_DonationSubtotal"]</td><td class="text-end">@Eur(donations)</td></tr>
+            }
             <tr class="fw-semibold"><td>@Localizer["Tickets_Buy_Total"]</td><td class="text-end">@Eur(order.TotalMinor)</td></tr>
             @if (order.RefundedMinor > 0)
             {
@@ -60,6 +75,21 @@ else if (open)
         </tfoot>
     }
 </table>
+
+@if (Model.VisibleTickets.Any())
+{
+    <h2 class="h5">@Localizer["Tickets_Buy_YourTickets"]</h2>
+    <ul class="list-group mb-3">
+        @foreach (var ticket in Model.VisibleTickets)
+        {
+            <li class="list-group-item d-flex justify-content-between">
+                <span>@ticket.HolderName <span class="small text-muted">@Localizer["Tickets_Buy_Barcode"]: <code>@ticket.Barcode</code></span></span>
+                <span>@Localizer[$"Tickets_Ticket_State_{ticket.State}"]</span>
+            </li>
+        }
+    </ul>
+    <p><a asp-action="Mine">@Localizer["Tickets_Mine_Title"]</a></p>
+}
 
 @if (open && Model.IsBuyer)
 {

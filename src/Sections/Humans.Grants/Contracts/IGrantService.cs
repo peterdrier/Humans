@@ -12,6 +12,7 @@ public interface IGrantService : IApplicationService
     Task<IReadOnlyList<GrantProgramSummary>> GetProgramSummariesAsync(CancellationToken ct = default);
 }
 
-public sealed record ActiveGrantInfo(Guid GrantId, Guid ProgramId, string ProgramName, Guid? EventSettingsId);
+/// <summary><paramref name="IssuedAt"/> is when the grant was given: a low income price pins the wave on sale then.</summary>
+public sealed record ActiveGrantInfo(Guid GrantId, Guid ProgramId, string ProgramName, Guid? EventSettingsId, NodaTime.Instant IssuedAt);
 
 public sealed record GrantProgramSummary(Guid ProgramId, string Name, int Year, Guid? EventSettingsId, string EventName);

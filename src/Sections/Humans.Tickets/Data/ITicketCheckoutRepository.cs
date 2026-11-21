@@ -42,6 +42,33 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default);
 
+    Task AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default);
+
+    Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default);
+
+    Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default);
+
+    Task<TicketCheckoutTicket?> GetTicketByBarcodeAsync(string barcode, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
+    Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default);
+
+    Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default);
+
+    Task<TicketResaleOffer?> GetOfferAsync(Guid id, CancellationToken ct = default);
+
+    Task<TicketResaleOffer?> GetOfferByTokenHashAsync(string tokenHash, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
+    /// <summary>Every refund on the sales event's orders.</summary>
+    Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
     /// <summary>Replaces names and emails on the person's orders and ticket lines; amounts stay for the books.</summary>
     Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default);
 

@@ -17,6 +17,9 @@ internal sealed class TicketBuyController(
     IUserService userService,
     IStringLocalizer<TicketsResource> localizer) : HumansControllerBase(userService)
 {
+    /// <summary>Euros. Larger gifts go through the organisers, and the cap keeps the cents conversion in range.</summary>
+    private const decimal MaxDonation = 100_000m;
+
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -27,32 +30,113 @@ internal sealed class TicketBuyController(
         return View("~/Views/Tickets/Buy/Index.cshtml", pages);
     }
 
-    [HttpPost("")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Start(
-        Guid salesEventId, bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
-        TicketDonationPurpose donationPurpose, CancellationToken ct)
+    /// <summary>An invited buyer's directed-resale link: the same buy page, holding that one ticket.</summary>
+    [HttpGet("Resale/{token}")]
+    public async Task<IActionResult> Resale(string token, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        var page = await checkout.GetDirectedBuyPageAsync(token, user.Id, ct);
+        if (page is null)
+            return NotFound();
+        ViewData["DirectedToken"] = token;
+        return View("~/Views/Tickets/Buy/Index.cshtml", new[] { page });
+    }
+
+    [HttpPost("")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Start(
+        Guid salesEventId, bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
+        TicketDonationPurpose donationPurpose, string[]? childNames, bool acceptTerms, bool marketingOptIn,
+        string? directedToken, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        IActionResult Back(string key)
+        {
+            SetError(localizer[key].Value);
+            return string.IsNullOrEmpty(directedToken)
+                ? RedirectToAction(nameof(Index))
+                : RedirectToAction(nameof(Resale), new { token = directedToken });
+        }
+
+        if (donation > MaxDonation)
+            return Back("Tickets_Buy_DonationTooLarge");
         var returnBase = new Uri(Url.Action(nameof(Order), "TicketBuy", new { id = Guid.Empty }, Request.Scheme, Request.Host.Value)!
             .Replace(Guid.Empty.ToString(), string.Empty, StringComparison.Ordinal));
         var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(
             salesEventId, forSelf, partnerName, partnerEmail, supporterTotalMinor, donationMinor, donationPurpose,
-            returnBase, CultureInfo.CurrentUICulture.Name), user.Id, ct);
+            returnBase, CultureInfo.CurrentUICulture.Name)
+        {
+            ChildNames = childNames ?? [],
+            AcceptTerms = acceptTerms,
+            MarketingOptIn = marketingOptIn,
+            DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            UserAgent = Request.Headers.UserAgent.ToString(),
+        }, user.Id, ct);
 
         if (result.Refusal is { } refusal)
-        {
-            SetError(localizer[refusal].Value);
-            return RedirectToAction(nameof(Index));
-        }
+            return Back(refusal);
 
         return result.PaymentUrl is { } paymentUrl
             ? Redirect(paymentUrl.ToString())
             : RedirectToAction(nameof(Order), new { id = result.OrderId });
+    }
+
+    [HttpGet("Mine")]
+    public async Task<IActionResult> Mine(CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        return View("~/Views/Tickets/Buy/Mine.cshtml", await checkout.GetHeldTicketsAsync(user.Id, ct));
+    }
+
+    [HttpPost("Mine/{ticketId:guid}/Offer")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> Offer(Guid ticketId, CancellationToken ct) =>
+        OnTicketAsync(userId => checkout.OfferForResaleAsync(ticketId, userId, ct), "Tickets_Resale_Offered", ct);
+
+    [HttpPost("Mine/{ticketId:guid}/Withdraw")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> Withdraw(Guid ticketId, CancellationToken ct) =>
+        OnTicketAsync(userId => checkout.WithdrawOfferAsync(ticketId, userId, ct), "Tickets_Resale_Withdrawn", ct);
+
+    [HttpPost("Mine/{ticketId:guid}/Invite")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> Invite(Guid ticketId, string? inviteeEmail, CancellationToken ct)
+    {
+        var claimBase = new Uri(Url.Action(nameof(Resale), "TicketBuy", new { token = "x" }, Request.Scheme, Request.Host.Value)!
+            .TrimEnd('x'));
+        return OnTicketAsync(userId => checkout.InviteBuyerAsync(
+            ticketId, userId, inviteeEmail ?? string.Empty, claimBase, CultureInfo.CurrentUICulture.Name, ct),
+            "Tickets_Resale_Invited", ct);
+    }
+
+    [HttpPost("Mine/{ticketId:guid}/CancelInvite")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> CancelInvite(Guid ticketId, CancellationToken ct) =>
+        OnTicketAsync(userId => checkout.CancelInviteAsync(ticketId, userId, ct), "Tickets_Resale_InviteCancelled", ct);
+
+    private async Task<IActionResult> OnTicketAsync(
+        Func<Guid, Task<CheckoutMutationResult>> act, string successKey, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        var result = await act(user.Id);
+        if (string.Equals(result.Refusal, "Tickets_Resale_NotFound", StringComparison.Ordinal))
+            return NotFound();
+        if (result.Refusal is { } refusal)
+            SetError(localizer[refusal].Value);
+        else
+            SetSuccess(localizer[successKey].Value);
+        return RedirectToAction(nameof(Mine));
     }
 
     [HttpGet("Order/{id:guid}")]
@@ -65,7 +149,8 @@ internal sealed class TicketBuyController(
         if (order is null || !CanSee(order, user.Id))
             return NotFound();
 
-        return View("~/Views/Tickets/Buy/Order.cshtml", new TicketBuyOrderViewModel(order, user.Id));
+        var tickets = await checkout.GetTicketsForOrderAsync(order.Id, ct);
+        return View("~/Views/Tickets/Buy/Order.cshtml", new TicketBuyOrderViewModel(order, tickets, user.Id));
     }
 
     [HttpPost("Order/{id:guid}/Cancel")]
@@ -90,10 +175,13 @@ internal sealed class TicketBuyController(
         order.BuyerUserId == userId || order.Lines.Any(l => l.AttendeeUserId == userId);
 }
 
-internal sealed record TicketBuyOrderViewModel(TicketCheckoutOrder Order, Guid ViewerId)
+internal sealed record TicketBuyOrderViewModel(TicketCheckoutOrder Order, IReadOnlyList<TicketCheckoutTicket> Tickets, Guid ViewerId)
 {
     public bool IsBuyer => Order.BuyerUserId == ViewerId;
 
     public IEnumerable<TicketCheckoutOrderLine> VisibleLines =>
         IsBuyer ? Order.Lines : Order.Lines.Where(l => l.AttendeeUserId == ViewerId);
+
+    public IEnumerable<TicketCheckoutTicket> VisibleTickets =>
+        IsBuyer ? Tickets : Tickets.Where(t => t.HolderUserId == ViewerId);
 }
