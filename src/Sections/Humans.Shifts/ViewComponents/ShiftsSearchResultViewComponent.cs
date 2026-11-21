@@ -13,10 +13,10 @@ public sealed class ShiftsSearchResultViewComponent(
     ITeamService teams) : ViewComponent
 {
     /// <summary>Nothing when the rota no longer resolves.</summary>
-    public async Task<IViewComponentResult> InvokeAsync(Guid rotaId)
+    public async Task<IViewComponentResult> InvokeAsync(Guid key)
     {
         var ct = HttpContext.RequestAborted;
-        var rota = await shifts.GetRotaAsync(rotaId, ct);
+        var rota = await shifts.GetRotaAsync(key, ct);
         if (rota is null)
             return Content(string.Empty);
 

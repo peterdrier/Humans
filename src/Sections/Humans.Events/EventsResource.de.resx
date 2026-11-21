@@ -180,4 +180,5 @@
   <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Wähle jeden Wiederholungstag nur einmal aus dem Kalender dieser Veranstaltung.</value></data>
   <data name="Events_CategoryUnavailable" xml:space="preserve"><value>Wähle eine aktive Kategorie. Die ausgewählte Kategorie ist nicht mehr verfügbar.</value></data>
   <data name="Events_VenueUnavailable" xml:space="preserve"><value>Wähle einen aktiven Veranstaltungsort. Der ausgewählte Veranstaltungsort ist nicht mehr verfügbar.</value></data>
+  <data name="Events_Search_Category" xml:space="preserve"><value>Veranstaltungen</value></data>
 </root>

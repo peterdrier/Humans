@@ -53,6 +53,7 @@ public sealed class Section :
     ISectionSettings,
     ISectionThingsToDo,
     ITeamShiftsParts,
+    ISearchContributor,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -339,4 +340,17 @@ public sealed class Section :
             return false;
         }
     }
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Shift",
+            sp => sp.GetRequiredService<IStringLocalizer<ShiftsResource>>()["Shifts_Search_Category"].Value,
+            "fa-solid fa-clock", typeof(ShiftsSearchResultViewComponent), SearchRotasAsync, Weight: 30),
+    ];
+
+    // Hits are rotas (named shift groupings), not individual shifts.
+    private static async Task<IReadOnlyList<SearchHit>> SearchRotasAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<IShiftService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(r => new SearchHit(r.RotaId, r.Name, r.Score))];
 }

@@ -206,7 +206,7 @@ These have no channel once the in-app row goes. The list is a recommendation Pet
 
 ### Deleted with no replacement
 
-TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved, and the Users consent-check things-to-do entry (a status with no action for the member; the coordinator side is the consent-review row above).
+TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), and the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved.
 
 Every `NotificationSourceDefinition` declared at the time of writing appears in exactly one of the three tables above. A source added between now and phase 4 gets a row before the switch lands.
 

@@ -7,7 +7,6 @@ using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -77,7 +76,7 @@ public class ProfileEmailsControllerGridTests
             _logger,
             localizer,
             _sharedLocalizer,
-            Substitute.For<ITicketService>(),
+            Array.Empty<IUserEmailLock>(),
             _authorizationService,
             _signInManager,
             Options.Create(new GoogleWorkspaceOptions()));

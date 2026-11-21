@@ -12,7 +12,7 @@ namespace Humans.Integration.Tests.Controllers;
 /// <para>
 /// Failures render as a 200 with degraded content. The section is reachable only because <c>Humans.Web.csproj</c>
 /// references it; a missing reference builds green and 404s. Each Humans hit is Users'
-/// <c>&lt;vc:user-search-result&gt;</c>, bound only by this section's <c>@addTagHelper *, Humans.Users</c>.
+/// <c>UserSearchResultViewComponent</c>, invoked by the type Users' <c>ISearchContributor</c> declares.
 /// </para>
 /// <para>
 /// Every dev persona's burner name is "Dev &lt;role&gt;", so <c>q=Dev</c> fills the Humans bucket with no other fixture.
@@ -48,7 +48,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var empty = await (await Client.GetAsync("/Search", ct)).Content.ReadAsStringAsync(ct);
-        empty.Should().Contain("Type at least 2 characters to search");  // Search_GlobalHint*
+        empty.Should().Contain("Type at least 2 characters to search across Humans, Teams");  // Search_GlobalHint + labels
 
         var tooShort = await (await Client.GetAsync("/Search?q=a", ct)).Content.ReadAsStringAsync(ct);
         tooShort.Should().Contain("Enter at least 2 characters to search."); // Search_MinChars
@@ -70,8 +70,8 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
             because: "Search_MatchedIn is written by <vc:user-search-result>'s own markup and by "
                    + "nothing else on this page");
         html.Should().Contain(">Humans<", because: "the per-type filter chips must render");
-        html.Should().Contain("Camps", because: "Search_FilterCamps must resolve");
-        html.Should().Contain("Shifts", because: "Search_FilterShifts must resolve");
+        html.Should().Contain("Camps", because: "Camps_Search_Category must resolve");
+        html.Should().Contain("Shifts", because: "Shifts_Search_Category must resolve");
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
     [HumansFact(Timeout = 120000)]
     public async Task The_type_filter_keeps_the_page_rendering()
     {
-        // Binding an internal enum on an internal controller can fail at request time and nowhere else.
+        // The filter is a contributed category key the service matches; the filtered bucket must still render.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
@@ -191,8 +191,8 @@ public class SearchPageRenderTests(HumansTestDatabase database) : IntegrationTes
         var html = await response.Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("Buscar");    // Search_GlobalTitle
-        html.Should().Contain("Barrios");   // Search_FilterCamps
-        html.Should().Contain("Turnos");    // Search_FilterShifts
+        html.Should().Contain("Barrios");   // Camps_Search_Category
+        html.Should().Contain("Turnos");    // Shifts_Search_Category
         html.Should().NotContain("Search_");
     }
 

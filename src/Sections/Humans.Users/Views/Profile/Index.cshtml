@@ -1,4 +1,3 @@
-@using Humans.Governance.Contracts
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.ProfileViewModel
 @{
@@ -34,11 +33,6 @@
                     : ProfileCardViewMode.Public;
         }
         <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
-
-        @if (Model.IsOwnProfile)
-        {
-            <vc:my-camps />
-        }
 
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
