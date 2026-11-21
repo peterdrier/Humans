@@ -21,6 +21,7 @@
         .Template("Reference", referenceCell, sortBy: o => o.Reference)
         .Column("Created", o => o.CreatedAt.ToDateTime(), o => o.Css("text-nowrap"))
         .Column("Buyer", o => o.BuyerName, o => o.TextFilter())
+        .Human("Member", o => o.BuyerUserId, HumanLink.Admin)
         .Column("Tickets", o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), o => o.End())
         .Template("Total", totalCell, o => o.End().Css("text-nowrap"), sortBy: o => o.TotalMinor)
         .Template("State", stateCell, o => o.SelectFilter(), sortBy: o => o.State.ToString())

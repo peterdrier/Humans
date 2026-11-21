@@ -27,6 +27,7 @@
     var table = TableModel.For(Model.Rows)
         .Template("Asked", askedCell, o => o.Css("text-nowrap"), sortBy: x => x.Refund.CreatedAt.ToUnixTimeTicks())
         .Column("Buyer", x => x.Order.BuyerName, o => o.TextFilter())
+        .Human("Member", x => x.Order.BuyerUserId, HumanLink.Admin)
         .Column("Amount (€)", x => x.Refund.AmountMinor / 100m, o => o.Currency().End())
         .Template("State", stateCell, sortBy: x => x.Refund.State.ToString())
         .Column("Reason", x => x.Refund.Reason)

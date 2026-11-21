@@ -5,13 +5,13 @@
     var tooShort = Model.Query.Length > 0 && Model.Query.Length < TicketSupportReports.MinimumQueryLength;
 
     Func<OrderSearchHit, IHtmlContent> createdCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.Order.Id">@item.Order.CreatedAt.ToDateTime()</a></text>;
-    Func<OrderSearchHit, IHtmlContent> buyerCell = @<text>@item.Order.BuyerName <span class="small d-block">@item.Order.BuyerEmail</span></text>;
+    Func<OrderSearchHit, IHtmlContent> buyerCell = @<text>@item.Order.BuyerName <span class="small">(<vc:human user-id="@item.Order.BuyerUserId" link="Admin" />)</span> <span class="small d-block">@item.Order.BuyerEmail</span></text>;
     Func<OrderSearchHit, IHtmlContent> holdersCell = @<text>
         @if (item.Tickets.Count > 0)
         {
             @foreach (var t in item.Tickets)
             {
-                <span class="d-block">@t.HolderName <code class="small">@t.Barcode</code> <status-badge value="@t.State" /></span>
+                <span class="d-block">@t.HolderName @if (t.HolderUserId is { } hid) { <span class="small">(<vc:human user-id="@hid" link="Admin" />)</span> } <code class="small">@t.Barcode</code> <status-badge value="@t.State" /></span>
             }
         }
         else

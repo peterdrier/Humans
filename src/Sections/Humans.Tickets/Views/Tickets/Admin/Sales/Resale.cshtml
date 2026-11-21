@@ -23,7 +23,7 @@
             Subline: $"{closed.Count(r => r.Offer.State == TicketResaleOfferState.Withdrawn).ToString(culture)} withdrawn"),
     ];
 
-    Func<ResaleQueueRow, IHtmlContent> holderCell = @<text>@item.Ticket?.HolderName <span class="small"><vc:human user-id="@item.Offer.HolderUserId" link="Admin" /></span></text>;
+    Func<ResaleQueueRow, IHtmlContent> holderCell = @<text>@item.Ticket?.HolderName <span class="small">(<vc:human user-id="@item.Offer.HolderUserId" link="Admin" />)</span></text>;
     Func<ResaleQueueRow, IHtmlContent> ticketCell = @<text>
         @if (item.Ticket is { } t)
         {
@@ -72,7 +72,7 @@
         }
     </text>;
     var closedTable = TableModel.For(closed)
-        .Column("Holder", r => r.Ticket?.HolderName)
+        .Template("Holder", holderCell, o => o.NoSort())
         .Template("Ticket", ticketCell, o => o.NoSort())
         .Column("Offered", r => r.Offer.OfferedAt, o => o.DateTime())
         .Template("Outcome", outcomeCell, sortBy: r => r.Offer.State.ToString())
