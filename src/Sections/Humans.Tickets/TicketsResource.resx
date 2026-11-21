@@ -247,4 +247,127 @@
   <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
     <value>For a donation this large, please contact the organisers.</value>
   </data>
+  <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
+    <value>Your ticket for {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Heading" xml:space="preserve">
+    <value>Your ticket for {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Intro" xml:space="preserve">
+    <value>Hi {0}, here is your ticket. Keep this email, or open your ticket in Humans at any time.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_BoughtBy" xml:space="preserve">
+    <value>{0} bought this ticket for you. It is yours alone and carries your name.</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Adult" xml:space="preserve">
+    <value>Adult ticket</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Child" xml:space="preserve">
+    <value>Child ticket</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Companion" xml:space="preserve">
+    <value>Companion ticket</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_AtTheGate" xml:space="preserve">
+    <value>At the gate, show this code on your phone or on paper, together with a photo ID.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Open" xml:space="preserve">
+    <value>Open my tickets in Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Heading" xml:space="preserve">
+    <value>Ticket rules</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
+    <value>This ticket is personal and carries one legal name. The name must match your photo ID at the gate, or entry is refused.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
+    <value>Tickets cannot be transferred, given or sold to anyone else. A ticket bought from another person or on a resale site is not valid.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
+    <value>If you cannot come, offer your ticket back through Humans. When someone else buys it you are refunded the ticket price you paid; donations are not refunded.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
+    <value>The event is a private event of the association Nobodies Collective. By using this ticket you accept the ticket terms you agreed to when buying it.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
+    <value>Receipt for your order {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Heading" xml:space="preserve">
+    <value>Receipt: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Intro" xml:space="preserve">
+    <value>Hi {0}, thank you for your order. This is your receipt.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Reference" xml:space="preserve">
+    <value>Order reference: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_PaidOn" xml:space="preserve">
+    <value>Paid on: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Method" xml:space="preserve">
+    <value>Payment method: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_TicketLine" xml:space="preserve">
+    <value>Ticket for {0} (includes {1}% VAT)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationLine" xml:space="preserve">
+    <value>Donation: {0} (no VAT)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Refunded" xml:space="preserve">
+    <value>Refunded</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationNote" xml:space="preserve">
+    <value>A donation is a gift to the association. It carries no VAT, is recorded separately from your ticket, and is not refunded.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_NotInvoice" xml:space="preserve">
+    <value>This is a receipt, not an invoice.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Open" xml:space="preserve">
+    <value>View your order in Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Subject" xml:space="preserve">
+    <value>Help make {0} happen</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Heading" xml:space="preserve">
+    <value>Help make {0} happen</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Intro" xml:space="preserve">
+    <value>Hi {0}, you have your ticket for {1}. Now the best part: this event is made by the people who come to it.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Why" xml:space="preserve">
+    <value>Everything from the gate to the kitchens runs on volunteers, and a few hours of your time make a real difference.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepProfile" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Complete your Humans profile&lt;/a&gt; to join as a volunteer, if you have not yet.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepShifts" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Pick a shift&lt;/a&gt; that suits you.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Closing" xml:space="preserve">
+    <value>See you there.</value>
+  </data>
+  <data name="Tickets_Mine_Title" xml:space="preserve">
+    <value>My tickets</value>
+  </data>
+  <data name="Tickets_Mine_Empty" xml:space="preserve">
+    <value>You hold no tickets bought through Humans yet.</value>
+  </data>
+  <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
+    <value>Show this code at the gate together with a photo ID. The name must match your ID.</value>
+  </data>
+  <data name="Tickets_Mine_Show" xml:space="preserve">
+    <value>Show ticket</value>
+  </data>
+  <data name="Tickets_Mine_State_Valid" xml:space="preserve">
+    <value>Valid</value>
+  </data>
+  <data name="Tickets_Mine_State_Offered" xml:space="preserve">
+    <value>Offered for resale</value>
+  </data>
+  <data name="Tickets_Mine_State_Resold" xml:space="preserve">
+    <value>Resold</value>
+  </data>
+  <data name="Tickets_Mine_State_Void" xml:space="preserve">
+    <value>Void</value>
+  </data>
 </root>

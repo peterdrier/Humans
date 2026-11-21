@@ -2,6 +2,7 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services;
 using Humans.Tickets.Tests.Infrastructure;
 
@@ -73,6 +74,86 @@ public sealed class TicketsEmailsTests
             .HtmlBody.Should().Contain("<strong>Reason:</strong> sold out");
     }
 
+    private static IssuedTicketMail SampleTicket(string holderName = "Ana", string? buyerName = null) => new(
+        Guid.NewGuid(), "ana@x.com", holderName, "Nowhere 2027", "Adult", "H7K2M9QX4T8VB3NRP",
+        new Uri("https://humans.example/Tickets/Mine/Code/tok"), new Uri("https://humans.example/Tickets/Mine"),
+        buyerName, Guid.NewGuid());
+
+    private static OrderReceiptMail SampleReceipt(long refundedMinor = 0) => new(
+        Guid.NewGuid(), "payer@x.com", "Payer", "Nowhere 2027", "3F9A0C1B", new NodaTime.LocalDate(2027, 1, 2), "card",
+        [
+            new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ana <A>" },
+            new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Donation, AmountMinor = 17500, DonationPurpose = TicketDonationPurpose.LowIncomePool },
+        ],
+        40000, refundedMinor, new Uri("https://humans.example/Tickets/Buy/Order/1"), Guid.NewGuid());
+
+    [HumansFact]
+    public void TicketIssued_GoesToTheHolder_WithTheCodeImageAndRules_System()
+    {
+        var ticket = SampleTicket("Ana <Holder>", buyerName: "Ben & Co");
+
+        var msg = Create().TicketIssued(ticket, "en");
+
+        msg.RecipientEmail.Should().Be("ana@x.com");
+        msg.UserId.Should().Be(ticket.HolderUserId);
+        msg.Category.Should().Be(MessageCategory.System, "a ticket is not mail anyone may opt out of");
+        msg.TemplateName.Should().Be("ticket_issued");
+        msg.DeliveryId.Should().Be(ticket.DeliveryId);
+        msg.Subject.Should().Be("Your ticket for Nowhere 2027");
+        msg.HtmlBody.Should().Contain("src=\"https://humans.example/Tickets/Mine/Code/tok\"")
+            .And.Contain("H7K2M9QX4T8VB3NRP")
+            .And.Contain("Ana &lt;Holder&gt;").And.NotContain("Ana <Holder>")
+            .And.Contain("Ben &amp; Co bought this ticket for you")
+            .And.Contain("Adult ticket")
+            .And.Contain("Ticket rules").And.Contain("photo ID");
+    }
+
+    [HumansFact]
+    public void TicketIssued_ForTheBuyerThemselves_SaysNothingAboutWhoPaid()
+    {
+        Create().TicketIssued(SampleTicket(), "en").HtmlBody.Should().NotContain("bought this ticket for you");
+    }
+
+    [HumansFact]
+    public void TicketIssued_RendersInTheHolderCulture()
+    {
+        Create().TicketIssued(SampleTicket(), "es").Subject.Should().Be("Tu entrada para Nowhere 2027");
+    }
+
+    [HumansFact]
+    public void OrderReceipt_SplitsTheTicketWithItsVatFromTheDonationWithout()
+    {
+        var msg = Create().OrderReceipt(SampleReceipt(), "en");
+
+        msg.RecipientEmail.Should().Be("payer@x.com");
+        msg.Category.Should().Be(MessageCategory.System);
+        msg.TemplateName.Should().Be("ticket_order_receipt");
+        msg.Subject.Should().Be("Receipt for your order 3F9A0C1B");
+        msg.HtmlBody.Should().Contain("Ticket for Ana &lt;A&gt; (includes 10% VAT)")
+            .And.Contain("Donation: More low income tickets (no VAT)")
+            .And.Contain("225.00 €").And.Contain("175.00 €").And.Contain("400.00 €")
+            .And.Contain("not an invoice")
+            .And.Contain("Payment method: card")
+            .And.NotContain("Refunded");
+    }
+
+    [HumansFact]
+    public void OrderReceipt_ShowsAnEarlierRefund()
+    {
+        Create().OrderReceipt(SampleReceipt(refundedMinor: 22500), "en").HtmlBody.Should().Contain("Refunded").And.Contain("-225.00 €");
+    }
+
+    [HumansFact]
+    public void JoinInvitation_HonoursTheTicketingOptOut_AndLinksProfileAndShifts()
+    {
+        var msg = Create().JoinInvitation(Guid.NewGuid(), "ana@x.com", "Ana", "Nowhere 2027",
+            new Uri("https://humans.example/Profile"), new Uri("https://humans.example/Shifts"), null, "en");
+
+        msg.Category.Should().Be(MessageCategory.Ticketing);
+        msg.TemplateName.Should().Be("ticket_join_invitation");
+        msg.HtmlBody.Should().Contain("href=\"https://humans.example/Profile\"").And.Contain("href=\"https://humans.example/Shifts\"");
+    }
+
     [HumansFact]
     public void EveryTemplateHasAPreviewSample()
     {
@@ -80,7 +161,7 @@ public sealed class TicketsEmailsTests
         var templates = TemplateNames(emails);
         templates.Should().NotBeEmpty();
 
-        var sampled = new TicketsEmailPreviews(emails)
+        var sampled = new TicketsEmailPreviews(emails, TestTicketCodeImages.Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"))
             .Select(s => s.Message.TemplateName);
 
@@ -91,7 +172,7 @@ public sealed class TicketsEmailsTests
     [HumansFact]
     public void PreviewSampleIdsAreUnique()
     {
-        var samples = new TicketsEmailPreviews(Create())
+        var samples = new TicketsEmailPreviews(Create(), TestTicketCodeImages.Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"));
 
         samples.Select(s => s.Id).Should().OnlyHaveUniqueItems();
@@ -115,7 +196,10 @@ public sealed class TicketsEmailsTests
     private static object SampleArgument(ParameterInfo parameter, bool flag)
     {
         var type = parameter.ParameterType;
-        if (type == typeof(Guid)) return Guid.NewGuid();
+        if (type == typeof(Guid) || type == typeof(Guid?)) return Guid.NewGuid();
+        if (type == typeof(Uri)) return new Uri("https://humans.example/x");
+        if (type == typeof(IssuedTicketMail)) return SampleTicket(buyerName: flag ? "Payer" : null);
+        if (type == typeof(OrderReceiptMail)) return SampleReceipt();
         if (type == typeof(bool)) return flag;
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(

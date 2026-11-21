@@ -1,0 +1,42 @@
+@using Humans.Tickets.Domain.Checkout
+@model IReadOnlyList<Humans.Tickets.Controllers.WalletTicket>
+@{
+    ViewData["Title"] = Localizer["Tickets_Mine_Title"].Value;
+}
+
+<page-header title="@(Localizer["Tickets_Mine_Title"].Value)" />
+
+@if (Model.Count == 0)
+{
+    <empty-state>@Localizer["Tickets_Mine_Empty"]</empty-state>
+    <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
+    return;
+}
+
+<p class="text-muted">@Localizer["Tickets_Mine_AtTheGate"]</p>
+
+<div class="row g-4">
+    @foreach (var row in Model)
+    {
+        var t = row.Ticket;
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 text-center border-2" style="border-style: dashed;">
+                <div class="card-body">
+                    <div class="small text-uppercase text-muted">@row.EventName</div>
+                    <h2 class="h4 my-1">@t.HolderName</h2>
+                    <div class="small">@Localizer[$"Tickets_Delivery_Kind_{t.Kind}"]</div>
+                    @if (t.State != TicketCheckoutTicketState.Valid)
+                    {
+                        <span class="badge bg-warning text-dark mt-2">@Localizer[$"Tickets_Mine_State_{t.State}"]</span>
+                    }
+                    <img src="@row.CodeDataUri" alt="@t.Barcode" class="img-fluid d-block mx-auto my-3" style="max-width: 260px; image-rendering: pixelated;" />
+                    <code class="fs-6">@t.Barcode</code>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="d-flex gap-2 mt-4 d-print-none">
+    <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
+</div>

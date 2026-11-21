@@ -5,6 +5,7 @@ using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
+using Humans.Tickets.Services.Delivery;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Admin/Sales")]
 internal sealed class TicketsSalesAdminController(
     ITicketCheckoutService checkout,
+    ITicketDelivery delivery,
     ISettingsService settings,
     IGrantService grants,
     IUserService userService) : HumansControllerBase(userService)
@@ -89,6 +91,23 @@ internal sealed class TicketsSalesAdminController(
             id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, ct);
         if (result.Succeeded)
             SetSuccess("Refund sent.");
+        else
+            SetError(result.Refusal!);
+        return RedirectToAction(nameof(Order), new { id });
+    }
+
+    /// <summary>A holder says the ticket never arrived: every ticket email and the receipt go out again.</summary>
+    [HttpPost("Order/{id:guid}/Resend")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Resend(Guid id, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        var result = await delivery.ResendAsync(id, user.Id, ct);
+        if (result.Succeeded)
+            SetSuccess("Ticket emails and the receipt are queued again.");
         else
             SetError(result.Refusal!);
         return RedirectToAction(nameof(Order), new { id });

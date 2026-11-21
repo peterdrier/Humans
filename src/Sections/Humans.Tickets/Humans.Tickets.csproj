@@ -67,6 +67,7 @@
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+    <PackageReference Include="QRCoder" />
   </ItemGroup>
 
   <ItemGroup>

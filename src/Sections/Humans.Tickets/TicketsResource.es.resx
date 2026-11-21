@@ -258,4 +258,127 @@
   <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
     <value>Para una donación tan grande, contacta con la organización.</value>
   </data>
+  <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
+    <value>Tu entrada para {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Heading" xml:space="preserve">
+    <value>Tu entrada para {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Intro" xml:space="preserve">
+    <value>Hola {0}, aquí tienes tu entrada. Guarda este correo o abre tu entrada en Humans cuando quieras.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_BoughtBy" xml:space="preserve">
+    <value>{0} ha comprado esta entrada para ti. Es solo tuya y lleva tu nombre.</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Adult" xml:space="preserve">
+    <value>Entrada de adulto</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Child" xml:space="preserve">
+    <value>Entrada infantil</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Companion" xml:space="preserve">
+    <value>Entrada de acompañante</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_AtTheGate" xml:space="preserve">
+    <value>En la entrada, muestra este código en el móvil o en papel, junto con un documento de identidad con foto.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Open" xml:space="preserve">
+    <value>Abrir mis entradas en Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Heading" xml:space="preserve">
+    <value>Normas de la entrada</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
+    <value>Esta entrada es personal y lleva un único nombre legal. El nombre debe coincidir con tu documento de identidad en la entrada; si no, se deniega el acceso.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
+    <value>Las entradas no se pueden transferir, regalar ni vender a otra persona. Una entrada comprada a otra persona o en una web de reventa no es válida.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
+    <value>Si no puedes venir, devuelve tu entrada a través de Humans. Cuando otra persona la compre, te reembolsaremos el precio de la entrada que pagaste; las donaciones no se reembolsan.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
+    <value>El evento es un evento privado de la asociación Nobodies Collective. Al usar esta entrada aceptas las condiciones que aceptaste al comprarla.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
+    <value>Recibo de tu pedido {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Heading" xml:space="preserve">
+    <value>Recibo: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Intro" xml:space="preserve">
+    <value>Hola {0}, gracias por tu pedido. Este es tu recibo.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Reference" xml:space="preserve">
+    <value>Referencia del pedido: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_PaidOn" xml:space="preserve">
+    <value>Pagado el: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Method" xml:space="preserve">
+    <value>Método de pago: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_TicketLine" xml:space="preserve">
+    <value>Entrada de {0} (IVA del {1}% incluido)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationLine" xml:space="preserve">
+    <value>Donación: {0} (sin IVA)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Refunded" xml:space="preserve">
+    <value>Reembolsado</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationNote" xml:space="preserve">
+    <value>Una donación es un regalo a la asociación. No lleva IVA, se registra aparte de tu entrada y no se reembolsa.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_NotInvoice" xml:space="preserve">
+    <value>Esto es un recibo, no una factura.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Open" xml:space="preserve">
+    <value>Ver tu pedido en Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Subject" xml:space="preserve">
+    <value>Ayuda a hacer realidad {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Heading" xml:space="preserve">
+    <value>Ayuda a hacer realidad {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Intro" xml:space="preserve">
+    <value>Hola {0}, ya tienes tu entrada para {1}. Ahora viene lo mejor: este evento lo hacen las personas que vienen.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Why" xml:space="preserve">
+    <value>Todo, desde la entrada hasta las cocinas, funciona con voluntariado, y unas pocas horas de tu tiempo marcan una gran diferencia.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepProfile" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Completa tu perfil de Humans&lt;/a&gt; para unirte como voluntario o voluntaria, si aún no lo has hecho.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepShifts" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Elige un turno&lt;/a&gt; que te venga bien.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Closing" xml:space="preserve">
+    <value>Nos vemos allí.</value>
+  </data>
+  <data name="Tickets_Mine_Title" xml:space="preserve">
+    <value>Mis entradas</value>
+  </data>
+  <data name="Tickets_Mine_Empty" xml:space="preserve">
+    <value>Aún no tienes entradas compradas a través de Humans.</value>
+  </data>
+  <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
+    <value>Muestra este código en la entrada junto con un documento de identidad con foto. El nombre debe coincidir con tu documento.</value>
+  </data>
+  <data name="Tickets_Mine_Show" xml:space="preserve">
+    <value>Mostrar entrada</value>
+  </data>
+  <data name="Tickets_Mine_State_Valid" xml:space="preserve">
+    <value>Válida</value>
+  </data>
+  <data name="Tickets_Mine_State_Offered" xml:space="preserve">
+    <value>En reventa</value>
+  </data>
+  <data name="Tickets_Mine_State_Resold" xml:space="preserve">
+    <value>Revendida</value>
+  </data>
+  <data name="Tickets_Mine_State_Void" xml:space="preserve">
+    <value>Anulada</value>
+  </data>
 </root>

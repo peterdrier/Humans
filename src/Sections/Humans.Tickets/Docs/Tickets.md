@@ -37,6 +37,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 - A **Ticket Sales Event** is the sales setup of one Settings event: backend key, the event's id inside the backend, mode (`Closed` / `Open` / `ResaleOnly`), sales close instant, capacity, ticket VAT, dated **waves**, **supporter totals** (VIP buttons) and **price rules** mapping a Grants program to a class price or a credit.
 - **Price rule:** wave price on the pricing date (today in the event's zone; the last wave holds until sales close), replaced by the cheapest class price among the buyer's active grants, minus every credit, floored at 0. A partner ticket always costs the public price. A supporter total is the buyer's ticket plus the rest as a VAT-free donation line; a free donation with a purpose may be added or bought alone.
 - A **Ticket Checkout Order** is one purchase: buyer, backend key and id, state (`Created` → `Pending` → `Paid` | `Failed` | `Expired` | `Cancelled`), total, fee, method, refunded total, and its lines (ticket lines carry the holder's legal name, email, user id and, once paid, a barcode). A paid order never leaves `Paid`. A zero-total order is paid at once without a backend.
+- **Ticket delivery** (spec [features/ticket-delivery.md](features/ticket-delivery.md)): once a paid order's tickets are issued, `ITicketDelivery` queues one ticket email per named holder (QR of the ticket's barcode, holder name, kind, ticket rules), one receipt to the payer (ticket lines with their VAT, donations without), and schedules a volunteer invitation to each holder two days later. Members see their tickets with QR codes at `/Tickets/Mine` and on their profile sidebar.
 
 ## Data Model
 
@@ -117,7 +118,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | TicketsAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV (each download audits the actor, export kind and row count). Generate discount codes for campaigns (Campaign section, policy `TicketsPolicies.Manage`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketsPolicies.Manage`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketsPolicies.Manage`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketsPolicies.Manage`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
 | Any authenticated member | Buy a ticket for themselves and/or one named partner for any event that is not Closed (several can sell at once; nothing assumes the active event), see orders they paid for or hold a line in, cancel their own unpaid order. Never sees another payer's order |
 | TicketsAdmin, Board, Admin (Read) | See sales setups, checkout orders and refunds. Board can never save a setup or refund |
-| TicketsAdmin, Admin (Manage) | Save a sales setup; refund a paid checkout order up to its ticket lines (donations never) |
+| TicketsAdmin, Admin (Manage) | Save a sales setup; refund a paid checkout order up to its ticket lines (donations never); resend an order's ticket emails and receipt (audited `TicketDeliveryResent`) |
+| Any authenticated member | See the checkout tickets they hold, with QR codes, at `/Tickets/Mine` and on their own profile |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`). Download the donor list CSV (`/Tickets/Export/Donations`, audited) |
 
 ## Invariants
@@ -188,6 +190,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 - TicketsAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
 - Nobody can edit ticket configuration (vendor `EventId`, API key, sync interval) from inside the app — those values come from `appsettings`'s `TicketVendor` section and the `TICKET_VENDOR_API_KEY` environment variable, set at deploy time.
 - Regular humans have no access to `/Tickets/*` (dashboard, orders, attendees, codes, gate list, who-hasn't-bought, sales aggregates) — the controller-wide policy is `TicketsPolicies.Read`.
+- A member **cannot** see another person's checkout tickets: `/Tickets/Mine` reads the signed-in holder only, and the profile card renders nothing to a Public viewer (Self and Admin views only). The anonymous code image (`/Tickets/Mine/Code/{token}`) renders only a Data Protection token Humans minted for an issued barcode, never arbitrary text.
+- Board **cannot** resend ticket emails (`Resend` is `TicketsPolicies.Manage`).
 - A user **cannot** send an attendee they do not own (the attendee's `MatchedUserId` must equal the Sender's user id; validated via `TicketAttendeeOwnership.IsCurrentOwner` in `TicketTransferService.CreateRequestAsync`; buyer-only order ownership does not confer send rights).
 
 ## Routing
@@ -220,7 +224,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Export/Attendees` | GET | `TicketsPolicies.Manage` | CSV export of attendees |
 | `/Tickets/Export/Orders` | GET | `TicketsPolicies.Manage` | CSV export of orders |
 | `/Tickets/Export/AccountantReport` | GET | `TicketsPolicies.Manage` | CSV of monthly ticket income for the accountant: gross split into taxable ticket income, 10% VAT, VIP + standalone donations, fees, and refunded gross by purchase month |
-| `/Tickets/Export/Donations` | GET | `AdminOnly` | CSV donor list for the accountant: one row per donation on a paid order (type `VIP ticket` = amount above the threshold over live seats, or `Separate donation` = checkout donation line) — purchase date in Europe/Madrid (same bucketing as the monthly report), order id, buyer name, email, type, amount, plus a total row. Every download writes a `TicketDonationsExported` audit entry (actor, donation row count, total). Spec: `Docs/features/accountant-donor-list.md` |
+| `/Tickets/Export/Donations` | GET | `AdminOnly` | CSV donor list for the accountant: one row per donation on a paid order (type `VIP ticket` = amount above the threshold over live seats, `Separate donation` = TicketTailor donation line, or `Donation: <purpose>` = a donation line on a paid Humans checkout order) — purchase date in Europe/Madrid (same bucketing as the monthly report), order id, buyer name, email, type, amount, plus a total row. Every download writes a `TicketDonationsExported` audit entry (actor, donation row count, total). Spec: `Docs/features/accountant-donor-list.md` |
 | `/Tickets/Buy` | GET + POST | `[Authorize]` | One section per selling event; the POST names its `salesEventId`: own ticket at the member's price, optional partner at the public price, supporter total, donation; POST redirects to the backend's payment page |
 | `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | Order status, refreshed from the backend; the payer sees the whole order, a holder only their own line; anyone else 404 |
 | `/Tickets/Buy/Order/{id}/Cancel` | POST | `[Authorize]` | The payer abandons an unpaid order |
@@ -229,11 +233,16 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Admin/Sales/{id}/Orders` | GET | `TicketsPolicies.Read` | Orders and totals for one sales setup |
 | `/Tickets/Admin/Sales/Order/{id}` | GET | `TicketsPolicies.Read` | One order with lines and refunds, refreshed from the backend |
 | `/Tickets/Admin/Sales/Order/{id}/Refund` | POST | `TicketsPolicies.Manage` | Refund an exact amount through the order's backend, capped at the ticket lines net of earlier refunds (audited `TicketCheckoutRefunded`) |
+| `/Tickets/Admin/Sales/Order/{id}/Resend` | POST | `TicketsPolicies.Manage` | Queue every ticket email and the receipt of a paid order again (audited `TicketDeliveryResent`) |
+| `/Tickets/Mine` | GET | `[Authorize]` | The signed-in member's valid and offered checkout tickets with their QR codes |
+| `/Tickets/Mine/Code/{token}` | GET | `[AllowAnonymous]` | PNG QR of the barcode in a Humans-minted token; what the ticket email's image loads. 404 for any other token |
 | `/Welcome` | GET | `[AllowAnonymous]` | Post-purchase landing page (`WelcomeController`, Onboarding section) |
 
 `/Welcome` is an intentional post-purchase landing route owned by Tickets logic while physically handled by `WelcomeController` in `Humans.Onboarding`; it is documented here to avoid it being treated as a routing boundary drift in future alignments.
 
 ## Triggers
+
+- When a paid order's tickets are issued, checkout calls `ITicketDelivery.TicketsIssuedAsync`: a `ticket_issued` email per valid or offered ticket to its holder (holder's language; System category), a `ticket_order_receipt` to the payer (payer's language; System), both with a delivery id derived from the ticket or order so a repeated call reuses the outbox row; one `TicketDeliverySent` audit row; and a Hangfire job per ticket two days later that sends `ticket_join_invitation` (Ticketing category, so the opt-out applies) only if the ticket is still `Valid`, audited `TicketJoinInvitationSent`.
 
 - `TicketSyncJob` stays internal to the section; registration and scheduling use its runtime type through `ISectionJobs`.
 

@@ -16,6 +16,8 @@ using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
+using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Delivery;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
@@ -40,6 +42,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IEventParticipationManagement _participations = Substitute.For<IEventParticipationManagement>();
+    private readonly ITicketCheckoutRepository _checkoutRepo = Substitute.For<ITicketCheckoutRepository>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -61,7 +64,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _shiftManagementService,
             _auditLog,
             SystemClock.Instance,
-            _participations);
+            _participations,
+            _checkoutRepo);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
@@ -127,7 +131,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
-            _shiftManagementService, _auditLog, Clock, _participations);
+            _shiftManagementService, _auditLog, Clock, _participations, _checkoutRepo);
         var services = new ServiceCollection();
         services.AddKeyedScoped<ITicketManagement>(CachingTicketQueryService.InnerServiceKey, (_, _) => service);
         await using var provider = services.BuildServiceProvider();
@@ -249,7 +253,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
-            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations);
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations, _checkoutRepo);
 
         if (cancel)
         {
@@ -1347,6 +1351,39 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             TicketsAuditActions.TicketDonationsExported, "Tickets", Guid.Empty,
             Arg.Is<string>(d => d.Contains("4 donation rows", StringComparison.Ordinal) && d.Contains("270.00", StringComparison.Ordinal)),
             actor);
+    }
+
+    [HumansFact]
+    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidCheckoutOrders()
+    {
+        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid() };
+        TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, TicketDonationPurpose Purpose)[] gifts) => new()
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEvent.Id,
+            BuyerName = "Ana Buyer",
+            BuyerEmail = "ana@example.com",
+            State = state,
+            PaidAt = paidAt,
+            Lines =
+            [
+                new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, AttendeeName = "Ana Buyer" },
+                .. gifts.Select(g => new TicketCheckoutOrderLine
+                    { Kind = CheckoutLineKind.Donation, AmountMinor = g.Minor, DonationPurpose = g.Purpose }),
+            ],
+        };
+        var paid = Order(TicketCheckoutOrderState.Paid, Instant.FromUtc(2027, 1, 2, 9, 0),
+            (17500, TicketDonationPurpose.General), (2000, TicketDonationPurpose.LowIncomePool));
+        var unpaid = Order(TicketCheckoutOrderState.Pending, Instant.FromUtc(2027, 1, 2, 9, 0), (5000, TicketDonationPurpose.General));
+        _checkoutRepo.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
+        _checkoutRepo.GetOrdersForSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
+
+        var rows = await _service.GetDonationExportDataAsync(Guid.NewGuid());
+
+        rows.Select(r => (r.Date, r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
+            ("2027-01-02", TicketDeliveryService.Reference(paid.Id), "Donation: General", 175m),
+            ("2027-01-02", TicketDeliveryService.Reference(paid.Id), "Donation: LowIncomePool", 20m));
+        rows[0].BuyerName.Should().Be("Ana Buyer");
     }
 
     [HumansFact]

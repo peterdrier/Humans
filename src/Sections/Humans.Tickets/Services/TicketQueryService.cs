@@ -11,6 +11,8 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
+using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Delivery;
 using Humans.Tickets.Services.Dtos;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
@@ -31,7 +33,8 @@ internal sealed class TicketQueryService(
     ISettingsService settingsService,
     IAuditLogService auditLog,
     IClock clock,
-    IEventParticipationManagement participations) : ITicketManagement
+    IEventParticipationManagement participations,
+    ITicketCheckoutRepository checkoutRepository) : ITicketManagement
 {
     public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
         participations.GetParticipationsAsync(userId, ct);
@@ -145,6 +148,21 @@ internal sealed class TicketQueryService(
             if (o.DonationAmount > 0)
                 rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
         }
+
+        // Orders taken through Humans' own checkout: each donation line is one row, never refunded.
+        var checkoutOrders = new List<TicketCheckoutOrder>();
+        foreach (var salesEvent in await checkoutRepository.GetSalesEventsAsync(ct))
+            checkoutOrders.AddRange((await checkoutRepository.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
+                .Where(o => o.State == TicketCheckoutOrderState.Paid));
+        foreach (var o in checkoutOrders.OrderBy(o => o.PaidAt))
+        {
+            var date = (o.PaidAt ?? o.UpdatedAt).InZone(OrgZone).Date.ToInvariantDate();
+            foreach (var line in o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation))
+                rows.Add(new DonationExportRow(date, TicketDeliveryService.Reference(o.Id), o.BuyerName, o.BuyerEmail,
+                    $"Donation: {line.DonationPurpose ?? TicketDonationPurpose.General}", line.AmountMinor / 100m));
+        }
+
+        rows = rows.OrderBy(r => r.Date, StringComparer.Ordinal).ToList();
 
         await auditLog.LogAsync(
             TicketsAuditActions.TicketDonationsExported,

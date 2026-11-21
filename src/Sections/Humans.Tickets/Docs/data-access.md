@@ -283,5 +283,5 @@ is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
 
 `ITicketCheckoutRepository` over `IDbContextFactory<TicketsDbContext>`: `ticket_sales_events`,
 `ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_order_events` (append-only). Updates load the
-tracked row and copy values in, because the jsonb owned lists cannot be attached detached. Only `TicketCheckoutService` calls it. Holder lookups load the
+tracked row and copy values in, because the jsonb owned lists cannot be attached detached. `TicketCheckoutService` is its writer; `TicketDeliveryService` (which checkout calls, so it cannot call checkout back) and `TicketQueryService`'s donor list only read it. Holder lookups load the
 whole orders table and filter the jsonb lines in memory.

@@ -258,4 +258,127 @@
   <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
     <value>Für eine so große Spende wende dich bitte an das Orga-Team.</value>
   </data>
+  <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
+    <value>Dein Ticket für {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Heading" xml:space="preserve">
+    <value>Dein Ticket für {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Intro" xml:space="preserve">
+    <value>Hallo {0}, hier ist dein Ticket. Bewahre diese E-Mail auf oder öffne dein Ticket jederzeit in Humans.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_BoughtBy" xml:space="preserve">
+    <value>{0} hat dieses Ticket für dich gekauft. Es gehört nur dir und trägt deinen Namen.</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Adult" xml:space="preserve">
+    <value>Erwachsenenticket</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Child" xml:space="preserve">
+    <value>Kinderticket</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Companion" xml:space="preserve">
+    <value>Begleitticket</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_AtTheGate" xml:space="preserve">
+    <value>Zeige diesen Code am Eingang auf dem Handy oder auf Papier vor, zusammen mit einem Lichtbildausweis.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Open" xml:space="preserve">
+    <value>Meine Tickets in Humans öffnen</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Heading" xml:space="preserve">
+    <value>Ticketregeln</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
+    <value>Dieses Ticket ist persönlich und trägt einen amtlichen Namen. Der Name muss am Eingang mit deinem Lichtbildausweis übereinstimmen, sonst wird der Einlass verweigert.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
+    <value>Tickets können nicht übertragen, verschenkt oder an andere verkauft werden. Ein Ticket, das von einer anderen Person oder auf einer Wiederverkaufsseite gekauft wurde, ist nicht gültig.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
+    <value>Wenn du nicht kommen kannst, gib dein Ticket über Humans zurück. Sobald jemand anderes es kauft, erstatten wir dir den bezahlten Ticketpreis; Spenden werden nicht erstattet.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
+    <value>Die Veranstaltung ist eine private Veranstaltung des Vereins Nobodies Collective. Mit der Nutzung dieses Tickets akzeptierst du die Ticketbedingungen, denen du beim Kauf zugestimmt hast.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
+    <value>Beleg für deine Bestellung {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Heading" xml:space="preserve">
+    <value>Beleg: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Intro" xml:space="preserve">
+    <value>Hallo {0}, danke für deine Bestellung. Dies ist dein Beleg.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Reference" xml:space="preserve">
+    <value>Bestellnummer: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_PaidOn" xml:space="preserve">
+    <value>Bezahlt am: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Method" xml:space="preserve">
+    <value>Zahlungsart: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_TicketLine" xml:space="preserve">
+    <value>Ticket für {0} (inkl. {1}% MwSt.)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationLine" xml:space="preserve">
+    <value>Spende: {0} (ohne MwSt.)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Refunded" xml:space="preserve">
+    <value>Erstattet</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationNote" xml:space="preserve">
+    <value>Eine Spende ist ein Geschenk an den Verein. Sie ist mehrwertsteuerfrei, wird getrennt von deinem Ticket erfasst und nicht erstattet.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_NotInvoice" xml:space="preserve">
+    <value>Dies ist ein Beleg, keine Rechnung.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Open" xml:space="preserve">
+    <value>Deine Bestellung in Humans ansehen</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Subject" xml:space="preserve">
+    <value>Hilf mit, {0} möglich zu machen</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Heading" xml:space="preserve">
+    <value>Hilf mit, {0} möglich zu machen</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Intro" xml:space="preserve">
+    <value>Hallo {0}, du hast dein Ticket für {1}. Jetzt kommt das Beste: Diese Veranstaltung wird von den Menschen gemacht, die kommen.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Why" xml:space="preserve">
+    <value>Alles vom Eingang bis zu den Küchen läuft mit Freiwilligen, und ein paar Stunden deiner Zeit machen einen echten Unterschied.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepProfile" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Vervollständige dein Humans-Profil&lt;/a&gt;, um als Freiwillige·r mitzumachen, falls noch nicht geschehen.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepShifts" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Wähle eine Schicht&lt;/a&gt;, die zu dir passt.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Closing" xml:space="preserve">
+    <value>Wir sehen uns dort.</value>
+  </data>
+  <data name="Tickets_Mine_Title" xml:space="preserve">
+    <value>Meine Tickets</value>
+  </data>
+  <data name="Tickets_Mine_Empty" xml:space="preserve">
+    <value>Du hast noch keine über Humans gekauften Tickets.</value>
+  </data>
+  <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
+    <value>Zeige diesen Code am Eingang zusammen mit einem Lichtbildausweis. Der Name muss mit deinem Ausweis übereinstimmen.</value>
+  </data>
+  <data name="Tickets_Mine_Show" xml:space="preserve">
+    <value>Ticket anzeigen</value>
+  </data>
+  <data name="Tickets_Mine_State_Valid" xml:space="preserve">
+    <value>Gültig</value>
+  </data>
+  <data name="Tickets_Mine_State_Offered" xml:space="preserve">
+    <value>Zum Wiederverkauf angeboten</value>
+  </data>
+  <data name="Tickets_Mine_State_Resold" xml:space="preserve">
+    <value>Weiterverkauft</value>
+  </data>
+  <data name="Tickets_Mine_State_Void" xml:space="preserve">
+    <value>Ungültig</value>
+  </data>
 </root>

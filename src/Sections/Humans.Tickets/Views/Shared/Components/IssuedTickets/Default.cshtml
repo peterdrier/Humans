@@ -1,0 +1,27 @@
+@model Humans.Tickets.ViewComponents.IssuedTicketsViewModel
+
+<div class="card mb-3">
+    <div class="card-header py-2">
+        <h3 class="h6 mb-0">@Localizer["Tickets_Mine_Title"]</h3>
+    </div>
+    <ul class="list-group list-group-flush">
+        @foreach (var t in Model.Tickets)
+        {
+            <li class="list-group-item small">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <strong class="text-break">@t.EventName</strong>
+                    <span class="badge @(t.State == "Valid" ? "bg-success" : "bg-secondary")">@Localizer[$"Tickets_Mine_State_{t.State}"]</span>
+                </div>
+                <div class="text-muted">@Localizer[$"Tickets_Delivery_Kind_{t.Kind}"] · <code>@t.Barcode</code></div>
+            </li>
+        }
+    </ul>
+    @if (Model.ViewMode == ProfileCardViewMode.Self)
+    {
+        <div class="card-body py-2">
+            <a class="btn btn-sm btn-primary" asp-controller="TicketWallet" asp-action="Index">
+                <i class="fa-solid fa-qrcode me-1"></i>@Localizer["Tickets_Mine_Show"]
+            </a>
+        </div>
+    }
+</div>
