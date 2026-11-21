@@ -794,7 +794,7 @@ internal sealed class UserService(
         {
             await repo.UpdateAsync(profile, ct, volunteerHistory,
                 new UserNames(command.BurnerName, command.FirstName, command.LastName));
-            return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
+            return new UserProfileSaveResult(previousPictureKey, currentPictureKey);
         }
         finally
         {
@@ -859,25 +859,22 @@ internal sealed class UserService(
     }
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
-        Guid profileId,
+        Guid userId,
         IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default)
     {
-        if (await repo.GetOwnerUserIdAsync(profileId, ct) is not { } ownerUserId)
-            return new UserProfileLanguagesSaveResult(false, null);
-
         var rows = languages
             .Select(l => new ProfileLanguage
             {
                 Id = l.Id == Guid.Empty ? Guid.NewGuid() : l.Id,
-                UserId = ownerUserId,
+                UserId = userId,
                 LanguageCode = l.LanguageCode,
                 Proficiency = l.Proficiency,
             })
             .ToList();
 
-        await repo.ReplaceLanguagesAsync(ownerUserId, rows, ct);
-        return new UserProfileLanguagesSaveResult(true, ownerUserId);
+        await repo.ReplaceLanguagesAsync(userId, rows, ct);
+        return new UserProfileLanguagesSaveResult(true, userId);
     }
 
     public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)

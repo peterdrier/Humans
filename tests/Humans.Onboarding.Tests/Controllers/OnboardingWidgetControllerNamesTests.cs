@@ -73,7 +73,7 @@ public class OnboardingWidgetControllerNamesTests
     public OnboardingWidgetControllerNamesTests()
     {
         _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(new ProfileEditResult(true));
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
@@ -146,7 +146,7 @@ public class OnboardingWidgetControllerNamesTests
                 userId,
                 Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(new ProfileEditResult(true));
 
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
@@ -190,7 +190,7 @@ public class OnboardingWidgetControllerNamesTests
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(
                 userId, Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(new ProfileEditResult(true));
 
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
