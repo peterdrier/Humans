@@ -110,25 +110,27 @@ else
                     <hr class="my-4" />
                     <h3 class="h4">@Localizer["Tickets_Buy_Children"]</h3>
                     <p class="small text-muted mb-1">@Localizer["Tickets_Buy_ChildrenHelp"]</p>
-                    @if (childTypes.Count == 1)
-                    {
-                        <p class="small text-muted">@ChildTypeText(childTypes[0])</p>
-                    }
+                    <ul class="small text-muted ps-3">
+                        @foreach (var t in childTypes)
+                        {
+                            <li>@ChildTypeText(t)</li>
+                        }
+                    </ul>
                     <div class="row g-2">
                         @for (var c = 0; c < 3; c++)
                         {
                             var childLabel = string.Format(Localizer["Tickets_Buy_ChildName"].Value, c + 1);
-                            <div class="col-md-8">
+                            <div class="@(childTypes.Count > 1 ? "col-md-7" : "col-md-8")">
                                 <input class="form-control" name="childNames" maxlength="513" autocomplete="off"
                                        aria-label="@childLabel" placeholder="@childLabel" />
                             </div>
                             @if (childTypes.Count > 1)
                             {
-                                <div class="col-md-4">
+                                <div class="col-md-5">
                                     <select class="form-select" name="childTypes" aria-label="@string.Format(Localizer["Tickets_Buy_ChildTypeLabel"].Value, c + 1)">
                                         @foreach (var t in childTypes)
                                         {
-                                            <option value="@t.Name">@ChildTypeText(t)</option>
+                                            <option value="@t.Name">@t.Name, @((t.PriceMinor / 100m).ToEuro())</option>
                                         }
                                     </select>
                                 </div>
