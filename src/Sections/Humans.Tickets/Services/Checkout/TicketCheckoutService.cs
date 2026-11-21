@@ -160,16 +160,23 @@ internal sealed partial class TicketCheckoutService(
         return ToBuyPage(context, DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null, directed: true);
     }
 
-    /// <summary>A returned ticket sells at the resale price, so a page that can only sell one shows that price.</summary>
+    /// <summary>
+    /// A returned ticket sells at the resale price, so a page that can only sell one (directed, resale only, or fresh
+    /// stock sold out) shows that price.
+    /// </summary>
     private static BuyPage ToBuyPage(BuyContext context, string? directedRefusal, bool directed) => new(
         context.SalesEvent, context.Event.EventName,
-        directed || context.SalesEvent.Mode == TicketSalesMode.ResaleOnly ? context.ResalePrice : context.OwnPrice,
+        directed || context.SalesEvent.Mode == TicketSalesMode.ResaleOnly || context.FreshSoldOut ? context.ResalePrice : context.OwnPrice,
         context.PublicPrice,
         directedRefusal ?? context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
         context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).OrderByDescending(o => o.CreatedAt).ToList())
     {
         TermsToAccept = context.TermsToAccept,
         AskMarketing = context.AskMarketing,
+        OpenOrder = context.UserOrders
+            .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
+                && o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(context.Now))
+            .MaxBy(o => o.CreatedAt),
     };
 
     public async Task<StartCheckoutResult> StartCheckoutAsync(
@@ -502,9 +509,11 @@ internal sealed partial class TicketCheckoutService(
             if (await TryCancelAtBackendAsync(backend, order, ct))
                 newState = TicketCheckoutOrderState.Expired;
         }
-        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed)
+        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed
+                 && !await TryCancelAtBackendAsync(backend, order, ct))
         {
-            await TryCancelAtBackendAsync(backend, order, ct);
+            // Some backends still take payment on an order they call expired: it stays open until the cancel lands.
+            newState = order.State;
         }
 
         var becamePaid = newState == TicketCheckoutOrderState.Paid && order.State != TicketCheckoutOrderState.Paid;
@@ -580,9 +589,8 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>
-    /// Settles pending refunds from the refunded total, oldest first. <see cref="CheckoutStatus.RefundFailed"/> says only
-    /// that some refund on the payment failed, so each uncovered refund the backend knows is asked for its own state by
-    /// repeating it under its id.
+    /// Settles pending refunds from the refunded total, oldest first. A backend's failure flag may follow only its newest
+    /// refund, so each uncovered refund the backend knows is asked for its own state by repeating it under its id.
     /// </summary>
     private async Task<bool> SettleRefundsAsync(TicketCheckoutOrder order, CheckoutStatus status, CancellationToken ct)
     {
@@ -596,7 +604,7 @@ internal sealed partial class TicketCheckoutService(
                 covered -= refund.AmountMinor;
                 refund.State = RefundState.Succeeded;
             }
-            else if (status.RefundFailed && refund is { State: RefundState.Pending, BackendRefundId: not null }
+            else if (refund is { State: RefundState.Pending, BackendRefundId: not null }
                 && order.BackendOrderId is not null && BackendFor(order.BackendKey) is { } backend
                 && await OwnRefundStateAsync(backend, order, refund, ct) is { State: RefundState.Failed } failed)
             {
@@ -945,7 +953,8 @@ internal sealed partial class TicketCheckoutService(
         IReadOnlyList<TicketCheckoutOrder> UserOrders,
         IReadOnlyList<RequiredConsentRow> TermsToAccept,
         bool AskMarketing,
-        Instant Now);
+        Instant Now,
+        bool FreshSoldOut);
 
     private async Task<BuyContext?> LoadBuyContextAsync(Guid salesEventId, Guid userId, CancellationToken ct)
     {
@@ -988,8 +997,9 @@ internal sealed partial class TicketCheckoutService(
         else if (buyer is null || !buyer.HasRequiredNameFields || string.IsNullOrWhiteSpace(buyer.Email))
             unavailable = "Tickets_Buy_NeedLegalName";
 
+        var freshSoldOut = (await LoadStockAsync(salesEvent, now, ct)).Held + 1 > salesEvent.Capacity;
         return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders, terms,
-            askMarketing, now);
+            askMarketing, now, freshSoldOut);
     }
 
     /// <summary>The line's name on the payment page, in the buyer's language (the request culture at checkout).</summary>

@@ -139,6 +139,9 @@ internal sealed record BuyPage(
 
     /// <summary>True when the person has never said yes or no to the mailing list.</summary>
     public bool AskMarketing { get; init; }
+
+    /// <summary>The buyer's own unpaid checkout still holding a ticket, which they can finish or cancel to start again.</summary>
+    public TicketCheckoutOrder? OpenOrder { get; init; }
 }
 
 /// <summary>

@@ -329,6 +329,24 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_stuck_unpaid_checkout_shows_on_the_buy_page_and_cancelling_it_frees_the_buyer_to_start_again()
+    {
+        var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
+
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.AlreadyHoldsTicket.Should().BeTrue();
+        page.OpenOrder!.Id.Should().Be(started.OrderId!.Value);
+
+        (await _service.CancelAsync(started.OrderId.Value, _buyerId, Ct)).Refusal.Should().BeNull();
+        page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.OpenOrder.Should().BeNull();
+        page.AlreadyHoldsTicket.Should().BeFalse();
+        (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Two_events_sell_at_once_each_with_its_own_holding_check_and_no_active_event_needed()
     {
         _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
@@ -950,6 +968,70 @@ public sealed class TicketCheckoutServiceTests
         var line = _repo.Orders.Single(o => o.Id == result.OrderId).Lines.Single();
         line.ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
         line.AmountMinor.Should().Be(22500);
+    }
+
+    [HumansFact]
+    public async Task At_sell_out_the_buy_page_shows_the_resale_price_the_checkout_charges()
+    {
+        await OfferedTicketAsync();
+        _salesEvent.Mode = TicketSalesMode.Open;
+        _salesEvent.Capacity = 1;
+        _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
+            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+
+        (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(22500);
+    }
+
+    [HumansFact]
+    public async Task An_expired_order_stays_open_until_the_backend_cancel_lands()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Expired, null, null, null));
+        _backend.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns<Task>(_ => throw new TicketCheckoutException("down"));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        order.State.Should().Be(TicketCheckoutOrderState.Pending);
+
+        _backend.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        order.State.Should().Be(TicketCheckoutOrderState.Expired);
+    }
+
+    [HumansFact]
+    public async Task A_resale_repeated_after_a_crash_finishes_retiring_the_old_ticket_and_its_children()
+    {
+        _salesEvent.ChildPriceMinor = 5000;
+        var old = await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
+        await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
+        old.State = TicketCheckoutTicketState.Offered;
+        child.State = TicketCheckoutTicketState.Valid;
+        _repo.Offers.Single().RefundId = null;
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        old.State.Should().Be(TicketCheckoutTicketState.Resold);
+        child.State.Should().Be(TicketCheckoutTicketState.Void);
+        _repo.Refunds.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task An_older_pending_refund_that_failed_is_found_even_without_the_failure_flag()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Pending, "re_x", null));
+        await _service.RefundAsync(order.Id, 10000, "first", Guid.NewGuid(), Ct);
+        await _service.RefundAsync(order.Id, 5000, "second", Guid.NewGuid(), Ct);
+        var first = _repo.Refunds[0].RefundId;
+        _backend.RefundAsync(Arg.Is<RefundRequest>(r => r.RefundId == first), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Failed, "re_x", "bank refused"));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds.Select(r => r.Refund.State).Should().Equal(RefundState.Failed, RefundState.Pending);
     }
 
     [HumansFact]

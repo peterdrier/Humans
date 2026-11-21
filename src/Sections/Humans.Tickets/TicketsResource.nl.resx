@@ -423,6 +423,12 @@
   <data name="Tickets_Buy_Reference" xml:space="preserve">
     <value>Bestelreferentie</value>
   </data>
+  <data name="Tickets_Buy_OpenOrder" xml:space="preserve">
+    <value>Je hebt een lopende betaling voor dit evenement. Rond de betaling af of annuleer hem om opnieuw te beginnen.</value>
+  </data>
+  <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
+    <value>Annuleren en opnieuw beginnen</value>
+  </data>
   <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
     <value>Die persoon heeft al een ticket voor dit evenement.</value>
   </data>
