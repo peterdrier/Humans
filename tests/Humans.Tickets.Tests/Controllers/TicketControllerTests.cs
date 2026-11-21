@@ -545,14 +545,4 @@ public class TicketControllerTests
         actions.Should().NotBeEmpty();
         actions.Should().AllSatisfy(a => a.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(policy));
     }
-
-    [HumansFact]
-    public void TransferAdmin_class_reads_and_decisions_manage()
-    {
-        typeof(TicketTransferAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
-            .Should().Be(TicketsPolicies.Read);
-        typeof(TicketTransferAdminController).GetMethod(nameof(TicketTransferAdminController.Decide))!
-            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
-            .Should().Be(TicketsPolicies.Manage);
-    }
 }

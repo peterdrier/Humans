@@ -115,8 +115,6 @@ them. That needs a read method on Events' contract, so it is a seam, not a strik
   is shared with Tickets' onsite roster and Gate's read routes, so it stays as is.
 - **`_ViewImports.cshtml` must `@addTagHelper *, Humans.Tickets`.** A section's views do not
   inherit Shell's imports; without the line the stub renders as literal markup, silently.
-- **The ticket card's stub carries `HasPendingTransfer: false` unconditionally.** The card is
-  a door view, not a transfer view; the stamp would be noise here.
 - **Favourited events are filtered out of the provide list on purpose.** The iCal feed's
   Events half is what the member wants to attend, which is the wrong signal at the door.
 

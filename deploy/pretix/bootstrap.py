@@ -77,11 +77,13 @@ with scopes_disabled():
         hook.save()
     if hook is None:
         hook = WebHook.objects.create(organizer=org, target_url=target, enabled=True, all_events=True)
-        for action in ("placed", "paid", "canceled", "expired", "modified", "payment.confirmed",
-                       "refund.created", "refund.done", "refund.failed", "refund.canceled"):
-            hook.listeners.create(action_type=f"pretix.event.order.{action}")
     else:
         webhook_secret = hook.target_url.split("?secret=", 1)[1]
+    # Paid orders are refreshed only on a webhook, so a Stripe dashboard refund or a chargeback reaches Humans only
+    # through refund.created.externally. Listeners are topped up on every run so an older hook gains new ones.
+    for action in ("placed", "paid", "canceled", "expired", "modified", "payment.confirmed",
+                   "refund.created", "refund.created.externally", "refund.done", "refund.failed", "refund.canceled"):
+        hook.listeners.get_or_create(action_type=f"pretix.event.order.{action}")
 
     print(f"Pretix__BaseUrl        = <this pretix's URL>")
     print(f"Pretix__Organizer      = {org.slug}")

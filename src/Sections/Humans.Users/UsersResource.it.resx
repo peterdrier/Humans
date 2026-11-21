@@ -345,7 +345,7 @@
     <value>Unire account?</value>
   </data>
   <data name="Users_Emails_MergeWarningBody" xml:space="preserve">
-    <value>L'unione degli account serve a combinare due account che appartengono alla stessa persona (per esempio, una vecchia e una nuova e-mail, entrambe tue). Non è un modo per condividere o trasferire biglietti, prenotazioni o altri elementi tra due persone diverse. Per trasferire un biglietto a un altro umano, usa la funzione di trasferimento biglietti su /Tickets/Transfers.</value>
+    <value>L'unione degli account serve a combinare due account che appartengono alla stessa persona (per esempio, una vecchia e una nuova e-mail, entrambe tue). Non è un modo per condividere o trasferire biglietti, prenotazioni o altri elementi tra due persone diverse. Per passare un biglietto a un altro umano, mettilo in rivendita su /Tickets/Buy/Mine e invita la persona via e-mail.</value>
   </data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Verrà inviata un'e-mail di verifica a questo indirizzo.</value>

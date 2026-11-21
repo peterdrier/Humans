@@ -15,7 +15,7 @@
         <div class="btn-group btn-group-sm">
             <a class="btn btn-outline-secondary" asp-action="Orders" asp-route-id="@item.Id">Orders</a>
             <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
-                    data-bs-toggle="dropdown" aria-expanded="false" aria-label="More for this event"></button>
+                    data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-label="More for this event"></button>
             <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Report" asp-route-id="@item.Id">Sales report</a></li>
                 <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@item.Id">Refunds</a></li>

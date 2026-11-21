@@ -21,7 +21,6 @@ public sealed class CachingTicketQueryServiceTests
 
     private readonly ITicketManagement _inner;
     private readonly ITicketSyncService _sync = Substitute.For<ITicketSyncService>();
-    private readonly ITicketTransferService _transfers = Substitute.For<ITicketTransferService>();
     private readonly IAttendeeContactImportService _import = Substitute.For<IAttendeeContactImportService>();
     private readonly FakeClock _clock;
     private readonly CachingTicketQueryService _decorator;
@@ -35,7 +34,6 @@ public sealed class CachingTicketQueryServiceTests
             CachingTicketQueryService.InnerServiceKey,
             (_, _) => _inner);
         services.AddKeyedScoped<ITicketSyncService>(CachingTicketQueryService.InnerServiceKey, (_, _) => _sync);
-        services.AddKeyedScoped<ITicketTransferService>(CachingTicketQueryService.InnerServiceKey, (_, _) => _transfers);
         services.AddKeyedScoped<IAttendeeContactImportService>(CachingTicketQueryService.InnerServiceKey, (_, _) => _import);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         _clock = new FakeClock(Instant.FromUtc(2026, 5, 1, 0, 0));
@@ -163,40 +161,11 @@ public sealed class CachingTicketQueryServiceTests
         var read = _decorator.GetUserTicketHoldingsAsync(UserA, ct);
 
         if (viaSync) await _decorator.SyncOrdersAndAttendeesAsync(ct);
-        else await _decorator.CancelAsync(Guid.NewGuid(), UserA, ct);
+        else await _decorator.EraseForUserAsync(UserA, ct);
         pending.SetResult(old);
         (await read).Should().BeSameAs(old);
 
         (await _decorator.GetUserTicketHoldingsAsync(UserA, ct)).Should().BeSameAs(current);
-    }
-
-    // Every transfer lifecycle step changes pendency (holdings) or the order projection's
-    // TransferredToName/TransferredAt, so each one drops both slices.
-    [HumansTheory]
-    [InlineData("create")]
-    [InlineData("cancel")]
-    [InlineData("approve")]
-    [InlineData("process")]
-    [InlineData("retry")]
-    [InlineData("reject")]
-    public async Task TransferMutation_DelegatesThenDropsProjectionAndAllHoldings(string mutation)
-    {
-        var ct = TestContext.Current.CancellationToken;
-        await PrimeAsync(UserA, UserB, UserC);
-        var id = Guid.NewGuid();
-
-        await (mutation switch
-        {
-            "create" => _decorator.CreateRequestAsync(new TicketTransferRequestDto(id, UserB, "gift"), UserA, ct),
-            "cancel" => _decorator.CancelAsync(id, UserA, ct),
-            "approve" => _decorator.ApproveAsync(id, UserC, null, ct),
-            "process" => _decorator.ProcessTransferAsync(id, UserC, null, ct),
-            "retry" => _decorator.RetryReissueAsync(id, UserC, null, ct),
-            _ => _decorator.RejectAsync(id, UserC, "no", ct),
-        });
-
-        _transfers.ReceivedCalls().Should().ContainSingle();
-        await AssertReloadedAsync(orders: true, reloaded: [UserA, UserB, UserC], kept: []);
     }
 
     [HumansTheory]
@@ -272,9 +241,6 @@ public sealed class CachingTicketQueryServiceTests
         await _decorator.IsInErrorStateAsync(ct);
         await _decorator.ResetSyncStateForFullResyncAsync();
         await _decorator.BuildPlanAsync(ct);
-        await _decorator.CountPendingAsync(ct);
-        await _decorator.GetByStatusAsync(TicketTransferStatus.Pending, ct);
-        await _decorator.GetMyAttendeesAsync(UserA, ct);
         await _decorator.ContributeForUserAsync(UserA, ct);
 
         await AssertReloadedAsync(orders: false, reloaded: [], kept: [UserA]);

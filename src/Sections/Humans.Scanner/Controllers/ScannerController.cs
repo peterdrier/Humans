@@ -72,8 +72,6 @@ internal sealed class ScannerController(
             AttendeeName: hit.AttendeeName ?? "",
             AttendeeEmail: hit.AttendeeEmail,
             Status: hit.Status,
-            HasPendingTransfer: false,
-            PendingTransferRequestId: null,
             EarlyEntryDate: ee?.EarliestEntryDate);
 
         return PartialView("_TicketCard", new ScannerTicketCardViewModel(
