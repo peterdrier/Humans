@@ -759,6 +759,25 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Reconcile_hands_tickets_to_delivery_again_when_no_email_was_recorded()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _delivery.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+
+        _clock.Advance(Duration.FromMinutes(31));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+
+        await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, "sent", null, Ct);
+        _delivery.ClearReceivedCalls();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+    }
+
+    [HumansFact]
     public async Task A_resale_refund_that_cannot_start_is_recorded_as_failed_under_the_offer_id()
     {
         var old = await OfferedTicketAsync();

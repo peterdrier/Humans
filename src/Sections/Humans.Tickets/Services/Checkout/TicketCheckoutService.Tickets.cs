@@ -12,6 +12,8 @@ namespace Humans.Tickets.Services.Checkout;
 internal sealed partial class TicketCheckoutService
 {
     private const int MaxInvitesPerTicket = 3;
+    private static readonly Duration DeliveryGrace = Duration.FromMinutes(30);
+    private static readonly Duration DeliveryRepairWindow = Duration.FromDays(7);
 
     public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
         (await repository.GetTicketsForOrderAsync(orderId, ct)).OrderBy(t => t.Kind).ThenBy(t => t.IssuedAt).ToList();
@@ -278,17 +280,21 @@ internal sealed partial class TicketCheckoutService
         foreach (var offerId in order.Lines.Select(l => l.ResaleOfferId).OfType<Guid>())
             await CompleteResaleAsync(offerId, order, ct);
 
-        if (!issuedNow)
-            return;
+        if (issuedNow)
+            await HandOffToDeliveryAsync(order.Id, ct);
+    }
+
+    private async Task HandOffToDeliveryAsync(Guid orderId, CancellationToken ct)
+    {
         foreach (var delivery in deliveries)
         {
             try
             {
-                await delivery.TicketsIssuedAsync(order.Id, ct);
+                await delivery.TicketsIssuedAsync(orderId, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogError(ex, "Ticket delivery for order {OrderId} failed", order.Id);
+                logger.LogError(ex, "Ticket delivery for order {OrderId} failed", orderId);
             }
         }
     }
@@ -453,7 +459,7 @@ internal sealed partial class TicketCheckoutService
         }
     }
 
-    /// <summary>Finishes what a crash left behind: paid orders without their tickets or resale refund, and refunds that never reached the backend.</summary>
+    /// <summary>Finishes what a crash left behind: paid orders without their tickets, resale refund or delivery, and refunds that never reached the backend.</summary>
     private async Task<int> RepairPaidAsync(CancellationToken ct)
     {
         var repaired = 0;
@@ -477,6 +483,18 @@ internal sealed partial class TicketCheckoutService
                 {
                     logger.LogWarning(ex, "Finishing paid checkout order {OrderId} failed; next run retries", order.Id);
                 }
+            }
+
+            // Tickets issued but never handed to delivery (the process stopped in between). Delivery dedupes a repeat;
+            // the wait lets a first hand-off still in its queue finish, and the window keeps old orders out.
+            var now = clock.GetCurrentInstant();
+            foreach (var order in orders.Where(o => o is { State: TicketCheckoutOrderState.Paid, PaidAt: { } paidAt }
+                         && issued.Contains(o.Id) && paidAt <= now - DeliveryGrace && paidAt > now - DeliveryRepairWindow))
+            {
+                if ((await repository.GetOrderEventsAsync(order.Id, ct)).Any(e =>
+                        e.Kind is TicketCheckoutOrderEventKind.TicketsEmailed or TicketCheckoutOrderEventKind.TicketMailSkipped))
+                    continue;
+                await HandOffToDeliveryAsync(order.Id, ct);
             }
 
             // A refund whose backend call threw may or may not exist there; repeating it under its id settles which.

@@ -56,7 +56,8 @@ Rules every backend follows:
    holds a ticket is flagged for the team, on the timeline and as a `TicketCheckoutNeedsAttention` audit entry), issues one `ticket_checkout_tickets` row per ticket line (unique per order
    and line: barcode, holder, price paid, wave or class, children pointing at their adult) and tells every
    `ITicketDelivery` (the ticket email with QR lives there). A delivery failure never undoes the sale; delivery steps go
-   on the timeline through `RecordDeliveryAsync`. The reconcile job finishes any paid order a crash left without
+   on the timeline through `RecordDeliveryAsync`. Reconcile hands an order to delivery again when it was paid 30 minutes to 7 days ago,
+   has tickets and has no emailed or skipped entry; delivery dedupes the repeat. The reconcile job finishes any paid order a crash left without
    tickets or without its resale refund.
 4. A TicketsAdmin refunds from the order page: only paid orders, never above the ticket lines net of earlier refunds
    (pending and manual ones count until they settle). A refund call that throws stays `Pending`, since the money may
