@@ -1,5 +1,6 @@
 @inject IAuthorizationService AuthService
 @inject IEnumerable<ITeamShiftsParts> ShiftsParts
+@inject IEnumerable<ITeamRolesPart> RolesParts
 @model Humans.Teams.Models.TeamDetailViewModel
 @{
     ViewData["Title"] = Model.Name;
@@ -126,6 +127,10 @@
                     { "CanManage", Model.CanCurrentUserManage },
                     { "Slug", Model.Slug }
                 })
+            foreach (var part in RolesParts)
+            {
+                @await Component.InvokeAsync(part.Card, new TeamRolesCardArgs(Model.Id))
+            }
         }
 
         @if (Model.IsAuthenticated || Model.ShowCoordinatorsOnPublicPage)

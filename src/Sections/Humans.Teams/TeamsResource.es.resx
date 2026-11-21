@@ -528,4 +528,6 @@
   <data name="Teams_Meter_JoinRequestsPending" xml:space="preserve"><value>Solicitudes de ingreso a equipos pendientes</value></data>
   <data name="Teams_Meter_AudienceAdmin" xml:space="preserve"><value>administradores</value></data>
   <data name="Teams_Search_Category" xml:space="preserve"><value>Equipos</value></data>
+  <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>Los equipos del sistema no pueden tener roles.</value></data>
+  <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>Este equipo no está activo.</value></data>
 </root>
