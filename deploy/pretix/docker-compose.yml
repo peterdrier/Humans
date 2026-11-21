@@ -3,6 +3,7 @@
 # Stripe keys are entered in pretix's own settings by a person, never through this file.
 x-pretix-env: &pretix-env
   PRETIX_PRETIX_INSTANCE_NAME: "Nobodies tickets"
+  PRETIX_PRETIX_URL: "${SERVICE_FQDN_PRETIX}"
   PRETIX_PRETIX_CURRENCY: "EUR"
   PRETIX_PRETIX_DATADIR: "/data"
   PRETIX_PRETIX_TRUST_X_FORWARDED_FOR: "on"

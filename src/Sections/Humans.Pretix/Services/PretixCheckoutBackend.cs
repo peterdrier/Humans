@@ -113,7 +113,8 @@ internal sealed class PretixCheckoutBackend(
             "pretix order {Code} {Outcome} for Humans order {OrderId}",
             code, created ? "created" : "found", request.OrderId);
 
-        return new CheckoutSession(FormatBackendOrderId(eventSlug, code), PaymentUrl(order, request.ReturnUrl));
+        return new CheckoutSession(
+            FormatBackendOrderId(eventSlug, code), PaymentUrl(order, request.ReturnUrl), AdminOrderUrl(eventSlug, code));
     }
 
     public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
@@ -138,7 +139,7 @@ internal sealed class PretixCheckoutBackend(
             r.Comment?.Contains(comment, StringComparison.Ordinal) == true
             && r.State is not ("failed" or "canceled"));
         if (earlier is not null)
-            return MapRefund(earlier, ManualRefundUrl(eventSlug, code));
+            return MapRefund(earlier, AdminOrderUrl(eventSlug, code));
 
         var payment = RefundablePayment(order, request.AmountMinor);
         if (payment is null)
@@ -162,7 +163,7 @@ internal sealed class PretixCheckoutBackend(
             // provider does not support). A person issues it in pretix; the status read picks it up.
             logger.LogWarning(
                 "pretix declined an automatic refund on {Code}: {Body}", code, response.Body);
-            return new RefundResult(RefundState.ManualRequired, null, response.Body, ManualRefundUrl(eventSlug, code));
+            return new RefundResult(RefundState.ManualRequired, null, response.Body, AdminOrderUrl(eventSlug, code));
         }
 
         EnsureSuccess(response, "refund");
@@ -170,7 +171,7 @@ internal sealed class PretixCheckoutBackend(
         logger.LogInformation(
             "pretix refund {RefundLocalId} of {Amount} on {Code} for Humans refund {RefundId}: {State}",
             refund.LocalId, refund.Amount, code, request.RefundId, refund.State);
-        return MapRefund(refund, ManualRefundUrl(eventSlug, code));
+        return MapRefund(refund, AdminOrderUrl(eventSlug, code));
     }
 
     public async Task CancelAsync(string backendOrderId, CancellationToken ct = default)
@@ -343,7 +344,7 @@ internal sealed class PretixCheckoutBackend(
             RefundState.Failed, refund.LocalId.ToString(CultureInfo.InvariantCulture), $"pretix refund {refund.State}"),
     };
 
-    private Uri ManualRefundUrl(string eventSlug, string code) =>
+    private Uri AdminOrderUrl(string eventSlug, string code) =>
         new(new Uri(Settings.BaseUrl), $"control/event/{Settings.Organizer}/{eventSlug}/orders/{code}/");
 
     private async Task CancelOrderAsync(string eventSlug, string code, CancellationToken ct)

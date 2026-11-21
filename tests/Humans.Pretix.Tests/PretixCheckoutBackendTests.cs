@@ -12,11 +12,12 @@ namespace Humans.Pretix.Tests;
 public class PretixCheckoutBackendTests
 {
     private static readonly Guid OrderId = Guid.Parse("0193a1b2-0000-7000-8000-000000000001");
+    private static readonly Guid EventId = Guid.NewGuid();
     private static readonly string Code = PretixCheckoutBackend.OrderCode(OrderId);
     private static readonly string OrderPath = $"{Api}orders/{Code}/";
 
     private static CheckoutRequest Request(string culture = "es-ES", string currency = "EUR") => new(
-        OrderId, "nowhere2027", "Bea Buyer", "bea@example.org", currency, culture,
+        OrderId, EventId, "nowhere2027", "Bea Buyer", "bea@example.org", currency, culture,
         [
             new CheckoutLine(CheckoutLineKind.Ticket, "Entry", 22500, 0.21m, "Ana Attendee"),
             new CheckoutLine(CheckoutLineKind.Donation, "Donation", 77500, 0m, null),
@@ -35,6 +36,7 @@ public class PretixCheckoutBackendTests
         var session = await Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
 
         session.BackendOrderId.Should().Be($"nowhere2027/{Code}");
+        session.AdminUrl!.AbsoluteUri.Should().Be($"https://pretix.test/control/event/nobodies/nowhere2027/orders/{Code}/");
         session.PaymentUrl.AbsoluteUri.Should().Be(
             $"https://pretix.test/nobodies/nowhere2027/order/{Code}/secret/pay/change?return_url="
             + Uri.EscapeDataString("https://humans.test/Tickets/Checkout/Return?order=1"));
