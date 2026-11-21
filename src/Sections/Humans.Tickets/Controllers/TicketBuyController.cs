@@ -17,6 +17,9 @@ internal sealed class TicketBuyController(
     IUserService userService,
     IStringLocalizer<TicketsResource> localizer) : HumansControllerBase(userService)
 {
+    /// <summary>Euros. Larger gifts go through the organisers, and the cap keeps the cents conversion in range.</summary>
+    private const decimal MaxDonation = 100_000m;
+
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -38,6 +41,11 @@ internal sealed class TicketBuyController(
 
         var returnBase = new Uri(Url.Action(nameof(Order), "TicketBuy", new { id = Guid.Empty }, Request.Scheme, Request.Host.Value)!
             .Replace(Guid.Empty.ToString(), string.Empty, StringComparison.Ordinal));
+        if (donation > MaxDonation)
+        {
+            SetError(localizer["Tickets_Buy_DonationTooLarge"].Value);
+            return RedirectToAction(nameof(Index));
+        }
         var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(

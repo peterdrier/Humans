@@ -249,4 +249,13 @@
   <data name="Tickets_Buy_AlreadyPaid" xml:space="preserve">
     <value>Deze bestelling is al betaald en kan niet meer worden geannuleerd.</value>
   </data>
+  <data name="Tickets_Buy_Line_Ticket" xml:space="preserve">
+    <value>Ticket</value>
+  </data>
+  <data name="Tickets_Buy_Line_Donation" xml:space="preserve">
+    <value>Donatie: {0}</value>
+  </data>
+  <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
+    <value>Neem voor een donatie van deze omvang contact op met de organisatie.</value>
+  </data>
 </root>

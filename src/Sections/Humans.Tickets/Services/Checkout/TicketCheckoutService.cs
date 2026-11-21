@@ -132,6 +132,9 @@ internal sealed class TicketCheckoutService(
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
 
         var salesEvent = context.SalesEvent;
+        if (command.SupporterTotalMinor is { } total
+            && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(total) || total <= context.OwnPrice!.AmountMinor))
+            return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         // Checked before the partner's account is created, so a refused order leaves nothing behind.
         var ticketCount = (command.ForSelf ? 1 : 0) + (hasPartner ? 1 : 0);
         if (ticketCount > 0 && salesEvent.Mode != TicketSalesMode.Open)
@@ -162,12 +165,7 @@ internal sealed class TicketCheckoutService(
         }
 
         if (command.SupporterTotalMinor is { } supporterTotal)
-        {
-            if (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(supporterTotal)
-                || supporterTotal <= context.OwnPrice!.AmountMinor)
-                return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-            lines.Add(DonationLine(supporterTotal - context.OwnPrice.AmountMinor, TicketDonationPurpose.General));
-        }
+            lines.Add(DonationLine(supporterTotal - context.OwnPrice!.AmountMinor, TicketDonationPurpose.General));
 
         if (command.DonationMinor > 0)
             lines.Add(DonationLine(command.DonationMinor, command.DonationPurpose));

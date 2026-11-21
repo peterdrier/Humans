@@ -146,6 +146,17 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_refused_supporter_total_creates_no_partner_account()
+    {
+        var result = await _service.StartCheckoutAsync(
+            Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com", supporter: 12345), _buyerId, TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Be("Tickets_Buy_Invalid");
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
+        _repo.Orders.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Sold_out_and_resale_only_refuse_fresh_tickets_but_not_a_donation()
     {
         _salesEvent.Capacity = 0;

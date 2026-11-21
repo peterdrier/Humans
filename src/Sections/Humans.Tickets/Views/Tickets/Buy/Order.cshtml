@@ -35,7 +35,14 @@ else if (open)
         {
             <tr>
                 <td>
-                    @line.Description
+                    @if (line.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket)
+                    {
+                        @Localizer["Tickets_Buy_Line_Ticket"]
+                    }
+                    else
+                    {
+                        @string.Format(Localizer["Tickets_Buy_Line_Donation"].Value, Localizer[$"Tickets_Buy_Purpose_{line.DonationPurpose ?? Humans.Tickets.Domain.Checkout.TicketDonationPurpose.General}"].Value)
+                    }
                     @if (line.AttendeeName is not null)
                     {
                         <div class="small">@line.AttendeeName</div>

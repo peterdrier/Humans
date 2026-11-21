@@ -249,4 +249,13 @@
   <data name="Tickets_Buy_AlreadyPaid" xml:space="preserve">
     <value>Este pedido ya está pagado y no se puede cancelar.</value>
   </data>
+  <data name="Tickets_Buy_Line_Ticket" xml:space="preserve">
+    <value>Entrada</value>
+  </data>
+  <data name="Tickets_Buy_Line_Donation" xml:space="preserve">
+    <value>Donación: {0}</value>
+  </data>
+  <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
+    <value>Para una donación tan grande, contacta con la organización.</value>
+  </data>
 </root>
