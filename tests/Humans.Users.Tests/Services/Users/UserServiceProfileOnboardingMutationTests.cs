@@ -988,8 +988,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .Returns(call => inner.ReassignLoginsToUserAsync(sourceUserId, targetUserId, call.Arg<CancellationToken>()));
         repo.GetByUserIdReadOnlyAsync(sourceUserId, Arg.Any<CancellationToken>())
             .Returns(call => inner.GetByUserIdReadOnlyAsync(sourceUserId, call.Arg<CancellationToken>()));
-        repo.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(call => inner.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, call.Arg<Instant>(), call.Arg<CancellationToken>()));
+        repo.GetByUserIdReadOnlyAsync(targetUserId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.GetByUserIdReadOnlyAsync(targetUserId, call.Arg<CancellationToken>()));
+        repo.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, Arg.Any<Instant>(), Arg.Any<Profile?>(), Arg.Any<UserNames?>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, call.Arg<Instant>(), call.Arg<Profile?>(), call.Arg<UserNames?>(), call.Arg<CancellationToken>()));
         repo.GetProfilePictureLocationAsync(sourceId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().Should().Be(CancellationToken.None);

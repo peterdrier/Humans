@@ -246,7 +246,7 @@ internal sealed partial class UserRepository
     }
 
     public async Task ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -314,7 +314,12 @@ internal sealed partial class UserRepository
             }
         }
 
-        await KeepProfileDetailsAsync(ctx, sourceProfile, targetProfile, updatedAt, ct);
+        if (keptProfile is not null)
+        {
+            ctx.Entry(targetProfile).CurrentValues.SetValues(keptProfile);
+            if (keptNames is not null)
+                await UpdateUserFromProfileAsync(ctx, targetProfile, keptNames, ct);
+        }
 
         // The row stays as the tombstone counterpart to User.MergedToUserId; only identifying
         // scalars are cleared.
@@ -340,66 +345,6 @@ internal sealed partial class UserRepository
         sourceProfile.UpdatedAt = updatedAt;
 
         await ctx.SaveChangesAsync(ct);
-    }
-
-    // A merge loses nothing: the kept profile takes every detail it has blank from the archived one, and
-    // the notes of both. What the kept profile already has wins, so re-running is a no-op.
-    private static async Task KeepProfileDetailsAsync(
-        UsersDbContext ctx, Profile source, Profile target, Instant updatedAt, CancellationToken ct)
-    {
-        var sourceUser = await ctx.Users.FindAsync([source.UserId], ct);
-        var targetUser = await ctx.Users.FindAsync([target.UserId], ct);
-        if (sourceUser is not null && targetUser is not null
-            && (string.IsNullOrWhiteSpace(targetUser.FirstName) || string.IsNullOrWhiteSpace(targetUser.LastName))
-            && !string.IsNullOrWhiteSpace(sourceUser.FirstName) && !string.IsNullOrWhiteSpace(sourceUser.LastName))
-        {
-            // An account nobody filled in takes the whole name, burner name included, from the one that was.
-            SetNames(targetUser, new UserNames(sourceUser.BurnerName ?? sourceUser.FirstName, sourceUser.FirstName, sourceUser.LastName));
-            targetUser.State = UserStateEvaluator.Classify(targetUser, target);
-        }
-
-        target.Bio = Blank(target.Bio) ? source.Bio : target.Bio;
-        target.Pronouns = Blank(target.Pronouns) ? source.Pronouns : target.Pronouns;
-        target.ContributionInterests = Blank(target.ContributionInterests) ? source.ContributionInterests : target.ContributionInterests;
-        target.MedicalConditions = Blank(target.MedicalConditions) ? source.MedicalConditions : target.MedicalConditions;
-        target.DateOfBirth ??= source.DateOfBirth;
-        target.AdminNotes = BothNotes(target.AdminNotes, source.AdminNotes);
-        target.BoardNotes = BothNotes(target.BoardNotes, source.BoardNotes);
-
-        // A place is one unit: never a city from one account on the other's coordinates.
-        if (Blank(target.City) && Blank(target.CountryCode) && target.PlaceId is null)
-        {
-            target.City = source.City;
-            target.CountryCode = source.CountryCode;
-            target.Latitude = source.Latitude;
-            target.Longitude = source.Longitude;
-            target.PlaceId = source.PlaceId;
-        }
-
-        if (Blank(target.EmergencyContactName) && Blank(target.EmergencyContactPhone))
-        {
-            target.EmergencyContactName = source.EmergencyContactName;
-            target.EmergencyContactPhone = source.EmergencyContactPhone;
-            target.EmergencyContactRelationship = source.EmergencyContactRelationship;
-        }
-
-        // The file stays where it is; the kept profile points at it by its stored key.
-        if (target.ProfilePictureContentType is null && source.ProfilePictureContentType is not null)
-        {
-            target.ProfilePictureContentType = source.ProfilePictureContentType;
-            target.ProfilePictureStorageKey = ProfilePictureKeys.Resolve(
-                source.Id, source.ProfilePictureContentType, source.ProfilePictureStorageKey);
-        }
-
-        target.UpdatedAt = updatedAt;
-
-        static bool Blank(string? value) => string.IsNullOrWhiteSpace(value);
-
-        static string? BothNotes(string? kept, string? archived) =>
-            Blank(archived) || string.Equals(kept, archived, StringComparison.Ordinal) ? kept
-            : Blank(kept) ? archived
-            : kept!.Contains(archived!, StringComparison.Ordinal) ? kept
-            : $"{kept}\n\n[From merged account]\n{archived}";
     }
 
     public async Task<bool> AnonymizeForDeletionByUserIdAsync(

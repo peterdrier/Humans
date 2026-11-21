@@ -198,9 +198,14 @@ internal sealed class UserService(
         var sourceProfile = await repo.GetByUserIdReadOnlyAsync(mergedFromUserId, ct);
         var previousKey = sourceProfile is null ? null : ProfilePictureKeys.Resolve(
             sourceProfile.Id, sourceProfile.ProfilePictureContentType, sourceProfile.ProfilePictureStorageKey);
+        var keptProfile = await repo.GetByUserIdReadOnlyAsync(mergedToUserId, ct);
+        var keptNames = sourceProfile is null || keptProfile is null ? null : KeepProfileDetails(
+            keptProfile, await repo.GetByIdAsync(mergedToUserId, ct),
+            sourceProfile, await repo.GetByIdAsync(mergedFromUserId, ct), now);
         try
         {
-            await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+            await repo.ReassignSubAggregatesToUserAsync(
+                mergedFromUserId, mergedToUserId, now, keptProfile, keptNames, ct);
         }
         finally
         {
@@ -212,6 +217,66 @@ internal sealed class UserService(
                 && !string.Equals(previousKey, keptKey, StringComparison.Ordinal))
                 await DeleteSupersededPictureAsync(sourceProfile.Id, previousKey);
         }
+    }
+
+    /// <summary>
+    /// A merge loses nothing: <paramref name="kept"/> takes every detail it has blank from
+    /// <paramref name="archived"/>, and the notes of both. What the kept profile already has wins, so
+    /// re-running is a no-op.
+    /// </summary>
+    /// <returns>The names the kept account takes over, when nobody filled it in; otherwise null.</returns>
+    internal static UserNames? KeepProfileDetails(
+        Profile kept, User? keptUser, Profile archived, User? archivedUser, Instant now)
+    {
+        kept.Bio = Blank(kept.Bio) ? archived.Bio : kept.Bio;
+        kept.Pronouns = Blank(kept.Pronouns) ? archived.Pronouns : kept.Pronouns;
+        kept.ContributionInterests = Blank(kept.ContributionInterests) ? archived.ContributionInterests : kept.ContributionInterests;
+        kept.MedicalConditions = Blank(kept.MedicalConditions) ? archived.MedicalConditions : kept.MedicalConditions;
+        kept.DateOfBirth ??= archived.DateOfBirth;
+        kept.AdminNotes = BothNotes(kept.AdminNotes, archived.AdminNotes);
+        kept.BoardNotes = BothNotes(kept.BoardNotes, archived.BoardNotes);
+
+        // A place is one unit: never a city from one account on the other's coordinates.
+        if (Blank(kept.City) && Blank(kept.CountryCode) && kept.PlaceId is null)
+        {
+            kept.City = archived.City;
+            kept.CountryCode = archived.CountryCode;
+            kept.Latitude = archived.Latitude;
+            kept.Longitude = archived.Longitude;
+            kept.PlaceId = archived.PlaceId;
+        }
+
+        if (Blank(kept.EmergencyContactName) && Blank(kept.EmergencyContactPhone))
+        {
+            kept.EmergencyContactName = archived.EmergencyContactName;
+            kept.EmergencyContactPhone = archived.EmergencyContactPhone;
+            kept.EmergencyContactRelationship = archived.EmergencyContactRelationship;
+        }
+
+        // The file stays where it is; the kept profile points at it by its stored key.
+        if (kept.ProfilePictureContentType is null && archived.ProfilePictureContentType is not null)
+        {
+            kept.ProfilePictureContentType = archived.ProfilePictureContentType;
+            kept.ProfilePictureStorageKey = ProfilePictureKeys.Resolve(
+                archived.Id, archived.ProfilePictureContentType, archived.ProfilePictureStorageKey);
+        }
+
+        kept.UpdatedAt = now;
+
+        // An account nobody filled in takes the whole name, burner name included, from the one that was.
+        return keptUser is not null && archivedUser is not null
+            && (Blank(keptUser.FirstName) || Blank(keptUser.LastName))
+            && !Blank(archivedUser.FirstName) && !Blank(archivedUser.LastName)
+                ? new UserNames(archivedUser.BurnerName ?? archivedUser.FirstName!, archivedUser.FirstName!, archivedUser.LastName!)
+                : null;
+
+        static bool Blank(string? value) => string.IsNullOrWhiteSpace(value);
+
+        static string? BothNotes(string? keptNotes, string? archivedNotes) =>
+            Blank(archivedNotes) || string.Equals(keptNotes, archivedNotes, StringComparison.Ordinal) ? keptNotes
+            : Blank(keptNotes) ? archivedNotes
+            : keptNotes!.Contains(archivedNotes!, StringComparison.Ordinal) ? keptNotes
+            : $"{keptNotes}\n\n[From merged account]\n{archivedNotes}";
     }
 
     public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)

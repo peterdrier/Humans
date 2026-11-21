@@ -87,9 +87,11 @@ internal partial interface IUserRepository
     /// <remarks>
     /// History dedups on (year, event name); languages on code, keeping the higher proficiency
     /// (target wins ties). Contact fields are not touched. No-op if either user has no profile.
+    /// <paramref name="keptProfile"/> and <paramref name="keptNames"/> are what the caller decided the
+    /// target profile and its users row hold after the merge; they are written in the same save.
     /// </remarks>
     Task ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
         CancellationToken ct = default);
 }
 
