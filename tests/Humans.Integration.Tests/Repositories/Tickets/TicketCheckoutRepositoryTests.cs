@@ -176,4 +176,58 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         storedOffer.DirectedTokenHash.Should().BeNull();
         storedOffer.RefundOwedMinor.Should().Be(22500);
     }
+
+    [HumansFact]
+    public async Task Erasure_clears_a_companion_on_an_order_of_its_own()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
+        var holder = Guid.NewGuid();
+        var salesEventId = Guid.NewGuid();
+        var adult = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEventId,
+            OrderId = Guid.NewGuid(),
+            HolderUserId = holder,
+            HolderName = "Ana García",
+            Barcode = "H" + Guid.NewGuid().ToString("N")[..16],
+            IssuedAt = Now,
+        };
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEventId,
+            BuyerUserId = holder,
+            BuyerName = "Ana García",
+            BuyerEmail = "ana@example.com",
+            BackendKey = "boxoffice",
+            CreatedAt = Now,
+            ExpiresAt = Now,
+            UpdatedAt = Now,
+            Lines = [new TicketCheckoutOrderLine
+            {
+                Kind = CheckoutLineKind.Ticket, HolderKind = TicketHolderKind.Companion, Description = "Companion ticket", AttendeeName = "Helper Ruiz",
+            }],
+        };
+        await repo.AddOrderAsync(order, ct);
+        var companion = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEventId,
+            OrderId = order.Id,
+            Kind = TicketHolderKind.Companion,
+            ParentTicketId = adult.Id,
+            HolderName = "Helper Ruiz",
+            Barcode = "H" + Guid.NewGuid().ToString("N")[..16],
+            IssuedAt = Now,
+        };
+        (await repo.AddTicketsAsync([adult, companion], ct)).Should().BeTrue();
+
+        await repo.ErasePiiForUserAsync(holder, ["ana@example.com"], ct);
+
+        (await repo.GetOrderAsync(order.Id, ct))!.Lines.Should().ContainSingle().Which.AttendeeName.Should().NotBe("Helper Ruiz");
+        (await repo.GetTicketAsync(companion.Id, ct))!.HolderName.Should().NotBe("Helper Ruiz");
+    }
 }
