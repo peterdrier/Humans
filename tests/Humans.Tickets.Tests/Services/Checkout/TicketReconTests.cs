@@ -57,7 +57,45 @@ public sealed class TicketReconTests
         order.State == TicketCheckoutOrderState.Paid ? CheckoutState.Paid : CheckoutState.Expired,
         order.TotalMinor, order.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), order.RefundedMinor, 0);
 
-    private TicketRecon Build() => TicketReconBuilder.Build(Key, From, To, _orders, _backend, _tickets);
+    private TicketRecon Build(bool sharedAccount = false) =>
+        TicketReconBuilder.Build(Key, From, To, _orders, _backend, _tickets, sharedAccount);
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Outside_production_an_order_this_database_never_held_is_another_instances(bool sharedAccount)
+    {
+        Order();
+        var elsewhere = Order(backendKey: "boxoffice", atBackend: false);
+        _backend.Add(new BackendOrderSummary("ev/foreign", Guid.NewGuid(), Mid, CheckoutState.Paid, 5000, 1, 0, 0));
+        _backend.Add(new BackendOrderSummary("ev/unnamed", null, Mid, CheckoutState.Paid, 4000, 1, 0, 0));
+        _backend.Add(new BackendOrderSummary("ev/other-backend", elsewhere.Id, Mid, CheckoutState.Paid, 3000, 1, 0, 0));
+
+        var recon = Build(sharedAccount);
+
+        var extra = recon.Problems.Where(r => r.Issues.Contains(TicketReconIssue.ExtraAtBackend)).Select(r => r.Backend!.BackendOrderId);
+        if (sharedAccount)
+        {
+            recon.OtherInstance.Select(b => b.BackendOrderId).Should().Equal("ev/foreign");
+            extra.Should().BeEquivalentTo("ev/unnamed", "ev/other-backend");
+            recon.Backend.GrossMinor.Should().Be(30000 + 4000 + 3000);
+        }
+        else
+        {
+            recon.OtherInstance.Should().BeEmpty();
+            extra.Should().BeEquivalentTo("ev/foreign", "ev/unnamed", "ev/other-backend");
+        }
+    }
+
+    [HumansFact]
+    public void Another_instances_orders_alone_balance_outside_production()
+    {
+        Order();
+        _backend.Add(new BackendOrderSummary("ev/foreign", Guid.NewGuid(), Mid, CheckoutState.Paid, 5000, 1, 0, 0));
+
+        Build(sharedAccount: true).Balanced.Should().BeTrue();
+        Build().Balanced.Should().BeFalse();
+    }
 
     [HumansFact]
     public void Matching_sides_balance_and_count_paid_orders_only()

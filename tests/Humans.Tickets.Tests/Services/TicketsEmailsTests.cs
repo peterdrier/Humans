@@ -15,6 +15,21 @@ public sealed class TicketsEmailsTests
 {
     private static TicketsEmails Create() => TestTicketsEmails.Create();
 
+    [HumansFact]
+    public void ReconciliationAlert_GoesToTheTicketsInbox_WithEachFindingEncoded()
+    {
+        var msg = Create().ReconciliationAlert(["boxoffice orders: <out> of balance", "pretix orders: could not be checked"],
+            "/Tickets/Admin/Sales/Recon?from=2027-01-01&to=2027-01-09");
+
+        msg.RecipientEmail.Should().Be(TicketConstants.TicketsTeamEmail);
+        msg.UserId.Should().BeNull();
+        msg.Category.Should().Be(MessageCategory.System);
+        msg.TemplateName.Should().Be("ticket_reconciliation_alert");
+        msg.HtmlBody.Should().Contain("<li>boxoffice orders: &lt;out&gt; of balance</li>")
+            .And.Contain("<li>pretix orders: could not be checked</li>")
+            .And.Contain($"{TestTicketsEmails.BaseUrl}/Tickets/Admin/Sales/Recon?from=2027-01-01&amp;to=2027-01-09");
+    }
+
     private static IssuedTicketMail SampleTicket(string holderName = "Ana", string? buyerName = null, params TicketCard[] riders) => new(
         Guid.NewGuid(), "ana@x.com", holderName, "Nowhere 2027",
         [new TicketCard(holderName, "Adult", "H7K2M9QX4T8VB3NRP", new Uri("https://humans.example/Tickets/Code/tok")), .. riders],
@@ -155,6 +170,7 @@ public sealed class TicketsEmailsTests
         if (type == typeof(OrderReceiptMail)) return SampleReceipt();
         if (type == typeof(bool)) return flag;
         if (type == typeof(int)) return 3;
+        if (type == typeof(IReadOnlyList<string>)) return new[] { "sample" };
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"TicketsEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");
