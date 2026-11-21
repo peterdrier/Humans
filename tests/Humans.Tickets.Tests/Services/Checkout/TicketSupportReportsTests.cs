@@ -36,7 +36,7 @@ public sealed class TicketSupportReportsTests
         AttendeeName = "Ana García",
     };
 
-    private static TicketCheckoutOrderLine Donation(long amount, TicketDonationPurpose purpose = TicketDonationPurpose.General) => new()
+    private static TicketCheckoutOrderLine Donation(long amount, string? purpose = null) => new()
     {
         Kind = CheckoutLineKind.Donation,
         Description = "Donation",
@@ -46,7 +46,8 @@ public sealed class TicketSupportReportsTests
 
     private static TicketCheckoutTicket Ticket(
         TicketCheckoutOrder order, long paid = 22500, string? classLabel = null,
-        TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid, TicketHolderKind kind = TicketHolderKind.Adult) => new()
+        TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid, TicketHolderKind kind = TicketHolderKind.Adult,
+        string waveName = "Wave 1") => new()
         {
             Id = Guid.NewGuid(),
             OrderId = order.Id,
@@ -56,7 +57,7 @@ public sealed class TicketSupportReportsTests
             HolderEmail = "bo@example.com",
             Barcode = "HX7Q2K",
             PricePaidMinor = paid,
-            WaveName = "Wave 1",
+            WaveName = waveName,
             ClassLabel = classLabel,
             State = state,
             IssuedAt = Now,
@@ -153,7 +154,7 @@ public sealed class TicketSupportReportsTests
     [HumansFact]
     public void Sales_report_groups_issued_tickets_by_class_or_wave_and_splits_donations()
     {
-        var wave = Order(lines: [Line(), Donation(17500, TicketDonationPurpose.LowIncomePool)]);
+        var wave = Order(lines: [Line(), Donation(17500, "Low income pool")]);
         var lowIncome = Order(lines: Line(12500));
         lowIncome.DisputedMinor = 12500;
         var unpaid = Order(TicketCheckoutOrderState.Pending, lines: Line());
@@ -162,19 +163,22 @@ public sealed class TicketSupportReportsTests
             Ticket(wave, state: TicketCheckoutTicketState.Resold),
             Ticket(lowIncome, 12500, classLabel: "Low income"),
             Ticket(lowIncome, 0, kind: TicketHolderKind.Companion),
+            Ticket(wave, 0, kind: TicketHolderKind.Child, waveName: "Under 6"),
+            Ticket(wave, 5000, kind: TicketHolderKind.Child, waveName: "Under 13"),
             Ticket(unpaid),
         };
 
         var report = TicketSupportReports.Sales([wave, lowIncome, unpaid], tickets, [], [], Madrid);
 
-        report.TicketsIssued.Should().Be(3);
-        report.TicketsLive.Should().Be(2);
+        report.TicketsIssued.Should().Be(5);
+        report.TicketsLive.Should().Be(4);
         report.TicketRevenueMinor.Should().Be(35000);
         report.DonationsMinor.Should().Be(17500);
         report.DisputedMinor.Should().Be(12500);
         report.ByPrice.Should().BeEquivalentTo(
-            [new SalesRow("Companion", 1, 0), new SalesRow("Low income", 1, 12500), new SalesRow("Wave 1", 1, 22500)]);
-        report.DonationsByPurpose.Should().Equal(new DonationRow(TicketDonationPurpose.LowIncomePool, 1, 17500));
+            [new SalesRow("Child: Under 13", 1, 5000), new SalesRow("Child: Under 6", 1, 0), new SalesRow("Companion", 1, 0),
+             new SalesRow("Low income", 1, 12500), new SalesRow("Wave 1", 1, 22500)]);
+        report.DonationsByPurpose.Should().Equal(new DonationRow("Low income pool", 1, 17500));
     }
 
     [HumansFact]

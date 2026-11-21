@@ -293,13 +293,13 @@ public sealed class HoldedAdminOverviewTests
     public async Task Sync_states_are_reported_per_kind()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var state = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct);
+        var state = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct: ct);
         state.LastSyncAt = FixedNow;
         state.LastCount = 17;
         state.LastError = "57200001: holded 418840.54, local 771074.85";
         await _repo.SaveSyncStateAsync(state, ct);
-        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.FullSync, ct);
-        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.FullSync, ct: ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct: ct);
 
         var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
             NullLogger<HoldedController>.Instance);

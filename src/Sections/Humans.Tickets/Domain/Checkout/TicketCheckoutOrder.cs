@@ -129,14 +129,8 @@ internal sealed class TicketCheckoutOrderLine
     /// <summary>Set when this line buys a returned ticket instead of fresh stock.</summary>
     public Guid? ResaleOfferId { get; set; }
 
-    public TicketDonationPurpose? DonationPurpose { get; set; }
-}
-
-internal enum TicketDonationPurpose
-{
-    General = 0,
-    Creativity = 1,
-    LowIncomePool = 2,
+    /// <summary>One of the sales event's donation purposes as it read at checkout; null for a general donation.</summary>
+    public string? DonationPurpose { get; set; }
 }
 
 internal sealed class TicketCheckoutRefund

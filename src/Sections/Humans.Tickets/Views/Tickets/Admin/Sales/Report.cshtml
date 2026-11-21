@@ -35,7 +35,7 @@
         .Build();
 
     var donations = TableModel.For(r.DonationsByPurpose)
-        .Column("Purpose", x => SharedLocalizer.EnumDisplay(x.Purpose))
+        .Column("Purpose", x => x.Purpose ?? "General")
         .Column("Gifts", x => x.Count, o => o.Number().End())
         .Column("Amount (€)", x => x.AmountMinor / 100m, o => o.Currency().End())
         .Empty("No donations yet.")

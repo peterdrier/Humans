@@ -125,7 +125,7 @@ public sealed class TicketCheckoutServiceTests
 
     private StartCheckout Buy(
         bool forSelf = true, long? supporter = null, long donation = 0, Guid? salesEventId = null, string?[]? others = null) =>
-        new(salesEventId ?? _salesEvent.Id, forSelf, supporter, donation, TicketDonationPurpose.General,
+        new(salesEventId ?? _salesEvent.Id, forSelf, supporter, donation, null,
             new Uri("https://humans.example/Tickets/Buy/Order/"), "es-ES")
         { OtherEmails = others ?? [] };
 
@@ -804,21 +804,76 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task Blank_child_name_boxes_are_ignored()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var order = await BuyAndPayAsync(Buy() with { ChildNames = [null, "  ", "Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(Buy() with { Children = [new(null, null), new("  ", null), new("Kid García", null)] }, _buyerId);
 
         order.TotalMinor.Should().Be(27500);
         _repo.Tickets.Should().ContainSingle(t => t.Kind == TicketHolderKind.Child);
     }
 
     [HumansFact]
-    public async Task Children_are_issued_with_the_adult_and_need_a_child_price()
+    public async Task Each_child_is_priced_by_the_child_type_the_buyer_picks()
     {
-        (await _service.StartCheckoutAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId, Ct))
+        _salesEvent.ChildTypes =
+        [
+            new TicketChildType { Name = "Under 6", UnderAge = 6, PriceMinor = 0 },
+            new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 },
+        ];
+        (await _service.StartCheckoutAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_Invalid", "with two types the buyer must pick one");
+        (await _service.StartCheckoutAsync(Buy() with { Children = [new("Kid García", "Teen")] }, _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_Invalid");
 
-        _salesEvent.ChildPriceMinor = 5000;
-        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        var order = await BuyAndPayAsync(Buy() with { Children = [new("Baby García", "Under 6"), new("Kid García", "Under 13")] }, _buyerId);
+
+        order.TotalMinor.Should().Be(27500);
+        _repo.Tickets.Where(t => t.Kind == TicketHolderKind.Child).Select(t => (t.HolderName, t.WaveName, t.PricePaidMinor))
+            .Should().BeEquivalentTo([("Baby García", "Under 6", 0L), ("Kid García", "Under 13", 5000L)]);
+    }
+
+    [HumansFact]
+    public async Task A_donation_goes_to_one_of_the_events_purposes_or_is_general()
+    {
+        (await _service.StartCheckoutAsync(Buy(donation: 1000) with { DonationPurpose = "Art" }, _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_Invalid", "the event names no purposes");
+
+        _salesEvent.DonationPurposes = ["Art", "Low income pool"];
+        var order = await BuyAndPayAsync(Buy(donation: 1000) with { DonationPurpose = "Low income pool" }, _buyerId);
+
+        order.Lines.Single(l => l.Kind == CheckoutLineKind.Donation).DonationPurpose.Should().Be("Low income pool");
+    }
+
+    [HumansFact]
+    public async Task Child_types_and_donation_purposes_need_distinct_names()
+    {
+        SalesEventSave Save() => new(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
+            _salesEvent.Waves, [], []);
+
+        (await _service.SaveSalesEventAsync(Save() with
+        {
+            ChildTypes = [new() { Name = "Child", UnderAge = 13, PriceMinor = 0 }, new() { Name = "child", UnderAge = 6, PriceMinor = 0 }],
+        }, _adminId, Ct)).Refusal.Should().Contain("Child tickets need distinct names");
+        (await _service.SaveSalesEventAsync(Save() with { DonationPurposes = ["Art", " Art "] }, _adminId, Ct))
+            .Refusal.Should().Contain("Donation purposes need distinct names");
+
+        (await _service.SaveSalesEventAsync(Save() with
+        {
+            ChildTypes = [new() { Name = "Under 13 ", UnderAge = 13, PriceMinor = 5000 }, new() { Name = "Under 6", UnderAge = 6, PriceMinor = 0 }],
+            DonationPurposes = [" Art "],
+        }, _adminId, Ct)).Refusal.Should().BeNull();
+        var saved = await _repo.GetSalesEventAsync(_salesEvent.Id, Ct);
+        saved!.ChildTypes.Select(c => c.Name).Should().Equal("Under 6", "Under 13");
+        saved.DonationPurposes.Should().Equal("Art");
+    }
+
+    [HumansFact]
+    public async Task Children_are_issued_with_the_adult_and_need_a_child_price()
+    {
+        (await _service.StartCheckoutAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_Invalid");
+
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
 
         order.TotalMinor.Should().Be(27500);
         var adult = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Adult);
@@ -1031,8 +1086,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task Resale_sells_the_oldest_offer_first_voids_children_and_refunds_the_holder_what_they_paid_in_the_evening_batch()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var old = await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var old = await OfferedTicketAsync(Buy() with { Children = [new("Kid García", null)] });
         var offer = _repo.Offers.Single();
         offer.RefundOwedMinor.Should().Be(27500);
         old.State.Should().Be(TicketCheckoutTicketState.Offered);
@@ -1090,8 +1145,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task A_ticket_whose_child_was_used_at_the_gate_cannot_be_offered()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
         var adult = _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
         _admitted.Add(_repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Child).Barcode);
 
@@ -1113,8 +1168,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task An_offer_whose_child_was_used_at_the_gate_takes_no_invitation()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var order = await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
         var adult = _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
         (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Refusal.Should().BeNull();
         _admitted.Add(_repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Child).Barcode);
@@ -1464,8 +1519,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task Void_takes_an_offered_ticket_out_of_the_queue_with_its_dependents()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var adult = await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var adult = await OfferedTicketAsync(Buy() with { Children = [new("Kid García", null)] });
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
 
         (await _service.VoidTicketAsync(adult.Id, "Duplicate purchase", _adminId, Ct)).Refusal.Should().BeNull();
@@ -1516,8 +1571,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task Void_refuses_a_child_while_its_adult_waits_in_the_queue()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        await OfferedTicketAsync(Buy() with { Children = [new("Kid García", null)] });
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
 
         (await _service.VoidTicketAsync(child.Id, "Not coming", _adminId, Ct))
@@ -1573,6 +1628,18 @@ public sealed class TicketCheckoutServiceTests
         (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", _adminId, Ct))
             .Refusal.Should().Contain("capacity");
         _repo.Tickets.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task No_companion_requests_when_the_event_sells_no_companion_tickets()
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        _salesEvent.Switches = new TicketSalesSwitches { CompanionTickets = false };
+
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Wheelchair user", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NotAllowed");
+        _repo.CompanionRequests.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -2098,8 +2165,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task Erasure_voids_the_holders_children_and_passes_every_address_to_the_repository()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
 
         await _service.EraseForUserAsync(_buyerId, Ct);
 
@@ -2169,8 +2236,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task A_resale_repeated_after_a_crash_finishes_retiring_the_old_ticket_and_its_children()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var old = await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var old = await OfferedTicketAsync(Buy() with { Children = [new("Kid García", null)] });
         await BuyAndPayAsync(Buy(), _otherBuyerId);
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
         old.State = TicketCheckoutTicketState.Offered;
@@ -2206,8 +2273,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task My_tickets_lists_the_valid_children_under_their_adult_and_never_offers_them()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        await BuyAndPayAsync(Buy() with { Children = [new("Kid García", null)] }, _buyerId);
 
         var held = await _service.GetHeldTicketsAsync(_buyerId, Ct);
 
@@ -2319,8 +2386,8 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task An_offer_whose_child_was_used_at_the_gate_never_sells()
     {
-        _salesEvent.ChildPriceMinor = 5000;
-        var old = await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
+        _salesEvent.ChildTypes = [new TicketChildType { Name = "Child", UnderAge = 13, PriceMinor = 5000 }];
+        var old = await OfferedTicketAsync(Buy() with { Children = [new("Kid García", null)] });
         _admitted.Add(_repo.Tickets.Single(t => t.OrderId == old.OrderId && t.Kind == TicketHolderKind.Child).Barcode);
 
         (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");

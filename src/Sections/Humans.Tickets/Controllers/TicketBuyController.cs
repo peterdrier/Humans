@@ -91,7 +91,7 @@ internal sealed class TicketBuyController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
         Guid salesEventId, bool forSelf, string?[]? otherEmails, long? supporterTotalMinor, decimal? donation,
-        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, string? termsFolder, string? termsVersion,
+        string? donationPurpose, string?[]? childNames, string?[]? childTypes, bool acceptTerms, string? termsFolder, string? termsVersion,
         bool marketingOptIn, string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
@@ -115,7 +115,7 @@ internal sealed class TicketBuyController(
             salesEventId, forSelf, supporterTotalMinor, donationMinor, donationPurpose,
             returnBase, CultureInfo.CurrentUICulture.Name)
         {
-            ChildNames = childNames ?? [],
+            Children = (childNames ?? []).Select((name, i) => new ChildEntry(name, childTypes?.ElementAtOrDefault(i))).ToList(),
             OtherEmails = otherEmails ?? [],
             AcceptTerms = acceptTerms,
             TermsFolder = termsFolder,

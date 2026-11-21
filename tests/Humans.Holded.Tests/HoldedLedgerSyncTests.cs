@@ -105,7 +105,7 @@ public sealed class HoldedLedgerSyncTests
         var states = Enum.GetValues<HoldedSyncKind>().ToDictionary(k => k, k => new HoldedSyncState { Kind = k });
         var kind = Enum.Parse<HoldedSyncKind>(path.ToString());
         var state = states[kind];
-        repository.GetOrCreateSyncStateAsync(Arg.Any<HoldedSyncKind>(), Arg.Any<CancellationToken>())
+        repository.GetOrCreateSyncStateAsync(Arg.Any<HoldedSyncKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => states[call.Arg<HoldedSyncKind>()]);
         repository.GetAccountTotalsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var startupFailure = new IOException("Cannot start sync");
@@ -185,7 +185,7 @@ public sealed class HoldedLedgerSyncTests
     {
         using var shutdown = new CancellationTokenSource();
         var repository = Substitute.For<IHoldedMirrorRepository>();
-        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, Arg.Any<CancellationToken>())
+        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, "", Arg.Any<CancellationToken>())
             .Returns(new HoldedSyncState { Kind = HoldedSyncKind.Accounts });
         repository.UpsertAccountsAsync(Arg.Any<IReadOnlyList<HoldedAccount>>(), FixedNow, shutdown.Token)
             .Returns(async _ => await shutdown.CancelAsync());
@@ -201,7 +201,7 @@ public sealed class HoldedLedgerSyncTests
         await action.Should().NotThrowAsync();
         _callLog.Received(1).DrainAll();
         if (chart)
-            await repository.Received(1).GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, CancellationToken.None);
+            await repository.Received(1).GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, "", CancellationToken.None);
     }
 
     [HumansFact]
@@ -226,8 +226,8 @@ public sealed class HoldedLedgerSyncTests
         var repository = Substitute.For<IHoldedMirrorRepository>();
         repository.HasAnyLedgerLinesAsync(shutdown.Token).Returns(true);
         var state = new HoldedSyncState { Kind = HoldedSyncKind.Ledger, LastSyncAt = FixedNow - Duration.FromDays(1) };
-        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, shutdown.Token).Returns(state);
-        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, Arg.Any<CancellationToken>())
+        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, "", shutdown.Token).Returns(state);
+        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, "", Arg.Any<CancellationToken>())
             .Returns(new HoldedSyncState { Kind = HoldedSyncKind.Accounts });
         repository.GetAccountTotalsAsync(Arg.Any<CancellationToken>()).Returns([]);
         repository.ReplaceLedgerWindowAsync(Arg.Any<Instant>(), FixedNow, null,

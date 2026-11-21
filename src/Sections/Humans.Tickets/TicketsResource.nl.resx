@@ -95,12 +95,6 @@
   <data name="Tickets_Buy_Purpose_General" xml:space="preserve">
     <value>Waar het het meest nodig is</value>
   </data>
-  <data name="Tickets_Buy_Purpose_Creativity" xml:space="preserve">
-    <value>Kunst en creativiteit</value>
-  </data>
-  <data name="Tickets_Buy_Purpose_LowIncomePool" xml:space="preserve">
-    <value>Meer tickets voor lage inkomens</value>
-  </data>
   <data name="Tickets_Buy_DonationNote" xml:space="preserve">
     <value>Donaties worden niet terugbetaald.</value>
   </data>
@@ -234,10 +228,16 @@
     <value>Kinderen die met je meekomen</value>
   </data>
   <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
-    <value>{0} per kind, voor kinderen onder de {1} op de eerste dag. Hun wettelijke naam, zoals op hun identiteitsbewijs. Hun tickets horen bij het jouwe.</value>
+    <value>Hun wettelijke naam, zoals op hun identiteitsbewijs. Hun tickets horen bij het jouwe.</value>
   </data>
   <data name="Tickets_Buy_ChildName" xml:space="preserve">
     <value>Kind {0}: wettelijke naam</value>
+  </data>
+  <data name="Tickets_Buy_ChildType" xml:space="preserve">
+    <value>{0}: onder de {1} op de eerste dag, {2}</value>
+  </data>
+  <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
+    <value>Kind {0}: ticket</value>
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Maak je ervaring groter en help ons het beste evenement te maken. Je ticket blijft op jouw prijs; de rest is een donatie aan de vereniging, zonder btw, en wordt niet terugbetaald.</value>

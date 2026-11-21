@@ -14,8 +14,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121202530_TicketResaleMultiInvite")]
-    partial class TicketResaleMultiInvite
+    [Migration("20261121203607_TicketTypesConfigurable")]
+    partial class TicketTypesConfigurable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -403,9 +403,6 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<Guid>("TicketId")
                         .HasColumnType("uuid");
 
-                    b.Property<Instant?>("UnsoldNotifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Instant?>("WithdrawnAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -446,6 +443,9 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<string>>("DonationPurposes")
+                        .HasColumnType("text[]");
 
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");
@@ -908,40 +908,35 @@ namespace Humans.Tickets.Data.Migrations
                     b.Navigation("Lines");
                 });
 
-            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketResaleOffer", b =>
+            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketSalesEvent", b =>
                 {
-                    b.OwnsMany("Humans.Tickets.Domain.Checkout.TicketResaleInvite", "Invites", b1 =>
+                    b.OwnsMany("Humans.Tickets.Domain.Checkout.TicketChildType", "ChildTypes", b1 =>
                         {
-                            b1.Property<Guid>("TicketResaleOfferId");
+                            b1.Property<Guid>("TicketSalesEventId");
 
                             b1.Property<int>("__synthesizedOrdinal")
                                 .ValueGeneratedOnAdd();
 
-                            b1.Property<string>("Email")
-                                .IsRequired();
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(64);
 
-                            b1.Property<Instant>("SentAt");
+                            b1.Property<long>("PriceMinor");
 
-                            b1.Property<string>("TokenHash")
-                                .IsRequired();
+                            b1.Property<int>("UnderAge");
 
-                            b1.HasKey("TicketResaleOfferId", "__synthesizedOrdinal");
+                            b1.HasKey("TicketSalesEventId", "__synthesizedOrdinal");
 
-                            b1.ToTable("ticket_resale_offers");
+                            b1.ToTable("ticket_sales_events");
 
                             b1
-                                .ToJson("directed_invites")
+                                .ToJson("child_types")
                                 .HasColumnType("jsonb");
 
                             b1.WithOwner()
-                                .HasForeignKey("TicketResaleOfferId");
+                                .HasForeignKey("TicketSalesEventId");
                         });
 
-                    b.Navigation("Invites");
-                });
-
-            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketSalesEvent", b =>
-                {
                     b.OwnsMany("Humans.Tickets.Domain.Checkout.TicketPriceRule", "PriceRules", b1 =>
                         {
                             b1.Property<Guid>("TicketSalesEventId");
@@ -974,6 +969,8 @@ namespace Humans.Tickets.Data.Migrations
                     b.OwnsOne("Humans.Tickets.Domain.Checkout.TicketSalesSwitches", "Switches", b1 =>
                         {
                             b1.Property<Guid>("TicketSalesEventId");
+
+                            b1.Property<bool?>("CompanionTickets");
 
                             b1.Property<bool>("Donations");
 
@@ -1022,6 +1019,8 @@ namespace Humans.Tickets.Data.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("TicketSalesEventId");
                         });
+
+                    b.Navigation("ChildTypes");
 
                     b.Navigation("PriceRules");
 
