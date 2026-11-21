@@ -24,7 +24,7 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task CreateCheckout_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
     {
-_handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 1000m, paymentLink: "https://tickets.example/pay/42"));
 
         var session = await Backend().CreateCheckoutAsync(Request(
@@ -60,7 +60,7 @@ _handler.Enqueue(HttpStatusCode.OK, Products());
     [HumansFact]
     public async Task CreateCheckout_WhenTheTotalDiffers_Throws()
     {
-_handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 247.50m, paymentLink: "https://tickets.example/pay/42"));
 
         var act = () => Backend().CreateCheckoutAsync(Request(
@@ -74,7 +74,7 @@ _handler.Enqueue(HttpStatusCode.OK, Products());
     [Xunit.InlineData(HttpStatusCode.Conflict)]
     public async Task CreateCheckout_WhenHiEventsRefuses_Throws(HttpStatusCode status)
     {
-_handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(status, new { message = "no" });
 
         var act = () => Backend().CreateCheckoutAsync(Request(
