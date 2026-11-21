@@ -23,6 +23,9 @@ Rules every backend follows:
   `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
   audit log ("after the order was Expired") and logs a warning; a released resale offer another checkout took stays
   with that checkout, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
+- **Stuck checkout.** While a buyer's own unpaid checkout still holds their ticket, the buy page links to it and offers
+  "cancel and start again", so a dropped connection never locks them out until `ExpiresAt`. Starting a checkout runs to
+  the end even if the buyer's request is aborted, so a half-made order always has its backend session.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
   `Pending` and `ManualRequired` refunds from it, oldest first. Each uncovered pending refund is repeated under its own id
   and only those the backend answers `Failed` are marked so (`RefundFailed` may follow only the newest refund); those stop counting against what can still be refunded. The reconcile job re-reads paid orders with

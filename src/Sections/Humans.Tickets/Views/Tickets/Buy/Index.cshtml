@@ -59,7 +59,17 @@ else
         @if (sale.AlreadyHoldsTicket)
         {
             <input type="hidden" name="forSelf" value="false" />
-            <p class="text-muted">@Localizer["Tickets_Buy_AlreadyHolds"]</p>
+            @if (sale.OpenOrder is null)
+            {
+                <p class="text-muted">@Localizer["Tickets_Buy_AlreadyHolds"]</p>
+            }
+            else
+            {
+                <p class="text-muted">
+                    @Localizer["Tickets_Buy_OpenOrder"]
+                    <a asp-action="Order" asp-route-id="@sale.OpenOrder.Id">@Localizer["Tickets_Buy_OrderTitle"]</a>
+                </p>
+            }
         }
         else
         {
@@ -167,6 +177,14 @@ else
             <button type="submit" class="btn btn-primary">@Localizer["Tickets_Buy_Pay"]</button>
         </div>
     </form>
+    @if (sale.OpenOrder is { } openOrder)
+    {
+        <form asp-action="Cancel" asp-route-id="@openOrder.Id" method="post" class="mb-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="startAgain" value="true" />
+            <button type="submit" class="btn btn-outline-danger">@Localizer["Tickets_Buy_CancelAndRestart"]</button>
+        </form>
+    }
 }
 
 @if (sale.Orders.Count > 0)

@@ -423,4 +423,10 @@
   <data name="Tickets_Buy_Reference" xml:space="preserve">
     <value>Riferimento dell'ordine</value>
   </data>
+  <data name="Tickets_Buy_OpenOrder" xml:space="preserve">
+    <value>Hai un pagamento in corso per questo evento. Completa il pagamento o annullalo per ricominciare.</value>
+  </data>
+  <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
+    <value>Annulla e ricomincia</value>
+  </data>
 </root>
