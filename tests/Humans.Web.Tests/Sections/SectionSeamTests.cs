@@ -125,6 +125,9 @@ public class SectionSeamTests
         AdminNavComposition.Locate(tree, "Backend", "Index", parent: null,
                 new Microsoft.AspNetCore.Routing.RouteValueDictionary { ["key"] = "pretix" })!
             .Group.Label.Should().Be("pretix");
+        AdminNavComposition.Locate(tree, "Backend", "Check", parent: null,
+                new Microsoft.AspNetCore.Routing.RouteValueDictionary { ["key"] = "pretix" })!
+            .Group.Label.Should().Be("pretix");
         AdminNavComposition.Locate(tree, "Backend", "Check", parent: null)!
             .Group.Label.Should().Be("Box Office");
     }

@@ -65,8 +65,9 @@ public static class AdminNavComposition
     /// <paramref name="parent"/> the page names, else the first item on the same controller.
     /// </summary>
     /// <remarks>
-    /// Given <paramref name="routeValues"/>, the exact match also needs an item's own route values to
-    /// agree, so items that share one action (one page per backend key) each own their page.
+    /// Given <paramref name="routeValues"/>, an item whose own route values agree wins, in the exact
+    /// match and the same-controller fallback alike, so items that share one controller (one page
+    /// per backend key) each own their page and its subpages.
     /// </remarks>
     public static AdminNavLocation? Locate(
         IReadOnlyList<AdminNavGroup> groups, string? controller, string? action, string? parent,
@@ -90,7 +91,8 @@ public static class AdminNavComposition
                 return named;
         }
 
-        return Find(groups, controller, action: null);
+        return (routeValues is null ? null : Find(groups, controller, action: null, routeValues))
+            ?? Find(groups, controller, action: null);
     }
 
     private static AdminNavLocation? Find(
