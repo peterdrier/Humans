@@ -686,6 +686,76 @@ public sealed class TicketCheckoutServiceTests
         sales.Should().ContainSingle().Which.Should().Be(new PublicSale("Nowhere 2027", 22500, ResaleOnly: false));
     }
 
+    private TicketCheckoutTicket AddTicket(
+        TicketHolderKind kind = TicketHolderKind.Adult, Guid? holder = null, Guid? parent = null,
+        TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid, string? classLabel = null)
+    {
+        var ticket = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(), SalesEventId = _salesEvent.Id, OrderId = Guid.NewGuid(), Kind = kind,
+            ParentTicketId = parent, HolderUserId = holder, HolderName = "Ana García",
+            Barcode = TicketCheckoutService.NewBarcode(), WaveName = "Wave 1", ClassLabel = classLabel, State = state,
+        };
+        _repo.Tickets.Add(ticket);
+        return ticket;
+    }
+
+    [HumansFact]
+    public async Task Gate_finds_an_issued_ticket_by_its_code_with_its_event_and_holder()
+    {
+        var ticket = AddTicket(holder: _buyerId, classLabel: "Low income");
+
+        var found = await _service.FindIssuedTicketAsync($" {ticket.Barcode} ", TestContext.Current.CancellationToken);
+
+        found.Should().Be(new IssuedTicketInfo(ticket.Id, _event.Id, ticket.Barcode, "Ana García", _buyerId, _buyerId,
+            "Low income", IsValid: true));
+        (await _service.FindIssuedTicketAsync("HNOSUCHCODE", TestContext.Current.CancellationToken)).Should().BeNull();
+        (await _service.FindIssuedTicketAsync(" ", TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansTheory]
+    [InlineData((int)TicketCheckoutTicketState.Valid, true)]
+    [InlineData((int)TicketCheckoutTicketState.Offered, true)]
+    [InlineData((int)TicketCheckoutTicketState.Resold, false)]
+    [InlineData((int)TicketCheckoutTicketState.Void, false)]
+    public async Task Gate_admits_a_ticket_waiting_for_resale_but_not_a_resold_or_void_one(int state, bool valid)
+    {
+        var ticket = AddTicket(holder: _buyerId, state: (TicketCheckoutTicketState)state);
+
+        (await _service.FindIssuedTicketAsync(ticket.Barcode, TestContext.Current.CancellationToken))!
+            .IsValid.Should().Be(valid);
+    }
+
+    [HumansFact]
+    public async Task Gate_takes_a_childs_early_entry_from_the_adult_it_belongs_to()
+    {
+        var adult = AddTicket(holder: _buyerId);
+        var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
+
+        var found = await _service.FindIssuedTicketAsync(child.Barcode, TestContext.Current.CancellationToken);
+
+        found!.HolderUserId.Should().BeNull();
+        found.EntryUserId.Should().Be(_buyerId);
+        found.TicketLabel.Should().Be("Child · Wave 1");
+    }
+
+    [HumansFact]
+    public async Task Gate_asks_a_holder_to_sign_on_paper_each_ticket_rule_they_never_accepted()
+    {
+        var teamId = Guid.NewGuid();
+        var unsigned = Guid.NewGuid();
+        _salesEvent.TermsTeamId = teamId;
+        _consents.GetRequiredConsentRowsForUserAsync(_otherBuyerId, teamId, Arg.Any<CancellationToken>())
+            .Returns([new RequiredConsentRow(Guid.NewGuid(), "Code of conduct", true), new RequiredConsentRow(unsigned, "Ticket rules", false)]);
+
+        var items = await _service.GetOutstandingAsync(_otherBuyerId, _event.Id, TestContext.Current.CancellationToken);
+
+        items.Should().ContainSingle().Which.Should().Be(
+            new Humans.Gate.Contracts.GateEntryRequirement($"ticket-rules:{unsigned}", "Sign the paper copy of “Ticket rules”"));
+        (await _service.GetOutstandingAsync(_otherBuyerId, Guid.NewGuid(), TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+    }
+
     private sealed class FakeCheckoutRepository : ITicketCheckoutRepository
     {
         public List<TicketSalesEvent> SalesEvents { get; } = [];

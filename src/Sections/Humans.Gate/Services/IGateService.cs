@@ -1,4 +1,5 @@
 using Humans.Base.Interfaces;
+using Humans.Gate.Contracts;
 using Humans.Gate.Domain;
 using NodaTime;
 
@@ -94,7 +95,13 @@ internal sealed record GateScanResult(
     string? VendorTicketId = null,
     LocalDate? EarliestEntryDate = null,
     LocalDate? Today = null,
-    LocalDate? GeneralEntryDate = null);
+    LocalDate? GeneralEntryDate = null)
+{
+    public Guid? CheckoutTicketId { get; init; }
+
+    /// <summary>What the agent must resolve and confirm before admitting, in source order. Empty for a STOP.</summary>
+    public IReadOnlyList<GateEntryRequirement> Requirements { get; init; } = [];
+}
 
 /// <summary>
 /// Carries no scanner identity: the controller supplies it from the authenticated principal, so it can't be forged on the wire. The
@@ -108,7 +115,11 @@ internal sealed record GateDecisionInput(
     Instant? ClientScanAt,
     string? Note,
     bool OverrideEarly = false,
-    string? SupervisorPin = null);
+    string? SupervisorPin = null)
+{
+    /// <summary>Keys of the outstanding items the agent ticked; matched against a fresh read, never trusted alone.</summary>
+    public IReadOnlyList<string> ConfirmedRequirementKeys { get; init; } = [];
+}
 
 internal sealed record GateDecisionResult(
     GateVerdict Verdict,
@@ -120,7 +131,8 @@ internal sealed record GateDecisionResult(
     string? VendorTicketId = null,
     GateOverrideFailure? OverrideFailure = null,
     int? RetryAfterSeconds = null,
-    bool InputTooLong = false);
+    bool InputTooLong = false,
+    GateScanResult? UnconfirmedRequirements = null);
 
 internal enum GateOverrideFailure
 {

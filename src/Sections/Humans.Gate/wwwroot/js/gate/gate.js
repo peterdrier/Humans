@@ -120,7 +120,8 @@ export function initGate(refs) {
     document.addEventListener('click', (e) => {
         if (overrideOpen()) return;
         if (!e.target.closest('.gate-decide') && !e.target.closest('.gate-override')
-            && !e.target.closest('[data-override]') && !e.target.closest('[data-child]')) {
+            && !e.target.closest('[data-override]') && !e.target.closest('[data-child]')
+            && !e.target.closest('[data-requirements]')) {
             input.focus();
         }
     });
@@ -243,6 +244,16 @@ export function initGate(refs) {
         const kind = card.getAttribute('data-kind');
         signal(kind);
 
+        // Admit stays locked until every outstanding item is ticked; the server refuses an admit without them anyway.
+        const requirementBoxes = card.querySelectorAll('[data-requirement]');
+        const admitButtons = card.querySelectorAll('[data-confirm="true"], [data-child], [data-override="early"]');
+        const lockAdmit = () => {
+            const open = Array.from(requirementBoxes).some(b => !b.checked);
+            admitButtons.forEach(b => { if (open) b.setAttribute('disabled', 'disabled'); else b.removeAttribute('disabled'); });
+        };
+        requirementBoxes.forEach(b => b.addEventListener('change', lockAdmit));
+        lockAdmit();
+
         const overrideBtn = card.querySelector('[data-override="early"]');
         if (overrideBtn) {
             overrideBtn.addEventListener('click', () =>
@@ -261,7 +272,7 @@ export function initGate(refs) {
 
         // Anti-mistap: disabled for 350ms kills the "scan, tap-tap" carry-over.
         buttons.forEach(b => { b.setAttribute('disabled', 'disabled'); });
-        setTimeout(() => buttons.forEach(b => b.removeAttribute('disabled')), 350);
+        setTimeout(() => { buttons.forEach(b => b.removeAttribute('disabled')); lockAdmit(); }, 350);
 
         decide.querySelectorAll('[data-confirm]').forEach(btn => {
             btn.addEventListener('click', () => decide.contains(btn) && submitDecision(barcode, {
@@ -290,6 +301,8 @@ export function initGate(refs) {
         body.set('childWithAdult', String(opts.childWithAdult === true));
         body.set('overrideEarly', String(opts.overrideEarly === true));
         if (opts.supervisorPin) body.set('supervisorPin', opts.supervisorPin);
+        result.querySelectorAll('[data-requirement]:checked')
+            .forEach(b => body.append('requirement', b.getAttribute('data-requirement')));
         flashNeutral(result);
         try {
             await render(decisionUrl, body);

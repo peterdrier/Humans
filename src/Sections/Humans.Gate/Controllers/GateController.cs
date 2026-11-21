@@ -50,7 +50,7 @@ internal sealed class GateController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Decision(
         string barcode, bool? idConfirmed, bool childWithAdult, bool overrideEarly,
-        string? supervisorPin, string? laneId, CancellationToken ct)
+        string? supervisorPin, string? laneId, string[]? requirement, CancellationToken ct)
     {
         var scanner = await GetCurrentUserInfoAsync(ct);
         if (scanner is null)
@@ -64,7 +64,10 @@ internal sealed class GateController(
 
         var decision = await gate.RecordDecisionAsync(
             new GateDecisionInput(barcode, confirmed, childWithAdult, laneId,
-                ClientScanAt: null, Note: null, OverrideEarly: overrideEarly, SupervisorPin: supervisorPin),
+                ClientScanAt: null, Note: null, OverrideEarly: overrideEarly, SupervisorPin: supervisorPin)
+            {
+                ConfirmedRequirementKeys = requirement ?? [],
+            },
             scanner.Id, ct);
 
         if (decision.InputTooLong) return BadRequest();

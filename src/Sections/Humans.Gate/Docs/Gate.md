@@ -41,6 +41,26 @@ after the retention window.
   `gate_scan_events` row. This makes Humans the **system of record for gate admission** — a
   deliberate posture distinct from the rest of the app, where ticket check-in is inbound-only from
   the vendor.
+- **Two ticket sources, one check-in record.** A scanned code is looked up first among the current
+  event's Ticket Tailor attendees, then among the tickets Humans' own checkout issued
+  (`ITicketGateLookup.FindIssuedTicketAsync`, live), accepted only when the ticket's event is the
+  active event. A checkout ticket that is `Valid` or `Offered` (waiting in the resale queue) scans
+  valid; `Resold` and `Void` STOP. Its scan row carries `CheckoutTicketId` instead of
+  `TicketAttendeeId`, it is never mirrored to a vendor and never appears in the vendor backfill: the
+  gate row is its only check-in record. A child or companion ticket without an account takes the
+  Early Entry of the adult it belongs to (`IssuedTicketInfo.EntryUserId`); with no guest account, no
+  attendance row is written.
+- **Outstanding items** — before an admit the gate asks every registered
+  `IGateEntryRequirementSource` (Gate's own contract, `Contracts/`) "what must this person do before
+  entry" for the matched guest and the active event. Each item (e.g. "sign the paper copy of the
+  ticket rules") is shown as a checkbox on any card that can admit, and the admit buttons stay locked
+  until all are ticked. `RecordDecisionAsync` re-reads the items and refuses an admit unless every
+  current key was confirmed (no row is written; the card comes back asking for them), then stores
+  the confirmed instructions on the admit row (`ConfirmedRequirements`). Turning someone away never
+  needs them. A source that throws becomes an item of its own ("ask the gate lead"), so a failure
+  never admits silently. Order on the card: valid → date allowed → outstanding items → ID matches.
+  Tickets answers with the event's ticket rules (`TermsTeamId` documents) the holder never accepted
+  online; signing on paper is recorded only on the gate row, not in Consent.
 - **Verdict precedence** (`GateAdmissionRules.Evaluate`, fresh per scan): not-found/void → STOP;
   already-admitted-locally or vendor-checked-in → STOP duplicate; **cutoff not configured →
   AMBER** (fail-safe — see below); `now ≥ cutoff` → needs-ID; before cutoff + unmatched → AMBER
@@ -124,8 +144,10 @@ after the retention window.
 ## Data Model
 
 - **`gate_scan_events`** (owned) — append-only. `OccurredAt` (server), `ScannedByUserId`,
-  `Barcode`, `TicketAttendeeId?`, `GuestUserId?`, `Verdict`, `LaneId?`, `ClientScanAt?`
-  (audit only, never trusted for the cutoff), `Note?`, `OverrideByUserId?` (the authorizing
+  `Barcode`, `TicketAttendeeId?` (Ticket Tailor), `CheckoutTicketId?` (Humans checkout),
+  `GuestUserId?`, `Verdict`, `LaneId?`, `ClientScanAt?`
+  (audit only, never trusted for the cutoff), `Note?`, `ConfirmedRequirements?` (outstanding items
+  confirmed with an admit, one per line), `OverrideByUserId?` (the authorizing
   supervisor on an override admit), `AdmitDedupeKey?`. Cross-section links are bare Guid columns
   (no nav/FK); `GuestUserId`/`ScannedByUserId`/`OverrideByUserId` are re-pointed on account merge.
 - **`gate_settings`** (owned) — singleton (`Id` = 1). `GeneralEntryOpensAt` (UTC `Instant`),
@@ -171,6 +193,8 @@ nobodies-collective/Humans#933.)
 - Resetting the shared PIN keypad cancels its pending delayed completion. Closing the supervisor override with Cancel cannot submit the PIN afterward; a reopened panel submits only its new entry.
 
 - The cutoff is evaluated against the server clock; `ClientScanAt` never influences it.
+- An admit needs every current outstanding item confirmed (re-read server-side); more than 32
+  confirmation keys is malformed input (400).
 - Decision requests require an explicit ID confirmation (`true` or `false`); malformed input or a missing confirmation returns 400 before PIN checks or scan writes. The service also rejects a normalized barcode over 128 Unicode characters, a lane id over 64, or a note over 1000 before PIN checks or side effects; the controller maps that refusal to 400. Boundary values are retained without truncation.
 - A barcode can be admitted at most once (atomic unique index + pre-check); re-entry is governed
   by a physical wristband, not a second scan.
@@ -221,7 +245,11 @@ nobodies-collective/Humans#933.)
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `GateAuditActions` (`src/Sections/Humans.Gate/GateAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GateStaffPinSet`, `GateStaffPinReset`.
-- **Tickets** — `ITicketService.GetTicketOrdersAsync` (barcode lookup) and
+- **Tickets** — `ITicketGateLookup.FindIssuedTicketAsync` (checkout-issued tickets, live), and
+  Tickets implements `IGateEntryRequirementSource` (ticket rules not yet accepted).
+- **Outstanding-item sources** — every `IGateEntryRequirementSource` registered in DI; Gate only
+  shows, gates and records their items.
+- **Tickets** — `ITicketService.GetTicketOrdersAsync` (Ticket Tailor barcode lookup) and
   `ITicketVendorMirror.CreateCheckInAsync` (vendor mirror, via the Gate job).
   **Cache freshness:** the barcode lookup reads the cached Tickets projection, so a ticket bought,
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
@@ -267,9 +295,10 @@ nobodies-collective/Humans#933.)
 ## Architecture
 
 **Project:** `src/Sections/Humans.Gate`, its own assembly. Everything in it is `internal`
-except `Section`; there is no `GateResource` because the kiosk carries no resource keys
-(every string is inline English by design — a staff-facing, single-locale terminal).
-There is no `Contracts/` folder: nothing outside the section calls into it.
+except `Section` and `Contracts/` (`IGateEntryRequirementSource`, `GateEntryRequirement`: the seam
+other sections implement; nothing outside calls into Gate); there is no `GateResource` because the
+kiosk carries no resource keys (every string is inline English by design — a staff-facing,
+single-locale terminal, outstanding-item instructions included).
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.

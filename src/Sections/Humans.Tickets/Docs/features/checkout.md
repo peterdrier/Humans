@@ -79,6 +79,14 @@ consent needs a real profile, so the account always comes before the order.
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).
 
+## At the gate
+
+Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
+active event's). `Valid` and `Offered` scan valid. A child or companion ticket without an account carries the adult's
+user as `EntryUserId`, whose Early Entry applies. Tickets also answers Gate's `IGateEntryRequirementSource`: each
+ticket rules document (the event's `TermsTeamId`) the holder has not accepted becomes "sign the paper copy" at the
+gate. The gate's scan row is the only check-in record; no backend is told.
+
 ## Assumptions to confirm
 
 - Only adult tickets can be offered; children go with the adult and are refunded with it.
@@ -88,6 +96,6 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 
 - Companion tickets and the admin resale and ticket views (admin thread); ticket email with QR and the post-purchase
   shifts email (delivery thread, through `ITicketDelivery`).
-- Checkout tickets in holdings, the gate list and the scanner.
+- Checkout tickets in holdings, the gate list and the Scanner lookup. (Gate admits them: `ITicketGateLookup`.)
 - Payment-method-dependent prices.
 - Order, sales and check-in reports across events (the keying and the timeline are in place for them).

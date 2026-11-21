@@ -8,6 +8,7 @@ internal sealed class GateScanEvent
     internal const int BarcodeMaxLength = 128;
     internal const int LaneIdMaxLength = 64;
     internal const int NoteMaxLength = 1000;
+    internal const int ConfirmedRequirementsMaxLength = 2000;
 
     public Guid Id { get; init; }
 
@@ -20,8 +21,11 @@ internal sealed class GateScanEvent
     /// <summary>Normalized.</summary>
     public string Barcode { get; init; } = string.Empty;
 
-    /// <summary>Null when the barcode matched no current-event ticket.</summary>
+    /// <summary>The Ticket Tailor attendee scanned; null when the barcode matched none for the current event.</summary>
     public Guid? TicketAttendeeId { get; init; }
+
+    /// <summary>The ticket Humans' own checkout issued; null for a Ticket Tailor or unknown barcode.</summary>
+    public Guid? CheckoutTicketId { get; init; }
 
     /// <summary>Null when the ticket is unmatched. Settable only so account merge can re-point it.</summary>
     public Guid? GuestUserId { get; set; }
@@ -34,6 +38,12 @@ internal sealed class GateScanEvent
     public Instant? ClientScanAt { get; init; }
 
     public string? Note { get; init; }
+
+    /// <summary>
+    /// The outstanding items the agent confirmed before this admit, one instruction per line, as shown on the card.
+    /// Null when there were none.
+    /// </summary>
+    public string? ConfirmedRequirements { get; init; }
 
     /// <summary>
     /// Set on override admits. The shared supervisor PIN authorizes but cannot attribute, so this holds the gate

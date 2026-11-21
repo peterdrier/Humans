@@ -1,4 +1,5 @@
 using Humans.Base.Extensions;
+using Humans.Gate.Contracts;
 using Humans.Gate.Domain;
 using Humans.Gate.Services;
 
@@ -29,7 +30,12 @@ internal sealed record GateScanCardViewModel(
     bool AllowChildWithAdult,
     bool AllowSupervisorOverride = false)
 {
-    public static GateScanCardViewModel FromEvaluation(GateScanResult r) => r.Outcome switch
+    /// <summary>Shown on a card that can admit; each must be ticked before an admit button works.</summary>
+    public IReadOnlyList<GateEntryRequirement> Requirements { get; init; } = [];
+
+    public static GateScanCardViewModel FromEvaluation(GateScanResult r) => CardFor(r) with { Requirements = r.Requirements };
+
+    private static GateScanCardViewModel CardFor(GateScanResult r) => r.Outcome switch
     {
         GatePreCheckOutcome.Invalid =>
             new(GateCardKind.Stop, "Stop", null, "Not a valid ticket for this gate", false, r.Barcode, false),
@@ -49,6 +55,8 @@ internal sealed record GateScanCardViewModel(
 
     public static GateScanCardViewModel FromDecision(GateDecisionResult d, string barcode, bool childWithAdult = false) => d switch
     {
+        { UnconfirmedRequirements: { } pending } =>
+            FromEvaluation(pending) with { Reason = "Not admitted yet — confirm every item first" },
         { OverrideFailure: { } failure } =>
             new(GateCardKind.Amber, "Supervisor", null, failure switch
             {

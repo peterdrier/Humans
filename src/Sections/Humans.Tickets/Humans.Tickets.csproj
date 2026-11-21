@@ -54,6 +54,7 @@
     <!-- IConsentWrite: the gate-terminal seeder clears the account's consent check. -->
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <ProjectReference Include="..\Humans.Gate\Humans.Gate.csproj" />
     <!--
       Stripe fee enrichment on TicketOrder, through Humans.Stripe.Contracts. Direct
       section reference, acyclic — Humans.Stripe references no section.

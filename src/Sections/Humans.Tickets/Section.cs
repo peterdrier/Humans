@@ -11,6 +11,7 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Gate.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Health;
@@ -143,6 +144,8 @@ public sealed class Section :
         services.AddScoped<ITicketCheckoutEvents>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<ITicketGateLookup>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<IGateEntryRequirementSource>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<TicketCheckoutReconcileJob>();
     }
 

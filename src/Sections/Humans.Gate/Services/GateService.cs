@@ -9,6 +9,7 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
+using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
 using Humans.Gate.Jobs;
@@ -29,6 +30,8 @@ internal sealed class GateService(
     IShiftService shifts,
     IRoleAssignmentService roles,
     ITicketWrite ticketWrite,
+    ITicketGateLookup issuedTickets,
+    IEnumerable<IGateEntryRequirementSource> requirementSources,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
     IBackgroundJobClient backgroundJobs,
@@ -57,55 +60,123 @@ internal sealed class GateService(
         if (code.Length == 0)
             return NotFound(code);
 
+        var burn = settingsService.GetActiveEventSettings();
+        if (await FindTicketAsync(code, burn, ct) is not { } ticket)
+            return NotFound(code);
+
+        var settings = await repository.GetSettingsAsync(ct);
+        var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
+        var now = clock.GetCurrentInstant();
+        var zone = EventZone(burn?.TimeZoneId);
+        var today = now.InZone(zone).Date;
+
+        EarlyEntryRosterRow? ee = ticket.EntryUserId is { } uid
+            ? await earlyEntry.GetForUserAsync(uid, ct)
+            : null;
+
+        var outcome = GateAdmissionRules.Evaluate(new GateScanContext(
+            Found: true,
+            IsVoid: ticket.IsVoid,
+            AlreadyAdmittedLocally: priorAdmit is not null,
+            CheckedInAtVendor: ticket.CheckedInAtVendor,
+            Now: now,
+            GeneralEntryOpensAt: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt : null,
+            MatchedToHuman: ticket.EntryUserId is not null,
+            EarliestEntryDate: ee?.EarliestEntryDate,
+            Today: today));
+
+        var requirements = outcome is GatePreCheckOutcome.Invalid or GatePreCheckOutcome.Duplicate
+            || ticket.GuestUserId is not { } guest || burn is null
+                ? []
+                : await GetOutstandingAsync(guest, burn.Id, ct);
+
+        return new GateScanResult(
+            outcome,
+            code,
+            ticket.Name,
+            ticket.TypeName,
+            IsEarly: outcome == GatePreCheckOutcome.NeedsIdCheckEarly,
+            EarlyEntrySource: ee is { Sources.Count: > 0 } ? string.Join(", ", ee.Sources) : null,
+            TicketAttendeeId: ticket.TicketAttendeeId,
+            GuestUserId: ticket.GuestUserId,
+            PreviousAdmitAt: priorAdmit?.OccurredAt,
+            PreviousAdmitByUserId: priorAdmit?.ScannedByUserId,
+            VendorTicketId: ticket.VendorTicketId,
+            // Date only, never the EE source (privacy).
+            EarliestEntryDate: ee?.EarliestEntryDate,
+            Today: today,
+            GeneralEntryDate: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt.InZone(zone).Date : null)
+        {
+            CheckoutTicketId = ticket.CheckoutTicketId,
+            Requirements = requirements,
+        };
+    }
+
+    /// <summary>
+    /// A Ticket Tailor ticket of the current event, else a ticket Humans' checkout issued for the active event. Either
+    /// way Gate's own scan row is the check-in record; only Ticket Tailor tickets carry a vendor check-in to respect.
+    /// </summary>
+    private async Task<ScannedTicket?> FindTicketAsync(string code, EventSettingsInfo? burn, CancellationToken ct)
+    {
         var orders = await tickets.GetTicketOrdersAsync(ct);
         var attendee = orders
             .Where(o => o.IsCurrentEvent)
             .SelectMany(o => o.Attendees)
             .FirstOrDefault(a => a.Barcode is not null
                 && string.Equals(GateBarcode.Normalize(a.Barcode), code, StringComparison.Ordinal));
+        if (attendee is not null)
+            return new ScannedTicket(
+                attendee.AttendeeName, attendee.TicketTypeName,
+                IsVoid: attendee.Status == TicketAttendeeStatus.Void,
+                CheckedInAtVendor: attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn,
+                GuestUserId: attendee.MatchedUserId, EntryUserId: attendee.MatchedUserId,
+                TicketAttendeeId: attendee.Id, CheckoutTicketId: null, VendorTicketId: attendee.VendorTicketId);
 
-        if (attendee is null)
-            return NotFound(code);
+        if (burn is null || await issuedTickets.FindIssuedTicketAsync(code, ct) is not { } issued
+            || issued.EventSettingsId != burn.Id)
+            return null;
 
-        var settings = await repository.GetSettingsAsync(ct);
-        var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
-        var burn = settingsService.GetActiveEventSettings();
-        var now = clock.GetCurrentInstant();
-        var zone = EventZone(burn?.TimeZoneId);
-        var today = now.InZone(zone).Date;
+        return new ScannedTicket(
+            issued.HolderName, issued.TicketLabel,
+            IsVoid: !issued.IsValid, CheckedInAtVendor: false,
+            GuestUserId: issued.HolderUserId, EntryUserId: issued.EntryUserId,
+            TicketAttendeeId: null, CheckoutTicketId: issued.Id, VendorTicketId: null);
+    }
 
-        EarlyEntryRosterRow? ee = attendee.MatchedUserId is { } uid
-            ? await earlyEntry.GetForUserAsync(uid, ct)
-            : null;
+    private sealed record ScannedTicket(
+        string? Name,
+        string? TypeName,
+        bool IsVoid,
+        bool CheckedInAtVendor,
+        Guid? GuestUserId,
+        Guid? EntryUserId,
+        Guid? TicketAttendeeId,
+        Guid? CheckoutTicketId,
+        string? VendorTicketId);
 
-        var outcome = GateAdmissionRules.Evaluate(new GateScanContext(
-            Found: true,
-            IsVoid: attendee.Status == TicketAttendeeStatus.Void,
-            AlreadyAdmittedLocally: priorAdmit is not null,
-            CheckedInAtVendor: attendee.CheckedInAt is not null
-                || attendee.Status == TicketAttendeeStatus.CheckedIn,
-            Now: now,
-            GeneralEntryOpensAt: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt : null,
-            MatchedToHuman: attendee.MatchedUserId is not null,
-            EarliestEntryDate: ee?.EarliestEntryDate,
-            Today: today));
-
-        return new GateScanResult(
-            outcome,
-            code,
-            attendee.AttendeeName,
-            attendee.TicketTypeName,
-            IsEarly: outcome == GatePreCheckOutcome.NeedsIdCheckEarly,
-            EarlyEntrySource: ee is { Sources.Count: > 0 } ? string.Join(", ", ee.Sources) : null,
-            TicketAttendeeId: attendee.Id,
-            GuestUserId: attendee.MatchedUserId,
-            PreviousAdmitAt: priorAdmit?.OccurredAt,
-            PreviousAdmitByUserId: priorAdmit?.ScannedByUserId,
-            VendorTicketId: attendee.VendorTicketId,
-            // Date only, never the EE source (privacy).
-            EarliestEntryDate: ee?.EarliestEntryDate,
-            Today: today,
-            GeneralEntryDate: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt.InZone(zone).Date : null);
+    /// <summary>
+    /// A source that fails becomes an item of its own: the agent fetches the gate lead rather than the gate silently
+    /// admitting someone whose outstanding items it could not read.
+    /// </summary>
+    private async Task<IReadOnlyList<GateEntryRequirement>> GetOutstandingAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct)
+    {
+        List<GateEntryRequirement> items = [];
+        foreach (var source in requirementSources)
+        {
+            try
+            {
+                items.AddRange(await source.GetOutstandingAsync(userId, eventSettingsId, ct));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Gate entry requirement source {Source} failed for {UserId}", source.GetType().Name, userId);
+                items.Add(new GateEntryRequirement(
+                    $"unavailable:{source.GetType().Name}",
+                    "Outstanding items could not be checked: ask the gate lead before admitting"));
+            }
+        }
+        return items.DistinctBy(i => i.Key, StringComparer.Ordinal).ToList();
     }
 
     public async Task<GateDecisionResult> RecordDecisionAsync(
@@ -113,7 +184,8 @@ internal sealed class GateService(
     {
         if (!FitsStorage(GateBarcode.Normalize(input.Barcode), GateScanEvent.BarcodeMaxLength)
             || !FitsStorage(input.LaneId, GateScanEvent.LaneIdMaxLength)
-            || !FitsStorage(input.Note, GateScanEvent.NoteMaxLength))
+            || !FitsStorage(input.Note, GateScanEvent.NoteMaxLength)
+            || input.ConfirmedRequirementKeys.Count > MaxConfirmedRequirements)
         {
             logger.LogWarning("Rejected gate decision exceeding storage limits from scanner {ScannerId}", scannedByUserId);
             return new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true);
@@ -127,6 +199,11 @@ internal sealed class GateService(
         var eval = await EvaluateAsync(input.Barcode, ct);
         var verdict = ResolveVerdict(eval.Outcome, input, overrideAuthorized);
         var admit = IsAdmit(verdict);
+
+        // Outstanding items are re-read too: an admit needs every current item confirmed, not the ones the card showed.
+        if (admit && eval.Requirements.Any(r => !input.ConfirmedRequirementKeys.Contains(r.Key, StringComparer.Ordinal)))
+            return new GateDecisionResult(GateVerdict.Unresolved, eval.GuestName, eval.TicketTypeName, false, null, null,
+                UnconfirmedRequirements: eval);
 
         var scan = BuildEvent(eval, input, scannedByUserId, verdict, admit, overrideAuthorized);
         var recorded = await repository.RecordScanAsync(scan, ct);
@@ -153,6 +230,8 @@ internal sealed class GateService(
             eval.PreviousAdmitAt, eval.PreviousAdmitByUserId,
             VendorTicketId: admit ? eval.VendorTicketId : null);
     }
+
+    private const int MaxConfirmedRequirements = 32;
 
     private static bool FitsStorage(string? value, int limit) =>
         value is null || value.EnumerateRunes().Count() <= limit;
@@ -268,7 +347,8 @@ internal sealed class GateService(
     public async Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default)
     {
         var scans = await repository.GetScansSinceAsync(clock.GetCurrentInstant().Minus(VendorBackfillWindow), ct);
-        var admits = scans.Where(s => IsAdmit(s.Verdict)).ToList();
+        // Checkout-issued tickets live only in Humans: there is no vendor to mirror them to.
+        var admits = scans.Where(s => IsAdmit(s.Verdict) && s.CheckoutTicketId is null).ToList();
 
         var orders = await tickets.GetTicketOrdersAsync(ct);
         var attendees = orders
@@ -444,6 +524,7 @@ internal sealed class GateService(
             Verdict = s.Verdict.ToString(),
             Role = s.GuestUserId == userId ? "Guest" : "Scanner",
             s.LaneId,
+            ConfirmedRequirements = s.GuestUserId == userId ? s.ConfirmedRequirements : null,
         }).ToList());
 
         return [slice];
@@ -495,14 +576,26 @@ internal sealed class GateService(
             ScannedByUserId = scannedByUserId,
             Barcode = eval.Barcode,
             TicketAttendeeId = eval.TicketAttendeeId,
+            CheckoutTicketId = eval.CheckoutTicketId,
             GuestUserId = eval.GuestUserId,
             Verdict = verdict,
             LaneId = input.LaneId,
             ClientScanAt = input.ClientScanAt,
             Note = input.Note,
+            ConfirmedRequirements = admit ? ConfirmedText(eval.Requirements) : null,
             OverrideByUserId = admit && overrideAuthorized ? scannedByUserId : null,
             AdmitDedupeKey = admit ? eval.Barcode : null,
         };
+
+    private static string? ConfirmedText(IReadOnlyList<GateEntryRequirement> items)
+    {
+        if (items.Count == 0)
+            return null;
+        var text = string.Join('\n', items.Select(i => i.Instruction));
+        return text.Length <= GateScanEvent.ConfirmedRequirementsMaxLength
+            ? text
+            : text[..(GateScanEvent.ConfirmedRequirementsMaxLength - 1)] + "…";
+    }
 
     private static bool IsAdmit(GateVerdict v) =>
         v is GateVerdict.Admitted or GateVerdict.AdmittedEarly

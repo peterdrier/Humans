@@ -26,6 +26,7 @@ internal sealed class GateScanEventConfiguration : IEntityTypeConfiguration<Gate
 
         builder.Property(x => x.LaneId).HasMaxLength(GateScanEvent.LaneIdMaxLength);
         builder.Property(x => x.Note).HasMaxLength(GateScanEvent.NoteMaxLength);
+        builder.Property(x => x.ConfirmedRequirements).HasMaxLength(GateScanEvent.ConfirmedRequirementsMaxLength);
         builder.Property(x => x.AdmitDedupeKey).HasMaxLength(GateScanEvent.BarcodeMaxLength);
 
         // At most one admit per barcode across all lanes. Postgres excludes nulls, so non-admit rows never collide.
