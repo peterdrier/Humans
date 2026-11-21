@@ -95,6 +95,8 @@ internal sealed partial class TicketCheckoutService
         var dependents = (await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .ToList();
+        if (await IsAdmittedAsync(ticket, ct))
+            return new("Tickets_Resale_NotOfferable");
         var now = clock.GetCurrentInstant();
         var offer = new TicketResaleOffer
         {
@@ -148,6 +150,8 @@ internal sealed partial class TicketCheckoutService
             return new("Tickets_Resale_NotFound");
         if (offer.State != TicketResaleOfferState.Open)
             return new("Tickets_Resale_InCheckout");
+        if (await IsAdmittedAsync(ticket, ct))
+            return new("Tickets_Resale_NotOfferable");
         var now = clock.GetCurrentInstant();
         if (offer.IsDirectedTo(now))
             return new("Tickets_Resale_InviteLive");
@@ -195,6 +199,18 @@ internal sealed partial class TicketCheckoutService
             $"Invitation for ticket {ticket.Barcode} cancelled; it keeps its place in the queue", userId, ct);
         return CheckoutMutationResult.Ok;
     }
+
+    /// <summary>The ticket or a valid child riding on it was admitted: selling it would void someone already inside.</summary>
+    private async Task<bool> IsAdmittedAsync(TicketCheckoutTicket ticket, CancellationToken ct)
+    {
+        var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
+            .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
+            .Select(t => t.Barcode);
+        return (await gateAdmissions.GetAdmittedAsync([ticket.Barcode, .. dependents], ct)).Count > 0;
+    }
+
+    private async Task<bool> IsAdmittedAsync(Guid ticketId, CancellationToken ct) =>
+        await repository.GetTicketAsync(ticketId, ct) is { } ticket && await IsAdmittedAsync(ticket, ct);
 
     private async Task<(TicketCheckoutTicket? Ticket, TicketResaleOffer? Offer)> OwnOfferAsync(
         Guid ticketId, Guid userId, CancellationToken ct)

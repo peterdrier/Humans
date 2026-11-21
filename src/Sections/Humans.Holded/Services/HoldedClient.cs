@@ -458,11 +458,14 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    public async Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
+    public Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default) =>
+        ApproveDocumentAsync("purchases", documentId, ct);
+
+    private async Task ApproveDocumentAsync(string segment, string documentId, CancellationToken ct)
     {
         // A bodyless POST 411s through Holded's proxy without an explicit Content-Length; empty content sets one.
         using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/purchases/{documentId}/approve")
+            HttpMethod.Post, $"/api/v2/{segment}/{documentId}/approve")
         { Content = new ByteArrayContent([]) };
         try
         {
@@ -473,7 +476,8 @@ internal sealed class HoldedClient : IHoldedClient
         catch (HoldedPermanentException ex) when (ex.StatusCode == 400
             && ex.ResponseBody?.Contains("Document already approved", StringComparison.Ordinal) == true)
         {
-            _logger.LogWarning("Holded purchase document {DocumentId} was already approved — treated as success", documentId);
+            _logger.LogWarning("Holded {Segment} document {DocumentId} was already approved — treated as success",
+                segment, documentId);
         }
     }
 
@@ -537,10 +541,10 @@ internal sealed class HoldedClient : IHoldedClient
         // Total feeds the budget actuals; an absent field must fail the page, not upsert 0.00.
         Total = ReadRequiredDecimalV2(Prop(n, "total"), "total"),
         // Approved documents must not disappear from the live open-document list as fabricated paid balances.
-        // Drafts can omit this field and are excluded from booking independently by their draft flag.
+        // Drafts can omit this field; absent stays unknown rather than reading as fully paid.
         PaymentsPending = Prop(n, "draft")?.GetValue<bool>() == false
             ? ReadRequiredDecimalV2(Prop(n, "payments_pending"), "payments_pending")
-            : ReadDecimalV2(Prop(n, "payments_pending")),
+            : Prop(n, "payments_pending") is { } pending ? ReadDecimalV2(pending) : null,
         IsDraft = Prop(n, "draft")?.GetValue<bool>(),
         Currency = Prop(n, "currency")?.GetValue<string>() ?? "eur",
         Tags = ReadTags(Prop(n, "tags")),
@@ -583,13 +587,9 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    public async Task ApproveSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
-    {
-        using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}/{documentId}/approve");
-        using var resp = await _transport.SendAsync(req, ct);
-    }
+    public Task ApproveSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
+        ApproveDocumentAsync(SalesSegment(kind), documentId, ct);
 
     public async Task<IReadOnlyList<string>> FindSalesDocumentIdsByTagAsync(
         HoldedSalesDocumentKind kind, string tag, CancellationToken ct = default)

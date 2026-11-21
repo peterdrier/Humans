@@ -41,23 +41,29 @@ const sidebarMatrix: SidebarExpectation[] = [
       {
         label: 'Debug',
         items: [
-          'Logs', 'HTTP errors', 'DB stats', 'Cache stats', 'Client stats', 'Timings', 'Sections',
+          'Logs', 'HTTP errors', 'Database', 'DB stats', 'Cache stats', 'Client stats', 'Timings', 'Sections',
           'Configuration', 'Maintenance', 'All users', 'Data migrations', 'Hangfire', 'Health',
           'Color palette', 'Components', 'Date formats', 'Translations',
         ],
       },
       { label: 'Early Entry', items: ['Early entry'] },
       { label: 'Events', items: ['Dashboard', 'Moderation', 'Categories', 'Venues', 'Export'] },
-      { label: 'Finance', items: ['Holded connector'] },
+      {
+        label: 'Finance',
+        items: [
+          'Overview', 'Cash flow', 'Creditors', 'SEPA payouts', 'Pleo reconcile', 'Expense recon', 'Account map',
+          'Unmatched docs',
+        ],
+      },
       { label: 'Gate', items: ['Terminal'] },
       { label: 'Google', items: ['Resource sync'] },
       { label: 'Governance', items: ['Voting', 'Applications', 'Assembly Votes'] },
-      { label: 'Holded', items: ['Holded'] },
+      { label: 'Holded', items: ['Summary', 'Accounts', 'Purchases', 'API calls'] },
       { label: 'Issues', items: ['Issues'] },
       { label: 'Pleo', items: ['Pleo'] },
       { label: 'Rideshare', items: ['Settings & stats', 'Day roster'] },
       { label: 'Scanner', items: ['Scanner'] },
-      { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Order years', 'Payment methods'] },
+      { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Team transfers', 'Order years', 'Payment methods'] },
       { label: 'Stripe', items: ['Stripe'] },
       // Board also sees Approvals, but the Surveys index is app-access and renders outside the admin
       // shell, so its page has no tab strip to assert against.
@@ -68,7 +74,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     ],
   },
   {
-    name: 'humanAdmin',
+    name: 'usersAdmin',
     persona: 'users-admin',
     groups: [
       { label: 'Issues', items: ['Issues'] },
@@ -77,7 +83,7 @@ const sidebarMatrix: SidebarExpectation[] = [
     ],
   },
   {
-    name: 'ticketAdmin',
+    name: 'ticketsAdmin',
     persona: 'tickets-admin',
     groups: [
       { label: 'Gate', items: ['Terminal'] },
@@ -97,13 +103,15 @@ const sidebarMatrix: SidebarExpectation[] = [
     ],
   },
   {
-    name: 'volunteerCoordinator',
+    name: 'shiftsAdmin',
     persona: 'shifts-admin',
     groups: [
       { label: 'Consent', items: ['Review queue'] },
-      { label: 'Early Entry', items: ['Early entry'] },
       { label: 'Issues', items: ['Issues'] },
-      { label: 'Shifts', items: ['Volunteer tracking', 'Workload', 'Post-event stats'] },
+      {
+        label: 'Shifts',
+        items: ['Dashboard', 'Summary by camp', 'Volunteer tracking', 'Workload', 'Post-event stats'],
+      },
       { label: 'Surveys', items: ['Surveys'] },
     ],
   },
@@ -113,11 +121,17 @@ const sidebarMatrix: SidebarExpectation[] = [
     groups: [
       { label: 'Budget', items: ['Overview'] },
       { label: 'Expenses', items: ['Review'] },
-      { label: 'Finance', items: ['Holded connector'] },
-      { label: 'Holded', items: ['Holded'] },
+      {
+        label: 'Finance',
+        items: [
+          'Overview', 'Cash flow', 'Creditors', 'SEPA payouts', 'Pleo reconcile', 'Expense recon', 'Account map',
+          'Unmatched docs',
+        ],
+      },
+      { label: 'Holded', items: ['Summary', 'Accounts', 'Purchases', 'API calls'] },
       { label: 'Issues', items: ['Issues'] },
       { label: 'Pleo', items: ['Pleo'] },
-      { label: 'Store', items: ['Catalog', 'Summary', 'Payments'] },
+      { label: 'Store', items: ['Catalog', 'Summary', 'Payments', 'Team transfers', 'Order years', 'Payment methods'] },
       { label: 'Stripe', items: ['Stripe'] },
       { label: 'Surveys', items: ['Surveys'] },
     ],
@@ -150,18 +164,13 @@ test.describe('Admin shell — sidebar visibility matrix', () => {
       for (const group of role.groups) {
         const row = sidebar.locator(rowSelector(group.label));
         await expect(row, `${role.name} should see group '${group.label}'`).toBeVisible();
-        if (group.items.length < 2) continue;
 
-        // The row lands on the group's first page, whose tab strip lists the group's items.
+        // The row lands on the group's first page, whose tab strip lists exactly the group's visible items, in order
+        // — none when only one is visible. The pill span is a count, not part of the label.
         await page.goto((await row.getAttribute('href'))!);
-        const tabs = page.locator('nav.admin-tabs');
-        for (const item of group.items) {
-          // \s* absorbs whitespace around each tab's label.
-          await expect(
-            tabs.locator('a').filter({ hasText: new RegExp(`^\\s*${escapeRegex(item)}\\b`) }),
-            `${role.name} should see tab '${item}' in '${group.label}'`,
-          ).toBeVisible();
-        }
+        const tabs = await page.locator('nav.admin-tabs a > span:not(.pill)').allTextContents();
+        expect(tabs.map(t => t.trim()), `${role.name} tabs in '${group.label}'`)
+          .toEqual(group.items.length < 2 ? [] : group.items);
         await page.goto('/Admin');
       }
     });
@@ -241,7 +250,3 @@ test.describe('Admin shell — chrome', () => {
     await expect(page.locator('.page-head .sub')).toContainText('shift coverage');
   });
 });
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}

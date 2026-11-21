@@ -51,6 +51,7 @@ graph LR
     Onboarding
     Pleo
     Preapprovals
+    Pretix
     Rideshare
     Scanner
     Search
@@ -219,6 +220,7 @@ graph LR
     Preapprovals -.-> Email
     Preapprovals -.-> Finance
     Preapprovals -.-> Notifications
+    Pretix -.-> Tickets
     Rideshare --> Settings
     Rideshare -.-> Notifications
     Scanner --> Calendar
@@ -278,6 +280,7 @@ graph LR
     Tickets --> Budget
     Tickets --> Campaigns
     Tickets --> EarlyEntry
+    Tickets --> Gate
     Tickets --> Grants
     Tickets --> Issues
     Tickets --> Settings
