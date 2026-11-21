@@ -60,6 +60,7 @@ internal sealed class TicketDeliveryService(
 
         await auditLog.LogAsync(TicketsAuditActions.TicketDeliverySent, TicketCheckoutService.AuditEntityType, orderId,
             sent.Describe(), JobName);
+        await RecordOnTimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsEmailed, sent, null, ct);
     }
 
     /// <summary>The ticketing team's resend: every ticket email and the receipt go out again, no second invitation.</summary>
@@ -74,6 +75,7 @@ internal sealed class TicketDeliveryService(
 
         await auditLog.LogAsync(TicketsAuditActions.TicketDeliveryResent, TicketCheckoutService.AuditEntityType, orderId,
             sent.Describe(), actorUserId);
+        await RecordOnTimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsResent, sent, actorUserId, ct);
         return CheckoutMutationResult.Ok;
     }
 
@@ -157,7 +159,7 @@ internal sealed class TicketDeliveryService(
             buyer?.Email ?? order.BuyerEmail,
             order.BuyerName,
             eventSettings.EventName,
-            Reference(order.Id),
+            order.Reference,
             paidOn,
             order.PaymentMethod,
             order.Lines,
@@ -169,8 +171,15 @@ internal sealed class TicketDeliveryService(
         return new DeliveryOutcome(tickets, ticketMails, skipped);
     }
 
-    /// <summary>Short enough to read out to the ticketing team.</summary>
-    internal static string Reference(Guid orderId) => orderId.ToString("N")[..8].ToUpperInvariant();
+    /// <summary>The order timeline is where the ticketing team looks when a ticket "never arrived".</summary>
+    private async Task RecordOnTimelineAsync(
+        Guid orderId, TicketCheckoutOrderEventKind kind, DeliveryOutcome sent, Guid? actorUserId, CancellationToken ct)
+    {
+        await checkout.RecordDeliveryAsync(orderId, kind, sent.Describe(), actorUserId, ct);
+        if (sent.Skipped > 0)
+            await checkout.RecordDeliveryAsync(orderId, TicketCheckoutOrderEventKind.TicketMailSkipped,
+                $"{sent.Skipped} ticket(s) have no email address, so their ticket email was not sent", actorUserId, ct);
+    }
 
     /// <summary>Stable per mail and subject, so a repeated hand-off reuses the outbox row instead of mailing twice.</summary>
     internal static Guid DeliveryIdFor(string template, Guid subjectId)

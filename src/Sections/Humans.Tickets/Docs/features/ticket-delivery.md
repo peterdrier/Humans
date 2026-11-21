@@ -23,7 +23,7 @@ so every named person gets their own ticket by email, and can open it in Humans 
   the barcode as text, a link to `/Tickets/Buy/Mine`, and the ticket rules (named ticket matching photo ID, no transfers or
   outside resale, return through Humans refunds the ticket price when resold and never the donation, private event of
   the association). When someone else paid, it says who.
-- **Receipt:** order reference (first 8 hex characters of the order id), paid date in the event's time zone, payment
+- **Receipt:** order reference (`TicketCheckoutOrder.Reference`, also shown on the buyer and admin order pages), paid date in the event's time zone, payment
   method, each ticket line with its VAT rate, each donation line marked without VAT, total, any refund so far, and
   "a receipt, not an invoice" (no invoices for tickets).
 - **Invitation:** asks the holder to complete their profile and pick a shift, linking `/Profile` and `/Shifts`.
@@ -44,7 +44,8 @@ screen. `/Tickets/Buy/Mine` embeds the same image as a `data:` URI.
 `TicketsIssuedAsync` only enqueues a Hangfire job (`TicketDeliveryService.DeliverAsync`), so a failure while sending
 is retried instead of lost inside the paid transition. Each mail's `EmailMessage.DeliveryId` derives from the template
 and the ticket or order id, so a retry queues each mail once while the outbox keeps the first row. A ticket with no
-address is logged and counted as skipped in the audit row. The audit says what was handed to Email; Email applies
+address is logged and counted as skipped. Each delivery and resend goes on the order timeline (`TicketsEmailed`,
+`TicketsResent` with the actor, `TicketMailSkipped`) as well as the audit log. The audit says what was handed to Email; Email applies
 opt-outs itself. A TicketsAdmin's **Resend** on the admin order page (refused when no ticket is live) sends
 everything again with fresh ids and no second invitation, audited with the actor.
 

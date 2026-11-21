@@ -144,6 +144,8 @@ public sealed class TicketDeliveryServiceTests
         _jobs.ReceivedCalls().Should().BeEmpty("a resend does not schedule a second invitation");
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketDeliveryResent, Arg.Any<string>(), _order.Id,
             Arg.Any<string>(), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _checkout.Received(1).RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketsResent,
+            Arg.Any<string>(), actor, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -200,6 +202,10 @@ public sealed class TicketDeliveryServiceTests
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketDeliverySent, Arg.Any<string>(), _order.Id,
             "Handed 1 ticket email(s) for 3 live ticket(s) and the receipt to Email; 1 skipped for lack of an address",
             Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _checkout.Received(1).RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketsEmailed,
+            Arg.Any<string>(), null, Arg.Any<CancellationToken>());
+        await _checkout.Received(1).RecordDeliveryAsync(_order.Id, TicketCheckoutOrderEventKind.TicketMailSkipped,
+            Arg.Any<string>(), null, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

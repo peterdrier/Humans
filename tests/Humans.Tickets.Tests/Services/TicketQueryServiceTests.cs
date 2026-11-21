@@ -17,7 +17,6 @@ using Humans.Campaigns.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
-using Humans.Tickets.Services.Delivery;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
@@ -1383,8 +1382,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var rows = await _service.GetDonationExportDataAsync(Guid.NewGuid());
 
         rows.Select(r => (r.Date, r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
-            ("2027-01-02", TicketDeliveryService.Reference(paid.Id), "Donation: General", 175m),
-            ("2027-01-02", TicketDeliveryService.Reference(paid.Id), "Donation: LowIncomePool", 20m));
+            ("2027-01-02", paid.Reference, "Donation: General", 175m),
+            ("2027-01-02", paid.Reference, "Donation: LowIncomePool", 20m));
         rows[0].BuyerName.Should().Be("Ana Buyer");
     }
 

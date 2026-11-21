@@ -20,12 +20,13 @@
 </p>
 
 <table class="table table-sm">
-    <thead><tr><th>Created</th><th>Buyer</th><th>Tickets</th><th class="text-end">Total</th><th>State</th><th>Backend</th></tr></thead>
+    <thead><tr><th>Reference</th><th>Created</th><th>Buyer</th><th>Tickets</th><th class="text-end">Total</th><th>State</th><th>Backend</th></tr></thead>
     <tbody>
         @foreach (var o in Model.Orders)
         {
             <tr>
-                <td><a asp-action="Order" asp-route-id="@o.Id">@o.CreatedAt.ToDateTime()</a></td>
+                <td><a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a></td>
+                <td>@o.CreatedAt.ToDateTime()</td>
                 <td>@o.BuyerName</td>
                 <td>@o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)</td>
                 <td class="text-end">@Eur(o.TotalMinor)</td>

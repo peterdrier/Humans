@@ -87,6 +87,7 @@ namespace Humans.Tickets.Data.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     SalesEventId = table.Column<Guid>(type: "uuid", nullable: false),
                     OrderId = table.Column<Guid>(type: "uuid", nullable: false),
+                    LineIndex = table.Column<int>(type: "integer", nullable: false),
                     Kind = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     ParentTicketId = table.Column<Guid>(type: "uuid", nullable: true),
                     HolderUserId = table.Column<Guid>(type: "uuid", nullable: true),
@@ -127,7 +128,8 @@ namespace Humans.Tickets.Data.Migrations
                     DirectedEmail = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
                     DirectedTokenHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     DirectedExpiresAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
-                    DirectedUsedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true)
+                    DirectedUsedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
+                    DirectedInviteCount = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -200,9 +202,15 @@ namespace Humans.Tickets.Data.Migrations
                 column: "HolderUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ticket_checkout_tickets_OrderId",
+                name: "IX_ticket_checkout_tickets_OrderId_LineIndex",
                 table: "ticket_checkout_tickets",
-                column: "OrderId");
+                columns: new[] { "OrderId", "LineIndex" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ticket_checkout_tickets_ParentTicketId",
+                table: "ticket_checkout_tickets",
+                column: "ParentTicketId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ticket_checkout_tickets_SalesEventId",

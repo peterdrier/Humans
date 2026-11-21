@@ -21,10 +21,10 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// <summary>One page per event selling through Humans (not Closed); several events may sell at once.</summary>
     Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>The buy page for an invited buyer's link; null when the link names no offer.</summary>
     /// <summary>Events on sale with today's public price, for a signed-out visitor; soonest first.</summary>
     Task<IReadOnlyList<PublicSale>> GetPublicSalesAsync(CancellationToken ct = default);
 
+    /// <summary>The buy page for an invited buyer's link; null when the link names no offer.</summary>
     Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default);
 
     Task<StartCheckoutResult> StartCheckoutAsync(StartCheckout command, Guid userId, CancellationToken ct = default);
@@ -50,6 +50,11 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default);
 
+    Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Appends a ticket delivery step (emailed, resent, skipped) to the order's timeline.</summary>
+    Task RecordDeliveryAsync(Guid orderId, TicketCheckoutOrderEventKind kind, string detail, Guid? actorUserId, CancellationToken ct = default);
+
     /// <summary>Every ticket the person holds or held, any event and state, newest first.</summary>
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
 
@@ -60,7 +65,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
 
-    /// <summary>The person's valid or offered tickets with their resale state, for "my tickets".</summary>
+    /// <summary>The person's valid or offered tickets with their resale state, and the valid child tickets that go with them, for "my tickets".</summary>
     Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>The holder returns an adult ticket to the resale queue; its child tickets go with it.</summary>
@@ -181,11 +186,14 @@ internal sealed record CheckoutOrderDetail(
     IReadOnlyList<TicketCheckoutOrderEvent> Timeline,
     IReadOnlyList<TicketCheckoutTicket> Tickets)
 {
-    /// <summary>What may still be refunded: ticket lines only, net of every refund that did not fail.</summary>
+    /// <summary>
+    /// What may still be refunded: ticket lines only, net of what has gone back (the backend's total, dashboard refunds
+    /// included, or Humans' own settled refunds if the backend has not caught up) and of refunds not settled yet.
+    /// </summary>
     public long RefundableMinor =>
-        Math.Max(0, Order.TicketTotalMinor - Math.Max(
-            Order.RefundedMinor,
-            Refunds.Where(r => r.State != RefundState.Failed).Sum(r => r.AmountMinor)));
+        Math.Max(0, Order.TicketTotalMinor
+            - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
+            - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
 }
 
 /// <summary>

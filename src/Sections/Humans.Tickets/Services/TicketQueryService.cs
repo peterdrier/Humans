@@ -13,7 +13,6 @@ using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
-using Humans.Tickets.Services.Delivery;
 using Humans.Tickets.Services.Dtos;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
@@ -159,7 +158,7 @@ internal sealed class TicketQueryService(
         {
             var date = (o.PaidAt ?? o.UpdatedAt).InZone(OrgZone).Date.ToInvariantDate();
             foreach (var line in o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation))
-                rows.Add(new DonationExportRow(date, TicketDeliveryService.Reference(o.Id), o.BuyerName, o.BuyerEmail,
+                rows.Add(new DonationExportRow(date, o.Reference, o.BuyerName, o.BuyerEmail,
                     $"Donation: {line.DonationPurpose ?? TicketDonationPurpose.General}", line.AmountMinor / 100m));
         }
 
