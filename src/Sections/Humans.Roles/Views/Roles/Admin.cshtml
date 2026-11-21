@@ -1,0 +1,27 @@
+@model IReadOnlyList<AdminOwnerRow>
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = "Roles";
+    var missing = Model.Count(r => r.Coordinators.Count == 0);
+    Func<AdminOwnerRow, IHtmlContent> coordinatorsCell = @<text>@if (item.Coordinators.Count == 0) { <span class="text-muted">None</span> } else { foreach (var id in item.Coordinators) { <div><vc:human user-id="@id" /></div> } }</text>;
+    var table = TableModel.For(Model)
+        .Link("Team", r => r.Owner, r => r.Url)
+        .Template("Coordinators", coordinatorsCell)
+        .Column("Roles", r => r.RoleCount, c => c.End())
+        .Column("Open slots", r => r.OpenSlots, c => c.End())
+        .Column("Hidden", r => r.IsHidden, c => c.BoolIcon())
+        .Empty("No teams yet.")
+        .Build();
+}
+
+<page-header title="Roles">
+    <page-header-subtitle>Every team's roles and who coordinates it. Open a team to set up its coordinator role.</page-header-subtitle>
+</page-header>
+
+<div class="stats">
+    <partial name="_StatTile" model='new StatTileViewModel("Teams", Model.Count.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Without a coordinator", missing.ToString(), Severity: missing > 0 ? Humans.Base.Interfaces.TileSeverity.Warning : Humans.Base.Interfaces.TileSeverity.Normal)' />
+</div>
+
+<partial name="_Table" model="table" />

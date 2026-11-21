@@ -1,4 +1,5 @@
 using Humans.AuditLog.Contracts;
+using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
@@ -10,12 +11,13 @@ using Humans.Roles.Services;
 using Humans.Roles.ViewComponents;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Roles;
 
-public sealed class Section : ISection, ISectionRoles, ISectionNav, ITeamRolesPart
+public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdminNav, ISectionPolicies, ITeamRolesPart
 {
     Type ITeamRolesPart.Card => typeof(TeamRolesCardViewComponent);
 
@@ -28,6 +30,12 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ITeamRolesPa
 
     IEnumerable<MemberNavItem> ISectionNav.Items() =>
         [new("Nav_Roles", Controller: "Roles", Action: "Index", Weight: 21)];
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+        [new("Roles", [new("Roles", "Roles", "Admin", null, null, "fa-solid fa-user-tag", RolesPolicies.Admin)])];
+
+    void ISectionPolicies.AddPolicies(AuthorizationOptions options) =>
+        options.AddPolicy(RolesPolicies.Admin, policy => policy.RequireRole(RoleNames.Admin, RolesSystemRoles.RolesAdmin));
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {

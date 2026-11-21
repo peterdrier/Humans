@@ -44,6 +44,31 @@ internal sealed class RolesController(
         return View(new BoardViewModel(slots, slots.Count(s => s.Priority == SlotPriority.Critical)));
     }
 
+    [HttpGet("Admin")]
+    [Authorize(Policy = RolesPolicies.Admin)]
+    public async Task<IActionResult> Admin(CancellationToken ct)
+    {
+        var owners = await roles.GetOwnersAsync(ct);
+        var all = await roles.GetRolesAsync(ct);
+        var rows = owners
+            .Where(o => o.IsActive)
+            .Select(o =>
+            {
+                var here = all.Where(r => r.Owner == o.Owner).ToList();
+                return new AdminOwnerRow(
+                    OwnerLabel(o, owners),
+                    Url.Action(nameof(Owner), new { kind = o.Owner.Kind, key = o.Key })!,
+                    [.. here.Where(r => r.IsCoordinator).SelectMany(r => r.Holders).Select(h => h.UserId).Distinct()],
+                    here.Count,
+                    here.Sum(r => r.SlotCount - r.Holders.Count),
+                    o.IsHidden);
+            })
+            .OrderBy(r => r.Owner, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return View(rows);
+    }
+
     [HttpGet("{kind}/{key}")]
     public async Task<IActionResult> Owner(string kind, string key, CancellationToken ct)
     {
