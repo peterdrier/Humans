@@ -729,9 +729,9 @@ src/Sections/Humans.Auth/Data/Migrations/20261113002711_RenameRoleAssignmentsToA
 # Evidence: all three were added 2026-11-21 by the checkout PR (#2498, commit 4e8012cb4; pickaxe
 # git log -S over origin/main shows only that PR, #2519 and its review round touching them). After
 # #2528 nothing reads or writes them. There is no ticketing data in production yet.
-# Approval: Peter, 2026-11-21: "no migrations though, there's no data in production yet to
-# migrate, just make the changes", relayed by the coordinator as "drop the obsolete threshold and
-# expiry columns in this PR".
+# Approval: Peter, 2026-11-21, asked about these three drops in the PR's review thread: "if they're
+# in the ticketing bit and we haven't used any of it yet, then you can drop whatever you want.
+# Because none of it's live and anywhere near production. So go ahead." Kept in #2528.
 src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=DirectedExpiresAt,table=ticket_resale_offers)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=DirectedResaleDays,table=ticket_sales_events)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=ResaleOpensAtSold,table=ticket_sales_events)#1
