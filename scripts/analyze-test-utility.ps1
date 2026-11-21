@@ -58,12 +58,12 @@ function Find-ProductionMatches {
 
     $pattern = "$SubjectName.cs"
     return @(Get-ChildItem -Path (Join-Path $Root 'src') -Recurse -Filter $pattern -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Migrations\\|\.Designer\.cs$|DbContextModelSnapshot\.cs$' } |
+        Where-Object { $_.FullName -notmatch '[\\/](bin|obj|Migrations)[\\/]|\.Designer\.cs$|DbContextModelSnapshot\.cs$' } |
         ForEach-Object { Convert-ToRepoPath $_.FullName })
 }
 
 $testFiles = Get-ChildItem -Path (Join-Path $Root 'tests') -Recurse -Filter '*.cs' -File |
-    Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\' }
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }
 
 $rows = foreach ($file in $testFiles) {
     $text = Get-Content -Raw -Path $file.FullName
