@@ -142,8 +142,8 @@ internal sealed class ShiftsDemoStory(
                 EventSettingsId = eventId,
                 Name = $"{period} (demo)",
                 Priority = ShiftPriority.Normal,
-                // Public so the volunteer browse page lists them next to the dashboard.
-                Policy = SignupPolicy.Public,
+                // Approval so self-signups stay Pending: a Public rota confirms them all, leaving nothing to refuse.
+                Policy = SignupPolicy.RequireApproval,
                 Period = period,
                 IsVisibleToVolunteers = true,
                 CreatedAt = clock.GetCurrentInstant(),

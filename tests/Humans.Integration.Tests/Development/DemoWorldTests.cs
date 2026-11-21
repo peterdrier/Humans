@@ -4,6 +4,7 @@ using Humans.Development.Data;
 using Humans.Development.Domain;
 using Humans.Development.Services.Demo;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,12 +18,17 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var eventId = await Factory.SeedActiveEventAsync();
+        using (var scope = Factory.Services.CreateScope())
+            await scope.ServiceProvider.GetRequiredService<IShiftSeeding>().SetShiftBrowsingOpenAsync(eventId, isOpen: true);
 
         var first = await RunAsync(reset: false, adminId, ct);
         first.Should().NotContain(line => line.Contains("failed", StringComparison.OrdinalIgnoreCase));
         var crowd = await MadeCrowdAsync(generation: 1, ct);
         crowd.Should().HaveCount(DemoCast.Size);
         (await UserInfosAsync(crowd, ct)).Should().AllSatisfy(u => u.IsTombstone.Should().BeFalse());
+        (await LedgerAsync(ct)).Where(e => e.Key.StartsWith(RotaKeyPrefix, StringComparison.Ordinal))
+            .Should().NotBeEmpty().And.AllSatisfy(e => e.State.Should().Be(DemoLedgerState.Made));
 
         var made = (await LedgerAsync(ct)).Count;
         await RunAsync(reset: false, adminId, ct);
@@ -35,7 +41,11 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
             .And.NotIntersectWith(crowd);
         (await LedgerAsync(ct)).Where(e => e.Generation == 1 && e.Key.StartsWith(TeamsDemo.TeamKeyPrefix, StringComparison.Ordinal))
             .Should().NotBeEmpty().And.AllSatisfy(e => e.State.Should().Be(DemoLedgerState.Retired));
+        (await LedgerAsync(ct)).Where(e => e.Generation == 1 && e.Key.StartsWith(RotaKeyPrefix, StringComparison.Ordinal))
+            .Should().AllSatisfy(e => e.State.Should().Be(DemoLedgerState.Retired));
     }
+
+    private const string RotaKeyPrefix = "shifts:rota:";
 
     private async Task<IReadOnlyList<string>> RunAsync(bool reset, Guid actorId, CancellationToken ct)
     {
