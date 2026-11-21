@@ -303,8 +303,10 @@ namespace Humans.Holded.Data.Migrations
                         .HasColumnType("character varying(16)");
 
                     b.Property<string>("Scope")
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("");
 
                     b.Property<int>("LastCount")
                         .HasColumnType("integer");

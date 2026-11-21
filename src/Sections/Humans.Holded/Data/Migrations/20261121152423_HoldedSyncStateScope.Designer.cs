@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Holded.Data.Migrations
 {
     [DbContext(typeof(HoldedDbContext))]
-    [Migration("20261121013556_HoldedSyncStateScope")]
+    [Migration("20261121152423_HoldedSyncStateScope")]
     partial class HoldedSyncStateScope
     {
         /// <inheritdoc />
@@ -306,8 +306,10 @@ namespace Humans.Holded.Data.Migrations
                         .HasColumnType("character varying(16)");
 
                     b.Property<string>("Scope")
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("");
 
                     b.Property<int>("LastCount")
                         .HasColumnType("integer");

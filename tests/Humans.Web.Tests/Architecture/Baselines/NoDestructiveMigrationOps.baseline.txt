@@ -730,4 +730,7 @@ src/Sections/Humans.Auth/Data/Migrations/20261113002711_RenameRoleAssignmentsToA
 # existing row keeps its values with Scope = "".
 # Approval: Peter, 2026-11-21 — chose "Widen PK" over a new table for per-treasury bank-feed sync
 # state, in this PR's session.
-src/Sections/Humans.Holded/Data/Migrations/20261121013556_HoldedSyncStateScope.cs:DropPrimaryKey(name=PK_holded_sync_states,table=holded_sync_states)#1
+# Rollback caveat: Down() re-adds the PK on Kind alone, which fails with a duplicate key once two
+# treasuries have synced (or one has, beside the legacy unscoped row). Rolling back means deleting
+# the BankMovements rows first — safe, the state is re-derived by the next sync.
+src/Sections/Humans.Holded/Data/Migrations/20261121152423_HoldedSyncStateScope.cs:DropPrimaryKey(name=PK_holded_sync_states,table=holded_sync_states)#1

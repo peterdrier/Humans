@@ -12,7 +12,7 @@ internal sealed class HoldedSyncStateConfiguration : IEntityTypeConfiguration<Ho
         // No HasData: a seeded row would claim a sync had a state before one ever ran.
         b.HasKey(x => new { x.Kind, x.Scope });
         b.Property(x => x.Kind).HasConversion<string>().HasMaxLength(16);
-        b.Property(x => x.Scope).HasMaxLength(64);
+        b.Property(x => x.Scope).HasMaxLength(64).HasDefaultValue("");
         b.Property(x => x.SyncStatus).HasConversion<string>().HasMaxLength(16);
         b.Property(x => x.LastError).HasMaxLength(2000);
     }
