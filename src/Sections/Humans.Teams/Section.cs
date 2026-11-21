@@ -1,3 +1,5 @@
+using Humans.Permissions.Contracts;
+using Humans.Roles.Contracts;
 using System.Globalization;
 using Humans.Base.Models.Tables;
 using Humans.Base.Authorization;
@@ -90,6 +92,8 @@ public sealed class Section :
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IOwnerKind>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IRoleOwner>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
 

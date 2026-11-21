@@ -55,6 +55,7 @@ graph LR
     Preapprovals
     Pretix
     Rideshare
+    Roles
     Scanner
     Search
     Settings
@@ -227,6 +228,9 @@ graph LR
     Pretix -.-> Tickets
     Rideshare --> Settings
     Rideshare -.-> Notifications
+    Roles --> Auth
+    Roles --> Permissions
+    Roles -.-> Teams
     Scanner --> Calendar
     Scanner --> Consent
     Scanner --> EarlyEntry
@@ -272,6 +276,8 @@ graph LR
     Teams --> EarlyEntry
     Teams --> Google
     Teams --> Issues
+    Teams --> Permissions
+    Teams --> Roles
     Teams --> Settings
     Teams -.-> Camps
     Teams -.-> Email

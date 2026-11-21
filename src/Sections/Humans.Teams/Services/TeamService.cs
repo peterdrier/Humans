@@ -1,3 +1,4 @@
+using Humans.Roles.Contracts;
 using Humans.Base.Constants;
 using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
@@ -1127,6 +1128,7 @@ internal sealed class TeamService(
         var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
         foreach (var userId in closedUsers)
         {
+            await RoleWrite.RemoveAsync(TeamOwner.Of(teamId), userId, actorUserId, cancellationToken);
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
                 $"Membership ended when {team.Name} was deactivated",
@@ -1210,6 +1212,7 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
+        await RoleWrite.RemoveAsync(TeamOwner.Of(teamId), userId, userId, cancellationToken);
         await MarkMemberLeftWithOutboxAsync(member, null, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -1266,6 +1269,9 @@ internal sealed class TeamService(
         }
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
+        // A merge leaves Roles alone: Roles' own merge step moves the person's roles to the survivor.
+        if (mergeTarget is null)
+            await RoleWrite.RemoveAsync(TeamOwner.Of(teamId), userId, actorUserId, cancellationToken);
         var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, mergeTarget?.Id, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -2209,6 +2215,8 @@ internal sealed class TeamService(
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
         return result;
     }
+
+    private IRoleWrite RoleWrite => serviceProvider.GetRequiredService<IRoleWrite>();
 
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
