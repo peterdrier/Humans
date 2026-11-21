@@ -1,149 +1,179 @@
 @using Humans.Tickets.Domain.Checkout
 @model Humans.Tickets.Services.Checkout.CheckoutOrderDetail
 @{
-    ViewData["Title"] = "Ticket order";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    ViewData["Title"] = $"Order {Model.Order.Reference}";
     var o = Model.Order;
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+    var canResend = o.State == TicketCheckoutOrderState.Paid;
+    var netMinor = o.TotalMinor - o.RefundedMinor - o.DisputedMinor;
+    var canRefund = o.State == TicketCheckoutOrderState.Paid && Model.RefundableMinor > 0;
+
+    Func<TicketCheckoutOrderLine, IHtmlContent> holderCell = @<text>@item.AttendeeName @if (item.AttendeeUserId is { } aid) { <span class="small">(<vc:human user-id="@aid" link="Admin" />)</span> } <span class="small d-block">@item.AttendeeEmail</span></text>;
+    var lines = TableModel.For(o.Lines)
+        .Column("Line", l => l.Description)
+        .Template("Holder", holderCell, c => c.NoSort())
+        .Column("From resale queue", l => l.ResaleOfferId is not null, c => c.BoolIcon().NoSort())
+        .Column("VAT", l => (l.VatRate * 100).ToString("0.##", invariant) + " %", c => c.End())
+        .Column("Amount (€)", l => l.AmountMinor / 100m, c => c.Currency().End())
+        .Footer(new TableFooterCell("Total"), new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""),
+            new TableFooterCell((o.TotalMinor / 100m).ToEuro(), "text-end text-nowrap"))
+        .Empty("This order has no lines.")
+        .Build();
+
+    Func<TicketCheckoutTicket, IHtmlContent> ticketHolderCell = @<text>@item.HolderName @if (item.HolderUserId is { } hid) { <span class="small">(<vc:human user-id="@hid" link="Admin" />)</span> } <span class="small d-block">@item.HolderEmail</span></text>;
+    Func<TicketCheckoutTicket, IHtmlContent> codeCell = @<text><a asp-controller="TicketsSupportAdmin" asp-action="Ticket" asp-route-orderId="@o.Id" asp-route-ticketId="@item.Id"><code>@item.Barcode</code></a></text>;
+    Func<TicketCheckoutTicket, IHtmlContent> ticketStateCell = @<text><status-badge value="@item.State" /> <span class="small">@item.VoidReason</span></text>;
+    var tickets = TableModel.For(Model.Tickets)
+        .Template("Holder", ticketHolderCell, c => c.NoSort())
+        .Column("Kind", t => SharedLocalizer.EnumDisplay(t.Kind))
+        .Template("Code", codeCell, sortBy: t => t.Barcode)
+        .Template("State", ticketStateCell, sortBy: t => t.State.ToString())
+        .Column("Paid (€)", t => t.PricePaidMinor / 100m, c => c.Currency().End())
+        .Empty("No tickets issued.")
+        .Build();
+
+    Func<TicketCheckoutRefund, IHtmlContent> refundStateCell = @<text>
+        <status-badge value="@item.State" />
+        <span class="small">@item.FailureReason</span>
+        @if (item.ManualRefundUrl is not null)
+        {
+            <a class="small" href="@item.ManualRefundUrl" target="_blank" rel="noopener">refund there</a>
+        }
+    </text>;
+    var refunds = TableModel.For(Model.Refunds)
+        .Column("When", r => r.CreatedAt, c => c.DateTime())
+        .Column("Amount (€)", r => r.AmountMinor / 100m, c => c.Currency().End())
+        .Template("State", refundStateCell, sortBy: r => r.State.ToString())
+        .Column("Reason", r => r.Reason)
+        .Column("Backend id", r => r.BackendRefundId, c => c.Code())
+        .Empty("No refunds asked.")
+        .Build();
+
+    Func<TicketCheckoutOrderEvent, IHtmlContent> whoCell = @<text>
+        @if (item.ActorUserId is { } actor)
+        {
+            <vc:human user-id="@actor" link="Admin" />
+        }
+        else
+        {
+            <span class="text-muted">automation</span>
+        }
+    </text>;
+    var timeline = TableModel.For(Model.Timeline)
+        .Column("When", e => e.At, c => c.DateTime())
+        .Column("What", e => SharedLocalizer.EnumDisplay(e.Kind))
+        .Column("Detail", e => e.Detail)
+        .Template("Who", whoCell, c => c.NoSort().Css("text-nowrap"))
+        .Empty("Nothing recorded yet.")
+        .Build();
 }
 
 @section Crumbs {
     <a asp-action="Orders" asp-route-id="@o.SalesEventId">Orders</a>
-    <span>Order</span>
+    <span>@o.Reference</span>
 }
 
-<page-header title="Ticket order" />
-
-<dl class="row">
-    <dt class="col-sm-3">Reference</dt><dd class="col-sm-9"><code>@o.Reference</code></dd>
-    <dt class="col-sm-3">Buyer</dt><dd class="col-sm-9">@o.BuyerName (@o.BuyerEmail) <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@o.BuyerUserId">profile</a></dd>
-    <dt class="col-sm-3">State</dt><dd class="col-sm-9">@o.State</dd>
-    <dt class="col-sm-3">Backend</dt><dd class="col-sm-9"><code>@o.BackendKey</code> @o.BackendOrderId @if (o.AdminUrl is not null) { <a href="@o.AdminUrl" target="_blank" rel="noopener">open in @o.BackendKey</a> }</dd>
-    <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@o.CreatedAt.ToDateTime()</dd>
-    <dt class="col-sm-3">Paid</dt><dd class="col-sm-9">@(o.PaidAt?.ToDateTime() ?? "—") @o.PaymentMethod</dd>
-    <dt class="col-sm-3">Fee</dt><dd class="col-sm-9">@(o.FeeMinor is { } fee ? Eur(fee) : "—")</dd>
-    <dt class="col-sm-3">Refunded</dt><dd class="col-sm-9">@Eur(o.RefundedMinor)</dd>
-    @if (o.DisputedMinor > 0)
+<page-header title="Order @o.Reference" subtitle="@o.BuyerName">
+    <page-header-badge><status-badge value="@o.State" /></page-header-badge>
+    @if (o.AdminUrl is not null)
     {
-        <dt class="col-sm-3">Charged back</dt><dd class="col-sm-9 text-danger">@Eur(o.DisputedMinor)</dd>
+        <a class="btn btn-outline-secondary btn-sm" href="@o.AdminUrl" target="_blank" rel="noopener">
+            Open in @o.BackendKey <i class="fa-solid fa-arrow-up-right-from-square ms-1" aria-hidden="true"></i>
+        </a>
     }
-</dl>
+</page-header>
 
-<table class="table table-sm">
-    <thead><tr><th>Line</th><th>Holder</th><th>Resale</th><th class="text-end">VAT</th><th class="text-end">Amount</th></tr></thead>
-    <tbody>
-        @foreach (var l in o.Lines)
-        {
-            <tr>
-                <td>@l.Description</td>
-                <td>@l.AttendeeName @(l.AttendeeEmail is null ? "" : $"({l.AttendeeEmail})")</td>
-                <td>@(l.ResaleOfferId is null ? "" : "from queue")</td>
-                <td class="text-end">@((l.VatRate * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%</td>
-                <td class="text-end">@Eur(l.AmountMinor)</td>
-            </tr>
-        }
-    </tbody>
-    <tfoot><tr class="fw-semibold"><td colspan="4">Total</td><td class="text-end">@Eur(o.TotalMinor)</td></tr></tfoot>
-</table>
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">Lines</div>
+            <partial name="_Table" model="lines" />
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">Tickets</div>
+            <partial name="_Table" model="tickets" />
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">Refunds</div>
+            <partial name="_Table" model="refunds" />
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">Timeline</div>
+            <partial name="_Table" model="timeline" />
+        </div>
+    </div>
 
-<h2 class="h5">Tickets</h2>
-@if (Model.Tickets.Count == 0)
-{
-    <p class="text-muted">None issued.</p>
-}
-else
-{
-    <table class="table table-sm">
-        <thead><tr><th>Holder</th><th>Kind</th><th>Code</th><th>State</th><th class="text-end">Paid</th></tr></thead>
-        <tbody>
-            @foreach (var t in Model.Tickets)
-            {
-                <tr>
-                    <td>@t.HolderName @(t.HolderEmail is null ? "" : $"({t.HolderEmail})")</td>
-                    <td>@t.Kind</td>
-                    <td><a asp-controller="TicketsSupportAdmin" asp-action="Ticket" asp-route-orderId="@o.Id" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a></td>
-                    <td>@t.State @t.VoidReason</td>
-                    <td class="text-end">@Eur(t.PricePaidMinor)</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-<h2 class="h5">Refunds</h2>
-@if (Model.Refunds.Count == 0)
-{
-    <p class="text-muted">None.</p>
-}
-else
-{
-    <table class="table table-sm">
-        <thead><tr><th>When</th><th class="text-end">Amount</th><th>State</th><th>Reason</th><th>Backend id</th></tr></thead>
-        <tbody>
-            @foreach (var r in Model.Refunds)
-            {
-                <tr>
-                    <td>@r.CreatedAt.ToDateTime()</td>
-                    <td class="text-end">@Eur(r.AmountMinor)</td>
-                    <td>@r.State @r.FailureReason @if (r.ManualRefundUrl is not null) { <a href="@r.ManualRefundUrl">refund there</a> }</td>
-                    <td>@r.Reason</td>
-                    <td><code>@r.BackendRefundId</code></td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-<h2 class="h5">Timeline</h2>
-<table class="table table-sm">
-    <thead><tr><th>When</th><th>What</th><th>Detail</th><th>Who</th></tr></thead>
-    <tbody>
-        @foreach (var e in Model.Timeline)
-        {
-            <tr>
-                <td>@e.At.ToDateTime()</td>
-                <td>@e.Kind</td>
-                <td>@e.Detail</td>
-                <td>
-                    @if (e.ActorUserId is { } actor)
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-baseline">
+                <span>Summary</span>
+                <span class="fs-5 fw-bold" title="Charged, less refunds and chargebacks">@((netMinor / 100m).ToEuro())</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Buyer</dt>
+                    <dd class="col-7">@o.BuyerName <span class="small">(<vc:human user-id="@o.BuyerUserId" link="Admin" />)</span><span class="small d-block text-break">@o.BuyerEmail</span></dd>
+                    <dt class="col-5">Created</dt>
+                    <dd class="col-7">@o.CreatedAt.ToDateTime()</dd>
+                    <dt class="col-5">Paid</dt>
+                    <dd class="col-7">@(o.PaidAt?.ToDateTime() ?? "—") <span class="small d-block">@o.PaymentMethod</span></dd>
+                    <dt class="col-5">Backend</dt>
+                    <dd class="col-7"><code>@o.BackendKey</code> <code class="small d-block text-break">@o.BackendOrderId</code></dd>
+                </dl>
+                <hr />
+                <dl class="row mb-0">
+                    <dt class="col-7 fw-normal">Charged</dt>
+                    <dd class="col-5 text-end">@((o.TotalMinor / 100m).ToEuro())</dd>
+                    <dt class="col-7 fw-normal">Refunded</dt>
+                    <dd class="col-5 text-end">@((-o.RefundedMinor / 100m).ToSignedEuro())</dd>
+                    @if (o.DisputedMinor > 0)
                     {
-                        <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@actor">@(actor == o.BuyerUserId ? "buyer" : "person")</a>
+                        <dt class="col-7 fw-normal text-danger">Charged back</dt>
+                        <dd class="col-5 text-end text-danger">@((-o.DisputedMinor / 100m).ToSignedEuro())</dd>
                     }
-                    else
+                    <dt class="col-7 border-top pt-2">Net</dt>
+                    <dd class="col-5 text-end border-top pt-2 fw-semibold">@((netMinor / 100m).ToEuro())</dd>
+                    <dt class="col-7 fw-normal small">Backend fee</dt>
+                    <dd class="col-5 text-end small">@(o.FeeMinor is { } fee ? (fee / 100m).ToEuro() : "—")</dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (canResend || canRefund)
+        {
+            <div class="card mb-4" authorize-policy="@TicketsPolicies.Manage">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    @if (canResend)
                     {
-                        <span class="text-muted">automation</span>
+                        <form asp-action="Resend" asp-route-id="@o.Id" method="post" class="mb-3">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Resend ticket emails and receipt</button>
+                            <div class="form-text">To each holder and the payer, as when the order was paid.</div>
+                        </form>
                     }
-                </td>
-            </tr>
+                    @if (canRefund)
+                    {
+                        <form asp-action="Refund" asp-route-id="@o.Id" method="post"
+                              data-confirm="Refund this order through @o.BackendKey? The money goes back to the buyer.">
+                            @Html.AntiForgeryToken()
+                            <h3 class="h6">Refund</h3>
+                            <div class="mb-2">
+                                <label class="form-label" for="amount">Amount (€)</label>
+                                <input class="form-control w-50" id="amount" name="amount" type="number" step="0.01" min="0.01"
+                                       max="@((Model.RefundableMinor / 100m).ToString("0.00", invariant))"
+                                       value="@((Model.RefundableMinor / 100m).ToString("0.00", invariant))" required />
+                                <div class="form-text">At most @((Model.RefundableMinor / 100m).ToEuro()): the tickets, never donations.</div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label" for="reason">Reason</label>
+                                <input class="form-control" id="reason" name="reason" maxlength="500" required />
+                            </div>
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Refund through @o.BackendKey</button>
+                        </form>
+                    }
+                </div>
+            </div>
         }
-    </tbody>
-</table>
-
-@if (o.State == TicketCheckoutOrderState.Paid)
-{
-    <form asp-action="Resend" asp-route-id="@o.Id" method="post" class="mb-3" authorize-policy="@TicketsPolicies.Manage">
-        @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-outline-primary">Resend ticket emails and receipt</button>
-        <span class="form-text ms-2">To each holder and the payer, as when the order was paid.</span>
-    </form>
-}
-
-@if (o.State == TicketCheckoutOrderState.Paid && Model.RefundableMinor > 0)
-{
-    <form asp-action="Refund" asp-route-id="@o.Id" method="post" class="row g-2 align-items-end" authorize-policy="@TicketsPolicies.Manage">
-        @Html.AntiForgeryToken()
-        <div class="col-md-3">
-            <label class="form-label" for="amount">Amount (€)</label>
-            <input class="form-control" id="amount" name="amount" type="number" step="0.01" min="0.01"
-                   max="@((Model.RefundableMinor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
-                   value="@((Model.RefundableMinor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))" required />
-            <div class="form-text">At most @Eur(Model.RefundableMinor): the tickets, never donations.</div>
-        </div>
-        <div class="col-md-6">
-            <label class="form-label" for="reason">Reason</label>
-            <input class="form-control" id="reason" name="reason" maxlength="500" required />
-        </div>
-        <div class="col-md-3">
-            <button type="submit" class="btn btn-danger">Refund through @o.BackendKey</button>
-        </div>
-    </form>
-}
+    </div>
+</div>

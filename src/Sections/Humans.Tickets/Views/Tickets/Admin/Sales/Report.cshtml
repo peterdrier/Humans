@@ -1,86 +1,112 @@
+@using Humans.Tickets.Services.Checkout
 @model Humans.Tickets.Controllers.ReportViewModel
 @{
     ViewData["Title"] = "Sales report";
-    string Eur(long minor) => (minor / 100m).ToEuro();
+    ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
     var r = Model.Report;
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    StatTileViewModel[] tiles =
+    [
+        new("Live tickets", r.TicketsLive.ToString(culture), Secondary: $"/ {Model.Capacity.ToString(culture)}",
+            Subline: $"{r.TicketsIssued.ToString(culture)} issued, resales included"),
+        new("Ticket revenue", (r.TicketRevenueMinor / 100m).ToEuro()),
+        new("Donations", (r.DonationsMinor / 100m).ToEuro()),
+        new("Fees", (r.FeesMinor / 100m).ToEuro()),
+        new("Refunded", (r.RefundedMinor / 100m).ToEuro(), Severity: r.RefundedMinor > 0 ? TileSeverity.Warning : TileSeverity.Normal),
+        new("Charged back", (r.DisputedMinor / 100m).ToEuro(), Severity: r.DisputedMinor > 0 ? TileSeverity.Critical : TileSeverity.Normal),
+    ];
+
+    var byPrice = TableModel.For(r.ByPrice)
+        .Column("Priced at", x => x.Label)
+        .Column("Tickets", x => x.Count, o => o.Number().End())
+        .Column("Amount (€)", x => x.AmountMinor / 100m, o => o.Currency().End())
+        .Empty("No tickets issued yet.")
+        .Build();
+
+    var running = 0;
+    var days = r.ByDay.Select(d => new DayLine(d, running += d.Tickets)).ToList();
+    var byDay = TableModel.For(days)
+        .Column("Day", x => x.Row.Day, o => o.Date())
+        .Column("Tickets", x => x.Row.Tickets, o => o.Number().End())
+        .Column("Tickets (€)", x => x.Row.TicketsMinor / 100m, o => o.Currency().End())
+        .Column("Donations (€)", x => x.Row.DonationsMinor / 100m, o => o.Currency().End())
+        .Column("Running tickets", x => x.Running, o => o.Number().End())
+        .Empty("Nothing paid yet.")
+        .Build();
+
+    var donations = TableModel.For(r.DonationsByPurpose)
+        .Column("Purpose", x => SharedLocalizer.EnumDisplay(x.Purpose))
+        .Column("Gifts", x => x.Count, o => o.Number().End())
+        .Column("Amount (€)", x => x.AmountMinor / 100m, o => o.Currency().End())
+        .Empty("No donations yet.")
+        .Build();
+
+    var refunds = TableModel.For(r.RefundsByState)
+        .Column("State", x => x.State, o => o.EnumBadge())
+        .Column("Refunds", x => x.Count, o => o.Number().End())
+        .Column("Amount (€)", x => x.AmountMinor / 100m, o => o.Currency().End())
+        .RowHref(x => Url.Action("Refunds", new { id = Model.SalesEventId, state = x.State }))
+        .Empty("No refunds asked.")
+        .Build();
+
+    var resale = TableModel.For(r.ResaleByState)
+        .Column("Offers", x => x.State, o => o.EnumBadge())
+        .Column("Count", x => x.Count, o => o.Number().End())
+        .Column("Paid by holders (€)", x => x.OwedMinor / 100m, o => o.Currency().End())
+        .Empty("Nobody has offered a ticket back.")
+        .Build();
 }
 
-@section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
-    <span>Report</span>
+<page-header title="Sales report" subtitle="@Model.EventName">
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.SalesEventId">Refunds</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Resale" asp-route-id="@Model.SalesEventId">Resale queue</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Companions" asp-route-id="@Model.SalesEventId">Companion requests</a>
+</page-header>
+
+<div class="stats" style="--stats-cols: 3">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">By wave and class</div>
+            <partial name="_Table" model="byPrice" />
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Donations by purpose</div>
+            <partial name="_Table" model="donations" />
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">By day paid</div>
+    <partial name="_Table" model="byDay" />
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Refunds asked</div>
+            <partial name="_Table" model="refunds" />
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Resale</div>
+            <partial name="_Table" model="resale" />
+        </div>
+    </div>
+</div>
+
+<p class="small text-muted">Check-ins are not reported yet: the gate does not record check-ins per event for these tickets.</p>
+
+@functions {
+    private sealed record DayLine(DayRow Row, int Running);
 }
-
-<page-header title="Sales report: @Model.EventName" />
-
-<p>
-    @r.TicketsLive live tickets of @Model.Capacity (@r.TicketsIssued issued, resales included) · @Eur(r.TicketRevenueMinor) tickets · @Eur(r.DonationsMinor) donations ·
-    @Eur(r.FeesMinor) fees · @Eur(r.RefundedMinor) refunded · @Eur(r.DisputedMinor) charged back
-    · <a asp-action="Refunds" asp-route-id="@Model.SalesEventId">refund list</a>
-    · <a asp-action="Resale" asp-route-id="@Model.SalesEventId">resale queue</a>
-    · <a asp-action="Companions" asp-route-id="@Model.SalesEventId">companion requests</a>
-</p>
-
-<h2 class="h5">By wave and class</h2>
-<table class="table table-sm">
-    <thead><tr><th>Priced at</th><th class="text-end">Tickets issued</th><th class="text-end">Amount</th></tr></thead>
-    <tbody>
-        @foreach (var row in r.ByPrice)
-        {
-            <tr><td>@row.Label</td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.AmountMinor)</td></tr>
-        }
-    </tbody>
-</table>
-
-<h2 class="h5">By day paid</h2>
-<table class="table table-sm">
-    <thead><tr><th>Day</th><th class="text-end">Tickets</th><th class="text-end">Tickets amount</th><th class="text-end">Donations</th><th class="text-end">Running tickets</th></tr></thead>
-    <tbody>
-        @{ var running = 0; }
-        @foreach (var row in r.ByDay)
-        {
-            running += row.Tickets;
-            <tr>
-                <td>@row.Day.ToInvariantDate()</td>
-                <td class="text-end">@row.Tickets</td>
-                <td class="text-end">@Eur(row.TicketsMinor)</td>
-                <td class="text-end">@Eur(row.DonationsMinor)</td>
-                <td class="text-end">@running</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<h2 class="h5">Donations by purpose</h2>
-<table class="table table-sm">
-    <thead><tr><th>Purpose</th><th class="text-end">Gifts</th><th class="text-end">Amount</th></tr></thead>
-    <tbody>
-        @foreach (var row in r.DonationsByPurpose)
-        {
-            <tr><td>@row.Purpose</td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.AmountMinor)</td></tr>
-        }
-    </tbody>
-</table>
-
-<h2 class="h5">Refunds asked</h2>
-<table class="table table-sm">
-    <thead><tr><th>State</th><th class="text-end">Refunds</th><th class="text-end">Amount</th></tr></thead>
-    <tbody>
-        @foreach (var row in r.RefundsByState)
-        {
-            <tr><td><a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@row.State">@row.State</a></td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.AmountMinor)</td></tr>
-        }
-    </tbody>
-</table>
-
-<h2 class="h5">Resale</h2>
-<table class="table table-sm">
-    <thead><tr><th>Offers</th><th class="text-end">Count</th><th class="text-end">Paid by holders</th></tr></thead>
-    <tbody>
-        @foreach (var row in r.ResaleByState)
-        {
-            <tr><td>@row.State</td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.OwedMinor)</td></tr>
-        }
-    </tbody>
-</table>
-
-<p class="text-muted">Check-ins are not reported yet: the gate does not record check-ins per event for these tickets.</p>
