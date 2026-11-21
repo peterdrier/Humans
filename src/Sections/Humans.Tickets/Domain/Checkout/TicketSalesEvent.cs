@@ -59,11 +59,17 @@ internal sealed class TicketSalesEvent
     /// </summary>
     public string? TermsFolder { get; set; }
 
-    /// <summary>Price of a child ticket attached to an adult's; null when children are not sold.</summary>
-    public long? ChildPriceMinor { get; set; }
+    /// <summary>
+    /// The child tickets sold on an adult's ticket, youngest first by <see cref="TicketChildType.UnderAge"/>; empty when
+    /// children are not sold. The buyer picks one per child.
+    /// </summary>
+    public List<TicketChildType> ChildTypes { get; set; } = [];
 
-    /// <summary>Shown to the buyer: a child ticket is for someone under this age on the event's first day.</summary>
-    public int? ChildMaxAge { get; set; }
+    /// <summary>
+    /// What a free donation may be given for, as the buyer sees it. Null or empty (a setup saved before purposes
+    /// existed): one general donation, no choice. A donation with no purpose (the VIP remainder too) is general.
+    /// </summary>
+    public List<string>? DonationPurposes { get; set; }
 
     /// <summary>
     /// When a super admin cancelled the event; never undone. Sales stay closed, and the reconcile job voids every ticket
@@ -112,6 +118,24 @@ internal sealed class TicketSalesSwitches
 
     /// <summary>Checkout asks a buyer with no Marketing choice on record to join the mailing list.</summary>
     public bool MailingListOptIn { get; set; } = true;
+
+    /// <summary>
+    /// A holder may ask for a free companion ticket, which the ticketing team approves. Null (a setup saved before this
+    /// switch) means on; read <see cref="CompanionTicketsOn"/>.
+    /// </summary>
+    public bool? CompanionTickets { get; set; }
+
+    public bool CompanionTicketsOn => CompanionTickets ?? true;
+}
+
+/// <summary>A child ticket for someone under <see cref="UnderAge"/> on the event's first day.</summary>
+internal sealed class TicketChildType
+{
+    public string Name { get; set; } = string.Empty;
+
+    public int UnderAge { get; set; }
+
+    public long PriceMinor { get; set; }
 }
 
 /// <summary>How a holder who cannot come gets their money back.</summary>

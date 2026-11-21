@@ -95,12 +95,6 @@
   <data name="Tickets_Buy_Purpose_General" xml:space="preserve">
     <value>Là où c'est le plus utile</value>
   </data>
-  <data name="Tickets_Buy_Purpose_Creativity" xml:space="preserve">
-    <value>Art et créativité</value>
-  </data>
-  <data name="Tickets_Buy_Purpose_LowIncomePool" xml:space="preserve">
-    <value>Plus de billets à revenu modeste</value>
-  </data>
   <data name="Tickets_Buy_DonationNote" xml:space="preserve">
     <value>Les dons ne sont pas remboursés.</value>
   </data>
@@ -234,10 +228,16 @@
     <value>Enfants qui t'accompagnent</value>
   </data>
   <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
-    <value>{0} chacun, pour les enfants de moins de {1} ans le premier jour. Leur nom légal, comme sur leur pièce d'identité. Leurs billets suivent le tien.</value>
+    <value>Leur nom légal, comme sur leur pièce d'identité. Leurs billets suivent le tien.</value>
   </data>
   <data name="Tickets_Buy_ChildName" xml:space="preserve">
     <value>Enfant {0} : nom légal</value>
+  </data>
+  <data name="Tickets_Buy_ChildType" xml:space="preserve">
+    <value>{0} : moins de {1} ans le premier jour, {2}</value>
+  </data>
+  <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
+    <value>Enfant {0} : billet</value>
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Améliore ton expérience et aide-nous à faire le meilleur événement possible. Ton billet reste à ton prix ; le reste est un don à l'association, sans TVA et non remboursable.</value>

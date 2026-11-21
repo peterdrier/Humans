@@ -27,10 +27,19 @@ internal sealed class TicketSalesEventConfiguration : IEntityTypeConfiguration<T
             r.ToJson("price_rules");
             r.Property(p => p.Kind).HasConversion<string>();
         });
+        // Replaced by ChildTypes; unread, kept until a drop of its own is approved (destructive-drops-need-approval).
+        builder.Property<long?>("ChildPriceMinor");
+        builder.Property<int?>("ChildMaxAge");
+        builder.OwnsMany(x => x.ChildTypes, c =>
+        {
+            c.ToJson("child_types");
+            c.Property(p => p.Name).HasMaxLength(64);
+        });
         builder.OwnsOne(x => x.Switches, s =>
         {
             s.ToJson("switches");
             s.Property(p => p.Resale).HasConversion<string>();
+            s.Ignore(p => p.CompanionTicketsOn);
         });
     }
 }
@@ -61,7 +70,6 @@ internal sealed class TicketCheckoutOrderConfiguration : IEntityTypeConfiguratio
         {
             l.ToJson("lines");
             l.Property(p => p.Kind).HasConversion<string>();
-            l.Property(p => p.DonationPurpose).HasConversion<string>();
             l.Property(p => p.HolderKind).HasConversion<string>();
         });
     }

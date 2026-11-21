@@ -43,7 +43,8 @@ internal sealed class DevelopmentDashboardSeeder(
 
     private const string SeededEventName = "Seeded Elsewhere 2026 (dev)";
     private const string DevTeamNameSuffix = " (dev)";
-    private const string DevUserEmailSuffix = "@seed.local";
+    // Not ".local": Users reads any such address as a tombstone. Email drops @localhost mail.
+    private const string DevUserEmailSuffix = "@localhost";
     private const string DevUserEmailPrefix = "dev-human-";
 
     // Match real, non-hidden parent departments from the production Teams list
@@ -415,7 +416,7 @@ internal sealed class DevelopmentDashboardSeeder(
 
     /// <summary>
     /// Deletes what <see cref="SeedAsync"/> created: the seeded event, the known dev teams and the
-    /// <c>dev-human-*@seed.local</c> users. Safe on a database never seeded. The caller must check full Admin.
+    /// <c>dev-human-*@localhost</c> users. Safe on a database never seeded. The caller must check full Admin.
     /// </summary>
     public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
     {

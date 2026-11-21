@@ -95,12 +95,6 @@
   <data name="Tickets_Buy_Purpose_General" xml:space="preserve">
     <value>On més es necessiti</value>
   </data>
-  <data name="Tickets_Buy_Purpose_Creativity" xml:space="preserve">
-    <value>Art i creativitat</value>
-  </data>
-  <data name="Tickets_Buy_Purpose_LowIncomePool" xml:space="preserve">
-    <value>Més entrades de baixos ingressos</value>
-  </data>
   <data name="Tickets_Buy_DonationNote" xml:space="preserve">
     <value>Les donacions no es reemborsen.</value>
   </data>
@@ -234,10 +228,16 @@
     <value>Infants que vénen amb tu</value>
   </data>
   <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
-    <value>{0} cadascuna, per a infants de menys de {1} anys el primer dia. El seu nom legal, com al document. Les seves entrades van amb la teva.</value>
+    <value>El seu nom legal, com al document. Les seves entrades van amb la teva.</value>
   </data>
   <data name="Tickets_Buy_ChildName" xml:space="preserve">
     <value>Infant {0}: nom legal</value>
+  </data>
+  <data name="Tickets_Buy_ChildType" xml:space="preserve">
+    <value>{0}: menys de {1} anys el primer dia, {2}</value>
+  </data>
+  <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
+    <value>Infant {0}: entrada</value>
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Millora la teva experiència i ajuda'ns a fer el millor esdeveniment possible. La teva entrada manté el teu preu; la resta és una donació a l'associació, sense IVA i no reemborsable.</value>

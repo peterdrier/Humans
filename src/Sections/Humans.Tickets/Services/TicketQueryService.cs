@@ -170,7 +170,7 @@ internal sealed class TicketQueryService(
             var date = paidAt.InZone(OrgZone).Date.ToInvariantDate();
             foreach (var line in o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation))
                 rows.Add(new DonationExportRow(paidAt, date, o.Reference, o.BuyerName, o.BuyerEmail,
-                    $"Donation: {line.DonationPurpose ?? TicketDonationPurpose.General}", line.AmountMinor / 100m));
+                    $"Donation: {line.DonationPurpose ?? "General"}", line.AmountMinor / 100m));
         }
 
         rows = rows.OrderBy(r => r.PurchasedAt).ToList();

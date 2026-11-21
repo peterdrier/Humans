@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Localization;
 using System.Collections.Concurrent;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces;
@@ -21,7 +22,8 @@ namespace Humans.Teams.Services;
 /// </summary>
 internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
-    ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
+    ILogger<CachingTeamService> logger,
+    IStringLocalizer<TeamsResource> localizer) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
     ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor, IOwnerKind, IRoleOwner
 {
     public const string InnerServiceKey = "team-inner";
@@ -125,17 +127,24 @@ internal sealed class CachingTeamService(
     public async Task<string?> EnsureMemberAsync(Guid ownerId, Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
         if (!(await GetTeamSnapshotsAsync(ct)).TryGetValue(ownerId, out var snapshot))
-            return "That team doesn't exist.";
+            return localizer["Teams_NotFound"].Value;
         if (snapshot.Team.IsSystemTeam)
-            return "System teams don't have roles.";
+            return localizer["Teams_Roles_SystemTeam"].Value;
         if (!snapshot.Team.IsActive)
-            return "That team is inactive.";
+            return localizer["Teams_Roles_InactiveTeam"].Value;
         if (snapshot.Members.Any(m => m.UserId == userId))
             return null;
 
         var added = await AddMemberToTeamAsync(ownerId, userId, actorUserId, ct);
-        return added.Succeeded ? null : added.Refusal ?? "They couldn't be added to the team.";
+        if (added.Succeeded)
+            return null;
+        return added.ErrorKey is { } key ? localizer[key].Value : added.Refusal;
     }
+
+    public async Task<IReadOnlyList<RoleOwnerInfo>> ListAsync(CancellationToken ct = default) =>
+        (await GetTeamSnapshotsAsync(ct)).Values
+            .Select(s => new RoleOwnerInfo(s.Team.Id, s.Team.Slug, s.Team.Name, s.Team.IsHidden, $"/Teams/{s.Team.Slug}"))
+            .ToList();
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,

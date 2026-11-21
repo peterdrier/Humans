@@ -281,13 +281,14 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     }
 
     public async Task<HoldedSyncState> GetOrCreateSyncStateAsync(
-        HoldedSyncKind kind, CancellationToken ct = default)
+        HoldedSyncKind kind, string scope = "", CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var state = await ctx.HoldedSyncStates.AsNoTracking().FirstOrDefaultAsync(s => s.Kind == kind, ct);
+        var state = await ctx.HoldedSyncStates.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Kind == kind && s.Scope == scope, ct);
         if (state is not null) return state;
 
-        state = new HoldedSyncState { Kind = kind };
+        state = new HoldedSyncState { Kind = kind, Scope = scope };
         ctx.HoldedSyncStates.Add(state);
         await ctx.SaveChangesAsync(ct);
         return state;
@@ -296,7 +297,8 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     public async Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.HoldedSyncStates.FirstOrDefaultAsync(s => s.Kind == state.Kind, ct);
+        var existing = await ctx.HoldedSyncStates.FirstOrDefaultAsync(
+            s => s.Kind == state.Kind && s.Scope == state.Scope, ct);
         if (existing is null)
         {
             ctx.HoldedSyncStates.Add(state);

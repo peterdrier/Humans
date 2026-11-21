@@ -9,6 +9,7 @@ using Humans.Roles.Data;
 using Humans.Roles.Domain;
 using Humans.Roles.Services;
 using Humans.Teams.Contracts;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -25,6 +26,7 @@ public sealed class RoleServiceTests
     private static readonly Guid Cantina = Guid.NewGuid();
     private static readonly Guid Power = Guid.NewGuid();
     private static readonly Guid Art = Guid.NewGuid();
+    private static readonly Guid Old = Guid.NewGuid();
 
     private static readonly OwnerNode[] Tree =
     [
@@ -32,6 +34,7 @@ public sealed class RoleServiceTests
         new(Cantina, Production, IsActive: true, IsSystem: false),
         new(Power, Production, IsActive: true, IsSystem: false),
         new(Art, null, IsActive: true, IsSystem: false),
+        new(Old, null, IsActive: false, IsSystem: false),
     ];
 
     private static readonly Permission ShiftsManage = new(
@@ -57,7 +60,8 @@ public sealed class RoleServiceTests
             [],
             _systemRoles,
             Substitute.For<IAuditLogService>(),
-            new FakeClock(Instant.FromUtc(2026, 11, 21, 12, 0)));
+            new FakeClock(Instant.FromUtc(2026, 11, 21, 12, 0)),
+            new KeyLocalizer());
     }
 
     public static TheoryData<string, string, bool> ManageCases => new()
@@ -183,6 +187,46 @@ public sealed class RoleServiceTests
         artRole.Assignments.Should().ContainSingle();
     }
 
+    public static TheoryData<string, string, bool, bool> VisibleCases => new()
+    {
+        // who the actor is, owner, public, expected
+        { "none", "Cantina", true, true },
+        { "none", "Cantina", false, false },
+        { "coordinator:Production", "Cantina", false, true },
+        { "system:Board", "Cantina", false, true },
+        { "none", "Art", true, false },
+        { "system:Board", "Art", true, true },
+        { "system:Board", "Old", true, false },
+    };
+
+    [HumansTheory]
+    [MemberData(nameof(VisibleCases))]
+    public async Task GetVisibleRolesAsync_HidesPrivateHiddenAndInactive(string actor, string owner, bool isPublic, bool expected)
+    {
+        Arrange(actor);
+        var role = Role(Id(owner), "Shift planner");
+        role.IsPublic = isPublic;
+        _repository.Seed(role);
+
+        var visible = await _service.GetVisibleRolesAsync(_actor, Ct);
+
+        visible.Any(r => r.Id == role.Id).Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task GetContactsAsync_FallsBackToTheNearestCoordinatorAbove()
+    {
+        var lead = Guid.NewGuid();
+        var coordinator = Role(Production, "Coordinator", coordinator: true);
+        coordinator.Assignments.Add(new RoleAssignment { Id = Guid.NewGuid(), RoleId = coordinator.Id, UserId = lead, Slot = 0 });
+        _repository.Seed(coordinator);
+        _repository.Seed(Role(Cantina, "Coordinator", coordinator: true));
+
+        var contacts = await _service.GetContactsAsync(Owner(Cantina), Ct);
+
+        contacts.Should().Equal(lead);
+    }
+
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private void Arrange(string actor)
@@ -226,6 +270,7 @@ public sealed class RoleServiceTests
         "Cantina" => Cantina,
         "Power" => Power,
         "Art" => Art,
+        "Old" => Old,
         _ => throw new ArgumentOutOfRangeException(nameof(name)),
     };
 
@@ -250,6 +295,20 @@ public sealed class RoleServiceTests
             Asked.Add((ownerId, userId));
             return Task.FromResult(Refusal);
         }
+
+        /// <summary>Art is hidden.</summary>
+        public Task<IReadOnlyList<RoleOwnerInfo>> ListAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<RoleOwnerInfo>>(
+                [.. Tree.Select(n => new RoleOwnerInfo(n.Id, n.Id.ToString("N"), n.Id.ToString("N"), IsHidden: n.Id == Art, "/"))]);
+    }
+
+    private sealed class KeyLocalizer : IStringLocalizer<RolesResource>
+    {
+        public LocalizedString this[string name] => new(name, name);
+
+        public LocalizedString this[string name, params object[] arguments] => new(name, name);
+
+        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => [];
     }
 
     private sealed class Declares(params Permission[] permissions) : ISectionPermissions
