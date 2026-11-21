@@ -123,13 +123,11 @@ $rows = foreach ($file in $testFiles) {
         if ($publicMethodNames.Count -gt 0 -and $testCount -gt 0) {
             $testNameMatches = [regex]::Matches($text,
                 '(?m)^\s+public\s+(?:async\s+)?(?:Task<[^>]+>|Task|void|ValueTask|ValueTask<[^>]+>)\s+(\w+)\s*\(')
-            $testedPrefixes = New-Object System.Collections.Generic.HashSet[string]
             $prefixCounts = @{}
             foreach ($tm in $testNameMatches) {
                 $tn = $tm.Groups[1].Value
                 $idx = $tn.IndexOf('_')
                 $prefix = if ($idx -gt 0) { $tn.Substring(0, $idx) } else { $tn }
-                [void]$testedPrefixes.Add($prefix)
                 if ($prefixCounts.ContainsKey($prefix)) { $prefixCounts[$prefix]++ } else { $prefixCounts[$prefix] = 1 }
             }
             $methodMatchedCounts = @{}
@@ -157,11 +155,7 @@ $rows = foreach ($file in $testFiles) {
                     ForEach-Object { "$($_.Key)($($_.Value))" }) -join ', ')
             }
             $untestedPublicMethods = @($publicMethodNames | Where-Object {
-                $name = $_
-                $stripped = if ($name.EndsWith('Async', [StringComparison]::Ordinal)) {
-                    $name.Substring(0, $name.Length - 5)
-                } else { $null }
-                -not $testedPrefixes.Contains($name) -and -not ($stripped -and $testedPrefixes.Contains($stripped))
+                -not $methodMatchedCounts.ContainsKey($_)
             })
             $testsPerPublicMethod = [math]::Round($testCount / $publicMethodNames.Count, 2)
         }
