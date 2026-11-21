@@ -126,7 +126,7 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task CreateCheckout_WithAVisibleCarrierProduct_ThrowsBeforeCreatingAnOrder()
     {
-        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", VisibleProductId), ("GENERAL", 200)));
+        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100), ("GENERAL", VisibleProductId)));
 
         var act = () => Backend().CreateCheckoutAsync(Request(
             new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);

@@ -78,6 +78,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{request.BackendEventRef}'.");
 
         var products = await GetProductsAsync(eventId, ct);
+        if (products.FirstOrDefault(p => p.ProductType is "TICKET" or "GENERAL" && p.IsHidden != true) is { } visible)
+        {
+            throw new TicketCheckoutException(
+                $"Hi.Events product {visible.Id} on event {eventId} must be hidden, or it sells on the event's public page.");
+        }
 
         var (firstName, lastName) = SplitBuyerName(request.BuyerName);
         var body = new CheckoutOrderBody(
@@ -244,12 +249,6 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                 $"Hi.Events event {eventId} needs exactly one {productType} product to carry {line.Kind} lines; it has {carriers.Count}.");
         }
 
-        if (!carriers[0].IsHidden)
-        {
-            throw new TicketCheckoutException(
-                $"Hi.Events product {carriers[0].Id} on event {eventId} must be hidden, or it sells on the event's public page.");
-        }
-
         return new CheckoutOrderItem(
             ProductId: carriers[0].Id,
             Price: line.AmountMinor / 100m,
@@ -345,7 +344,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     private sealed record ProductPage(List<HiEventsProduct>? Data);
 
-    private sealed record HiEventsProduct(int Id, string? ProductType, bool IsHidden);
+    private sealed record HiEventsProduct(int Id, string? ProductType, bool? IsHidden);
 
     private sealed record RefundEnvelope(RefundMeta? Meta);
 
