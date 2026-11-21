@@ -61,6 +61,24 @@ internal sealed class TicketsEmails(
             "ticket_transfer_team", MessageCategory.System);
     }
 
+    /// <summary>Always English, to the ticketing team's mailbox: what the daily reconciliation found wrong.</summary>
+    public EmailMessage ReconciliationAlert(IReadOnlyList<string> findings, string reconUrl)
+    {
+        var fullUrl = $"{_settings.BaseUrl.TrimEnd('/')}{(reconUrl.StartsWith('/') ? "" : "/")}{reconUrl}";
+        var items = string.Concat(findings.Select(f => $"<li>{Encode(f)}</li>"));
+        return new EmailMessage(
+            TicketConstants.TicketsTeamEmail, "Ticket team", UserId: null,
+            "Ticket reconciliation needs a look",
+            $"""
+                <p>Last night's ticket reconciliation found money that does not add up:</p>
+                <ul>{items}</ul>
+                <p>Research each difference on the reconciliation page:
+                <a href="{Encode(fullUrl)}">Open reconciliation</a></p>
+                <p>This mail repeats every night until the reconciliation balances.</p>
+                """,
+            "ticket_reconciliation_alert", MessageCategory.System);
+    }
+
     public EmailMessage TicketTransferDecision(
         Guid toUserId, string toEmail, string toName, bool successful, string ticketLabel, string receiverName,
         string? reason, string? culture = null)

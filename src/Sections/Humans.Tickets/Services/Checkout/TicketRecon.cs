@@ -33,6 +33,48 @@ internal enum TicketReconIssue
     TicketsNotIssued,
 }
 
+/// <summary>The words the reconciliation page and the ticketing team's alert use for each difference.</summary>
+internal static class TicketReconLabels
+{
+    public static string Label(this TicketReconIssue issue) => issue switch
+    {
+        TicketReconIssue.MissingAtBackend => "missing at backend",
+        TicketReconIssue.ExtraAtBackend => "extra at backend",
+        TicketReconIssue.Duplicate => "duplicate",
+        TicketReconIssue.NotRecorded => "backend order not recorded in Humans",
+        TicketReconIssue.PaidMismatch => "paid on one side only",
+        TicketReconIssue.TotalMismatch => "total differs",
+        TicketReconIssue.RefundMismatch => "refunded differs",
+        TicketReconIssue.DisputeMismatch => "chargeback differs",
+        TicketReconIssue.TicketCountMismatch => "ticket count differs",
+        TicketReconIssue.TicketsNotIssued => "tickets not issued",
+        _ => issue.ToString(),
+    };
+
+    public static string Label(this TicketPaymentIssue issue) => issue switch
+    {
+        TicketPaymentIssue.NoOrder => "no Humans order",
+        TicketPaymentIssue.NotPaidInHumans => "order not paid in Humans",
+        TicketPaymentIssue.AmountMismatch => "amount differs from the order",
+        TicketPaymentIssue.FeeMismatch => "fee differs from Humans'",
+        _ => issue.ToString(),
+    };
+
+    public static string Label(this TicketPayoutIssue issue) => issue switch
+    {
+        TicketPayoutIssue.ContentsMismatch => "amount differs from its contents",
+        TicketPayoutIssue.Failed => "failed",
+        _ => issue.ToString(),
+    };
+
+    public static string Eur(long minor) =>
+        (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+
+    /// <summary>"total differs 2, duplicate 1": each label with how often it occurs.</summary>
+    public static string Counted(IEnumerable<string> labels) =>
+        string.Join(", ", labels.GroupBy(l => l, StringComparer.Ordinal).Select(g => $"{g.Key} {g.Count()}"));
+}
+
 /// <summary>One order as both sides see it; either side may be missing.</summary>
 internal sealed record TicketReconRow(
     TicketCheckoutOrder? Order,

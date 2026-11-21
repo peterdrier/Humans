@@ -64,6 +64,31 @@ internal sealed partial class TicketCheckoutService
         return TicketReconBuilder.Build(backendKey, from, to, orders, backendOrders, tickets);
     }
 
+    public async Task<TicketPaymentRecon?> ReconcilePaymentsAsync(
+        string backendKey, Instant from, Instant to, CancellationToken ct = default)
+    {
+        if (BackendFor(backendKey) is not { IsConfigured: true } backend)
+            return null;
+
+        PaymentLedger? ledger;
+        try
+        {
+            ledger = await backend.GetPaymentLedgerAsync(from, to, ct);
+        }
+        catch (Exception ex) when (ex is TicketCheckoutException or HttpRequestException
+                                       || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            logger.LogWarning(ex, "Payment reconciliation could not read {Backend}", backendKey);
+            return TicketPaymentReconBuilder.Unreadable(backendKey, from, to,
+                $"{backendKey}'s payment account could not be read: {ex.Message}");
+        }
+
+        if (ledger is null)
+            return null;
+        return TicketPaymentReconBuilder.Build(
+            backendKey, from, to, ledger, await AllOrdersAsync(await repository.GetSalesEventsAsync(ct), ct));
+    }
+
     /// <summary>Three reconcile runs past expiry: by then the reconcile should have settled the order either way.</summary>
     private static readonly Duration StuckGrace = Duration.FromMinutes(15);
 

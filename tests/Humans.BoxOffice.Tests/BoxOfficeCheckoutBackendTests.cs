@@ -273,4 +273,51 @@ public sealed class BoxOfficeCheckoutBackendTests
         (await backend.ParseWebhookAsync("{}", "t=1,v1=bad", TestContext.Current.CancellationToken)).Should().BeNull();
         _requests.Should().BeEmpty();
     }
+
+    [HumansFact]
+    public async Task Payment_ledger_ties_each_movement_to_its_order_and_lists_payout_contents()
+    {
+        var paidHere = Guid.NewGuid();
+        var refundedLater = Guid.NewGuid();
+        Respond(
+            """
+            {"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[
+             {"id":"txn_c","object":"balance_transaction","type":"charge","reporting_category":"charge","amount":30000,"fee":450,"net":29550,"created":1799582400,
+              "source":{"id":"ch_1","object":"charge","payment_intent":"pi_new","metadata":{}}},
+             {"id":"txn_r","object":"balance_transaction","type":"refund","reporting_category":"refund","amount":-5000,"fee":0,"net":-5000,"created":1799582500,
+              "source":{"id":"re_1","object":"refund","payment_intent":"pi_old","metadata":{}}},
+             {"id":"txn_f","object":"balance_transaction","type":"stripe_fee","reporting_category":"fee","amount":-200,"fee":0,"net":-200,"created":1799582600,
+              "description":"Billing","source":null},
+             {"id":"txn_p","object":"balance_transaction","type":"payout","reporting_category":"payout","amount":-24350,"fee":0,"net":-24350,"created":1799582700,
+              "source":{"id":"po_1","object":"payout"}}]}
+            """,
+            $$$"""
+            {"object":"list","url":"/v1/payment_intents","has_more":false,"data":[
+             {"id":"pi_new","object":"payment_intent","metadata":{"humans_ticket_order_id":"{{{paidHere}}}"}}]}
+            """,
+            $$$"""{"id":"pi_old","object":"payment_intent","metadata":{"humans_ticket_order_id":"{{{refundedLater}}}"}}""",
+            """
+            {"object":"list","url":"/v1/payouts","has_more":false,"data":[
+             {"id":"po_1","object":"payout","amount":24350,"arrival_date":1799625600,"automatic":true,"status":"paid","created":1799582700},
+             {"id":"po_2","object":"payout","amount":1000,"arrival_date":1799625600,"automatic":false,"status":"pending","created":1799582800}]}
+            """,
+            """
+            {"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[
+             {"id":"txn_c","object":"balance_transaction","type":"charge","net":29550},
+             {"id":"txn_r","object":"balance_transaction","type":"refund","net":-5000},
+             {"id":"txn_f","object":"balance_transaction","type":"stripe_fee","net":-200},
+             {"id":"txn_p","object":"balance_transaction","type":"payout","net":-24350}]}
+            """);
+
+        var ledger = await Backend().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
+
+        ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
+            ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, (Guid?)paidHere),
+            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, (Guid?)refundedLater),
+            ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, (Guid?)null),
+            ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, (Guid?)null));
+        ledger.Payouts.Select(p => (p.Id, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
+            ("po_1", 24350L, "paid", (long?)24350, 3), ("po_2", 1000L, "pending", (long?)null, 0));
+        _requests.Should().HaveCount(5).And.OnlyContain(r => r.Method == HttpMethod.Get);
+    }
 }

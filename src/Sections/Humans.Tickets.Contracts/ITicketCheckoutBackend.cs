@@ -85,7 +85,66 @@ public interface ITicketCheckoutBackend : IApplicationService
     /// sales setup moved to another event or backend; null for a backend that keeps no events.
     /// </summary>
     string? EventRefOf(string backendOrderId);
+
+    /// <summary>
+    /// The payment account's own ledger for Tickets' fee and payout reconciliation: every balance movement and every
+    /// payout created in [<paramref name="from"/>, <paramref name="to"/>), read from the payment provider itself.
+    /// Null when the backend keeps its payment account to itself, so Humans cannot read it. Changes nothing; throws
+    /// when any page cannot be read, so a partial ledger is never taken for the whole.
+    /// </summary>
+    Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default);
 }
+
+/// <summary>
+/// The payment account for a period: <paramref name="Entries"/> is every balance movement in it, payouts included;
+/// <paramref name="Payouts"/> every payout to the bank created in it.
+/// </summary>
+public sealed record PaymentLedger(IReadOnlyList<PaymentLedgerEntry> Entries, IReadOnlyList<PaymentPayout> Payouts);
+
+/// <summary>
+/// One balance movement. <paramref name="AmountMinor"/> is signed, money into the account positive (a charge, a won
+/// dispute) and out negative (a refund, a chargeback, a payout). <paramref name="FeeMinor"/> is what the provider kept
+/// on it; the balance moves by amount minus fee. <paramref name="HumansOrderId"/> is the order the payment carries in
+/// its metadata, null when it carries none.
+/// </summary>
+public sealed record PaymentLedgerEntry(
+    string Id,
+    Instant CreatedAt,
+    PaymentLedgerEntryKind Kind,
+    long AmountMinor,
+    long FeeMinor,
+    Guid? HumansOrderId,
+    string? Description);
+
+public enum PaymentLedgerEntryKind
+{
+    /// <summary>A buyer's payment.</summary>
+    Charge,
+    /// <summary>A refund, or a refund that failed and came back.</summary>
+    Refund,
+    /// <summary>A chargeback taken, or given back when won.</summary>
+    Dispute,
+    /// <summary>A fee charged on its own, not on a payment.</summary>
+    Fee,
+    /// <summary>Money paid out to the bank, or a failed payout coming back.</summary>
+    Payout,
+    /// <summary>Anything else the provider moved (an adjustment, a top-up).</summary>
+    Other,
+}
+
+/// <summary>
+/// One payout to the bank. <paramref name="AmountMinor"/> is what it sends, positive. <paramref name="ContentsNetMinor"/>
+/// is the net of the balance movements the provider says it pays out, null when the provider cannot list them (a
+/// payout made by hand); <paramref name="ContentsCount"/> counts them.
+/// </summary>
+public sealed record PaymentPayout(
+    string Id,
+    Instant CreatedAt,
+    Instant? ArrivalAt,
+    long AmountMinor,
+    string Status,
+    long? ContentsNetMinor,
+    int ContentsCount);
 
 /// <summary>
 /// One order as the backend holds it. <paramref name="HumansOrderId"/> is the Humans order id the backend stores with
