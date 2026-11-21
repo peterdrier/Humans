@@ -32,10 +32,10 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdmi
         [new("Nav_Roles", Controller: "Roles", Action: "Index", Weight: 21)];
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
-        [new("Roles", [new("Roles", "Roles", "Admin", null, null, "fa-solid fa-user-tag", RolesPolicies.Admin)])];
+        [new("Roles", [new("Roles", "Roles", "Admin", null, null, "fa-solid fa-user-tag", RolesPolicies.Read)])];
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options) =>
-        options.AddPolicy(RolesPolicies.Admin, policy => policy.RequireRole(RoleNames.Admin, RolesSystemRoles.RolesAdmin));
+        options.AddPolicy(RolesPolicies.Read, policy => policy.RequireRole(RolesSystemRoles.RolesAdmin, RoleNames.Board, RoleNames.Admin));
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {

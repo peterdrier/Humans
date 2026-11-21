@@ -45,11 +45,18 @@ internal sealed class RolesController(
     }
 
     [HttpGet("Admin")]
-    [Authorize(Policy = RolesPolicies.Admin)]
+    [Authorize(Policy = RolesPolicies.Read)]
     public async Task<IActionResult> Admin(CancellationToken ct)
     {
+        var (error, user) = await RequireCurrentUserAsync(ct);
+        if (error is not null) return error;
+
         var owners = await roles.GetOwnersAsync(ct);
         var all = await roles.GetRolesAsync(ct);
+        // Board reads but doesn't manage, so its links go to the team's own page instead of the manage page.
+        var manageable = new HashSet<Owner>();
+        foreach (var o in owners.Where(o => o.IsActive))
+            if (await roles.CanManageAsync(o.Owner, user.Id, ct)) manageable.Add(o.Owner);
         var rows = owners
             .Where(o => o.IsActive)
             .Select(o =>
@@ -57,7 +64,7 @@ internal sealed class RolesController(
                 var here = all.Where(r => r.Owner == o.Owner).ToList();
                 return new AdminOwnerRow(
                     OwnerLabel(o, owners),
-                    Url.Action(nameof(Owner), new { kind = o.Owner.Kind, key = o.Key })!,
+                    manageable.Contains(o.Owner) ? Url.Action(nameof(Owner), new { kind = o.Owner.Kind, key = o.Key })! : o.Url,
                     [.. here.Where(r => r.IsCoordinator).SelectMany(r => r.Holders).Select(h => h.UserId).Distinct()],
                     here.Count,
                     here.Sum(r => r.SlotCount - r.Holders.Count),

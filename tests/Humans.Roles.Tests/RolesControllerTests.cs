@@ -22,8 +22,8 @@ public sealed class RolesControllerTests
     }
 
     [HumansFact]
-    public void Admin_IsOnlyForAdminAndRolesAdmin() =>
+    public void Admin_IsForRolesReaders() =>
         typeof(RolesController).GetMethod(nameof(RolesController.Admin))!
             .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false).Cast<AuthorizeAttribute>()
-            .Should().ContainSingle(a => a.Policy == RolesPolicies.Admin);
+            .Should().ContainSingle(a => a.Policy == RolesPolicies.Read);
 }
