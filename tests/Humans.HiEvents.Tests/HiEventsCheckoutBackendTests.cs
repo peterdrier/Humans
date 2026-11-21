@@ -78,8 +78,8 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task CreateCheckout_WithoutANumericEvent_ThrowsBeforeAnyCall()
     {
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")) with { BackendEventRef = null }, Ct);
+        var act = () => Backend().CreateCheckoutAsync(RequestFor(null,
+            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
         await act.Should().ThrowAsync<TicketCheckoutException>();
         _handler.Requests.Should().BeEmpty();
@@ -90,8 +90,8 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 43, total: 225m, paymentLink: "https://tickets.example/pay/43"));
 
-        var session = await Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")) with { BackendEventRef = "8" }, Ct);
+        var session = await Backend().CreateCheckoutAsync(RequestFor("8",
+            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
         session.BackendOrderId.Should().Be("8:43");
         var (request, body) = _handler.Requests.Single();
@@ -102,8 +102,8 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task CreateCheckout_ForAnUnmappedEvent_ThrowsBeforeAnyCall()
     {
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")) with { BackendEventRef = "9" }, Ct);
+        var act = () => Backend().CreateCheckoutAsync(RequestFor("9",
+            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
         await act.Should().ThrowAsync<TicketCheckoutException>();
         _handler.Requests.Should().BeEmpty();
@@ -234,8 +234,10 @@ public class HiEventsCheckoutBackendTests
         new FakeClock(Now),
         NullLogger<HiEventsCheckoutBackend>.Instance);
 
-    private static CheckoutRequest Request(params CheckoutLine[] lines) => new(
-        OrderId, Guid.NewGuid(), "7", "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
+    private static CheckoutRequest Request(params CheckoutLine[] lines) => RequestFor("7", lines);
+
+    private static CheckoutRequest RequestFor(string? backendEventRef, params CheckoutLine[] lines) => new(
+        OrderId, Guid.NewGuid(), backendEventRef, "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
         Now.Plus(Duration.FromMinutes(30)), new Uri("https://humans.example/Tickets/Return"));
 
     private static object Order(
