@@ -1,0 +1,94 @@
+# pretix for the Humans pretix checkout option, as a Coolify "Docker Compose" resource.
+# Coolify fills SERVICE_FQDN_* and SERVICE_PASSWORD_* itself; nothing here holds a secret.
+# Stripe keys are entered in pretix's own settings by a person, never through this file.
+x-pretix-env: &pretix-env
+  PRETIX_PRETIX_INSTANCE_NAME: "Nobodies tickets"
+  PRETIX_PRETIX_CURRENCY: "EUR"
+  PRETIX_PRETIX_DATADIR: "/data"
+  PRETIX_PRETIX_TRUST_X_FORWARDED_FOR: "on"
+  PRETIX_PRETIX_TRUST_X_FORWARDED_PROTO: "on"
+  PRETIX_LOCALE_DEFAULT: "en"
+  PRETIX_LOCALE_TIMEZONE: "Europe/Madrid"
+  PRETIX_DATABASE_BACKEND: "postgresql"
+  PRETIX_DATABASE_NAME: "pretix"
+  PRETIX_DATABASE_USER: "pretix"
+  PRETIX_DATABASE_PASSWORD: "${SERVICE_PASSWORD_POSTGRES}"
+  PRETIX_DATABASE_HOST: "postgres"
+  PRETIX_REDIS_LOCATION: "redis://redis:6379/0"
+  PRETIX_REDIS_SESSIONS: "true"
+  PRETIX_CELERY_BACKEND: "redis://redis:6379/1"
+  PRETIX_CELERY_BROKER: "redis://redis:6379/2"
+  PRETIX_MAIL_FROM: "${PRETIX_MAIL_FROM:-tickets@nobodies.team}"
+  PRETIX_MAIL_HOST: "${PRETIX_MAIL_HOST:-}"
+  PRETIX_MAIL_PORT: "${PRETIX_MAIL_PORT:-587}"
+  PRETIX_MAIL_USER: "${PRETIX_MAIL_USER:-}"
+  PRETIX_MAIL_PASSWORD: "${PRETIX_MAIL_PASSWORD:-}"
+  PRETIX_MAIL_TLS: "on"
+
+services:
+  pretix:
+    image: pretix/standalone:2026.9.3
+    command: all
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      <<: *pretix-env
+      SERVICE_FQDN_PRETIX_80: ""
+      AUTOMIGRATE: "yes"
+    volumes:
+      - pretix-data:/data
+    healthcheck:
+      # pretix answers only its own host name, so the check sends it.
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import os,urllib.parse,urllib.request; h=urllib.parse.urlsplit(os.environ['PRETIX_PRETIX_URL']).netloc; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1/healthcheck/', headers={'Host': h, 'X-Forwarded-Proto': 'https'}), timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+
+  # pretix needs its periodic tasks (expiring orders, retrying webhooks) every few minutes.
+  pretix-cron:
+    image: pretix/standalone:2026.9.3
+    entrypoint: ["/bin/bash", "-c", "while true; do pretix cron; sleep 300; done"]
+    restart: unless-stopped
+    depends_on:
+      pretix:
+        condition: service_healthy
+    environment:
+      <<: *pretix-env
+      AUTOMIGRATE: "skip"
+    volumes:
+      - pretix-data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=pretix
+      - POSTGRES_USER=pretix
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+    volumes:
+      - pretix-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pretix -d pretix"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - pretix-redis:/data
+
+volumes:
+  pretix-data:
+  pretix-postgres:
+  pretix-redis:

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Pretix.Tests" />
+    <!-- The one assembly allowed to see many sections. -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Adapter section: one implementation of Tickets' ITicketCheckoutBackend port, plus the webhook endpoint that
+      nudges Tickets. No tables and no views. The port lives in the Contracts leaf, so no reference on Humans.Tickets.
+    -->
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- No AspNetCore PackageReference: they fail NU1010 under Central Package Management. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>
