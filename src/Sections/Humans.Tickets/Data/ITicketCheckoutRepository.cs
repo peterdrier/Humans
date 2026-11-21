@@ -77,10 +77,10 @@ internal interface ITicketCheckoutRepository : IRepository
     /// <summary>Every refund on the sales event's orders.</summary>
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
 
-    /// <summary>Replaces names and emails on the person's orders and ticket lines; amounts stay for the books.</summary>
     /// <summary>
-    /// Tombstones the person's names and emails, their children's names on their orders and tickets, and invitations
-    /// sent to any of <paramref name="emails"/>.
+    /// Tombstones the person's names and emails, their children's names on their orders and tickets, partner lines and
+    /// tickets without an account that carry one of <paramref name="emails"/>, and invitations sent to any of them.
+    /// Amounts stay for the books.
     /// </summary>
     Task<int> ErasePiiForUserAsync(Guid userId, IReadOnlyCollection<string> emails, CancellationToken ct = default);
 

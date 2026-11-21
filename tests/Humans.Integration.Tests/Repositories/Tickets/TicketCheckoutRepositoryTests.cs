@@ -131,6 +131,17 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             DirectedTokenHash = "DEF",
         };
         await repo.AddOfferAsync(invitedElsewhere, ct);
+        var unattached = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEventId,
+            OrderId = Guid.NewGuid(),
+            HolderName = "Ana García",
+            HolderEmail = "ANA@example.com",
+            Barcode = "H" + Guid.NewGuid().ToString("N")[..16],
+            IssuedAt = Now,
+        };
+        await repo.AddTicketsAsync([unattached], ct);
         var offer = new TicketResaleOffer
         {
             Id = Guid.NewGuid(),
@@ -155,6 +166,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
 
         (await repo.GetTicketAsync(child.Id, ct))!.HolderName.Should().NotBe("Kid García");
         (await repo.GetOfferAsync(invitedElsewhere.Id, ct))!.DirectedEmail.Should().BeNull();
+        (await repo.GetTicketAsync(unattached.Id, ct))!.HolderName.Should().NotBe("Ana García");
         var stored = (await repo.GetTicketAsync(adult.Id, ct))!;
         stored.HolderName.Should().NotBe("Ana García");
         stored.HolderEmail.Should().NotBe("ana@example.com");

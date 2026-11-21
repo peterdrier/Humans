@@ -37,6 +37,9 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCheckoutRefunded = new("TicketCheckoutRefunded");
 
+    /// <summary>Automation left the ticketing team something to do: a duplicate or unattached partner ticket, a refund to pay by hand.</summary>
+    public static readonly AuditActionDefinition TicketCheckoutNeedsAttention = new("TicketCheckoutNeedsAttention");
+
     public static readonly AuditActionDefinition TicketResaleOffered = new("TicketResaleOffered");
 
     public static readonly AuditActionDefinition TicketResaleWithdrawn = new("TicketResaleWithdrawn");

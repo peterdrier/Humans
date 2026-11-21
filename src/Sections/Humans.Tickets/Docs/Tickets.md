@@ -61,7 +61,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketResaleOffer
 
-**Table:** `ticket_resale_offers` — one per return to the queue (`Open` → `Reserved` → `Sold`, or `Withdrawn`). `DirectedTokenHash` is the SHA-256 of an emailed link's token; the token is never stored. `DirectedInviteCount` caps invitations per offer at three. Erasure clears `DirectedEmail` and the token, also on another holder's offer that invited the erased member.
+**Table:** `ticket_resale_offers` — one per return to the queue (`Open` → `Reserved` → `Sold`, or `Withdrawn`). `DirectedTokenHash` is the SHA-256 of an emailed link's token; the token is never stored. `DirectedInviteCount`, summed over a ticket's offers, caps its invitations at three. Erasure clears `DirectedEmail` and the token, also on another holder's offer that invited the erased member.
 
 ### TicketCheckoutOrderEvent
 
