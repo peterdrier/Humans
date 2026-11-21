@@ -55,4 +55,8 @@ internal sealed class TicketsAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition TicketDeliveryResent = new("TicketDeliveryResent");
 
     public static readonly AuditActionDefinition TicketJoinInvitationSent = new("TicketJoinInvitationSent");
+
+    public static readonly AuditActionDefinition TicketScheduledSyncEnabled = new("TicketScheduledSyncEnabled");
+
+    public static readonly AuditActionDefinition TicketScheduledSyncDisabled = new("TicketScheduledSyncDisabled");
 }

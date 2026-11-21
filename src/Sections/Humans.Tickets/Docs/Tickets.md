@@ -37,7 +37,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 - A **Ticket Order** represents a purchase (one per transaction). It carries the gross total, currency, vendor discount/donation line-item amounts, computed VAT (using VIP-split logic, not the vendor's tax line), and is enriched with Stripe fee data (payment method, Stripe fee, application fee, fee VAT, withheld tax) during sync via `IStripeService.GetPaymentDetailsAsync` keyed by the vendor's payment-intent id.
 - A **Ticket Attendee** represents an individual ticket holder (one per issued ticket, multiple per order). Tickets above `TicketConstants.VipThresholdEuros` (315 EUR) are treated as VIP — the portion above the threshold is a VAT-free donation, the portion at-or-below is taxable at `TicketConstants.VatRate` (10%) inclusive.
 - **Auto-matching** links orders to humans by buyer email and attendees to humans by attendee email. The lookup runs only against **verified** `UserEmails` rows under `NormalizingEmailComparer` so gmail/googlemail aliases collapse. A normalized verified email is supposed to be owned by exactly one user — if a normalized email maps to multiple verified users (data-integrity error, should not happen), the email is left unmatched and a `LogError` is emitted. Unverified emails never participate in matching.
-- **Ticket Sync** is a background Hangfire job (`TicketSyncJob`, interval from `TicketVendor:SyncIntervalMinutes` — default 15, `appsettings.json` sets 5) that pulls order, attendee, and gate check-in data from the vendor through `ITicketVendorService`.
+- **Ticket Sync** is a background Hangfire job (`TicketSyncJob`, interval from `TicketVendor:SyncIntervalMinutes` — default 15, `appsettings.json` sets 5) that pulls order, attendee, and gate check-in data from the vendor through `ITicketVendorService`. The scheduled run only syncs while **Scheduled sync** is on at `/Settings#tickets` (off by default, for between sales seasons); the admin **Sync now** and **Full resync** buttons run regardless.
 - Transfer confirmation and request creation reject a receiver id that resolves to a different surviving account after a merge. The sender must reselect a current receiver; no new request or attendee is attached to a merge tombstone, and an archived alias cannot bypass the self-transfer guard.
 - **TicketTransferRequest** is a Sender-initiated request to send an issued ticket to another Humans user (the Receiver). Lifecycle: `Pending → Approved | Rejected | Cancelled`. The ticket team either runs the **automated TicketTailor void(-to-hold)+reissue** (`ProcessTransferAsync` — the "Process transfer" button) or voids+reissues by hand and records the outcome (`ApproveAsync` = "mark successful"). Both are admin-only (`TicketsPolicies.Manage`). `Approved` = transferred; `Rejected` = "cancelled with a reason"; `Cancelled` = Sender self-cancel. The next ticket sync reconciles local attendee rows. Request → emails Sender + tickets@; decision → emails Sender + Receiver. (The automated path records its outcome in `VendorResult`/`VendorMessage`/`NewVendorTicketId`/`VendorHoldId`; the unused `VendorStepsJson` column stays dormant pending a post-soak drop PR — see [`memory/architecture/destructive-drops-need-approval.md`](../../../../memory/architecture/destructive-drops-need-approval.md).)
 - **Vendor connector** is a thin adapter (`Humans.TicketTailor`) behind `ITicketVendorService`. Production binds `TicketTailorService` (HTTP client against `https://api.tickettailor.com/v1`); non-production binds `StubTicketVendorService` (deterministic in-memory fixture with ~450 orders / ~600 tickets).
@@ -108,6 +108,12 @@ The Codes and Humans & Tickets display rows carry recipient/user IDs for `<vc:hu
 **Table:** `ticket_sync_states`
 
 Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId` records the event currently being synced. `LastSyncAt` doubles as the resume cursor passed to the vendor's `updated_at.gte` filter on the next run. `SyncStatus` is `Idle` / `Running` / `Error`; if a sync is found stuck in `Running` for >30 min, `GetDashboardStatsAsync` auto-resets it to `Error` with a stale-state message. `FullResync` clears `LastSyncAt` so the next run pulls all orders again.
+
+### TicketSettings
+
+**Table:** `ticket_settings`
+
+Singleton (`Id` always 1, seeded) of admin-editable section settings, edited on `/Settings#tickets` (TicketsPolicies.Manage). `IsScheduledSyncEnabled` gates the recurring `TicketSyncJob`; each change is audited as `TicketScheduledSyncEnabled` / `TicketScheduledSyncDisabled`.
 
 ### TicketTransferRequest
 
@@ -350,7 +356,7 @@ Donation export rows carry their purchase instant internally; the CSV controller
 - `UserParticipationBackfillService` — parses the `/Tickets/Participation/Backfill` CSV and hands valid rows to `EventParticipationService`.
 - `GateTerminalAccountSeeder` — provisions the roleless gate-terminal user lazily on first password set and rotates its password. Until a password exists, every attempt completes account and profile setup on the existing user; a refused setup step returns failure before setting a password or auditing success. Every password set marks the account fake in Users, which keeps it out of the Consent Coordinator review queue. Established-account rotations do not repeat setup, and a rejected password leaves the existing credential intact. Backs `/Tickets/Admin/Gate`. Its status-page user lookup honors request cancellation before querying password state; provisioning and password rotation retain independent write boundaries.
 
-**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests`, `ticket_event_participations`
+**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`, `ticket_transfer_requests`, `ticket_event_participations`
 
 Transfer confirmation, request creation and sender notifications use the canonical `Email` on their existing `UserInfo` read, preserving verified-primary, verified-secondary and identity fallback selection. Confirmation and request creation both reject missing or whitespace-only receiver emails before persistence or side effects, using the existing invalid-selection feedback. Recipient validation rejects merged-away IDs and tombstoned receiver records, even when a legal name and email remain.
 
@@ -416,7 +422,7 @@ Vendor event summaries require a readable response with a nonblank name and an e
 
 ### Repositories
 
-- **`ITicketRepository`** (Tickets-owned) — owns reads/writes for `ticket_orders`, `ticket_attendees`, `ticket_sync_states`. Aggregate-local navs kept (`TicketOrder.Attendees`, `TicketAttendee.TicketOrder`). Cross-domain `MatchedUser` nav properties have been stripped from both entities; FK (`MatchedUserId`) is retained; grid views render it through `<vc:human>` without copying a user name into the row.
+- **`ITicketRepository`** (Tickets-owned) — owns reads/writes for `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`. Aggregate-local navs kept (`TicketOrder.Attendees`, `TicketAttendee.TicketOrder`). Cross-domain `MatchedUser` nav properties have been stripped from both entities; FK (`MatchedUserId`) is retained; grid views render it through `<vc:human>` without copying a user name into the row.
 - **`ITicketTransferRepository`** (Tickets-owned) — owns reads/writes for `ticket_transfer_requests`; the state machine's writes go through it and nowhere else.
 - **`IEventParticipationRepository`** (Tickets-owned, Singleton) — owns reads/writes for `ticket_event_participations`, including the lifecycle rules and the merge fold.
 

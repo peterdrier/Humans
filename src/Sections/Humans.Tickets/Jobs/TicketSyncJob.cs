@@ -16,6 +16,18 @@ internal sealed class TicketSyncJob(
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
+        if (!await syncService.IsScheduledSyncEnabledAsync(cancellationToken))
+        {
+            logger.LogDebug("Scheduled ticket sync is turned off in /Settings#tickets, skipping");
+            return;
+        }
+
+        await RunNowAsync(cancellationToken);
+    }
+
+    /// <summary>The admin sync buttons' entry point: runs even while the scheduled sync is off.</summary>
+    public async Task RunNowAsync(CancellationToken cancellationToken = default)
+    {
         if (!_settings.IsConfigured)
         {
             logger.LogDebug("Ticket vendor not configured, skipping scheduled sync");

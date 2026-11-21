@@ -648,6 +648,26 @@ namespace Humans.Tickets.Data.Migrations
                     b.ToTable("ticket_orders", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Tickets.Domain.TicketSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsScheduledSyncEnabled")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ticket_settings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            IsScheduledSyncEnabled = false
+                        });
+                });
+
             modelBuilder.Entity("Humans.Tickets.Domain.TicketSyncState", b =>
                 {
                     b.Property<int>("Id")

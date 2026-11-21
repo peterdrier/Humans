@@ -1468,6 +1468,9 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Porta</value>
   </data>
+  <data name="Settings_TabTickets" xml:space="preserve">
+    <value>Entrades</value>
+  </data>
   <data name="Settings_TabStore" xml:space="preserve">
     <value>Botiga</value>
   </data>
