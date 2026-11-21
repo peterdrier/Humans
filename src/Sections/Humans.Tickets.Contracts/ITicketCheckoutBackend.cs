@@ -19,7 +19,7 @@ namespace Humans.Tickets.Contracts;
 /// </summary>
 public interface ITicketCheckoutBackend : IApplicationService
 {
-    /// <summary>Stable, lowercase, stored on every order: <c>native</c>, <c>pretix</c>, <c>hievents</c>.</summary>
+    /// <summary>Stable, lowercase, stored on every order: <c>boxoffice</c>, <c>pretix</c>, <c>hievents</c>.</summary>
     string Key { get; }
 
     /// <summary>False when the adapter's credentials are unset; Tickets refuses to open checkouts on it.</summary>
@@ -46,12 +46,14 @@ public interface ITicketCheckoutBackend : IApplicationService
 }
 
 /// <summary>
+/// <paramref name="EventId"/> is the Humans (Settings) event the order is for; several events may sell at once.
 /// <paramref name="BackendEventRef"/> is the event's id inside the backend (a pretix event slug, a Hi.Events event id),
 /// set per event in Tickets; null for a backend that needs none. <paramref name="ReturnUrl"/> is where the buyer lands
 /// after paying or abandoning; Tickets reads the outcome from <see cref="ITicketCheckoutBackend.GetStatusAsync"/>.
 /// </summary>
 public sealed record CheckoutRequest(
     Guid OrderId,
+    Guid EventId,
     string? BackendEventRef,
     string BuyerName,
     string BuyerEmail,
@@ -78,7 +80,8 @@ public enum CheckoutLineKind
     Donation,
 }
 
-public sealed record CheckoutSession(string BackendOrderId, Uri PaymentUrl);
+/// <summary><paramref name="AdminUrl"/> is the order in the backend's own admin, for the ticketing team; null when there is none.</summary>
+public sealed record CheckoutSession(string BackendOrderId, Uri PaymentUrl, Uri? AdminUrl = null);
 
 /// <summary>
 /// <paramref name="RefundedMinor"/> is everything refunded against the order so far, however it was issued, so a

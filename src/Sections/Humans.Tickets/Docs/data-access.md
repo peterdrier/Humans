@@ -279,3 +279,8 @@ leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`)
 is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
 
 ---
+### TicketCheckoutRepository (Singleton)
+
+`ITicketCheckoutRepository` over `IDbContextFactory<TicketsDbContext>`: `ticket_sales_events`,
+`ticket_checkout_orders`, `ticket_checkout_refunds`. Only `TicketCheckoutService` calls it. Holder lookups load the
+whole orders table and filter the jsonb lines in memory.

@@ -1,0 +1,87 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Services.Checkout.CheckoutOrderDetail
+@{
+    ViewData["Title"] = "Ticket order";
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    var o = Model.Order;
+}
+
+@section Crumbs {
+    <a asp-action="Index">Sales</a>
+    <a asp-action="Orders" asp-route-id="@o.SalesEventId">Orders</a>
+    <span>Order</span>
+}
+
+<page-header title="Ticket order" />
+
+<dl class="row">
+    <dt class="col-sm-3">Buyer</dt><dd class="col-sm-9">@o.BuyerName (@o.BuyerEmail) <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@o.BuyerUserId">profile</a></dd>
+    <dt class="col-sm-3">State</dt><dd class="col-sm-9">@o.State</dd>
+    <dt class="col-sm-3">Backend</dt><dd class="col-sm-9"><code>@o.BackendKey</code> @o.BackendOrderId</dd>
+    <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@o.CreatedAt.ToDateTime()</dd>
+    <dt class="col-sm-3">Paid</dt><dd class="col-sm-9">@(o.PaidAt?.ToDateTime() ?? "—") @o.PaymentMethod</dd>
+    <dt class="col-sm-3">Fee</dt><dd class="col-sm-9">@(o.FeeMinor is { } fee ? Eur(fee) : "—")</dd>
+    <dt class="col-sm-3">Refunded</dt><dd class="col-sm-9">@Eur(o.RefundedMinor)</dd>
+</dl>
+
+<table class="table table-sm">
+    <thead><tr><th>Line</th><th>Holder</th><th>Code</th><th class="text-end">VAT</th><th class="text-end">Amount</th></tr></thead>
+    <tbody>
+        @foreach (var l in o.Lines)
+        {
+            <tr>
+                <td>@l.Description</td>
+                <td>@l.AttendeeName @(l.AttendeeEmail is null ? "" : $"({l.AttendeeEmail})")</td>
+                <td><code>@l.Barcode</code></td>
+                <td class="text-end">@((l.VatRate * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%</td>
+                <td class="text-end">@Eur(l.AmountMinor)</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot><tr class="fw-semibold"><td colspan="4">Total</td><td class="text-end">@Eur(o.TotalMinor)</td></tr></tfoot>
+</table>
+
+<h2 class="h5">Refunds</h2>
+@if (Model.Refunds.Count == 0)
+{
+    <p class="text-muted">None.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>When</th><th class="text-end">Amount</th><th>State</th><th>Reason</th><th>Backend id</th></tr></thead>
+        <tbody>
+            @foreach (var r in Model.Refunds)
+            {
+                <tr>
+                    <td>@r.CreatedAt.ToDateTime()</td>
+                    <td class="text-end">@Eur(r.AmountMinor)</td>
+                    <td>@r.State @r.FailureReason @if (r.ManualRefundUrl is not null) { <a href="@r.ManualRefundUrl">refund there</a> }</td>
+                    <td>@r.Reason</td>
+                    <td><code>@r.BackendRefundId</code></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (o.State == TicketCheckoutOrderState.Paid && Model.RefundableMinor > 0)
+{
+    <form asp-action="Refund" asp-route-id="@o.Id" method="post" class="row g-2 align-items-end" authorize-policy="@TicketsPolicies.Manage">
+        @Html.AntiForgeryToken()
+        <div class="col-md-3">
+            <label class="form-label" for="amount">Amount (€)</label>
+            <input class="form-control" id="amount" name="amount" type="number" step="0.01" min="0.01"
+                   max="@((Model.RefundableMinor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
+                   value="@((Model.RefundableMinor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))" required />
+            <div class="form-text">At most @Eur(Model.RefundableMinor): the tickets, never donations.</div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="reason">Reason</label>
+            <input class="form-control" id="reason" name="reason" maxlength="500" required />
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-danger">Refund through @o.BackendKey</button>
+        </div>
+    </form>
+}

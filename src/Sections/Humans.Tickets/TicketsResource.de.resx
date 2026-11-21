@@ -102,4 +102,151 @@
   <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Begründungen dürfen höchstens 1000 Zeichen lang sein.</value></data>
   <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Fehler bei der Ticket-Synchronisierung</value></data>
   <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Tickets_Buy_Title" xml:space="preserve">
+    <value>Tickets kaufen</value>
+  </data>
+  <data name="Tickets_Buy_Intro" xml:space="preserve">
+    <value>Tickets sind personalisiert: Der Name auf jedem Ticket muss am Einlass mit dem Ausweis der Person übereinstimmen.</value>
+  </data>
+  <data name="Tickets_Buy_YourPrice" xml:space="preserve">
+    <value>Dein Preis</value>
+  </data>
+  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
+    <value>Aktuelle Welle: {0}, {1}</value>
+  </data>
+  <data name="Tickets_Buy_Total" xml:space="preserve">
+    <value>Gesamt</value>
+  </data>
+  <data name="Tickets_Buy_ForSelf" xml:space="preserve">
+    <value>Ein Ticket für mich ({0})</value>
+  </data>
+  <data name="Tickets_Buy_Supporter" xml:space="preserve">
+    <value>Unterstützerticket</value>
+  </data>
+  <data name="Tickets_Buy_SupporterNone" xml:space="preserve">
+    <value>Nein, nur mein Ticket</value>
+  </data>
+  <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
+    <value>{0} insgesamt: dein Ticket plus {1} Spende</value>
+  </data>
+  <data name="Tickets_Buy_Partner" xml:space="preserve">
+    <value>Ein Ticket für jemand anderen</value>
+  </data>
+  <data name="Tickets_Buy_PartnerHelp" xml:space="preserve">
+    <value>Der amtliche Name und die E-Mail-Adresse. Die Person bekommt ein eigenes Konto und das Ticket gehört ihr. Es kostet den öffentlichen Preis ({0}).</value>
+  </data>
+  <data name="Tickets_Buy_PartnerName" xml:space="preserve">
+    <value>Amtlicher Name</value>
+  </data>
+  <data name="Tickets_Buy_PartnerEmail" xml:space="preserve">
+    <value>E-Mail</value>
+  </data>
+  <data name="Tickets_Buy_Donation" xml:space="preserve">
+    <value>Spende hinzufügen</value>
+  </data>
+  <data name="Tickets_Buy_DonationPurpose" xml:space="preserve">
+    <value>Zweck der Spende</value>
+  </data>
+  <data name="Tickets_Buy_Purpose_General" xml:space="preserve">
+    <value>Wo es am meisten gebraucht wird</value>
+  </data>
+  <data name="Tickets_Buy_Purpose_Creativity" xml:space="preserve">
+    <value>Kunst und Kreativität</value>
+  </data>
+  <data name="Tickets_Buy_Purpose_LowIncomePool" xml:space="preserve">
+    <value>Mehr Tickets für geringes Einkommen</value>
+  </data>
+  <data name="Tickets_Buy_DonationNote" xml:space="preserve">
+    <value>Spenden werden nicht erstattet.</value>
+  </data>
+  <data name="Tickets_Buy_Pay" xml:space="preserve">
+    <value>Weiter zur Zahlung</value>
+  </data>
+  <data name="Tickets_Buy_YourOrders" xml:space="preserve">
+    <value>Deine Bestellungen</value>
+  </data>
+  <data name="Tickets_Buy_OrderTitle" xml:space="preserve">
+    <value>Ticketbestellung</value>
+  </data>
+  <data name="Tickets_Buy_State_Created" xml:space="preserve">
+    <value>Wird gestartet</value>
+  </data>
+  <data name="Tickets_Buy_State_Pending" xml:space="preserve">
+    <value>Zahlung ausstehend</value>
+  </data>
+  <data name="Tickets_Buy_State_Paid" xml:space="preserve">
+    <value>Bezahlt</value>
+  </data>
+  <data name="Tickets_Buy_State_Failed" xml:space="preserve">
+    <value>Zahlung fehlgeschlagen</value>
+  </data>
+  <data name="Tickets_Buy_State_Expired" xml:space="preserve">
+    <value>Abgelaufen</value>
+  </data>
+  <data name="Tickets_Buy_State_Cancelled" xml:space="preserve">
+    <value>Storniert</value>
+  </data>
+  <data name="Tickets_Buy_PaidHelp" xml:space="preserve">
+    <value>Bezahlt. Deine Tickets findest du unten.</value>
+  </data>
+  <data name="Tickets_Buy_PendingHelp" xml:space="preserve">
+    <value>Wir haben noch keine Bestätigung der Zahlung. Banküberweisungen können ein paar Minuten dauern.</value>
+  </data>
+  <data name="Tickets_Buy_Barcode" xml:space="preserve">
+    <value>Ticketcode</value>
+  </data>
+  <data name="Tickets_Buy_Refunded" xml:space="preserve">
+    <value>Erstattet: {0}</value>
+  </data>
+  <data name="Tickets_Buy_PayNow" xml:space="preserve">
+    <value>Jetzt bezahlen</value>
+  </data>
+  <data name="Tickets_Buy_Refresh" xml:space="preserve">
+    <value>Erneut prüfen</value>
+  </data>
+  <data name="Tickets_Buy_Cancel" xml:space="preserve">
+    <value>Diese Bestellung stornieren</value>
+  </data>
+  <data name="Tickets_Buy_NotOnSale" xml:space="preserve">
+    <value>Hier sind gerade keine Tickets im Verkauf.</value>
+  </data>
+  <data name="Tickets_Buy_Closed" xml:space="preserve">
+    <value>Der Ticketverkauf ist geschlossen.</value>
+  </data>
+  <data name="Tickets_Buy_ResaleOnly" xml:space="preserve">
+    <value>Neue Tickets sind nicht mehr im Verkauf; jetzt werden nur zurückgegebene Tickets verkauft.</value>
+  </data>
+  <data name="Tickets_Buy_SoldOut" xml:space="preserve">
+    <value>Ausverkauft.</value>
+  </data>
+  <data name="Tickets_Buy_NeedLegalName" xml:space="preserve">
+    <value>Trag zuerst deinen amtlichen Namen in dein Profil ein: Er steht auf deinem Ticket.</value>
+  </data>
+  <data name="Tickets_Buy_AlreadyHolds" xml:space="preserve">
+    <value>Du hast schon ein Ticket für diese Veranstaltung.</value>
+  </data>
+  <data name="Tickets_Buy_PartnerIncomplete" xml:space="preserve">
+    <value>Für ein Ticket für jemand anderen brauchen wir den amtlichen Namen und eine gültige E-Mail-Adresse.</value>
+  </data>
+  <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
+    <value>Diese E-Mail-Adresse ist deine; wähle stattdessen dein eigenes Ticket.</value>
+  </data>
+  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
+    <value>Diese Person hat schon ein Ticket für diese Veranstaltung.</value>
+  </data>
+  <data name="Tickets_Buy_Invalid" xml:space="preserve">
+    <value>Diese Auswahl ist nicht verfügbar. Bitte versuch es noch einmal.</value>
+  </data>
+  <data name="Tickets_Buy_Empty" xml:space="preserve">
+    <value>Wähle mindestens ein Ticket oder eine Spende.</value>
+  </data>
+  <data name="Tickets_Buy_BackendFailed" xml:space="preserve">
+    <value>Die Zahlungsseite konnte nicht geöffnet werden. Bitte versuch es gleich noch einmal.</value>
+  </data>
+  <data name="Tickets_Buy_OrderNotFound" xml:space="preserve">
+    <value>Bestellung nicht gefunden.</value>
+  </data>
+  <data name="Tickets_Buy_AlreadyPaid" xml:space="preserve">
+    <value>Diese Bestellung ist schon bezahlt und kann nicht mehr storniert werden.</value>
+  </data>
 </root>

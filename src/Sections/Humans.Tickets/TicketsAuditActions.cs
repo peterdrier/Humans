@@ -27,4 +27,13 @@ internal sealed class TicketsAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition TicketOrdersExported = new("TicketOrdersExported");
 
     public static readonly AuditActionDefinition ParticipationBackfilled = new("ParticipationBackfilled");
+
+    public static readonly AuditActionDefinition TicketSalesEventSaved = new("TicketSalesEventSaved");
+
+    public static readonly AuditActionDefinition TicketCheckoutPaid = new("TicketCheckoutPaid");
+
+    /// <summary>Failed, expired or cancelled, as the backend reported it.</summary>
+    public static readonly AuditActionDefinition TicketCheckoutClosed = new("TicketCheckoutClosed");
+
+    public static readonly AuditActionDefinition TicketCheckoutRefunded = new("TicketCheckoutRefunded");
 }

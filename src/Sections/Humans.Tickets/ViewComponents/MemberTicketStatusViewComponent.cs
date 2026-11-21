@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.ViewComponents;
@@ -44,7 +45,21 @@ public sealed class MemberTicketStatusViewComponent(
             configured,
             ticketCount.Value,
             eventYear,
-            eventYear is null ? null : await ParticipationStatusAsync(userId, eventYear.Value, ct)));
+            eventYear is null ? null : await ParticipationStatusAsync(userId, eventYear.Value, ct))
+        {
+            SellsInHumans = activeEvent is not null && await SellsInHumansAsync(activeEvent.Id, ct),
+        });
+    }
+
+    /// <summary>
+    /// Resolved per call: the checkout service is internal, and a public view component cannot name it in its
+    /// constructor.
+    /// </summary>
+    private async Task<bool> SellsInHumansAsync(Guid eventSettingsId, CancellationToken ct)
+    {
+        var checkout = HttpContext.RequestServices.GetRequiredService<Services.Checkout.ITicketCheckoutService>();
+        return (await checkout.GetSalesEventsAsync(ct))
+            .Any(e => e.EventSettingsId == eventSettingsId && e.Mode != Domain.Checkout.TicketSalesMode.Closed);
     }
 
     /// <summary>Null when the holdings read failed.</summary>
@@ -90,7 +105,8 @@ internal sealed record MemberTicketStatusViewModel(
     int UserTicketCount,
     int? EventYear,
     ParticipationStatus? ParticipationStatus,
-    bool HoldingsUnavailable = false)
+    bool HoldingsUnavailable = false,
+    bool SellsInHumans = false)
 {
     public const string TicketPurchaseUrl = "https://tickets.nobodies.team";
 

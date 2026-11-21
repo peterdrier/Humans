@@ -1,0 +1,127 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Services.Checkout.BuyPage?
+@{
+    ViewData["Title"] = Localizer["Tickets_Buy_Title"].Value;
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture) + " €";
+}
+
+<page-header title="@(Localizer["Tickets_Buy_Title"].Value)" />
+
+@if (Model is null)
+{
+    <empty-state>@Localizer["Tickets_Buy_NotOnSale"]</empty-state>
+    <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
+    return;
+}
+
+<p class="text-muted">@Model.EventName. @Localizer["Tickets_Buy_Intro"]</p>
+
+@if (Model.Unavailable is not null)
+{
+    <div class="alert alert-info">@Localizer[Model.Unavailable]</div>
+}
+else
+{
+    var own = Model.OwnPrice!;
+    <form asp-action="Start" method="post" class="card card-body mb-4">
+        @Html.AntiForgeryToken()
+
+        <h2 class="h5">@Localizer["Tickets_Buy_YourPrice"]</h2>
+        <ul class="list-unstyled mb-3">
+            <li>@string.Format(Localizer["Tickets_Buy_WavePrice"].Value, own.Wave.Name, Eur(own.Wave.PriceMinor))</li>
+            @if (own.ClassPrice is { } cls)
+            {
+                <li>@cls.Label: @Eur(cls.AmountMinor)</li>
+            }
+            @foreach (var credit in own.Credits)
+            {
+                <li>@credit.Label: −@Eur(credit.AmountMinor)</li>
+            }
+            <li class="fw-semibold">@Localizer["Tickets_Buy_Total"]: @Eur(own.AmountMinor)</li>
+        </ul>
+
+        @if (Model.AlreadyHoldsTicket)
+        {
+            <input type="hidden" name="forSelf" value="false" />
+            <p class="text-muted">@Localizer["Tickets_Buy_AlreadyHolds"]</p>
+        }
+        else
+        {
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="forSelf" name="forSelf" value="true" checked />
+                <label class="form-check-label" for="forSelf">@string.Format(Localizer["Tickets_Buy_ForSelf"].Value, Model.BuyerName)</label>
+            </div>
+
+            @if (Model.SalesEvent.SupporterTotalsMinor.Any(t => t > own.AmountMinor))
+            {
+                <h2 class="h6">@Localizer["Tickets_Buy_Supporter"]</h2>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="supporterTotalMinor" id="supporter-none" value="" checked />
+                        <label class="form-check-label" for="supporter-none">@Localizer["Tickets_Buy_SupporterNone"]</label>
+                    </div>
+                    @foreach (var total in Model.SalesEvent.SupporterTotalsMinor.Where(t => t > own.AmountMinor))
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="supporterTotalMinor" id="supporter-@total" value="@total" />
+                            <label class="form-check-label" for="supporter-@total">
+                                @string.Format(Localizer["Tickets_Buy_SupporterOption"].Value, Eur(total), Eur(total - own.AmountMinor))
+                            </label>
+                        </div>
+                    }
+                </div>
+            }
+        }
+
+        <h2 class="h6">@Localizer["Tickets_Buy_Partner"]</h2>
+        <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_PartnerHelp"].Value, Eur(Model.PublicPrice!.AmountMinor))</p>
+        <div class="row g-2 mb-3">
+            <div class="col-md-6">
+                <label class="form-label" for="partnerName">@Localizer["Tickets_Buy_PartnerName"]</label>
+                <input class="form-control" id="partnerName" name="partnerName" maxlength="513" autocomplete="off" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="partnerEmail">@Localizer["Tickets_Buy_PartnerEmail"]</label>
+                <input class="form-control" id="partnerEmail" name="partnerEmail" type="email" maxlength="320" autocomplete="off" />
+            </div>
+        </div>
+
+        <h2 class="h6">@Localizer["Tickets_Buy_Donation"]</h2>
+        <div class="row g-2 mb-1">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <input class="form-control" name="donation" type="number" min="0" step="1" aria-label="@Localizer["Tickets_Buy_Donation"]" />
+                    <span class="input-group-text">€</span>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <select class="form-select" name="donationPurpose" aria-label="@Localizer["Tickets_Buy_DonationPurpose"]">
+                    <option value="@TicketDonationPurpose.General">@Localizer["Tickets_Buy_Purpose_General"]</option>
+                    <option value="@TicketDonationPurpose.Creativity">@Localizer["Tickets_Buy_Purpose_Creativity"]</option>
+                    <option value="@TicketDonationPurpose.LowIncomePool">@Localizer["Tickets_Buy_Purpose_LowIncomePool"]</option>
+                </select>
+            </div>
+        </div>
+        <p class="small text-muted">@Localizer["Tickets_Buy_DonationNote"]</p>
+
+        <div>
+            <button type="submit" class="btn btn-primary">@Localizer["Tickets_Buy_Pay"]</button>
+        </div>
+    </form>
+}
+
+@if (Model.Orders.Count > 0)
+{
+    <h2 class="h5">@Localizer["Tickets_Buy_YourOrders"]</h2>
+    <ul class="list-group mb-3">
+        @foreach (var order in Model.Orders)
+        {
+            <li class="list-group-item d-flex justify-content-between">
+                <a asp-action="Order" asp-route-id="@order.Id">@order.CreatedAt.ToDateTime()</a>
+                <span>@Eur(order.TotalMinor) · @Localizer[$"Tickets_Buy_State_{order.State}"]</span>
+            </li>
+        }
+    </ul>
+}
+
+<a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">@SharedLocalizer["Common_Back"]</a>

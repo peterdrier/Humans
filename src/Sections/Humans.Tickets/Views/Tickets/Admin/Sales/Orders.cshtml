@@ -1,0 +1,37 @@
+@using Humans.Tickets.Domain.Checkout
+@model (TicketSalesEvent SalesEvent, IReadOnlyList<TicketCheckoutOrder> Orders)
+@{
+    ViewData["Title"] = "Ticket orders";
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    var paid = Model.Orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
+}
+
+@section Crumbs {
+    <a asp-action="Index">Sales</a>
+    <span>Orders</span>
+}
+
+<page-header title="Ticket orders" />
+
+<p>
+    @paid.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)) tickets paid of @Model.SalesEvent.Capacity ·
+    @Eur(paid.Sum(o => o.TotalMinor)) taken · @Eur(paid.Sum(o => o.RefundedMinor)) refunded ·
+    @Eur(paid.Sum(o => o.FeeMinor ?? 0)) fees
+</p>
+
+<table class="table table-sm">
+    <thead><tr><th>Created</th><th>Buyer</th><th>Tickets</th><th class="text-end">Total</th><th>State</th><th>Backend</th></tr></thead>
+    <tbody>
+        @foreach (var o in Model.Orders)
+        {
+            <tr>
+                <td><a asp-action="Order" asp-route-id="@o.Id">@o.CreatedAt.ToDateTime()</a></td>
+                <td>@o.BuyerName</td>
+                <td>@o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)</td>
+                <td class="text-end">@Eur(o.TotalMinor)</td>
+                <td>@o.State</td>
+                <td><code>@o.BackendKey</code></td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -69,6 +69,7 @@
     <ProjectReference Include="..\Sections\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tickets\Humans.Tickets.csproj" />
     <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
+    <ProjectReference Include="..\Sections\Humans.BoxOffice\Humans.BoxOffice.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tour\Humans.Tour.csproj" />
     <ProjectReference Include="..\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>

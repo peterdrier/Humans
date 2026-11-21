@@ -1,0 +1,79 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Controllers.TicketBuyOrderViewModel
+@{
+    ViewData["Title"] = Localizer["Tickets_Buy_OrderTitle"].Value;
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture) + " €";
+    var order = Model.Order;
+    var open = order.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending;
+}
+
+@section Crumbs {
+    <a asp-action="Index">@Localizer["Tickets_Buy_Title"]</a>
+    <span>@Localizer["Tickets_Buy_OrderTitle"]</span>
+}
+
+<page-header title="@(Localizer["Tickets_Buy_OrderTitle"].Value)" />
+
+<p>
+    <span class="badge @(order.State == TicketCheckoutOrderState.Paid ? "bg-success" : open ? "bg-warning text-dark" : "bg-secondary")">
+        @Localizer[$"Tickets_Buy_State_{order.State}"]
+    </span>
+</p>
+
+@if (order.State == TicketCheckoutOrderState.Paid)
+{
+    <p>@Localizer["Tickets_Buy_PaidHelp"]</p>
+}
+else if (open)
+{
+    <p class="text-muted">@Localizer["Tickets_Buy_PendingHelp"]</p>
+}
+
+<table class="table">
+    <tbody>
+        @foreach (var line in Model.VisibleLines)
+        {
+            <tr>
+                <td>
+                    @line.Description
+                    @if (line.AttendeeName is not null)
+                    {
+                        <div class="small">@line.AttendeeName</div>
+                    }
+                    @if (line.Barcode is not null)
+                    {
+                        <div class="small text-muted">@Localizer["Tickets_Buy_Barcode"]: <code>@line.Barcode</code></div>
+                    }
+                </td>
+                <td class="text-end">@(Model.IsBuyer ? Eur(line.AmountMinor) : "")</td>
+            </tr>
+        }
+    </tbody>
+    @if (Model.IsBuyer)
+    {
+        <tfoot>
+            <tr class="fw-semibold"><td>@Localizer["Tickets_Buy_Total"]</td><td class="text-end">@Eur(order.TotalMinor)</td></tr>
+            @if (order.RefundedMinor > 0)
+            {
+                <tr><td colspan="2" class="text-end">@string.Format(Localizer["Tickets_Buy_Refunded"].Value, Eur(order.RefundedMinor))</td></tr>
+            }
+        </tfoot>
+    }
+</table>
+
+@if (open && Model.IsBuyer)
+{
+    <div class="d-flex gap-2 mb-3">
+        @if (order.PaymentUrl is not null && order.State == TicketCheckoutOrderState.Pending)
+        {
+            <a class="btn btn-primary" href="@order.PaymentUrl">@Localizer["Tickets_Buy_PayNow"]</a>
+        }
+        <a class="btn btn-outline-secondary" asp-action="Order" asp-route-id="@order.Id">@Localizer["Tickets_Buy_Refresh"]</a>
+        <form asp-action="Cancel" asp-route-id="@order.Id" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-danger">@Localizer["Tickets_Buy_Cancel"]</button>
+        </form>
+    </div>
+}
+
+<a class="btn btn-outline-secondary" asp-action="Index">@SharedLocalizer["Common_Back"]</a>

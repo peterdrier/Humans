@@ -17,6 +17,7 @@ using Humans.Tickets.Health;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
+using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.Services.Stores;
 using Humans.Tickets.ViewComponents;
 using Humans.Users.Contracts;
@@ -134,6 +135,15 @@ public sealed class Section :
         });
 
         services.AddScoped<TicketSyncJob>();
+
+        // The checkout lane: each backend is its own adapter section registering an ITicketCheckoutBackend.
+        services.AddSingleton<ITicketCheckoutRepository, TicketCheckoutRepository>();
+        services.AddScoped<TicketCheckoutService>();
+        services.AddScoped<ITicketCheckoutService>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<ITicketCheckoutEvents>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<TicketCheckoutReconcileJob>();
     }
 
     string IIssueQueueOwner.QueueKey => "Tickets";
@@ -168,7 +178,8 @@ public sealed class Section :
             new("Transfer requests", "TicketTransferAdmin",  "Index", null, null, "fa-solid fa-right-left",  TicketsPolicies.Read, Weight: 10,
                  PillCount: PillCounts.TransferQueueAsync),
             new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", TicketsPolicies.Read, Weight: 20),
-            new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30)
+            new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30),
+            new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40)
         ])
     ];
 
@@ -203,6 +214,10 @@ public sealed class Section :
 
         yield return new RecurringJobDescriptor(
             "tickets-vendor-sync", typeof(TicketSyncJob), $"*/{syncIntervalMinutes} * * * *");
+
+        // Catches webhooks that never arrived; the webhook is only a nudge.
+        yield return new RecurringJobDescriptor(
+            "tickets-checkout-reconcile", typeof(TicketCheckoutReconcileJob), "*/5 * * * *");
     }
 
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>

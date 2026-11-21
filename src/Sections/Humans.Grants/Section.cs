@@ -47,6 +47,7 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
         services.AddScoped<GrantService>();
         services.AddScoped<IGrantManagement>(sp => sp.GetRequiredService<GrantService>());
         services.AddScoped<IGrantWrite>(sp => sp.GetRequiredService<GrantService>());
+        services.AddScoped<IGrantService>(sp => sp.GetRequiredService<GrantService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GrantService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GrantService>());
 
