@@ -119,6 +119,15 @@ else
     </tbody>
 </table>
 
+@if (o.State == TicketCheckoutOrderState.Paid)
+{
+    <form asp-action="Resend" asp-route-id="@o.Id" method="post" class="mb-3" authorize-policy="@TicketsPolicies.Manage">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-primary">Resend ticket emails and receipt</button>
+        <span class="form-text ms-2">To each holder and the payer, as when the order was paid.</span>
+    </form>
+}
+
 @if (o.State == TicketCheckoutOrderState.Paid && Model.RefundableMinor > 0)
 {
     <form asp-action="Refund" asp-route-id="@o.Id" method="post" class="row g-2 align-items-end" authorize-policy="@TicketsPolicies.Manage">

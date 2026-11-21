@@ -33,6 +33,10 @@ internal sealed class VolunteerHistoryEntryConfiguration : IEntityTypeConfigurat
             .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Declared so the model matches the default EF's nullable-to-required migration leaves in the
+        // database (required-columns-need-approval). Every write sets a real user id.
+        builder.Property(v => v.UserId).HasDefaultValue(Guid.Empty);
+
         builder.HasIndex(v => v.UserId);
     }
 }

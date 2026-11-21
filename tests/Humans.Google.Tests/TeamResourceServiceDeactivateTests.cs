@@ -329,4 +329,22 @@ public sealed class TeamResourceServiceDeactivateTests : Infrastructure.GoogleTe
         });
         return id;
     }
+
+    [HumansFact]
+    public async Task LookUpDriveLink_ResolvesAFolderAndExplainsARefusalWithoutStoringAnything()
+    {
+        _googleClient.GetDriveItemAsync("abc", true, Arg.Any<CancellationToken>())
+            .Returns(new DriveLookupResult(new DriveItem("abc", "Board", "https://drive/abc", true, "Shared/Board"), null));
+        _googleClient.GetDriveItemAsync("gone", false, Arg.Any<CancellationToken>())
+            .Returns(new DriveLookupResult(null, new GoogleClientError(404, "not found")));
+        _googleClient.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>()).Returns("sa@example.com");
+
+        (await _service.LookUpDriveLinkAsync("https://drive.google.com/drive/folders/abc", TestContext.Current.CancellationToken)).Item
+            .Should().Be(new DriveLinkItem("abc", GoogleResourceType.DriveFolder, "Shared/Board", "https://drive/abc"));
+        var refused = await _service.LookUpDriveLinkAsync("https://drive.google.com/file/d/gone/view", TestContext.Current.CancellationToken);
+        refused.Item.Should().BeNull();
+        refused.ErrorMessage.Should().Contain("sa@example.com");
+        (await _service.LookUpDriveLinkAsync("not a link", TestContext.Current.CancellationToken)).ErrorMessage.Should().NotBeNull();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+    }
 }

@@ -105,7 +105,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         result.Succeeded.Should().BeTrue();
         (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Value.Should().Be("+34 612345678");
         (await Db.ProfileLanguages.AsNoTracking().SingleAsync(ct)).LanguageCode.Should().Be("es");
-        (await Db.Profiles.AsNoTracking().SingleAsync(ct)).Id.Should().Be(result.ProfileId!.Value);
+        (await Db.Profiles.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(userId);
     }
 
     [HumansTheory]
@@ -175,7 +175,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var save = await _editor.SaveProfileAsync(userId, request, ct: Xunit.TestContext.Current.CancellationToken);
 
         save.Succeeded.Should().BeTrue();
-        save.ProfileId.Should().NotBeNull().And.NotBe(Guid.Empty);
         (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
         (user.BurnerName, user.FirstName, user.LastName).Should().Be(("Flame", "Jane", "Doe"));
@@ -712,36 +711,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
 
-    [HumansFact]
-    public async Task SaveProfileLanguages_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
-        Db.ProfileLanguages.Add(new ProfileLanguage
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            LanguageCode = "es",
-            Proficiency = LanguageProficiency.Native,
-        });
-        await Db.SaveChangesAsync(ct);
-        var repository = Substitute.For<IUserRepository>();
-        repository.ReplaceLanguagesAsync(profileId, Arg.Any<IReadOnlyList<ProfileLanguage>>(), Arg.Any<CancellationToken>())
-            .Returns(c => _userRepository.ReplaceLanguagesAsync(profileId,
-                c.Arg<IReadOnlyList<ProfileLanguage>>(), c.Arg<CancellationToken>()));
-        repository.GetOwnerUserIdAsync(profileId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Owner lookup failed"));
-        var service = new UserService(repository, AdminAuthorization, _pictureStorage,
-            Clock, NullLogger<UserService>.Instance, AuditLog);
-
-        var act = () => service.SaveProfileLanguagesAsync(profileId,
-            [new ProfileLanguageInfo(Guid.Empty, "fr", LanguageProficiency.Native)], ct);
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Owner lookup failed");
-        (await Db.ProfileLanguages.AsNoTracking().SingleAsync(ct)).LanguageCode.Should().Be("es");
-    }
-
     private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
         userRepository,
         AdminAuthorization,
@@ -782,7 +751,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var result = await act();
 
         result.Succeeded.Should().BeFalse();
-        result.ProfileId.Should().BeNull();
         result.ErrorKey.Should().Be("Users_Profile_BurnerCVRequired");
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
         (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);

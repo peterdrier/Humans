@@ -40,7 +40,6 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             Substitute.For<IUserService>(),
             AuditLog,
             Notifier,
-            Substitute.For<ISystemTeamSync>(),
             new CachingRoleAssignmentService(
                 Substitute.For<IServiceScopeFactory>(), Clock,
                 NullLogger<CachingRoleAssignmentService>.Instance),

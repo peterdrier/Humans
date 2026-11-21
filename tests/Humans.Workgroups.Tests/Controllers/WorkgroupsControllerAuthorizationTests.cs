@@ -724,7 +724,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
         _localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         var controller = new WorkgroupsController(
-            service ?? NewService(), Users, Teams, Governance,
+            service ?? NewService(), Users, Roles, Governance,
             _localizer,
             CalendarLocalizer(),
             Settings,

@@ -459,6 +459,28 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
+    public async Task A_hand_unlink_survives_a_sweep_that_reads_Pleos_mapping()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false)]);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-1", false)]);
+        await SyncAsync();
+        var actor = Guid.NewGuid();
+        (await _service.UnlinkCategoryAsync(LaCantinaRow, actor, ct)).Should().BeNull();
+
+        await SyncAsync();
+
+        var categories = await _repo.GetCategoriesAsync(ct);
+        categories.Should().HaveCount(13);
+        categories.Single(c => c.Id == LaCantinaRow).Should().BeEquivalentTo(
+            new { PleoCategoryId = (string?)null, SetByUserId = (Guid?)actor });
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryLinked, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), "PleoSyncJob");
+    }
+
+    [HumansFact]
     public async Task A_failed_fetch_leaves_the_mirror_and_records_the_error()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

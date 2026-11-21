@@ -824,4 +824,18 @@
   <data name="Governance_Save" xml:space="preserve"><value>Opslaan</value></data>
   <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Bestuursfunctie opgeslagen.</value></data>
   <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Alleen een huidig bestuurslid kan een bestuursfunctie bekleden.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Groep en bestanden beheren</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Google-groep</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Nog geen Drive-mappen of -bestanden.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Drive-link</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Toegang</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Toevoegen</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Google-groep opgeslagen.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Drive-map of -bestand toegevoegd.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Drive-map of -bestand verwijderd. Het delen blijft zoals het is.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Gebruik alleen kleine letters, cijfers en koppeltekens voor de groepsnaam.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Een ander orgaan gebruikt deze groep al.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Deze Drive-map of dit bestand staat al op de lijst.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Die Drive-map of dat bestand staat niet meer op de lijst.</value></data>
 </root>

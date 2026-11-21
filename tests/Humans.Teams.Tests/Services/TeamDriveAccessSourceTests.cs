@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
@@ -58,6 +59,18 @@ public sealed class TeamDriveAccessSourceTests
         claims.Keys.Should().BeEquivalentTo("retired-file", "no-access");
         claims.Values.Should().OnlyContain(c => c.Access.Count == 0);
         filtered.Keys.Should().Equal("retired-file");
+    }
+
+    [HumansFact]
+    public async Task GovernanceBodyTeamFiles_AreLeftToGovernance()
+    {
+        var asociados = Team("asociados", Guid.NewGuid()) with { Id = SystemTeamIds.Asociados };
+        Seed([asociados], Resource(asociados.Id, "asociados-folder", DrivePermissionLevel.Viewer));
+
+        var claims = await new TeamDriveAccessSource(_teams, _resources)
+            .GetExpectedAccessAsync(ct: Xunit.TestContext.Current.CancellationToken);
+
+        claims.Should().BeEmpty();
     }
 
     private void Seed(TeamInfo[] teams, params GoogleResourceSnapshot[] resources)

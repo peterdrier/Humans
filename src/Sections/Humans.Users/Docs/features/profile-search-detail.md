@@ -50,7 +50,7 @@ No new entities. Reads from:
 - `ContactField` rows (visibility-filtered).
 - `RoleAssignment` (board check is upstream of the visibility ladder, not surfaced here directly).
 
-`HumanSearchResult` (the service-returned DTO) carries `ProfileId` alongside `UserId`. `IContactFieldService.GetVisibleContactFieldsAsync` now keys by `userId` directly, reading from the cached `UserInfo` projection, so the controller does not need `ProfileId` to drive it.
+`HumanSearchResult` (the service-returned DTO) carries `UserId`. `IContactFieldService.GetVisibleContactFieldsAsync` keys by `userId`, reading from the cached `UserInfo` projection.
 
 ## Detail Priority Order
 
@@ -93,7 +93,7 @@ The view defends against broken URLs with `img.onerror = () => img.remove();` â€
 
 ## Caching
 
-- **Search index + ProfileId resolution**: served from the `CachingUserService` `ConcurrentDictionary<Guid, UserInfo>` warmed at startup by the decorator's own `IHostedService.StartAsync` (inherited from `TrackedCache`, see design-rules.md, *Section caching pattern*). No DB hit for the matcher itself; `ProfileId` lives on `UserInfo.Profile.Id`.
+- **Search index**: served from the `CachingUserService` `ConcurrentDictionary<Guid, UserInfo>` warmed at startup by the decorator's own `IHostedService.StartAsync` (inherited from `TrackedCache`, see design-rules.md, *Section caching pattern*). No DB hit for the matcher itself.
 - **Single-person lookup endpoint**: served from the same dict via `IUserService.GetUserInfoAsync(userId)`.
 - **Per-result email / contact-field reads**: not cached. These remain DB-bound, one round-trip per result row per visibility category. Acceptable at the project's small scale per `CLAUDE.md` ("prefer in-memory caching over query optimization"). Batching these is a separate, follow-up optimization if the picker latency ever becomes user-visible.
 

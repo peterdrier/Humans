@@ -56,7 +56,14 @@
                                 <tr class="collapse" id="@collapseId">
                                     <td colspan="3" class="p-0">
                                         <div class="p-3 bg-light border-top">
-                                            <iframe class="outbox-message-frame" srcdoc="@msg.HtmlBody" sandbox="" style="width:100%;border:none;min-height:300px;"></iframe>
+                                            @if (msg.HtmlBody is null)
+                                            {
+                                                <span class="text-muted">@string.Format(Localizer["Email_Outbox_BodyHidden"].Value, msg.RecipientEmail)</span>
+                                            }
+                                            else
+                                            {
+                                                <iframe class="outbox-message-frame" srcdoc="@msg.HtmlBody" sandbox="" style="width:100%;border:none;min-height:300px;"></iframe>
+                                            }
                                         </div>
                                     </td>
                                 </tr>

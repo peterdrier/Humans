@@ -34,7 +34,8 @@
                             }
                         </small>
                     </div>
-                    @if (role.IsActive)
+                    @* Board seats end on /Governance/Board. *@
+                    @if (role.IsActive && !Humans.Auth.Authorization.RoleAssignmentRules.IsAddedInGovernance(role.RoleName))
                     {
                         <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@Model.UserId" asp-route-roleId="@role.Id" method="post" class="d-inline" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Manage"
                               data-confirm="@Localizer["Auth_Roles_EndConfirm"].Value">

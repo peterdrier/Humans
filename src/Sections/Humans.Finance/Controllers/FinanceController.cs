@@ -491,13 +491,6 @@ internal sealed class FinanceController(
         var ledger = await finance.GetCreditorLedgerAsync(accountNum, HttpContext.RequestAborted);
         if (ledger is null) return NotFound();
 
-        // The finance-admin review queue is every submitted report; the ones booked to this account are the other
-        // side of the ledger.
-        var reports = (await expenseReports.GetReviewQueueAsync(HttpContext.RequestAborted))
-            .Where(r => r.HoldedSupplierAccountNum == accountNum)
-            .OrderByDescending(r => r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt)
-            .ToList();
-
         // The running balance is the service's; the page shows newest activity first.
         var memberName = string.IsNullOrWhiteSpace(ledger.Contact?.Name) ? "member" : ledger.Contact.Name;
         var lines = StatementRows(ledger.Lines, memberName)
@@ -506,6 +499,8 @@ internal sealed class FinanceController(
             .ThenBy(r => r.Line.Line)
             .ToList();
         var recon = await finance.GetExpenseReconAsync(null, HttpContext.RequestAborted);
+        var reports = CreditorStatementVm.ReportsFor(
+            await expenseReports.GetReviewQueueAsync(HttpContext.RequestAborted), recon, accountNum);
         var (transfers, _) = await finance.GetSepaTransfersAsync(HttpContext.RequestAborted);
         var sepa = transfers
             .Where(t => t.SupplierAccountNum == accountNum)

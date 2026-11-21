@@ -2,7 +2,6 @@ namespace Humans.Users.Contracts;
 
 /// <summary>The one person-search result shape; wider <c>PersonSearchFields</c> just let more rows match.</summary>
 /// <param name="UserId">Owning user.</param>
-/// <param name="ProfileId">For <c>IContactFieldService</c>, which keys by profile id.</param>
 /// <param name="BurnerName">From <c>User.BurnerName</c>.</param>
 /// <param name="ProfilePictureUrl">Custom or upstream; null when none.</param>
 /// <param name="MatchField">Display label of the matching bucket, localized in the caller’s UI culture; custom contact labels remain verbatim.</param>
@@ -11,7 +10,6 @@ namespace Humans.Users.Contracts;
 /// <param name="Score">Higher is better. Results come back unordered: callers sort with <c>OrderByRelevance()</c>.</param>
 public record HumanSearchResult(
     Guid UserId,
-    Guid ProfileId,
     string BurnerName,
     string? ProfilePictureUrl,
     string? MatchField,

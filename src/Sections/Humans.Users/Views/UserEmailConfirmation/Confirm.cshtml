@@ -1,0 +1,75 @@
+@model EmailConfirmViewModel
+@inject Microsoft.Extensions.Options.IOptions<Humans.Base.Configuration.EmailSettings> EmailSettings
+@{
+    var merging = Model is { State: EmailConfirmationState.Merge, Mine: not null, Other: not null };
+    var title = Localizer[merging ? "Users_MergeAccounts_Title" : "Users_VerifyEmail_Title"].Value;
+    ViewData["Title"] = title;
+}
+
+<page-header title="@title" />
+
+@if (merging)
+{
+    <p class="lead">@Localizer["Users_MergeAccounts_Intro", Model.Email]</p>
+    <p>@Localizer["Users_MergeAccounts_KeepsEverything"]</p>
+
+    <form asp-action="Merge" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="token" value="@Model.Token" />
+
+        <div class="row g-3 mb-3">
+            <div class="col-lg-6">
+                <partial name="_MergeAccountCard" model="Model.Mine" />
+            </div>
+            <div class="col-lg-6">
+                <partial name="_MergeAccountCard" model="Model.Other" />
+            </div>
+        </div>
+
+        @if (Model.MustChoose)
+        {
+            <p class="@(Model.ChoiceMissing ? "text-danger fw-semibold" : null)">@Localizer["Users_MergeAccounts_Choose"]</p>
+        }
+        else
+        {
+            <p>@Localizer["Users_MergeAccounts_OtherEmpty"]</p>
+        }
+
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-code-merge me-1"></i>@Localizer["Users_MergeAccounts_Button"]
+        </button>
+        <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary ms-2">@Localizer["Users_MergeAccounts_NotNow"]</a>
+    </form>
+}
+else if (Model.State == EmailConfirmationState.Confirm)
+{
+    <p class="lead">@Localizer["Users_ConfirmEmail_Prompt", Model.Email]</p>
+    <form asp-action="ConfirmAddress" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="token" value="@Model.Token" />
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-check me-1"></i>@Localizer["Users_ConfirmEmail_Button"]
+        </button>
+    </form>
+}
+else if (Model.State == EmailConfirmationState.WrongAccount)
+{
+    <div class="alert alert-warning" role="alert">
+        <p>@Localizer["Users_ConfirmEmail_WrongAccount"]</p>
+        <p class="mb-1">@Localizer["Users_ConfirmEmail_LinkMadeBy"] <strong><vc:human user-id="@Model.AskingUserId" link="InsideControl" /></strong></p>
+        <p>@Localizer["Users_ConfirmEmail_SignedInAs"] <strong><vc:human user-id="@Model.SignedInUserId" link="InsideControl" /></strong></p>
+        <p class="mb-0">@Localizer["Users_ConfirmEmail_WrongAccountHelp"]</p>
+    </div>
+}
+else if (Model.State == EmailConfirmationState.MergeBlocked)
+{
+    <div class="alert alert-warning" role="alert">
+        @Localizer["Users_MergeAccounts_Blocked", EmailSettings.Value.AdminAddress]
+    </div>
+    <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary">@Localizer["Users_VerifyEmail_GoToSettings"]</a>
+}
+else
+{
+    <div class="alert alert-danger" role="alert">@Localizer["Users_ConfirmEmail_Invalid"]</div>
+    <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-primary">@Localizer["Users_VerifyEmail_GoToSettings"]</a>
+}

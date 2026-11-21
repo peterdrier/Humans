@@ -4,6 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Governance;
 using Humans.Governance.Data;
+using Humans.Google.Contracts;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
 using Humans.Base.Authorization;
@@ -33,8 +34,11 @@ public sealed class GovernanceBoardSeatsTests
     private readonly GovernanceBodyRepository _repo = new(new TestDbContextFactory<GovernanceDbContext>(
         new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
 
+    private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
+
     private GovernanceBoardSeats Seats() =>
-        new(_roles, _write, _users, _repo, _audit, new FakeClock(Now));
+        new(_roles, _write, _users, _repo, _audit,
+            new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now));
 
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
@@ -157,7 +161,10 @@ public sealed class GovernanceBoardSeatsTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), RoleNames.Board, PolicyNames.RoleAssignmentManage)
             .Returns(AuthorizationResult.Failed());
-        var controller = new GovernanceController(users, Substitute.For<IGovernanceIndexService>(), Seats(), authorization,
+        var controller = new GovernanceController(users, Substitute.For<IGovernanceIndexService>(), Seats(),
+            new GovernanceBodyLinksService(_repo, Substitute.For<Humans.Teams.Contracts.ITeamService>(), Substitute.For<ITeamResourceService>(),
+                _audit, new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now)),
+            authorization,
             Substitute.For<IStringLocalizer<GovernanceResource>>())
         {
             ControllerContext = new ControllerContext

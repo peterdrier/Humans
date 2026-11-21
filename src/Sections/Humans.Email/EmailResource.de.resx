@@ -63,6 +63,7 @@
   <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>E-Mails, die das System an diesen Human gesendet hat.</value></data>
   <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>E-Mails, die das System an dich gesendet hat (innerhalb der letzten 150 Tage).</value></data>
   <data name="Email_Outbox_Empty" xml:space="preserve"><value>Keine E-Mails vorhanden.</value></data>
+  <data name="Email_Outbox_BodyHidden" xml:space="preserve"><value>Gesendet an {0}. Der Text erscheint hier, sobald diese Adresse für dieses Konto bestätigt ist.</value></data>
   <data name="Email_Outbox_Subject" xml:space="preserve"><value>Betreff</value></data>
   <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Meine E-Mails</value></data>
   <data name="Email_SendMessage_Title" xml:space="preserve">

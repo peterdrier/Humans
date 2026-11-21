@@ -28,6 +28,7 @@ internal static class RoleAssignmentRules
     public static IReadOnlyList<RoleDefinition> Assignable(ClaimsPrincipal user, RoleCatalog catalog) =>
         [.. catalog.Roles.Where(r => MayManage(user, r.Name) && !IsAddedInGovernance(r.Name))];
 
+    /// <summary>Board seats are added and ended on /Governance/Board, never on the role admin pages.</summary>
     public static bool IsAddedInGovernance(string roleName) =>
         string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal);
 }

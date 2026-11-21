@@ -13,55 +13,134 @@ using Humans.Users.Domain;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// The merge row is written by <see cref="IUserEmailService.VerifyEmailAsync"/>, not on add, so the merge tests drive
-/// add then verify through the service. The authorization tests are pure HTTP.
+/// The emailed confirmation link through the real app: who may use it, what it merges, and which account the
+/// browser ends up signed in to. The authorization tests are pure HTTP.
 /// </summary>
 public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    [HumansFact(Timeout = 30_000)]
-    public async Task SelfAddEmail_AlreadyVerifiedOnAnotherUser_CreatesAccountMergeRequest_AndShowsMergePendingPill()
+    [HumansFact(Timeout = 60_000)]
+    public async Task MailedLink_OtherAccountNeverFilledIn_MergesItIntoTheSignedInAccount()
     {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var me = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
         var sharedEmail = $"shared-{Guid.NewGuid():N}@x.test";
-        Guid userBId;
-        Guid userAId;
+        Guid shell;
         await using (var scope = Factory.Services.CreateAsyncScope())
-        {
-            userBId = await SeedUserWithVerifiedEmailAsync(scope, sharedEmail);
-            userAId = await SeedBareUserAsync(scope, $"a-{Guid.NewGuid():N}@x.test");
-        }
+            shell = await SeedUserWithVerifiedEmailAsync(scope, sharedEmail);
+        var link = await AddEmailAndGetLinkAsync(me, sharedEmail);
 
-        // Merge is written on verify.
-        await using (var scope = Factory.Services.CreateAsyncScope())
-        {
-            var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
-            var addResult = await userEmailService.AddEmailAsync(userAId, sharedEmail, Xunit.TestContext.Current.CancellationToken);
-            addResult.IsConflict.Should().BeTrue(
-                "AddEmail must flag the conflict so the verification email warns the user.");
+        // Opening the link changes nothing: mail scanners open links.
+        var (formToken, cookie) = await GetAntiforgeryAsync(link.Url);
+        (await MergedToAsync(shell)).Should().BeNull();
 
-            var verifyResult = await userEmailService.VerifyEmailAsync(userAId, addResult.EmailId, addResult.Token, Xunit.TestContext.Current.CancellationToken);
-            verifyResult.MergeRequestCreated.Should().BeTrue(
-                "the verify-time conflict path is what writes the merge request.");
-        }
+        var merge = await PostFormWithAntiforgeryAsync("/Users/Emails/Merge", formToken, cookie,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = link.Token });
 
-        await using (var scope = Factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
-            var merge = await db.Set<AccountMergeRequest>()
-                .AsNoTracking()
-                .SingleAsync(m => m.TargetUserId == userAId && m.SourceUserId == userBId, Xunit.TestContext.Current.CancellationToken);
+        merge.StatusCode.Should().Be(HttpStatusCode.Found);
+        (await MergedToAsync(shell)).Should().Be(me);
+        await using var assertScope = Factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
+        (await db.Set<UserEmail>().AsNoTracking().Where(e => e.Email == sharedEmail).ToListAsync(ct))
+            .Should().ContainSingle().Which.Should().Match<UserEmail>(e => e.UserId == me && e.IsVerified);
 
-            merge.Status.Should().Be(AccountMergeRequestStatus.Pending);
-            merge.Email.Should().Be(sharedEmail);
-        }
-
-        // The admin route renders the same view model, so the pill renders identically.
+        // The admin's look-back list reads it from the audit log.
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var admin = await Client.GetAsync("/Users/Admin/AccountMerges", ct);
+        var adminHtml = await admin.Content.ReadAsStringAsync(ct);
+        admin.StatusCode.Should().Be(HttpStatusCode.OK);
+        adminHtml.Should().Contain("Recently merged").And.Contain("Self-service").And.Contain(shell.ToString());
+        adminHtml.Should().NotContain("<vc:", "an unbound view component ships as inert markup");
+    }
 
-        var resp = await Client.GetAsync($"/Profile/{userAId}/Admin/Emails", Xunit.TestContext.Current.CancellationToken);
-        resp.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await resp.Content.ReadAsStringAsync(Xunit.TestContext.Current.CancellationToken);
+    [HumansFact(Timeout = 60_000)]
+    public async Task MailedLink_BothAccountsFilledIn_KeepsThePickedOneAndSignsInAsIt()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var me = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
+        var sharedEmail = $"shared-{Guid.NewGuid():N}@x.test";
+        Guid other;
+        await using (var scope = Factory.Services.CreateAsyncScope())
+            other = await SeedUserWithVerifiedEmailAsync(scope, sharedEmail, filledIn: true);
+        var link = await AddEmailAndGetLinkAsync(me, sharedEmail);
 
-        body.Should().ContainAny("Merge pending", "fa-code-merge");
+        // First, because the antiforgery cookie is emitted on the first GET only.
+        var (formToken, cookie) = await GetAntiforgeryAsync(link.Url);
+        var page = await Client.GetAsync(link.Url, ct);
+        var html = await page.Content.ReadAsStringAsync(ct);
+        page.StatusCode.Should().Be(HttpStatusCode.OK);
+        html.Should().Contain("name=\"keepUserId\"", "with two filled-in accounts the person picks which one is kept");
+        html.Should().NotContain("<vc:", "an unbound view component ships as inert markup");
+
+        // No pick, no merge.
+        var unpicked = await PostFormWithAntiforgeryAsync("/Users/Emails/Merge", formToken, cookie,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["token"] = link.Token });
+        unpicked.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await MergedToAsync(me)).Should().BeNull();
+        (await MergedToAsync(other)).Should().BeNull();
+
+        var merge = await PostFormWithAntiforgeryAsync("/Users/Emails/Merge", formToken, cookie,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["token"] = link.Token,
+                ["keepUserId"] = other.ToString(),
+            });
+
+        merge.StatusCode.Should().Be(HttpStatusCode.Found);
+        (await MergedToAsync(me)).Should().Be(other);
+        // The browser's own account is gone: it now carries the kept account's session.
+        var emails = await Client.GetAsync("/Profile/Me/Emails", ct);
+        emails.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await emails.Content.ReadAsStringAsync(ct)).Should().Contain(sharedEmail);
+    }
+
+    [HumansFact(Timeout = 60_000)]
+    public async Task MailedLink_OnlyWorksForTheSignedInAccountThatAsked()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var sharedEmail = $"shared-{Guid.NewGuid():N}@x.test";
+        Guid holder;
+        Guid asking;
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            holder = await SeedUserWithVerifiedEmailAsync(scope, sharedEmail);
+            asking = await SeedBareUserAsync(scope, $"a-{Guid.NewGuid():N}@x.test");
+        }
+        var link = await AddEmailAndGetLinkAsync(asking, sharedEmail);
+
+        // Not signed in: nothing but the sign-in page.
+        using (var anonymous = Factory.CreateClient(new() { AllowAutoRedirect = false }))
+        {
+            var response = await anonymous.GetAsync(link.Url, ct);
+            response.StatusCode.Should().Be(HttpStatusCode.Found);
+            response.Headers.Location!.OriginalString.Should().Contain("/Account/Login");
+        }
+
+        // Signed in as somebody else: the page gives nothing away, and forcing the posts changes nothing.
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
+        // First, because the antiforgery cookie is emitted on the first GET only.
+        var (formToken, cookie) = await GetAntiforgeryAsync("/Profile/Me/Emails");
+        var page = await Client.GetAsync(link.Url, ct);
+        page.StatusCode.Should().Be(HttpStatusCode.OK);
+        var html = await page.Content.ReadAsStringAsync(ct);
+        html.Should().NotContain(sharedEmail).And.NotContain("/Users/Emails/Merge");
+
+        foreach (var url in new[] { "/Users/Emails/Merge", "/Users/Emails/Confirm" })
+        {
+            var forced = await PostFormWithAntiforgeryAsync(url, formToken, cookie,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["token"] = link.Token,
+                    ["keepUserId"] = asking.ToString(),
+                });
+            forced.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        (await MergedToAsync(holder)).Should().BeNull();
+        (await MergedToAsync(asking)).Should().BeNull();
+        await using var assertScope = Factory.Services.CreateAsyncScope();
+        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
+        (await db.Set<UserEmail>().AsNoTracking().SingleAsync(e => e.UserId == asking && e.Email == sharedEmail, ct))
+            .IsVerified.Should().BeFalse();
     }
 
     [HumansFact(Timeout = 30_000)]
@@ -108,43 +187,30 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
     }
 
     [HumansFact(Timeout = 30_000)]
-    public async Task AdminAddEmail_AlreadyVerifiedOnAnotherUser_StillCreatesMergeRequest_NoForceAddBypass()
+    public async Task AdminManualVerify_AddressConfirmedOnAnotherAccount_StaysUnconfirmed()
     {
+        // There is deliberately no admin "force": two accounts with one address are merged, never verified twice.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
         var sharedEmail = $"adminmerge-{Guid.NewGuid():N}@x.test";
-        Guid sourceUserId;
         Guid targetUserId;
         await using (var scope = Factory.Services.CreateAsyncScope())
         {
-            sourceUserId = await SeedUserWithVerifiedEmailAsync(scope, sharedEmail);
+            await SeedUserWithVerifiedEmailAsync(scope, sharedEmail);
             targetUserId = await SeedBareUserAsync(scope, $"target-{Guid.NewGuid():N}@x.test");
         }
+        var link = await AddEmailAndGetLinkAsync(targetUserId, sharedEmail);
+        var (token, cookie) = await GetAntiforgeryAsync($"/Profile/{targetUserId}/Admin/Emails");
 
-        // There is deliberately no admin "force fold": admin adds go through the same verify-then-merge flow.
-        await using (var scope = Factory.Services.CreateAsyncScope())
-        {
-            var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
-            var addResult = await userEmailService.AddEmailAsync(targetUserId, sharedEmail, Xunit.TestContext.Current.CancellationToken);
-            addResult.IsConflict.Should().BeTrue();
+        var resp = await PostFormWithAntiforgeryAsync(
+            $"/Profile/{targetUserId}/Admin/Emails/Verify", token, cookie,
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["emailId"] = link.EmailId.ToString() });
 
-            var verifyResult = await userEmailService.VerifyEmailAsync(targetUserId, addResult.EmailId, addResult.Token, Xunit.TestContext.Current.CancellationToken);
-            verifyResult.MergeRequestCreated.Should().BeTrue(
-                "even when an admin initiates the add, cross-user collisions must surface as merge requests, not silent folds.");
-        }
-
+        resp.StatusCode.Should().Be(HttpStatusCode.Found);
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
-        var merges = await db.Set<AccountMergeRequest>()
-            .AsNoTracking()
-            .Where(m => m.TargetUserId == targetUserId && m.SourceUserId == sourceUserId)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
-        merges.Should().ContainSingle();
-        merges[0].Status.Should().Be(AccountMergeRequestStatus.Pending);
-        merges[0].Email.Should().Be(sharedEmail);
-
-        var sourceStillHasEmail = await db.Set<UserEmail>()
-            .AsNoTracking()
-            .AnyAsync(e => e.UserId == sourceUserId && e.Email == sharedEmail && e.IsVerified, Xunit.TestContext.Current.CancellationToken);
-        sourceStillHasEmail.Should().BeTrue("merge has not been accepted yet — source data must be intact.");
+        (await db.Set<UserEmail>().AsNoTracking().SingleAsync(e => e.Id == link.EmailId, ct))
+            .IsVerified.Should().BeFalse();
     }
 
     /// <summary>
@@ -167,7 +233,6 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
             // Added, not verified: the pending state the control exists for.
             var userEmailService = scope.ServiceProvider.GetRequiredService<IUserEmailService>();
             var addResult = await userEmailService.AddEmailAsync(targetUserId, pendingEmail, ct);
-            addResult.IsConflict.Should().BeFalse("the seeded address belongs to nobody else");
             emailId = addResult.EmailId;
         }
 
@@ -224,7 +289,25 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         resp.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed);
     }
 
-    private static async Task<Guid> SeedUserWithVerifiedEmailAsync(IServiceScope scope, string email)
+    private async Task<(string Url, string Token, Guid EmailId)> AddEmailAndGetLinkAsync(Guid userId, string email)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var added = await scope.ServiceProvider.GetRequiredService<IUserEmailService>()
+            .AddEmailAsync(userId, email, Xunit.TestContext.Current.CancellationToken);
+        added.ErrorKey.Should().BeNull();
+        return ($"/Users/Emails/Confirm?token={Uri.EscapeDataString(added.Token)}", added.Token, added.EmailId);
+    }
+
+    private async Task<Guid?> MergedToAsync(Guid userId)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<UsersDbContext>().Users.AsNoTracking()
+            .Where(u => u.Id == userId).Select(u => u.MergedToUserId)
+            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+    }
+
+    private static async Task<Guid> SeedUserWithVerifiedEmailAsync(
+        IServiceScope scope, string email, bool filledIn = false)
     {
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
@@ -234,6 +317,9 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
         {
             Id = Guid.NewGuid(),
             DisplayName = "Seeded Human",
+            BurnerName = filledIn ? "Seeded" : null,
+            FirstName = filledIn ? "Seeded" : null,
+            LastName = filledIn ? "Human" : null,
             Email = email,
             UserName = email,
             CreatedAt = now,
@@ -254,6 +340,9 @@ public class EmailGridFlowTests(HumansTestDatabase database) : IntegrationTestBa
             CreatedAt = now,
             UpdatedAt = now,
         });
+        // Filled in: a profile with names.
+        if (filledIn)
+            db.Set<Profile>().Add(new Profile { Id = Guid.NewGuid(), UserId = user.Id, CreatedAt = now, UpdatedAt = now });
         await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
         return user.Id;
     }

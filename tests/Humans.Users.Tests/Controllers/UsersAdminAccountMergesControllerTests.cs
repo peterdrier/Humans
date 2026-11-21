@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
+using Humans.Users.Models;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -20,14 +22,12 @@ public class UsersAdminAccountMergesControllerTests
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IDuplicateAccountService _duplicateService = Substitute.For<IDuplicateAccountService>();
+    private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
     public UsersAdminAccountMergesControllerTests()
     {
         _mergeService.MergeAsync(default, default, default).ReturnsForAnyArgs(new AccountMergeResult());
-        _mergeService.AcceptAsync(default, default, default).ReturnsForAnyArgs(new AccountMergeResult());
-        _mergeService.RejectAsync(default, default).ReturnsForAnyArgs(new AccountMergeResult());
-        _mergeService.ReconcileMergedRequestAsync(default, default).ReturnsForAnyArgs(new AccountMergeResult());
         var adminUser = new User { Id = _adminUserId, PreferredLanguage = "en" };
         _userService.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(adminUser)));
@@ -39,6 +39,7 @@ public class UsersAdminAccountMergesControllerTests
             _userService,
             _mergeService,
             _duplicateService,
+            _auditViewer,
             NullLogger<UsersAdminAccountMergesController>.Instance);
 
         var identity = new ClaimsIdentity([
@@ -65,35 +66,53 @@ public class UsersAdminAccountMergesControllerTests
         return c;
     }
 
-    [HumansTheory]
-    [Xunit.InlineData("merge")]
-    [Xunit.InlineData("accept")]
-    [Xunit.InlineData("reject")]
-    [Xunit.InlineData("close")]
-    public async Task Mutation_DependencyFailure_PropagatesWithoutRefusalFeedback(string action)
+    [HumansFact]
+    public async Task Merge_DependencyFailure_PropagatesWithoutRefusalFeedback()
     {
         var id = Guid.NewGuid();
         var other = Guid.NewGuid();
         var ct = Xunit.TestContext.Current.CancellationToken;
         var failure = new InvalidOperationException("Private dependency failure");
         _mergeService.MergeAsync(id, other, _adminUserId, null, null, ct).Returns(Task.FromException<AccountMergeResult>(failure));
-        _mergeService.AcceptAsync(id, _adminUserId, other, null, ct).Returns(Task.FromException<AccountMergeResult>(failure));
-        _mergeService.RejectAsync(id, _adminUserId, null, ct).Returns(Task.FromException<AccountMergeResult>(failure));
-        _mergeService.ReconcileMergedRequestAsync(id, _adminUserId, ct).Returns(Task.FromException<AccountMergeResult>(failure));
         var controller = BuildController();
-        Func<Task> act = async () =>
-        {
-            _ = action switch
-            {
-                "merge" => await controller.Merge(id, other, null, ct),
-                "accept" => await controller.MergeRequest(id, other, null, ct),
-                "reject" => await controller.Dismiss(id, null, ct),
-                _ => await controller.Close(id, ct)
-            };
-        };
+
+        Func<Task> act = () => controller.Merge(id, other, null, ct);
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         controller.TempData.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Index_PutsThePickedPairFirstAndReadsRecentMergesFromTheAuditLog()
+    {
+        var pickedA = Guid.NewGuid();
+        var pickedB = Guid.NewGuid();
+        var kept = Guid.NewGuid();
+        var mergedAway = Guid.NewGuid();
+        _userService.GetAllRawUserInfosAsync(Arg.Any<CancellationToken>()).Returns(
+            new[] { pickedA, pickedB }.Select(id => UserInfoFixtures.FromUser(new User { Id = id })).ToList());
+        _duplicateService.DetectDuplicatesAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var at = NodaTime.Instant.FromUtc(2026, 11, 20, 12, 0);
+        AuditEvent Entry(AuditActionDefinition action, Guid actor, NodaTime.Instant when) => new(
+            Guid.NewGuid(), when, action, actor, null, nameof(User), mergedAway,
+            null, null, null, null, null, kept, nameof(User), "details");
+        _auditViewer.GetFilteredAsync(
+                nameof(User), null, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), false, Arg.Any<CancellationToken>())
+            .Returns([
+                Entry(UsersAuditActions.AccountMergeAccepted, kept, at),
+                Entry(UsersAuditActions.AccountMergeFailed, _adminUserId, at + NodaTime.Duration.FromMinutes(1)),
+            ]);
+
+        var result = await BuildController().Index(pickedA, pickedB, Xunit.TestContext.Current.CancellationToken);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<AccountMergeQueueViewModel>().Subject;
+        var row = model.Rows.Should().ContainSingle().Subject;
+        row.SharedEmail.Should().BeNull();
+        (row.AccountA.UserId, row.AccountB.UserId).Should().Be((pickedA, pickedB));
+        // Newest first; a merge done by one of the two accounts is self-service (no "by").
+        model.Recent.Select(r => (r.KeptUserId, r.MergedAwayUserId, r.By, r.Failed)).Should().Equal(
+            (kept, mergedAway, (Guid?)_adminUserId, true),
+            (kept, mergedAway, (Guid?)null, false));
     }
 
     [HumansFact]
@@ -119,59 +138,6 @@ public class UsersAdminAccountMergesControllerTests
             .Returns(new AccountMergeResult("boom"));
 
         var result = await BuildController().Merge(survivor, archived, notes: null, Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
-    }
-
-    [HumansFact]
-    public async Task MergeRequest_CallsAcceptAsync_RedirectsToIndex()
-    {
-        var requestId = Guid.NewGuid();
-        var survivor = Guid.NewGuid();
-
-        var result = await BuildController().MergeRequest(requestId, survivor, "note", Xunit.TestContext.Current.CancellationToken);
-
-        await _mergeService.Received(1).AcceptAsync(
-            requestId, _adminUserId, survivor, "note", Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
-    }
-
-    [HumansFact]
-    public async Task Dismiss_CallsRejectAsync_RedirectsToIndex()
-    {
-        var requestId = Guid.NewGuid();
-
-        var result = await BuildController().Dismiss(requestId, "no thanks", Xunit.TestContext.Current.CancellationToken);
-
-        await _mergeService.Received(1).RejectAsync(
-            requestId, _adminUserId, "no thanks", Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
-    }
-
-    [HumansFact]
-    public async Task Close_CallsReconcileMergedRequestAsync_RedirectsToIndex()
-    {
-        var requestId = Guid.NewGuid();
-
-        var result = await BuildController().Close(requestId, Xunit.TestContext.Current.CancellationToken);
-
-        await _mergeService.Received(1).ReconcileMergedRequestAsync(
-            requestId, _adminUserId, Arg.Any<CancellationToken>());
-        result.Should().BeOfType<RedirectToActionResult>()
-            .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));
-    }
-
-    [HumansFact]
-    public async Task Close_WhenReconcileRefused_SetsErrorAndRedirectsToIndex()
-    {
-        var requestId = Guid.NewGuid();
-        _mergeService.ReconcileMergedRequestAsync(requestId, _adminUserId, Arg.Any<CancellationToken>())
-            .Returns(new AccountMergeResult("not merged into each other"));
-
-        var result = await BuildController().Close(requestId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(UsersAdminAccountMergesController.Index));

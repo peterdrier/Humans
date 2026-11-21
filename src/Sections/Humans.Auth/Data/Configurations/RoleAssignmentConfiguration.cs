@@ -8,7 +8,7 @@ internal sealed class RoleAssignmentConfiguration : IEntityTypeConfiguration<Rol
 {
     public void Configure(EntityTypeBuilder<RoleAssignment> builder)
     {
-        builder.ToTable("role_assignments", table =>
+        builder.ToTable("auth_role_assignments", table =>
         {
             table.HasCheckConstraint(
                 "CK_role_assignments_valid_window",
