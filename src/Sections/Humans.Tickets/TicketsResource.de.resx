@@ -111,11 +111,11 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Dein Preis</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Aktuelle Welle: {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Gesamt</value>
+  </data>
+  <data name="Tickets_Buy_ForSelfHeading" xml:space="preserve">
+    <value>Dein Ticket</value>
   </data>
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Ein Ticket für mich ({0})</value>
@@ -302,9 +302,6 @@
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Mach dein Erlebnis größer und hilf uns, das beste Event zu machen. Dein Ticket bleibt bei deinem Preis; der Rest ist eine Spende an den Verein, ohne MwSt., und wird nicht erstattet.</value>
-  </data>
-  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
-    <value>{0} Ticket + {1} Spende</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Ticketregeln</value>
