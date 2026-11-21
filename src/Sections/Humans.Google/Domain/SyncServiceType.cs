@@ -1,6 +1,6 @@
-namespace Humans.Google.Contracts;
+namespace Humans.Google.Domain;
 
-public enum SyncServiceType
+internal enum SyncServiceType
 {
     GoogleDrive = 0,
     GoogleGroups = 1,

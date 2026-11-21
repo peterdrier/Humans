@@ -1,8 +1,8 @@
 using NodaTime;
 
-namespace Humans.Google.Contracts;
+namespace Humans.Google.Domain;
 
-public class SyncServiceSettings
+internal sealed class SyncServiceSettings
 {
     public Guid Id { get; init; }
 

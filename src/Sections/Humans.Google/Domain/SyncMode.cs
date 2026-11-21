@@ -1,6 +1,6 @@
-namespace Humans.Google.Contracts;
+namespace Humans.Google.Domain;
 
-public enum SyncMode
+internal enum SyncMode
 {
     /// <summary>No automatic sync — jobs skip this service entirely.</summary>
     None = 0,

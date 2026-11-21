@@ -34,7 +34,7 @@ The section was GoogleIntegration until 2026-11. Its context keeps the name `Goo
 
 **Table:** `google_sync_service_settings`
 
-Per-service sync-mode configuration. Holds `UpdatedByUserId` — a bare cross-section Guid column, no FK constraint, no nav. Display names are resolved via `IUserService.GetUserInfosAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
+Per-service sync-mode configuration. `SyncServiceSettings`, `SyncServiceType` and `SyncMode` are internal domain types; admin reads use `SyncServiceSettingsInfo`. Their explicit table/column mappings, string-valued enums and reserved seed rows are unchanged. Holds `UpdatedByUserId` — a bare cross-section Guid column, no FK constraint, no nav. Display names are resolved via `IUserService.GetUserInfosAsync` at the controller. One row per `SyncServiceType`, seeded with `SyncMode.None` for `GoogleDrive`, `GoogleGroups`, and `Discord` (reserved GUID block 0002).
 
 ### WorkspaceIdentityRecord
 

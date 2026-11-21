@@ -328,10 +328,11 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     }
 
     [HumansTheory]
-    [InlineData(SyncMode.AddOnly)]
-    [InlineData(SyncMode.None)]
-    public async Task SyncResourcesByTypeAsync_WhenNotAddAndRemove_DoesNotDeactivateOrRevoke(SyncMode mode)
+    [InlineData((int)SyncMode.AddOnly)]
+    [InlineData((int)SyncMode.None)]
+    public async Task SyncResourcesByTypeAsync_WhenNotAddAndRemove_DoesNotDeactivateOrRevoke(int modeValue)
     {
+        var mode = (SyncMode)modeValue;
         var ct = TestContext.Current.CancellationToken;
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, Arg.Any<CancellationToken>())
             .Returns(mode);

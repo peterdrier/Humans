@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 8
-inbox:
-  - added: 2026-11-21
-    id: GOOGLE-7
-    what: "SyncServiceSettings is an EF-mapped public class under Contracts with no cross-section consumer; SyncMode and SyncServiceType remain public through its properties. Internalize the persisted settings graph with an EF model audit: moving the entity namespace affects model identity, unlike an ordinary DTO move. Confirmed in GoogleIntegrationDbContext and SyncServiceSettingsConfiguration during the contract audit."
-    review: panel
+inbox: []
