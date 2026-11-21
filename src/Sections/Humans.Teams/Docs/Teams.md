@@ -206,7 +206,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Issues:** Teams implements `IIssueQueueOwner` for its `Teams` issue queue.
 - **Base (`Humans.Base.Gdpr`):** `IUserDataContributor` (export and erasure).
 - **Roles:** Teams registers the `Team` owner kind (`IRoleOwner`, which adds a member before an assign and refuses system and inactive teams) and calls `IRoleWrite.RemoveAsync` when a membership ends.
-- **Permissions:** Teams registers the team tree (`IOwnerKind`).
+- **Permissions:** Teams registers the team tree (`IOwnerKind`) and, until departments have moved to Roles, a temporary permission source (`IPermissionSource`): a coordinator member or management role holder holds everything on their team, reason "{team} coordinator (old team roles)". It goes when the old roles retire.
 
 **Inbound** — sections that reference Teams:
 

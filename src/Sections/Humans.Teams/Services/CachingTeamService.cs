@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Localization;
 using System.Collections.Concurrent;
+using Humans.Base.Authorization;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
@@ -24,7 +25,8 @@ internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingTeamService> logger,
     IStringLocalizer<TeamsResource> localizer) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
-    ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor, IOwnerKind, IRoleOwner
+    ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor, IOwnerKind, IRoleOwner,
+    IPermissionSource
 {
     public const string InnerServiceKey = "team-inner";
 
@@ -121,6 +123,17 @@ internal sealed class CachingTeamService(
     public async Task<IReadOnlyList<OwnerNode>> GetOwnersAsync(CancellationToken ct = default) =>
         (await GetTeamSnapshotsAsync(ct)).Values
             .Select(s => new OwnerNode(s.Team.Id, s.Team.ParentTeamId, s.Team.IsActive, s.Team.IsSystemTeam))
+            .ToList();
+
+    /// <summary>
+    /// Temporary, until departments have moved to Roles: today's coordinators (a coordinator member or a management
+    /// role holder) hold everything on their team. Permissions reaches down the tree and skips system and inactive teams.
+    /// </summary>
+    public async Task<IReadOnlyList<Holding>> GetHoldingsAsync(Guid userId, CancellationToken ct = default) =>
+        (await GetTeamsByIdAsync(ct)).Values
+            .Where(t => t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator)
+                        || t.ManagementRoleHolderUserIds?.Contains(userId) == true)
+            .Select(t => new Holding(new Owner(TeamOwner.Kind, t.Id), IsCoordinator: true, [], $"{t.Name} coordinator (old team roles)"))
             .ToList();
 
     /// <summary>System teams take no roles: their membership is computed, so a role could outlive it.</summary>
