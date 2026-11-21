@@ -6,8 +6,6 @@ public sealed record TicketStubInfo(
     string AttendeeName,
     string? AttendeeEmail,
     TicketAttendeeStatus Status,
-    bool HasPendingTransfer,
-    Guid? PendingTransferRequestId,
     LocalDate? EarlyEntryDate)
 {
     /// <summary>
@@ -15,6 +13,5 @@ public sealed record TicketStubInfo(
     /// <paramref name="holderEarlyEntry"/> is the viewer's EE, never the attendee's.
     /// </summary>
     public static TicketStubInfo From(UserTicketHoldingRow row, LocalDate? holderEarlyEntry) =>
-        new(row.AttendeeName, row.AttendeeEmail, row.Status,
-            row.HasPendingOutgoingTransfer, row.PendingTransferRequestId, holderEarlyEntry);
+        new(row.AttendeeName, row.AttendeeEmail, row.Status, holderEarlyEntry);
 }

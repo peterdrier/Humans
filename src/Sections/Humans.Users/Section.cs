@@ -412,7 +412,6 @@ public sealed class Section :
     [
         new(UserPartSlots.BoardVoteApplicant, typeof(ProfileCardViewComponent)),
         new(UserPartSlots.ConsentReviewApplicant, typeof(ProfileCardViewComponent)),
-        new(UserPartSlots.TicketTransferParty, typeof(HumanSummaryViewComponent)),
     ];
 
     IEnumerable<SearchCategory> ISearchContributor.Categories() =>

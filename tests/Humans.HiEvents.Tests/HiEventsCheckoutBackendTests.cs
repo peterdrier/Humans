@@ -290,6 +290,58 @@ public class HiEventsCheckoutBackendTests
         JsonNode.Parse(body!)!["refund"]!.GetValue<bool>().Should().BeFalse();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("RESERVED", "2027-01-02 10:30:00")]
+    [Xunit.InlineData("RESERVED", "2027-01-02 09:00:00")]
+    [Xunit.InlineData("ABANDONED", null)]
+    public async Task GetStatus_APaymentOnItsWay_IsProcessingEvenPastTheHold(string status, string? reservedUntil)
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, reservedUntil: reservedUntil,
+            processingAt: "2027-01-02T09:40:00.000000Z"));
+
+        var result = await Backend().GetStatusAsync("7:42", Ct);
+
+        result.State.Should().Be(CheckoutState.Processing);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", CheckoutState.Paid)]
+    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", CheckoutState.Cancelled)]
+    public async Task GetStatus_ASettledOrClosedOrder_IsNotProcessing(string status, string paymentStatus, CheckoutState expected)
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
+            processingAt: "2027-01-02T09:40:00.000000Z"));
+
+        var result = await Backend().GetStatusAsync("7:42", Ct);
+
+        result.State.Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task Cancel_APaymentOnItsWay_ThrowsWithoutCancelling()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "2027-01-02 09:00:00",
+            processingAt: "2027-01-02T08:50:00.000000Z"));
+
+        var act = () => Backend().CancelAsync("7:42", Ct);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>();
+        _handler.Requests.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task GetStatus_ReportsWhatAChargebackHoldsBack()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED",
+            disputed: 225m));
+
+        var result = await Backend().GetStatusAsync("7:42", Ct);
+
+        result.State.Should().Be(CheckoutState.Paid);
+        result.DisputedMinor.Should().Be(22500);
+        result.RefundedMinor.Should().Be(0);
+    }
+
     [HumansFact]
     public async Task GetStatus_ReportsAFailedRefund()
     {
@@ -454,7 +506,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, new { data = full, meta = new { last_page = 2, total = 101 } });
         _handler.Enqueue(HttpStatusCode.OK, new
         {
-            data = new[] { ListedOrder(100, OrderId.ToString("N"), attendees: 1), ListedOrder(101, null, attendees: 2, refunded: 50m) },
+            data = new[] { ListedOrder(100, OrderId.ToString("N"), attendees: 1), ListedOrder(101, null, attendees: 2, refunded: 50m, disputed: 175m) },
             meta = new { last_page = 2, total = 101 },
         });
 
@@ -465,6 +517,7 @@ public class HiEventsCheckoutBackendTests
         orders[^1].HumansOrderId.Should().BeNull();
         orders[^1].TicketCount.Should().Be(2);
         orders[^1].RefundedMinor.Should().Be(5000);
+        orders[^1].DisputedMinor.Should().Be(17500);
         var first = Uri.UnescapeDataString(_handler.Requests[0].Request.RequestUri!.Query);
         first.Should().Contain("per_page=100").And.Contain("page=1&")
             .And.Contain("filter_fields[created_at][gte]=2027-01-01 00:00:00")
@@ -493,7 +546,7 @@ public class HiEventsCheckoutBackendTests
         await act.Should().ThrowAsync<HttpRequestException>();
     }
 
-    private static Dictionary<string, object?> ListedOrder(int id, string? externalReference, int attendees, decimal refunded = 0m) =>
+    private static Dictionary<string, object?> ListedOrder(int id, string? externalReference, int attendees, decimal refunded = 0m, decimal disputed = 0m) =>
         new(StringComparer.Ordinal)
         {
             ["id"] = id,
@@ -502,6 +555,7 @@ public class HiEventsCheckoutBackendTests
             ["currency"] = "EUR",
             ["total_gross"] = 225m,
             ["total_refunded"] = refunded,
+            ["total_disputed"] = disputed,
             ["external_reference"] = externalReference,
             ["created_at"] = "2027-01-05T09:30:00.000000Z",
             ["attendees"] = Enumerable.Range(1, attendees).Select(a => new { id = (id * 10) + a }).ToArray(),
@@ -547,7 +601,9 @@ public class HiEventsCheckoutBackendTests
         string? paymentLink = null,
         string? reservedUntil = null,
         decimal refunded = 0m,
-        string? refundStatus = null) => new
+        string? refundStatus = null,
+        decimal disputed = 0m,
+        string? processingAt = null) => new
         {
             data = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
@@ -562,6 +618,8 @@ public class HiEventsCheckoutBackendTests
                 ["payment_provider"] = "STRIPE",
                 ["payment_link_url"] = paymentLink,
                 ["reserved_until"] = reservedUntil,
+                ["total_disputed"] = disputed,
+                ["payment_processing_at"] = processingAt,
             },
         };
 

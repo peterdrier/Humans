@@ -29,9 +29,7 @@ public sealed class TicketQueryService_HoldingsTests
 
     public TicketQueryService_HoldingsTests()
     {
-        _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-        _transferRepo.GetBySenderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         Service = new TicketQueryService(
@@ -146,59 +144,6 @@ public sealed class TicketQueryService_HoldingsTests
         result.Tickets.Should().HaveCount(2);
         result.Tickets.Should().ContainSingle(t => t.Status == TicketAttendeeStatus.Valid);
         result.Tickets.Should().ContainSingle(t => t.Status == TicketAttendeeStatus.Void);
-    }
-
-    [HumansFact]
-    public async Task StampsPendingOutgoingTransferOnTheAffectedRowOnly()
-    {
-        var orderId = Guid.NewGuid();
-        var order = new TicketOrder { Id = orderId, MatchedUserId = UserA };
-        var inTransfer = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
-            AttendeeName = "Ada In-Transfer",
-            MatchedUserId = UserA,
-            TicketOrder = order,
-            TicketOrderId = orderId,
-        };
-        var untouched = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
-            AttendeeName = "Zoe Untouched",
-            MatchedUserId = UserA,
-            TicketOrder = order,
-            TicketOrderId = orderId,
-        };
-        _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([inTransfer, untouched]);
-
-        var transferId = Guid.NewGuid();
-        _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([
-                new TicketTransferRequest
-                {
-                    Id = transferId,
-                    OriginalTicketAttendeeId = inTransfer.Id,
-                    SenderUserId = UserA,
-                    Status = TicketTransferStatus.Pending,
-                },
-                new TicketTransferRequest
-                {
-                    Id = Guid.NewGuid(),
-                    OriginalTicketAttendeeId = untouched.Id,
-                    SenderUserId = UserA,
-                    Status = TicketTransferStatus.Cancelled,
-                },
-            ]);
-
-        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-
-        var pendingRow = result.Tickets.Single(t => t.AttendeeId == inTransfer.Id);
-        pendingRow.HasPendingOutgoingTransfer.Should().BeTrue();
-        pendingRow.PendingTransferRequestId.Should().Be(transferId);
-        var cleanRow = result.Tickets.Single(t => t.AttendeeId == untouched.Id);
-        cleanRow.HasPendingOutgoingTransfer.Should().BeFalse();
-        cleanRow.PendingTransferRequestId.Should().BeNull();
     }
 
     [HumansFact]

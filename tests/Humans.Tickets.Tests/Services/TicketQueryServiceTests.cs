@@ -50,7 +50,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     {
         _repo = new TicketRepository(TicketsDbFactory, Clock);
 
-        _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         _service = new TicketQueryService(
@@ -208,7 +208,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var repository = Substitute.For<ITicketRepository>();
         repository.GetOrdersMatchedToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         repository.GetAttendeesVisibleToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
-        _transferRepo.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         repository.CountValidAttendeesMatchedToUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(boundary is "matched" or "hold" ? 1 : 0);
         repository.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["fallback@example.org"]);
@@ -1496,7 +1495,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             DecidedAt = decidedAt,
         };
 
-        _transferRepo.GetByStatusAsync(TicketTransferStatus.Approved, Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([transfer]);
 
         var result = await _service.GetTicketOrdersAsync(TestContext.Current.CancellationToken);

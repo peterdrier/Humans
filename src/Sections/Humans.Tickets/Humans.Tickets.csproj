@@ -36,7 +36,6 @@
     <!-- IGrantService: the active grants a ticket price rule maps to. Acyclic: Grants names no Tickets type. -->
     <ProjectReference Include="..\Humans.Grants\Humans.Grants.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
-    <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, the AuditLog section's component. -->
     <!--
       Outbound section references, all acyclic — none of these names a Tickets type.
         Budget    — TicketQueryService reads IBudgetService for the dashboard's break-even figure;
@@ -44,7 +43,7 @@
         Campaigns — TicketSyncService marks grants redeemed; TicketQueryService builds
                     the code-tracking dashboard; CampaignService now asks *this* section
                     for codes through Humans.Tickets.Contracts.ITicketDiscountCodes.
-        Email     — the transfer wizard's three notification templates (primitives only).
+        Email     — ticket delivery, receipt and resale emails (primitives only).
     -->
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />

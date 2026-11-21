@@ -51,8 +51,6 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     /// </summary>
     Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
-
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 
     Task EraseForUserAsync(Guid userId, CancellationToken ct);
@@ -78,10 +76,3 @@ internal sealed record UserTicketAttendeeExportRow(
     decimal Price,
     string Status);
 
-internal sealed record OrderDriftRow(
-    Guid OrderId,
-    string VendorOrderId,
-    string BuyerName,
-    int IssuedCount,
-    int ValidCount,
-    string? VendorDashboardUrl);
