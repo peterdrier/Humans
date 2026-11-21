@@ -367,11 +367,33 @@ internal sealed partial class TicketCheckoutService(
                 logger.LogWarning(ex, "Reconcile of checkout order {OrderId} failed; next run retries", order.Id);
             }
         }
+        foreach (var orderId in await UnsettledRefundOrdersAsync(ct))
+        {
+            try
+            {
+                if (await repository.GetOrderAsync(orderId, ct) is { } paid && await RefreshAsync(paid, ct))
+                    changed++;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Refund settlement of checkout order {OrderId} failed; next run retries", orderId);
+            }
+        }
         changed += await SweepOffersAsync(ct);
         return changed;
     }
 
-    /// <summary>True when the state moved.</summary>
+    private async Task<IReadOnlyList<Guid>> UnsettledRefundOrdersAsync(CancellationToken ct)
+    {
+        var ids = new HashSet<Guid>();
+        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+            ids.UnionWith((await repository.GetRefundsForSalesEventAsync(salesEvent.Id, ct))
+                .Where(r => r.State is RefundState.Pending or RefundState.ManualRequired)
+                .Select(r => r.OrderId));
+        return ids.ToList();
+    }
+
+    /// <summary>True when the state moved or a refund settled.</summary>
     private async Task<bool> RefreshAsync(TicketCheckoutOrder order, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
@@ -410,7 +432,20 @@ internal sealed partial class TicketCheckoutService(
         if (order.State == TicketCheckoutOrderState.Paid)
             newState = TicketCheckoutOrderState.Paid;
 
+        var wasOpen = order.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending;
+        if (wasOpen && newState == TicketCheckoutOrderState.Pending && order.ExpiresAt <= now)
+        {
+            // Tickets owns the hold: once it lapses the backend must stop taking money for it.
+            if (await TryCancelAtBackendAsync(backend, order, ct))
+                newState = TicketCheckoutOrderState.Expired;
+        }
+        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed)
+        {
+            await TryCancelAtBackendAsync(backend, order, ct);
+        }
+
         var becamePaid = newState == TicketCheckoutOrderState.Paid && order.State != TicketCheckoutOrderState.Paid;
+        var late = becamePaid && !wasOpen;
         if (becamePaid)
             MarkPaid(order, status.FeeMinor, status.PaymentMethod, status.PaidAt ?? now);
         else
@@ -420,8 +455,9 @@ internal sealed partial class TicketCheckoutService(
         order.PaymentMethod = status.PaymentMethod ?? order.PaymentMethod;
         order.RefundedMinor = status.RefundedMinor;
 
+        var refundsSettled = order.State == TicketCheckoutOrderState.Paid && await SettleRefundsAsync(order, status, ct);
         if (before == (order.State, order.RefundedMinor, order.FeeMinor))
-            return false;
+            return refundsSettled;
 
         order.UpdatedAt = now;
         await repository.UpdateOrderAsync(order, ct);
@@ -430,11 +466,15 @@ internal sealed partial class TicketCheckoutService(
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.StateChanged,
                 $"{order.BackendKey} reports {order.State}" +
                 (order.PaymentMethod is { } paidBy && order.State == TicketCheckoutOrderState.Paid ? $" by {paidBy}" : string.Empty) +
-                (order.FeeMinor is { } fee ? $", fee {FormatMinor(fee)}" : string.Empty), null, ct);
+                (order.FeeMinor is { } fee ? $", fee {FormatMinor(fee)}" : string.Empty) +
+                (late ? $", after the order was {before.State}: the ticketing team should check capacity" : string.Empty), null, ct);
         if (before.RefundedMinor != order.RefundedMinor)
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundedTotalChanged,
                 $"{order.BackendKey} reports {FormatMinor(order.RefundedMinor)} {order.Currency} refunded in total", null, ct);
 
+        if (late)
+            logger.LogWarning("Checkout order {OrderId} was paid after it was {State}; its tickets are issued anyway",
+                order.Id, before.State);
         if (becamePaid)
             await CompletePaidAsync(order, ct);
         else if (before.State != order.State && order.State is not TicketCheckoutOrderState.Pending)
@@ -447,9 +487,58 @@ internal sealed partial class TicketCheckoutService(
                 : TicketsAuditActions.TicketCheckoutClosed;
             await auditLog.LogAsync(action, AuditEntityType, order.Id,
                 $"{order.BackendKey} reports the order {order.State}: {FormatMinor(order.TotalMinor)} {order.Currency}" +
-                (order.PaymentMethod is { } method ? $" by {method}" : string.Empty), JobName);
+                (order.PaymentMethod is { } method ? $" by {method}" : string.Empty) +
+                (late ? $" after it was {before.State}" : string.Empty), JobName);
         }
         return true;
+    }
+
+    /// <summary>False when the backend refused, which means it was paid meanwhile: the next read records that.</summary>
+    private async Task<bool> TryCancelAtBackendAsync(ITicketCheckoutBackend backend, TicketCheckoutOrder order, CancellationToken ct)
+    {
+        try
+        {
+            await backend.CancelAsync(order.BackendOrderId!, ct);
+            return true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Closing checkout order {OrderId} at {Backend} failed", order.Id, order.BackendKey);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Settles pending and manual refunds from the backend's refunded total, oldest first; when the backend reports a
+    /// failed refund, the ones that total does not cover failed. True when any changed.
+    /// </summary>
+    private async Task<bool> SettleRefundsAsync(TicketCheckoutOrder order, CheckoutStatus status, CancellationToken ct)
+    {
+        var refunds = (await repository.GetRefundsAsync(order.Id, ct)).OrderBy(r => r.CreatedAt).ToList();
+        var covered = status.RefundedMinor - refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor);
+        var changed = false;
+        foreach (var refund in refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired))
+        {
+            if (refund.AmountMinor <= covered)
+            {
+                covered -= refund.AmountMinor;
+                refund.State = RefundState.Succeeded;
+            }
+            else if (status.RefundFailed)
+            {
+                refund.State = RefundState.Failed;
+                refund.FailureReason = $"{order.BackendKey} reports the refund failed";
+            }
+            else
+            {
+                continue;
+            }
+            await repository.UpdateRefundAsync(refund, ct);
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundSettled,
+                $"Refund of {FormatMinor(refund.AmountMinor)} {order.Currency} {refund.State} per {order.BackendKey}", null, ct);
+            changed = true;
+        }
+        return changed;
     }
 
     public async Task<CheckoutMutationResult> RefundAsync(
@@ -630,7 +719,27 @@ internal sealed partial class TicketCheckoutService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => repository.ErasePiiForUserAsync(userId, ct);
+    /// <summary>
+    /// The backends' copies go first: once Tickets' own copy is tombstoned the emails to erase are gone, so a backend
+    /// failure throws before anything here changes and the whole erasure retries.
+    /// </summary>
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        foreach (var order in await repository.GetOrdersForUserAsync(userId, ct))
+        {
+            if (order.BackendOrderId is null)
+                continue;
+            var people = order.Lines.Where(l => l.AttendeeUserId == userId).Select(l => l.AttendeeEmail)
+                .Append(order.BuyerUserId == userId ? order.BuyerEmail : null)
+                .OfType<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+            var backend = BackendFor(order.BackendKey)
+                ?? throw new InvalidOperationException($"Backend '{order.BackendKey}' of order {order.Id} is not registered; its copy cannot be erased.");
+            foreach (var personEmail in people)
+                await backend.ErasePersonalDataAsync(order.BackendOrderId, personEmail, ct);
+        }
+        await repository.ErasePiiForUserAsync(userId, ct);
+    }
 
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignAsync(mergedFromUserId, mergedToUserId, ct);

@@ -8,9 +8,27 @@ the named ticket; whatever sits behind Humans only takes the payment and refunds
 `ITicketCheckoutBackend` in `Humans.Tickets.Contracts`: `Key`, `IsConfigured`, `CreateCheckoutAsync` (lines with exact
 amounts and VAT, buyer prefilled, expiry, return URL; returns the backend order id and payment URL), `GetStatusAsync`
 (state, fee, method, paid at, refunded total), `RefundAsync` (exact amount, `RefundId` idempotent; may answer
-`ManualRequired` with a dashboard link), `CancelAsync`. Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
+`ManualRequired` with a dashboard link), `CancelAsync`, `ErasePersonalDataAsync` (GDPR: one person's name and email off
+one order). Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
 their webhook; Tickets then re-reads the status. Each backend is its own section: `Humans.BoxOffice` (`boxoffice`,
 Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
+
+Rules every backend follows:
+
+- **Exact price.** The buyer pays exactly the lines; no payment surcharge. `CheckoutStatus.FeeMinor` is only what the
+  payment provider kept (processing cost), null when unknown.
+- **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, Tickets calls `CancelAsync` (also when the
+  backend reports Expired or Failed) so the backend stops taking money. A payment that lands anyway is reported as
+  `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
+  audit log ("after the order was Expired") and logs a warning; a released resale offer another checkout took stays
+  with that checkout, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
+- **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
+  `Pending` and `ManualRequired` refunds from it, oldest first; when the backend sets `RefundFailed`, the ones it does
+  not cover become `Failed` and stop counting against what can still be refunded. The reconcile job re-reads paid orders
+  with unsettled refunds.
+- **Erasure.** A member's deletion calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
+  own copy; a backend failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
+  keeps payment records as processor.
 
 ## Flow
 

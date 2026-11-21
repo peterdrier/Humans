@@ -15,6 +15,13 @@ namespace Humans.Tickets.Contracts;
 /// Amounts are minor units. An adapter never changes a price: if its backend cannot charge exactly the requested
 /// lines, it throws <see cref="TicketCheckoutException"/>. <see cref="CheckoutRequest.OrderId"/> and
 /// <see cref="RefundRequest.RefundId"/> are idempotency keys: a repeat with the same id must not charge or refund twice.
+/// The buyer pays exactly the lines: no payment surcharge, ever.
+/// </para>
+/// <para>
+/// Late payments: Tickets owns the hold. When <see cref="CheckoutRequest.ExpiresAt"/> passes unpaid, Tickets calls
+/// <see cref="CancelAsync"/> so the backend stops taking money. A payment that lands anyway is reported as
+/// <see cref="CheckoutState.Paid"/>, never refunded or kept silently by the adapter; Tickets issues the tickets and flags
+/// the order for the ticketing team.
 /// </para>
 /// </summary>
 public interface ITicketCheckoutBackend : IApplicationService
@@ -43,6 +50,14 @@ public interface ITicketCheckoutBackend : IApplicationService
     /// <summary>Closes an unpaid checkout. A no-op when it is already closed; throws when it is already paid.</summary>
     [ExternalWrite]
     Task CancelAsync(string backendOrderId, CancellationToken ct = default);
+
+    /// <summary>
+    /// GDPR erasure: removes the name and email <paramref name="email"/> belongs to wherever it appears on the order
+    /// (buyer or attendee), keeping amounts and dates. Idempotent. Throws when it could not, so the erasure is retried;
+    /// a no-op only where the backend keeps the data under its own legal basis (Stripe as payment processor).
+    /// </summary>
+    [ExternalWrite]
+    Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -84,15 +99,25 @@ public enum CheckoutLineKind
 public sealed record CheckoutSession(string BackendOrderId, Uri PaymentUrl, Uri? AdminUrl = null);
 
 /// <summary>
+/// <para>
+/// <paramref name="FeeMinor"/> is what the payment provider kept from this payment (its processing cost, never charged
+/// to the buyer); null when the backend cannot tell.
+/// </para>
+/// <para>
 /// <paramref name="RefundedMinor"/> is everything refunded against the order so far, however it was issued, so a
-/// refund made in the backend's own dashboard is still seen.
+/// refund made in the backend's own dashboard is still seen; it moves only once money has actually gone back. Tickets
+/// settles its <see cref="RefundState.Pending"/> and <see cref="RefundState.ManualRequired"/> refunds from it, oldest
+/// first. <paramref name="RefundFailed"/> is true when a refund the backend accepted has since failed; Tickets then
+/// marks the pending refunds <paramref name="RefundedMinor"/> does not cover as failed.
+/// </para>
 /// </summary>
 public sealed record CheckoutStatus(
     CheckoutState State,
     long? FeeMinor,
     string? PaymentMethod,
     Instant? PaidAt,
-    long RefundedMinor = 0);
+    long RefundedMinor = 0,
+    bool RefundFailed = false);
 
 public enum CheckoutState
 {
