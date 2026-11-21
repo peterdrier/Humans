@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
-using Humans.Tickets.Contracts;
 using Humans.Tickets.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -12,7 +11,7 @@ namespace Humans.Tickets.Tests.Services;
 
 public sealed class TicketsNotificationMetersTests : IDisposable
 {
-    private readonly ITicketSync _sync = Substitute.For<ITicketSync>();
+    private readonly ITicketSyncService _sync = Substitute.For<ITicketSyncService>();
     private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
     private readonly TicketsNotificationMeters _sut;
 

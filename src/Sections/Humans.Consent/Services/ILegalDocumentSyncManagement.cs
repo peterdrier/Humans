@@ -1,12 +1,16 @@
-using Humans.Consent.Contracts;
+using Humans.Base.Interfaces;
 using Humans.Consent.Domain;
 using NodaTime;
 
 namespace Humans.Consent.Services;
 
 /// <summary>Sole writer for <c>consent_legal_documents</c> and <c>consent_document_versions</c>; the admin writes are on the same instance.</summary>
-internal interface ILegalDocumentSyncManagement : ILegalDocumentSyncService
+internal interface ILegalDocumentSyncManagement : IApplicationService
 {
+    /// <summary>The latest effective version per required, active document.</summary>
+    Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(
+        Guid teamId, CancellationToken cancellationToken = default);
+
     /// <summary>Across all teams.</summary>
     Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(
         CancellationToken cancellationToken = default);
@@ -46,4 +50,14 @@ internal sealed record LegalDocumentVersionSnapshot(
     Instant EffectiveFrom,
     bool RequiresReConsent,
     Instant CreatedAt,
+    string? ChangesSummary);
+
+internal sealed record RequiredDocumentVersionSnapshot(
+    Guid Id,
+    Guid LegalDocumentId,
+    string LegalDocumentName,
+    int LegalDocumentGracePeriodDays,
+    string VersionNumber,
+    Instant EffectiveFrom,
+    bool RequiresReConsent,
     string? ChangesSummary);

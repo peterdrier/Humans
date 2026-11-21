@@ -40,7 +40,8 @@ public sealed class Section : ISection, ISectionChrome, ISectionNav, IUserPart
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
 
-        services.AddScoped<IICalFeedService, ICalFeedService>();
+        services.AddScoped<ICalFeedService>();
+        services.AddScoped<IICalFeedService>(sp => sp.GetRequiredService<ICalFeedService>());
     }
 
     IEnumerable<MemberNavItem> ISectionNav.Items() =>

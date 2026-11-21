@@ -53,7 +53,7 @@
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:events-card&gt;</span>
+            <span class="wg-card-name">EventsCardViewComponent (slot)</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
         <span class="wg-card-path">src/Sections/Humans.Events/ViewComponents/EventsCardViewComponent.cs</span>
@@ -61,6 +61,7 @@
     <div class="wg-card-note">
         Not rendered here: it needs a live camp id (or user id) whose approved events exist in the current edition,
         self-gates to authenticated viewers, and hides entirely when the <code>Features:Events</code> flag is off.
+        The internal component is invoked by type through the profile and camp slots.
         See a barrio detail page under <a href="/Barrios">/Barrios</a> or a <a href="/Profile/Me">profile</a>.
     </div>
     @ParamsBlock(

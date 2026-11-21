@@ -1,7 +1,7 @@
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
-using Humans.Google.Contracts;
+using Humans.Google.Services;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -13,7 +13,7 @@ namespace Humans.Google.Authorization;
 /// coordinators do not pass. Board reads the page through Teams' Read policy and manages nothing. Handlers get no token, so the read uses the request's cancellation.
 /// </summary>
 internal sealed class TeamResourceAuthorizationHandler(
-    ITeamResourceService teamResources,
+    ITeamResourceManagement teamResources,
     IUserService users,
     IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<TeamResourceManageRequirement, TeamInfo>

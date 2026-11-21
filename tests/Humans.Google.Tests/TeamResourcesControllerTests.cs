@@ -309,10 +309,10 @@ public class TeamResourcesControllerTests
     }
 
     private static bool IsRead(string methodName) =>
-        methodName is nameof(ITeamResourceService.CanManageTeamResourcesAsync)
-            or nameof(ITeamResourceService.GetResourceByIdAsync)
+        methodName is nameof(ITeamResourceManagement.CanManageTeamResourcesAsync)
+            or nameof(ITeamResourceManagement.GetResourceByIdAsync)
             or nameof(ITeamResourceService.GetTeamResourcesAsync)
-            or nameof(ITeamResourceService.GetServiceAccountEmailAsync);
+            or nameof(ITeamResourceManagement.GetServiceAccountEmailAsync);
 
     private static Task<IActionResult> ActAsync(TeamResourcesController controller, string action, string slug)
     {

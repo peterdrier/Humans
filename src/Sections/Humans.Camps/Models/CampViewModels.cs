@@ -293,3 +293,21 @@ internal sealed class CampSummaryRowViewModel
     /// <summary>Count of Active <see cref="Humans.Camps.Domain.CampMember"/> rows for this season (humans who joined in-app).</summary>
     public int JoinedMemberCount { get; set; }
 }
+
+internal sealed class MyCampsViewModel
+{
+    public List<MyCampsEventGroup> Events { get; set; } = [];
+}
+
+internal sealed class MyCampsEventGroup
+{
+    public string EventName { get; set; } = string.Empty;
+    public List<MyCampsMembership> Memberships { get; set; } = [];
+}
+
+internal sealed class MyCampsMembership
+{
+    public string CampSlug { get; set; } = string.Empty;
+    public string CampName { get; set; } = string.Empty;
+    public CampMemberStatus Status { get; set; }
+}

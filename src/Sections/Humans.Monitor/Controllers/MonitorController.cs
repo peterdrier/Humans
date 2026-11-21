@@ -1,5 +1,5 @@
+using Humans.Monitor.Services;
 using Humans.AuditLog.Contracts;
-using Humans.Monitor.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;

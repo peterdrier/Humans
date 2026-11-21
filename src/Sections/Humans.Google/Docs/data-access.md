@@ -146,7 +146,7 @@ Repository: `IGoogleSyncLogRepository`.
 
 Implements the internal `IGoogleSyncLogService` (writes, plus the
 `/Google/ActivityLog` read, 500-row cap), the public read side
-(`IGoogleSyncLogViewer`) backing `<vc:google-sync-log>`, and
+(`IGoogleSyncLogViewer`) backing the section’s internal, type-invoked sync-log component, and
 `IUserDataContributor` for the GDPR export and erasure (design-rules.md, *Personal data obligations* — the
 table holds `UserId`/`UserEmail`). Writes are best-effort — a repository failure is logged
 at Error and swallowed so a sync never fails on its own bookkeeping. The
@@ -216,13 +216,14 @@ No repository. Wraps `IUserEmailService` + `IUserService` +
 `IEmailService` to send notifications when access is removed. No direct
 DB access, no cache.
 
-### GoogleTranslationService (Scoped)
+### GoogleTranslationClient / StubGoogleTranslationClient (`IGoogleTranslationService`, Scoped alias)
 
-No repository. Thin design-rules-compliant facade over `IGoogleTranslationClient`
-(`Services/Workspace/`). Exists so cross-section callers (Survey authoring —
-`SurveyService.PreFillTranslationsAsync`) depend on a Google
-service interface rather than the raw connector client. No DB access,
-no cache.
+No repository or cache. The internal real HTTP client and dev stub directly implement the
+existing public text-translation contract. Survey authoring and Governance assembly-vote
+translation still depend only on
+`IGoogleTranslationService`. The real typed HTTP client is resolved once per scope through the
+public alias; the stub remains singleton-backed. Credential selection, batch size, response
+validation, ordering and cancellation are unchanged.
 
 ---
 

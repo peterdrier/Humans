@@ -10,7 +10,7 @@
 Project: `src/Sections/Humans.Monitor` — a consumer section no other section references. Owns no DB
 tables and has no `Data/` folder of its own. Owns
 `DriveActivityMonitorService` (+ `IDriveActivityMonitorService` in
-`Contracts/`, + `DriveActivityMonitorJob` in `Jobs/`); Google
+`Services/`, internal, + `DriveActivityMonitorJob` in `Jobs/`); Google
 owns the Drive/Directory API clients Monitor calls into
 (`Services/Workspace/`).
 

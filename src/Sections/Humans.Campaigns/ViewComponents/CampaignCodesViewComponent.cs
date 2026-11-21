@@ -1,7 +1,7 @@
 using Humans.Users.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
-using Humans.Campaigns.Contracts;
+using Humans.Campaigns.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,8 +11,8 @@ namespace Humans.Campaigns.ViewComponents;
 /// Renders only for <see cref="ProfileCardViewMode.Admin"/> to a viewer passing the host page's
 /// <see cref="UsersPolicies.Read"/>. Every grant, whatever the campaign's status.
 /// </summary>
-public sealed class CampaignCodesViewComponent(
-    ICampaignService campaigns,
+internal sealed class CampaignCodesViewComponent(
+    ICampaignManagement campaigns,
     IAuthorizationService authorization) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)

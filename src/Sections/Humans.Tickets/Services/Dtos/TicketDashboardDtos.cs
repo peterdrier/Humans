@@ -380,6 +380,7 @@ internal sealed class OrderExportRow
 
 /// <summary><see cref="Date"/> is in the org time zone, the zone the monthly accountant report buckets by.</summary>
 internal sealed record DonationExportRow(
+    Instant PurchasedAt,
     string Date,
     string VendorOrderId,
     string BuyerName,

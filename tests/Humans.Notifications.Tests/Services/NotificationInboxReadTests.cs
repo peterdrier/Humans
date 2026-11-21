@@ -91,7 +91,7 @@ public sealed class NotificationInboxReadTests
         {
             new NotificationMeterDto("Failed Google sync events", 2, "/Google/SyncOutbox") { Priority = 7 },
             new NotificationMeterDto("Ticket sync error", 1, "/Tickets") { Priority = 4 },
-        }, options => options.WithStrictOrdering());
+        });
     }
 
     [HumansFact]

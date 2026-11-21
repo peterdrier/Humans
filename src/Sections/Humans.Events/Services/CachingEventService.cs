@@ -205,9 +205,6 @@ internal sealed class CachingEventService(
     public Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetUserEventAsync(eventId, userId, ct));
 
-    public Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetCampSubmissionsAsync(campId, ct));
-
     public Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetCampEventAsync(eventId, campId, ct));
 

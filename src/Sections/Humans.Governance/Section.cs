@@ -68,7 +68,7 @@ public sealed class Section :
 
         services.AddScoped<ApplicationDecisionService>();
         services.AddScoped<IGovernanceManagement>(sp => sp.GetRequiredService<ApplicationDecisionService>());
-        services.AddScoped<IGovernanceService>(sp => sp.GetRequiredService<ApplicationDecisionService>());
+        services.AddScoped<IGovernanceService>(sp => sp.GetRequiredService<MembershipTierService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ApplicationDecisionService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ApplicationDecisionService>());
 

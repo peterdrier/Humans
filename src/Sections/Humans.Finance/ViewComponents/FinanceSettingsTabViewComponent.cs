@@ -12,8 +12,8 @@ internal sealed class FinanceSettingsTabViewComponent(FinanceOverviewService ove
         var (ledger, stripeAccounts, links) = await overview.GetStripeLinkSettingsAsync(HttpContext.RequestAborted);
         var (pleoContact, pleoTreasury) = await pleo.GetSettingsAsync(HttpContext.RequestAborted);
         return View(new FinanceSettingsViewModel(
-            ledger.Select((a, i) => new FinanceStripeLinkRow(i, a.Number, a.Name, links.GetValueOrDefault(a.Number)))
+            ledger.OrderBy(a => a.Number).Select((a, i) => new FinanceStripeLinkRow(i, a.Number, a.Name, links.GetValueOrDefault(a.Number)))
                 .ToList(),
-            stripeAccounts, pleoContact, pleoTreasury));
+            stripeAccounts.Order(StringComparer.Ordinal).ToList(), pleoContact, pleoTreasury));
     }
 }

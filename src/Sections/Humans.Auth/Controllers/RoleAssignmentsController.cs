@@ -137,7 +137,7 @@ internal sealed class RoleAssignmentsController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
     {
-        var roleAssignment = await roleAssignmentService.GetByIdAsync(roleId, HttpContext.RequestAborted);
+        var roleAssignment = await roleAssignmentManagement.GetByIdAsync(roleId, HttpContext.RequestAborted);
 
         if (roleAssignment is null)
         {

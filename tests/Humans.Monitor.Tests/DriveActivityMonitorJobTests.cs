@@ -1,7 +1,7 @@
+using Humans.Monitor.Services;
 using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Monitor.Contracts;
 using Humans.Monitor.Jobs;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;

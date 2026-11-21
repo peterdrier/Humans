@@ -91,10 +91,10 @@ public sealed class MembershipTierServiceTests : IDisposable
     public async Task Read_DefaultsToVolunteer_UntilATierIsGranted()
     {
         var id = SeedUser();
-        (await _sut.GetTierAsync(id, Ct)).Should().Be(MembershipTier.Volunteer);
+        (await _sut.GetMembershipTierAsync(id, Ct)).Should().Be(MembershipTier.Volunteer);
 
         await SeedRowAsync(id, MembershipTier.Asociado);
-        (await _sut.GetTierAsync(id, Ct)).Should().Be(MembershipTier.Asociado);
+        (await _sut.GetMembershipTierAsync(id, Ct)).Should().Be(MembershipTier.Asociado);
     }
 
     [HumansFact]
@@ -103,8 +103,8 @@ public sealed class MembershipTierServiceTests : IDisposable
         var id = SeedUser();
         await SeedRowAsync(id, MembershipTier.Volunteer);
 
-        (await _sut.GetTierAsync(id, Ct)).Should().Be(MembershipTier.Volunteer);
-        (await _sut.GetTiersAsync(Ct)).Should().NotContainKey(id);
+        (await _sut.GetMembershipTierAsync(id, Ct)).Should().Be(MembershipTier.Volunteer);
+        (await _sut.GetMembershipTiersAsync(Ct)).Should().NotContainKey(id);
     }
 
     [HumansFact]
@@ -116,7 +116,7 @@ public sealed class MembershipTierServiceTests : IDisposable
         await SeedRowAsync(rowed, MembershipTier.Asociado);
         SeedUser();
 
-        (await _sut.GetTiersAsync(Ct)).Should().BeEquivalentTo(new Dictionary<Guid, MembershipTier>
+        (await _sut.GetMembershipTiersAsync(Ct)).Should().BeEquivalentTo(new Dictionary<Guid, MembershipTier>
         {
             [colaborador] = MembershipTier.Colaborador,
             [rowed] = MembershipTier.Asociado,
@@ -149,7 +149,7 @@ public sealed class MembershipTierServiceTests : IDisposable
         fallback!.Tier.Should().Be(MembershipTier.Colaborador);
         fallback.GrantedByApplicationId.Should().Be(colaborador.Id);
         fallback.ExpiresAt.Should().Be(Today.PlusDays(400));
-        (await _sut.GetTierAsync(lapsed, Ct)).Should().Be(MembershipTier.Volunteer);
+        (await _sut.GetMembershipTierAsync(lapsed, Ct)).Should().Be(MembershipTier.Volunteer);
         foreach (var (id, tier) in downgrades)
             await _audit.Received(1).LogAsync(GovernanceAuditActions.TierDowngraded, "Profile", id,
                 $"Membership tier changed to {tier} for Ana due to Asociado term expiry",

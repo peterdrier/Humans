@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using NodaTime.Text;
+using Humans.Base.Extensions;
 using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using Humans.Users.Contracts;
@@ -321,7 +321,7 @@ internal sealed class EventsApiController(
                 categoryName,
                 categorySlug,
                 categoryIsSensitive),
-            InstantPattern.General.Format(startAt),
+            startAt.ToIso8601(),
             durationMinutes,
             dayOffset,
             isRecurring,

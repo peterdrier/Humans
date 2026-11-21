@@ -1,14 +1,13 @@
 using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Notifications.Contracts;
-using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Tickets.Services;
 
 /// <summary>Admin's ticket-sync error flag: one sync-state row, asked only for Admins.</summary>
 internal sealed class TicketsNotificationMeters(
-    ITicketSync ticketSync,
+    ITicketSyncService ticketSync,
     IStringLocalizer<TicketsResource> localizer) : INotificationMeterContributor
 {
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersAsync(

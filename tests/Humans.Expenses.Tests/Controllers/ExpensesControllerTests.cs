@@ -10,6 +10,7 @@ using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,7 @@ namespace Humans.Expenses.Tests.Controllers;
 
 public sealed class ExpensesControllerTests
 {
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private static readonly FakeClock TestClock = new(Instant.FromUtc(2026, 5, 10, 12, 0));
 
     [HumansTheory]
@@ -73,7 +75,7 @@ public sealed class ExpensesControllerTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(users, reports, review, Substitute.For<IBudgetService>(),
+        var controller = new ExpensesController(_teams, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
             TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
         {
@@ -132,7 +134,7 @@ public sealed class ExpensesControllerTests
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Failed());
-        var controller = new ExpensesController(users, reports, review,
+        var controller = new ExpensesController(_teams, users, reports, review,
             Substitute.For<IBudgetService>(), Substitute.For<IFinanceService>(),
             Substitute.For<IPreapprovalService>(), authorization, TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
@@ -243,7 +245,7 @@ public sealed class ExpensesControllerTests
         };
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var controller = new ExpensesController(users, reports, review, Substitute.For<IBudgetService>(),
+        var controller = new ExpensesController(_teams, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(), authorization,
             TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, localizer)
         {
@@ -303,7 +305,7 @@ public sealed class ExpensesControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(users, reports, review,
+        var controller = new ExpensesController(_teams, users, reports, review,
             Substitute.For<IBudgetService>(), Substitute.For<IFinanceService>(),
             Substitute.For<IPreapprovalService>(), Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, localizer)
@@ -370,7 +372,7 @@ public sealed class ExpensesControllerTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
         };
-        var controller = new ExpensesController(users, reports, review, Substitute.For<IBudgetService>(),
+        var controller = new ExpensesController(_teams, users, reports, review, Substitute.For<IBudgetService>(),
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             authorization, TestClock, FixedOrgTimeZone.Madrid, NullLogger<ExpensesController>.Instance, localizer)
         {
@@ -413,13 +415,13 @@ public sealed class ExpensesControllerTests
             Lines = []
         }]);
         var budget = Substitute.For<IBudgetService>();
-        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var context = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(users, reports, review, budget,
+        var controller = new ExpensesController(_teams, users, reports, review, budget,
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, Substitute.For<IStringLocalizer<ExpensesResource>>())
@@ -471,7 +473,7 @@ public sealed class ExpensesControllerTests
         budget.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2025", "Old", BudgetYearStatus.Closed, false,
             [new BudgetGroupDetail(groupId, yearId, "Old group", 0, false, false, false, null,
                 [new BudgetCategoryDetail(categoryId, groupId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
-        budget.GetEffectiveCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
+        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         using var request = new CancellationTokenSource();
@@ -481,7 +483,7 @@ public sealed class ExpensesControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var controller = new ExpensesController(users, reports, review, budget,
+        var controller = new ExpensesController(_teams, users, reports, review, budget,
             Substitute.For<IFinanceService>(), Substitute.For<IPreapprovalService>(),
             Substitute.For<IAuthorizationService>(), TestClock, FixedOrgTimeZone.Madrid,
             NullLogger<ExpensesController>.Instance, localizer)
@@ -496,7 +498,7 @@ public sealed class ExpensesControllerTests
         model.BookingLabels[first.Id].Should().Be("Old group / Old category");
         model.BookingLabels[second.Id].Should().Be("Old group / Old category");
         await budget.Received(1).GetYearByIdAsync(yearId, context.RequestAborted);
-        await budget.Received(1).GetEffectiveCoordinatorTeamIdsAsync(actorId, context.RequestAborted);
+        await _teams.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, context.RequestAborted);
     }
 
     private static Task<IActionResult> InvokeAsync(ExpensesController controller, string action, Guid id) =>

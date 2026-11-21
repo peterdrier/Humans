@@ -22,6 +22,7 @@ internal sealed class TicketSyncService(
     ILogger<TicketSyncService> logger,
     IUserService userService,
     IEventParticipationManagement participations,
+    ITicketService participationReads,
     ICampaignWrite campaignService,
     ISettingsService settingsService) : ITicketSyncService
 {
@@ -459,7 +460,7 @@ internal sealed class TicketSyncService(
                 });
 
         // Read once and diffed, to skip the upsert for the many holders whose status hasn't changed.
-        var current = (await participations.GetAllParticipationsAsync(ct))
+        var current = (await participationReads.GetAllParticipationsAsync(ct))
             .Where(ep => ep.Year == year)
             .ToDictionary(ep => ep.UserId);
 

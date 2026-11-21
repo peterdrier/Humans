@@ -39,7 +39,7 @@ coordinators’ system-team membership. Google resources stay active until recon
 
 Vocabulary the leaf carries: `TeamInfo` (+ `TeamMemberInfo`, `TeamRoleDefinitionSnapshot`,
 `TeamRoleAssignmentSnapshot`), `UserTeamMembershipInfo`, `TeamSearchHit`, `SyncReport`,
-`TeamMemberRole`, `RolePeriod`, `SlotPriority`, `TeamJoinRequestStatus`, `CallToAction` /
+`TeamMemberRole`, `RolePeriod`, `SlotPriority`, `CallToAction` /
 `CallToActionStyle`, `TeamCoordinatorAccess`.
 
 ## 3. Structure
@@ -85,7 +85,7 @@ The shapes imply:
 - One pending request per human per team (`TeamService.cs`); only a pending request can be
   reviewed (`TeamService.cs`).
 - Removing a member removes all their role assignments on that team (`TeamRepository.cs:592`).
-- Hidden teams are left out of every non-admin listing the directory builds (`TeamDirectoryBuilder.cs:83`).
+- Hidden teams are left out of every non-admin listing the directory builds (`TeamPageService.GetTeamDirectoryAsync`).
 - Only departments can have a public page (`TeamService.cs`).
 - `IsSensitive` is written only by a global Admin, on a change to the flag (`TeamService.cs`).
 - An early-entry grant may be created only while its team has `EarlyEntryEnabled` (`TeamService.cs`).

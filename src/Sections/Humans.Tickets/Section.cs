@@ -86,7 +86,6 @@ public sealed class Section :
         services.AddSingleton<ITicketManagement>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketSyncService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
-        services.AddSingleton<ITicketSync>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketTransferService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketTransferQueue>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<IAttendeeContactImportService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
@@ -109,7 +108,7 @@ public sealed class Section :
 
         services.AddScoped<TicketVendorGateway>();
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
-        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<TicketVendorGateway>());
+        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<CachingTicketVendorService>());
 
         services.AddScoped<TicketDashboardPageBuilder>();
 

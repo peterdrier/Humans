@@ -142,9 +142,9 @@ internal sealed class FinanceOverviewService(
         var ledger = (await holded.GetChartAsync(ct))
             .Where(a => Under(a.Number, "441")
                 && (!a.Archived || balances.GetValueOrDefault(a.Number) != 0m || links.ContainsKey(a.Number)))
-            .OrderBy(a => a.Number).ToList();
+            .ToList();
         var stripeAccounts = (await stripe.GetEurBalancesAsync(ct))
-            .Select(b => b.AccountId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+            .Select(b => b.AccountId).Distinct(StringComparer.Ordinal).ToList();
         return (ledger, stripeAccounts, links);
     }
 
@@ -188,7 +188,6 @@ internal sealed class FinanceOverviewService(
 
         List<FinanceAccountLineVm> Accounts(Func<int, bool> match) => chart
             .Where(a => match(a.Number) && (!a.Archived || Balance(a.Number) != 0m))
-            .OrderBy(a => a.Number)
             .Select(a => new FinanceAccountLineVm(a.Number, a.Name, Balance(a.Number),
                 sources?.GetValueOrDefault(a.Number),
                 a.Number == bankFeedAccount ? bankFeed : null))

@@ -203,8 +203,9 @@ no-login page adds the inbox column and the highlighted row.
 - **`EmailResource.cs` must stay in namespace `Humans.Email`** beside its resx files: the SDK
   derives the manifest name from it. It is public because the boot localization diagnostic
   discovers markers through `GetExportedTypes()`.
-- **`CommunicationPreferencesPanelViewComponent` is public** because pages invoke it through
-  the `<vc:>` tag helper, which only finds public components.
+- **`CommunicationPreferencesPanelViewComponent` stays internal.** Only Email’s own views invoke it,
+  by type; its recorded-preference read is on internal `ICommunicationPreferenceManagement`. Other
+  sections reach the enclosing card through the user-part descriptor.
 - **`IEmailOutboxManagement` and `ICommunicationPreferenceManagement` exist** although every
   consumer is inside the section: the concrete services are sealed and the test doubles need
   an interface.

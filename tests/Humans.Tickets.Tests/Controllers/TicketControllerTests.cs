@@ -42,6 +42,51 @@ public class TicketControllerTests
     }
 
     [HumansFact]
+    public async Task ExportDonations_OrdersByPurchaseInstantAndKeepsBothDonationKindsTogether()
+    {
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        var queries = Substitute.For<ITicketManagement>();
+        var earlier = Instant.FromUtc(2026, 3, 31, 23, 30);
+        var later = Instant.FromUtc(2026, 4, 1, 10, 0);
+        queries.GetDonationExportDataAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new(later, "2026-04-01", "later", "Buyer", "buyer@example.com", DonationExportRow.VipTicket, 85m),
+            new(earlier, "2026-04-01", "earlier", "Buyer", "buyer@example.com", DonationExportRow.VipTicket, 85m),
+            new(earlier, "2026-04-01", "earlier", "Buyer", "buyer@example.com", DonationExportRow.SeparateDonation, 50m),
+        ]);
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, users, NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                },
+            },
+        };
+
+        var export = (await controller.ExportDonations()).Should().BeOfType<FileContentResult>().Which;
+
+        export.FileDownloadName.Should().Be("ticketing-donations.csv");
+        using var csv = CsvReader.Create(export.FileContents, HumansCsv.ReadConfig());
+        var rows = new List<(string? OrderId, string? Type, string? Amount)>();
+        while (await csv.ReadAsync())
+            rows.Add((csv.GetString("Order ID"), csv.GetString("Type"), csv.GetString("Amount")));
+        rows.Should().Equal(
+            ("earlier", DonationExportRow.VipTicket, "85"),
+            ("earlier", DonationExportRow.SeparateDonation, "50"),
+            ("later", DonationExportRow.VipTicket, "85"),
+            ("", "", "220"));
+    }
+
+    [HumansFact]
     public async Task Reports_OrderSalesBucketsTicketTypesAndCampaignsForDisplay()
     {
         var earlier = Instant.FromUtc(2026, 1, 1, 0, 0);
