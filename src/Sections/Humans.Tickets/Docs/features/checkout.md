@@ -54,8 +54,10 @@ Rules every backend follows:
   Closed; it joins `ticket_resale_offers` (oldest first) and stays valid at the gate until it sells. They see their
   queue position and can withdraw, except while a buyer's checkout holds it.
 - Resale opens once the event has sold `ResaleOpensAtSold` tickets (always, when unset). A buyer's ticket lines take
-  the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. The buyer pays their own price
-  (class price included), the partner the public price.
+  the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. A returned ticket sells only at the
+  resale price: the current public wave less the buyer's credits (the association keeps any difference). A buyer with
+  a class price or a pinned wave is served from fresh stock while the event is `Open`, and pays the resale price for a
+  queue ticket in `ResaleOnly` mode or through an invitation.
 - When the buyer's order is paid, the offer is sold, the old ticket becomes `Resold`, the old adult's children are
   voided, the buyer gets a new ticket, and the holder is refunded what they paid (adult plus children) through the
   original order's backend. A failed refund is logged and visible on the order's refunds; the timeline of both orders
@@ -72,8 +74,6 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 
 ## Assumptions to confirm
 
-- A resale buyer pays their own price, so a low income buyer of a returned full-price ticket costs the association the
-  difference.
 - Only adult tickets can be offered; children go with the adult and are refunded with it.
 - Partners do not sign the ticket rules at purchase; the buyer accepts for the order.
 

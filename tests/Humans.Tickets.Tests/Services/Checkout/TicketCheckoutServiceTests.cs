@@ -629,6 +629,44 @@ public sealed class TicketCheckoutServiceTests
         _repo.Erased.Should().Be(1);
     }
 
+    [HumansFact]
+    public async Task A_returned_ticket_sells_only_at_the_public_price_so_a_class_price_buyer_takes_fresh_stock_while_there_is_any()
+    {
+        await OfferedTicketAsync();
+        _salesEvent.Mode = TicketSalesMode.Open;
+        _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
+            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+
+        var fresh = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+
+        var line = _repo.Orders.Single(o => o.Id == fresh.OrderId).Lines.Single();
+        line.ResaleOfferId.Should().BeNull();
+        line.AmountMinor.Should().Be(12500);
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
+    }
+
+    [HumansFact]
+    public async Task In_resale_only_mode_every_buyer_pays_the_public_price_less_credits_and_the_refund_never_exceeds_what_came_in_plus_credits()
+    {
+        var old = await OfferedTicketAsync();
+        _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
+            .Returns([
+                new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now),
+                new ActiveGrantInfo(Guid.NewGuid(), CreditProgram, "Credit", _event.Id, Now),
+            ]);
+        (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(17500);
+
+        var order = await BuyAndPayAsync(Buy(), _otherBuyerId);
+
+        var line = order.Lines.Single();
+        line.ResaleOfferId.Should().NotBeNull();
+        line.AmountMinor.Should().Be(17500);
+        line.ClassLabel.Should().BeNull();
+        var refunded = _repo.Refunds.Single().Refund.AmountMinor;
+        refunded.Should().Be(old.PricePaidMinor);
+        refunded.Should().BeLessThanOrEqualTo(line.AmountMinor + line.CreditsMinor);
+    }
+
     private sealed class FakeCheckoutRepository : ITicketCheckoutRepository
     {
         public List<TicketSalesEvent> SalesEvents { get; } = [];

@@ -122,7 +122,7 @@ internal sealed partial class TicketCheckoutService(
                 continue;
             if (await LoadBuyContextAsync(salesEvent.Id, userId, ct) is not { } context)
                 continue;
-            pages.Add((context.Event.GateOpeningDate, ToBuyPage(context, null)));
+            pages.Add((context.Event.GateOpeningDate, ToBuyPage(context, null, directed: false)));
         }
         return pages.OrderBy(p => p.GatesOpen).Select(p => p.Page).ToList();
     }
@@ -132,11 +132,14 @@ internal sealed partial class TicketCheckoutService(
         var offer = await repository.GetOfferByTokenHashAsync(HashToken(token), ct);
         if (offer is null || await LoadBuyContextAsync(offer.SalesEventId, userId, ct) is not { } context)
             return null;
-        return ToBuyPage(context, DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null);
+        return ToBuyPage(context, DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null, directed: true);
     }
 
-    private static BuyPage ToBuyPage(BuyContext context, string? directedRefusal) => new(
-        context.SalesEvent, context.Event.EventName, context.OwnPrice, context.PublicPrice,
+    /// <summary>A returned ticket sells at the resale price, so a page that can only sell one shows that price.</summary>
+    private static BuyPage ToBuyPage(BuyContext context, string? directedRefusal, bool directed) => new(
+        context.SalesEvent, context.Event.EventName,
+        directed || context.SalesEvent.Mode == TicketSalesMode.ResaleOnly ? context.ResalePrice : context.OwnPrice,
+        context.PublicPrice,
         directedRefusal ?? context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
         context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).OrderByDescending(o => o.CreatedAt).ToList())
     {
@@ -170,8 +173,8 @@ internal sealed partial class TicketCheckoutService(
         if (children.Count > MaxChildren || children.Any(n => n.Length > 513)
             || (children.Count > 0 && (!command.ForSelf || salesEvent.ChildPriceMinor is null)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        if (command.SupporterTotalMinor is { } total
-            && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(total) || total <= context.OwnPrice!.AmountMinor))
+        if (command.SupporterTotalMinor is { } requested
+            && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(requested)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         var unsignedTerms = context.TermsToAccept.Where(t => !t.Signed).ToList();
         if (unsignedTerms.Count > 0 && !command.AcceptTerms)
@@ -193,7 +196,13 @@ internal sealed partial class TicketCheckoutService(
                 .Where(o => o.State == TicketResaleOfferState.Open && !o.IsDirectedTo(now) && o.HolderUserId != buyer.Id)
                 .OrderBy(o => o.OfferedAt))
             : new Queue<TicketResaleOffer>();
-        var resaleForSelf = command.ForSelf ? directed ?? (queue.Count > 0 ? queue.Dequeue() : null) : null;
+        // A returned ticket sells only at the resale price (current public wave, credits kept), so a buyer with a class
+        // price or a pinned wave is served from fresh stock while there is any.
+        var takesQueue = salesEvent.Mode == TicketSalesMode.ResaleOnly || !IsDiscounted(context);
+        var resaleForSelf = command.ForSelf ? directed ?? (takesQueue && queue.Count > 0 ? queue.Dequeue() : null) : null;
+        var selfPrice = resaleForSelf is null ? context.OwnPrice! : context.ResalePrice!;
+        if (command.SupporterTotalMinor is { } total && total <= selfPrice.AmountMinor)
+            return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         var resaleForPartner = hasPartner && queue.Count > 0 ? queue.Dequeue() : null;
         var fresh = (command.ForSelf && resaleForSelf is null ? 1 : 0) + (hasPartner && resaleForPartner is null ? 1 : 0) + children.Count;
         if (fresh > 0 && salesEvent.Mode != TicketSalesMode.Open)
@@ -203,7 +212,7 @@ internal sealed partial class TicketCheckoutService(
 
         var lines = new List<TicketCheckoutOrderLine>();
         if (command.ForSelf)
-            lines.Add(TicketLine(salesEvent, context.OwnPrice!, buyer.FullName, buyer.Email!, buyer.Id, resaleForSelf?.Id));
+            lines.Add(TicketLine(salesEvent, selfPrice, buyer.FullName, buyer.Email!, buyer.Id, resaleForSelf?.Id));
         foreach (var child in children)
         {
             var line = ChildLine(salesEvent, child);
@@ -223,7 +232,7 @@ internal sealed partial class TicketCheckoutService(
         }
 
         if (command.SupporterTotalMinor is { } supporterTotal)
-            lines.Add(DonationLine(supporterTotal - context.OwnPrice!.AmountMinor, TicketDonationPurpose.General));
+            lines.Add(DonationLine(supporterTotal - selfPrice.AmountMinor, TicketDonationPurpose.General));
         if (command.DonationMinor > 0)
             lines.Add(DonationLine(command.DonationMinor, command.DonationPurpose));
         if (lines.Count == 0)
@@ -773,6 +782,7 @@ internal sealed partial class TicketCheckoutService(
         UserInfo? Buyer,
         TicketPrice? OwnPrice,
         TicketPrice? PublicPrice,
+        TicketPrice? ResalePrice,
         string? Unavailable,
         bool AlreadyHoldsTicket,
         IReadOnlyList<TicketCheckoutOrder> UserOrders,
@@ -801,6 +811,9 @@ internal sealed partial class TicketCheckoutService(
             .Min();
         var ownPrice = TicketPrice.For(salesEvent, today, programIds, pinnedOn);
         var publicPrice = TicketPrice.Public(salesEvent, today);
+        var creditPrograms = salesEvent.PriceRules.Where(r => r.Kind == TicketPriceRuleKind.Credit)
+            .Select(r => r.GrantProgramId).Where(programIds.Contains).ToHashSet();
+        var resalePrice = TicketPrice.For(salesEvent, today, creditPrograms);
         var userOrders = await repository.GetOrdersForUserAsync(userId, ct);
         var holds = await HoldsTicketAsync(salesEvent.Id, userId, now, ct);
         var terms = salesEvent.TermsTeamId is { } termsTeam
@@ -818,9 +831,12 @@ internal sealed partial class TicketCheckoutService(
         else if (buyer is null || !buyer.HasRequiredNameFields || string.IsNullOrWhiteSpace(buyer.Email))
             unavailable = "Tickets_Buy_NeedLegalName";
 
-        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, unavailable, holds, userOrders, terms,
+        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders, terms,
             askMarketing, now);
     }
+
+    private static bool IsDiscounted(BuyContext context) =>
+        context.OwnPrice!.ClassPrice is not null || !ReferenceEquals(context.OwnPrice.Wave, context.PublicPrice!.Wave);
 
     /// <summary>An adult ticket held, offered for resale, or on an unpaid checkout that has not lapsed.</summary>
     private async Task<bool> HoldsTicketAsync(Guid salesEventId, Guid userId, Instant now, CancellationToken ct)
