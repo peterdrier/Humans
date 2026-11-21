@@ -401,8 +401,9 @@ namespace Humans.Tickets.Data.Migrations
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
-                    b.Property<Guid?>("TermsTeamId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("TermsUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<decimal>("TicketVatRate")
                         .HasPrecision(5, 4)
