@@ -16,7 +16,8 @@ internal static class TestTicketsEmails
     public const string BaseUrl = "https://humans.example";
 
     public static TicketsEmails Create() =>
-        new(new StringLocalizer<TicketsResource>(new ResourceManagerStringLocalizerFactory(
+        new(Options.Create(new EmailSettings { BaseUrl = BaseUrl }),
+            new StringLocalizer<TicketsResource>(new ResourceManagerStringLocalizerFactory(
                 Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)),
             NullLogger<TicketsEmails>.Instance);
 }
