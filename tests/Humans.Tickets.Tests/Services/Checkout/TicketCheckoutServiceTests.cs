@@ -152,8 +152,12 @@ public sealed class TicketCheckoutServiceTests
         var to = Instant.FromUtc(2027, 1, 2, 0, 0);
         _repo.Orders.Add(new TicketCheckoutOrder
         {
-            Id = Guid.NewGuid(), SalesEventId = _salesEvent.Id, BackendKey = "test", BackendOrderId = "old/1",
-            State = TicketCheckoutOrderState.Paid, CreatedAt = from,
+            Id = Guid.NewGuid(),
+            SalesEventId = _salesEvent.Id,
+            BackendKey = "test",
+            BackendOrderId = "old/1",
+            State = TicketCheckoutOrderState.Paid,
+            CreatedAt = from,
         });
         _salesEvent.BackendKey = "elsewhere";
         _backend.EventRefOf("old/1").Returns("old");

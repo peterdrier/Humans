@@ -151,6 +151,16 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
+    public void Charged_paid_order_no_backend_holds_is_missing_not_free()
+    {
+        Order(atBackend: false).BackendOrderId = null;
+
+        var recon = Build();
+
+        recon.Problems.Single().Issues.Should().Equal(TicketReconIssue.MissingAtBackend);
+    }
+
+    [HumansFact]
     public void Free_order_without_its_tickets_is_flagged()
     {
         Order(total: 0, atBackend: false, issue: false).BackendOrderId = null;

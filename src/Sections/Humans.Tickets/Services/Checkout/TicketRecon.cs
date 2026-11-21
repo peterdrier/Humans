@@ -116,7 +116,8 @@ internal static class TicketReconBuilder
                 ? mine.OrderBy(b => b.CreatedAt).FirstOrDefault()
                 : mine.FirstOrDefault(b => string.Equals(b.BackendOrderId, order.BackendOrderId, StringComparison.Ordinal));
             int? ticketsIssued = order.State == TicketCheckoutOrderState.Paid ? issued.GetValueOrDefault(order.Id) : null;
-            if (primary is null && order.BackendOrderId is null)
+            if (primary is null && order.BackendOrderId is null
+                && (order.State != TicketCheckoutOrderState.Paid || order.TotalMinor == 0))
             {
                 // The backend never took it (unopened, or free and paid with nothing to charge): only its tickets to check.
                 taken.Remove(order.Id);
