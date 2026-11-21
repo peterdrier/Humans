@@ -171,6 +171,7 @@ public sealed class TicketSupportReportsTests
     {
         var wave = Order(lines: [Line(), Donation(17500, TicketDonationPurpose.LowIncomePool)]);
         var lowIncome = Order(lines: Line(12500));
+        lowIncome.DisputedMinor = 12500;
         var unpaid = Order(TicketCheckoutOrderState.Pending, lines: Line());
         var tickets = new[]
         {
@@ -186,6 +187,7 @@ public sealed class TicketSupportReportsTests
         report.TicketsLive.Should().Be(2);
         report.TicketRevenueMinor.Should().Be(35000);
         report.DonationsMinor.Should().Be(17500);
+        report.DisputedMinor.Should().Be(12500);
         report.ByPrice.Should().BeEquivalentTo(
             [new SalesRow("Companion", 1, 0), new SalesRow("Low income", 1, 12500), new SalesRow("Wave 1", 1, 22500)]);
         report.DonationsByPurpose.Should().Equal(new DonationRow(TicketDonationPurpose.LowIncomePool, 1, 17500));

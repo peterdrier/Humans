@@ -143,6 +143,7 @@ internal static class TicketSupportReports
             donations.Sum(l => l.AmountMinor),
             paid.Sum(o => o.FeeMinor ?? 0),
             paid.Sum(o => o.RefundedMinor),
+            paid.Sum(o => o.DisputedMinor),
             byPrice, byDay, byPurpose, refundsByState, resaleByState);
     }
 
@@ -174,7 +175,7 @@ internal sealed record ResaleQueueRow(
 /// <summary>
 /// Totals over paid orders. <paramref name="TicketsIssued"/> counts every ticket ever issued (a resale issues a new
 /// one); <paramref name="TicketsLive"/> only those still valid or offered. <paramref name="RefundedMinor"/> is what the
-/// backends report as refunded; <paramref name="RefundsByState"/> is every refund Humans asked for.
+/// backends report as refunded, <paramref name="DisputedMinor"/> what buyers charged back; <paramref name="RefundsByState"/> is every refund Humans asked for.
 /// </summary>
 internal sealed record SalesReport(
     int TicketsIssued,
@@ -183,6 +184,7 @@ internal sealed record SalesReport(
     long DonationsMinor,
     long FeesMinor,
     long RefundedMinor,
+    long DisputedMinor,
     IReadOnlyList<SalesRow> ByPrice,
     IReadOnlyList<DayRow> ByDay,
     IReadOnlyList<DonationRow> DonationsByPurpose,

@@ -14,7 +14,7 @@
 
 <p>
     @r.TicketsLive live tickets of @Model.Capacity (@r.TicketsIssued issued, resales included) · @Eur(r.TicketRevenueMinor) tickets · @Eur(r.DonationsMinor) donations ·
-    @Eur(r.FeesMinor) fees · @Eur(r.RefundedMinor) refunded
+    @Eur(r.FeesMinor) fees · @Eur(r.RefundedMinor) refunded · @Eur(r.DisputedMinor) charged back
     · <a asp-action="Refunds" asp-route-id="@Model.SalesEventId">refund list</a>
     · <a asp-action="Resale" asp-route-id="@Model.SalesEventId">resale queue</a>
 </p>
