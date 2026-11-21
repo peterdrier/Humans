@@ -14,7 +14,6 @@ using Humans.Consent.ViewComponents;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
-using Humans.Shifts.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
@@ -148,13 +147,13 @@ public sealed class Section :
             Key = "ConsentReview",
             SectionName = "Consent Review",
             Order = 50,
-            Roles = ["ConsentCoordinator", "ShiftsAdmin", "Board"],
+            Roles = ["ConsentCoordinator", "Board"],
             Features =
             [
-                Of("View review queue", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Allowed), ("Board", Allowed)),
-                Of("Clear consent checks", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
-                Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
-                Of("Board voting", ("ConsentCoordinator", Denied), ("ShiftsAdmin", Denied), ("Board", Allowed)),
+                Of("View review queue", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
+                Of("Clear consent checks", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
+                Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
+                Of("Board voting", ("ConsentCoordinator", Denied), ("Board", Allowed)),
             ]
         },
         new()
@@ -211,10 +210,8 @@ public sealed class Section :
         options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
             policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
 
-        // ShiftsAdmin (the Volunteer Coordinator) reads the queue; only ConsentCoordinatorBoardOrAdmin decides.
         options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
-            policy.RequireRole(ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin,
-                RoleNames.Board, RoleNames.Admin));
+            policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
     }
 
     IEnumerable<UserPart> IUserPart.Parts() =>

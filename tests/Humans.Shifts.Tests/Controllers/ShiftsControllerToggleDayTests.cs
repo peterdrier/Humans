@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Onboarding;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
@@ -41,7 +40,6 @@ public class ShiftsControllerToggleDayTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
-    private readonly IStringLocalizer<OnboardingResource> _onboardingLocalizer = Substitute.For<IStringLocalizer<OnboardingResource>>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly ShiftBrowsePageBuilder _builder;
     private readonly ILogger<ShiftsController> _logger = NullLogger<ShiftsController>.Instance;
@@ -73,8 +71,6 @@ public class ShiftsControllerToggleDayTests
             .Returns(true);
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        _onboardingLocalizer[Arg.Any<string>()].Returns(ci =>
-            new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         _builder = new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService);
     }
 
@@ -83,7 +79,7 @@ public class ShiftsControllerToggleDayTests
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(userInfo);
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _userService, _localizer, _clock, _builder, _logger);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

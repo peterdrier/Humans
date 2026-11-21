@@ -13,8 +13,7 @@ internal static class OnboardingShiftsStepBuilder
     internal static ShiftsStepViewModel Build(
         EventSettingsInfo eventSettings,
         IReadOnlyList<UrgentShiftInfo> allShifts,
-        HashSet<Guid> userSignupShiftIds,
-        Dictionary<Guid, SignupStatus> userSignupStatuses,
+        Guid viewerUserId,
         string selectedPriority)
     {
         var normalizedPriority = NormalizePriority(selectedPriority);
@@ -30,8 +29,7 @@ internal static class OnboardingShiftsStepBuilder
             HasAnyImportant = stats.HasAnyImportant,
             EventSettings = eventSettings,
             Shifts = FilterByPriority(allShifts, normalizedPriority).ToList(),
-            UserSignupShiftIds = userSignupShiftIds,
-            UserSignupStatuses = userSignupStatuses,
+            ViewerUserId = viewerUserId,
             EarlyEntrySignupsClosed = earlyEntry.Count > 0 && earlyEntry.All(s => s.EarlyEntrySignupsClosed),
         };
     }
