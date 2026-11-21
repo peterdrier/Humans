@@ -416,13 +416,7 @@ internal sealed class TeamPageService(
         var directMemberUserIds = new HashSet<Guid>(directMembers.Select(m => m.UserId));
         var addedUserIds = new HashSet<Guid>();
 
-        var childTeamIds = childTeams.Select(c => c.Id).ToList();
-        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds, cancellationToken);
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-
-        var childMembersByTeam = childTeamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Members);
 
         var leads = new List<TeamPageChildTeamMemberSummary>();
         var rollupMembers = new List<TeamPageChildTeamMemberSummary>();
@@ -430,11 +424,16 @@ internal sealed class TeamPageService(
         // First child wins a repeated human's affiliation and role metadata; preserve that selection order.
         foreach (var child in childTeams.OrderBy(child => child.Name, StringComparer.Ordinal))
         {
-            if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
+            if (!teamsById.TryGetValue(child.Id, out var team))
                 continue;
-            var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
+            var managementRoleName = team.RoleDefinitions?
+                .Where(d => d.IsManagement && d.IsPublic)
+                // First authored public management-role selector, not display ordering.
+                .OrderBy(d => d.SortOrder)
+                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
+                .FirstOrDefault()?.Name;
 
-            foreach (var cm in childMembers)
+            foreach (var cm in team.Members)
             {
                 var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
 
