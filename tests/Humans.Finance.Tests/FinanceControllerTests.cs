@@ -854,6 +854,37 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
+    public async Task CreditorStatement_ListsTheMembersUnbookedReportsTheMatchCardCounts()
+    {
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
+            .Returns(new CreditorLedger(40000002, 0m, 0m, []));
+        ExpenseReportDto Report(int? bookedTo, int days) => new()
+        {
+            Id = Guid.NewGuid(), SubmitterUserId = Ana, HoldedAccountNumber = 0, BudgetCategoryId = null,
+            BudgetYearId = null, Status = ExpenseReportStatus.Approved, PayeeName = "Ana", PayeeIban = "", Total = 10m,
+            HoldedSupplierAccountNum = bookedTo, CreatedAt = Instant.FromUtc(2026, 3, days, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 3, days, 0, 0), Lines = [],
+        };
+        var booked = Report(40000002, 1);
+        var unbooked = Report(null, 2);
+        var elsewhere = Report(40000009, 3);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([booked, unbooked, elsewhere]);
+        var member = new ExpenseReconMember(Ana, "Ana", 40000002, 0m, 0m, 0m, 0m, MissingLines: 1,
+            UnclaimedPurchaseCount: 0, [], [], ExpenseReconMemberStatus.Off, []);
+        var missing = new ExpenseReconLine(unbooked.Id, null, Ana, "Ana", "d", 10m, new LocalDate(2026, 3, 2), "",
+            ExpenseReconLineStatus.Missing, null, null, null, null, [], 0m);
+        _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(null,
+            Instant.FromUtc(2026, 3, 4, 0, 0), null, [], [missing], [], [member], new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0)));
+
+        var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        model.Match!.MissingLines.Should().Be(1);
+        model.ExpenseReports.Should().Equal(unbooked, booked);
+        await _expenses.Received(1).GetReviewQueueAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreditorStatement_MemberOwingTheOrganisation_ShowsNegativeBalance()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())

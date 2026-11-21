@@ -376,7 +376,7 @@ internal sealed class Service(
     }
 
     /// <summary>Category and group names resolved from the active budget year.</summary>
-    private async Task<IReadOnlyList<CategoryAccountRow>> BuildCategoryMapAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default)
     {
         var map = await repo.GetCategoryMapAsync(ct);
         var categories = await ActiveYearCategoriesAsync(ct);
@@ -390,9 +390,6 @@ internal sealed class Service(
             m.Tag,
             m.UpdatedAt)).ToList();
     }
-
-    public Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default) =>
-        BuildCategoryMapAsync(ct);
 
     /// <summary>Empty when no year is active.</summary>
     private async Task<Dictionary<Guid, (string Name, string Group)>> ActiveYearCategoriesAsync(CancellationToken ct)
