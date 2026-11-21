@@ -50,13 +50,13 @@ internal sealed partial class UserRepository
         var byUser = profiles.ToDictionary(p => p.UserId);
         foreach (var entry in history)
         {
-            if (entry.UserId is { } userId && byUser.TryGetValue(userId, out var profile))
+            if (byUser.TryGetValue(entry.UserId, out var profile))
                 profile.VolunteerHistory.Add(entry);
         }
 
         foreach (var language in languages)
         {
-            if (language.UserId is { } userId && byUser.TryGetValue(userId, out var profile))
+            if (byUser.TryGetValue(language.UserId, out var profile))
                 profile.Languages.Add(language);
         }
     }
