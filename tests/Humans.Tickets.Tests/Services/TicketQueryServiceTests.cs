@@ -28,6 +28,8 @@ using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
 
+using Humans.Tickets.Services.Checkout;
+
 namespace Humans.Tickets.Tests.Services;
 
 public sealed class TicketQueryServiceTests : TicketsTestHarness
@@ -42,7 +44,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IEventParticipationManagement _participations = Substitute.For<IEventParticipationManagement>();
-    private readonly ITicketCheckoutRepository _checkoutRepo = Substitute.For<ITicketCheckoutRepository>();
+    private readonly ITicketCheckoutService _checkout = Substitute.For<ITicketCheckoutService>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -65,7 +67,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _auditLog,
             SystemClock.Instance,
             _participations,
-            _checkoutRepo);
+            _checkout);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
@@ -131,7 +133,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
-            _shiftManagementService, _auditLog, Clock, _participations, _checkoutRepo);
+            _shiftManagementService, _auditLog, Clock, _participations, _checkout);
         var services = new ServiceCollection();
         services.AddKeyedScoped<ITicketManagement>(CachingTicketQueryService.InnerServiceKey, (_, _) => service);
         await using var provider = services.BuildServiceProvider();
@@ -253,7 +255,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
-            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations, _checkoutRepo);
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations, _checkout);
 
         if (cancel)
         {
@@ -1375,8 +1377,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var paid = Order(TicketCheckoutOrderState.Paid, Instant.FromUtc(2027, 1, 2, 9, 0),
             (17500, TicketDonationPurpose.General), (2000, TicketDonationPurpose.LowIncomePool));
         var unpaid = Order(TicketCheckoutOrderState.Pending, Instant.FromUtc(2027, 1, 2, 9, 0), (5000, TicketDonationPurpose.General));
-        _checkoutRepo.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
-        _checkoutRepo.GetOrdersForSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
+        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
+        _checkout.GetOrdersForSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
 
         var rows = await _service.GetDonationExportDataAsync(Guid.NewGuid());
 

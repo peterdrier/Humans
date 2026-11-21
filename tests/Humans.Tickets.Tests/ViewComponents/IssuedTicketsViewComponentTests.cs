@@ -71,4 +71,24 @@ public sealed class IssuedTicketsViewComponentTests
         model.Tickets.Select(t => (t.Barcode, t.EventName, t.State)).Should().Equal(
             ("HNEW", "Nowhere 2027", "Valid"), ("HOLD", "Nowhere 2027", "Void"));
     }
+
+    [HumansFact]
+    public async Task ListsAChildTicket_UnderTheAdultItRidesOn()
+    {
+        var userId = Guid.NewGuid();
+        var adult = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), HolderUserId = userId, Barcode = "HADULT" };
+        var child = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(), OrderId = adult.OrderId, ParentTicketId = adult.Id, HolderName = "Kid",
+            Kind = TicketHolderKind.Child, Barcode = "HCHILD",
+        };
+        var stranger = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = adult.OrderId, HolderUserId = Guid.NewGuid(), Barcode = "HOTHER" };
+        _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns([adult]);
+        _checkout.GetTicketsForOrderAsync(adult.OrderId, Arg.Any<CancellationToken>()).Returns([adult, child, stranger]);
+
+        var result = await BuildSut().InvokeAsync(userId, ProfileCardViewMode.Self);
+
+        var model = (IssuedTicketsViewModel)result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model!;
+        model.Tickets.Select(t => (t.Barcode, t.ChildName)).Should().Equal(("HADULT", null), ("HCHILD", "Kid"));
+    }
 }

@@ -12,6 +12,7 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.Services.Delivery;
 using Humans.Tickets.Services.Dtos;
 using Humans.Gdpr.Contracts;
@@ -34,7 +35,7 @@ internal sealed class TicketQueryService(
     IAuditLogService auditLog,
     IClock clock,
     IEventParticipationManagement participations,
-    ITicketCheckoutRepository checkoutRepository) : ITicketManagement
+    ITicketCheckoutService checkout) : ITicketManagement
 {
     public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
         participations.GetParticipationsAsync(userId, ct);
@@ -151,8 +152,8 @@ internal sealed class TicketQueryService(
 
         // Orders taken through Humans' own checkout: each donation line is one row, never refunded.
         var checkoutOrders = new List<TicketCheckoutOrder>();
-        foreach (var salesEvent in await checkoutRepository.GetSalesEventsAsync(ct))
-            checkoutOrders.AddRange((await checkoutRepository.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
+        foreach (var salesEvent in await checkout.GetSalesEventsAsync(ct))
+            checkoutOrders.AddRange((await checkout.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
                 .Where(o => o.State == TicketCheckoutOrderState.Paid));
         foreach (var o in checkoutOrders.OrderBy(o => o.PaidAt))
         {

@@ -2,7 +2,7 @@
 
 <div class="card mb-3">
     <div class="card-header py-2">
-        <h3 class="h6 mb-0">@Localizer["Tickets_Mine_Title"]</h3>
+        <h3 class="h6 mb-0">@Localizer[Model.ViewMode == ProfileCardViewMode.Self ? "Tickets_Mine_Title" : "Tickets_TicketHoldings_Title"]</h3>
     </div>
     <ul class="list-group list-group-flush">
         @foreach (var t in Model.Tickets)
@@ -12,7 +12,18 @@
                     <strong class="text-break">@t.EventName</strong>
                     <span class="badge @(t.State == "Valid" ? "bg-success" : "bg-secondary")">@Localizer[$"Tickets_Ticket_State_{t.State}"]</span>
                 </div>
-                <div class="text-muted">@Localizer[$"Tickets_Delivery_Kind_{t.Kind}"] · <code>@t.Barcode</code></div>
+                <div class="text-muted">
+                    @if (t.ChildName is not null)
+                    {
+                        <span class="text-break">@t.ChildName ·</span>
+                    }
+                    @Localizer[$"Tickets_Delivery_Kind_{t.Kind}"]
+                    @* Tickets roles see codes on the order page; a profile reader has no reason to. *@
+                    @if (Model.ViewMode == ProfileCardViewMode.Self)
+                    {
+                        <span>· <code>@t.Barcode</code></span>
+                    }
+                </div>
             </li>
         }
     </ul>

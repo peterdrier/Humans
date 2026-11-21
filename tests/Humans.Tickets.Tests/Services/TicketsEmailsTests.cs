@@ -154,12 +154,12 @@ public sealed class TicketsEmailsTests
     }
 
     [HumansFact]
-    public void JoinInvitation_HonoursTheTicketingOptOut_AndLinksProfileAndShifts()
+    public void JoinInvitation_IsAVolunteerUpdate_AndLinksProfileAndShifts()
     {
         var msg = Create().JoinInvitation(Guid.NewGuid(), "ana@x.com", "Ana", "Nowhere 2027",
             new Uri("https://humans.example/Profile"), new Uri("https://humans.example/Shifts"), null, "en");
 
-        msg.Category.Should().Be(MessageCategory.Ticketing);
+        msg.Category.Should().Be(MessageCategory.VolunteerUpdates);
         msg.TemplateName.Should().Be("ticket_join_invitation");
         msg.HtmlBody.Should().Contain("href=\"https://humans.example/Profile\"").And.Contain("href=\"https://humans.example/Shifts\"");
     }

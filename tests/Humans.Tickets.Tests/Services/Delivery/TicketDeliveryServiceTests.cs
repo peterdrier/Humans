@@ -5,8 +5,8 @@ using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.Services.Delivery;
 using Humans.Tickets.Tests.Infrastructure;
 using Humans.Users.Contracts;
@@ -19,7 +19,7 @@ namespace Humans.Tickets.Tests.Services.Delivery;
 
 public sealed class TicketDeliveryServiceTests
 {
-    private readonly ITicketCheckoutRepository _repository = Substitute.For<ITicketCheckoutRepository>();
+    private readonly ITicketCheckoutService _checkout = Substitute.For<ITicketCheckoutService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IEmailService _email = Substitute.For<IEmailService>();
@@ -49,20 +49,21 @@ public sealed class TicketDeliveryServiceTests
                 new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ana Buyer" },
                 new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ben Partner" },
             ],
+        Culture = "es",
         };
-        _repository.GetOrderAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_order);
-        _repository.GetSalesEventAsync(_salesEvent.Id, Arg.Any<CancellationToken>()).Returns(_salesEvent);
+        Tickets();
+        _checkout.GetSalesEventAsync(_salesEvent.Id, Arg.Any<CancellationToken>()).Returns(_salesEvent);
         _settings.GetEventSettingsByIdAsync(_salesEvent.EventSettingsId, Arg.Any<CancellationToken>())
             .Returns(new EventSettingsInfo(_salesEvent.EventSettingsId, "Nowhere 2027", 2027, "Europe/Madrid",
                 new LocalDate(2027, 6, 1), 0, 5, 7, new Dictionary<int, int>(), null, null));
         _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
-            new UserInfo(PartnerId, "Ben", false, "de", null, Instant.MinValue, null, null, null, null, null, null, null, null,
+            new UserInfo(PartnerId, "Ben", false, "de", null, Instant.MinValue, Instant.MinValue, null, null, null, null, null, null, null,
                 "ben@example.com", [], [], null)));
         _email.SendAsync(Arg.Do<EmailMessage>(_sent.Add), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
     }
 
     private TicketDeliveryService Create() => new(
-        _repository, _settings, _users, _email, TestTicketsEmails.Create(), TestTicketCodeImages.Create(), _jobs, _audit,
+        _checkout, _settings, _users, _email, TestTicketsEmails.Create(), TestTicketCodeImages.Create(), _jobs, _audit,
         Options.Create(new EmailSettings { BaseUrl = TestTicketsEmails.BaseUrl }), NullLogger<TicketDeliveryService>.Instance);
 
     private TicketCheckoutTicket Ticket(Guid? holderId, string name, string? email, TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid,
@@ -81,16 +82,16 @@ public sealed class TicketDeliveryServiceTests
     };
 
     private void Tickets(params TicketCheckoutTicket[] tickets) =>
-        _repository.GetTicketsForOrderAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(tickets);
+        _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new CheckoutOrderDetail(_order, [], [], tickets));
 
     [HumansFact]
-    public async Task TicketsIssued_SendsOneTicketPerHolder_AndOneReceiptToThePayer()
+    public async Task Deliver_SendsOneTicketPerHolder_AndOneReceiptToThePayer()
     {
         var own = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
         var partner = Ticket(PartnerId, "Ben Partner", "ben@example.com");
         Tickets(own, partner, Ticket(PartnerId, "Old", "old@example.com", TicketCheckoutTicketState.Void));
 
-        await Create().TicketsIssuedAsync(_order.Id);
+        await Create().DeliverAsync(_order.Id);
 
         _sent.Where(m => string.Equals(m.TemplateName, "ticket_issued", StringComparison.Ordinal)).Select(m => m.RecipientEmail)
             .Should().BeEquivalentTo(["ana@example.com", "ben@example.com"]);
@@ -104,13 +105,13 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task TicketsIssued_PutsAChildWithoutEmailOnTheAdultsMail_AndInvitesOnlyTheAdult()
+    public async Task Deliver_PutsAChildWithoutEmailOnTheAdultsMail_AndInvitesOnlyTheAdult()
     {
         var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
         var child = Ticket(BuyerId, "Kid Buyer", null, kind: TicketHolderKind.Child, parent: adult.Id);
         Tickets(adult, child);
 
-        await Create().TicketsIssuedAsync(_order.Id);
+        await Create().DeliverAsync(_order.Id);
 
         var ticketMail = _sent.Where(m => string.Equals(m.TemplateName, "ticket_issued", StringComparison.Ordinal)).Should().ContainSingle().Subject;
         ticketMail.HtmlBody.Should().Contain(adult.Barcode).And.Contain(child.Barcode);
@@ -118,12 +119,12 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
-    public async Task TicketsIssued_IsIdempotentPerMail_ThroughStableDeliveryIds()
+    public async Task Deliver_IsIdempotentPerMail_ThroughStableDeliveryIds()
     {
         Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com"));
 
-        await Create().TicketsIssuedAsync(_order.Id);
-        await Create().TicketsIssuedAsync(_order.Id);
+        await Create().DeliverAsync(_order.Id);
+        await Create().DeliverAsync(_order.Id);
 
         _sent.Should().HaveCount(4);
         _sent.Select(m => m.DeliveryId).Should().AllSatisfy(id => id.Should().NotBeNull());
@@ -146,12 +147,79 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansFact]
+    public async Task HandOff_OnlyEnqueues_SoHangfireRetriesTheSending()
+    {
+        await new TicketDeliveryHandOff(_jobs).TicketsIssuedAsync(_order.Id);
+
+        _jobs.ReceivedWithAnyArgs(1).Create(default!, default!);
+        _sent.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Deliver_FailingOnTheSecondTicket_EndsWithEveryMailQueuedOnceAfterARetry()
+    {
+        Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com"), Ticket(PartnerId, "Ben Partner", "ben@example.com"));
+        var calls = 0;
+        _email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (++calls == 2)
+                throw new InvalidOperationException("outbox down");
+            _sent.Add(call.Arg<EmailMessage>());
+            return Task.CompletedTask;
+        });
+
+        var first = () => Create().DeliverAsync(_order.Id);
+        await first.Should().ThrowAsync<InvalidOperationException>("Hangfire retries a job that throws");
+        await Create().DeliverAsync(_order.Id);
+
+        _sent.Select(m => m.DeliveryId).Distinct().Should().HaveCount(3, "two tickets and one receipt, each deduped by its id");
+    }
+
+    [HumansFact]
+    public async Task Deliver_UsesTheOrderLanguage_ForAHolderWhoHasNeverSignedIn()
+    {
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+            new UserInfo(PartnerId, "Ben", false, "en", null, Instant.MinValue, null, null, null, null, null, null, null, null,
+                "ben@example.com", [], [], null)));
+        Tickets(Ticket(PartnerId, "Ben Partner", "ben@example.com"));
+
+        await Create().DeliverAsync(_order.Id);
+
+        _sent.Should().AllSatisfy(m => m.Culture.Should().Be("es"));
+    }
+
+    [HumansFact]
+    public async Task Deliver_CountsTheMailsHandedToEmail_AndTheTicketsSkipped()
+    {
+        var adult = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
+        Tickets(adult, Ticket(BuyerId, "Kid", null, kind: TicketHolderKind.Child, parent: adult.Id),
+            Ticket(Guid.NewGuid(), "No Address", null));
+
+        await Create().DeliverAsync(_order.Id);
+
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketDeliverySent, Arg.Any<string>(), _order.Id,
+            "Handed 1 ticket email(s) for 3 live ticket(s) and the receipt to Email; 1 skipped for lack of an address",
+            Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Resend_IsRefused_WhenNoTicketIsLive()
+    {
+        Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com", TicketCheckoutTicketState.Resold));
+
+        var result = await Create().ResendAsync(_order.Id, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        _sent.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task NothingIsSentForAnUnpaidOrder()
     {
         _order.State = TicketCheckoutOrderState.Pending;
         Tickets(Ticket(BuyerId, "Ana Buyer", "ana@example.com"));
 
-        await Create().TicketsIssuedAsync(_order.Id);
+        await Create().DeliverAsync(_order.Id);
         var resend = await Create().ResendAsync(_order.Id, Guid.NewGuid());
 
         _sent.Should().BeEmpty();
@@ -162,14 +230,14 @@ public sealed class TicketDeliveryServiceTests
     public async Task JoinInvitation_GoesToAValidTicketsHolder()
     {
         var ticket = Ticket(PartnerId, "Ben Partner", "ben@example.com");
-        _repository.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+        Tickets(ticket);
 
-        await Create().SendJoinInvitationAsync(ticket.Id);
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
 
         var msg = _sent.Should().ContainSingle().Subject;
         msg.TemplateName.Should().Be("ticket_join_invitation");
         msg.UserId.Should().Be(PartnerId);
-        msg.Category.Should().Be(MessageCategory.Ticketing);
+        msg.Category.Should().Be(MessageCategory.VolunteerUpdates, "Ticketing is locked on for ticket holders");
     }
 
     [HumansTheory]
@@ -179,9 +247,9 @@ public sealed class TicketDeliveryServiceTests
     public async Task JoinInvitation_IsSkippedOnceTheTicketIsNoLongerHeld(string state)
     {
         var ticket = Ticket(PartnerId, "Ben Partner", "ben@example.com", Enum.Parse<TicketCheckoutTicketState>(state));
-        _repository.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+        Tickets(ticket);
 
-        await Create().SendJoinInvitationAsync(ticket.Id);
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
 
         _sent.Should().BeEmpty();
     }

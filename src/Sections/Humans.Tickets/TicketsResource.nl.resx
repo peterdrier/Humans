@@ -454,10 +454,10 @@
     <value>Tickets kunnen niet worden overgedragen, weggegeven of aan iemand anders verkocht. Een ticket dat van een ander of via een doorverkoopsite is gekocht, is niet geldig.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
-    <value>Kun je niet komen, bied je ticket dan terug aan via Humans. Zodra iemand anders het koopt, krijg je de ticketprijs terug die je betaalde; donaties worden niet terugbetaald.</value>
+    <value>Kun je niet komen, bied je ticket dan terug aan via Humans. Zodra iemand anders het koopt, wordt de ticketprijs terugbetaald aan wie het betaalde; donaties worden niet terugbetaald.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
-    <value>Het evenement is een besloten evenement van de vereniging Nobodies Collective. Door dit ticket te gebruiken accepteer je de ticketvoorwaarden waarmee je bij de aankoop akkoord ging.</value>
+    <value>Het evenement is een besloten evenement van de vereniging Nobodies Collective. Door dit ticket te gebruiken accepteer je de ticketvoorwaarden.</value>
   </data>
   <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
     <value>Betaalbewijs voor je bestelling {0}</value>

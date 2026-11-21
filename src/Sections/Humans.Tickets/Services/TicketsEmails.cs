@@ -158,8 +158,8 @@ internal sealed class TicketsEmails(
         {
             var rows = string.Concat(receipt.Lines.Select(line =>
             {
-                var label = line.AttendeeName is { } attendee
-                    ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(attendee), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
+                var label = line.Kind == CheckoutLineKind.Ticket
+                    ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(line.AttendeeName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
                     : Lf("Tickets_Delivery_Receipt_DonationLine", Encode(localizer[$"Tickets_Buy_Purpose_{line.DonationPurpose ?? TicketDonationPurpose.General}"].Value));
                 return $"<tr><td>{label}</td><td style=\"text-align: right;\">{Money(line.AmountMinor)}</td></tr>";
             }));
@@ -169,7 +169,7 @@ internal sealed class TicketsEmails(
             var method = string.IsNullOrWhiteSpace(receipt.PaymentMethod)
                 ? string.Empty
                 : $"<br>{Lf("Tickets_Delivery_Receipt_Method", Encode(receipt.PaymentMethod))}";
-            var donationNote = receipt.Lines.Any(l => l.AttendeeName is null)
+            var donationNote = receipt.Lines.Any(l => l.Kind == CheckoutLineKind.Donation)
                 ? $"<p>{localizer["Tickets_Delivery_Receipt_DonationNote"].Value}</p>"
                 : string.Empty;
             var body = $"""
@@ -195,7 +195,7 @@ internal sealed class TicketsEmails(
         }
     }
 
-    /// <summary>Sent a while after the ticket: an invitation, so it honours the Ticketing opt-out.</summary>
+    /// <summary>Sent a while after the ticket: a recruiting nudge, so it sits in the never-locked VolunteerUpdates opt-out.</summary>
     public EmailMessage JoinInvitation(
         Guid holderUserId, string holderEmail, string holderName, string eventName, Uri profileUrl, Uri shiftsUrl,
         Guid? deliveryId, string? culture = null)
@@ -215,7 +215,7 @@ internal sealed class TicketsEmails(
             return new EmailMessage(
                 holderEmail, holderName, holderUserId,
                 Lf("Tickets_Delivery_Join_Subject", eventName),
-                body, "ticket_join_invitation", MessageCategory.Ticketing, Culture: culture, DeliveryId: deliveryId);
+                body, "ticket_join_invitation", MessageCategory.VolunteerUpdates, Culture: culture, DeliveryId: deliveryId);
         }
     }
 

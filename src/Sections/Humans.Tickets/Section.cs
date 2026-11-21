@@ -146,7 +146,7 @@ public sealed class Section :
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddSingleton<TicketCodeImages>();
         services.AddScoped<TicketDeliveryService>();
-        services.AddScoped<ITicketDelivery>(sp => sp.GetRequiredService<TicketDeliveryService>());
+        services.AddScoped<ITicketDelivery, TicketDeliveryHandOff>();
         services.AddScoped<TicketCheckoutReconcileJob>();
     }
 

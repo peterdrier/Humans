@@ -1,7 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.Tickets/Services/Delivery/**
   src/Sections/Humans.Tickets/Services/TicketsEmails.cs
-  src/Sections/Humans.Tickets/Controllers/TicketWalletController.cs
+  src/Sections/Humans.Tickets/Controllers/TicketCodeController.cs
+  src/Sections/Humans.Tickets/Views/Tickets/Buy/Mine.cshtml
+  src/Sections/Humans.Tickets/ViewComponents/IssuedTicketsViewComponent.cs
 -->
 
 # Ticket delivery (2027)
@@ -15,7 +17,7 @@ so every named person gets their own ticket by email, and can open it in Humans 
 |------|----|----------|------|
 | `ticket_issued` | each valid or offered ticket with an email, to its holder; a ticket without one (a child) rides on its adult's mail | System | as soon as the order's tickets are issued |
 | `ticket_order_receipt` | the payer | System | with the tickets |
-| `ticket_join_invitation` | each holder of an adult or companion ticket with an account | Ticketing (opt-out honoured) | two days later, only if the ticket is still `Valid` |
+| `ticket_join_invitation` | each holder of an adult or companion ticket with an account | VolunteerUpdates (opt-out honoured, never locked) | two days later, only if the ticket is still `Valid` |
 
 - **Ticket email:** one card per ticket (the holder's, then any child riding on it): event, holder name, ticket kind, the QR code of the ticket's `Barcode` (the code the gate scans),
   the barcode as text, a link to `/Tickets/Buy/Mine`, and the ticket rules (named ticket matching photo ID, no transfers or
@@ -26,7 +28,8 @@ so every named person gets their own ticket by email, and can open it in Humans 
   "a receipt, not an invoice" (no invoices for tickets).
 - **Invitation:** asks the holder to complete their profile and pick a shift, linking `/Profile` and `/Shifts`.
 
-Each holder's mail renders in their profile language; the receipt in the payer's. All copy lives in `TicketsResource`
+Each holder's mail renders in their profile language once they have signed in, otherwise in the language the order
+was placed in (a partner account starts on the default language, not a choice); the receipt in the order's language. All copy lives in `TicketsResource`
 in the seven cultures, and every template has a sample in `/Email/EmailPreview`.
 
 ## QR image
@@ -38,9 +41,12 @@ screen. `/Tickets/Buy/Mine` embeds the same image as a `data:` URI.
 
 ## Repeats and resends
 
-`TicketsIssuedAsync` derives each mail's `EmailMessage.DeliveryId` from the template and the ticket or order id, so
-calling it twice queues each mail once while the outbox keeps the first row. A TicketsAdmin's **Resend** on the admin
-order page sends everything again with fresh ids and no second invitation, audited with the actor.
+`TicketsIssuedAsync` only enqueues a Hangfire job (`TicketDeliveryService.DeliverAsync`), so a failure while sending
+is retried instead of lost inside the paid transition. Each mail's `EmailMessage.DeliveryId` derives from the template
+and the ticket or order id, so a retry queues each mail once while the outbox keeps the first row. A ticket with no
+address is logged and counted as skipped in the audit row. The audit says what was handed to Email; Email applies
+opt-outs itself. A TicketsAdmin's **Resend** on the admin order page (refused when no ticket is live) sends
+everything again with fresh ids and no second invitation, audited with the actor.
 
 ## Donation record
 

@@ -443,10 +443,10 @@
     <value>Tickets cannot be transferred, given or sold to anyone else. A ticket bought from another person or on a resale site is not valid.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
-    <value>If you cannot come, offer your ticket back through Humans. When someone else buys it you are refunded the ticket price you paid; donations are not refunded.</value>
+    <value>If you cannot come, offer your ticket back through Humans. When someone else buys it, the ticket price is refunded to whoever paid for it; donations are not refunded.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
-    <value>The event is a private event of the association Nobodies Collective. By using this ticket you accept the ticket terms you agreed to when buying it.</value>
+    <value>The event is a private event of the association Nobodies Collective. By using this ticket you accept the ticket terms.</value>
   </data>
   <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
     <value>Receipt for your order {0}</value>

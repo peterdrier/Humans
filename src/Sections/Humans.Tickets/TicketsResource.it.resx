@@ -454,10 +454,10 @@
     <value>I biglietti non possono essere trasferiti, regalati o venduti ad altri. Un biglietto acquistato da un'altra persona o su un sito di rivendita non è valido.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
-    <value>Se non puoi venire, restituisci il biglietto tramite Humans. Quando qualcun altro lo acquista ti rimborsiamo il prezzo del biglietto che hai pagato; le donazioni non vengono rimborsate.</value>
+    <value>Se non puoi venire, restituisci il biglietto tramite Humans. Quando qualcun altro lo acquista, il prezzo del biglietto viene rimborsato a chi lo ha pagato; le donazioni non vengono rimborsate.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
-    <value>L'evento è un evento privato dell'associazione Nobodies Collective. Usando questo biglietto accetti le condizioni che hai accettato al momento dell'acquisto.</value>
+    <value>L'evento è un evento privato dell'associazione Nobodies Collective. Usando questo biglietto accetti le condizioni del biglietto.</value>
   </data>
   <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
     <value>Ricevuta del tuo ordine {0}</value>

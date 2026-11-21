@@ -20,7 +20,12 @@ public sealed class IssuedTicketsViewComponent(ISettingsService settings) : View
         // constructor.
         var checkout = HttpContext.RequestServices.GetRequiredService<Services.Checkout.ITicketCheckoutService>();
         var ct = HttpContext.RequestAborted;
-        var tickets = await checkout.GetTicketsForHolderAsync(userId, ct);
+        var held = await checkout.GetTicketsForHolderAsync(userId, ct);
+        // A child ticket has no holder of its own; it belongs on the page of the adult it is attached to.
+        var tickets = held.ToList();
+        foreach (var orderId in held.Select(t => t.OrderId).Distinct())
+            tickets.AddRange((await checkout.GetTicketsForOrderAsync(orderId, ct))
+                .Where(c => c.HolderUserId is null && held.Any(a => a.Id == c.ParentTicketId)));
         if (tickets.Count == 0)
             return Content(string.Empty);
 
@@ -28,14 +33,16 @@ public sealed class IssuedTicketsViewComponent(ISettingsService settings) : View
         var eventNames = (await checkout.GetSalesEventsAsync(ct))
             .ToDictionary(s => s.Id, s => events.GetValueOrDefault(s.EventSettingsId, string.Empty));
         var rows = tickets
-            .OrderByDescending(t => t.IssuedAt)
+            .OrderByDescending(t => t.IssuedAt).ThenBy(t => t.ParentTicketId is not null)
             .Select(t => new IssuedTicketRow(
-                eventNames.GetValueOrDefault(t.SalesEventId, string.Empty), t.Kind.ToString(), t.State.ToString(), t.Barcode))
+                eventNames.GetValueOrDefault(t.SalesEventId, string.Empty), t.Kind.ToString(), t.State.ToString(), t.Barcode,
+                t.HolderUserId is null ? t.HolderName : null))
             .ToList();
         return View(new IssuedTicketsViewModel(viewMode, rows));
     }
 }
 
-internal sealed record IssuedTicketRow(string EventName, string Kind, string State, string Barcode);
+/// <summary><paramref name="ChildName"/> is set only for a child ticket listed under its adult.</summary>
+internal sealed record IssuedTicketRow(string EventName, string Kind, string State, string Barcode, string? ChildName);
 
 internal sealed record IssuedTicketsViewModel(ProfileCardViewMode ViewMode, IReadOnlyList<IssuedTicketRow> Tickets);

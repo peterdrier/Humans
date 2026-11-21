@@ -448,16 +448,16 @@
     <value>Normes de l'entrada</value>
   </data>
   <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
-    <value>Aquesta entrada és personal i porta un únic nom legal. El nom ha de coincidir amb el teu document d'identitat a l'entrada; si no, es denega l'accés.</value>
+    <value>Aquesta entrada és personal i porta un únic nom legal. El nom ha de coincidir amb el teu document d'identitat a la porta; si no, es denega l'accés.</value>
   </data>
   <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
     <value>Les entrades no es poden transferir, regalar ni vendre a ningú altre. Una entrada comprada a una altra persona o en un web de revenda no és vàlida.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
-    <value>Si no pots venir, retorna la teva entrada a través de Humans. Quan una altra persona la compri, et reemborsarem el preu de l'entrada que vas pagar; les donacions no es reemborsen.</value>
+    <value>Si no pots venir, retorna la teva entrada a través de Humans. Quan una altra persona la compri, el preu de l'entrada es reemborsa a qui la va pagar; les donacions no es reemborsen.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
-    <value>L'esdeveniment és un esdeveniment privat de l'associació Nobodies Collective. En fer servir aquesta entrada acceptes les condicions que vas acceptar en comprar-la.</value>
+    <value>L'esdeveniment és un esdeveniment privat de l'associació Nobodies Collective. En fer servir aquesta entrada n'acceptes les condicions.</value>
   </data>
   <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
     <value>Rebut de la teva comanda {0}</value>
@@ -505,7 +505,7 @@
     <value>Hola {0}, ja tens la teva entrada per a {1}. Ara ve el millor: aquest esdeveniment el fan les persones que hi vénen.</value>
   </data>
   <data name="Tickets_Delivery_Join_Why" xml:space="preserve">
-    <value>Tot, des de l'entrada fins a les cuines, funciona amb voluntariat, i unes poques hores del teu temps marquen una gran diferència.</value>
+    <value>Tot, des de la porta fins a les cuines, funciona amb voluntariat, i unes poques hores del teu temps marquen una gran diferència.</value>
   </data>
   <data name="Tickets_Delivery_Join_StepProfile" xml:space="preserve">
     <value>&lt;a href="{0}"&gt;Completa el teu perfil de Humans&lt;/a&gt; per unir-te com a voluntari o voluntària, si encara no ho has fet.</value>
@@ -517,12 +517,12 @@
     <value>Ens veiem allà.</value>
   </data>
   <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
-    <value>Mostra aquest codi a l'entrada juntament amb un document d'identitat amb foto. El nom ha de coincidir amb el teu document.</value>
+    <value>Mostra aquest codi a la porta juntament amb un document d'identitat amb foto. El nom ha de coincidir amb el teu document.</value>
   </data>
   <data name="Tickets_Mine_Show" xml:space="preserve">
     <value>Mostrar l'entrada</value>
   </data>
   <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
-    <value>Aquí també hi ha les entrades dels infants que vénen amb tu. Cadascuna té el seu codi: mostra-les a l'entrada juntament amb la teva.</value>
+    <value>Aquí també hi ha les entrades dels infants que vénen amb tu. Cadascuna té el seu codi: mostra-les a la porta juntament amb la teva.</value>
   </data>
 </root>
