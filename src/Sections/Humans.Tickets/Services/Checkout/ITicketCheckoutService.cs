@@ -86,6 +86,23 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<CheckoutMutationResult> CancelInviteAsync(Guid ticketId, Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The ticketing team's exception: a valid full-price adult ticket with no dependents moves to another named
+    /// person, whose account is found or created.
+    /// </summary>
+    Task<CheckoutMutationResult> RenameTicketAsync(
+        Guid ticketId, string holderName, string holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Voids a valid or offered ticket and its dependents, withdrawing any open offer. Refunds stay separate.</summary>
+    Task<CheckoutMutationResult> VoidTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issues a free companion ticket attached to a valid adult ticket, on a zero-total order of its own, within
+    /// capacity. The email is optional: a companion without one holds no account.
+    /// </summary>
+    Task<CheckoutMutationResult> IssueCompanionAsync(
+        Guid parentTicketId, string holderName, string? holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
 }

@@ -111,6 +111,13 @@ one, and returns them to the buy page, which then prefills them and shows their 
   the holder's order timeline. One invitation is live at a time, and a ticket gets at most three over all its offers; the invited email is
   cleared once the invitation ends.
 
+## The ticketing team
+
+`/Tickets/Admin/Sales/Lookup` finds orders across events. Per event, the sales index links the refund list, the resale
+queue (directed offers marked with the invited email and expiry) and the sales report. Each issued ticket has an admin
+page, reached from its order, with the three exceptions: rename (full price adults only), void (no refund; refund from
+the order), and a free companion ticket.
+
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).
 
@@ -121,9 +128,12 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 
 ## Not yet
 
-- Companion tickets and the admin resale and ticket views (admin thread); ticket email with QR and the post-purchase
+- Ticket email with QR and the post-purchase
   shifts email (delivery thread, through `ITicketDelivery`).
 - Checkout tickets in holdings, the gate list and the scanner.
 - Chargebacks and disputes: a dispute is read only as `RefundedMinor` and nothing voids the ticket yet.
 - Payment-method-dependent prices.
-- Order, sales and check-in reports across events (the keying and the timeline are in place for them).
+- Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.
+- Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
+  never asks the backend to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
+- A renamed ticket is not emailed to its new holder (`ITicketDelivery` is per order, sent once); they see it in their profile.
