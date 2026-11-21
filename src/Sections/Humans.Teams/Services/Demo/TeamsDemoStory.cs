@@ -62,13 +62,18 @@ internal sealed class TeamsDemoStory(ITeamManagementService teams, ITeamService 
         }
     }
 
-    // Finds a team an interrupted run already made by its slug, so a rerun doesn't trip the unique slug.
+    // Teams mints its own ids, so a run cut off after the create finds its team by slug. Staffing comes after the
+    // ledger records the team, so the demo's half-made team has no members; one with members is someone else's.
     private async Task<Guid> CreateAsync(DemoTeam team, Guid? parentId, CancellationToken ct)
     {
         var name = team.Name + NameSuffix;
         var existing = await teamReads.GetTeamBySlugAsync(Humans.Base.Helpers.SlugHelper.GenerateSlug(name), ct);
         if (existing is { IsActive: true })
-            return existing.Id;
+        {
+            return existing.Members.Count == 0
+                ? existing.Id
+                : throw new InvalidOperationException($"A team named '{name}' already exists and the demo did not make it. Rename it, then top up.");
+        }
 
         var created = await teams.CreateTeamAsync(name, description: null, requiresApproval: true, parentId, cancellationToken: ct);
         return created.Id;
@@ -92,7 +97,7 @@ internal sealed class TeamsDemoStory(ITeamManagementService teams, ITeamService 
         if (coordinator is null)
         {
             var created = await teams.CreateRoleDefinitionAsync(
-                teamId, CoordinatorRole, description: null, slotCount: CoordinatorCount, priorities: [],
+                teamId, CoordinatorRole, description: null, slotCount: CoordinatorCount, priorities: [SlotPriority.Critical, SlotPriority.Important],
                 sortOrder: 0, RolePeriod.YearRound, actorUserId, cancellationToken: ct);
             var definitionId = created.Definition?.Id
                 ?? throw new InvalidOperationException($"Could not add a coordinator role to '{team.Name}': {created.Refusal}");

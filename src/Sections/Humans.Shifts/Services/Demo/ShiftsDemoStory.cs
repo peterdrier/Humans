@@ -70,7 +70,7 @@ internal sealed class ShiftsDemoStory(
             await world.EnsureAsync(
                 key,
                 async (id, token) => await FindAsync(id, token) is not null,
-                (planned, token) => FillAsync(planned, key, teamId, activeEvent.Id, period, rate, volunteers, world.ActorUserId, token),
+                (planned, token) => FillAsync(planned, key, teamId, activeEvent, period, rate, volunteers, world.ActorUserId, token),
                 ct);
         }
 
@@ -128,7 +128,7 @@ internal sealed class ShiftsDemoStory(
     /// run cut off part way is finished by the next one.
     /// </summary>
     private async Task<Guid> FillAsync(
-        Guid rotaId, string key, Guid teamId, Guid eventId, RotaPeriod period, double rate,
+        Guid rotaId, string key, Guid teamId, EventSettingsInfo activeEvent, RotaPeriod period, double rate,
         IReadOnlyList<Guid> volunteers, Guid actorUserId, CancellationToken ct)
     {
         var rng = new Random(StableSeed(key));
@@ -139,7 +139,7 @@ internal sealed class ShiftsDemoStory(
             {
                 Id = rotaId,
                 TeamId = teamId,
-                EventSettingsId = eventId,
+                EventSettingsId = activeEvent.Id,
                 Name = $"{period} (demo)",
                 Priority = ShiftPriority.Normal,
                 // Approval so self-signups stay Pending: a Public rota confirms them all, leaving nothing to refuse.
@@ -154,7 +154,7 @@ internal sealed class ShiftsDemoStory(
 
         if (rota.Shifts.Count == 0)
         {
-            await AddShiftsAsync(rotaId, teamId, period, rng);
+            await AddShiftsAsync(rotaId, teamId, period, activeEvent, rng);
             rota = await FindAsync(rotaId, ct) ?? rota;
         }
 
@@ -192,15 +192,19 @@ internal sealed class ShiftsDemoStory(
     }
 
     // All-day Build and Strike shifts get distinct days: two on one day show up as duplicate options in the range form.
-    private async Task AddShiftsAsync(Guid rotaId, Guid teamId, RotaPeriod period, Random rng)
+    // Days follow the event's own windows, the same bounds CreateShiftAsync checks; an empty window gets no shifts.
+    private async Task AddShiftsAsync(Guid rotaId, Guid teamId, RotaPeriod period, EventSettingsInfo activeEvent, Random rng)
     {
-        var (first, lastExclusive) = period switch
+        var (first, last) = period switch
         {
-            RotaPeriod.Build => (-14, 0),
-            RotaPeriod.Strike => (7, 10),
-            _ => (0, 7),
+            RotaPeriod.Build => (activeEvent.BuildStartOffset, -1),
+            RotaPeriod.Strike => (activeEvent.EventEndOffset + 1, activeEvent.StrikeEndOffset),
+            _ => (0, activeEvent.EventEndOffset),
         };
-        var days = Enumerable.Range(first, lastExclusive - first).ToList();
+        if (last < first)
+            return;
+
+        var days = Enumerable.Range(first, last - first + 1).ToList();
         var isAllDay = period != RotaPeriod.Event;
         var count = rng.Next(8, 13);
         var offsets = isAllDay
