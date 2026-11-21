@@ -1,9 +1,9 @@
 using NodaTime;
 
-namespace Humans.Auth.Contracts;
+namespace Humans.Auth.Services;
 
 /// <summary>The cached unit of <c>CachingRoleAssignmentService</c>.</summary>
-public sealed record RoleAssignmentRow(
+internal sealed record RoleAssignmentRow(
     Guid Id,
     Guid UserId,
     string RoleName,
