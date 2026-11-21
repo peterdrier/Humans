@@ -95,11 +95,13 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Lookup_matches_an_order_id_only_exactly()
+    public void Lookup_matches_an_order_id_or_reference_only_exactly()
     {
         var order = Order(lines: Line());
 
         TicketSupportReports.Matches(order, [], order.Id.ToString()).Should().BeTrue();
+        TicketSupportReports.Matches(order, [], order.Reference.ToLowerInvariant()).Should().BeTrue();
+        TicketSupportReports.Matches(order, [], order.Reference[..6]).Should().BeFalse();
         TicketSupportReports.Matches(order, [], Guid.NewGuid().ToString()).Should().BeFalse();
     }
 

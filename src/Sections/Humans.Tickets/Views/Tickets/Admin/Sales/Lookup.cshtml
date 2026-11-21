@@ -31,13 +31,14 @@ else if (Model.Query.Length > 0 && Model.Hits.Count == 0)
 else if (Model.Hits.Count > 0)
 {
     <table class="table table-sm">
-        <thead><tr><th>Created</th><th>Event</th><th>Buyer</th><th>Holders</th><th class="text-end">Total</th><th>State</th></tr></thead>
+        <thead><tr><th>Created</th><th>Reference</th><th>Event</th><th>Buyer</th><th>Holders</th><th class="text-end">Total</th><th>State</th></tr></thead>
         <tbody>
             @foreach (var h in Model.Hits)
             {
                 var o = h.Order;
                 <tr>
                     <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@o.Id">@o.CreatedAt.ToDateTime()</a></td>
+                    <td><code>@o.Reference</code></td>
                     <td>@h.EventName</td>
                     <td>@o.BuyerName <span class="text-muted">@o.BuyerEmail</span></td>
                     <td>@string.Join(", ", h.Tickets.Count > 0 ? h.Tickets.Select(t => $"{t.HolderName} ({t.Barcode}, {t.State})") : o.Lines.Where(l => l.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket).Select(l => l.AttendeeName))</td>

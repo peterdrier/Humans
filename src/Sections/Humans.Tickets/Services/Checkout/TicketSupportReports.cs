@@ -15,7 +15,7 @@ internal static class TicketSupportReports
     public const int MaxHits = 100;
 
     /// <summary>
-    /// Matches an order id or backend reference exactly, a ticket code exactly, or part of a buyer or holder name or
+    /// Matches an order id, its short reference or backend reference exactly, a ticket code exactly, or part of a buyer or holder name or
     /// email. Case and surrounding spaces are ignored. <paramref name="tickets"/> are the order's own.
     /// </summary>
     public static bool Matches(TicketCheckoutOrder order, IEnumerable<TicketCheckoutTicket> tickets, string query)
@@ -27,7 +27,7 @@ internal static class TicketSupportReports
         if (Guid.TryParse(q, out var id))
             return order.Id == id;
         var own = tickets.ToList();
-        if (Same(order.BackendOrderId, q) || own.Any(t => Same(t.Barcode, q)))
+        if (Same(order.Reference, q) || Same(order.BackendOrderId, q) || own.Any(t => Same(t.Barcode, q)))
             return true;
 
         return Contains(order.BuyerName, q) || Contains(order.BuyerEmail, q)
