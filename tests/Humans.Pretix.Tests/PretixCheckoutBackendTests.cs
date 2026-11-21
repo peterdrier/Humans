@@ -258,13 +258,19 @@ public class PretixCheckoutBackendTests
     {
         var order = new
         {
-            code = Code, status = "p", email = "Bea@Example.org", url = "https://pretix.test/x/", total = "225.00",
+            code = Code,
+            status = "p",
+            email = "Bea@Example.org",
+            url = "https://pretix.test/x/",
+            total = "225.00",
             positions = new object[]
             {
                 new { id = 41, positionid = 1, price = "225.00", tax_rate = "21.00", canceled = false, attendee_name = "Ana", attendee_email = (string?)null },
                 new { id = 42, positionid = 2, price = "0.00", tax_rate = "0.00", canceled = false, attendee_name = (string?)null, attendee_email = (string?)null },
             },
-            fees = Array.Empty<object>(), payments = Array.Empty<object>(), refunds = Array.Empty<object>(),
+            fees = Array.Empty<object>(),
+            payments = Array.Empty<object>(),
+            refunds = Array.Empty<object>(),
         };
         var pretix = new FakePretix()
             .On("GET", OrderPath, HttpStatusCode.OK, order)
