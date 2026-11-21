@@ -28,6 +28,7 @@ html { scrollbar-gutter: stable; }
     --bs-link-hover-color: var(--h-aged-ink);
     --bs-link-hover-color-rgb: 61, 43, 31;
     --bs-focus-ring-color: rgba(201, 169, 110, 0.2);
+    --bs-code-color: var(--h-umber);
 
     --bs-primary: var(--h-gold-dark);
     --bs-primary-rgb: 168, 138, 78;
