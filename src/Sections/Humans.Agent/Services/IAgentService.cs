@@ -8,6 +8,12 @@ namespace Humans.Agent.Services;
 
 internal interface IAgentService : IApplicationService, IUserDataContributor, IAgentTranscriptRead
 {
+    /// <summary>
+    /// Deletes conversations older than the configured retention window and records the run for the admin
+    /// status panel. Returns how many were deleted.
+    /// </summary>
+    Task<int> PurgeExpiredConversationsAsync(CancellationToken cancellationToken);
+
     IAsyncEnumerable<AgentTurnToken> AskAsync(AgentTurnRequest request, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(
