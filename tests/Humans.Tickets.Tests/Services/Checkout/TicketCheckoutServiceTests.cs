@@ -626,7 +626,7 @@ public sealed class TicketCheckoutServiceTests
     {
         var ticket = await PaidAdultAsync();
         var newHolder = Guid.NewGuid();
-        _provisioning.FindOrCreateUserByEmailAsync("cy@example.com", "Cy Pérez", ContactSource.Manual, Arg.Any<CancellationToken>())
+        _provisioning.FindOrCreateUserByEmailAsync("cy@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(newHolder, Created: true));
 
         (await _service.RenameTicketAsync(ticket.Id, " Cy Pérez ", "cy@example.com", "Agreed by the ticketing lead", _adminId, Ct))
@@ -646,16 +646,33 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Rename_refuses_an_unverified_address_of_someone_who_already_holds_a_ticket()
+    public async Task Rename_refuses_an_alias_of_someone_who_already_holds_a_ticket()
     {
         var ticket = await PaidAdultAsync();
         await BuyAndPayAsync(Buy(), _otherBuyerId);
-        _provisioning.FindOrCreateUserByEmailAsync("old@example.com", "Cy", ContactSource.Manual, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(_otherBuyerId, Created: false));
+        _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(_otherBuyerId, verified: true)]);
 
-        (await _service.RenameTicketAsync(ticket.Id, "Cy", "old@example.com", "Asked nicely", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Bo", "bo@example.com", "Asked nicely", _adminId, Ct))
             .Refusal.Should().Be("That person already holds a ticket for this event.");
         ticket.HolderUserId.Should().Be(_buyerId);
+    }
+
+    [HumansFact]
+    public async Task Rename_to_an_unverified_address_gives_the_ticket_a_new_account_without_a_public_name()
+    {
+        var ticket = await PaidAdultAsync();
+        var row = Row(_otherBuyerId, verified: false);
+        var fresh = Guid.NewGuid();
+        _userEmails.FindByAddressAsync("bo@example.com", true, false, Arg.Any<CancellationToken>()).Returns([row]);
+        _provisioning.ReplaceUnverifiedEmailAndProvisionAsync(_otherBuyerId, row.Id, "bo@example.com", null, ContactSource.Manual,
+                Arg.Any<CancellationToken>())
+            .Returns(new AccountProvisioningResult(fresh, Created: true));
+
+        (await _service.RenameTicketAsync(ticket.Id, "Bo Smith", "bo@example.com", "Asked nicely", _adminId, Ct))
+            .Refusal.Should().BeNull();
+        ticket.HolderUserId.Should().Be(fresh);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
     }
 
     [HumansFact]
@@ -777,11 +794,23 @@ public sealed class TicketCheckoutServiceTests
     public async Task Companion_refuses_someone_who_already_holds_a_ticket()
     {
         var adult = await PaidAdultAsync();
-        _provisioning.FindOrCreateUserByEmailAsync("ana@example.com", "Ana", ContactSource.Manual, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(_buyerId, Created: false));
+        _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(_buyerId, verified: true)]);
 
         (await _service.IssueCompanionAsync(adult.Id, "Ana", "ana@example.com", "Helper", _adminId, Ct))
             .Refusal.Should().Be("That person already holds a ticket for this event.");
+    }
+
+    [HumansFact]
+    public async Task Companion_refuses_an_ambiguous_email()
+    {
+        var adult = await PaidAdultAsync();
+        _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
+            .Returns([Row(Guid.NewGuid(), verified: true), Row(Guid.NewGuid(), verified: true)]);
+
+        (await _service.IssueCompanionAsync(adult.Id, "Bo", "bo@example.com", "Helper", _adminId, Ct))
+            .Refusal.Should().StartWith("That email cannot take the ticket: the address is verified on more than one account");
+        _repo.Tickets.Should().NotContain(t => t.Kind == TicketHolderKind.Companion);
     }
 
     [HumansFact]

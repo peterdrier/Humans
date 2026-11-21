@@ -255,6 +255,16 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         // A partner line or ticket without an account (unpaid order, ambiguous address) is theirs by its email alone.
         bool Theirs(Guid? holder, string? email) =>
             holder == userId || (holder is null && email is not null && addresses.Contains(email));
+        var held = (await ctx.TicketCheckoutTickets.Where(t => t.HolderUserId == userId || (t.HolderUserId == null && t.HolderEmail != null))
+                .ToListAsync(ct))
+            .Where(t => Theirs(t.HolderUserId, t.HolderEmail))
+            .ToList();
+        var heldIds = held.Select(t => t.Id).ToList();
+        var children = await ctx.TicketCheckoutTickets
+            .Where(t => t.ParentTicketId != null && heldIds.Contains(t.ParentTicketId.Value) && t.HolderUserId == null)
+            .ToListAsync(ct);
+        // A dependent without an account may sit on an order of its own, such as a companion the ticketing team issued.
+        var childLines = children.Select(t => (t.OrderId, t.LineIndex)).ToHashSet();
         var orders = await ctx.TicketCheckoutOrders.ToListAsync(ct);
         var changed = 0;
         foreach (var order in orders)
@@ -266,7 +276,9 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
                 order.BuyerEmail = TicketPiiTombstone.EmailFor(userId);
                 touched = true;
             }
-            var own = order.Lines.Select((l, i) => (l, i)).Where(x => Theirs(x.l.AttendeeUserId, x.l.AttendeeEmail)).Select(x => x.i).ToHashSet();
+            var own = order.Lines.Select((l, i) => (l, i))
+                .Where(x => Theirs(x.l.AttendeeUserId, x.l.AttendeeEmail) || childLines.Contains((order.Id, x.i)))
+                .Select(x => x.i).ToHashSet();
             foreach (var line in order.Lines.Where((l, i) => own.Contains(i) || l.ParentLineIndex is { } parent && own.Contains(parent)))
             {
                 line.AttendeeName = TicketPiiTombstone.Name;
@@ -278,14 +290,6 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             ctx.TicketCheckoutOrders.Update(order);
             changed++;
         }
-        var held = (await ctx.TicketCheckoutTickets.Where(t => t.HolderUserId == userId || (t.HolderUserId == null && t.HolderEmail != null))
-                .ToListAsync(ct))
-            .Where(t => Theirs(t.HolderUserId, t.HolderEmail))
-            .ToList();
-        var heldIds = held.Select(t => t.Id).ToList();
-        var children = await ctx.TicketCheckoutTickets
-            .Where(t => t.ParentTicketId != null && heldIds.Contains(t.ParentTicketId.Value) && t.HolderUserId == null)
-            .ToListAsync(ct);
         foreach (var ticket in held.Concat(children))
         {
             ticket.HolderName = TicketPiiTombstone.Name;

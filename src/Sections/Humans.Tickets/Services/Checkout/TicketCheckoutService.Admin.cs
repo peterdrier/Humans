@@ -43,11 +43,12 @@ internal sealed partial class TicketCheckoutService
         var holderUserId = existing?.Id ?? Guid.Empty;
         if (existing is null)
         {
-            var provisioned = await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct);
-            holderUserId = provisioned.UserId;
-            // The verified-only lookup above misses an unverified address on an existing account.
-            if (!provisioned.Created && holderUserId != fromUserId
-                && await HoldsTicketAsync(ticket.SalesEventId, holderUserId, clock.GetCurrentInstant(), ct))
+            var (resolved, problem) = await ResolveAccountAsync(holderEmail, ct);
+            if (resolved is not { } resolvedId)
+                return new($"That email cannot take the ticket: {problem}.");
+            holderUserId = resolvedId;
+            // The resolver also matches aliases, which the lookup above may not.
+            if (holderUserId != fromUserId && await HoldsTicketAsync(ticket.SalesEventId, holderUserId, clock.GetCurrentInstant(), ct))
                 return new("That person already holds a ticket for this event.");
             samePerson = holderUserId == fromUserId;
         }
@@ -155,9 +156,14 @@ internal sealed partial class TicketCheckoutService
         if ((await LoadStockAsync(salesEvent, now, ct)).Held >= salesEvent.Capacity)
             return new("The event is at capacity.");
 
-        Guid? holderUserId = holderEmail is null
-            ? null
-            : (await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct)).UserId;
+        Guid? holderUserId = null;
+        if (holderEmail is not null)
+        {
+            var (resolved, problem) = await ResolveAccountAsync(holderEmail, ct);
+            if (resolved is null)
+                return new($"That email cannot take the ticket: {problem}. Leave it empty to issue the companion without an account.");
+            holderUserId = resolved;
+        }
         if (holderUserId is { } companionId && (companionId == parentHolderId || eventTickets.Any(t =>
                 t.HolderUserId == companionId && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)))
             return new("That person already holds a ticket for this event.");
