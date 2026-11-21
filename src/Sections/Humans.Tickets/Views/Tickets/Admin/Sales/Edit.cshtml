@@ -10,6 +10,7 @@
     {
         TicketSalesMode.ResaleOnly => "Resale only: fresh sales stopped, returned tickets still sell",
         TicketSalesMode.Open => "Open",
+        TicketSalesMode.InvitedOnly => "Invited only: early sales for the programs with an early access rule",
         _ => "Closed",
     };
     (ResaleScheme Scheme, string Label, string Help)[] schemes =
@@ -23,6 +24,7 @@
         (TicketPriceRuleKind.ClassPrice, "Fixed ticket price"),
         (TicketPriceRuleKind.Credit, "Amount off"),
         (TicketPriceRuleKind.WavePin, "Price of the wave on sale when the grant was given"),
+        (TicketPriceRuleKind.EarlyAccess, "Early access: buys while sales are invited only"),
     ];
 }
 
@@ -146,6 +148,8 @@
                 <strong>Fixed ticket price</strong> replaces the wave price (the cheapest wins if several apply).
                 <strong>Amount off</strong> is taken off whatever the ticket costs (several add up).
                 <strong>Price of the wave on sale when the grant was given</strong> keeps the applicant's wave if it was cheaper, so applying early never costs them.
+                <strong>Early access</strong> lets the program's members buy while sales are <em>Invited only</em>, with the amount (leave empty for none) taken off while they do; it does nothing once sales open.
+                For a test purchase, give a few people a grant in a test program with early access and no amount.
             </p>
             @if (Model.Programs.Count == 0)
             {

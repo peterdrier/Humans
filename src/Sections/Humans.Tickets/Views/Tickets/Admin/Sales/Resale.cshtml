@@ -24,9 +24,9 @@
     {
         <span class="text-warning">Resale is switched off for this event in its sales setup, so nothing in the queue sells.</span>
     }
-    else if (Model.Mode == TicketSalesMode.Closed)
+    else if (Model.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly)
     {
-        <span class="text-warning">Sales are closed, so nothing in the queue sells.</span>
+        <span class="text-warning">Sales are not open to everyone, so nothing in the queue sells.</span>
     }
     else
     {

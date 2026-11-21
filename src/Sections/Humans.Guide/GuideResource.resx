@@ -46,7 +46,6 @@
   <data name="Guide_Page_Google" xml:space="preserve"><value>Google</value></data>
   <data name="Guide_Page_EmailAccount" xml:space="preserve"><value>Your @nobodies.team email</value></data>
   <data name="Guide_Page_TwoStepVerification" xml:space="preserve"><value>Two-step verification (2FA)</value></data>
-  <data name="Guide_Page_TicketTransfers" xml:space="preserve"><value>Transferring your ticket</value></data>
   <data name="Guide_Page_AiHelper" xml:space="preserve"><value>The in-app AI helper</value></data>
   <data name="Guide_Page_SigningIn" xml:space="preserve"><value>Signing in &amp; getting unstuck</value></data>
   <data name="Guide_Page_YourData" xml:space="preserve"><value>Your data &amp; privacy</value></data>
