@@ -22,6 +22,9 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>The buy page for an invited buyer's link; null when the link names no offer.</summary>
+    /// <summary>Events on sale with today's public price, for a signed-out visitor; soonest first.</summary>
+    Task<IReadOnlyList<PublicSale>> GetPublicSalesAsync(CancellationToken ct = default);
+
     Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default);
 
     Task<StartCheckoutResult> StartCheckoutAsync(StartCheckout command, Guid userId, CancellationToken ct = default);
@@ -125,6 +128,9 @@ internal sealed record SalesEventSave(
     public int DirectedResaleDays { get; init; } = 3;
     public Guid? TermsTeamId { get; init; }
 }
+
+/// <summary><paramref name="ResaleOnly"/>: only returned tickets are left.</summary>
+internal sealed record PublicSale(string EventName, long PriceMinor, bool ResaleOnly);
 
 /// <summary>
 /// What the buyer sees. <paramref name="Unavailable"/> is a resource key naming why buying is closed to them, null

@@ -127,6 +127,23 @@ internal sealed partial class TicketCheckoutService(
         return pages.OrderBy(p => p.GatesOpen).Select(p => p.Page).ToList();
     }
 
+    public async Task<IReadOnlyList<PublicSale>> GetPublicSalesAsync(CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+        var sales = new List<(LocalDate GatesOpen, PublicSale Sale)>();
+        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+        {
+            if (salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close)
+                || BackendFor(salesEvent.BackendKey) is not { IsConfigured: true }
+                || await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is not { } evt
+                || TicketPrice.Public(salesEvent, now.InZone(evt.TimeZone).Date) is not { } price)
+                continue;
+            sales.Add((evt.GateOpeningDate,
+                new PublicSale(evt.EventName, price.AmountMinor, salesEvent.Mode == TicketSalesMode.ResaleOnly)));
+        }
+        return sales.OrderBy(s => s.GatesOpen).Select(s => s.Sale).ToList();
+    }
+
     public async Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default)
     {
         var offer = await repository.GetOfferByTokenHashAsync(HashToken(token), ct);

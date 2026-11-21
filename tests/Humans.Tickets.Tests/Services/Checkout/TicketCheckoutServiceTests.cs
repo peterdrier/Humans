@@ -770,6 +770,25 @@ public sealed class TicketCheckoutServiceTests
         refunded.Should().BeLessThanOrEqualTo(line.AmountMinor + line.CreditsMinor);
     }
 
+    [HumansFact]
+    public async Task A_signed_out_visitor_sees_only_selling_events_at_the_public_price()
+    {
+        _salesEvent.PriceRules.Add(new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Credit, AmountMinor = 9000 });
+        var closed = new TicketSalesEvent
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = _event.Id,
+            BackendKey = "test",
+            Mode = TicketSalesMode.Closed,
+            Waves = [new TicketSalesWave { Name = "Only", EndsOn = new LocalDate(2027, 8, 1), PriceMinor = 1000 }],
+        };
+        _repo.SalesEvents.Add(closed);
+
+        var sales = await _service.GetPublicSalesAsync(Ct);
+
+        sales.Should().ContainSingle().Which.Should().Be(new PublicSale("Nowhere 2027", 22500, ResaleOnly: false));
+    }
+
     private sealed class FakeCheckoutRepository : ITicketCheckoutRepository
     {
         public List<TicketSalesEvent> SalesEvents { get; } = [];

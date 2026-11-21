@@ -396,4 +396,25 @@
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
     <value>&lt;p&gt;Hola,&lt;/p&gt;&lt;p&gt;{0} no pot anar a &lt;strong&gt;{1}&lt;/strong&gt; i t'ha convidat a comprar la seva entrada retornada abans que la cua de revenda.&lt;/p&gt;&lt;p&gt;Pagues el preu actual de l'entrada a l'associació i reps una entrada nova al teu nom: el nom ha de coincidir amb el teu document a la porta. Inicia sessió o crea el teu compte de Humans amb aquest correu i fes servir aquest enllaç:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;L'enllaç funciona durant {3} dies.&lt;/p&gt;</value>
   </data>
+  <data name="Tickets_Public_PriceToday" xml:space="preserve">
+    <value>{0} avui</value>
+  </data>
+  <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
+    <value>(només entrades retornades)</value>
+  </data>
+  <data name="Tickets_Public_Intro" xml:space="preserve">
+    <value>Cada entrada porta el nom legal de qui la fa servir i es compra des d'un compte de Humans. Escriu el teu correu: t'enviem un enllaç per iniciar sessió, o per crear el teu compte amb el teu nom legal, i arribes directament a la pàgina de compra.</value>
+  </data>
+  <data name="Tickets_Public_Email" xml:space="preserve">
+    <value>El teu correu electrònic</value>
+  </data>
+  <data name="Tickets_Public_Send" xml:space="preserve">
+    <value>Envia'm l'enllaç</value>
+  </data>
+  <data name="Tickets_Public_Sent" xml:space="preserve">
+    <value>Revisa la safata d'entrada: t'arriba un enllaç per continuar. Funciona durant 15 minuts.</value>
+  </data>
+  <data name="Tickets_Public_PriceNote" xml:space="preserve">
+    <value>Aquest és el preu públic. Quan iniciïs sessió veuràs el teu preu, que pot ser més baix si tens un ajut per a entrades.</value>
+  </data>
 </root>
