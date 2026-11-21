@@ -38,6 +38,7 @@
     <PackageVersion Include="Hangfire.Core" Version="1.8.25" />
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
+    <PackageVersion Include="Hangfire.InMemory" Version="1.0.0" />
     <!-- Email -->
     <PackageVersion Include="MailKit" Version="5.0.0" />
     <!-- GitHub API -->

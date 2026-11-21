@@ -13,13 +13,17 @@ public static class RecurringJobExtensions
     /// DI when the job fires, the cron it runs on (empty means "configured off"), and the call
     /// that writes the schedule.
     /// </summary>
-    internal sealed record ScheduledJob(string Id, Type JobType, string Cron, Action Schedule);
+    internal sealed record ScheduledJob(string Id, Type JobType, string Cron, Action<IRecurringJobManager> Schedule);
 
     public static void UseHumansRecurringJobs(this WebApplication app)
     {
         var logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(RecurringJobExtensions));
 
+        // The host's own manager and storage, not the RecurringJob / JobStorage.Current statics: those are
+        // per-process, and parallel test hosts would schedule into each other's databases.
+        var manager = app.Services.GetRequiredService<IRecurringJobManager>();
+        var storage = app.Services.GetRequiredService<JobStorage>();
         var jobs = ContributedJobs(app.Services).ToList();
 
         var allScheduled = true;
@@ -32,11 +36,11 @@ public static class RecurringJobExtensions
                 {
                     // Opt-in job with no schedule configured. Drop any entry left from when
                     // it was switched on, so clearing the setting really stops the job.
-                    RecurringJob.RemoveIfExists(job.Id);
+                    manager.RemoveIfExists(job.Id);
                 }
                 else
                 {
-                    job.Schedule();
+                    job.Schedule(manager);
                 }
             }
             catch (DistributedLockTimeoutException ex)
@@ -63,7 +67,7 @@ public static class RecurringJobExtensions
         // boot, which is harmless.
         if (allScheduled)
         {
-            RemoveJobsMissingFromContributedSet(jobs, logger);
+            RemoveJobsMissingFromContributedSet(jobs, manager, storage, logger);
         }
         else
         {
@@ -83,20 +87,20 @@ public static class RecurringJobExtensions
             .Select(ToScheduledJob);
 
     /// <summary>
-    /// Turns a descriptor into the same <c>RecurringJob.AddOrUpdate&lt;TJob&gt;</c> call the
+    /// Turns a descriptor into the same <c>AddOrUpdate&lt;TJob&gt;</c> call the
     /// roll-call makes. Resolving the job type is deferred into the schedule action so a
     /// malformed descriptor fails inside the per-job try/catch rather than while the list is
     /// being built, where it would stop the app booting.
     /// </summary>
     internal static ScheduledJob ToScheduledJob(RecurringJobDescriptor descriptor) =>
-        new(descriptor.Id, descriptor.JobType, descriptor.Cron, () => ScheduleContributed(descriptor));
+        new(descriptor.Id, descriptor.JobType, descriptor.Cron, manager => ScheduleContributed(manager, descriptor));
 
     /// <summary>
     /// The generic argument is the job type, which Shell only knows at runtime — hence the one
     /// reflection hop onto <see cref="ScheduleTyped{TJob}"/>, whose body is the ordinary
     /// compiled call.
     /// </summary>
-    private static void ScheduleContributed(RecurringJobDescriptor descriptor)
+    private static void ScheduleContributed(IRecurringJobManager manager, RecurringJobDescriptor descriptor)
     {
         var execute = descriptor.JobType.GetMethod(nameof(IRecurringJob.ExecuteAsync), [typeof(CancellationToken)])
             ?? throw new InvalidOperationException(
@@ -105,7 +109,7 @@ public static class RecurringJobExtensions
         typeof(RecurringJobExtensions)
             .GetMethod(nameof(ScheduleTyped), BindingFlags.NonPublic | BindingFlags.Static)!
             .MakeGenericMethod(descriptor.JobType)
-            .Invoke(null, [descriptor.Id, execute, descriptor.Cron]);
+            .Invoke(null, [manager, descriptor.Id, execute, descriptor.Cron]);
     }
 
     /// <summary>
@@ -113,8 +117,9 @@ public static class RecurringJobExtensions
     /// interface — Teams schedules against <c>ISystemTeamSync</c> — so the entry point is
     /// found by signature rather than through <see cref="IRecurringJob"/>.
     /// </summary>
-    private static void ScheduleTyped<TJob>(string id, MethodInfo execute, string cron) where TJob : class =>
-        RecurringJob.AddOrUpdate(id, BuildCall<TJob>(execute), cron);
+    private static void ScheduleTyped<TJob>(IRecurringJobManager manager, string id, MethodInfo execute, string cron)
+        where TJob : class =>
+        manager.AddOrUpdate(id, BuildCall<TJob>(execute), cron);
 
     /// <summary>
     /// <c>job =&gt; job.ExecuteAsync(CancellationToken.None)</c>, built rather than written.
@@ -136,7 +141,8 @@ public static class RecurringJobExtensions
     /// exists — so it throws on every tick until someone notices. Best-effort: a failure
     /// here must not stop the app from starting.
     /// </summary>
-    private static void RemoveJobsMissingFromContributedSet(IReadOnlyList<ScheduledJob> jobs, ILogger logger)
+    private static void RemoveJobsMissingFromContributedSet(
+        IReadOnlyList<ScheduledJob> jobs, IRecurringJobManager manager, JobStorage storage, ILogger logger)
     {
         try
         {
@@ -144,10 +150,10 @@ public static class RecurringJobExtensions
             // off, so turning one off never gets it swept away here.
             var known = jobs.Select(job => job.Id).ToHashSet(StringComparer.Ordinal);
 
-            using var connection = JobStorage.Current.GetConnection();
+            using var connection = storage.GetConnection();
             foreach (var stored in connection.GetRecurringJobs().Where(stored => !known.Contains(stored.Id)))
             {
-                RecurringJob.RemoveIfExists(stored.Id);
+                manager.RemoveIfExists(stored.Id);
                 logger.LogInformation(
                     "Removed recurring job '{JobId}' — the app no longer has a job by that name", stored.Id);
             }
