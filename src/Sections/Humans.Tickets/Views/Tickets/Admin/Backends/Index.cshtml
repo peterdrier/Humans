@@ -81,7 +81,7 @@
         .Column("Tickets", o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), c => c.Number().End())
         .Column("Total (€)", o => o.TotalMinor / 100m, c => c.Currency().End())
         .Column("State", o => o.State, c => c.EnumBadge().SelectFilter())
-        .Template("", vendorCell, c => c.NoSort().End())
+        .Template("", vendorCell, c => c.NoSort().End().Css("text-nowrap"))
         .RowHref(o => Url.Action("Order", "TicketsSalesAdmin", new { id = o.Id }))
         .Empty("No orders on this backend yet.")
         .Build();

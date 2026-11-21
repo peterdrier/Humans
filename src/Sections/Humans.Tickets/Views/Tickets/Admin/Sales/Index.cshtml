@@ -5,7 +5,6 @@
     ViewData["Title"] = "Ticket sales";
 
     Func<TicketSalesEvent, IHtmlContent> modeCell = @<text><status-badge value="@item.Mode" /></text>;
-    Func<TicketSalesEvent, IHtmlContent> soldCell = @<text>@Model.LiveTickets.GetValueOrDefault(item.Id) <span class="text-muted">/ @item.Capacity</span></text>;
     Func<TicketSalesEvent, IHtmlContent> waveCell = @<text>
         @if (TicketPrice.WaveOn(item, Model.Today) is { } wave)
         {
@@ -29,7 +28,7 @@
         .Link("Event", e => Model.EventName(e.EventSettingsId), e => Url.Action("Orders", new { id = e.Id }))
         .Column("Backend", e => Model.Backends.FirstOrDefault(b => b.Key == e.BackendKey)?.Setup.DisplayName ?? e.BackendKey)
         .Template("Mode", modeCell, sortBy: e => e.Mode.ToString())
-        .Template("Live tickets", soldCell, o => o.End(), sortBy: e => Model.LiveTickets.GetValueOrDefault(e.Id))
+        .Column("Capacity", e => e.Capacity, o => o.Number().End())
         .Template("On sale now", waveCell, o => o.NoSort())
         .Template("", actionsCell, o => o.NoSort().End())
         .Empty("No event sells tickets yet. Set one up to open sales.")

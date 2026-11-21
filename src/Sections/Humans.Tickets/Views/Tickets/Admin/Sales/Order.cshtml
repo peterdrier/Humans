@@ -62,7 +62,7 @@
         .Column("When", e => e.At, c => c.DateTime())
         .Column("What", e => SharedLocalizer.EnumDisplay(e.Kind))
         .Column("Detail", e => e.Detail)
-        .Template("Who", whoCell, c => c.NoSort())
+        .Template("Who", whoCell, c => c.NoSort().Css("text-nowrap"))
         .Empty("Nothing recorded yet.")
         .Build();
 }

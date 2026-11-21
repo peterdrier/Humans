@@ -33,12 +33,8 @@ internal sealed class TicketsSalesAdminController(
     {
         var events = await settings.GetAllEventSettingsAsync(ct);
         var salesEvents = await checkout.GetSalesEventsAsync(ct);
-        var live = new Dictionary<Guid, int>();
-        foreach (var salesEvent in salesEvents)
-            live[salesEvent.Id] = (await checkout.GetTicketsForSalesEventAsync(salesEvent.Id, ct))
-                .Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
         return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
-            salesEvents, events, checkout.Backends, live, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
+            salesEvents, events, checkout.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
     [HttpGet("Backends")]
@@ -173,7 +169,6 @@ internal sealed record SalesAdminIndexViewModel(
     IReadOnlyList<TicketSalesEvent> SalesEvents,
     IReadOnlyList<EventSettingsInfo> Events,
     IReadOnlyList<CheckoutBackendInfo> Backends,
-    IReadOnlyDictionary<Guid, int> LiveTickets,
     LocalDate Today)
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
