@@ -93,9 +93,9 @@ Written fresh from the shapes, not from today's folders.
 - **Presentation**: one controller per audience (own applications, Board voting, the section
   index, member-facing votes, vote administration); view components for the member dashboard
   and the admin dashboard; one admin nav group; one job contribution carrying three jobs.
-- **Contracts leaf**: exactly what lives outside the section: the application and tier read
-  surface, the membership-calculator read surface, the DTOs those signatures name, and
-  `ApplicationStatus`. Governance publishes no write interface.
+- **Contracts leaf**: membership-tier and active-term reads, `MembershipTier` and
+  `MembershipStatusLabels`. Applications, state snapshots and `ApplicationStatus` stay
+  internal. Governance publishes no write interface.
 
 Nothing that is only called from inside the section belongs on an interface.
 

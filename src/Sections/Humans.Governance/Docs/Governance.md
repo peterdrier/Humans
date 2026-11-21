@@ -444,7 +444,7 @@ The Board-voting dashboard controller orders member columns by display name with
 
 **Owning services:** `ApplicationDecisionService`, `MembershipTierService`, `AssemblyVoteService`
 **Owned tables:** `governance_applications`, `governance_application_state_history`, `governance_board_votes`, `governance_assembly_votes`, `governance_assembly_vote_options`, `governance_assembly_vote_roster_entries`, `governance_assembly_ballots`, `governance_assembly_ballot_history`, `governance_assembly_vote_peeks`, `governance_membership_tiers`
-**Public surface:** the cross-section surface — `IGovernanceService`, `ApplicationStatus` and `MembershipTier` — sits on the `Humans.Governance.Contracts` leaf, everything else is `internal`.
+**Public surface:** the cross-section surface — `IGovernanceService`, `MembershipTier` and `MembershipStatusLabels` — sits on the `Humans.Governance.Contracts` leaf. `ApplicationStatus` is internal to Governance’s domain; its persisted member names and numeric values stay fixed. Everything else is `internal`.
 
 ### Public contract
 
@@ -500,6 +500,6 @@ The status-update audience defaults to unsigned required consents whose grace pe
 
 `AssemblyVoteService` owns member vote lists/details and ballot submission, including ballot normalization, revision audit and notification resolution. The results page reuses its effective-roster selection and own-ballot detail projection. Frozen-roster entitlement, merged-account ballot precedence, draft hiding, settlement before reads/writes, conditional ballot persistence and choice-free audit descriptions are unchanged. Tally computation and embargo/disclosure decisions remain with their existing owners; no contract or DI registration is added.
 
-Tier-application form labels and feedback live in `GovernanceResource` as `Governance_Application_*` in en, es, de, it, fr, ca and nl. `ApplicationStatus_*` and common profile labels remain in `SharedResource` for their cross-section consumers.
+Tier-application form labels and feedback live in `GovernanceResource` as `Governance_Application_*` in en, es, de, it, fr, ca and nl. `ApplicationStatus_*` retains its existing keys in `SharedResource`; common profile labels also remain shared.
 
 Governance contributes only its own Governance guide and glossary through `ISectionHelp`. The Shell owns the Admin and Board frame help, embedded in `Humans.Web` and contributed by its existing `ShellChrome` provider.

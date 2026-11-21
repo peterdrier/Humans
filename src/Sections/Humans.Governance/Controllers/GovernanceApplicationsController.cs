@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 using Humans.Governance.Services;

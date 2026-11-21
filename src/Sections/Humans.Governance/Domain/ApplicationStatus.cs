@@ -1,7 +1,7 @@
-namespace Humans.Governance.Contracts;
+namespace Humans.Governance.Domain;
 
 /// <summary>Stored by name: never rename a value.</summary>
-public enum ApplicationStatus
+internal enum ApplicationStatus
 {
     Submitted = 0,
 

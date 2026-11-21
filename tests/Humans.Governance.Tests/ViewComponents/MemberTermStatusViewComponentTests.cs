@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using Humans.Governance.Services;
 using Humans.Governance.Services.Dtos;
 using Humans.Base.Constants;
