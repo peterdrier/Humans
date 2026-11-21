@@ -40,6 +40,7 @@ public sealed class TicketCheckoutServiceTests
     private readonly IEmailService _email = Substitute.For<IEmailService>();
     private readonly ITicketDelivery _delivery = Substitute.For<ITicketDelivery>();
     private readonly Humans.Gate.Contracts.IGateAdmissions _gate = Substitute.For<Humans.Gate.Contracts.IGateAdmissions>();
+    private readonly ITicketRulesSource _rules = Substitute.For<ITicketRulesSource>();
     private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private readonly FakeClock _clock = new(Now);
     private readonly Guid _otherBuyerId = Guid.NewGuid();
@@ -107,7 +108,7 @@ public sealed class TicketCheckoutServiceTests
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         _service = new TicketCheckoutService(_repo, [_backend], _grants, _settings, _users, _provisioning, _userEmails,
-            _preferenceReads, _preferences, _email, emails, [_delivery], _gate, localizer, _audit,
+            _preferenceReads, _preferences, _email, emails, [_delivery], _gate, _rules, localizer, _audit,
             _clock, NullLogger<TicketCheckoutService>.Instance);
     }
 
@@ -573,18 +574,58 @@ public sealed class TicketCheckoutServiceTests
         child.PricePaidMinor.Should().Be(5000);
     }
 
-    [HumansFact]
-    public async Task Ticket_rules_must_be_accepted_on_every_checkout_and_the_page_is_on_the_timeline()
-    {
-        _salesEvent.TermsUrl = "https://nobodies.team/rules-2027";
+    private TicketRules RulesAt(string version) =>
+        new("TicketRules/2027", version, new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Normas", ["en"] = "# Rules" });
 
-        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().TermsUrl.Should().Be("https://nobodies.team/rules-2027");
-        (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_TermsRequired");
+    [HumansFact]
+    public async Task Ticket_rules_from_the_legal_repo_are_shown_accepted_on_every_checkout_and_their_version_kept_on_the_order()
+    {
+        _salesEvent.TermsFolder = "TicketRules/2027";
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("abc123"));
+        _rules.Permalink("TicketRules/2027", "abc123").Returns(new Uri("https://github.com/o/legal/tree/abc123/TicketRules/2027"));
+
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.Unavailable.Should().BeNull();
+        page.Terms!.Texts.Keys.Should().BeEquivalentTo("es", "en");
+        (await _service.StartCheckoutAsync(Buy() with { TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_TermsRequired");
         _repo.Orders.Should().BeEmpty();
 
-        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true }, _buyerId, Ct)).Refusal.Should().BeNull();
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct)).Refusal.Should().BeNull();
+        var order = _repo.Orders.Single();
+        order.TermsFolder.Should().Be("TicketRules/2027");
+        order.TermsVersion.Should().Be("abc123");
         _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.TermsAccepted
-            && e.Detail.Contains("https://nobodies.team/rules-2027"));
+            && e.Detail.Contains("https://github.com/o/legal/tree/abc123/TicketRules/2027"));
+    }
+
+    [HumansFact]
+    public async Task Ticket_rules_changed_since_the_page_was_shown_or_unreadable_stop_the_checkout()
+    {
+        _salesEvent.TermsFolder = "TicketRules/2027";
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("def456"));
+
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_TermsChanged");
+
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("abc123"));
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2026", TermsVersion = "abc123" }, _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_TermsChanged");
+
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns((TicketRules?)null);
+        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().Unavailable.Should().Be("Tickets_Buy_TermsUnavailable");
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_TermsUnavailable");
+        _repo.Orders.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Without_a_rules_folder_nothing_is_accepted_or_recorded()
+    {
+        (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().BeNull();
+
+        _repo.Orders.Single().TermsVersion.Should().BeNull();
+        _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.TermsAccepted);
+        await _rules.DidNotReceiveWithAnyArgs().GetAsync(default!, default, default);
     }
 
     [HumansFact]
@@ -633,6 +674,22 @@ public sealed class TicketCheckoutServiceTests
             Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off },
         };
         (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().Be("Resale only needs resale switched on.");
+    }
+
+    [HumansFact]
+    public async Task A_new_ticket_rules_folder_must_be_a_plain_path_holding_spanish_and_english_rules()
+    {
+        SalesEventSave Save(string folder) => new(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
+            _salesEvent.Waves, [], [])
+        { TermsFolder = folder };
+
+        (await _service.SaveSalesEventAsync(Save("../secrets"), _buyerId, Ct)).Refusal.Should().Contain("path in the legal repo");
+        (await _service.SaveSalesEventAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().Contain("no Spanish and English");
+
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("abc123"));
+        (await _service.SaveSalesEventAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().BeNull();
+        _repo.SalesEvents.Single().TermsFolder.Should().Be("TicketRules/2027");
+        await _rules.Received().GetAsync("TicketRules/2027", true, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

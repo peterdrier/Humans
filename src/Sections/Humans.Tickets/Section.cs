@@ -151,6 +151,7 @@ public sealed class Section :
 
         // The checkout lane: each backend is its own adapter section registering an ITicketCheckoutBackend.
         services.AddSingleton<ITicketCheckoutRepository, TicketCheckoutRepository>();
+        services.AddSingleton<ITicketRulesSource, GitHubTicketRulesSource>();
         services.AddScoped<TicketCheckoutService>();
         services.AddScoped<ITicketCheckoutService>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<ITicketCheckoutEvents>(sp => sp.GetRequiredService<TicketCheckoutService>());

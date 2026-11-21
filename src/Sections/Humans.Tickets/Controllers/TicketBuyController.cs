@@ -89,8 +89,8 @@ internal sealed class TicketBuyController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
         Guid salesEventId, bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
-        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, bool marketingOptIn,
-        string? directedToken, CancellationToken ct)
+        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, string? termsFolder, string? termsVersion,
+        bool marketingOptIn, string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
@@ -115,6 +115,8 @@ internal sealed class TicketBuyController(
         {
             ChildNames = childNames ?? [],
             AcceptTerms = acceptTerms,
+            TermsFolder = termsFolder,
+            TermsVersion = termsVersion,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
         }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout

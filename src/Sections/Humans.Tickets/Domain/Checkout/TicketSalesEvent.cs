@@ -53,8 +53,11 @@ internal sealed class TicketSalesEvent
     public bool ResaleSelling =>
         EffectiveSwitches.Resale != ResaleScheme.Off && Mode != TicketSalesMode.Closed && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
 
-    /// <summary>The page with the ticket rules every buyer accepts; null for none. A new address is a new version.</summary>
-    public string? TermsUrl { get; set; }
+    /// <summary>
+    /// The folder in the legal repo holding the ticket rules every buyer accepts, one markdown file per language; null
+    /// for none. Every commit changing the folder is a new version.
+    /// </summary>
+    public string? TermsFolder { get; set; }
 
     /// <summary>Price of a child ticket attached to an adult's; null when children are not sold.</summary>
     public long? ChildPriceMinor { get; set; }
