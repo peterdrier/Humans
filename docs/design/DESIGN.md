@@ -1,3 +1,15 @@
+<!-- freshness:triggers
+  src/Humans.Web/wwwroot/css/tokens.css
+  src/Humans.Web/wwwroot/css/site.css
+  src/Humans.Base/TagHelpers/**
+  src/Humans.Base/Views/Shared/**
+  src/Humans.Base/ViewComponents/**
+  tools/look-audit/rubric.md
+-->
+<!-- freshness:flag-on-change
+  Tokens, shared components and the look rubric this file names: review the "Use what exists" table and the layout rules when they change.
+-->
+
 # Design direction
 
 How a Humans page should look and read. Read it before writing or changing a view. The tokens are in `src/Humans.Web/wwwroot/css/tokens.css`, the components in `src/Humans.Base`, live examples at `/Debug/WidgetGallery`. Where this file and those disagree, the code is right and this file needs a fix.

@@ -10,7 +10,7 @@ One look, one report. Advisory: a low score never blocks a merge. The caller dec
 
 ## 1. Find somewhere to look
 
-- **While building: a local run.** Changes show without a push. Build, start Postgres, and run the Shell in Development on `http://localhost:5080` (`dotnet run --no-launch-profile --project src/Humans.Web --urls http://127.0.0.1:5080`, with placeholder `Authentication__Google__ClientId` / `ClientSecret`). `POST /dev/seed/dashboard` from `/dev/seed` creates an event. A page gated on vendor configuration needs a placeholder setting; never a real key, and never press a pay button.
+- **While building: a local run.** Changes show without a push. Build, start Postgres, and run the Shell in Development on `http://localhost:5080` (`dotnet run --no-launch-profile --project src/Humans.Web --urls http://127.0.0.1:5080`, with placeholder `Authentication__Google__ClientId` / `ClientSecret`). `POST /dev/seed/dashboard` from `/dev/seed` creates an event. `POST /dev/seed/budget` fills `/Budget`, the reference page. A page gated on vendor configuration needs a placeholder setting; never a real key, and never press a pay button.
 - **Final look: the PR preview**, `https://<pr>.n.burn.camp`. `GET /api/version` first: a plain 404 means no preview was deployed (common; stay local and say so), and its `commit` must match the pushed sha, or you are looking at the old build.
 - QA has no dev login, so it cannot be used.
 
