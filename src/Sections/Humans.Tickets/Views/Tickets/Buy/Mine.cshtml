@@ -2,7 +2,6 @@
 @model IReadOnlyList<Humans.Tickets.Services.Checkout.HeldTicket>
 @{
     ViewData["Title"] = Localizer["Tickets_Mine_Title"].Value;
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture) + " €";
 }
 
 @section Crumbs {
@@ -10,82 +9,93 @@
     <span>@Localizer["Tickets_Mine_Title"]</span>
 }
 
-<page-header title="@(Localizer["Tickets_Mine_Title"].Value)" />
+<page-header title="@(Localizer["Tickets_Mine_Title"].Value)">
+    <a class="btn btn-outline-secondary" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
+</page-header>
 
 @if (Model.Count == 0)
 {
     <empty-state>@Localizer["Tickets_Mine_None"]</empty-state>
-}
-else
-{
-    <p class="text-muted">@Localizer["Tickets_Mine_AtTheGate"]</p>
+    return;
 }
 
+<p class="text-muted">@Localizer["Tickets_Mine_AtTheGate"]</p>
+
+<div class="row g-4">
 @foreach (var held in Model)
 {
     var t = held.Ticket;
-    <div class="card card-body mb-3">
-        <div class="d-flex justify-content-between">
-            <div>
-                <div class="fw-semibold">@held.EventName</div>
-                <div>@t.HolderName @if (t.Kind == TicketHolderKind.Child) { <span class="badge bg-light text-dark">@Localizer["Tickets_Buy_Line_Child"]</span> }</div>
+    <div class="col-md-6 col-xl-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <h2 class="h4 mb-1">@held.EventName</h2>
+                    <status-badge value="@t.State" text="@(Localizer[$"Tickets_Ticket_State_{t.State}"].Value)" />
+                </div>
+                <div class="fw-semibold">@t.HolderName</div>
+                @if (t.Kind == TicketHolderKind.Child)
+                {
+                    <div class="small text-muted">@Localizer["Tickets_Buy_Line_Child"]</div>
+                }
                 <div class="small text-muted">@Localizer["Tickets_Buy_Barcode"]: <code>@t.Barcode</code></div>
-            </div>
-            <span>@Localizer[$"Tickets_Ticket_State_{t.State}"]</span>
-        </div>
-        @if (t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
-        {
-            <img src="@Humans.Tickets.Services.Delivery.TicketCodeImages.PngDataUri(t.Barcode)" alt="@t.Barcode"
-                 class="img-fluid d-block mx-auto my-3" style="max-width: 260px; image-rendering: pixelated;" />
-        }
 
-        @if (held.Offer is { } offer)
-        {
-            <p class="mt-2 mb-2">@string.Format(Localizer["Tickets_Resale_InQueue"].Value, held.QueuePosition, Eur(offer.RefundOwedMinor))</p>
-            <p class="small text-muted">@Localizer["Tickets_Resale_QueueNote"]</p>
-            <div class="d-flex flex-wrap gap-2">
-                <form asp-action="Withdraw" asp-route-ticketId="@t.Id" method="post">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Resale_Withdraw"]</button>
-                </form>
-                @if (held.DirectedActive)
+                @if (t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
                 {
-                    <span class="small">@string.Format(Localizer["Tickets_Resale_InvitedTo"].Value, offer.DirectedEmail)</span>
-                    <form asp-action="CancelInvite" asp-route-ticketId="@t.Id" method="post">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Resale_CancelInvite"]</button>
-                    </form>
+                    <img src="@Humans.Tickets.Services.Delivery.TicketCodeImages.PngDataUri(t.Barcode)" alt="@t.Barcode"
+                         class="img-fluid d-block mx-auto my-3 ticket-code" />
                 }
-                else if (held.CanInvite)
+
+                @if (held.Offer is { } offer)
                 {
-                    <form asp-action="Invite" asp-route-ticketId="@t.Id" method="post" class="d-flex gap-2">
-                        @Html.AntiForgeryToken()
-                        <input class="form-control form-control-sm" name="inviteeEmail" type="email" maxlength="320" required
-                               aria-label="@Localizer["Tickets_Resale_InviteEmail"]" placeholder="@Localizer["Tickets_Resale_InviteEmail"]" />
-                        <button type="submit" class="btn btn-outline-primary btn-sm">@Localizer["Tickets_Resale_Invite"]</button>
-                    </form>
+                    <p class="mt-2 mb-2">@string.Format(Localizer["Tickets_Resale_InQueue"].Value, held.QueuePosition, (offer.RefundOwedMinor / 100m).ToEuro())</p>
+                    <p class="small text-muted">@Localizer["Tickets_Resale_QueueNote"]</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <form asp-action="Withdraw" asp-route-ticketId="@t.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Resale_Withdraw"]</button>
+                        </form>
+                        @if (held.DirectedActive)
+                        {
+                            <span class="small">@string.Format(Localizer["Tickets_Resale_InvitedTo"].Value, offer.DirectedEmail)</span>
+                            <form asp-action="CancelInvite" asp-route-ticketId="@t.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Resale_CancelInvite"]</button>
+                            </form>
+                        }
+                        else if (held.CanInvite)
+                        {
+                            <form asp-action="Invite" asp-route-ticketId="@t.Id" method="post" class="d-flex gap-2">
+                                @Html.AntiForgeryToken()
+                                <input class="form-control form-control-sm" name="inviteeEmail" type="email" maxlength="320" required
+                                       aria-label="@Localizer["Tickets_Resale_InviteEmail"]" placeholder="@Localizer["Tickets_Resale_InviteEmail"]" />
+                                <button type="submit" class="btn btn-outline-primary btn-sm">@Localizer["Tickets_Resale_Invite"]</button>
+                            </form>
+                        }
+                    </div>
+                    @if (held.CanInvite)
+                    {
+                        <p class="small text-muted mt-2 mb-0">@Localizer["Tickets_Resale_InviteHelp"]</p>
+                    }
+                }
+                else if (held.CanOffer)
+                {
+                    <details class="mt-2">
+                        <summary class="small">@Localizer["Tickets_Resale_Offer"]</summary>
+                        <p class="small text-muted mt-2">
+                            @Localizer["Tickets_Resale_OfferHelp"]
+                            @if (held.HasDependents)
+                            {
+                                @(" " + Localizer["Tickets_Resale_OfferWithChildren"].Value)
+                            }
+                        </p>
+                        <form asp-action="Offer" asp-route-ticketId="@t.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger btn-sm">@Localizer["Tickets_Resale_Offer"]</button>
+                        </form>
+                    </details>
                 }
             </div>
-            @if (held.CanInvite)
-            {
-                <p class="small text-muted mt-2 mb-0">@Localizer["Tickets_Resale_InviteHelp"]</p>
-            }
-        }
-        else if (held.CanOffer)
-        {
-            <p class="small text-muted mt-2">
-                @Localizer["Tickets_Resale_OfferHelp"]
-                @if (held.HasDependents)
-                {
-                    @(" " + Localizer["Tickets_Resale_OfferWithChildren"].Value)
-                }
-            </p>
-            <form asp-action="Offer" asp-route-ticketId="@t.Id" method="post">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger btn-sm">@Localizer["Tickets_Resale_Offer"]</button>
-            </form>
-        }
+        </div>
     </div>
 }
-
-<a class="btn btn-outline-secondary" asp-action="Index">@SharedLocalizer["Common_Back"]</a>
+</div>

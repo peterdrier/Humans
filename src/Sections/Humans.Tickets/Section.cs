@@ -15,6 +15,7 @@ using Humans.Issues.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
+using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Health;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Models;
@@ -136,6 +137,17 @@ public sealed class Section :
             [TicketPaymentStatus.Pending] = "bg-warning text-dark",
             [TicketPaymentStatus.Refunded] = "bg-danger",
             [TicketPaymentStatus.Cancelled] = "bg-secondary",
+            [TicketCheckoutOrderState.Created] = "bg-warning text-dark",
+            [TicketCheckoutOrderState.Pending] = "bg-warning text-dark",
+            [TicketCheckoutOrderState.Processing] = "bg-info",
+            [TicketCheckoutOrderState.Paid] = "bg-success",
+            [TicketCheckoutOrderState.Failed] = "bg-danger",
+            [TicketCheckoutOrderState.Expired] = "bg-secondary",
+            [TicketCheckoutOrderState.Cancelled] = "bg-secondary",
+            [TicketCheckoutTicketState.Valid] = "bg-success",
+            [TicketCheckoutTicketState.Offered] = "bg-warning text-dark",
+            [TicketCheckoutTicketState.Resold] = "bg-secondary",
+            [TicketCheckoutTicketState.Void] = "bg-danger",
         });
 
         services.AddScoped<TicketSyncJob>();
