@@ -24,6 +24,7 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task CreateCheckout_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
     {
+_handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 1000m, paymentLink: "https://tickets.example/pay/42"));
 
         var session = await Backend().CreateCheckoutAsync(Request(
@@ -34,7 +35,9 @@ public class HiEventsCheckoutBackendTests
         session.PaymentUrl.Should().Be(new Uri("https://tickets.example/pay/42"));
         session.AdminUrl.Should().Be(new Uri("https://tickets.example/manage/event/7/orders#order-42"));
 
-        var (request, body) = _handler.Requests.Single();
+        _handler.Requests.Should().HaveCount(2);
+        _handler.Requests[0].Request.RequestUri!.ToString().Should().Be("https://tickets.example/api/events/7/products?per_page=100");
+        var (request, body) = _handler.Requests[1];
         request.Method.Should().Be(HttpMethod.Post);
         request.RequestUri!.ToString().Should().Be("https://tickets.example/api/events/7/orders/checkout");
         request.Headers.Authorization!.ToString().Should().Be("Bearer key");
@@ -57,6 +60,7 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task CreateCheckout_WhenTheTotalDiffers_Throws()
     {
+_handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 247.50m, paymentLink: "https://tickets.example/pay/42"));
 
         var act = () => Backend().CreateCheckoutAsync(Request(
@@ -70,6 +74,7 @@ public class HiEventsCheckoutBackendTests
     [Xunit.InlineData(HttpStatusCode.Conflict)]
     public async Task CreateCheckout_WhenHiEventsRefuses_Throws(HttpStatusCode status)
     {
+_handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(status, new { message = "no" });
 
         var act = () => Backend().CreateCheckoutAsync(Request(
@@ -91,34 +96,43 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task CreateCheckout_UsesTheProductsOfTheRequestedEvent()
     {
+        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 300), ("GENERAL", 400)));
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 43, total: 225m, paymentLink: "https://tickets.example/pay/43"));
 
         var session = await Backend().CreateCheckoutAsync(RequestFor("8",
             new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
         session.BackendOrderId.Should().Be("8:43");
-        var (request, body) = _handler.Requests.Single();
+        _handler.Requests[0].Request.RequestUri!.AbsolutePath.Should().Be("/api/events/8/products");
+        var (request, body) = _handler.Requests[1];
         request.RequestUri!.AbsolutePath.Should().Be("/api/events/8/orders/checkout");
         JsonNode.Parse(body!)!["items"]![0]!["product_id"]!.GetValue<int>().Should().Be(300);
     }
 
-    [HumansFact]
-    public async Task CreateCheckout_ForAnUnmappedEvent_ThrowsBeforeAnyCall()
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(2)]
+    public async Task CreateCheckout_WithoutExactlyOneCarrierProduct_ThrowsBeforeCreatingAnOrder(int ticketProducts)
     {
-        var act = () => Backend().CreateCheckoutAsync(RequestFor("9",
+        _handler.Enqueue(HttpStatusCode.OK, Products(Enumerable.Range(1, ticketProducts).Select(i => ("TICKET", i)).Append(("GENERAL", 200)).ToArray()));
+
+        var act = () => Backend().CreateCheckoutAsync(Request(
             new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
-        _handler.Requests.Should().BeEmpty();
+        (await act.Should().ThrowAsync<TicketCheckoutException>()).WithMessage("*exactly one TICKET product*");
+        _handler.Requests.Should().ContainSingle();
     }
 
     [HumansFact]
     public async Task CreateCheckout_DonationWithoutADonationProduct_Throws()
     {
-        var act = () => Backend(donationProductId: 0).CreateCheckoutAsync(Request(
+        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100)));
+
+        var act = () => Backend().CreateCheckoutAsync(Request(
             new CheckoutLine(CheckoutLineKind.Donation, "Donation", 5000, 0m, null)), Ct);
 
         await act.Should().ThrowAsync<TicketCheckoutException>();
+        _handler.Requests.Should().ContainSingle();
     }
 
     [HumansTheory]
@@ -313,18 +327,12 @@ public class HiEventsCheckoutBackendTests
         last.Should().HaveLength(50);
     }
 
-    private HiEventsCheckoutBackend Backend(string apiKey = "key", int donationProductId = 200,
-        string apiUrl = "https://tickets.example/api") => new(
+    private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api") => new(
         new HttpClient(_handler),
         Options.Create(new HiEventsSettings
         {
             ApiUrl = apiUrl,
             ApiKey = apiKey,
-            Events = new(StringComparer.Ordinal)
-            {
-                ["7"] = new HiEventsEventProducts { TicketProductId = 100, DonationProductId = donationProductId },
-                ["8"] = new HiEventsEventProducts { TicketProductId = 300 },
-            },
         }),
         new FakeClock(Now),
         NullLogger<HiEventsCheckoutBackend>.Instance);
@@ -334,6 +342,13 @@ public class HiEventsCheckoutBackendTests
     private static CheckoutRequest RequestFor(string? backendEventRef, params CheckoutLine[] lines) => new(
         OrderId, Guid.NewGuid(), backendEventRef, "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
         Now.Plus(Duration.FromMinutes(30)), new Uri("https://humans.example/Tickets/Return"));
+
+    private static object Products(params (string Type, int Id)[] products) => new
+    {
+        data = (products.Length == 0 ? [("TICKET", 100), ("GENERAL", 200)] : products)
+            .Select(p => new { id = p.Id, product_type = p.Type, title = $"Carrier {p.Id}" })
+            .ToArray(),
+    };
 
     private static object RefundAnswer(string refundId, string status) => new
     {

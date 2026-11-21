@@ -77,8 +77,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         if (!int.TryParse(request.BackendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
             throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{request.BackendEventRef}'.");
 
-        if (!_settings.Events.TryGetValue(request.BackendEventRef!, out var products) || products.TicketProductId <= 0)
-            throw new TicketCheckoutException($"HiEvents:Events:{eventId}:TicketProductId is not set.");
+        var products = await GetProductsAsync(eventId, ct);
 
         var (firstName, lastName) = SplitBuyerName(request.BuyerName);
         var body = new CheckoutOrderBody(
@@ -223,18 +222,29 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         new(string.Create(CultureInfo.InvariantCulture,
             $"{_settings.ResolvedAppUrl}/manage/event/{eventId}/orders#order-{orderId}"));
 
-    private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, HiEventsEventProducts products)
+    private async Task<IReadOnlyList<HiEventsProduct>> GetProductsAsync(int eventId, CancellationToken ct)
     {
-        var productId = line.Kind switch
+        using var response = await _http.GetAsync($"events/{eventId}/products?per_page=100", ct);
+        return (await ReadAsync<ProductPage>(response, ct)).Data ?? [];
+    }
+
+    /// <summary>
+    /// Humans owns the catalogue and prices every line, so a Hi.Events event needs just one carrier product per line
+    /// kind: one product of type <c>TICKET</c> for ticket lines and one of type <c>GENERAL</c> for donations. Neither may
+    /// carry taxes or fees in Hi.Events, or the order total stops matching the lines and the checkout is refused.
+    /// </summary>
+    private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, IReadOnlyList<HiEventsProduct> products)
+    {
+        var productType = line.Kind == CheckoutLineKind.Ticket ? "TICKET" : "GENERAL";
+        var carriers = products.Where(p => string.Equals(p.ProductType, productType, StringComparison.Ordinal)).ToList();
+        if (carriers.Count != 1)
         {
-            CheckoutLineKind.Ticket => products.TicketProductId,
-            CheckoutLineKind.Donation when products.DonationProductId > 0 => products.DonationProductId,
-            _ => throw new TicketCheckoutException(
-                $"HiEvents:Events:{eventId}:DonationProductId is not set, so donation lines cannot be sold."),
-        };
+            throw new TicketCheckoutException(
+                $"Hi.Events event {eventId} needs exactly one {productType} product to carry {line.Kind} lines; it has {carriers.Count}.");
+        }
 
         return new CheckoutOrderItem(
-            ProductId: productId,
+            ProductId: carriers[0].Id,
             Price: line.AmountMinor / 100m,
             Attendee: line.AttendeeName is null ? null : new CheckoutAttendee(line.AttendeeName));
     }
@@ -325,6 +335,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private sealed record RefundBody(decimal Amount, bool NotifyBuyer, bool CancelOrder, string IdempotencyKey);
 
     private sealed record Envelope(HiEventsOrder? Data);
+
+    private sealed record ProductPage(List<HiEventsProduct>? Data);
+
+    private sealed record HiEventsProduct(int Id, string? ProductType);
 
     private sealed record RefundEnvelope(RefundMeta? Meta);
 

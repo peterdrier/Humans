@@ -29,11 +29,6 @@ public sealed class Section : ISection, ISectionConfiguration
     {
         configuration.GetOptionalSetting(registry, "HiEvents:ApiUrl", "Hi.Events");
         configuration.GetOptionalSetting(registry, "HiEvents:AppUrl", "Hi.Events");
-        foreach (var hiEvent in configuration.GetSection("HiEvents:Events").GetChildren())
-        {
-            configuration.GetOptionalSetting(registry, $"{hiEvent.Path}:TicketProductId", "Hi.Events");
-            configuration.GetOptionalSetting(registry, $"{hiEvent.Path}:DonationProductId", "Hi.Events");
-        }
         registry.RegisterEnvironmentVariable("HIEVENTS_API_KEY", "Hi.Events", isSensitive: true);
         registry.RegisterEnvironmentVariable("HIEVENTS_WEBHOOK_SECRET", "Hi.Events", isSensitive: true);
     }

@@ -22,10 +22,11 @@ price, the named ticket and the QR code.
   `idempotency_key` on `POST .../orders/{order_id}/refund`. Stock Hi.Events has neither.
 - A **backend order id** is `{eventId}:{orderId}`: every Hi.Events order route is scoped to its event.
 - **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`); `HiEvents:AppUrl` (the web app, for the order's
-  admin link; defaults to `ApiUrl` without `/api`); per Hi.Events event id,
-  `HiEvents:Events:{id}:TicketProductId` and `HiEvents:Events:{id}:DonationProductId`, so several events sell at once;
-  and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
-  edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`.
+  admin link; defaults to `ApiUrl` without `/api`); and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
+  edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`. Only infrastructure lives in
+  configuration: there is no per-event mapping to keep, because each event's carrier products are found in Hi.Events.
+- **Carrier products**: Humans owns the catalogue and prices every line, so each Hi.Events event needs exactly one
+  product of type `TICKET` (ticket lines) and one of type `GENERAL` (donation lines), neither with taxes or fees.
 
 ## Data Model
 
@@ -42,10 +43,10 @@ None — the section owns no tables.
 ## Invariants
 
 - `IsConfigured` is true only with an API URL and an API key.
-- Checkout: `BackendEventRef` must be the numeric Hi.Events event id, else `TicketCheckoutException`; so is an event with no `TicketProductId` in `HiEvents:Events`. The Humans order id
-  (`N` format) is the `external_reference`, so a retried create returns the same Hi.Events order. Ticket lines go to
-  the event's `TicketProductId` with the line's attendee name; donation lines go to its `DonationProductId`, and a donation with none
-  set throws `TicketCheckoutException`. A 409 or 422 from Hi.Events, a currency other than the request's, or a total
+- Checkout: `BackendEventRef` must be the numeric Hi.Events event id, else `TicketCheckoutException`. The Humans order id
+  (`N` format) is the `external_reference`, so a retried create returns the same Hi.Events order. The event's products are read
+  first: ticket lines go to its one `TICKET` product with the line's attendee name, donation lines to its one `GENERAL`
+  product, and none or several of the kind a line needs throws `TicketCheckoutException` before any order is made. A 409 or 422 from Hi.Events, a currency other than the request's, or a total
   other than the sum of the lines throws `TicketCheckoutException`. The products must carry no taxes or fees in
   Hi.Events.
 - Checkout returns `AdminUrl`, the order in Hi.Events' event order list, so the ticketing team can jump to it.
