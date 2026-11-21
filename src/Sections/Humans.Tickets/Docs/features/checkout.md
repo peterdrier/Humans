@@ -47,10 +47,10 @@ Rules every backend follows:
   keeps payment records as processor. An order on a backend no longer registered is logged and audited and skipped, so
   it never blocks a deletion: a backend's data is exported or erased before its adapter is removed. Tickets then voids
   the member's live tickets and their children's, withdraws their offers, tombstones their names and emails (children's
-  names included) clears any resale invitation sent to one of their addresses, and tombstones partner lines and tickets without an
+  names included) clears any resale invitation sent to one of their addresses, and tombstones lines and tickets without an
   account that carry one of those addresses (the account's primary address and those on the member's own orders; such
-  a ticket is tombstoned but left valid, and one issued to another of their addresses is missed). A partner on an order that ended unpaid is forgotten 30 days after its
-  hold lapsed, once a late payment can no longer arrive.
+  a ticket is tombstoned but left valid, and one issued to another of their addresses is missed). Someone bought for is
+  always an existing account, so their line is erased with that account.
 
 ## Reconciliation
 
@@ -92,16 +92,15 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
    price rules and supporter levels as rows, the VAT as a percentage and sales close in the organisation's time zone.
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed, each priced in its own time zone and checked for holdings on its own. They see
-   their price, may add children (child price, issued on their own ticket), a partner (name and email; public price;
-   the account is found or made once the order is paid), a VIP upgrade (shown as the ticket plus a donation) and a donation.
+   their price, may add children (child price, issued on their own ticket), other people already in Humans (see "Buying
+   for other people" below), a VIP upgrade (shown as the ticket plus a donation) and a donation.
    They tick the ticket rules on every checkout (the page's address goes on the order's timeline; no Consent signing) and may opt in to the mailing list
    (asked only while they have no Marketing choice on record), then continue to the backend's payment page.
 3. The backend returns them to `/Tickets/Buy/Order/{id}`, which refreshes the status and splits ticket and donation
    subtotals. The webhook and the 5-minute reconcile job catch the rest. The move to `Paid` is one conditional update,
-   so of several callers seeing the same payment only one fulfils it. Tickets then resolves each partner's account (a
-   verified address attaches to that account; one unverified row is replaced by a new account as the attendee import
-   does; an address on several accounts leaves the ticket unattached and says so on the timeline; a partner who already
-   holds a ticket is flagged for the team, on the timeline and as a `TicketCheckoutNeedsAttention` audit entry), issues one `ticket_checkout_tickets` row per ticket line (unique per order
+   so of several callers seeing the same payment only one fulfils it. Tickets then flags anyone on the order who meanwhile
+   came to hold another ticket (a lapsed checkout that paid late) for the team, on the timeline and as a
+   `TicketCheckoutNeedsAttention` audit entry, issues one `ticket_checkout_tickets` row per ticket line (unique per order
    and line: barcode, holder, price paid, wave or class, children pointing at their adult) and tells every
    `ITicketDelivery` (the ticket email with QR, the receipt and the volunteer invitation: [ticket-delivery.md](ticket-delivery.md)). A delivery failure never undoes the sale; delivery steps go
    on the timeline through `RecordDeliveryAsync`. Reconcile hands an order to delivery again when it was paid 30 minutes to 7 days ago,
@@ -124,7 +123,7 @@ part of the audited sales setup save.
 | Switch | Values | Off means |
 |---|---|---|
 | `Resale` | `Off`, `Queue`, `QueueAndDirected` (default) | `Off`: holders cannot return a ticket, the queue never sells, `ResaleOnly` mode is refused, and saving the switch withdraws every open offer (the ticket is the holder's again, on the order timeline; one in a checkout is withdrawn if that checkout fails). `Queue`: no directed invitations; saving the switch ends live ones (on the order timeline) and those offers sell from their place in the queue. |
-| `PartnerTickets` | on (default) / off | No partner ticket on the buy page; a partner line is refused. |
+| `PartnerTickets` | on (default) / off | No "tickets for other people" on the buy page; other people on an order are refused. |
 | `Donations` | on (default) / off | No VIP buttons and no free donation; donation lines are refused. |
 | `MailingListOptIn` | on (default) / off | Checkout never asks about the mailing list. |
 
@@ -134,10 +133,20 @@ part of the audited sales setup save.
 asks for an email. Auth's magic link signs an existing member in, or starts signup (legal name, consents) for a new
 one, and returns them to the buy page, which then prefills them and shows their own price. Tickets are named, so the account always comes before the order.
 
+## Buying for other people
+
+A buyer adds up to 10 other people by the email address each has verified in Humans (B9). Knowing that address is the
+light check that it is them; nobody gets an account made for them, so someone not yet in Humans must join first. Each
+gets an adult ticket in their own legal name, at the public price (resale queue first when it is selling), and their
+own ticket email; the buyer pays once. Before anything is saved the checkout refuses, naming the address: one verified on
+no live account or on several, the buyer's own, a person without a legal name, and anyone who already holds a ticket,
+offers one for resale, or is on another unpaid checkout. A person shows on the order once however many of their
+addresses were typed. Directed resale links buy only the buyer's own ticket.
+
 ## Returning a ticket and the resale queue
 
 - `/Tickets/Buy/Mine` lists the member's live tickets with the valid child tickets under their adult. Its GET is
-  open before the account is active, so a partner reaches their ticket from the email (name entry still comes first). A holder offers an adult ticket back while the event is not
+  open before the account is active, so someone bought for reaches their ticket from the email (name entry still comes first). A holder offers an adult ticket back while the event is not
   Closed; it joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
   queue position and can withdraw, except while a buyer's checkout holds it.
 - Resale opens by hand: the ticketing team presses Open resale on the resale queue page (`ResaleOpenedAt`, audited
@@ -177,7 +186,7 @@ active event's). `Valid` scans valid; `Offered` scans valid only once sales are 
 user as `EntryUserId`, whose Early Entry applies. Nobody signs the ticket rules at the gate: the buyer's acceptance
 covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only check-in record; no backend is told.
 
-Partners do not sign the ticket rules: the buyer accepts for the whole order (decided by Peter, 2026-11-21).
+People bought for do not sign the ticket rules: the buyer accepts for the whole order (decided by Peter, 2026-11-21).
 
 ## Assumptions to confirm
 

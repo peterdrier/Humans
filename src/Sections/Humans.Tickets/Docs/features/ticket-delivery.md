@@ -29,7 +29,7 @@ so every named person gets their own ticket by email, and can open it in Humans 
 - **Invitation:** asks the holder to complete their profile and pick a shift, linking `/Profile` and `/Shifts`.
 
 Each holder's mail renders in their profile language once they have signed in, otherwise in the language the order
-was placed in (a partner account starts on the default language, not a choice); the receipt in the order's language. All copy lives in `TicketsResource`
+was placed in (an account that has never signed in has the default language, not a choice); the receipt in the order's language. All copy lives in `TicketsResource`
 in the seven cultures, and every template has a sample in `/Email/EmailPreview`.
 
 ## QR image

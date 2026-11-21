@@ -36,6 +36,7 @@ internal sealed partial class TicketCheckoutService(
     ILogger<TicketCheckoutService> logger) : ITicketCheckoutService, IUserDataContributor, IUserMerge
 {
     private const int MaxChildren = 6;
+    private const int MaxOthers = 10;
     private const int MaxNameLength = 513;
     private const int MaxEmailLength = 320;
 
@@ -134,7 +135,7 @@ internal sealed partial class TicketCheckoutService(
             $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}; " +
             $"ticket rules {salesEvent.TermsUrl ?? "none"}; resale {save.Switches.Resale}" +
             (existing?.ResaleOpenedAt is not null && salesEvent.ResaleOpenedAt is null ? " (resale paused)" : string.Empty) + ", " +
-            $"partner tickets {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
+            $"tickets for others {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
             $"mailing list opt-in {OnOff(save.Switches.MailingListOptIn)}", actorUserId);
         return CheckoutMutationResult.Ok;
     }
@@ -214,7 +215,7 @@ internal sealed partial class TicketCheckoutService(
     {
         TermsUrl = context.SalesEvent.TermsUrl,
         AskMarketing = context.AskMarketing,
-        OffersPartner = context.SalesEvent.EffectiveSwitches.PartnerTickets,
+        OffersOthers = context.SalesEvent.EffectiveSwitches.PartnerTickets,
         OffersDonations = context.SalesEvent.EffectiveSwitches.Donations,
         OpenOrder = context.UserOrders
             .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
@@ -235,17 +236,13 @@ internal sealed partial class TicketCheckoutService(
         var switches = salesEvent.EffectiveSwitches;
         var now = context.Now;
 
-        // Every check that needs no partner account runs first, so a refused order leaves nothing behind.
-        var hasPartner = !string.IsNullOrWhiteSpace(command.PartnerName) || !string.IsNullOrWhiteSpace(command.PartnerEmail);
-        if (hasPartner && !switches.PartnerTickets)
+        var otherEmails = command.OtherEmails.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (otherEmails.Count > 0 && !switches.PartnerTickets)
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
+        if (otherEmails.Count > MaxOthers)
+            return StartCheckoutResult.Refused("Tickets_Buy_OthersTooMany", MaxOthers.ToString(CultureInfo.InvariantCulture));
         if (!switches.Donations && (command.SupporterTotalMinor is not null || command.DonationMinor > 0))
-            return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        if (hasPartner && (string.IsNullOrWhiteSpace(command.PartnerName) || !LooksLikeEmail(command.PartnerEmail)))
-            return StartCheckoutResult.Refused("Tickets_Buy_PartnerIncomplete");
-        if (hasPartner && string.Equals(command.PartnerEmail!.Trim(), buyer.Email, StringComparison.OrdinalIgnoreCase))
-            return StartCheckoutResult.Refused("Tickets_Buy_PartnerIsYou");
-        if (hasPartner && (command.PartnerName!.Trim().Length > MaxNameLength || command.PartnerEmail!.Trim().Length > MaxEmailLength))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         if (command.ForSelf && context.AlreadyHoldsTicket)
             return StartCheckoutResult.Refused("Tickets_Buy_AlreadyHolds");
@@ -261,6 +258,16 @@ internal sealed partial class TicketCheckoutService(
         if (salesEvent.TermsUrl is not null && !command.AcceptTerms)
             return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
 
+        var others = new List<UserInfo>();
+        foreach (var otherEmail in otherEmails)
+        {
+            var (other, refusal) = await FindOtherAsync(otherEmail, buyer, salesEvent.Id, now, ct);
+            if (refusal is not null)
+                return StartCheckoutResult.Refused(refusal, otherEmail);
+            if (others.All(o => o.Id != other!.Id))
+                others.Add(other!);
+        }
+
         TicketResaleOffer? directed = null;
         if (command.DirectedToken is { } token)
         {
@@ -270,11 +277,10 @@ internal sealed partial class TicketCheckoutService(
             directed = invited is null ? null : DirectedOfferFor(invited, context);
             if (directed is not null && await IsAdmittedAsync(directed.TicketId, ct))
                 directed = null;
-            if (directed is null || !command.ForSelf)
+            if (directed is null || !command.ForSelf || others.Count > 0)
                 return StartCheckoutResult.Refused("Tickets_Resale_InviteInvalid");
         }
 
-        var adults = (command.ForSelf ? 1 : 0) + (hasPartner ? 1 : 0);
         var stock = await LoadStockAsync(salesEvent, now, ct);
         var queue = stock.ResaleOpen
             ? new Queue<TicketResaleOffer>(stock.Offers
@@ -289,8 +295,8 @@ internal sealed partial class TicketCheckoutService(
         var selfPrice = resaleForSelf is null ? context.OwnPrice! : context.ResalePrice!;
         if (command.SupporterTotalMinor is { } total && total <= selfPrice.AmountMinor)
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        var resaleForPartner = hasPartner && queue.Count > 0 ? queue.Dequeue() : null;
-        var fresh = (command.ForSelf && resaleForSelf is null ? 1 : 0) + (hasPartner && resaleForPartner is null ? 1 : 0) + children.Count;
+        var resaleForOthers = others.Select(_ => queue.Count > 0 ? queue.Dequeue() : null).ToList();
+        var fresh = (command.ForSelf && resaleForSelf is null ? 1 : 0) + resaleForOthers.Count(o => o is null) + children.Count;
         if (fresh > 0 && salesEvent.Mode != TicketSalesMode.Open)
             return StartCheckoutResult.Refused("Tickets_Buy_ResaleOnly");
         if (stock.Held + fresh > salesEvent.Capacity)
@@ -306,13 +312,9 @@ internal sealed partial class TicketCheckoutService(
             lines.Add(line);
         }
 
-        if (hasPartner)
-        {
-            // The partner's account is found or made only once the order is paid (ResolvePartnersAsync), so an
-            // abandoned checkout leaves no account and nobody can probe an address for a ticket.
-            lines.Add(TicketLine(salesEvent, context.PublicPrice!, command.PartnerName!.Trim(), command.PartnerEmail!.Trim(),
-                null, resaleForPartner?.Id));
-        }
+        for (var i = 0; i < others.Count; i++)
+            lines.Add(TicketLine(salesEvent, context.PublicPrice!, others[i].FullName, others[i].Email!, others[i].Id,
+                resaleForOthers[i]?.Id));
 
         if (command.SupporterTotalMinor is { } supporterTotal)
             lines.Add(DonationLine(supporterTotal - selfPrice.AmountMinor, TicketDonationPurpose.General));
@@ -348,7 +350,7 @@ internal sealed partial class TicketCheckoutService(
         if (salesEvent.TermsUrl is { } termsUrl)
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted, "Accepted the ticket rules at " + termsUrl,
                 buyer.Id, ct);
-        foreach (var offer in new[] { resaleForSelf, resaleForPartner }.OfType<TicketResaleOffer>())
+        foreach (var offer in resaleForOthers.Prepend(resaleForSelf).OfType<TicketResaleOffer>())
             await ReserveOfferAsync(offer, order.Id, ct);
 
         if (order.TotalMinor == 0)
@@ -466,35 +468,7 @@ internal sealed partial class TicketCheckoutService(
         }
         changed += await RepairPaidAsync(ct);
         changed += await SweepOffersAsync(ct);
-        changed += await ForgetUnpaidPartnersAsync(ct);
         return changed;
-    }
-
-    /// <summary>
-    /// A partner on an order that never got paid may never have heard of Humans: their name and email go once a late
-    /// payment can no longer arrive.
-    /// </summary>
-    private async Task<int> ForgetUnpaidPartnersAsync(CancellationToken ct)
-    {
-        var cutoff = clock.GetCurrentInstant() - UnpaidPartnerRetention;
-        var forgotten = 0;
-        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
-            foreach (var order in (await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct)).Where(o =>
-                         o.State is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed or TicketCheckoutOrderState.Cancelled
-                         && o.ExpiresAt <= cutoff
-                         && o.Lines.Any(l => l is { AttendeeUserId: null, AttendeeEmail: not null })))
-            {
-                foreach (var line in order.Lines.Where(l => l is { AttendeeUserId: null, AttendeeEmail: not null }))
-                {
-                    line.AttendeeName = TicketPiiTombstone.Name;
-                    line.AttendeeEmail = null;
-                }
-                await repository.UpdateOrderAsync(order, ct);
-                await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.StateChanged,
-                    "Partner details removed: the order was never paid", null, ct);
-                forgotten++;
-            }
-        return forgotten;
     }
 
     private async Task<IReadOnlyList<Guid>> UnsettledRefundOrdersAsync(CancellationToken ct)
@@ -835,8 +809,6 @@ internal sealed partial class TicketCheckoutService(
     }
 
 
-    private static readonly Duration UnpaidPartnerRetention = Duration.FromDays(30);
-
     /// <summary>A SEPA debit settles within about two weeks; one still on its way after that needs a person.</summary>
     private static readonly Duration ProcessingAttention = Duration.FromDays(14);
 
@@ -860,7 +832,7 @@ internal sealed partial class TicketCheckoutService(
             {
                 o.Id,
                 PaidFor = o.BuyerUserId == userId,
-                // A partner sees their own line, not who paid or what the whole order cost.
+                // Someone bought for sees their own line, not who paid or what the whole order cost.
                 BuyerName = o.BuyerUserId == userId ? o.BuyerName : null,
                 BuyerEmail = o.BuyerUserId == userId ? o.BuyerEmail : null,
                 State = o.State.ToString(),
@@ -1163,6 +1135,29 @@ internal sealed partial class TicketCheckoutService(
         VatRate = 0m,
         DonationPurpose = purpose,
     };
+
+    /// <summary>
+    /// The person behind an address added to an order, or the refusal key. Only an address verified on exactly one
+    /// live account counts, and nobody gets an account made for them: they must already be in Humans.
+    /// </summary>
+    private async Task<(UserInfo? Person, string? Refusal)> FindOtherAsync(
+        string email, UserInfo buyer, Guid salesEventId, Instant now, CancellationToken ct)
+    {
+        if (!LooksLikeEmail(email) || email.Length > MaxEmailLength)
+            return (null, "Tickets_Buy_OtherNotFound");
+        var owners = (await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+            .Select(r => r.UserId).Distinct().ToList();
+        if (owners.Count != 1 || await users.GetUserInfoAsync(owners[0], ct) is not { } person
+            || person.IsTombstone || person.IsFake || person.State is UserState.DeletePending or UserState.Rejected)
+            return (null, "Tickets_Buy_OtherNotFound");
+        if (person.Id == buyer.Id)
+            return (null, "Tickets_Buy_OtherIsYou");
+        if (!person.HasRequiredNameFields || string.IsNullOrWhiteSpace(person.Email))
+            return (null, "Tickets_Buy_OtherNeedsName");
+        if (await HoldsTicketAsync(salesEventId, person.Id, now, ct))
+            return (null, "Tickets_Buy_OtherHolds");
+        return (person, null);
+    }
 
     private static bool LooksLikeEmail(string? email) =>
         email is { Length: > 3 and <= 320 } && email.Contains('@', StringComparison.Ordinal) && !email.Contains(' ', StringComparison.Ordinal);

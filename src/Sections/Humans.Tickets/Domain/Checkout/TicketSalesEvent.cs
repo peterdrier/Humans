@@ -86,7 +86,7 @@ internal sealed class TicketSalesSwitches
 {
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
 
-    /// <summary>A buyer may add one more adult ticket for someone else, at the public price.</summary>
+    /// <summary>A buyer may add other people already in Humans to the order, each an adult ticket at the public price.</summary>
     public bool PartnerTickets { get; set; } = true;
 
     /// <summary>Donation lines at checkout: the VIP buttons and the free donation.</summary>

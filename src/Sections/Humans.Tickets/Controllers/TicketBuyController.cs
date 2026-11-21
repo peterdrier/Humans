@@ -88,16 +88,16 @@ internal sealed class TicketBuyController(
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
-        Guid salesEventId, bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
+        Guid salesEventId, bool forSelf, string?[]? otherEmails, long? supporterTotalMinor, decimal? donation,
         TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, bool marketingOptIn,
         string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        IActionResult Back(string key)
+        IActionResult Back(string key, string? argument = null)
         {
-            SetError(localizer[key].Value);
+            SetError(argument is null ? localizer[key].Value : localizer[key, argument].Value);
             return string.IsNullOrEmpty(directedToken)
                 ? RedirectToAction(nameof(Index))
                 : RedirectToAction(nameof(Resale), new { token = directedToken });
@@ -110,24 +110,25 @@ internal sealed class TicketBuyController(
         var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(
-            salesEventId, forSelf, partnerName, partnerEmail, supporterTotalMinor, donationMinor, donationPurpose,
+            salesEventId, forSelf, supporterTotalMinor, donationMinor, donationPurpose,
             returnBase, CultureInfo.CurrentUICulture.Name)
         {
             ChildNames = childNames ?? [],
+            OtherEmails = otherEmails ?? [],
             AcceptTerms = acceptTerms,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
         }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout
 
         if (result.Refusal is { } refusal)
-            return Back(refusal);
+            return Back(refusal, result.RefusalArgument);
 
         return result.PaymentUrl is { } paymentUrl
             ? Redirect(paymentUrl.ToString())
             : RedirectToAction(nameof(Order), new { id = result.OrderId });
     }
 
-    // A partner whose account was made at payment follows the ticket email here before finishing onboarding.
+    // Someone bought for may follow the ticket email here before finishing onboarding.
     [HttpGet("Mine")]
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Mine(CancellationToken ct)

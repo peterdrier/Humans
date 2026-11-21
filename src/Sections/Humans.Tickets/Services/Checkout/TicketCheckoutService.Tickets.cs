@@ -269,7 +269,7 @@ internal sealed partial class TicketCheckoutService
         if ((await repository.GetTicketsForOrderAsync(order.Id, ct)).Count == 0
             && order.Lines.Any(l => l.Kind == CheckoutLineKind.Ticket))
         {
-            await ResolvePartnersAsync(order, ct);
+            await FlagDoubleHoldersAsync(order, ct);
             var now = clock.GetCurrentInstant();
             var ids = order.Lines.Select(_ => Guid.NewGuid()).ToList();
             var tickets = order.Lines
@@ -325,41 +325,19 @@ internal sealed partial class TicketCheckoutService
         }
     }
 
-    /// <summary>Finds or makes each partner's account now the order is paid (see <see cref="ResolveAccountAsync"/>).</summary>
-    private async Task ResolvePartnersAsync(TicketCheckoutOrder order, CancellationToken ct)
+    /// <summary>
+    /// Holding a ticket is checked before payment, but a lapsed checkout can still pay late after the person bought
+    /// one of their own: the team then refunds one of the two.
+    /// </summary>
+    private async Task FlagDoubleHoldersAsync(TicketCheckoutOrder order, CancellationToken ct)
     {
-        var changed = false;
-        foreach (var line in order.Lines.Where(l =>
-                     l is { Kind: CheckoutLineKind.Ticket, AttendeeUserId: null, AttendeeEmail: not null } && l.HolderKind != TicketHolderKind.Child))
-        {
-            Guid? holder = null;
-            string? problem = null;
-            try
-            {
-                (holder, problem) = await ResolveAccountAsync(line.AttendeeEmail!, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, "Partner account for order {OrderId} could not be resolved", order.Id);
-                problem = "finding or creating the account failed";
-            }
-
-            if (holder is { } holderId)
-            {
-                line.AttendeeUserId = holderId;
-                changed = true;
-                if (await HoldsTicketAsync(order.SalesEventId, holderId, clock.GetCurrentInstant(), ct))
-                    await NeedsAttentionAsync(order.Id,
-                        "The partner already held a ticket for this event; the ticketing team should refund one", ct);
-            }
-            else
-            {
+        var now = clock.GetCurrentInstant();
+        foreach (var holderId in order.Lines
+                     .Where(l => l is { Kind: CheckoutLineKind.Ticket, AttendeeUserId: not null } && l.HolderKind != TicketHolderKind.Child)
+                     .Select(l => l.AttendeeUserId!.Value).Distinct())
+            if (await HoldsTicketAsync(order.SalesEventId, holderId, now, ct))
                 await NeedsAttentionAsync(order.Id,
-                    $"Partner ticket issued without an account because {problem}; the ticketing team must attach it", ct);
-            }
-        }
-        if (changed)
-            await repository.UpdateOrderAsync(order, ct);
+                    $"Ticket holder {holderId} already held a ticket for this event; the ticketing team should refund one", ct);
     }
 
     /// <summary>
