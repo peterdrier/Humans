@@ -134,6 +134,9 @@ public sealed class Section :
             [TicketPaymentStatus.Pending] = "bg-warning text-dark",
             [TicketPaymentStatus.Refunded] = "bg-danger",
             [TicketPaymentStatus.Cancelled] = "bg-secondary",
+            [TicketSalesMode.Open] = "bg-success",
+            [TicketSalesMode.ResaleOnly] = "bg-info",
+            [TicketSalesMode.Closed] = "bg-secondary",
             [TicketCheckoutOrderState.Created] = "bg-secondary",
             [TicketCheckoutOrderState.Pending] = "bg-warning text-dark",
             [TicketCheckoutOrderState.Processing] = "bg-warning text-dark",
@@ -145,6 +148,14 @@ public sealed class Section :
             [TicketCheckoutTicketState.Offered] = "bg-info",
             [TicketCheckoutTicketState.Resold] = "bg-secondary",
             [TicketCheckoutTicketState.Void] = "bg-danger",
+            [TicketResaleOfferState.Open] = "bg-info",
+            [TicketResaleOfferState.Reserved] = "bg-warning text-dark",
+            [TicketResaleOfferState.Sold] = "bg-success",
+            [TicketResaleOfferState.Withdrawn] = "bg-secondary",
+            [RefundState.Succeeded] = "bg-success",
+            [RefundState.Pending] = "bg-warning text-dark",
+            [RefundState.Failed] = "bg-danger",
+            [RefundState.ManualRequired] = "bg-danger",
         });
 
         services.AddScoped<TicketSyncJob>();
@@ -195,7 +206,9 @@ public sealed class Section :
             new("Tickets",           "Ticket",               "Index", null, null, "fa-solid fa-ticket",      TicketsPolicies.Read, Weight: 0),
             new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", TicketsPolicies.Read, Weight: 20),
             new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30),
-            new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40)
+            new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40),
+            // Also places the support pages (report, refunds, resale queue, ticket) in the admin shell; they name Sales as their parent.
+            new("Find an order",     "TicketsSupportAdmin",  "Lookup", null, null, "fa-solid fa-magnifying-glass", TicketsPolicies.Read, Weight: 50)
         ])
     ];
 

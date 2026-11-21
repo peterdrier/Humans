@@ -33,8 +33,8 @@ internal sealed class TicketsSalesAdminController(
     {
         var events = await settings.GetAllEventSettingsAsync(ct);
         var salesEvents = await checkout.GetSalesEventsAsync(ct);
-        return View("~/Views/Tickets/Admin/Sales/Index.cshtml",
-            new SalesAdminIndexViewModel(salesEvents, events, checkout.Backends));
+        return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
+            salesEvents, events, checkout.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
     [HttpGet("Backends")]
@@ -75,7 +75,9 @@ internal sealed class TicketsSalesAdminController(
         if (salesEvent is null)
             return NotFound();
         var orders = await checkout.GetOrdersForSalesEventAsync(id, ct);
-        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, orders));
+        var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName
+            ?? salesEvent.EventSettingsId.ToString();
+        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, eventName, orders));
     }
 
     [HttpGet("Order/{id:guid}")]
@@ -166,7 +168,8 @@ internal sealed class TicketsSalesAdminController(
 internal sealed record SalesAdminIndexViewModel(
     IReadOnlyList<TicketSalesEvent> SalesEvents,
     IReadOnlyList<EventSettingsInfo> Events,
-    IReadOnlyList<CheckoutBackendInfo> Backends)
+    IReadOnlyList<CheckoutBackendInfo> Backends,
+    LocalDate Today)
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
