@@ -298,8 +298,9 @@ public sealed class BoxOfficeCheckoutBackendTests
             $$$"""{"id":"pi_old","object":"payment_intent","metadata":{"humans_ticket_order_id":"{{{refundedLater}}}"}}""",
             """
             {"object":"list","url":"/v1/payouts","has_more":false,"data":[
-             {"id":"po_1","object":"payout","amount":24350,"arrival_date":1799625600,"automatic":true,"status":"paid","created":1799582700},
-             {"id":"po_2","object":"payout","amount":1000,"arrival_date":1799625600,"automatic":false,"status":"pending","created":1799582800}]}
+             {"id":"po_1","object":"payout","amount":24350,"arrival_date":1799625600,"automatic":true,"status":"paid","reconciliation_status":"completed","created":1799582700},
+             {"id":"po_2","object":"payout","amount":1000,"arrival_date":1799625600,"automatic":false,"status":"pending","reconciliation_status":"not_applicable","created":1799582800},
+             {"id":"po_3","object":"payout","amount":700,"arrival_date":1799625600,"automatic":true,"status":"paid","reconciliation_status":"in_progress","created":1799582900}]}
             """,
             """
             {"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[
@@ -317,7 +318,8 @@ public sealed class BoxOfficeCheckoutBackendTests
             ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, (Guid?)null),
             ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, (Guid?)null));
         ledger.Payouts.Select(p => (p.Id, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", 24350L, "paid", (long?)24350, 3), ("po_2", 1000L, "pending", (long?)null, 0));
+            ("po_1", 24350L, "paid", (long?)24350, 3), ("po_2", 1000L, "pending", (long?)null, 0),
+            ("po_3", 700L, "paid", (long?)null, 0));
         _requests.Should().HaveCount(5).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 }

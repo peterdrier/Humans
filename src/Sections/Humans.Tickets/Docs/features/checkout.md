@@ -85,12 +85,12 @@ Where Humans can read the backend's payment account (Box Office: the ticket Stri
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
 month it was made. Every balance movement is tied to the Humans order its payment carries in metadata. A payment must
 name a paid (or settling) order on that backend, for the order's total, with the fee Humans recorded on the order (a
-failed delayed debit whose payment came back may be Failed); a refund or chargeback must name an order; a payout must
+failed delayed debit whose payment came back, in the period or any time after it, may be Failed); a refund or chargeback must name an order; a payout must
 send exactly the net of the movements Stripe says it contains. A failed payout is shown but does not unbalance: Stripe
 returns the money and pays it out again, and it would otherwise hold the nightly alert forever. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
 bank, and the fees on order payments Humans against Stripe. Fees not on a payment (Stripe's own billing, a chargeback
-fee) name no order: they are listed and counted, not a difference. A manual payout's contents cannot be listed, so only
-its status is checked. pretix and Hi.Events take payments through their own Stripe accounts, which Humans holds no
+fee) name no order: they are listed and counted, not a difference. A manual payout's contents cannot be listed, nor an
+automatic one's until Stripe has finished reconciling it, so only its status is checked. pretix and Hi.Events take payments through their own Stripe accounts, which Humans holds no
 keys for, so their fees and payouts are not reconciled here.
 
 Per backend: Box Office lists every Checkout Session on the ticket Stripe account (it has no events) and reads the ticket

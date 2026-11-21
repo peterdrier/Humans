@@ -135,7 +135,7 @@ public enum PaymentLedgerEntryKind
 /// <summary>
 /// One payout to the bank. <paramref name="AmountMinor"/> is what it sends, positive. <paramref name="ContentsNetMinor"/>
 /// is the net of the balance movements the provider says it pays out, null when the provider cannot list them (a
-/// payout made by hand); <paramref name="ContentsCount"/> counts them.
+/// payout made by hand, or one the provider has not finished reconciling); <paramref name="ContentsCount"/> counts them.
 /// </summary>
 public sealed record PaymentPayout(
     string Id,

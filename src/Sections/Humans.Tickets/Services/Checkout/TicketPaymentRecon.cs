@@ -88,18 +88,21 @@ internal sealed record TicketPaymentRecon(
 /// </summary>
 internal static class TicketPaymentReconBuilder
 {
+    /// <summary>
+    /// Checks the period's ledger against the orders. <paramref name="returnedLater"/> holds orders whose failed delayed
+    /// debit came back after the period, so a period that holds only the payment balances.
+    /// </summary>
     public static TicketPaymentRecon Build(
         string backendKey,
         Instant from,
         Instant to,
         PaymentLedger ledger,
-        IReadOnlyCollection<TicketCheckoutOrder> orders)
+        IReadOnlyCollection<TicketCheckoutOrder> orders,
+        IReadOnlyCollection<Guid>? returnedLater = null)
     {
-        var mine = orders.Where(o => string.Equals(o.BackendKey, backendKey, StringComparison.Ordinal)).ToDictionary(o => o.Id);
-        // A delayed debit that failed shows as its payment and then that payment coming back.
-        var returned = ledger.Entries
-            .Where(e => e is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: < 0, HumansOrderId: not null })
-            .Select(e => e.HumansOrderId!.Value).ToHashSet();
+        var mine = Mine(orders, backendKey);
+        var returned = Returned(ledger);
+        returned.UnionWith(returnedLater ?? []);
         var rows = new List<TicketPaymentRow>();
         foreach (var entry in ledger.Entries.OrderBy(e => e.CreatedAt))
         {
@@ -129,6 +132,26 @@ internal static class TicketPaymentReconBuilder
 
     public static TicketPaymentRecon Unreadable(string backendKey, Instant from, Instant to, string error) =>
         new(backendKey, from, to, new TicketPaymentTotals(0, 0, 0, 0, 0, 0), 0, 0, [], [], error);
+
+    /// <summary>
+    /// Whether a payment in the ledger is on a failed order whose return is not in it, so the return must be looked for
+    /// after the period.
+    /// </summary>
+    public static bool AwaitsReturn(PaymentLedger ledger, IReadOnlyCollection<TicketCheckoutOrder> orders, string backendKey)
+    {
+        var mine = Mine(orders, backendKey);
+        var returned = Returned(ledger);
+        return ledger.Entries.Any(e => IsPayment(e) && e.HumansOrderId is { } id && !returned.Contains(id)
+            && mine.TryGetValue(id, out var order) && order.State == TicketCheckoutOrderState.Failed);
+    }
+
+    /// <summary>The orders whose payment came back: a delayed debit that failed shows as its payment and then this.</summary>
+    public static HashSet<Guid> Returned(PaymentLedger ledger) => ledger.Entries
+        .Where(e => e is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: < 0, HumansOrderId: not null })
+        .Select(e => e.HumansOrderId!.Value).ToHashSet();
+
+    private static Dictionary<Guid, TicketCheckoutOrder> Mine(IReadOnlyCollection<TicketCheckoutOrder> orders, string backendKey) =>
+        orders.Where(o => string.Equals(o.BackendKey, backendKey, StringComparison.Ordinal)).ToDictionary(o => o.Id);
 
     /// <summary>Money in from a buyer; a failed debit's reversal is a charge too, but negative.</summary>
     private static bool IsPayment(PaymentLedgerEntry entry) => entry is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: > 0 };

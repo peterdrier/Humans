@@ -267,8 +267,9 @@ internal sealed class BoxOfficeCheckoutBackend(
             {
                 long? contentsNet = null;
                 var contentsCount = 0;
-                // Stripe lists what a payout contains only for automatic payouts.
-                if (payout.Automatic)
+                // Stripe lists what a payout contains only for automatic payouts, and in full only once it has
+                // finished reconciling them; before that a partial list would read as a mismatch.
+                if (payout.Automatic && string.Equals(payout.ReconciliationStatus, "completed", StringComparison.Ordinal))
                 {
                     contentsNet = 0;
                     await foreach (var t in new BalanceTransactionService(client).ListAutoPagingAsync(

@@ -151,6 +151,31 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Payment_recon_looks_past_the_period_for_a_failed_debit_coming_back()
+    {
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(), SalesEventId = _salesEvent.Id, BackendKey = "test", State = TicketCheckoutOrderState.Failed,
+            TotalMinor = 30000, FeeMinor = 450, CreatedAt = Now - Duration.FromDays(20),
+        };
+        _repo.Orders.Add(order);
+        var from = Now - Duration.FromDays(30);
+        var to = Now - Duration.FromDays(10);
+        _backend.GetPaymentLedgerAsync(from, to, Arg.Any<CancellationToken>()).Returns(new PaymentLedger(
+            [new PaymentLedgerEntry("txn_c", Now - Duration.FromDays(20), PaymentLedgerEntryKind.Charge, 30000, 450, order.Id, null)], []));
+        _backend.GetPaymentLedgerAsync(to, Now, Arg.Any<CancellationToken>()).Returns(new PaymentLedger([], []));
+        var ct = TestContext.Current.CancellationToken;
+
+        (await _service.ReconcilePaymentsAsync("test", from, to, ct))!.Problems.Should().ContainSingle()
+            .Which.Issues.Should().Equal(TicketPaymentIssue.NotPaidInHumans);
+
+        _backend.GetPaymentLedgerAsync(to, Now, Arg.Any<CancellationToken>()).Returns(new PaymentLedger(
+            [new PaymentLedgerEntry("txn_back", Now - Duration.FromDays(5), PaymentLedgerEntryKind.Charge, -30000, 0, order.Id, null)], []));
+
+        (await _service.ReconcilePaymentsAsync("test", from, to, ct))!.Balanced.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task Backend_ledger_flags_orders_open_past_expiry_splits_failed_refunds_and_leaves_free_orders_out_of_paid()
     {
         TicketCheckoutOrder Order(TicketCheckoutOrderState state, string? backendId, Duration age, Duration expiresIn, string key = "test", long total = 1000)

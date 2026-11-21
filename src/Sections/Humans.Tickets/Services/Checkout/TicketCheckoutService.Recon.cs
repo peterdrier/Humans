@@ -70,10 +70,16 @@ internal sealed partial class TicketCheckoutService
         if (BackendFor(backendKey) is not { IsConfigured: true } backend)
             return null;
 
+        var orders = await AllOrdersAsync(await repository.GetSalesEventsAsync(ct), ct);
         PaymentLedger? ledger;
+        IReadOnlyCollection<Guid>? returnedLater = null;
         try
         {
             ledger = await backend.GetPaymentLedgerAsync(from, to, ct);
+            var now = clock.GetCurrentInstant();
+            if (ledger is not null && to < now && TicketPaymentReconBuilder.AwaitsReturn(ledger, orders, backendKey)
+                && await backend.GetPaymentLedgerAsync(to, now, ct) is { } later)
+                returnedLater = TicketPaymentReconBuilder.Returned(later);
         }
         catch (Exception ex) when (ex is TicketCheckoutException or HttpRequestException
                                        || (ex is TaskCanceledException && !ct.IsCancellationRequested))
@@ -85,8 +91,7 @@ internal sealed partial class TicketCheckoutService
 
         if (ledger is null)
             return null;
-        return TicketPaymentReconBuilder.Build(
-            backendKey, from, to, ledger, await AllOrdersAsync(await repository.GetSalesEventsAsync(ct), ct));
+        return TicketPaymentReconBuilder.Build(backendKey, from, to, ledger, orders, returnedLater);
     }
 
     /// <summary>Three reconcile runs past expiry: by then the reconcile should have settled the order either way.</summary>

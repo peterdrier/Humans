@@ -297,7 +297,7 @@
                                     <td><code>@po.Id</code></td>
                                     <td>@po.Status</td>
                                     <td class="text-end">@Eur(po.AmountMinor)</td>
-                                    <td class="text-end">@(po.ContentsNetMinor is { } net ? $"{Eur(net)} in {po.ContentsCount}" : "made by hand, not listed")</td>
+                                    <td class="text-end">@(po.ContentsNetMinor is { } net ? $"{Eur(net)} in {po.ContentsCount}" : "not listed (made by hand or not reconciled yet)")</td>
                                     <td>@string.Join(", ", row.Issues.Select(i => i.Label()))</td>
                                 </tr>
                             }
