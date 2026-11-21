@@ -1,5 +1,4 @@
 using Humans.Google.Contracts;
-using Humans.Monitor.Contracts;
 using NodaTime;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;

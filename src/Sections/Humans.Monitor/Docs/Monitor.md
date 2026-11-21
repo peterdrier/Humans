@@ -88,8 +88,8 @@ Monitor to the interfaces listed above.
 **Owned tables:** None — orchestrator over `IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`, `IUserService`, `IAuditLogService`.
 **Status:** (A) Migrated — table-less, no repository or cache.
 
-### Cross-section read interface
+### Internal scan interface
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IDriveActivityMonitorService` | — | not cross-section-consumed |
+| `IDriveActivityMonitorService` | `CheckForAnomalousActivityAsync` | Internal to Monitor’s controller and job; no cross-section consumer |

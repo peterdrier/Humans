@@ -1,7 +1,7 @@
 using Humans.Base.Interfaces;
-namespace Humans.Monitor.Contracts;
+namespace Humans.Monitor.Services;
 
-public interface IDriveActivityMonitorService : IApplicationService
+internal interface IDriveActivityMonitorService : IApplicationService
 {
     /// <summary>
     /// Audits each permission change the service account did not make and returns the count. Throws when every
