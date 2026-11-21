@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using NodaTime.Text;
+using Humans.Base.Extensions;
 
 namespace Humans.Surveys.Contracts;
 
@@ -11,8 +11,6 @@ namespace Humans.Surveys.Contracts;
 /// </summary>
 public static class SurveyResponsesMarkdownBuilder
 {
-    private static readonly InstantPattern SubmittedPattern = InstantPattern.General; // ISO-8601 UTC, invariant.
-
     public static string Build(IReadOnlyList<SurveyExportQuestion> questions, IReadOnlyList<SurveyExportRow> rows)
     {
         ArgumentNullException.ThrowIfNull(questions);
@@ -33,7 +31,7 @@ public static class SurveyResponsesMarkdownBuilder
             {
                 row.Anonymity.ToString(),
                 row.InputMethod.ToString(),
-                row.SubmittedAt is { } at ? SubmittedPattern.Format(at) : string.Empty,
+                row.SubmittedAt.ToIso8601() ?? string.Empty,
                 Escape(row.UserName ?? string.Empty),   // blank for non-Identified rows
             };
 

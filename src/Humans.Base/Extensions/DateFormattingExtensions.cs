@@ -126,7 +126,7 @@ public static class DateFormattingExtensions
 
     /// <summary>ISO-8601 UTC instant to seconds, "uuuu-MM-ddTHH:mm:ssZ" (machine/data attributes).</summary>
     public static string ToIso8601(this Instant value) =>
-        InstantPattern.General.Format(value);
+        Iso8601InstantPattern.Format(value);
 
     public static string? ToIso8601(this Instant? value) =>
         value?.ToIso8601();
@@ -146,6 +146,9 @@ public static class DateFormattingExtensions
         value.ToString("yyyy-MM-dd-HHmm", CultureInfo.InvariantCulture);
 
     // NodaTime patterns: the one sanctioned home for parse/format pattern literals (HUM0030).
+
+    /// <summary>ISO-8601 UTC instant to seconds, shared by machine output and input parsing.</summary>
+    public static readonly InstantPattern Iso8601InstantPattern = InstantPattern.General;
 
     /// <summary>iCal basic date-time (RFC 5545 DATE-TIME, e.g. "20260131T142500").</summary>
     public static readonly LocalDateTimePattern IcalBasicDateTimePattern =

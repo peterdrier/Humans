@@ -353,6 +353,8 @@ Markdown response tables preserve literal backslashes and pipes in question prom
 
 CSV question headers are unique against the six metadata columns and other question headers, including case/whitespace and injection-escaping collisions. Conflicting prompts receive a short question-id suffix and, if needed, a numeric suffix. Column order and answer values are unchanged.
 
+Response exports use the shared `DateFormattingExtensions.ToIso8601` UTC timestamp formatter across CSV, JSON and Markdown. The authoring audience-date input uses `ToInvariantDate`; blank values remain empty.
+
 Response exports (admin CSV/JSON and Backdoor analysis) record `SurveyResponsesExported` with the requesting human, survey id and row count in the owner service. Missing surveys and embargoed open Asociado votes return no export and no disclosure audit. Privacy shaping and results authorization remain unchanged.
 
 `SurveyService` owns admin summaries, the pending-approval queue with author enrichment, official-link selection and editable definitions; `SurveyResultsService` owns member summaries and the flattened question graph, reusing `SurveyQuestionMapping`. Admin author scoping, empty-result short-circuits, count/author lookup order and cancellation are unchanged. Responding, results and invitation delivery are their own services (`SurveyResponseService`, `SurveyResultsService`, `SurveyInvitationDelivery`). Open-status and invitation-link precedence, localized default-culture projection, branching payloads and question ordering are unchanged.
